@@ -148,8 +148,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (!accessKey) {
-            const fs = require('fs');
-            fs.appendFileSync('import_errors.txt', `NO ACCESS KEY (ID ${doc.id}): ${JSON.stringify(result, null, 2)}\n`);
+            console.error(`[Import] Documento sem chave de acesso (ID ${doc.id})`);
             errors++;
             continue;
         }
@@ -191,8 +190,7 @@ export async function POST(request: NextRequest) {
 
         imported++;
       } catch (err: any) {
-        const fs = require('fs');
-        fs.appendFileSync('import_errors.txt', `EXCEPTION (ID ${doc.id}): ${err.message}\nSTACK: ${err.stack}\n`);
+        console.error(`[Import] Falha no documento ID ${doc.id}:`, err);
         errors++;
       }
     }
@@ -207,8 +205,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    const fs = require('fs');
-    fs.writeFileSync('error_log.txt', `ERROR: ${error.message}\nSTACK: ${error.stack}\n`);
     console.error('Erro geral na importação:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

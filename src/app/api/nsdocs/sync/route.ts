@@ -6,6 +6,42 @@ import { SefazClient } from '@/lib/sefaz-client';
 import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt } from '@/lib/crypto';
 
+const UF_TO_CODE: Record<string, string> = {
+  AC: '12',
+  AL: '27',
+  AP: '16',
+  AM: '13',
+  BA: '29',
+  CE: '23',
+  DF: '53',
+  ES: '32',
+  GO: '52',
+  MA: '21',
+  MT: '51',
+  MS: '50',
+  MG: '31',
+  PA: '15',
+  PB: '25',
+  PR: '41',
+  PE: '26',
+  PI: '22',
+  RJ: '33',
+  RN: '24',
+  RS: '43',
+  RO: '11',
+  RR: '14',
+  SC: '42',
+  SP: '35',
+  SE: '28',
+  TO: '17',
+};
+
+function getUfCodeFromCertificateSubject(subject?: string | null): string {
+  if (!subject) return '50';
+  const uf = subject.match(/(?:^|,\s*)ST=([A-Z]{2})(?:,|$)/)?.[1];
+  return (uf && UF_TO_CODE[uf]) ? UF_TO_CODE[uf] : '50';
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireAuth();
@@ -44,6 +80,7 @@ export async function POST(request: NextRequest) {
 
       // Processamento Assíncrono (Fire and forget para não bloquear request)
       (async () => {
+        let ultNSU = cert.lastNsu || '0';
         try {
           // Extrair chaves (PEM) usando node-forge para lidar com PFX modernas/complexas
           // Isso evita erros de "Unsupported PKCS12 PFX data" em alguns ambientes Node.js
@@ -54,10 +91,10 @@ export async function POST(request: NextRequest) {
             certPem,
             key, 
             company.cnpj, 
-            cert.environment === 'production'
+            cert.environment === 'production',
+            getUfCodeFromCertificateSubject(cert.subject)
           );
 
-          let ultNSU = cert.lastNsu || '0';
           let temMais = true;
           let totalNovos = 0;
           let totalAtualizados = 0;
@@ -65,6 +102,7 @@ export async function POST(request: NextRequest) {
 
           while (temMais && loopCount < 50) { // Aumentado para 50 loops (aprox 2500 docs)
             loopCount++;
+            const nsuAntesDaConsulta = ultNSU;
             
             // Buscar na SEFAZ
             const response = await sefaz.buscarNovosDocumentos(ultNSU);
@@ -77,22 +115,45 @@ export async function POST(request: NextRequest) {
             }
 
             // Atualizar ultimo NSU conhecido
-            ultNSU = response.ultNSU;
+            ultNSU = response.ultNSU || ultNSU;
+
+            // Quando a SEFAZ retorna "sem documentos" (cStat 137),
+            // uma nova consulta imediata pode gerar bloqueio 656.
+            if (response.status === 'empty') {
+              temMais = false;
+              break;
+            }
+
+            // Se não trouxe documentos e NSU não avançou, não há progresso possível nesta execução.
+            if (response.docs.length === 0 && ultNSU === nsuAntesDaConsulta) {
+              temMais = false;
+              break;
+            }
 
             // Processar documentos
             for (const doc of response.docs) {
               if (doc.tipo === 'nfe') {
+                 // Ignorar documentos sem chave válida para não interromper toda a sincronização
+                 if (!doc.chave || doc.chave.length < 44) {
+                   continue;
+                 }
+
                  // Salvar Invoice
                  const exists = await prisma.invoice.findUnique({ where: { accessKey: doc.chave } });
                  
-                 const valTotalMatch = doc.xml.match(/<vNF>([\d\.]+)<\/vNF>/);
-                 const valTotal = valTotalMatch ? parseFloat(valTotalMatch[1]) : 0;
+                 const valTotalMatch = doc.xml.match(/<vNF>([\d.,]+)<\/vNF>/);
+                 const valTotalRaw = valTotalMatch?.[1] || '';
+                 const valTotalNormalized = valTotalRaw.includes(',')
+                   ? valTotalRaw.replace(/\./g, '').replace(',', '.')
+                   : valTotalRaw;
+                 const valTotalParsed = valTotalNormalized ? parseFloat(valTotalNormalized) : 0;
+                 const valTotal = Number.isFinite(valTotalParsed) ? valTotalParsed : 0;
                  
-                 const dhEmiMatch = doc.xml.match(/<dhEmi>([^<]+)<\/dhEmi>/);
-                 const issueDate = dhEmiMatch ? new Date(dhEmiMatch[1]) : new Date();
+                 const issueDateMatch = doc.xml.match(/<(dhEmi|dEmi)>([^<]+)<\/\1>/);
+                 const issueDate = issueDateMatch ? new Date(issueDateMatch[2]) : new Date();
 
                  if (!exists) {
-                   const senderCnpjMatch = doc.xml.match(/<emit>\s*<CNPJ>(\d+)<\/CNPJ>/)?.[1] || '00000000000000';
+                   const senderCnpjMatch = doc.xml.match(/<emit[\s\S]*?<CNPJ>(\d+)<\/CNPJ>/)?.[1] || '00000000000000';
                    const companyCnpjClean = company.cnpj.replace(/\D/g, '');
                    const direction = senderCnpjMatch === companyCnpjClean ? 'issued' : 'received';
 
@@ -122,7 +183,9 @@ export async function POST(request: NextRequest) {
             }
             
             // Verificar se tem mais
-            if (BigInt(response.ultNSU) >= BigInt(response.maxNSU)) {
+            const ultNsuBigInt = BigInt(response.ultNSU || '0');
+            const maxNsuBigInt = BigInt(response.maxNSU || '0');
+            if (ultNsuBigInt >= maxNsuBigInt) {
               temMais = false;
             }
           }
@@ -148,6 +211,14 @@ export async function POST(request: NextRequest) {
 
         } catch (err: any) {
           console.error('Erro no Sync SEFAZ:', err);
+          try {
+            await prisma.certificateConfig.update({
+              where: { id: cert.id },
+              data: { lastNsu: ultNSU }
+            });
+          } catch (nsuUpdateError) {
+            console.error('Erro ao atualizar lastNsu após falha:', nsuUpdateError);
+          }
           await prisma.syncLog.update({
             where: { id: syncLog.id },
             data: {
