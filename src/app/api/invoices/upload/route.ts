@@ -5,9 +5,8 @@ import { parseInvoiceXml } from '@/lib/xml-parser';
 
 export async function POST(req: Request) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
     }
 
     const company = await prisma.company.findFirst({
-      where: { id: companyId, userId },
+      where: { id: companyId },
     });
 
     if (!company) {

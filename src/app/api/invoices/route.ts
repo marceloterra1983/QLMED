@@ -4,9 +4,8 @@ import prisma from '@/lib/prisma';
 
 export async function GET(req: Request) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
@@ -24,9 +23,7 @@ export async function GET(req: Request) {
 
     const direction = searchParams.get('direction') || '';
 
-    const where: any = {
-      company: { userId },
-    };
+    const where: any = {};
 
     if (search) {
       where.OR = [

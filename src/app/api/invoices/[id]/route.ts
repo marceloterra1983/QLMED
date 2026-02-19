@@ -7,9 +7,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
@@ -17,7 +16,6 @@ export async function GET(
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
-        company: { userId },
       },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
     });
@@ -37,9 +35,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
@@ -47,7 +44,6 @@ export async function DELETE(
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
-        company: { userId },
       },
     });
 
@@ -68,9 +64,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
@@ -80,7 +75,6 @@ export async function PATCH(
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
-        company: { userId },
       },
     });
 

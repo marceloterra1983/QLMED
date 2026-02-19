@@ -11,15 +11,13 @@ const companySchema = z.object({
 
 export async function GET() {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
 
     const companies = await prisma.company.findMany({
-      where: { userId },
       orderBy: { razaoSocial: 'asc' },
       include: {
         _count: {
@@ -57,12 +55,12 @@ export async function POST(request: NextRequest) {
     const cleanCnpj = validation.data.cnpj.replace(/[^\d]/g, '');
 
     const existing = await prisma.company.findFirst({
-      where: { cnpj: cleanCnpj, userId },
+      where: { cnpj: cleanCnpj },
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: 'CNPJ já cadastrado para este usuário' },
+        { error: 'CNPJ já cadastrado' },
         { status: 409 }
       );
     }

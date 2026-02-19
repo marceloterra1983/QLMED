@@ -31,9 +31,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Salva/atualiza o token da API NSDocs
 export async function POST(request: NextRequest) {
-  let userId: string;
   try {
-    userId = await requireAuth();
+    await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
@@ -46,9 +45,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'companyId e apiToken são obrigatórios' }, { status: 400 });
     }
 
-    // Verificar se a empresa pertence ao usuário
     const company = await prisma.company.findFirst({
-      where: { id: companyId, userId },
+      where: { id: companyId },
     });
 
     if (!company) {

@@ -5,9 +5,8 @@ import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
-  let userId: string;
   try {
-    userId = await requireAuth();
+    await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
@@ -27,8 +26,8 @@ export async function POST(request: NextRequest) {
       where: { id: companyId },
     });
 
-    if (!company || company.userId !== userId) {
-      return NextResponse.json({ error: 'Empresa não encontrada ou acesso negado' }, { status: 403 });
+    if (!company) {
+      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
     }
 
     // Processar arquivo

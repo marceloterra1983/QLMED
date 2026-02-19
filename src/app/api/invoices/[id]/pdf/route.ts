@@ -980,15 +980,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id: params.id, company: { userId } },
+      where: { id: params.id },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
     });
 

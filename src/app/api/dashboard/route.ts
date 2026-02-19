@@ -4,16 +4,13 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
 
-    const companies = await prisma.company.findMany({
-      where: { userId },
-    });
+    const companies = await prisma.company.findMany();
 
     const companyIds = companies.map((c) => c.id);
 
