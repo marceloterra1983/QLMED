@@ -161,7 +161,7 @@ export default function SyncPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      running: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      running: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
       completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     };
@@ -190,7 +190,7 @@ export default function SyncPage() {
             Sincronizar SEFAZ
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Baixe notas fiscais diretamente da Receita Federal via NSDocs
+            Baixe notas fiscais direto na SEFAZ com certificado digital, com fallback via NSDocs
           </p>
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function SyncPage() {
         
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${
           hasNsdocsConfig
-            ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800'
+            ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
             : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
         }`}>
           <span className="material-symbols-outlined text-[16px]">hub</span>
@@ -289,7 +289,7 @@ export default function SyncPage() {
                 <div className={`flex items-center gap-2 text-sm font-medium ${
                   syncState === 'completed' ? 'text-green-600 dark:text-green-400' :
                   syncState === 'error' ? 'text-red-600 dark:text-red-400' :
-                  'text-primary dark:text-purple-400'
+                  'text-primary dark:text-blue-400'
                 }`}>
                   <span className="material-symbols-outlined text-[18px]">
                     {syncState === 'completed' ? 'check_circle' : syncState === 'error' ? 'error' : 'hourglass_top'}
@@ -304,9 +304,9 @@ export default function SyncPage() {
                       <p className="text-2xl font-bold text-green-700 dark:text-green-400">{syncResult.newDocs}</p>
                       <p className="text-xs text-green-600 dark:text-green-500 font-medium mt-1">Novas notas</p>
                     </div>
-                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 text-center border border-purple-100 dark:border-purple-800">
-                      <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">{syncResult.updatedDocs}</p>
-                      <p className="text-xs text-purple-600 dark:text-purple-500 font-medium mt-1">Atualizados</p>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center border border-blue-100 dark:border-blue-800">
+                      <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{syncResult.updatedDocs}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-500 font-medium mt-1">Atualizados</p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center border border-slate-200 dark:border-slate-700">
                       <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{syncResult.total}</p>
@@ -361,7 +361,7 @@ export default function SyncPage() {
                         <span className="text-green-600 dark:text-green-400 font-semibold">
                           +{log.newDocs} novas
                         </span>
-                        <span className="text-primary dark:text-purple-400 font-semibold">
+                        <span className="text-primary dark:text-blue-400 font-semibold">
                           {log.updatedDocs} atualizadas
                         </span>
                       </>

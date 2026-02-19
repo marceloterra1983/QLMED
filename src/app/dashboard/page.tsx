@@ -167,7 +167,7 @@ export default function DashboardPage() {
                 {loading ? '...' : formatCurrencyShort(stats.totalValue)}
               </h3>
             </div>
-            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
               <span className="material-symbols-outlined text-[24px]">payments</span>
             </span>
           </div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">vs mês anterior</span>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
-            <span className="material-symbols-outlined text-[120px] text-purple-600">payments</span>
+            <span className="material-symbols-outlined text-[120px] text-blue-600">payments</span>
           </div>
         </div>
 

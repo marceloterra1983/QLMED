@@ -244,12 +244,12 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Instructions Card */}
-      <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
         <div className="flex items-start gap-3">
-          <span className="material-symbols-outlined text-primary dark:text-purple-400 text-[24px] mt-0.5">info</span>
+          <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[24px] mt-0.5">info</span>
           <div>
-            <h3 className="font-bold text-purple-900 dark:text-purple-300 text-sm">Como obter o Token da API</h3>
-            <ol className="text-sm text-purple-800 dark:text-purple-400 mt-2 space-y-1 list-decimal list-inside">
+            <h3 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Como obter o Token da API</h3>
+            <ol className="text-sm text-blue-800 dark:text-blue-400 mt-2 space-y-1 list-decimal list-inside">
               <li>Acesse <a href="https://app.nsdocs.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-primary">app.nsdocs.com.br</a></li>
               <li>Vá em <strong>Configurações → Integração via API</strong></li>
               <li>Copie o <strong>Token de API</strong> gerado</li>

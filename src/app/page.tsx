@@ -29,7 +29,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#06090f] text-white overflow-hidden relative">
       {/* --- Atmospheric background --- */}
       <div className="pointer-events-none absolute inset-0">
-        {/* Top-right purple glow */}
+        {/* Top-right blue glow */}
         <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-primary/[0.07] blur-[120px]" />
         {/* Bottom-left emerald glow */}
         <div className="absolute -bottom-60 -left-40 w-[600px] h-[600px] rounded-full bg-accent/[0.05] blur-[100px]" />
@@ -79,7 +79,7 @@ export default function Home() {
           <span className="text-white">Seus documentos</span>
           <br />
           <span className="text-white">fiscais sob </span>
-          <span className="bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-primary via-blue-400 to-accent bg-clip-text text-transparent">
             controle total
           </span>
         </h1>
