@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,12 +45,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3 mb-4">
+          <div className="inline-flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center w-12 h-12 bg-primary/20 rounded-xl text-primary shadow-lg shadow-primary/20">
               <span className="material-symbols-outlined text-[28px]">receipt_long</span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white">QLMED</span>
-          </Link>
+          </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-4">Bem-vindo de volta</h2>
           <p className="text-sm text-slate-500 mt-1">Entre na sua conta para continuar</p>
         </div>
@@ -109,14 +108,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
-              Não tem uma conta?{' '}
-              <Link href="/register" className="text-primary font-bold hover:text-primary-dark transition-colors">
-                Cadastre-se
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>
