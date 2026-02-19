@@ -1,0 +1,21 @@
+ERROR: errors is not defined
+STACK: ReferenceError: errors is not defined
+    at POST (webpack-internal:///(rsc)/./src/app/api/nsdocs/import-period/route.ts:198:17)
+    at async /home/marce/Projetos/QLMED/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:57228
+    at async eT.execute (/home/marce/Projetos/QLMED/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:46851)
+    at async eT.handle (/home/marce/Projetos/QLMED/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:58760)
+    at async doRender (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:1366:42)
+    at async cacheEntry.responseCache.get.routeKind (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:1588:28)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:1496:28)
+    at async DevServer.renderPageComponent (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:1962:32)
+    at async DevServer.pipeImpl (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/marce/Projetos/QLMED/node_modules/next/dist/server/next-server.js:272:17)
+    at async DevServer.handleRequestImpl (/home/marce/Projetos/QLMED/node_modules/next/dist/server/base-server.js:818:17)
+    at async /home/marce/Projetos/QLMED/node_modules/next/dist/server/dev/next-dev-server.js:339:20
+    at async Span.traceAsyncFn (/home/marce/Projetos/QLMED/node_modules/next/dist/trace/trace.js:154:20)
+    at async DevServer.handleRequest (/home/marce/Projetos/QLMED/node_modules/next/dist/server/dev/next-dev-server.js:336:24)
+    at async invokeRender (/home/marce/Projetos/QLMED/node_modules/next/dist/server/lib/router-server.js:179:21)
+    at async handleRequest (/home/marce/Projetos/QLMED/node_modules/next/dist/server/lib/router-server.js:359:24)
+    at async requestHandlerImpl (/home/marce/Projetos/QLMED/node_modules/next/dist/server/lib/router-server.js:383:13)
+    at async Server.requestListener (/home/marce/Projetos/QLMED/node_modules/next/dist/server/lib/start-server.js:141:13)

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "*",
+      "Bash(*)",
+      "Bash(wsl -d Ubuntu -e ls:*)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "EDIT_FILE",
+      "Edit(*)",
+      "FileModification(*)",
+      "ReplaceFileContent(*)",
+      "WriteToFile(*)",
+      "MultiReplaceFileContent(*)",
+      "grep(*)",
+      "grep_search(*)",
+      "Grep(*)",
+      "Search(*)",
+      "RunCommand(*)",
+      "Command(*)",
+      "Terminal(*)",
+      "Bash(wslpath:*)"
+    ]
+  }
+}
