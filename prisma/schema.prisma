@@ -86,8 +86,8 @@ model Invoice {
   issueDate      DateTime
   senderCnpj     String
   senderName     String
-  recipientCnpj  String
-  recipientName  String
+  recipientCnpj  String?
+  recipientName  String?
   totalValue     Float
   status         String   @default("received") // received, confirmed, rejected
   xmlContent     String   // Full XML stored as text
