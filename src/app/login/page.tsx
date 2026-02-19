@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,11 +46,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-primary/20 rounded-xl text-primary shadow-lg shadow-primary/20">
-              <span className="material-symbols-outlined text-[28px]">receipt_long</span>
-            </div>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">QLMED</span>
+          <div className="relative w-[200px] h-[80px] mx-auto mb-4">
+            <Image
+              src="/logo.png"
+              alt="QL MED Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-4">Bem-vindo de volta</h2>
           <p className="text-sm text-slate-500 mt-1">Entre na sua conta para continuar</p>
