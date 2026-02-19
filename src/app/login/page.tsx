@@ -46,9 +46,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="relative w-[200px] h-[80px] mx-auto mb-4">
+          <div className="relative w-[220px] h-[60px] mx-auto mb-4">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="QL MED Logo"
               fill
               className="object-contain"

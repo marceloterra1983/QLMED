@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 70" fill="none">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon: rounded square with medical cross -->
+  <rect x="4" y="10" width="50" height="50" rx="14" fill="url(#grad)"/>
+  <rect x="22" y="22" width="14" height="26" rx="3" fill="white"/>
+  <rect x="16" y="28" width="26" height="14" rx="3" fill="white"/>
+  <!-- Text -->
+  <text x="66" y="48" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="800" letter-spacing="-1">
+    <tspan fill="url(#grad)">QL</tspan><tspan fill="url(#accentGrad)">MED</tspan>
+  </text>
+</svg>
