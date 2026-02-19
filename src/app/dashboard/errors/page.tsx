@@ -71,7 +71,7 @@ export default function ErrorsPage() {
       </div>
 
       {/* Company Selector */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -121,7 +121,7 @@ export default function ErrorsPage() {
           {logs.map(log => (
             <div
               key={log.id}
-              className="bg-white dark:bg-card-dark border border-red-200 dark:border-red-900/50 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-card-dark border border-red-200 dark:border-red-900/50 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">

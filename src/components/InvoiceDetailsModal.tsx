@@ -77,6 +77,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
             <button
               onClick={onClose}
+              aria-label="Fechar documento"
               className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Fechar"
             >

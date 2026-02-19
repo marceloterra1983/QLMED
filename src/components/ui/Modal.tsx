@@ -49,6 +49,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
           </h3>
           <button
             onClick={onClose}
+            aria-label="Fechar modal"
             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <span className="material-symbols-outlined text-[24px]">close</span>

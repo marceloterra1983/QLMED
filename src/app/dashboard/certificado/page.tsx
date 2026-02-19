@@ -121,7 +121,7 @@ export default function CertificadoPage() {
       </div>
 
       {/* Company Selector */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
           Empresa
         </label>

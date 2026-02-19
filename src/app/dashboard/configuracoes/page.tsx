@@ -244,7 +244,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Instructions Card */}
-      <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-5">
+      <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-primary dark:text-purple-400 text-[24px] mt-0.5">info</span>
           <div>

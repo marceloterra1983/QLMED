@@ -254,7 +254,7 @@ export default function DashboardPage() {
             <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
             <Link
               href="/dashboard/invoices"
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-accent dark:hover:bg-emerald-400 text-white dark:text-slate-900 rounded-lg text-sm font-bold transition-all shadow-md shadow-slate-900/20 dark:shadow-accent/30 group"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 group"
             >
               <span className="material-symbols-outlined text-[20px]">list_alt</span>
               Ver Todas
@@ -350,7 +350,7 @@ export default function DashboardPage() {
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tracking-tight">
                               {formatAccessKey(invoice.accessKey)}
                             </span>
-                            <button className="text-slate-400 hover:text-primary transition-colors" title="Copiar Chave">
+                            <button aria-label="Copiar chave de acesso" className="text-slate-400 hover:text-primary transition-colors" title="Copiar Chave">
                               <span className="material-symbols-outlined text-[14px]">content_copy</span>
                             </button>
                           </div>
@@ -374,12 +374,13 @@ export default function DashboardPage() {
                           )}
                           <button
                             onClick={() => openModal(invoice.id)}
+                            aria-label="Ver detalhes"
                             className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
                             title="Ver Detalhes"
                           >
                             <span className="material-symbols-outlined text-[20px]">visibility</span>
                           </button>
-                          <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download XML">
+                          <a href={`/api/invoices/${invoice.id}/download`} aria-label="Baixar XML" className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download XML">
                             <span className="material-symbols-outlined text-[20px]">download</span>
                           </a>
                         </div>
@@ -400,11 +401,11 @@ export default function DashboardPage() {
               <span className="font-bold text-slate-900 dark:text-white">{invoices.length}</span>
             </span>
             <div className="flex items-center gap-2">
-              <button className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" disabled>
+              <button aria-label="Página anterior" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" disabled>
                 <span className="material-symbols-outlined text-[20px]">chevron_left</span>
               </button>
               <button className="w-9 h-9 flex items-center justify-center rounded-lg bg-primary text-white text-sm font-bold shadow-md shadow-primary/30">1</button>
-              <button className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <button aria-label="Próxima página" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">chevron_right</span>
               </button>
             </div>

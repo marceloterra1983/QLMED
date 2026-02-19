@@ -132,8 +132,8 @@ export default function IssuedInvoicesPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Destinatário</label>
             <input
@@ -167,7 +167,7 @@ export default function IssuedInvoicesPage() {
           <div className="flex gap-2">
             <button
               onClick={() => { setPage(1); loadInvoices(); }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-primary text-white rounded-lg text-sm font-bold transition-all shadow-md"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
             >
               <span className="material-symbols-outlined text-[20px]">filter_alt</span>
               Aplicar
@@ -288,10 +288,10 @@ export default function IssuedInvoicesPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openModal(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Ver">
+                          <button onClick={() => openModal(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Ver" aria-label="Ver detalhes">
                             <span className="material-symbols-outlined text-[20px]">visibility</span>
                           </button>
-                          <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download">
+                          <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download" aria-label="Baixar XML">
                             <span className="material-symbols-outlined text-[20px]">download</span>
                           </a>
                         </div>
@@ -325,6 +325,7 @@ export default function IssuedInvoicesPage() {
               disabled={page === 1}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
               title="Primeira página"
+              aria-label="Primeira página"
             >
               <span className="material-symbols-outlined text-[20px]">first_page</span>
             </button>
@@ -332,6 +333,7 @@ export default function IssuedInvoicesPage() {
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
+              aria-label="Página anterior"
             >
               <span className="material-symbols-outlined text-[20px]">chevron_left</span>
             </button>
@@ -359,6 +361,7 @@ export default function IssuedInvoicesPage() {
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
+              aria-label="Próxima página"
             >
               <span className="material-symbols-outlined text-[20px]">chevron_right</span>
             </button>
@@ -367,6 +370,7 @@ export default function IssuedInvoicesPage() {
               disabled={page === totalPages}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
               title="Última página"
+              aria-label="Última página"
             >
               <span className="material-symbols-outlined text-[20px]">last_page</span>
             </button>
