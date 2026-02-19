@@ -29,6 +29,12 @@ export default function DashboardPage() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setCurrentDate(new Date());
+  }, []);
+
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
     setIsModalOpen(true);
@@ -95,8 +101,8 @@ export default function DashboardPage() {
           </h2>
           <div className="flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full bg-accent"></span>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-              Sistema Online • {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium capitalize">
+              Sistema Online • {currentDate ? currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : ''}
             </p>
           </div>
         </div>
@@ -115,7 +121,11 @@ export default function DashboardPage() {
           <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm">
             <span className="material-symbols-outlined text-[20px]">calendar_today</span>
             <span className="hidden sm:inline">
-              {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+              {currentDate ? (
+                <>
+                  {currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - {new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                </>
+              ) : ''}
             </span>
           </button>
         </div>
