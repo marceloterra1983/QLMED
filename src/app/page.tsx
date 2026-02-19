@@ -47,10 +47,10 @@ export default function Home() {
 
       {/* --- Navigation --- */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 lg:px-20 py-6">
-        <div className="relative w-[160px] h-[44px]">
+        <div className="relative w-[180px] h-[55px]">
           <Image
-            src="/logo.svg"
-            alt="QLMED"
+            src="/logo.png"
+            alt="QL MED"
             fill
             className="object-contain brightness-0 invert"
             priority
@@ -201,10 +201,10 @@ export default function Home() {
       {/* --- Footer --- */}
       <footer className="relative z-10 px-6 md:px-12 lg:px-20 py-8 border-t border-white/[0.04]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-[100px] h-[28px]">
+          <div className="relative w-[120px] h-[37px]">
             <Image
-              src="/logo.svg"
-              alt="QLMED"
+              src="/logo.png"
+              alt="QL MED"
               fill
               className="object-contain brightness-0 invert opacity-40"
             />
