@@ -266,6 +266,8 @@ export async function GET(req: Request) {
         if (aTime !== bTime) return bTime - aTime;
         return a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
       });
+    const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
+    const totalProductsPurchased = priceTable.length;
 
     const invoicesList = filteredInvoices.map((invoice) => ({
       id: invoice.id,
@@ -300,6 +302,8 @@ export async function GET(req: Request) {
       purchases: {
         totalInvoices,
         totalValue,
+        totalPurchasedItems,
+        totalProductsPurchased,
         averageTicket,
         firstIssueDate,
         lastIssueDate,

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import SupplierDetailsModal from '@/components/SupplierDetailsModal';
-import { formatCnpj, formatCurrency, formatDate } from '@/lib/utils';
+import { formatCnpj, formatDate } from '@/lib/utils';
 
 interface Supplier {
   cnpj: string;
@@ -13,12 +13,6 @@ interface Supplier {
   totalValue: number;
   firstIssueDate: string | null;
   lastIssueDate: string | null;
-}
-
-interface SupplierSummary {
-  totalSuppliers: number;
-  totalInvoices: number;
-  totalValue: number;
 }
 
 function formatDocument(document: string) {
@@ -35,11 +29,6 @@ function formatDocument(document: string) {
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [summary, setSummary] = useState<SupplierSummary>({
-    totalSuppliers: 0,
-    totalInvoices: 0,
-    totalValue: 0,
-  });
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -47,8 +36,8 @@ export default function SuppliersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(20);
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('value');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -82,7 +71,6 @@ export default function SuppliersPage() {
 
       const data = await res.json();
       setSuppliers(data.suppliers || []);
-      setSummary(data.summary || { totalSuppliers: 0, totalInvoices: 0, totalValue: 0 });
       setTotalPages(data.pagination?.pages || 1);
       setTotal(data.pagination?.total || 0);
       if (data.pagination?.page && data.pagination.page !== page) {
@@ -128,8 +116,8 @@ export default function SuppliersPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setSortBy('name');
-    setSortOrder('asc');
+    setSortBy('value');
+    setSortOrder('desc');
     setPage(1);
   };
 
@@ -164,7 +152,7 @@ export default function SuppliersPage() {
           <span className="material-symbols-outlined text-[28px] text-primary">storefront</span>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              Cadastro de Fornecedores
+              Fornecedores
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
               Captura automática dos fornecedores que enviaram NF-e para sua empresa
@@ -188,27 +176,6 @@ export default function SuppliersPage() {
             <span className="material-symbols-outlined text-[20px]">download</span>
             Exportar
           </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fornecedores</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
-            {loading ? <Skeleton className="h-8 w-20" /> : summary.totalSuppliers.toLocaleString('pt-BR')}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">NF-e mapeadas</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
-            {loading ? <Skeleton className="h-8 w-20" /> : summary.totalInvoices.toLocaleString('pt-BR')}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Valor total</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
-            {loading ? <Skeleton className="h-8 w-28" /> : formatCurrency(summary.totalValue)}
-          </p>
         </div>
       </div>
 
@@ -241,9 +208,9 @@ export default function SuppliersPage() {
               }}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
+              <option value="value">Valor total</option>
               <option value="name">Nome</option>
               <option value="documents">NF-e recebidas</option>
-              <option value="value">Valor total</option>
               <option value="lastIssue">Última NF-e</option>
             </select>
           </div>
@@ -256,6 +223,12 @@ export default function SuppliersPage() {
             Limpar
           </button>
         </div>
+      </div>
+
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
+        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+          As informações dos fornecedores são exibidas a partir de 2021.
+        </p>
       </div>
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
