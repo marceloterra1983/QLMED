@@ -357,7 +357,7 @@ export default function InvoicesPage() {
             <caption className="sr-only">Lista de notas fiscais eletrônicas recebidas</caption>
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-4 py-4 w-10">
+                <th className="px-3 py-2.5 w-10">
                   <input
                     className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                     type="checkbox"
@@ -365,35 +365,35 @@ export default function InvoicesPage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-4 py-4 w-10 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('status')}>
+                <th className="px-3 py-2.5 w-10 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('status')}>
                    <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
                 </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
                   <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
                   <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
                 </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
                 </th>
-                <th className="px-4 py-4 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
+                <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
                   <div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div>
                 </th>
-                <th className="px-4 py-4 text-center">Ações</th>
+                <th className="px-3 py-2.5 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
                 Array.from({ length: limit }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-4" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-5 w-5 rounded-full" /></td>
-                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-16" /><Skeleton className="h-3 w-12" /></div></td>
-                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-28" /></div></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-5 w-5 rounded-full" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
@@ -414,7 +414,7 @@ export default function InvoicesPage() {
                 invoices.map((invoice) => {
                   return (
                     <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-2">
                         <input
                           className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                           type="checkbox"
@@ -422,21 +422,21 @@ export default function InvoicesPage() {
                           onChange={() => toggleSelect(invoice.id)}
                         />
                       </td>
-                      <td className="px-4 py-4">{getStatusIcon(invoice.status)}</td>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-2">{getStatusIcon(invoice.status)}</td>
+                      <td className="px-3 py-2">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-2">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-2">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
-                        <div className="text-xs text-slate-400">{formatTime(invoice.issueDate)}</div>
+                        <span className="text-xs text-slate-400 ml-1.5">{formatTime(invoice.issueDate)}</span>
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-3 py-2 text-right">
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-2">
                         <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
                       </td>
                     </tr>
