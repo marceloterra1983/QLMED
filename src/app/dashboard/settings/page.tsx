@@ -31,6 +31,37 @@ interface NsdocsConfig {
   lastSyncAt: string | null;
 }
 
+interface OneDriveConnection {
+  id: string;
+  accountEmail: string;
+  accountName: string | null;
+  driveId: string;
+  driveType: string | null;
+  driveWebUrl: string | null;
+  tokenExpiresAt: string;
+  lastValidatedAt: string | null;
+  updatedAt: string;
+  isExpired: boolean;
+}
+
+interface OneDriveItem {
+  id: string;
+  name: string;
+  kind: 'folder' | 'file';
+  childCount: number | null;
+  size: number;
+  webUrl: string | null;
+  lastModifiedAt: string | null;
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, index);
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
 export default function SettingsPage() {
   const { data: session } = useSession();
 
@@ -59,6 +90,14 @@ export default function SettingsPage() {
   const [nsdocsConfig, setNsdocsConfig] = useState<NsdocsConfig | null>(null);
   const [nsdocsLoading, setNsdocsLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // OneDrive
+  const [oneDriveLoginHint, setOneDriveLoginHint] = useState('faturamento@qlmed.com.br');
+  const [oneDriveConnections, setOneDriveConnections] = useState<OneDriveConnection[]>([]);
+  const [oneDriveLoading, setOneDriveLoading] = useState(false);
+  const [oneDriveFilesLoading, setOneDriveFilesLoading] = useState(false);
+  const [selectedOneDriveConnectionId, setSelectedOneDriveConnectionId] = useState<string | null>(null);
+  const [oneDriveItems, setOneDriveItems] = useState<OneDriveItem[]>([]);
 
   // ── Theme ──
   useEffect(() => {
@@ -227,6 +266,130 @@ export default function SettingsPage() {
     }
   };
 
+  // ── OneDrive ──
+  const loadOneDriveConnections = async () => {
+    try {
+      const res = await fetch('/api/onedrive/connections');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao carregar conexões OneDrive');
+      }
+
+      setOneDriveConnections(data.connections || []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar conexões OneDrive';
+      toast.error(message);
+    }
+  };
+
+  useEffect(() => {
+    loadOneDriveConnections();
+  }, []);
+
+  const handleConnectOneDrive = async () => {
+    setOneDriveLoading(true);
+
+    try {
+      const params = new URLSearchParams();
+      if (oneDriveLoginHint.trim()) {
+        params.set('loginHint', oneDriveLoginHint.trim());
+      }
+
+      const res = await fetch(`/api/onedrive/auth-url?${params.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Erro ao iniciar autenticação OneDrive');
+      }
+
+      window.location.href = data.url;
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao iniciar autenticação OneDrive';
+      toast.error(message);
+      setOneDriveLoading(false);
+    }
+  };
+
+  const handleValidateOneDrive = async (connectionId: string) => {
+    setOneDriveLoading(true);
+
+    try {
+      const res = await fetch(`/api/onedrive/connections/${connectionId}/validate`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Falha ao validar conexão');
+      }
+
+      toast.success('Conexão OneDrive validada com sucesso');
+      await loadOneDriveConnections();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao validar conexão';
+      toast.error(message);
+    } finally {
+      setOneDriveLoading(false);
+    }
+  };
+
+  const handleLoadOneDriveFiles = async (connectionId: string) => {
+    setSelectedOneDriveConnectionId(connectionId);
+    setOneDriveFilesLoading(true);
+    setOneDriveItems([]);
+
+    try {
+      const res = await fetch(`/api/onedrive/connections/${connectionId}/files`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao listar arquivos');
+      }
+
+      setOneDriveItems(data.items || []);
+      toast.success('Arquivos carregados');
+      await loadOneDriveConnections();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao listar arquivos';
+      toast.error(message);
+    } finally {
+      setOneDriveFilesLoading(false);
+    }
+  };
+
+  const handleDisconnectOneDrive = async (connectionId: string) => {
+    const confirmed = window.confirm('Deseja remover esta conexão OneDrive?');
+    if (!confirmed) return;
+
+    setOneDriveLoading(true);
+
+    try {
+      const res = await fetch(`/api/onedrive/connections/${connectionId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao remover conexão');
+      }
+
+      if (selectedOneDriveConnectionId === connectionId) {
+        setSelectedOneDriveConnectionId(null);
+        setOneDriveItems([]);
+      }
+
+      toast.success('Conexão OneDrive removida');
+      await loadOneDriveConnections();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao remover conexão';
+      toast.error(message);
+    } finally {
+      setOneDriveLoading(false);
+    }
+  };
+
   // ── Badge helpers ──
   const certBadge = certInfo
     ? certInfo.isExpired
@@ -237,6 +400,12 @@ export default function SettingsPage() {
   const nsdocsBadge = nsdocsConfig
     ? { label: 'Conectado', color: 'green' as const }
     : { label: 'Não configurado', color: 'yellow' as const };
+
+  const oneDriveBadge = oneDriveConnections.length === 0
+    ? { label: 'Não conectado', color: 'yellow' as const }
+    : oneDriveConnections.some((connection) => connection.isExpired)
+      ? { label: 'Revalidar', color: 'red' as const }
+      : { label: `${oneDriveConnections.length} conta(s)`, color: 'green' as const };
 
   return (
     <div className="space-y-4">
@@ -500,7 +669,142 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 3. Aparência */}
+      {/* 3. Integração OneDrive */}
+      <CollapsibleCard icon="cloud_sync" title="Integração OneDrive" defaultOpen badge={oneDriveBadge}>
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">
+            <p className="text-xs text-indigo-900 dark:text-indigo-300 font-semibold">Conecte múltiplas contas Microsoft</p>
+            <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-1">
+              Exemplo: conectar <strong>adm@qlmed.com.br</strong> e <strong>faturamento@qlmed.com.br</strong> para consultar e enviar arquivos.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+            <input
+              type="email"
+              value={oneDriveLoginHint}
+              onChange={(e) => setOneDriveLoginHint(e.target.value)}
+              placeholder="email da conta Microsoft"
+              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+            />
+            <button
+              onClick={handleConnectOneDrive}
+              disabled={oneDriveLoading}
+              className="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">link</span>
+              Conectar Conta
+            </button>
+          </div>
+
+          {oneDriveConnections.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 text-sm text-slate-500 dark:text-slate-400">
+              Nenhuma conta OneDrive conectada ainda.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {oneDriveConnections.map((connection) => (
+                <div key={connection.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-900/30">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {connection.accountName || connection.accountEmail}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{connection.accountEmail}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      connection.isExpired
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}>
+                      {connection.isExpired ? 'Token expirado' : 'Conectado'}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                    <p>Última validação: {connection.lastValidatedAt ? new Date(connection.lastValidatedAt).toLocaleString('pt-BR') : 'nunca'}</p>
+                    <p>Expira em: {new Date(connection.tokenExpiresAt).toLocaleString('pt-BR')}</p>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleValidateOneDrive(connection.id)}
+                      disabled={oneDriveLoading}
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                    >
+                      Validar conexão
+                    </button>
+                    <button
+                      onClick={() => handleLoadOneDriveFiles(connection.id)}
+                      disabled={oneDriveFilesLoading}
+                      className="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
+                    >
+                      Listar arquivos
+                    </button>
+                    {connection.driveWebUrl && (
+                      <a
+                        href={connection.driveWebUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+                      >
+                        Abrir OneDrive
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleDisconnectOneDrive(connection.id)}
+                      disabled={oneDriveLoading}
+                      className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                    >
+                      Desconectar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedOneDriveConnectionId && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900/30">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Arquivos da raiz</h4>
+                {oneDriveFilesLoading && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Carregando...</span>
+                )}
+              </div>
+
+              {!oneDriveFilesLoading && oneDriveItems.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum item encontrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {oneDriveItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-800 dark:text-slate-200 truncate">{item.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {item.kind === 'folder' ? `Pasta (${item.childCount ?? 0} itens)` : `Arquivo (${formatBytes(item.size)})`}
+                        </p>
+                      </div>
+                      {item.webUrl && (
+                        <a
+                          href={item.webUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap"
+                        >
+                          Abrir
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </CollapsibleCard>
+
+      {/* 4. Aparência */}
       <CollapsibleCard icon="palette" title="Aparência">
         <div>
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -547,7 +851,7 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 4. Notificações */}
+      {/* 5. Notificações */}
       <CollapsibleCard icon="notifications" title="Notificações">
         <div className="space-y-1">
           <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -612,7 +916,7 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 5. Perfil */}
+      {/* 6. Perfil */}
       <CollapsibleCard icon="person" title="Perfil">
         <div className="space-y-4">
           <div>
@@ -636,7 +940,7 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 6. Dados e Exportação */}
+      {/* 7. Dados e Exportação */}
       <CollapsibleCard icon="database" title="Dados e Exportação">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative group">
@@ -669,7 +973,7 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 7. Zona de Perigo */}
+      {/* 8. Zona de Perigo */}
       <CollapsibleCard icon="warning" title="Zona de Perigo" variant="danger">
         <div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">

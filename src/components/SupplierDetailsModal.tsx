@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatDate, formatCurrency, getManifestBadge } from '@/lib/utils';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import RowActions from '@/components/ui/RowActions';
+import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
+import NfeDetailsModal from '@/components/NfeDetailsModal';
+import { formatCnpj, formatDate, formatCurrency } from '@/lib/utils';
 
 interface SupplierRef {
   cnpj: string;
@@ -68,6 +72,13 @@ interface SupplierInvoice {
   accessKey: string;
 }
 
+interface SupplierDuplicate {
+  invoiceNumber: string;
+  installmentNumber: string;
+  dueDate: string | null;
+  installmentValue: number;
+}
+
 interface SupplierMeta {
   totalPriceRows: number;
   priceRowsLimited: boolean;
@@ -78,6 +89,7 @@ interface SupplierDetailsResponse {
   purchases: SupplierPurchases;
   priceTable: SupplierPriceRow[];
   invoices: SupplierInvoice[];
+  duplicates: SupplierDuplicate[];
   meta: SupplierMeta;
 }
 
@@ -110,15 +122,6 @@ function formatDocument(document: string) {
   return document || '-';
 }
 
-function formatAccessKey(value: string) {
-  return value.replace(/(.{4})/g, '$1 ').trim();
-}
-
-function shortenAccessKey(value: string) {
-  if (!value || value.length < 16) return value || '-';
-  return `${value.slice(0, 8)}...${value.slice(-8)}`;
-}
-
 function formatQuantity(value: number) {
   return value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 }
@@ -127,13 +130,45 @@ function formatPrice(value: number) {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 }
 
-function formatSupplierStatus(status: string) {
-  const badge = getManifestBadge(status);
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${badge.classes}`}>
-      {badge.label}
-    </span>
-  );
+function normalizeDateOnly(value: string | null): Date | null {
+  if (!value) return null;
+
+  const onlyDate = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (onlyDate) {
+    const year = Number(onlyDate[1]);
+    const month = Number(onlyDate[2]);
+    const day = Number(onlyDate[3]);
+    return new Date(year, month - 1, day);
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+function formatDueDate(value: string | null): string {
+  if (!value) return '-';
+  const parsed = normalizeDateOnly(value);
+  if (!parsed) return value;
+  return parsed.toLocaleDateString('pt-BR');
+}
+
+function getDuplicateStatus(value: string | null): { label: 'A vencer' | 'Vencido'; classes: string } {
+  const dueDate = normalizeDateOnly(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (dueDate && dueDate < today) {
+    return {
+      label: 'Vencido',
+      classes: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    };
+  }
+
+  return {
+    label: 'A vencer',
+    classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  };
 }
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
@@ -179,6 +214,19 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   );
 }
 
+async function fetchSupplierDetails(targetSupplier: SupplierRef): Promise<SupplierDetailsResponse> {
+  const params = new URLSearchParams();
+  if (targetSupplier.cnpj) params.set('cnpj', targetSupplier.cnpj);
+  if (targetSupplier.name) params.set('name', targetSupplier.name);
+
+  const res = await fetch(`/api/suppliers/details?${params}`);
+  if (!res.ok) {
+    throw new Error('Falha ao carregar dados do fornecedor');
+  }
+
+  return res.json();
+}
+
 export default function SupplierDetailsModal({ isOpen, onClose, supplier }: SupplierDetailsModalProps) {
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<SupplierDetailsResponse | null>(null);
@@ -186,9 +234,16 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
   const [isGeneralOpen, setIsGeneralOpen] = useState(true);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(true);
   const [isInvoicesOpen, setIsInvoicesOpen] = useState(true);
+  const [isDuplicatesOpen, setIsDuplicatesOpen] = useState(true);
   const [priceSearchTerm, setPriceSearchTerm] = useState('');
   const [priceSortKey, setPriceSortKey] = useState<PriceSortKey>('totalQuantity');
   const [priceSortDirection, setPriceSortDirection] = useState<SortDirection>('desc');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [isNfeDetailsOpen, setIsNfeDetailsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -196,9 +251,16 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
       setIsGeneralOpen(true);
       setIsPriceTableOpen(true);
       setIsInvoicesOpen(true);
+      setIsDuplicatesOpen(true);
       setPriceSearchTerm('');
       setPriceSortKey('totalQuantity');
       setPriceSortDirection('desc');
+      setIsInvoiceModalOpen(false);
+      setIsNfeDetailsOpen(false);
+      setSelectedInvoiceId(null);
+      setDetailsInvoiceId(null);
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
     }
   }, [isOpen]);
 
@@ -211,16 +273,7 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
       setDetails(null);
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (supplier.cnpj) params.set('cnpj', supplier.cnpj);
-        if (supplier.name) params.set('name', supplier.name);
-
-        const res = await fetch(`/api/suppliers/details?${params}`);
-        if (!res.ok) {
-          throw new Error('Falha ao carregar dados do fornecedor');
-        }
-
-        const data: SupplierDetailsResponse = await res.json();
+        const data = await fetchSupplierDetails(supplier);
         if (!cancelled) {
           setDetails(data);
         }
@@ -247,6 +300,56 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
       setDetails(null);
     }
   }, [isOpen]);
+
+  const openInvoiceViewer = (id: string) => {
+    setSelectedInvoiceId(id);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const openInvoiceDetails = (id: string) => {
+    setDetailsInvoiceId(id);
+    setIsNfeDetailsOpen(true);
+  };
+
+  const confirmDelete = (id: string) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [deleteTargetId] }),
+      });
+
+      if (!res.ok) {
+        toast.error('Erro ao excluir nota fiscal');
+        return;
+      }
+
+      const data = await res.json();
+      toast.success(`${data.deleted} nota(s) excluída(s) com sucesso`);
+      setDeleteTargetId(null);
+
+      if (supplier && isOpen) {
+        setLoading(true);
+        try {
+          const refreshedDetails = await fetchSupplierDetails(supplier);
+          setDetails(refreshedDetails);
+        } catch {
+          toast.error('Erro ao atualizar dados do fornecedor');
+        } finally {
+          setLoading(false);
+        }
+      }
+    } catch {
+      toast.error('Erro de rede ao excluir');
+    }
+  };
 
   const filteredAndSortedPriceTable = useMemo(() => {
     if (!details) return [];
@@ -294,12 +397,13 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={details?.supplier.name || supplier?.name || 'Visualizar fornecedor'}
-      width="max-w-6xl"
-    >
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={details?.supplier.name || supplier?.name || 'Visualizar fornecedor'}
+        width="max-w-6xl"
+      >
       {loading && (
         <div className="space-y-5">
           <Skeleton className="h-14 w-full" />
@@ -410,33 +514,33 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
                   <div className="overflow-x-auto max-h-[320px]">
                     <table className="w-full text-left border-collapse min-w-[760px]">
                       <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                          <th className="px-4 py-3">
-                            <button type="button" onClick={() => togglePriceSort('code')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                          <th className="px-3 py-2">
+                            <button type="button" onClick={() => togglePriceSort('code')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                               Código
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('code')}</span>
                             </button>
                           </th>
-                          <th className="px-4 py-3">
-                            <button type="button" onClick={() => togglePriceSort('description')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                          <th className="px-3 py-2">
+                            <button type="button" onClick={() => togglePriceSort('description')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                               Produto
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('description')}</span>
                             </button>
                           </th>
-                          <th className="px-4 py-3 text-right">
-                            <button type="button" onClick={() => togglePriceSort('totalQuantity')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                          <th className="px-3 py-2 text-right">
+                            <button type="button" onClick={() => togglePriceSort('totalQuantity')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                               Qtd.
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('totalQuantity')}</span>
                             </button>
                           </th>
-                          <th className="px-4 py-3 text-right">
-                            <button type="button" onClick={() => togglePriceSort('lastPrice')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                          <th className="px-3 py-2 text-right">
+                            <button type="button" onClick={() => togglePriceSort('lastPrice')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                               Último Preço
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('lastPrice')}</span>
                             </button>
                           </th>
-                          <th className="px-4 py-3">
-                            <button type="button" onClick={() => togglePriceSort('lastIssueDate')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                          <th className="px-3 py-2">
+                            <button type="button" onClick={() => togglePriceSort('lastIssueDate')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                               Última NF-e
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('lastIssueDate')}</span>
                             </button>
@@ -446,21 +550,21 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                         {filteredAndSortedPriceTable.map((row) => (
                           <tr key={`${row.code}-${row.description}-${row.unit}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-300">{row.code}</td>
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white">{row.description}</div>
+                            <td className="px-3 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300">{row.code}</td>
+                            <td className="px-3 py-1.5">
+                              <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.description}</div>
                             </td>
-                            <td className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <td className="px-3 py-1.5 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
                               {formatQuantity(row.totalQuantity)}
                             </td>
-                            <td className="px-4 py-3 text-right text-sm font-bold text-slate-900 dark:text-white">
+                            <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-900 dark:text-white">
                               {formatPrice(row.lastPrice)}
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="text-sm text-slate-700 dark:text-slate-300">
+                            <td className="px-3 py-1.5">
+                              <div className="text-xs text-slate-700 dark:text-slate-300">
                                 {row.lastInvoiceNumber || '-'}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
                               </div>
                             </td>
@@ -481,7 +585,7 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
           </CollapsibleCard>
 
           <CollapsibleCard
-            title="Relação de NF-e Emitidas pelo Fornecedor"
+            title="Relação de Notas Fiscais Emitidas pelo Fornecedor"
             subtitle="Histórico de notas recebidas onde este fornecedor é o emitente"
             open={isInvoicesOpen}
             onToggle={() => setIsInvoicesOpen((prev) => !prev)}
@@ -490,34 +594,79 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
               <div className="px-4 py-10 text-center text-slate-400 text-sm">Nenhuma nota fiscal encontrada para este fornecedor.</div>
             ) : (
               <div className="overflow-x-auto max-h-[360px]">
-                <table className="w-full text-left border-collapse min-w-[900px]">
+                <table className="w-full text-left border-collapse min-w-[560px]">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                      <th className="px-4 py-3">Número</th>
-                      <th className="px-4 py-3">Série</th>
-                      <th className="px-4 py-3">Emissão</th>
-                      <th className="px-4 py-3 text-right">Valor</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Chave</th>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                      <th className="px-3 py-2">Número</th>
+                      <th className="px-3 py-2">Emissão</th>
+                      <th className="px-3 py-2 text-right">Valor</th>
+                      <th className="px-3 py-2 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {details.invoices.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{invoice.number}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{invoice.series || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</td>
-                        <td className="px-4 py-3 text-right text-sm font-bold font-mono text-slate-900 dark:text-white">
-                          {invoice.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <td className="px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-white">{invoice.number}</td>
+                        <td className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</td>
+                        <td className="px-3 py-1.5 text-right text-xs font-bold font-mono text-slate-900 dark:text-white">
+                          {formatCurrency(invoice.totalValue)}
                         </td>
-                        <td className="px-4 py-3">{formatSupplierStatus(invoice.status)}</td>
-                        <td className="px-4 py-3" title={formatAccessKey(invoice.accessKey)}>
-                          <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
-                            {shortenAccessKey(invoice.accessKey)}
-                          </span>
+                        <td className="px-3 py-1">
+                          <RowActions
+                            invoiceId={invoice.id}
+                            onView={openInvoiceViewer}
+                            onDetails={openInvoiceDetails}
+                            onDelete={confirmDelete}
+                          />
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Relação de Duplicatas"
+            subtitle="Parcelas encontradas nas notas fiscais deste fornecedor"
+            open={isDuplicatesOpen}
+            onToggle={() => setIsDuplicatesOpen((prev) => !prev)}
+          >
+            {details.duplicates.length === 0 ? (
+              <div className="px-4 py-8 text-center text-slate-400 text-sm">Nenhuma duplicata encontrada para este fornecedor.</div>
+            ) : (
+              <div className="overflow-x-auto max-h-[320px]">
+                <table className="w-full text-left border-collapse min-w-[680px]">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                      <th className="px-3 py-2">Nº Nota</th>
+                      <th className="px-3 py-2">Parcela</th>
+                      <th className="px-3 py-2">Vencimento</th>
+                      <th className="px-3 py-2 text-right">Valor Parcela</th>
+                      <th className="px-3 py-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {details.duplicates.map((duplicate, index) => {
+                      const status = getDuplicateStatus(duplicate.dueDate);
+
+                      return (
+                        <tr key={`${duplicate.invoiceNumber}-${duplicate.installmentNumber}-${duplicate.dueDate || 'sem-data'}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-white">{duplicate.invoiceNumber}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300">{duplicate.installmentNumber}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300">{formatDueDate(duplicate.dueDate)}</td>
+                          <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-900 dark:text-white">
+                            {formatCurrency(duplicate.installmentValue)}
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${status.classes}`}>
+                              {status.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -532,6 +681,32 @@ export default function SupplierDetailsModal({ isOpen, onClose, supplier }: Supp
           <p className="mt-2 text-sm font-medium">Sem dados para este fornecedor</p>
         </div>
       )}
-    </Modal>
+      </Modal>
+
+      <InvoiceDetailsModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        invoiceId={selectedInvoiceId}
+      />
+
+      <NfeDetailsModal
+        isOpen={isNfeDetailsOpen}
+        onClose={() => setIsNfeDetailsOpen(false)}
+        invoiceId={detailsInvoiceId}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+        onConfirm={handleDelete}
+        title="Excluir nota fiscal"
+        message="Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        confirmVariant="danger"
+      />
+    </>
   );
 }

@@ -60,6 +60,7 @@ model Company {
   invoices          Invoice[]
   nsdocsConfig      NsdocsConfig?
   certificateConfig CertificateConfig?
+  oneDriveConnections OneDriveConnection[]
   syncLogs          SyncLog[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -111,6 +112,28 @@ model SyncLog {
   startedAt    DateTime   @default(now())
   completedAt  DateTime?
 
+  @@index([companyId])
+}
+
+model OneDriveConnection {
+  id              String    @id @default(cuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  accountEmail    String
+  accountName     String?
+  microsoftUserId String?
+  driveId         String
+  driveType       String?
+  driveWebUrl     String?
+  accessToken     String
+  refreshToken    String?
+  tokenExpiresAt  DateTime
+  scope           String?
+  lastValidatedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([companyId, accountEmail])
   @@index([companyId])
 }
 

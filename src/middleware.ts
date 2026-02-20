@@ -8,5 +8,6 @@ export const config = {
     '/api/dashboard/:path*',
     '/api/nsdocs/:path*',
     '/api/certificate/:path*',
+    '/api/onedrive/:path*',
   ],
 };

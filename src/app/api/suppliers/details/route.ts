@@ -68,15 +68,14 @@ async function extractSupplierDataFromXml(xmlContent: string) {
   }
 }
 
-async function extractProductsFromXml(xmlContent: string) {
+async function extractInvoiceDataFromXml(xmlContent: string) {
   try {
     const parsed = await xmlParser.parseStringPromise(xmlContent);
     const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
     const dets = ensureArray<any>(infNFe?.det);
-
-    return dets.map((det) => {
+    const products = dets.map((det) => {
       const prod = det?.prod || {};
       const quantity = toNumber(prod?.qCom);
       const unitPrice = toNumber(prod?.vUnCom);
@@ -92,8 +91,18 @@ async function extractProductsFromXml(xmlContent: string) {
         totalValue,
       };
     });
+    const dups = ensureArray<any>(infNFe?.cobr?.dup);
+    const duplicates = dups
+      .map((dup) => ({
+        installmentNumber: cleanString(dup?.nDup) || '-',
+        dueDate: cleanString(dup?.dVenc),
+        installmentValue: toNumber(dup?.vDup),
+      }))
+      .filter((dup) => dup.installmentNumber !== '-' || dup.dueDate || dup.installmentValue > 0);
+
+    return { products, duplicates };
   } catch {
-    return [];
+    return { products: [], duplicates: [] };
   }
 }
 
@@ -208,9 +217,15 @@ export async function GET(req: Request) {
       lastInvoiceNumber: string | null;
       invoiceIds: Set<string>;
     }>();
+    const duplicatesList: Array<{
+      invoiceNumber: string;
+      installmentNumber: string;
+      dueDate: string | null;
+      installmentValue: number;
+    }> = [];
 
     for (const invoice of filteredInvoices) {
-      const products = await extractProductsFromXml(invoice.xmlContent);
+      const { products, duplicates } = await extractInvoiceDataFromXml(invoice.xmlContent);
       for (const product of products) {
         const key = `${product.code}::${product.description}::${product.unit}`;
         const existing = priceMap.get(key);
@@ -243,6 +258,15 @@ export async function GET(req: Request) {
           existing.lastPrice = product.unitPrice;
           existing.lastInvoiceNumber = invoice.number;
         }
+      }
+
+      for (const duplicate of duplicates) {
+        duplicatesList.push({
+          invoiceNumber: invoice.number,
+          installmentNumber: duplicate.installmentNumber,
+          dueDate: duplicate.dueDate,
+          installmentValue: duplicate.installmentValue,
+        });
       }
     }
 
@@ -278,6 +302,17 @@ export async function GET(req: Request) {
       status: invoice.status,
       accessKey: invoice.accessKey,
     }));
+    const duplicates = [...duplicatesList].sort((a, b) => {
+      const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+
+      if (aTime !== bTime) return aTime - bTime;
+
+      const byInvoice = a.invoiceNumber.localeCompare(b.invoiceNumber, 'pt-BR', { sensitivity: 'base' });
+      if (byInvoice !== 0) return byInvoice;
+
+      return a.installmentNumber.localeCompare(b.installmentNumber, 'pt-BR', { sensitivity: 'base' });
+    });
 
     return NextResponse.json({
       supplier: {
@@ -313,6 +348,7 @@ export async function GET(req: Request) {
       },
       priceTable: priceTable.slice(0, MAX_PRICE_ROWS),
       invoices: invoicesList,
+      duplicates,
       meta: {
         totalPriceRows: priceTable.length,
         priceRowsLimited: priceTable.length > MAX_PRICE_ROWS,
