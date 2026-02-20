@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 
 export async function GET(
   req: Request,
@@ -60,7 +61,15 @@ export async function DELETE(
 
     await prisma.invoice.delete({ where: { id: params.id } });
 
-    return NextResponse.json({ message: 'Nota excluída com sucesso' });
+    let syncRecoveryMarked = false;
+    try {
+      await markCompanyForSyncRecovery(company.id, invoice.issueDate);
+      syncRecoveryMarked = true;
+    } catch (syncRecoveryError) {
+      console.error('Error marking sync recovery after delete:', syncRecoveryError);
+    }
+
+    return NextResponse.json({ message: 'Nota excluída com sucesso', syncRecoveryMarked });
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }

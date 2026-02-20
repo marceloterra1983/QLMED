@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 
 export async function GET(req: Request) {
   try {
@@ -105,11 +106,32 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'IDs não fornecidos' }, { status: 400 });
     }
 
-    const result = await prisma.invoice.deleteMany({
+    const invoicesToDelete = await prisma.invoice.findMany({
       where: { id: { in: ids }, companyId: company.id },
+      select: { id: true, issueDate: true },
     });
 
-    return NextResponse.json({ deleted: result.count });
+    if (invoicesToDelete.length === 0) {
+      return NextResponse.json({ deleted: 0 });
+    }
+
+    const earliestIssueDate = invoicesToDelete.reduce((earliest, current) => (
+      current.issueDate < earliest ? current.issueDate : earliest
+    ), invoicesToDelete[0].issueDate);
+
+    const result = await prisma.invoice.deleteMany({
+      where: { id: { in: invoicesToDelete.map((invoice) => invoice.id) }, companyId: company.id },
+    });
+
+    let syncRecoveryMarked = false;
+    try {
+      await markCompanyForSyncRecovery(company.id, earliestIssueDate);
+      syncRecoveryMarked = true;
+    } catch (syncRecoveryError) {
+      console.error('Error marking sync recovery after delete:', syncRecoveryError);
+    }
+
+    return NextResponse.json({ deleted: result.count, syncRecoveryMarked });
   } catch (error) {
     console.error('Error deleting invoices:', error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

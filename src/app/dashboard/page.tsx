@@ -97,14 +97,14 @@ export default function DashboardPage() {
     <>
       {/* Page Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Visão Fiscal
-          </h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-accent"></span>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium capitalize">
-              Sistema Online • {currentDate ? currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : ''}
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">dashboard</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Dashboard
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium capitalize">
+              {currentDate ? currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : ''}
             </p>
           </div>
         </div>

@@ -6,6 +6,9 @@ import { SefazClient } from '@/lib/sefaz-client';
 import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
+import { getNsdocsSyncWindow } from '@/lib/nsdocs-sync-window';
+import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12',
@@ -144,53 +147,44 @@ export async function POST(request: NextRequest) {
 
             // Processar documentos
             for (const doc of response.docs) {
-              if (doc.tipo === 'nfe') {
-                 // Ignorar documentos sem chave válida para não interromper toda a sincronização
-                 if (!doc.chave || doc.chave.length < 44) {
-                   continue;
-                 }
+              try {
+                if (!doc.chave || doc.chave.length < 44 || !doc.xml) continue;
 
-                 // Salvar Invoice
-                 const exists = await prisma.invoice.findUnique({ where: { accessKey: doc.chave } });
-                 
-                 const valTotalMatch = doc.xml.match(/<vNF>([\d.,]+)<\/vNF>/);
-                 const valTotalRaw = valTotalMatch?.[1] || '';
-                 const valTotalNormalized = valTotalRaw.includes(',')
-                   ? valTotalRaw.replace(/\./g, '').replace(',', '.')
-                   : valTotalRaw;
-                 const valTotalParsed = valTotalNormalized ? parseFloat(valTotalNormalized) : 0;
-                 const valTotal = Number.isFinite(valTotalParsed) ? valTotalParsed : 0;
-                 
-                 const issueDateMatch = doc.xml.match(/<(dhEmi|dEmi)>([^<]+)<\/\1>/);
-                 const issueDate = issueDateMatch ? new Date(issueDateMatch[2]) : new Date();
+                const exists = await prisma.invoice.findUnique({ where: { accessKey: doc.chave } });
+                if (exists) {
+                  totalAtualizados++;
+                  continue;
+                }
 
-                 if (!exists) {
-                   const senderCnpjMatch = doc.xml.match(/<emit[\s\S]*?<CNPJ>(\d+)<\/CNPJ>/)?.[1] || '00000000000000';
-                   const companyCnpjClean = company.cnpj.replace(/\D/g, '');
-                   const direction = senderCnpjMatch === companyCnpjClean ? 'issued' : 'received';
+                const parsed = await parseInvoiceXml(doc.xml);
+                if (!parsed) continue;
 
-                   await prisma.invoice.create({
-                     data: {
-                       companyId,
-                       accessKey: doc.chave,
-                       type: 'NFE',
-                       direction,
-                       number: doc.chave.substring(25, 34),
-                       series: doc.chave.substring(22, 25),
-                       issueDate: issueDate,
-                       senderCnpj: senderCnpjMatch,
-                       senderName: doc.emitente,
-                       recipientCnpj: company.cnpj,
-                       recipientName: company.razaoSocial,
-                       totalValue: valTotal,
-                       status: 'received',
-                       xmlContent: doc.xml
-                     }
-                   });
-                   totalNovos++;
-                 } else {
-                   totalAtualizados++;
-                 }
+                const accessKey = parsed.accessKey || doc.chave;
+                const companyCnpjClean = company.cnpj.replace(/\D/g, '');
+                const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
+                const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+
+                await prisma.invoice.create({
+                  data: {
+                    companyId,
+                    accessKey,
+                    type: parsed.type,
+                    direction,
+                    number: parsed.number,
+                    series: parsed.series,
+                    issueDate: parsed.issueDate,
+                    senderCnpj: parsed.senderCnpj,
+                    senderName: parsed.senderName,
+                    recipientCnpj: parsed.recipientCnpj,
+                    recipientName: parsed.recipientName,
+                    totalValue: parsed.totalValue,
+                    status: 'received',
+                    xmlContent: doc.xml,
+                  },
+                });
+                totalNovos++;
+              } catch (docErr) {
+                console.error(`[SEFAZ Sync] Erro ao processar doc ${doc.chave}:`, docErr);
               }
             }
             
@@ -251,32 +245,122 @@ export async function POST(request: NextRequest) {
 
     // NSDocs: se method='nsdocs' explícito OU fallback automático (sem method)
     if ((method === 'nsdocs' || !method) && company.nsdocsConfig) {
-      const syncLog = await prisma.syncLog.create({ 
-        data: { 
-          companyId, 
+      const syncLog = await prisma.syncLog.create({
+        data: {
+          companyId,
           syncMethod: 'nsdocs',
-          status: 'running' 
-        } 
+          status: 'running'
+        }
       });
-      
-      try {
-        const client = new NsdocsClient(company.nsdocsConfig.apiToken);
-        const consulta = await client.consultarCnpj(company.cnpj);
-        
-        return NextResponse.json({ 
-          message: 'Consulta NSDocs iniciada',
-          syncMethod: 'nsdocs',
-          syncLogId: syncLog.id, 
-          idConsulta: consulta.id_consulta,
-          status: 'pending' // Frontend vai fazer polling
-        });
-      } catch (err: any) {
-         await prisma.syncLog.update({
-            where: { id: syncLog.id },
-            data: { status: 'error', errorMessage: err.message, completedAt: new Date() }
+
+      const nsdocsToken = company.nsdocsConfig.apiToken;
+      const nsdocsConfigId = company.nsdocsConfig.id;
+      const nsdocsLastSyncAt = company.nsdocsConfig.lastSyncAt;
+      const companyCnpj = company.cnpj;
+      const companyRazao = company.razaoSocial;
+
+      // Fire-and-forget: listar documentos recentes e importar XMLs
+      (async () => {
+        try {
+          const client = new NsdocsClient(nsdocsToken);
+
+          const { dtInicial, dtFinal, syncedAt } = getNsdocsSyncWindow(nsdocsLastSyncAt);
+
+          const documentos = await client.listarTodosDocumentos({
+            dtInicial,
+            dtFinal,
+            ordenacao_campo: 'dataemissao',
+            ordenacao_tipo: 'asc',
           });
-         return NextResponse.json({ error: `Erro NSDocs: ${err.message}` }, { status: 500 });
-      }
+
+          let totalNovos = 0;
+          let totalAtualizados = 0;
+
+          for (const doc of documentos) {
+            try {
+              if (!doc.id) continue;
+
+              const xmlContent = await client.recuperarXml(doc.id);
+              if (!xmlContent || xmlContent.length < 50) continue;
+
+              const parsed = await parseInvoiceXml(xmlContent);
+              if (!parsed || !parsed.accessKey) continue;
+
+              const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
+              const exists = await prisma.invoice.findUnique({
+                where: { accessKey: parsed.accessKey },
+                select: { id: true, status: true },
+              });
+              if (exists) {
+                if (exists.status !== mappedStatus) {
+                  await prisma.invoice.update({
+                    where: { id: exists.id },
+                    data: { status: mappedStatus },
+                  });
+                }
+                totalAtualizados++;
+                continue;
+              }
+
+              const companyCnpjClean = companyCnpj.replace(/\D/g, '');
+              const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
+              const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+
+              await prisma.invoice.create({
+                data: {
+                  companyId,
+                  accessKey: parsed.accessKey,
+                  type: parsed.type,
+                  direction,
+                  number: parsed.number,
+                  series: parsed.series,
+                  issueDate: parsed.issueDate,
+                  senderCnpj: parsed.senderCnpj,
+                  senderName: parsed.senderName,
+                  recipientCnpj: parsed.recipientCnpj,
+                  recipientName: parsed.recipientName,
+                  totalValue: parsed.totalValue,
+                  status: mappedStatus,
+                  xmlContent,
+                },
+              });
+              totalNovos++;
+            } catch (docErr) {
+              console.error(`[NSDocs Sync] Erro no doc ${doc.id}:`, docErr);
+            }
+          }
+
+          await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: {
+              status: 'completed',
+              newDocs: totalNovos,
+              updatedDocs: totalAtualizados,
+              completedAt: new Date(),
+            },
+          });
+
+          await prisma.nsdocsConfig.update({
+            where: { id: nsdocsConfigId },
+            data: { lastSyncAt: syncedAt },
+          });
+
+          console.log(`[NSDocs Sync] Concluído: ${companyRazao} - ${totalNovos} novos, ${totalAtualizados} existentes`);
+
+        } catch (err: any) {
+          console.error('[NSDocs Sync] Erro:', err);
+          await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+          });
+        }
+      })();
+
+      return NextResponse.json({
+        message: 'Sincronização NSDocs iniciada',
+        syncMethod: 'nsdocs',
+        syncLogId: syncLog.id,
+      });
     }
 
     return NextResponse.json({ error: 'Nenhuma configuração de integração encontrada (Certificado ou NSDocs)' }, { status: 400 });
@@ -297,7 +381,6 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const syncLogId = searchParams.get('syncLogId');
-  const idConsulta = searchParams.get('idConsulta'); // Só para NSDocs
   const company = await getOrCreateSingleCompany(userId);
   const companyId = company.id;
 
@@ -307,44 +390,8 @@ export async function GET(request: NextRequest) {
     if (log && log.companyId !== companyId) {
       return NextResponse.json({ error: 'Log de sincronização não encontrado' }, { status: 404 });
     }
-    
-    // Polling do NSDocs se necessário
-    if (log?.syncMethod === 'nsdocs' && log.status === 'running' && idConsulta) {
-       try {
-         const companyWithConfig = await prisma.company.findUnique({ 
-            where: { id: companyId }, include: { nsdocsConfig: true } 
-         });
-         
-         if (companyWithConfig?.nsdocsConfig) {
-            const client = new NsdocsClient(companyWithConfig.nsdocsConfig.apiToken);
-            const retorno = await client.retornoConsulta('cnpj', idConsulta);
-            
-            if (retorno.status === 'Concluído') {
-               // Importação simplificada para o exemplo híbrido:
-               // Precisaria listar documentos e importar.
-               // Como é fallback, vamos assumir ok por enquanto.
-               
-               await prisma.syncLog.update({
-                 where: { id: syncLogId },
-                 data: { status: 'completed', completedAt: new Date(), errorMessage: 'Importação NSDocs (Fallback)' }
-               });
-               return NextResponse.json({ status: 'completed', newDocs: 0, updatedDocs: 0 });
-            } else if (retorno.status === 'Erro') {
-               await prisma.syncLog.update({
-                 where: { id: syncLogId },
-                 data: { status: 'error', errorMessage: retorno.erro, completedAt: new Date() }
-               });
-               return NextResponse.json({ status: 'error', error: retorno.erro });
-            }
-            
-            return NextResponse.json({ status: 'running', message: retorno.status });
-         }
-       } catch (e) {
-         console.error(e);
-       }
-    }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: log?.status || 'unknown',
       newDocs: log?.newDocs || 0,
       updatedDocs: log?.updatedDocs || 0,

@@ -7,7 +7,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatDate, formatValue, getManifestBadge } from '@/lib/utils';
+import { formatCnpj, formatDate, formatTime, formatValue } from '@/lib/utils';
 
 export default function CtePage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -48,13 +48,11 @@ export default function CtePage() {
   }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {
-    const headers = ['Numero', 'Serie', 'Chave', 'Emitente', 'CNPJ', 'Data', 'Valor', 'Status'];
+    const headers = ['Numero', 'Chave', 'Emitente', 'Data', 'Valor', 'Status'];
     const rows = invoices.map(inv => [
       inv.number,
-      inv.series || '1',
       inv.accessKey,
       inv.senderName,
-      inv.senderCnpj,
       formatDate(inv.issueDate),
       inv.totalValue,
       inv.status,
@@ -169,11 +167,34 @@ export default function CtePage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Autorizada</span></>;
+        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Desacordo cancelado</span></>;
       case 'rejected':
-        return <><span className="material-symbols-outlined text-[20px] text-red-500">cancel</span><span className="sr-only">Cancelada</span></>;
+        return <><span className="material-symbols-outlined text-[20px] text-red-500">error</span><span className="sr-only">Desacordo registrado</span></>;
       default:
-        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Pendente</span></>;
+        return <><span className="material-symbols-outlined text-[20px] text-amber-500">schedule</span><span className="sr-only">Sem manifestação</span></>;
+    }
+  };
+
+  const getCteManifestBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return {
+          label: 'Desacordo cancelado',
+          classes:
+            'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-800',
+        };
+      case 'rejected':
+        return {
+          label: 'Desacordo',
+          classes:
+            'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800',
+        };
+      default:
+        return {
+          label: 'Sem manifestação',
+          classes:
+            'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-800',
+        };
     }
   };
 
@@ -190,11 +211,12 @@ export default function CtePage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Conhecimentos de Transporte (CT-e)</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">
-            Gerencie seus conhecimentos de transporte eletrônicos recebidos.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">local_shipping</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">CT-e</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Conhecimentos de transporte eletrônicos</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -247,16 +269,16 @@ export default function CtePage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status SEFAZ</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Manifestação</label>
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
               <option value="">Todos</option>
-              <option value="received">Recebida</option>
-              <option value="confirmed">Confirmada</option>
-              <option value="rejected">Rejeitada</option>
+              <option value="received">Sem manifestação</option>
+              <option value="rejected">Desacordo</option>
+              <option value="confirmed">Desacordo cancelado</option>
             </select>
           </div>
           <div className="flex gap-2">
@@ -290,7 +312,10 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             Download PDF
           </button>
-          <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+          <button
+            onClick={() => toast.info('Envio de manifestação de CT-e ainda não implementado nesta tela.')}
+            className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+          >
             <span className="material-symbols-outlined text-[18px]">fact_check</span>
             Manifestar
           </button>
@@ -319,23 +344,21 @@ export default function CtePage() {
           </div>
         ) : (
           invoices.map((invoice) => {
-            const manifest = getManifestBadge(invoice.status);
+            const manifest = getCteManifestBadge(invoice.status);
             return (
               <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    <span className="text-xs text-slate-400 ml-2">Série {invoice.series || '1'}</span>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
                     {manifest.label}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.senderName}</p>
-                <p className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.senderCnpj)}</p>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)}</span>
+                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -375,10 +398,10 @@ export default function CtePage() {
                   <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
-                  <div className="flex items-center gap-1">Número / Série {getSortIcon('number')}</div>
+                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
-                  <div className="flex items-center gap-1">Emitente (CNPJ) {getSortIcon('sender')}</div>
+                  <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
@@ -420,7 +443,7 @@ export default function CtePage() {
                 </tr>
               ) : (
                 invoices.map((invoice) => {
-                  const manifest = getManifestBadge(invoice.status);
+                  const manifest = getCteManifestBadge(invoice.status);
                   return (
                     <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-4">
@@ -434,14 +457,13 @@ export default function CtePage() {
                       <td className="px-4 py-4">{getStatusIcon(invoice.status)}</td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-                        <div className="text-xs text-slate-400">Série {invoice.series || '1'}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
-                        <div className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.senderCnpj)}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
+                        <div className="text-xs text-slate-400">{formatTime(invoice.issueDate)}</div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>

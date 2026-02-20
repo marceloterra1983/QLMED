@@ -41,6 +41,12 @@ export const authOptions: AuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+    // Mantém sessão ativa por 1 ano (ou até signOut explícito).
+    maxAge: 60 * 60 * 24 * 365,
+    updateAge: 60 * 60 * 24,
+  },
+  jwt: {
+    maxAge: 60 * 60 * 24 * 365,
   },
   callbacks: {
     async jwt({ token, user }) {

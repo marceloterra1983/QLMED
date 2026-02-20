@@ -120,13 +120,12 @@ export default function ConfiguracoesPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Integração NSDocs
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Configure a conexão com a API NSDocs para sincronizar notas fiscais da SEFAZ automaticamente
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">hub</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Integração NSDocs</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Conexão com API NSDocs para sincronização automática</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${

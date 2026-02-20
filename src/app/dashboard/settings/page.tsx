@@ -49,16 +49,10 @@ export default function SettingsPage() {
       {/* Page Header */}
       <div>
         <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary">
-            <span className="material-symbols-outlined text-[24px]">settings</span>
-          </span>
+          <span className="material-symbols-outlined text-[28px] text-primary">settings</span>
           <div>
-            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Configurações
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-0.5">
-              Preferências do sistema e da sua conta.
-            </p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Configurações</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Preferências do sistema e da conta</p>
           </div>
         </div>
       </div>

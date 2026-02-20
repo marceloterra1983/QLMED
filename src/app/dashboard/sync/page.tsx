@@ -116,22 +116,21 @@ export default function SyncPage() {
         return;
       }
 
-      const { idConsulta, syncLogId } = data;
+      const { syncLogId } = data;
       setState({
         state: 'polling',
-        message: method === 'sefaz' ? 'Consultando SEFAZ diretamente...' : 'Consultando via NSDocs...',
+        message: method === 'sefaz' ? 'Consultando SEFAZ diretamente...' : 'Importando documentos via NSDocs...',
         result: null,
       });
 
       let attempts = 0;
-      const maxAttempts = 30;
+      const maxAttempts = 60;
 
       pollingRef.current = setInterval(async () => {
         attempts++;
 
         try {
-          const url = `/api/nsdocs/sync?syncLogId=${syncLogId}${idConsulta ? `&idConsulta=${idConsulta}` : ''}`;
-          const pollRes = await fetch(url);
+          const pollRes = await fetch(`/api/nsdocs/sync?syncLogId=${syncLogId}`);
           const pollData = await pollRes.json();
 
           if (pollData.status === 'completed') {
@@ -401,13 +400,13 @@ export default function SyncPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary text-[28px]">cloud_sync</span>
-          Sincronizar
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Sincronize documentos fiscais via SEFAZ ou NSDocs
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">cloud_sync</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ ou NSDocs</p>
+          </div>
+        </div>
       </div>
 
       {/* Empresa fixa + Badges */}

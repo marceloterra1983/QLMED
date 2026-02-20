@@ -7,7 +7,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatDate, formatValue, getManifestBadge } from '@/lib/utils';
+import { formatCnpj, formatDate, formatTime, formatValue } from '@/lib/utils';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -49,13 +49,11 @@ export default function InvoicesPage() {
   }, [page, limit, search, statusFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {
-    const headers = ['Numero', 'Serie', 'Chave', 'Emitente', 'CNPJ', 'Data', 'Valor', 'Status'];
+    const headers = ['Numero', 'Chave', 'Emitente', 'Data', 'Valor', 'Status'];
     const rows = invoices.map(inv => [
       inv.number,
-      inv.series || '1',
       inv.accessKey,
       inv.senderName,
-      inv.senderCnpj,
       formatDate(inv.issueDate),
       inv.totalValue,
       inv.status,
@@ -192,11 +190,12 @@ export default function InvoicesPage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">NF-e Recebidas</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">
-            Gerencie e manifeste suas notas fiscais eletrônicas recebidas.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">receipt_long</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">NF-e Recebidas</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Notas fiscais eletrônicas recebidas</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -321,23 +320,17 @@ export default function InvoicesPage() {
           </div>
         ) : (
           invoices.map((invoice) => {
-            const manifest = getManifestBadge(invoice.status);
             return (
               <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    <span className="text-xs text-slate-400 ml-2">Série {invoice.series || '1'}</span>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                    {manifest.label}
-                  </span>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.senderName}</p>
-                <p className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.senderCnpj)}</p>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)}</span>
+                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -377,10 +370,10 @@ export default function InvoicesPage() {
                    <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
-                  <div className="flex items-center gap-1">Número / Série {getSortIcon('number')}</div>
+                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
-                  <div className="flex items-center gap-1">Emitente (CNPJ) {getSortIcon('sender')}</div>
+                  <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
@@ -388,7 +381,6 @@ export default function InvoicesPage() {
                 <th className="px-4 py-4 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
                   <div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div>
                 </th>
-                <th className="px-4 py-4">Manifestação</th>
                 <th className="px-4 py-4 text-center">Ações</th>
               </tr>
             </thead>
@@ -402,13 +394,12 @@ export default function InvoicesPage() {
                     <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-28" /></div></td>
                     <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-5 w-24 rounded-full" /></td>
                     <td className="px-4 py-4"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
                     <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
                     <Link
@@ -422,7 +413,6 @@ export default function InvoicesPage() {
                 </tr>
               ) : (
                 invoices.map((invoice) => {
-                  const manifest = getManifestBadge(invoice.status);
                   return (
                     <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-4">
@@ -436,22 +426,16 @@ export default function InvoicesPage() {
                       <td className="px-4 py-4">{getStatusIcon(invoice.status)}</td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-                        <div className="text-xs text-slate-400">Série {invoice.series || '1'}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
-                        <div className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.senderCnpj)}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
+                        <div className="text-xs text-slate-400">{formatTime(invoice.issueDate)}</div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                          • {manifest.label}
-                        </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-1">

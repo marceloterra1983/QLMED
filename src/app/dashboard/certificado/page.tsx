@@ -109,13 +109,13 @@ export default function CertificadoPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-[28px]">verified_user</span>
-          Certificado Digital A1
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Gerencie o certificado da sua empresa para acesso direto à SEFAZ
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">verified_user</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Certificado Digital</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Certificado A1 para acesso à SEFAZ</p>
+          </div>
+        </div>
       </div>
 
       {/* Empresa fixa */}

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { formatCnpj, formatDate, formatValue, getManifestBadge } from '@/lib/utils';
+import { formatCnpj, formatDate, formatTime, formatValue, getManifestBadge } from '@/lib/utils';
 import type { Invoice } from '@/types';
 
 export default function IssuedInvoicesPage() {
@@ -48,13 +48,11 @@ export default function IssuedInvoicesPage() {
   }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {
-    const headers = ['Numero', 'Serie', 'Chave', 'Destinatario', 'CNPJ', 'Data', 'Valor', 'Status'];
+    const headers = ['Numero', 'Chave', 'Destinatario', 'Data', 'Valor', 'Status'];
     const rows = invoices.map(inv => [
       inv.number,
-      inv.series || '1',
       inv.accessKey,
       inv.recipientName,
-      inv.recipientCnpj,
       formatDate(inv.issueDate),
       inv.totalValue,
       inv.status,
@@ -191,11 +189,12 @@ export default function IssuedInvoicesPage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">NF-e Emitidas</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">
-            Notas fiscais eletrônicas emitidas pela sua empresa.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">output</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">NF-e Emitidas</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Notas fiscais emitidas pela empresa</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -322,17 +321,15 @@ export default function IssuedInvoicesPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    <span className="text-xs text-slate-400 ml-2">Série {invoice.series || '1'}</span>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
                     {manifest.label}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.recipientName}</p>
-                <p className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.recipientCnpj)}</p>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)}</span>
+                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -372,10 +369,10 @@ export default function IssuedInvoicesPage() {
                    <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
-                  <div className="flex items-center gap-1">Número / Série {getSortIcon('number')}</div>
+                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
-                  <div className="flex items-center gap-1">Destinatário (CNPJ) {getSortIcon('recipient')}</div>
+                  <div className="flex items-center gap-1">Destinatário {getSortIcon('recipient')}</div>
                 </th>
                 <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
@@ -431,14 +428,13 @@ export default function IssuedInvoicesPage() {
                       <td className="px-4 py-4">{getStatusIcon(invoice.status)}</td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-                        <div className="text-xs text-slate-400">Série {invoice.series || '1'}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.recipientName}</span>
-                        <div className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.recipientCnpj)}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
+                        <div className="text-xs text-slate-400">{formatTime(invoice.issueDate)}</div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>

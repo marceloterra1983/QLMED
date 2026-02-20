@@ -2,6 +2,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { parseString } from 'xml2js';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import puppeteer from 'puppeteer';
 
 // ==================== Helpers ====================
 
@@ -1017,18 +1018,38 @@ export async function GET(
       html = buildFallbackHtml(invoice as any, autoPrint);
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'text/html; charset=utf-8',
-    };
-
     if (download) {
       const typeLabel: Record<string, string> = { NFE: 'NFe', CTE: 'CTe', NFSE: 'NFSe' };
       const tl = typeLabel[invoice.type] || invoice.type;
-      const filename = `DANFE_${tl}_${invoice.number}_${invoice.accessKey.slice(0, 12)}.html`;
-      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+      const filename = `DANFE_${tl}_${invoice.number}_${invoice.accessKey.slice(0, 12)}.pdf`;
+
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      try {
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'load' });
+        const pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' },
+        });
+
+        return new Response(Buffer.from(pdfBuffer), {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+          },
+        });
+      } finally {
+        await browser.close();
+      }
     }
 
-    return new Response(html, { headers });
+    return new Response(html, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
   } catch (error) {
     console.error('[PDF] Internal error:', error);
     return new Response('Erro interno ao gerar documento.', { status: 500 });

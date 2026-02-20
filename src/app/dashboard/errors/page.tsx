@@ -43,13 +43,13 @@ export default function ErrorsPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <span className="material-symbols-outlined text-amber-500 text-[28px]">warning</span>
-          Erros de Sincronização
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Monitore e resolva erros de sincronização com a SEFAZ e NSDocs.
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[28px] text-primary">warning</span>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Erros</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Erros de sincronização com SEFAZ e NSDocs</p>
+          </div>
+        </div>
       </div>
 
       {/* Loading State */}
