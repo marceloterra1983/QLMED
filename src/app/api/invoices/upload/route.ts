@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { parseInvoiceXml } from '@/lib/xml-parser';
+import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function POST(req: Request) {
@@ -22,6 +22,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
     }
 
+    // Validate files: type and size
+    const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
+    const MAX_FILES = 50;
+    if (files.length > MAX_FILES) {
+      return NextResponse.json({ error: `Máximo de ${MAX_FILES} arquivos por envio` }, { status: 400 });
+    }
+    for (const file of files) {
+      const name = file.name?.toLowerCase() || '';
+      if (!name.endsWith('.xml')) {
+        return NextResponse.json({ error: `Arquivo "${file.name}" não é XML` }, { status: 400 });
+      }
+      if (file.size > MAX_XML_SIZE) {
+        return NextResponse.json({ error: `Arquivo "${file.name}" excede limite de 5MB` }, { status: 400 });
+      }
+    }
+
     const company = await prisma.company.findFirst({
       where: { id: companyId },
     });
@@ -36,13 +52,8 @@ export async function POST(req: Request) {
       try {
         const xmlContent = await file.text();
         const parsed = await parseInvoiceXml(xmlContent);
-
-        const existing = await prisma.invoice.findUnique({
-          where: { accessKey: parsed.accessKey },
-        });
-
-        if (existing) {
-          results.errors.push(`${file.name}: Chave de acesso já cadastrada`);
+        if (!parsed) {
+          results.errors.push(`${file.name}: XML inválido ou não suportado`);
           continue;
         }
 
@@ -58,7 +69,7 @@ export async function POST(req: Request) {
             direction,
             number: parsed.number,
             series: parsed.series,
-            issueDate: new Date(parsed.issueDate),
+            issueDate: parsed.issueDate,
             senderCnpj: parsed.senderCnpj,
             senderName: parsed.senderName,
             recipientCnpj: parsed.recipientCnpj,
@@ -71,9 +82,13 @@ export async function POST(req: Request) {
 
         results.success.push(file.name);
       } catch (err: any) {
-        console.error(`[Upload] Error processing ${file.name}:`, err?.message || err);
-        const msg = err?.message || 'Erro desconhecido';
-        results.errors.push(`${file.name}: ${msg}`);
+        // P2002 = unique constraint violation (duplicate accessKey)
+        if (err?.code === 'P2002') {
+          results.errors.push(`${file.name}: Chave de acesso já cadastrada`);
+        } else {
+          console.error(`[Upload] Error processing ${file.name}:`, err);
+          results.errors.push(`${file.name}: XML inválido ou não suportado`);
+        }
       }
     }
 

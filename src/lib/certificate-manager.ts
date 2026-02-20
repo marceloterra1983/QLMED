@@ -84,8 +84,9 @@ export class CertificateManager {
     return {
       pfx: pfxData,
       passphrase,
-      // Importante para evitar erros de "UNABLE_TO_VERIFY_LEAF_SIGNATURE" com SEFAZ
-      rejectUnauthorized: false 
+      // SEFAZ servers may have incomplete certificate chains.
+      // Set SEFAZ_VERIFY_SSL=true in .env to enable strict verification.
+      rejectUnauthorized: process.env.SEFAZ_VERIFY_SSL === 'true',
     };
   }
 

@@ -42,3 +42,9 @@ xml_backup/
 stitch_output/
 *.zip
 debug_import_xml.txt
+
+# migration/test scripts (may contain credentials)
+migrate-*.js
+migrate-*.sh
+pgloader.load
+test-insert.js

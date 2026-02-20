@@ -267,7 +267,7 @@ async function syncViaNsdocs(
   });
 
   try {
-    const client = new NsdocsClient(nsdocsConfig.apiToken);
+    const client = new NsdocsClient(decrypt(nsdocsConfig.apiToken));
     const { dtInicial, dtFinal, syncedAt } = getNsdocsSyncWindow(nsdocsConfig.lastSyncAt);
 
     const documentos = await client.listarTodosDocumentos({

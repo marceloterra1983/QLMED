@@ -150,12 +150,6 @@ export async function POST(request: NextRequest) {
               try {
                 if (!doc.chave || doc.chave.length < 44 || !doc.xml) continue;
 
-                const exists = await prisma.invoice.findUnique({ where: { accessKey: doc.chave } });
-                if (exists) {
-                  totalAtualizados++;
-                  continue;
-                }
-
                 const parsed = await parseInvoiceXml(doc.xml);
                 if (!parsed) continue;
 
@@ -183,8 +177,12 @@ export async function POST(request: NextRequest) {
                   },
                 });
                 totalNovos++;
-              } catch (docErr) {
-                console.error(`[SEFAZ Sync] Erro ao processar doc ${doc.chave}:`, docErr);
+              } catch (docErr: any) {
+                if (docErr?.code === 'P2002') {
+                  totalAtualizados++;
+                } else {
+                  console.error(`[SEFAZ Sync] Erro ao processar documento:`, docErr);
+                }
               }
             }
             
@@ -253,7 +251,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      const nsdocsToken = company.nsdocsConfig.apiToken;
+      const nsdocsToken = decrypt(company.nsdocsConfig.apiToken);
       const nsdocsConfigId = company.nsdocsConfig.id;
       const nsdocsLastSyncAt = company.nsdocsConfig.lastSyncAt;
       const companyCnpj = company.cnpj;
@@ -287,27 +285,15 @@ export async function POST(request: NextRequest) {
               if (!parsed || !parsed.accessKey) continue;
 
               const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
-              const exists = await prisma.invoice.findUnique({
-                where: { accessKey: parsed.accessKey },
-                select: { id: true, status: true },
-              });
-              if (exists) {
-                if (exists.status !== mappedStatus) {
-                  await prisma.invoice.update({
-                    where: { id: exists.id },
-                    data: { status: mappedStatus },
-                  });
-                }
-                totalAtualizados++;
-                continue;
-              }
-
               const companyCnpjClean = companyCnpj.replace(/\D/g, '');
               const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
               const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
 
-              await prisma.invoice.create({
-                data: {
+              // Use upsert to handle race conditions on accessKey
+              const result = await prisma.invoice.upsert({
+                where: { accessKey: parsed.accessKey },
+                update: { status: mappedStatus },
+                create: {
                   companyId,
                   accessKey: parsed.accessKey,
                   type: parsed.type,
@@ -324,9 +310,14 @@ export async function POST(request: NextRequest) {
                   xmlContent,
                 },
               });
-              totalNovos++;
+              // If updatedAt > createdAt, it was an update; otherwise new
+              if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+                totalNovos++;
+              } else {
+                totalAtualizados++;
+              }
             } catch (docErr) {
-              console.error(`[NSDocs Sync] Erro no doc ${doc.id}:`, docErr);
+              console.error(`[NSDocs Sync] Erro no doc:`, docErr);
             }
           }
 

@@ -6,8 +6,9 @@ const DEFAULT_COMPANY_RAZAO_SOCIAL =
 const DEFAULT_COMPANY_NOME_FANTASIA = process.env.SINGLE_COMPANY_NOME_FANTASIA || 'QLMED';
 
 export async function getOrCreateSingleCompany(userId: string) {
-  // Single-company mode: always operate with the first company in the system.
+  // Single-company mode: find the user's company or the shared company they belong to.
   const existing = await prisma.company.findFirst({
+    where: { userId },
     orderBy: { createdAt: 'asc' },
   });
 

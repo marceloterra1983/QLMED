@@ -7,6 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Enums ──
+
+enum InvoiceType {
+  NFE
+  CTE
+  NFSE
+}
+
+enum InvoiceDirection {
+  received
+  issued
+}
+
+enum InvoiceStatus {
+  received
+  confirmed
+  rejected
+}
+
+enum SyncMethod {
+  sefaz
+  nsdocs
+}
+
+enum SyncStatus {
+  running
+  completed
+  error
+}
+
+// ── Models ──
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -28,8 +60,11 @@ model Company {
   invoices          Invoice[]
   nsdocsConfig      NsdocsConfig?
   certificateConfig CertificateConfig?
+  syncLogs          SyncLog[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model NsdocsConfig {
@@ -65,22 +100,25 @@ model CertificateConfig {
 }
 
 model SyncLog {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   companyId    String
-  syncMethod   String    @default("sefaz")
-  status       String    @default("running")
-  newDocs      Int       @default(0)
-  updatedDocs  Int       @default(0)
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  syncMethod   SyncMethod @default(sefaz)
+  status       SyncStatus @default(running)
+  newDocs      Int        @default(0)
+  updatedDocs  Int        @default(0)
   errorMessage String?
-  startedAt    DateTime  @default(now())
+  startedAt    DateTime   @default(now())
   completedAt  DateTime?
+
+  @@index([companyId])
 }
 
 model Invoice {
-  id             String   @id @default(cuid())
-  accessKey      String   @unique
-  type           String   // NFE, CTE, NFSE
-  direction      String   @default("received") // received, issued
+  id             String           @id @default(cuid())
+  accessKey      String           @unique
+  type           InvoiceType
+  direction      InvoiceDirection @default(received)
   number         String
   series         String?
   issueDate      DateTime
@@ -89,10 +127,14 @@ model Invoice {
   recipientCnpj  String?
   recipientName  String?
   totalValue     Float
-  status         String   @default("received") // received, confirmed, rejected
-  xmlContent     String   // Full XML stored as text
+  status         InvoiceStatus    @default(received)
+  xmlContent     String
   companyId      String
-  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([companyId])
+  @@index([senderCnpj])
+  @@index([issueDate])
 }

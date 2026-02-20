@@ -48,8 +48,6 @@ const navItems: NavGroup[] = [
       { label: 'Sincronizar', icon: 'cloud_sync', href: '/dashboard/sync' },
       { label: 'Erros', icon: 'warning', href: '/dashboard/errors' },
       { label: 'Upload XML', icon: 'cloud_upload', href: '/dashboard/upload' },
-      { label: 'Certificado Digital', icon: 'verified_user', href: '/dashboard/certificado' },
-      { label: 'Integração NSDocs', icon: 'hub', href: '/dashboard/configuracoes' },
       { label: 'Configurações', icon: 'settings', href: '/dashboard/settings' },
     ],
   },

@@ -3,6 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient, NsdocsDocumento } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { decrypt } from '@/lib/crypto';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Empresa ou configuração NSDocs não encontrada' }, { status: 404 });
     }
 
-    const client = new NsdocsClient(company.nsdocsConfig.apiToken);
+    const client = new NsdocsClient(decrypt(company.nsdocsConfig.apiToken));
 
     // Listar documentos do período (até 100 por chamada, frontend itera mês a mês)
     const filtros: Record<string, string> = {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       console.log(`[Import] Encontrados ${documentos?.length || 0} documentos.`);
     } catch (err: any) {
       console.error('Erro ao listar documentos NSDocs:', err);
-      return NextResponse.json({ error: `Erro na API NSDocs: ${err.message}` }, { status: 500 });
+      return NextResponse.json({ error: 'Erro ao consultar API NSDocs' }, { status: 500 });
     }
 
     if (!documentos || !Array.isArray(documentos) || documentos.length === 0) {
@@ -145,6 +146,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Erro geral na importação:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno na importação' }, { status: 500 });
   }
 }

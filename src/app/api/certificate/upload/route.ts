@@ -24,6 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Arquivo e senha são obrigatórios' }, { status: 400 });
     }
 
+    // Validate file type
+    const fileName = file.name?.toLowerCase() || '';
+    if (!fileName.endsWith('.pfx') && !fileName.endsWith('.p12')) {
+      return NextResponse.json({ error: 'Formato inválido. Envie um arquivo .pfx ou .p12' }, { status: 400 });
+    }
+
+    // Validate file size (max 1MB)
+    const MAX_CERT_SIZE = 1 * 1024 * 1024;
+    if (file.size > MAX_CERT_SIZE) {
+      return NextResponse.json({ error: 'Arquivo muito grande. Limite: 1MB' }, { status: 400 });
+    }
+
     // Verificar permissão
     const company = await prisma.company.findUnique({
       where: { id: companyId },
@@ -41,7 +53,8 @@ export async function POST(request: NextRequest) {
     try {
       certInfo = CertificateManager.processPfx(buffer, password);
     } catch (e: any) {
-      return NextResponse.json({ error: `Erro ao processar certificado: ${e.message}` }, { status: 400 });
+      console.error('[Certificate] Processing error:', e);
+      return NextResponse.json({ error: 'Certificado inválido ou senha incorreta' }, { status: 400 });
     }
 
     // Salvar no banco

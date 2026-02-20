@@ -3,6 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { decrypt } from '@/lib/crypto';
 
 // GET - Lista documentos ou baixa XML/PDF de um documento específico
 export async function GET(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Configuração NSDocs não encontrada' }, { status: 400 });
     }
 
-    const client = new NsdocsClient(company.nsdocsConfig.apiToken);
+    const client = new NsdocsClient(decrypt(company.nsdocsConfig.apiToken));
 
     // Baixar XML ou PDF de um documento específico
     if (documentId && format) {
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documentos });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error('[NSDocs Documents] Error:', error);
+    return NextResponse.json({ error: 'Erro ao buscar documentos' }, { status: 500 });
   }
 }

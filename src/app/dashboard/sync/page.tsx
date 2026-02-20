@@ -266,8 +266,8 @@ export default function SyncPage() {
       error: 'error',
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${styles[status] || styles.error}`}>
-        <span className={`material-symbols-outlined text-[14px] ${status === 'running' ? 'animate-spin' : ''}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${styles[status] || styles.error}`}>
+        <span className={`material-symbols-outlined text-[13px] ${status === 'running' ? 'animate-spin' : ''}`}>
           {icons[status] || 'help'}
         </span>
         {status === 'running' ? 'Em andamento' : status === 'completed' ? 'Concluído' : 'Erro'}
@@ -275,20 +275,96 @@ export default function SyncPage() {
     );
   };
 
-  const getMethodBadge = (method: string) => {
-    if (method === 'sefaz') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-          <span className="material-symbols-outlined text-[12px]">verified_user</span>
-          SEFAZ
-        </span>
-      );
-    }
+  const formatFailedCell = (status: string) => {
+    const failed = status === 'error';
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
-        <span className="material-symbols-outlined text-[12px]">hub</span>
-        NSDocs
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+        failed
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+      }`}>
+        {failed ? 'Sim' : 'Não'}
       </span>
+    );
+  };
+
+  const nsdocsLogs = logs.filter((log) => log.syncMethod === 'nsdocs');
+  const sefazLogs = logs.filter((log) => log.syncMethod === 'sefaz');
+
+  const renderHistoryCard = (
+    method: 'nsdocs' | 'sefaz',
+    title: string,
+    icon: string,
+    methodLogs: SyncLog[],
+  ) => {
+    const isSefaz = method === 'sefaz';
+
+    return (
+      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+            isSefaz ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-sky-100 dark:bg-sky-900/30'
+          }`}>
+            <span className={`material-symbols-outlined text-[16px] ${
+              isSefaz ? 'text-emerald-700 dark:text-emerald-400' : 'text-sky-700 dark:text-sky-400'
+            }`}>{icon}</span>
+          </div>
+          <div className="flex items-center justify-between w-full gap-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">{title}</h3>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {methodLogs.length} registro(s)
+            </span>
+          </div>
+        </div>
+
+        {methodLogs.length === 0 ? (
+          <div className="p-4 text-center text-slate-500 dark:text-slate-400 text-xs">
+            Sem sincronizações registradas para este método.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                  <th className="px-3 py-2">Horário</th>
+                  <th className="px-3 py-2">Resultado</th>
+                  <th className="px-3 py-2 text-right">Novos</th>
+                  <th className="px-3 py-2 text-right">Atualizados</th>
+                  <th className="px-3 py-2 text-center">Falhou</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {methodLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      {formatDate(log.startedAt)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
+                        <div>{getStatusBadge(log.status)}</div>
+                        {log.errorMessage && (
+                          <span className="text-[11px] text-red-500 dark:text-red-400 max-w-[14rem] truncate" title={log.errorMessage}>
+                            {log.errorMessage}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      {log.newDocs}
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs font-semibold text-blue-700 dark:text-blue-400">
+                      {log.updatedDocs}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {formatFailedCell(log.status)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -299,15 +375,15 @@ export default function SyncPage() {
 
     return (
       <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                 isSefaz
                   ? 'bg-emerald-100 dark:bg-emerald-900/30'
                   : 'bg-sky-100 dark:bg-sky-900/30'
               }`}>
-                <span className={`material-symbols-outlined text-[22px] ${
+                <span className={`material-symbols-outlined text-[20px] ${
                   isSefaz
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-sky-600 dark:text-sky-400'
@@ -316,10 +392,10 @@ export default function SyncPage() {
                 </span>
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   Sincronização {isSefaz ? 'SEFAZ' : 'NSDocs'}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {isSefaz
                     ? 'Consulta direta via certificado digital A1'
                     : 'Consulta via API NSDocs'}
@@ -329,13 +405,13 @@ export default function SyncPage() {
             <button
               onClick={() => handleSync(method)}
               disabled={disabled || isBusy}
-              className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
                 isSefaz
                   ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-emerald-600/30 hover:shadow-lg hover:shadow-emerald-600/40'
                   : 'bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-600 text-white shadow-sky-600/30 hover:shadow-lg hover:shadow-sky-600/40'
               }`}
             >
-              <span className={`material-symbols-outlined text-[18px] ${isBusy ? 'animate-spin' : ''}`}>
+              <span className={`material-symbols-outlined text-[16px] ${isBusy ? 'animate-spin' : ''}`}>
                 {isBusy ? 'sync' : 'cloud_download'}
               </span>
               {isBusy ? 'Consultando...' : `Sincronizar ${isSefaz ? 'SEFAZ' : 'NSDocs'}`}
@@ -343,48 +419,48 @@ export default function SyncPage() {
           </div>
 
           {disabled && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+            <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-2.5 py-1.5">
               <span className="material-symbols-outlined text-[16px]">info</span>
               {isSefaz
-                ? <>Configure o <a href="/dashboard/certificado" className="underline font-semibold">Certificado Digital</a> para usar esta opção</>
-                : <>Configure a <a href="/dashboard/configuracoes" className="underline font-semibold">Integração NSDocs</a> para usar esta opção</>}
+                ? <>Configure o <a href="/dashboard/settings" className="underline font-semibold">Certificado Digital</a> para usar esta opção</>
+                : <>Configure a <a href="/dashboard/settings" className="underline font-semibold">Integração NSDocs</a> para usar esta opção</>}
             </div>
           )}
 
           {/* Progress */}
           {methodState.state !== 'idle' && (
-            <div className="mt-4">
+            <div className="mt-3">
               {isBusy && (
-                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mb-3 overflow-hidden">
-                  <div className={`h-2 rounded-full animate-pulse ${
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div className={`h-1.5 rounded-full animate-pulse ${
                     isSefaz ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-sky-500 to-sky-400'
                   }`} style={{ width: methodState.state === 'syncing' ? '30%' : '70%' }} />
                 </div>
               )}
 
-              <div className={`flex items-center gap-2 text-sm font-medium ${
+              <div className={`flex items-center gap-2 text-xs font-medium ${
                 methodState.state === 'completed' ? 'text-green-600 dark:text-green-400' :
                 methodState.state === 'error' ? 'text-red-600 dark:text-red-400' :
                 'text-primary dark:text-blue-400'
               }`}>
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[16px]">
                   {methodState.state === 'completed' ? 'check_circle' : methodState.state === 'error' ? 'error' : 'hourglass_top'}
                 </span>
                 {methodState.message}
               </div>
 
               {methodState.result && (
-                <div className="grid grid-cols-3 gap-3 mt-4">
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center border border-green-100 dark:border-green-800">
-                    <p className="text-xl font-bold text-green-700 dark:text-green-400">{methodState.result.newDocs}</p>
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2.5 text-center border border-green-100 dark:border-green-800">
+                    <p className="text-lg font-bold text-green-700 dark:text-green-400">{methodState.result.newDocs}</p>
                     <p className="text-xs text-green-600 dark:text-green-500 font-medium mt-0.5">Novas notas</p>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center border border-blue-100 dark:border-blue-800">
-                    <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{methodState.result.updatedDocs}</p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 text-center border border-blue-100 dark:border-blue-800">
+                    <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{methodState.result.updatedDocs}</p>
                     <p className="text-xs text-blue-600 dark:text-blue-500 font-medium mt-0.5">Atualizados</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center border border-slate-200 dark:border-slate-700">
-                    <p className="text-xl font-bold text-slate-700 dark:text-slate-300">{methodState.result.total}</p>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center border border-slate-200 dark:border-slate-700">
+                    <p className="text-lg font-bold text-slate-700 dark:text-slate-300">{methodState.result.total}</p>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">Total consultados</p>
                   </div>
                 </div>
@@ -397,44 +473,44 @@ export default function SyncPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Page Header */}
       <div>
         <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">cloud_sync</span>
+          <span className="material-symbols-outlined text-[24px] text-primary">cloud_sync</span>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ ou NSDocs</p>
           </div>
         </div>
       </div>
 
       {/* Empresa fixa + Badges */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4">
         <div className="flex-1">
           <p className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Empresa fixa</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {company ? `${company.razaoSocial} — ${company.cnpj}` : 'QL MED'}
           </p>
         </div>
 
         {/* Badges */}
-        <div className="flex items-center gap-3 mt-4">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${
+        <div className="flex items-center gap-2 mt-3">
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
             hasCertificate
               ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
               : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
           }`}>
-            <span className="material-symbols-outlined text-[16px]">verified_user</span>
+            <span className="material-symbols-outlined text-[14px]">verified_user</span>
             SEFAZ: {hasCertificate ? 'Ativa' : 'Inativa'}
           </div>
 
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
             hasNsdocsConfig
               ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
               : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
           }`}>
-            <span className="material-symbols-outlined text-[16px]">hub</span>
+            <span className="material-symbols-outlined text-[14px]">hub</span>
             NSDocs: {hasNsdocsConfig ? 'Ativa' : 'Inativa'}
           </div>
         </div>
@@ -442,13 +518,13 @@ export default function SyncPage() {
 
       {/* No Config Warning */}
       {hasCertificate === false && hasNsdocsConfig === false && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400 text-[24px] mt-0.5">warning</span>
+            <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400 text-[20px] mt-0.5">warning</span>
             <div>
               <h3 className="font-bold text-yellow-900 dark:text-yellow-300 text-sm">Nenhuma integração configurada</h3>
-              <p className="text-sm text-yellow-800 dark:text-yellow-400 mt-1">
-                Para sincronizar notas, configure o <a href="/dashboard/certificado" className="underline font-semibold hover:text-yellow-600">Certificado Digital</a> (Recomendado) ou a <a href="/dashboard/configuracoes" className="underline font-semibold hover:text-yellow-600">Integração NSDocs</a>.
+              <p className="text-xs text-yellow-800 dark:text-yellow-400 mt-1">
+                Para sincronizar notas, configure o <a href="/dashboard/settings" className="underline font-semibold hover:text-yellow-600">Certificado Digital</a> (Recomendado) ou a <a href="/dashboard/settings" className="underline font-semibold hover:text-yellow-600">Integração NSDocs</a>.
               </p>
             </div>
           </div>
@@ -463,22 +539,22 @@ export default function SyncPage() {
 
       {/* CARD 3: Importar Histórico (NSDocs) */}
       <div className={`bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden ${!hasNsdocsConfig ? 'opacity-60' : ''}`}>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 dark:bg-violet-900/30">
-              <span className="material-symbols-outlined text-[22px] text-violet-600 dark:text-violet-400">history</span>
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-100 dark:bg-violet-900/30">
+              <span className="material-symbols-outlined text-[20px] text-violet-600 dark:text-violet-400">history</span>
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white">Importar Histórico (NSDocs)</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Importar Histórico (NSDocs)</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Baixe notas fiscais antigas via NSDocs, mês a mês
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Data Inicial
               </label>
               <input
@@ -486,11 +562,11 @@ export default function SyncPage() {
                 value={importStartDate}
                 onChange={(e) => setImportStartDate(e.target.value)}
                 disabled={!hasNsdocsConfig}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Data Final
               </label>
               <input
@@ -498,7 +574,7 @@ export default function SyncPage() {
                 value={importEndDate}
                 onChange={(e) => setImportEndDate(e.target.value)}
                 disabled={!hasNsdocsConfig}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
           </div>
@@ -507,29 +583,29 @@ export default function SyncPage() {
             <button
               onClick={() => { setImportStatus('idle'); handleImportHistory(); }}
               disabled={!hasNsdocsConfig || !importStartDate || !importEndDate}
-              className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-600 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-violet-600/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-2 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-600 text-white rounded-lg font-bold text-xs transition-all shadow-md shadow-violet-600/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">download</span>
+              <span className="material-symbols-outlined text-[16px]">download</span>
               {importStatus === 'completed' ? 'Reimportar' : importStatus === 'error' ? 'Tentar Novamente' : 'Iniciar Importação'}
             </button>
           )}
 
           {importStatus === 'running' && (
-            <div className="space-y-3">
-              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+            <div className="space-y-2">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                 <div
-                  className="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
+                  className="bg-violet-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${importProgress}%` }}
                 />
               </div>
-              <p className="text-sm text-center text-slate-600 dark:text-slate-400 font-medium">
+              <p className="text-xs text-center text-slate-600 dark:text-slate-400 font-medium">
                 Processando período: <strong>{currentImportPeriod}</strong> ({Math.round(importProgress)}%)
               </p>
             </div>
           )}
 
           {importLogs.length > 0 && (
-            <div className="mt-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4 max-h-60 overflow-y-auto">
+            <div className="mt-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-3 max-h-44 overflow-y-auto">
               {importLogs.map((log, index) => {
                 const isSuccess = log.startsWith('\u2705');
                 const isError = log.startsWith('\u274c');
@@ -543,7 +619,7 @@ export default function SyncPage() {
                   ? 'text-amber-600 dark:text-amber-400'
                   : 'text-slate-500 dark:text-slate-400';
                 return (
-                  <div key={index} className={`flex items-start gap-2 py-1.5 ${index > 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''}`}>
+                  <div key={index} className={`flex items-start gap-2 py-1 ${index > 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''}`}>
                     <span className={`material-symbols-outlined text-[16px] mt-0.5 shrink-0 ${colorClass}`}>{icon}</span>
                     <span className={`text-xs ${colorClass} leading-relaxed`}>{log.replace(/^[\u2705\u274c\u26a0\ufe0f]\s*/, '')}</span>
                   </div>
@@ -553,75 +629,42 @@ export default function SyncPage() {
           )}
 
           {!hasNsdocsConfig && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+            <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-2.5 py-1.5">
               <span className="material-symbols-outlined text-[16px]">info</span>
-              Configure a <a href="/dashboard/configuracoes" className="underline font-semibold">Integração NSDocs</a> para usar esta opção
+              Configure a <a href="/dashboard/settings" className="underline font-semibold">Integração NSDocs</a> para usar esta opção
             </div>
           )}
         </div>
       </div>
 
       {/* CARD 4: Histórico de Sincronizações */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400 text-[20px]">history</span>
+      <div className="space-y-3">
+        <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-slate-400 text-[18px]">history</span>
             Histórico de Sincronizações
           </h3>
           <button
             onClick={loadLogs}
-            className="text-sm text-primary hover:text-primary-dark font-medium flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary-dark font-medium flex items-center gap-1"
           >
-            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            <span className="material-symbols-outlined text-[14px]">refresh</span>
             Atualizar
           </button>
         </div>
 
         {logs.length === 0 ? (
-          <div className="p-12 text-center">
-            <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[48px]">cloud_off</span>
-            <p className="text-slate-500 dark:text-slate-400 mt-3 font-medium">Nenhuma sincronização realizada</p>
-            <p className="text-sm text-slate-400 mt-1">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-center">
+            <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[36px]">cloud_off</span>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Nenhuma sincronização realizada</p>
+            <p className="text-xs text-slate-400 mt-1">
               Use os botões acima para sincronizar documentos fiscais
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {logs.map(log => (
-              <div key={log.id} className="px-5 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {getMethodBadge(log.syncMethod)}
-                    {getStatusBadge(log.status)}
-                    <span className="text-sm text-slate-600 dark:text-slate-300">
-                      {formatDate(log.startedAt)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    {log.status === 'completed' && (
-                      <>
-                        <span className="text-green-600 dark:text-green-400 font-semibold">
-                          +{log.newDocs} novas
-                        </span>
-                        <span className="text-primary dark:text-blue-400 font-semibold">
-                          {log.updatedDocs} atualizadas
-                        </span>
-                      </>
-                    )}
-                    {log.errorMessage && (
-                      <span className="text-red-500 dark:text-red-400 text-xs max-w-xs truncate" title={log.errorMessage}>
-                        {log.errorMessage}
-                      </span>
-                    )}
-                    {log.completedAt && (
-                      <span className="text-slate-400 text-xs">
-                        {Math.round((new Date(log.completedAt).getTime() - new Date(log.startedAt).getTime()) / 1000)}s
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {renderHistoryCard('nsdocs', 'Histórico NSDocs', 'hub', nsdocsLogs)}
+            {renderHistoryCard('sefaz', 'Histórico SEFAZ', 'verified_user', sefazLogs)}
           </div>
         )}
       </div>
