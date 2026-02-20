@@ -3,10 +3,12 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma'; // Assumindo que existe
 import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function POST(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
@@ -15,10 +17,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const password = formData.get('password') as string;
-    const companyId = formData.get('companyId') as string;
+    const baseCompany = await getOrCreateSingleCompany(userId);
+    const companyId = baseCompany.id;
 
-    if (!file || !password || !companyId) {
-      return NextResponse.json({ error: 'Arquivo, senha e ID da empresa são obrigatórios' }, { status: 400 });
+    if (!file || !password) {
+      return NextResponse.json({ error: 'Arquivo e senha são obrigatórios' }, { status: 400 });
     }
 
     // Verificar permissão

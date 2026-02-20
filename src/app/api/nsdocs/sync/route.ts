@@ -5,6 +5,7 @@ import { NsdocsClient } from '@/lib/nsdocs-client';
 import { SefazClient } from '@/lib/sefaz-client';
 import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt } from '@/lib/crypto';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12',
@@ -43,30 +44,41 @@ function getUfCodeFromCertificateSubject(subject?: string | null): string {
 }
 
 export async function POST(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
   try {
     const body = await request.json();
-    const { companyId } = body;
-
+    const { method } = body;
+    const baseCompany = await getOrCreateSingleCompany(userId);
     const company = await prisma.company.findUnique({
-      where: { id: companyId },
-      include: { 
+      where: { id: baseCompany.id },
+      include: {
         nsdocsConfig: true,
-        certificateConfig: true 
+        certificateConfig: true
       }
     });
 
-    if (!company) {
+    if (!company || company.userId !== userId) {
       return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
     }
 
-    // PRIORIDADE 1: SEFAZ Direto
-    if (company.certificateConfig) {
+    const companyId = company.id;
+
+    // Se method foi especificado, validar disponibilidade
+    if (method === 'sefaz' && !company.certificateConfig) {
+      return NextResponse.json({ error: 'Certificado digital não configurado para esta empresa' }, { status: 400 });
+    }
+    if (method === 'nsdocs' && !company.nsdocsConfig) {
+      return NextResponse.json({ error: 'Integração NSDocs não configurada para esta empresa' }, { status: 400 });
+    }
+
+    // SEFAZ: se method='sefaz' explícito OU fallback automático (sem method)
+    if ((method === 'sefaz' || !method) && company.certificateConfig) {
       const cert = company.certificateConfig;
       
       const syncLog = await prisma.syncLog.create({
@@ -237,8 +249,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // PRIORIDADE 2: NSDocs (Fallback)
-    if (company.nsdocsConfig) {
+    // NSDocs: se method='nsdocs' explícito OU fallback automático (sem method)
+    if ((method === 'nsdocs' || !method) && company.nsdocsConfig) {
       const syncLog = await prisma.syncLog.create({ 
         data: { 
           companyId, 
@@ -276,32 +288,35 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
   const { searchParams } = new URL(request.url);
-  const companyId = searchParams.get('companyId');
   const syncLogId = searchParams.get('syncLogId');
   const idConsulta = searchParams.get('idConsulta'); // Só para NSDocs
-
-  if (!companyId) return NextResponse.json({ error: 'Company ID required' }, { status: 400 });
+  const company = await getOrCreateSingleCompany(userId);
+  const companyId = company.id;
 
   // Se tem syncLogId, verificar status específico
   if (syncLogId) {
     const log = await prisma.syncLog.findUnique({ where: { id: syncLogId } });
+    if (log && log.companyId !== companyId) {
+      return NextResponse.json({ error: 'Log de sincronização não encontrado' }, { status: 404 });
+    }
     
     // Polling do NSDocs se necessário
     if (log?.syncMethod === 'nsdocs' && log.status === 'running' && idConsulta) {
        try {
-         const company = await prisma.company.findUnique({ 
+         const companyWithConfig = await prisma.company.findUnique({ 
             where: { id: companyId }, include: { nsdocsConfig: true } 
          });
          
-         if (company?.nsdocsConfig) {
-            const client = new NsdocsClient(company.nsdocsConfig.apiToken);
+         if (companyWithConfig?.nsdocsConfig) {
+            const client = new NsdocsClient(companyWithConfig.nsdocsConfig.apiToken);
             const retorno = await client.retornoConsulta('cnpj', idConsulta);
             
             if (retorno.status === 'Concluído') {

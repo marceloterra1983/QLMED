@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
+import Skeleton from '@/components/ui/Skeleton';
 import type { DashboardStats, Invoice } from '@/types';
 import {
   formatCurrencyShort,
@@ -67,7 +69,7 @@ export default function DashboardPage() {
         setInvoices(invoicesData.invoices || []);
       }
     } catch (err) {
-      console.error('Error loading dashboard:', err);
+      toast.error('Erro ao carregar dashboard');
     } finally {
       setLoading(false);
     }
@@ -139,7 +141,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Docs Recebidos</p>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
-                {loading ? '...' : stats.docsReceived.toLocaleString()}
+                {loading ? <Skeleton className="h-8 w-20" /> : stats.docsReceived.toLocaleString()}
               </h3>
             </div>
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary">
@@ -147,11 +149,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 mt-auto z-10">
-            <span className="flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
-              <span className="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-              +5.2%
-            </span>
-            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">vs mês anterior</span>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-400">Total no sistema</span>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
             <span className="material-symbols-outlined text-[120px] text-primary">description</span>
@@ -164,7 +162,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Valor Total</p>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
-                {loading ? '...' : formatCurrencyShort(stats.totalValue)}
+                {loading ? <Skeleton className="h-8 w-20" /> : formatCurrencyShort(stats.totalValue)}
               </h3>
             </div>
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
@@ -172,11 +170,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 mt-auto z-10">
-            <span className="flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
-              <span className="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-              +12.4%
-            </span>
-            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">vs mês anterior</span>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-400">Total no sistema</span>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
             <span className="material-symbols-outlined text-[120px] text-blue-600">payments</span>
@@ -189,7 +183,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Manifestação Pendente</p>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
-                {loading ? '...' : stats.pendingManifest}
+                {loading ? <Skeleton className="h-8 w-20" /> : stats.pendingManifest}
               </h3>
             </div>
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
@@ -212,7 +206,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Erros</p>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
-                {loading ? '...' : stats.errors}
+                {loading ? <Skeleton className="h-8 w-20" /> : stats.errors}
               </h3>
             </div>
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
@@ -220,11 +214,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 mt-auto z-10">
-            <span className="flex items-center text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">
-              <span className="material-symbols-outlined text-[14px] mr-1">remove</span>
-              0%
-            </span>
-            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">estável</span>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-400">Total no sistema</span>
           </div>
           <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
             <span className="material-symbols-outlined text-[120px] text-red-600">error</span>
@@ -243,11 +233,11 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
+            <button aria-label="Filtrar por status do documento" className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
               <span className="material-symbols-outlined text-[18px]">filter_list</span>
               Status
             </button>
-            <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
+            <button aria-label="Filtrar por tipo de documento" className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary dark:hover:border-primary transition-colors shadow-sm">
               <span className="material-symbols-outlined text-[18px]">category</span>
               Tipo
             </button>
@@ -295,12 +285,16 @@ export default function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                    <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
-                    <p className="mt-2 text-sm">Carregando documentos...</p>
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-6 py-4"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                    <td className="px-6 py-4"><div className="space-y-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-56" /></div></td>
+                    <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-6 py-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-6 py-4"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                  </tr>
+                ))
               ) : invoices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
@@ -350,7 +344,15 @@ export default function DashboardPage() {
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tracking-tight">
                               {formatAccessKey(invoice.accessKey)}
                             </span>
-                            <button aria-label="Copiar chave de acesso" className="text-slate-400 hover:text-primary transition-colors" title="Copiar Chave">
+                            <button
+                              aria-label="Copiar chave de acesso"
+                              className="text-slate-400 hover:text-primary transition-colors"
+                              title="Copiar Chave"
+                              onClick={() => {
+                                navigator.clipboard.writeText(invoice.accessKey);
+                                toast.success('Chave copiada!');
+                              }}
+                            >
                               <span className="material-symbols-outlined text-[14px]">content_copy</span>
                             </button>
                           </div>

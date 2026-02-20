@@ -2,25 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient, NsdocsDocumento } from '@/lib/nsdocs-client';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 import xml2js from 'xml2js';
 
 export const maxDuration = 60; // Start with 60s for Vercel/Next.js function
 
 export async function POST(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
   try {
     const body = await request.json();
-    const { companyId, startDate, endDate } = body;
+    const { startDate, endDate } = body;
 
-    if (!companyId || !startDate || !endDate) {
+    if (!startDate || !endDate) {
        return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
     }
 
+    const baseCompany = await getOrCreateSingleCompany(userId);
+    const companyId = baseCompany.id;
     const company = await prisma.company.findUnique({
       where: { id: companyId },
       include: { nsdocsConfig: true }

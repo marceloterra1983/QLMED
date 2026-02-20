@@ -52,6 +52,7 @@ export default function Home() {
             src="/logo.png"
             alt="QL MED"
             fill
+            sizes="180px"
             className="object-contain brightness-0 invert"
             priority
           />
@@ -206,6 +207,7 @@ export default function Home() {
               src="/logo.png"
               alt="QL MED"
               fill
+              sizes="120px"
               className="object-contain brightness-0 invert opacity-40"
             />
           </div>

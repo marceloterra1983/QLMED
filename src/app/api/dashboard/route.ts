@@ -1,32 +1,33 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function GET() {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
 
-    const companies = await prisma.company.findMany();
-
-    const companyIds = companies.map((c) => c.id);
+    const company = await getOrCreateSingleCompany(userId);
+    const companyId = company.id;
 
     const [docsReceived, totalValueResult, pendingManifest, errors] = await Promise.all([
       prisma.invoice.count({
-        where: { companyId: { in: companyIds } },
+        where: { companyId },
       }),
       prisma.invoice.aggregate({
-        where: { companyId: { in: companyIds } },
+        where: { companyId },
         _sum: { totalValue: true },
       }),
       prisma.invoice.count({
-        where: { companyId: { in: companyIds }, status: 'received' },
+        where: { companyId, status: 'received' },
       }),
       prisma.invoice.count({
-        where: { companyId: { in: companyIds }, status: 'rejected' },
+        where: { companyId, status: 'rejected' },
       }),
     ]);
 

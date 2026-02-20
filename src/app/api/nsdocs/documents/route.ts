@@ -2,27 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 // GET - Lista documentos ou baixa XML/PDF de um documento específico
 export async function GET(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
   const { searchParams } = new URL(request.url);
-  const companyId = searchParams.get('companyId');
   const documentId = searchParams.get('documentId');
   const format = searchParams.get('format'); // 'xml' | 'pdf'
 
-  if (!companyId) {
-    return NextResponse.json({ error: 'companyId é obrigatório' }, { status: 400 });
-  }
-
   try {
+    const singleCompany = await getOrCreateSingleCompany(userId);
     const company = await prisma.company.findUnique({
-      where: { id: companyId },
+      where: { id: singleCompany.id },
       include: { nsdocsConfig: true },
     });
 

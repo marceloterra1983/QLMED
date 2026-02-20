@@ -51,6 +51,7 @@ export default function LoginPage() {
               src="/logo.png"
               alt="QL MED Logo"
               fill
+              sizes="240px"
               className="object-contain"
               priority
             />

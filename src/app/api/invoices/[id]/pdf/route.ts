@@ -1,6 +1,7 @@
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { parseString } from 'xml2js';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 // ==================== Helpers ====================
 
@@ -980,14 +981,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
+    const company = await getOrCreateSingleCompany(userId);
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id: params.id },
+      where: { id: params.id, companyId: company.id },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
     });
 

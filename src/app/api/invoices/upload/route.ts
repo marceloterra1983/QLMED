@@ -2,25 +2,24 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { parseInvoiceXml } from '@/lib/xml-parser';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function POST(req: Request) {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
 
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
-    const companyId = formData.get('companyId') as string;
+    const baseCompany = await getOrCreateSingleCompany(userId);
+    const companyId = baseCompany.id;
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
-    }
-
-    if (!companyId) {
-      return NextResponse.json({ error: 'Empresa não selecionada' }, { status: 400 });
     }
 
     const company = await prisma.company.findFirst({

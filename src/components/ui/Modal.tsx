@@ -30,7 +30,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
       <div
         className="absolute inset-0"
         onClick={onClose}
@@ -38,7 +38,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       ></div>
       <div
         ref={modalRef}
-        className={`relative bg-white dark:bg-card-dark rounded-xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative bg-white dark:bg-card-dark rounded-t-xl sm:rounded-xl shadow-2xl w-full ${width} h-[95vh] sm:h-auto max-h-screen sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >

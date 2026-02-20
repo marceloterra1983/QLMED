@@ -1,13 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-
-interface Company {
-  id: string;
-  cnpj: string;
-  razaoSocial: string;
-}
+import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 
 interface UploadResult {
   success: string[];
@@ -15,21 +9,12 @@ interface UploadResult {
 }
 
 export default function UploadPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetch('/api/companies')
-      .then((res) => res.json())
-      .then((data) => setCompanies(data.companies || []))
-      .catch(() => {});
-  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -114,14 +99,13 @@ export default function UploadPage() {
   };
 
   const handleUpload = async () => {
-    if (files.length === 0 || !selectedCompany) return;
+    if (files.length === 0) return;
 
     setUploading(true);
     setResult(null);
 
     try {
       const formData = new FormData();
-      formData.append('companyId', selectedCompany);
       files.forEach((file) => formData.append('files', file));
 
       const res = await fetch('/api/invoices/upload', {
@@ -132,10 +116,15 @@ export default function UploadPage() {
       const data = await res.json();
       setResult(data.results);
       if (data.results?.success?.length > 0) {
+        toast.success(`${data.results.success.length} arquivo(s) importado(s) com sucesso!`);
         setFiles([]);
+      }
+      if (data.results?.errors?.length > 0) {
+        toast.error(`${data.results.errors.length} erro(s) na importação`);
       }
     } catch {
       setResult({ success: [], errors: ['Erro ao fazer upload'] });
+      toast.error('Erro ao fazer upload');
     } finally {
       setUploading(false);
     }
@@ -156,37 +145,6 @@ export default function UploadPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Area */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Company Select */}
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">
-              Empresa Destinatária
-            </label>
-            {companies.length === 0 ? (
-              <div className="text-center py-6">
-                <span className="material-symbols-outlined text-[32px] text-slate-300 mb-2">business</span>
-                <p className="text-sm text-slate-400 mb-3">Nenhuma empresa cadastrada</p>
-                <Link
-                  href="/dashboard/companies"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  Cadastrar Empresa
-                </Link>
-              </div>
-            ) : (
-              <select
-                value={selectedCompany}
-                onChange={(e) => setSelectedCompany(e.target.value)}
-                className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm"
-              >
-                <option value="">Selecione uma empresa...</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.razaoSocial} ({c.cnpj})</option>
-                ))}
-              </select>
-            )}
-          </div>
-
           {/* Dropzone */}
           <div
             className={`bg-white dark:bg-card-dark border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${
@@ -278,7 +236,7 @@ export default function UploadPage() {
           {/* Upload Button */}
           <button
             onClick={handleUpload}
-            disabled={files.length === 0 || !selectedCompany || uploading}
+            disabled={files.length === 0 || uploading}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-lg font-bold transition-all shadow-lg shadow-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
@@ -303,11 +261,11 @@ export default function UploadPage() {
             <div className="space-y-4">
               <div className="flex gap-3">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">1</span>
-                <p className="text-sm text-slate-500">Selecione a empresa destinatária</p>
+                <p className="text-sm text-slate-500">Selecione os arquivos XML (ou uma pasta)</p>
               </div>
               <div className="flex gap-3">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">2</span>
-                <p className="text-sm text-slate-500">Arraste os arquivos XML ou clique para selecionar</p>
+                <p className="text-sm text-slate-500">Arraste para a área de upload ou use os botões</p>
               </div>
               <div className="flex gap-3">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">3</span>

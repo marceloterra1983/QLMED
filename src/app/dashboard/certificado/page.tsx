@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface Company {
   id: string;
@@ -17,49 +19,45 @@ interface CertificateInfo {
 }
 
 export default function CertificadoPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState('');
+  const [company, setCompany] = useState<Company | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
   const [certInfo, setCertInfo] = useState<CertificateInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar empresas
+  // Carregar empresa única
   useEffect(() => {
     fetch('/api/companies')
       .then(res => res.json())
       .then(data => {
-        setCompanies(data.companies || []);
-        if (data.companies?.length > 0) {
-          setSelectedCompany(data.companies[0].id);
-        }
+        setCompany(data.companies?.[0] || null);
       })
-      .catch(console.error);
+      .catch(() => toast.error('Erro ao carregar empresa'));
   }, []);
 
   // Carregar info do certificado
   useEffect(() => {
-    if (!selectedCompany) return;
     loadCertInfo();
-  }, [selectedCompany]);
+  }, []);
 
   const loadCertInfo = () => {
     setCertInfo(null);
-    fetch(`/api/certificate/info?companyId=${selectedCompany}`)
+    fetch('/api/certificate/info')
       .then(res => res.json())
       .then(data => {
         if (data.hasCertificate) {
           setCertInfo(data.certificate);
         }
       })
-      .catch(console.error);
+      .catch(() => toast.error('Erro ao carregar certificado'));
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !password || !selectedCompany) return;
+    if (!file || !password) return;
 
     setLoading(true);
     setMessage(null);
@@ -67,7 +65,6 @@ export default function CertificadoPage() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('password', password);
-    formData.append('companyId', selectedCompany);
 
     try {
       const res = await fetch('/api/certificate/upload', {
@@ -78,30 +75,31 @@ export default function CertificadoPage() {
 
       if (res.ok) {
         setMessage({ type: 'success', text: 'Certificado enviado e validado com sucesso!' });
+        toast.success('Certificado enviado com sucesso!');
         setFile(null);
         setPassword('');
         if (fileInputRef.current) fileInputRef.current.value = '';
         loadCertInfo();
       } else {
         setMessage({ type: 'error', text: data.error || 'Erro ao enviar certificado' });
+        toast.error(data.error || 'Erro ao enviar certificado');
       }
     } catch {
       setMessage({ type: 'error', text: 'Erro de conexão' });
+      toast.error('Erro de conexão');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja remover o certificado? A sincronização direta deixará de funcionar.')) return;
-    
     setLoading(true);
     try {
-      await fetch(`/api/certificate/info?companyId=${selectedCompany}`, { method: 'DELETE' });
+      await fetch('/api/certificate/info', { method: 'DELETE' });
       setCertInfo(null);
-      setMessage({ type: 'success', text: 'Certificado removido com sucesso.' });
+      toast.success('Certificado removido com sucesso.');
     } catch {
-      setMessage({ type: 'error', text: 'Erro ao remover certificado' });
+      toast.error('Erro ao remover certificado');
     } finally {
       setLoading(false);
     }
@@ -120,22 +118,12 @@ export default function CertificadoPage() {
         </p>
       </div>
 
-      {/* Company Selector */}
+      {/* Empresa fixa */}
       <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-          Empresa
-        </label>
-        <select
-          value={selectedCompany}
-          onChange={(e) => setSelectedCompany(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-        >
-          {companies.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.razaoSocial} — {c.cnpj}
-            </option>
-          ))}
-        </select>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Empresa fixa</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          {company ? `${company.razaoSocial} — ${company.cnpj}` : 'QL MED'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -177,7 +165,7 @@ export default function CertificadoPage() {
 
             <button
               type="submit"
-              disabled={loading || !file || !password || !selectedCompany}
+              disabled={loading || !file || !password}
               className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold transition-all shadow-md shadow-primary/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -260,7 +248,7 @@ export default function CertificadoPage() {
               </div>
 
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="w-full mt-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -270,6 +258,16 @@ export default function CertificadoPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Remover Certificado"
+        message="Tem certeza que deseja remover o certificado? A sincronização direta com a SEFAZ deixará de funcionar."
+        confirmLabel="Remover"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

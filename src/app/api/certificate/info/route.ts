@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
-  const { searchParams } = new URL(request.url);
-  const companyId = searchParams.get('companyId');
-
-  if (!companyId) return NextResponse.json({ error: 'Company ID required' }, { status: 400 });
+  const company = await getOrCreateSingleCompany(userId);
+  const companyId = company.id;
 
   const certConfig = await prisma.certificateConfig.findUnique({
     where: { companyId },
@@ -48,17 +48,16 @@ export async function GET(request: NextRequest) {
   });
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
-  const { searchParams } = new URL(request.url);
-  const companyId = searchParams.get('companyId');
-
-  if (!companyId) return NextResponse.json({ error: 'Company ID required' }, { status: 400 });
+  const company = await getOrCreateSingleCompany(userId);
+  const companyId = company.id;
 
   try {
     await prisma.certificateConfig.delete({

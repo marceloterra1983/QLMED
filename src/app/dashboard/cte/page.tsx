@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
+import Skeleton from '@/components/ui/Skeleton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatCnpj, formatDate, formatValue, getManifestBadge } from '@/lib/utils';
 
 export default function CtePage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -20,15 +26,85 @@ export default function CtePage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
 
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
     setIsModalOpen(true);
   };
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   useEffect(() => {
     loadInvoices();
-  }, [page, limit, search, statusFilter, sortBy, sortOrder]);
+  }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
+
+  const handleExport = () => {
+    const headers = ['Numero', 'Serie', 'Chave', 'Emitente', 'CNPJ', 'Data', 'Valor', 'Status'];
+    const rows = invoices.map(inv => [
+      inv.number,
+      inv.series || '1',
+      inv.accessKey,
+      inv.senderName,
+      inv.senderCnpj,
+      formatDate(inv.issueDate),
+      inv.totalValue,
+      inv.status,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cte-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exportado com sucesso!');
+  };
+
+  const handleBulkDownloadXml = () => {
+    if (selected.size === 0) return;
+    selected.forEach(id => {
+      window.open(`/api/invoices/${id}/download`, '_blank');
+    });
+    toast.success(`Iniciando download de ${selected.size} XML(s)`);
+  };
+
+  const confirmDelete = (target: 'bulk' | string) => {
+    setDeleteTarget(target);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDelete = async () => {
+    const ids = deleteTarget === 'bulk' ? Array.from(selected) : deleteTarget ? [deleteTarget] : [];
+    if (ids.length === 0) return;
+
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`${data.deleted} documento(s) excluído(s) com sucesso`);
+        setSelected(new Set());
+        loadInvoices();
+      } else {
+        toast.error('Erro ao excluir documentos');
+      }
+    } catch {
+      toast.error('Erro de rede ao excluir');
+    }
+  };
 
   async function loadInvoices() {
     setLoading(true);
@@ -36,6 +112,8 @@ export default function CtePage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       // HARDCODED FILTER FOR CTE
       params.set('type', 'CTE');
       params.set('sort', sortBy);
@@ -49,7 +127,7 @@ export default function CtePage() {
         setTotal(data.pagination?.total || 0);
       }
     } catch (err) {
-      console.error('Error loading invoices:', err);
+      toast.error('Erro ao carregar CT-es');
     } finally {
       setLoading(false);
     }
@@ -91,17 +169,20 @@ export default function CtePage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>;
+        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Autorizada</span></>;
       case 'rejected':
-        return <span className="material-symbols-outlined text-[20px] text-red-500">cancel</span>;
+        return <><span className="material-symbols-outlined text-[20px] text-red-500">cancel</span><span className="sr-only">Cancelada</span></>;
       default:
-        return <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>;
+        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Pendente</span></>;
     }
   };
 
   const clearFilters = () => {
+    setSearchInput('');
     setSearch('');
     setStatusFilter('');
+    setDateFrom('');
+    setDateTo('');
     setPage(1);
   };
 
@@ -123,7 +204,11 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[20px]">sync</span>
             Atualizar
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
+          <button
+            onClick={handleExport}
+            disabled={invoices.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+          >
             <span className="material-symbols-outlined text-[20px]">download</span>
             Exportar
           </button>
@@ -132,21 +217,32 @@ export default function CtePage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Emitente</label>
             <input
               type="text"
               placeholder="ex: 00.000.000/0001-91"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Período (Emissão)</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
             <input
               type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             />
           </div>
@@ -186,7 +282,7 @@ export default function CtePage() {
         <div className="flex items-center gap-4 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
           <span className="text-sm font-bold text-primary">{selected.size} selecionado(s)</span>
           <div className="h-4 w-px bg-slate-300"></div>
-          <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
             <span className="material-symbols-outlined text-[18px]">download</span>
             Download XML
           </button>
@@ -198,13 +294,73 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[18px]">fact_check</span>
             Manifestar
           </button>
+          <div className="h-4 w-px bg-slate-300"></div>
+          <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+            Excluir
+          </button>
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : invoices.length === 0 ? (
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+            <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
+            <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
+          </div>
+        ) : (
+          invoices.map((invoice) => {
+            const manifest = getManifestBadge(invoice.status);
+            return (
+              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                    <span className="text-xs text-slate-400 ml-2">Série {invoice.series || '1'}</span>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
+                    {manifest.label}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.senderName}</p>
+                <p className="text-xs text-slate-400 font-mono">{formatCnpj(invoice.senderCnpj)}</p>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)}</span>
+                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openModal(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" aria-label="Ver detalhes">
+                      <span className="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
+                    <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" aria-label="Baixar XML">
+                      <span className="material-symbols-outlined text-[20px]">download</span>
+                    </a>
+                    <button onClick={() => confirmDelete(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="Excluir documento">
+                      <span className="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
+            <caption className="sr-only">Lista de conhecimentos de transporte eletrônicos</caption>
           <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-4 py-4 w-10">
@@ -236,12 +392,18 @@ export default function CtePage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
-                    <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
-                    <p className="mt-2 text-sm">Carregando CT-es...</p>
-                  </td>
-                </tr>
+                Array.from({ length: limit }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-4 py-4"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-4 py-4"><Skeleton className="h-5 w-5 rounded-full" /></td>
+                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-16" /><Skeleton className="h-3 w-12" /></div></td>
+                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-28" /></div></td>
+                    <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-4 py-4"><Skeleton className="h-5 w-24 rounded-full" /></td>
+                    <td className="px-4 py-4"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                  </tr>
+                ))
               ) : invoices.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
@@ -297,6 +459,9 @@ export default function CtePage() {
                           <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download" aria-label="Baixar XML">
                             <span className="material-symbols-outlined text-[20px]">download</span>
                           </a>
+                          <button onClick={() => confirmDelete(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Excluir" aria-label="Excluir documento">
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -384,6 +549,17 @@ export default function CtePage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         invoiceId={selectedInvoiceId}
+      />
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Excluir documentos"
+        message={deleteTarget === 'bulk'
+          ? `Tem certeza que deseja excluir ${selected.size} documento(s) selecionado(s)? Esta ação não pode ser desfeita.`
+          : 'Tem certeza que deseja excluir este CT-e? Esta ação não pode ser desfeita.'}
+        confirmLabel="Excluir"
+        confirmVariant="danger"
       />
     </>
   );

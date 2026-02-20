@@ -2,43 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
-import type { SyncLog, Company } from '@/types';
+import type { SyncLog } from '@/types';
 
 export default function ErrorsPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState('');
   const [logs, setLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Carregar empresas
+  // Carregar logs
   useEffect(() => {
-    fetch('/api/companies')
-      .then(res => res.json())
-      .then(data => {
-        setCompanies(data.companies || []);
-        if (data.companies?.length > 0) {
-          setSelectedCompany(data.companies[0].id);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Carregar logs quando empresa muda
-  useEffect(() => {
-    if (!selectedCompany) return;
-    setLoading(true);
-
-    fetch(`/api/nsdocs/sync?companyId=${selectedCompany}`)
+    fetch('/api/nsdocs/sync')
       .then(res => res.json())
       .then(data => {
         const allLogs: SyncLog[] = data.logs || [];
         setLogs(allLogs.filter(log => log.status === 'error'));
       })
-      .catch(console.error)
+      .catch(() => toast.error('Erro ao carregar erros de sincronização'))
       .finally(() => setLoading(false));
-  }, [selectedCompany]);
+  }, []);
 
   const getSyncMethodBadge = (method: string) => {
     if (method === 'sefaz') {
@@ -70,28 +52,6 @@ export default function ErrorsPage() {
         </p>
       </div>
 
-      {/* Company Selector */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Empresa
-            </label>
-            <select
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-            >
-              {companies.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.razaoSocial} — {c.cnpj}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
       {/* Loading State */}
       {loading && (
         <div className="text-center py-12 text-slate-400">
@@ -105,7 +65,7 @@ export default function ErrorsPage() {
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
           <span className="material-symbols-outlined text-emerald-400 dark:text-emerald-500 text-[48px]">check_circle</span>
           <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mt-4">Nenhum erro encontrado</h3>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
+          <p className="text-sm text-slate-400 dark:text-slate-400 mt-2">
             Tudo funcionando!
           </p>
         </div>
@@ -134,7 +94,7 @@ export default function ErrorsPage() {
                     </p>
                     <div className="flex items-center gap-3 mt-3 flex-wrap">
                       {getSyncMethodBadge(log.syncMethod)}
-                      <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                      <span className="text-xs text-slate-400 dark:text-slate-400 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">schedule</span>
                         {formatDateTime(log.startedAt)}
                       </span>

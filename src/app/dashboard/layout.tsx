@@ -31,14 +31,13 @@ const navItems: NavGroup[] = [
       { label: 'NF-e Recebidas', icon: 'receipt_long', href: '/dashboard/invoices' },
       { label: 'NF-e Emitidas', icon: 'output', href: '/dashboard/issued' },
       { label: 'CT-e', icon: 'local_shipping', href: '/dashboard/cte' },
-      { label: 'Sincronizar SEFAZ', icon: 'cloud_sync', href: '/dashboard/sync' },
+      { label: 'Sincronizar', icon: 'cloud_sync', href: '/dashboard/sync' },
       { label: 'Erros', icon: 'warning', href: '/dashboard/errors' },
     ],
   },
   {
     section: 'Sistema',
     items: [
-      { label: 'Empresas', icon: 'business', href: '/dashboard/companies' },
       { label: 'Upload XML', icon: 'cloud_upload', href: '/dashboard/upload' },
       { label: 'Certificado Digital', icon: 'verified_user', href: '/dashboard/certificado' },
       { label: 'Integração NSDocs', icon: 'hub', href: '/dashboard/configuracoes' },
@@ -171,6 +170,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <a href="#main-content" className="skip-link">Pular para conteúdo principal</a>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -198,7 +198,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-background-light dark:bg-background-dark">
+      <main id="main-content" className="flex-1 flex flex-col h-full relative overflow-hidden bg-background-light dark:bg-background-dark">
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20">
           <div className="flex items-center gap-4 lg:hidden">
@@ -230,7 +230,6 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
             <button aria-label="Notificações" className="p-2 text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative">
               <span className="material-symbols-outlined text-[24px]">notifications</span>
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-card-dark animate-pulse"></span>
             </button>
             <Link
               href="/dashboard/upload"

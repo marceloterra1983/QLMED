@@ -2,25 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 // GET - Retorna configuração NSDocs de uma empresa
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
-  const { searchParams } = new URL(request.url);
-  const companyId = searchParams.get('companyId');
-
-  if (!companyId) {
-    return NextResponse.json({ error: 'companyId é obrigatório' }, { status: 400 });
-  }
-
   try {
+    const company = await getOrCreateSingleCompany(userId);
     const config = await prisma.nsdocsConfig.findUnique({
-      where: { companyId },
+      where: { companyId: company.id },
     });
 
     return NextResponse.json({ config });
@@ -31,27 +27,23 @@ export async function GET(request: NextRequest) {
 
 // POST - Salva/atualiza o token da API NSDocs
 export async function POST(request: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
 
   try {
     const body = await request.json();
-    const { companyId, apiToken, autoSync, syncInterval } = body;
+    const { apiToken, autoSync, syncInterval } = body;
 
-    if (!companyId || !apiToken) {
-      return NextResponse.json({ error: 'companyId e apiToken são obrigatórios' }, { status: 400 });
+    if (!apiToken) {
+      return NextResponse.json({ error: 'apiToken é obrigatório' }, { status: 400 });
     }
 
-    const company = await prisma.company.findFirst({
-      where: { id: companyId },
-    });
-
-    if (!company) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
-    }
+    const company = await getOrCreateSingleCompany(userId);
+    const companyId = company.id;
 
     // Upsert da configuração
     const config = await prisma.nsdocsConfig.upsert({

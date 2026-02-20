@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
+    const company = await getOrCreateSingleCompany(userId);
 
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
+        companyId: company.id,
       },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
     });
@@ -35,15 +39,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
+    const company = await getOrCreateSingleCompany(userId);
 
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
+        companyId: company.id,
       },
     });
 
@@ -64,17 +71,20 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    let userId: string;
     try {
-      await requireAuth();
+      userId = await requireAuth();
     } catch {
       return unauthorizedResponse();
     }
+    const company = await getOrCreateSingleCompany(userId);
 
     const body = await req.json();
 
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,
+        companyId: company.id,
       },
     });
 
