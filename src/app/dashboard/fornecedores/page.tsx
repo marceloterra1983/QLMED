@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import SupplierDetailsModal from '@/components/SupplierDetailsModal';
+import SupplierPriceTableModal from '@/components/SupplierPriceTableModal';
 import { formatCnpj, formatDate } from '@/lib/utils';
 
 interface Supplier {
@@ -40,6 +41,8 @@ export default function SuppliersPage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedPriceSupplier, setSelectedPriceSupplier] = useState<Supplier | null>(null);
+  const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -145,6 +148,22 @@ export default function SuppliersPage() {
     toast.success('Cadastro exportado com sucesso');
   };
 
+  const buildSupplierDetailsUrl = (supplier: Supplier) => {
+    const params = new URLSearchParams();
+    if (supplier.cnpj) params.set('cnpj', supplier.cnpj);
+    if (supplier.name) params.set('name', supplier.name);
+    return `/dashboard/fornecedores/detalhes?${params.toString()}`;
+  };
+
+  const openSupplierInNewTab = (supplier: Supplier) => {
+    const url = buildSupplierDetailsUrl(supplier);
+    const newTab = window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (!newTab) {
+      toast.error('Não foi possível abrir nova aba. Verifique se o navegador bloqueou pop-ups.');
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -237,41 +256,41 @@ export default function SuppliersPage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th
-                  className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">Fornecedor {getSortIcon('name')}</div>
                 </th>
                 <th
-                  className="px-4 py-4 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('documents')}
                 >
                   <div className="flex items-center justify-end gap-1">NF-e {getSortIcon('documents')}</div>
                 </th>
                 <th
-                  className="px-4 py-4 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('value')}
                 >
                   <div className="flex items-center justify-end gap-1">Valor Total (R$) {getSortIcon('value')}</div>
                 </th>
                 <th
-                  className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('lastIssue')}
                 >
                   <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
                 </th>
-                <th className="px-4 py-4 text-center">Ações</th>
+                <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-56" /></td>
-                    <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-10 mx-auto" /></td>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-56" /></td>
+                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : suppliers.length === 0 ? (
@@ -287,31 +306,29 @@ export default function SuppliersPage() {
               ) : (
                 suppliers.map((supplier) => (
                   <tr key={`${supplier.cnpj}-${supplier.name}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{supplier.name}</div>
-                      <div className="mt-1">
-                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                          {formatDocument(supplier.cnpj)}
-                        </span>
+                    <td className="px-4 py-2.5">
+                      <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                      <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
+                        {formatDocument(supplier.cnpj)}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
                         {supplier.invoiceCount.toLocaleString('pt-BR')}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="text-[13px] font-bold font-mono text-slate-900 dark:text-white">
                         {supplier.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <td className="px-4 py-2.5">
+                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                         {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => {
                             setSelectedSupplier(supplier);
@@ -322,6 +339,25 @@ export default function SuppliersPage() {
                           aria-label="Visualizar cadastro do fornecedor"
                         >
                           <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedPriceSupplier(supplier);
+                            setIsPriceTableOpen(true);
+                          }}
+                          className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="Visualizar tabela de preço"
+                          aria-label="Visualizar tabela de preço"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">table_view</span>
+                        </button>
+                        <button
+                          onClick={() => openSupplierInNewTab(supplier)}
+                          className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="Abrir detalhes em nova aba"
+                          aria-label="Abrir detalhes em nova aba"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">open_in_new</span>
                         </button>
                       </div>
                     </td>
@@ -415,6 +451,11 @@ export default function SuppliersPage() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         supplier={selectedSupplier ? { cnpj: selectedSupplier.cnpj, name: selectedSupplier.name } : null}
+      />
+      <SupplierPriceTableModal
+        isOpen={isPriceTableOpen}
+        onClose={() => setIsPriceTableOpen(false)}
+        supplier={selectedPriceSupplier ? { cnpj: selectedPriceSupplier.cnpj, name: selectedPriceSupplier.name } : null}
       />
     </>
   );

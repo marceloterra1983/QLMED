@@ -43,6 +43,13 @@ const navItems: NavGroup[] = [
     ],
   },
   {
+    section: 'Financeiro',
+    items: [
+      { label: 'Contas a Pagar', icon: 'payments', href: '/dashboard/contas-pagar' },
+      { label: 'Contas a Receber', icon: 'request_quote', href: '/dashboard/contas-receber' },
+    ],
+  },
+  {
     section: 'Sistema',
     items: [
       { label: 'Sincronizar', icon: 'cloud_sync', href: '/dashboard/sync' },

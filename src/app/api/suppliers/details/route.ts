@@ -203,12 +203,16 @@ export async function GET(req: Request) {
     const confirmedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'confirmed').length;
     const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
     const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
+    const now = new Date();
+    const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
 
     const priceMap = new Map<string, {
       code: string;
       description: string;
       unit: string;
       totalQuantity: number;
+      quantity2025: number;
+      quantity2026: number;
       totalValue: number;
       minPrice: number;
       maxPrice: number;
@@ -218,14 +222,21 @@ export async function GET(req: Request) {
       invoiceIds: Set<string>;
     }>();
     const duplicatesList: Array<{
+      invoiceId: string;
       invoiceNumber: string;
       installmentNumber: string;
       dueDate: string | null;
       installmentValue: number;
+      installmentTotal: number;
     }> = [];
 
     for (const invoice of filteredInvoices) {
       const { products, duplicates } = await extractInvoiceDataFromXml(invoice.xmlContent);
+      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+      const issueTime = issueDate?.getTime() || 0;
+      const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
+      const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
+
       for (const product of products) {
         const key = `${product.code}::${product.description}::${product.unit}`;
         const existing = priceMap.get(key);
@@ -236,6 +247,8 @@ export async function GET(req: Request) {
             description: product.description,
             unit: product.unit,
             totalQuantity: product.quantity,
+            quantity2025: isFrom2025 ? product.quantity : 0,
+            quantity2026: isFrom2026ToToday ? product.quantity : 0,
             totalValue: product.totalValue,
             minPrice: product.unitPrice,
             maxPrice: product.unitPrice,
@@ -248,6 +261,8 @@ export async function GET(req: Request) {
         }
 
         existing.totalQuantity += product.quantity;
+        if (isFrom2025) existing.quantity2025 += product.quantity;
+        if (isFrom2026ToToday) existing.quantity2026 += product.quantity;
         existing.totalValue += product.totalValue;
         existing.minPrice = Math.min(existing.minPrice, product.unitPrice);
         existing.maxPrice = Math.max(existing.maxPrice, product.unitPrice);
@@ -260,12 +275,16 @@ export async function GET(req: Request) {
         }
       }
 
+      const installmentTotal = duplicates.length;
+
       for (const duplicate of duplicates) {
         duplicatesList.push({
+          invoiceId: invoice.id,
           invoiceNumber: invoice.number,
           installmentNumber: duplicate.installmentNumber,
           dueDate: duplicate.dueDate,
           installmentValue: duplicate.installmentValue,
+          installmentTotal,
         });
       }
     }
@@ -277,6 +296,8 @@ export async function GET(req: Request) {
         unit: item.unit,
         invoiceCount: item.invoiceIds.size,
         totalQuantity: item.totalQuantity,
+        quantity2025: item.quantity2025,
+        quantity2026: item.quantity2026,
         averagePrice: item.totalQuantity > 0 ? item.totalValue / item.totalQuantity : 0,
         minPrice: item.minPrice,
         maxPrice: item.maxPrice,
@@ -303,15 +324,15 @@ export async function GET(req: Request) {
       accessKey: invoice.accessKey,
     }));
     const duplicates = [...duplicatesList].sort((a, b) => {
-      const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
-      const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+      const aTime = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+      const bTime = b.dueDate ? new Date(b.dueDate).getTime() : 0;
 
-      if (aTime !== bTime) return aTime - bTime;
+      if (aTime !== bTime) return bTime - aTime;
 
-      const byInvoice = a.invoiceNumber.localeCompare(b.invoiceNumber, 'pt-BR', { sensitivity: 'base' });
+      const byInvoice = b.invoiceNumber.localeCompare(a.invoiceNumber, 'pt-BR', { sensitivity: 'base' });
       if (byInvoice !== 0) return byInvoice;
 
-      return a.installmentNumber.localeCompare(b.installmentNumber, 'pt-BR', { sensitivity: 'base' });
+      return b.installmentNumber.localeCompare(a.installmentNumber, 'pt-BR', { sensitivity: 'base' });
     });
 
     return NextResponse.json({
