@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
+import NfeDetailsModal from '@/components/NfeDetailsModal';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatCnpj, formatDate, formatTime, formatValue } from '@/lib/utils';
+import RowActions from '@/components/ui/RowActions';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -29,10 +31,17 @@ export default function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
 
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
     setIsModalOpen(true);
+  };
+
+  const openDetails = (id: string) => {
+    setDetailsInvoiceId(id);
+    setIsDetailsOpen(true);
   };
 
   // Debounce search input
@@ -333,17 +342,7 @@ export default function InvoicesPage() {
                     <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openModal(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" aria-label="Ver detalhes">
-                      <span className="material-symbols-outlined text-[20px]">visibility</span>
-                    </button>
-                    <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" aria-label="Baixar XML">
-                      <span className="material-symbols-outlined text-[20px]">download</span>
-                    </a>
-                    <button onClick={() => confirmDelete(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="Excluir nota">
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                  </div>
+                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
                 </div>
               </div>
             );
@@ -438,17 +437,7 @@ export default function InvoicesPage() {
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openModal(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Ver" aria-label="Ver detalhes">
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                          </button>
-                          <a href={`/api/invoices/${invoice.id}/download`} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Download" aria-label="Baixar XML">
-                            <span className="material-symbols-outlined text-[20px]">download</span>
-                          </a>
-                          <button onClick={() => confirmDelete(invoice.id)} className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Excluir" aria-label="Excluir nota">
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
-                          </button>
-                        </div>
+                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
                       </td>
                     </tr>
                   );
@@ -535,6 +524,11 @@ export default function InvoicesPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         invoiceId={selectedInvoiceId}
+      />
+      <NfeDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        invoiceId={detailsInvoiceId}
       />
       <ConfirmDialog
         isOpen={showDeleteConfirm}

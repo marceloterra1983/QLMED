@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    if (!company || company.userId !== userId) {
+    if (!company) {
       return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
     }
 

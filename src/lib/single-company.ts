@@ -6,20 +6,18 @@ const DEFAULT_COMPANY_RAZAO_SOCIAL =
 const DEFAULT_COMPANY_NOME_FANTASIA = process.env.SINGLE_COMPANY_NOME_FANTASIA || 'QLMED';
 
 export async function getOrCreateSingleCompany(userId: string) {
-  // Single-company mode: find the user's company or the shared company they belong to.
-  const existing = await prisma.company.findFirst({
-    where: { userId },
-    orderBy: { createdAt: 'asc' },
+  // Single-company mode: always look up by the fixed CNPJ first.
+  // This ensures all users share the same company record regardless of who created it.
+  const existing = await prisma.company.findUnique({
+    where: { cnpj: DEFAULT_COMPANY_CNPJ },
   });
 
   if (existing) {
     return existing;
   }
 
-  return prisma.company.upsert({
-    where: { cnpj: DEFAULT_COMPANY_CNPJ },
-    update: {},
-    create: {
+  return prisma.company.create({
+    data: {
       userId,
       cnpj: DEFAULT_COMPANY_CNPJ,
       razaoSocial: DEFAULT_COMPANY_RAZAO_SOCIAL,
