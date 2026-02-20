@@ -23,7 +23,15 @@ const navItems: NavGroup[] = [
   {
     section: null,
     items: [
-      { label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
+      { label: 'Visão Geral', icon: 'dashboard', href: '/dashboard' },
+    ],
+  },
+  {
+    section: 'Cadastros',
+    items: [
+      { label: 'Produtos', icon: 'inventory_2', href: '/dashboard/produtos' },
+      { label: 'Clientes', icon: 'group', href: '/dashboard/clientes' },
+      { label: 'Fornecedores', icon: 'storefront', href: '/dashboard/fornecedores' },
     ],
   },
   {
@@ -32,12 +40,6 @@ const navItems: NavGroup[] = [
       { label: 'NF-e Recebidas', icon: 'receipt_long', href: '/dashboard/invoices' },
       { label: 'NF-e Emitidas', icon: 'output', href: '/dashboard/issued' },
       { label: 'CT-e', icon: 'local_shipping', href: '/dashboard/cte' },
-    ],
-  },
-  {
-    section: 'Cadastros',
-    items: [
-      { label: 'Fornecedores', icon: 'storefront', href: '/dashboard/fornecedores' },
     ],
   },
   {
