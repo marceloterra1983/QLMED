@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
+import dynamic from 'next/dynamic';
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import type { DashboardStats, FinanceiroSummary, Invoice } from '@/types';
 import {

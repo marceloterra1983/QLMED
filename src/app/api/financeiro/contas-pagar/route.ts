@@ -23,65 +23,29 @@ function num(obj: any, key: string): number {
   return parseFloat(String(v).replace(',', '.')) || 0;
 }
 
-export async function GET(req: Request) {
-  try {
-    let userId: string;
-    try {
-      userId = await requireAuth();
-    } catch {
-      return unauthorizedResponse();
-    }
-    const company = await getOrCreateSingleCompany(userId);
+const BATCH_SIZE = 100;
 
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
-    const search = searchParams.get('search') || '';
-    const statusFilter = searchParams.get('status') || ''; // overdue, due_today, upcoming, all
-    const dateFrom = searchParams.get('dateFrom') || '';
-    const dateTo = searchParams.get('dateTo') || '';
-    const sortBy = searchParams.get('sort') || 'vencimento';
-    const sortOrder = searchParams.get('order') || 'asc';
+async function extractDuplicatas(
+  invoiceBatch: Array<{ id: string; xmlContent: string; accessKey: string; number: string; senderCnpj: string; senderName: string; issueDate: Date; totalValue: number }>,
+  today: Date
+) {
+  const results: any[] = [];
 
-    // Fetch all received NFE invoices with XML content
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        companyId: company.id,
-        type: 'NFE',
-        direction: 'received',
-      },
-      select: {
-        id: true,
-        accessKey: true,
-        number: true,
-        senderCnpj: true,
-        senderName: true,
-        issueDate: true,
-        totalValue: true,
-        xmlContent: true,
-      },
-    });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Extract duplicatas from all invoices
-    const allDuplicatas: any[] = [];
-
-    for (const invoice of invoices) {
+  await Promise.all(
+    invoiceBatch.map(async (invoice) => {
       try {
         const result = await parser.parseStringPromise(invoice.xmlContent);
         const nfeProc = result.nfeProc;
         const nfe = nfeProc ? nfeProc.NFe : result.NFe;
         const infNFe = nfe?.infNFe;
-        if (!infNFe) continue;
+        if (!infNFe) return;
 
         const cobr = infNFe.cobr;
-        if (!cobr) continue;
+        if (!cobr) return;
 
         const fat = cobr.fat;
         const dupItems = cobr.dup;
-        if (!dupItems) continue;
+        if (!dupItems) return;
 
         const dupList = Array.isArray(dupItems) ? dupItems : [dupItems];
 
@@ -99,7 +63,7 @@ export async function GET(req: Request) {
           else if (diffDays <= 7) dupStatus = 'due_soon';
           else dupStatus = 'upcoming';
 
-          allDuplicatas.push({
+          results.push({
             invoiceId: invoice.id,
             accessKey: invoice.accessKey,
             nfNumero: invoice.number,
@@ -120,8 +84,71 @@ export async function GET(req: Request) {
         }
       } catch {
         // Skip invoices with unparseable XML
-        continue;
       }
+    })
+  );
+
+  return results;
+}
+
+export async function GET(req: Request) {
+  try {
+    let userId: string;
+    try {
+      userId = await requireAuth();
+    } catch {
+      return unauthorizedResponse();
+    }
+    const company = await getOrCreateSingleCompany(userId);
+
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
+    const search = searchParams.get('search') || '';
+    const statusFilter = searchParams.get('status') || '';
+    const dateFrom = searchParams.get('dateFrom') || '';
+    const dateTo = searchParams.get('dateTo') || '';
+    const sortBy = searchParams.get('sort') || 'vencimento';
+    const sortOrder = searchParams.get('order') || 'asc';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // First: get invoice IDs without xmlContent (fast, lightweight)
+    const invoiceIds = await prisma.invoice.findMany({
+      where: {
+        companyId: company.id,
+        type: 'NFE',
+        direction: 'received',
+      },
+      select: { id: true },
+      orderBy: { issueDate: 'desc' },
+    });
+
+    // Process in batches - only load xmlContent for each batch
+    const allDuplicatas: any[] = [];
+    const idChunks: string[][] = [];
+    for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
+      idChunks.push(invoiceIds.slice(i, i + BATCH_SIZE).map((inv) => inv.id));
+    }
+
+    for (const chunk of idChunks) {
+      const batch = await prisma.invoice.findMany({
+        where: { id: { in: chunk } },
+        select: {
+          id: true,
+          accessKey: true,
+          number: true,
+          senderCnpj: true,
+          senderName: true,
+          issueDate: true,
+          totalValue: true,
+          xmlContent: true,
+        },
+      });
+
+      const batchResults = await extractDuplicatas(batch, today);
+      allDuplicatas.push(...batchResults);
     }
 
     // Apply filters

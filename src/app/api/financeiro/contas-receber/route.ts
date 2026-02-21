@@ -23,6 +23,74 @@ function num(obj: any, key: string): number {
   return parseFloat(String(v).replace(',', '.')) || 0;
 }
 
+const BATCH_SIZE = 100;
+
+async function extractDuplicatas(
+  invoiceBatch: Array<{ id: string; xmlContent: string; accessKey: string; number: string; recipientCnpj: string | null; recipientName: string | null; issueDate: Date; totalValue: number }>,
+  today: Date
+) {
+  const results: any[] = [];
+
+  await Promise.all(
+    invoiceBatch.map(async (invoice) => {
+      try {
+        const result = await parser.parseStringPromise(invoice.xmlContent);
+        const nfeProc = result.nfeProc;
+        const nfe = nfeProc ? nfeProc.NFe : result.NFe;
+        const infNFe = nfe?.infNFe;
+        if (!infNFe) return;
+
+        const cobr = infNFe.cobr;
+        if (!cobr) return;
+
+        const fat = cobr.fat;
+        const dupItems = cobr.dup;
+        if (!dupItems) return;
+
+        const dupList = Array.isArray(dupItems) ? dupItems : [dupItems];
+
+        for (const dup of dupList) {
+          const vencStr = val(dup, 'dVenc');
+          const valor = num(dup, 'vDup');
+          if (!vencStr || valor === 0) continue;
+
+          const vencDate = new Date(vencStr + 'T00:00:00');
+          const diffDays = Math.floor((vencDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          let dupStatus: string;
+          if (diffDays < 0) dupStatus = 'overdue';
+          else if (diffDays === 0) dupStatus = 'due_today';
+          else if (diffDays <= 7) dupStatus = 'due_soon';
+          else dupStatus = 'upcoming';
+
+          results.push({
+            invoiceId: invoice.id,
+            accessKey: invoice.accessKey,
+            nfNumero: invoice.number,
+            clienteCnpj: invoice.recipientCnpj || '',
+            clienteNome: invoice.recipientName || '',
+            nfEmissao: invoice.issueDate,
+            nfValorTotal: invoice.totalValue,
+            faturaNumero: fat ? val(fat, 'nFat') : '',
+            faturaValorOriginal: fat ? num(fat, 'vOrig') : 0,
+            faturaValorLiquido: fat ? num(fat, 'vLiq') : 0,
+            dupNumero: val(dup, 'nDup'),
+            dupVencimento: vencStr,
+            dupValor: valor,
+            status: dupStatus,
+            diasAtraso: diffDays < 0 ? Math.abs(diffDays) : 0,
+            diasParaVencer: diffDays > 0 ? diffDays : 0,
+          });
+        }
+      } catch {
+        // Skip invoices with unparseable XML
+      }
+    })
+  );
+
+  return results;
+}
+
 export async function GET(req: Request) {
   try {
     let userId: string;
@@ -43,84 +111,44 @@ export async function GET(req: Request) {
     const sortBy = searchParams.get('sort') || 'vencimento';
     const sortOrder = searchParams.get('order') || 'asc';
 
-    // Fetch all issued NFE invoices with XML content
-    const invoices = await prisma.invoice.findMany({
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // First: get invoice IDs without xmlContent (fast, lightweight)
+    const invoiceIds = await prisma.invoice.findMany({
       where: {
         companyId: company.id,
         type: 'NFE',
         direction: 'issued',
       },
-      select: {
-        id: true,
-        accessKey: true,
-        number: true,
-        recipientCnpj: true,
-        recipientName: true,
-        issueDate: true,
-        totalValue: true,
-        xmlContent: true,
-      },
+      select: { id: true },
+      orderBy: { issueDate: 'desc' },
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Extract duplicatas from all invoices
+    // Process in batches - only load xmlContent for each batch
     const allDuplicatas: any[] = [];
+    const idChunks: string[][] = [];
+    for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
+      idChunks.push(invoiceIds.slice(i, i + BATCH_SIZE).map((inv) => inv.id));
+    }
 
-    for (const invoice of invoices) {
-      try {
-        const result = await parser.parseStringPromise(invoice.xmlContent);
-        const nfeProc = result.nfeProc;
-        const nfe = nfeProc ? nfeProc.NFe : result.NFe;
-        const infNFe = nfe?.infNFe;
-        if (!infNFe) continue;
+    for (const chunk of idChunks) {
+      const batch = await prisma.invoice.findMany({
+        where: { id: { in: chunk } },
+        select: {
+          id: true,
+          accessKey: true,
+          number: true,
+          recipientCnpj: true,
+          recipientName: true,
+          issueDate: true,
+          totalValue: true,
+          xmlContent: true,
+        },
+      });
 
-        const cobr = infNFe.cobr;
-        if (!cobr) continue;
-
-        const fat = cobr.fat;
-        const dupItems = cobr.dup;
-        if (!dupItems) continue;
-
-        const dupList = Array.isArray(dupItems) ? dupItems : [dupItems];
-
-        for (const dup of dupList) {
-          const vencStr = val(dup, 'dVenc');
-          const valor = num(dup, 'vDup');
-          if (!vencStr || valor === 0) continue;
-
-          const vencDate = new Date(vencStr + 'T00:00:00');
-          const diffDays = Math.floor((vencDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-          let dupStatus: string;
-          if (diffDays < 0) dupStatus = 'overdue';
-          else if (diffDays === 0) dupStatus = 'due_today';
-          else if (diffDays <= 7) dupStatus = 'due_soon';
-          else dupStatus = 'upcoming';
-
-          allDuplicatas.push({
-            invoiceId: invoice.id,
-            accessKey: invoice.accessKey,
-            nfNumero: invoice.number,
-            clienteCnpj: invoice.recipientCnpj || '',
-            clienteNome: invoice.recipientName || '',
-            nfEmissao: invoice.issueDate,
-            nfValorTotal: invoice.totalValue,
-            faturaNumero: fat ? val(fat, 'nFat') : '',
-            faturaValorOriginal: fat ? num(fat, 'vOrig') : 0,
-            faturaValorLiquido: fat ? num(fat, 'vLiq') : 0,
-            dupNumero: val(dup, 'nDup'),
-            dupVencimento: vencStr,
-            dupValor: valor,
-            status: dupStatus,
-            diasAtraso: diffDays < 0 ? Math.abs(diffDays) : 0,
-            diasParaVencer: diffDays > 0 ? diffDays : 0,
-          });
-        }
-      } catch {
-        continue;
-      }
+      const batchResults = await extractDuplicatas(batch, today);
+      allDuplicatas.push(...batchResults);
     }
 
     // Apply filters

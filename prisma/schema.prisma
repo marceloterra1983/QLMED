@@ -160,4 +160,9 @@ model Invoice {
   @@index([companyId])
   @@index([senderCnpj])
   @@index([issueDate])
+  @@index([companyId, type, direction])
+  @@index([companyId, type, direction, issueDate])
+  @@index([companyId, type, direction, senderCnpj])
+  @@index([companyId, status])
+  @@index([senderName])
 }

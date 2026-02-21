@@ -106,6 +106,8 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
   }
 }
 
+const XML_BATCH_SIZE = 50;
+
 export async function GET(req: Request) {
   try {
     let userId: string;
@@ -119,6 +121,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const cnpj = normalizeDocument(searchParams.get('cnpj'));
     const name = (searchParams.get('name') || '').trim();
+    const metaOnly = searchParams.get('metaOnly') === '1';
 
     if (!cnpj && !name) {
       return NextResponse.json({ error: 'Fornecedor não informado' }, { status: 400 });
@@ -126,8 +129,20 @@ export async function GET(req: Request) {
 
     const baseWhere = {
       companyId: company.id,
-      type: 'NFE',
-      direction: 'received',
+      type: 'NFE' as const,
+      direction: 'received' as const,
+    };
+
+    const metadataSelect = {
+      id: true,
+      accessKey: true,
+      number: true,
+      series: true,
+      issueDate: true,
+      senderCnpj: true,
+      senderName: true,
+      totalValue: true,
+      status: true,
     };
 
     let supplierWhere: any = null;
@@ -137,64 +152,46 @@ export async function GET(req: Request) {
       supplierWhere = { ...baseWhere, senderName: name };
     }
 
+    // Step 1: Fetch metadata WITHOUT xmlContent (fast, lightweight)
     let invoices = await prisma.invoice.findMany({
       where: supplierWhere,
-      orderBy: [
-        { issueDate: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
       take: MAX_INVOICES,
-      select: {
-        id: true,
-        accessKey: true,
-        number: true,
-        series: true,
-        issueDate: true,
-        senderCnpj: true,
-        senderName: true,
-        totalValue: true,
-        status: true,
-        xmlContent: true,
-      },
+      select: metadataSelect,
     });
 
     if (invoices.length === 0 && cnpj && name) {
       supplierWhere = { ...baseWhere, senderName: name };
       invoices = await prisma.invoice.findMany({
         where: supplierWhere,
-        orderBy: [
-          { issueDate: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
         take: MAX_INVOICES,
-        select: {
-          id: true,
-          accessKey: true,
-          number: true,
-          series: true,
-          issueDate: true,
-          senderCnpj: true,
-          senderName: true,
-          totalValue: true,
-          status: true,
-          xmlContent: true,
-        },
+        select: metadataSelect,
       });
     }
 
     const latestInvoice = invoices[0];
-
     if (!latestInvoice) {
       return NextResponse.json({ error: 'Fornecedor não encontrado' }, { status: 404 });
     }
 
-    const extracted = await extractSupplierDataFromXml(latestInvoice.xmlContent);
     const normalizedLatestDocument = normalizeDocument(latestInvoice.senderCnpj);
-
     const filteredInvoices = normalizedLatestDocument
       ? invoices.filter((invoice) => normalizeDocument(invoice.senderCnpj) === normalizedLatestDocument)
       : invoices.filter((invoice) => invoice.senderName === latestInvoice.senderName);
 
+    // Step 2: Load xmlContent ONLY for the latest invoice (supplier info)
+    const latestWithXml = await prisma.invoice.findUnique({
+      where: { id: latestInvoice.id },
+      select: { xmlContent: true },
+    });
+    const extracted = latestWithXml
+      ? await extractSupplierDataFromXml(latestWithXml.xmlContent)
+      : null;
+    const supplierName = extracted?.name || latestInvoice.senderName || 'Fornecedor não identificado';
+    const supplierCnpj = extracted?.cnpj || normalizeDocument(latestInvoice.senderCnpj);
+
+    // Step 3: Compute stats from metadata (no XML needed)
     const totalInvoices = filteredInvoices.length;
     const totalValue = filteredInvoices.reduce((acc, invoice) => acc + (invoice.totalValue || 0), 0);
     const lastIssueDate = filteredInvoices[0]?.issueDate || null;
@@ -206,6 +203,7 @@ export async function GET(req: Request) {
     const now = new Date();
     const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
 
+    // Step 4: Process XML in parallel batches for price table and duplicates
     const priceMap = new Map<string, {
       code: string;
       description: string;
@@ -221,6 +219,7 @@ export async function GET(req: Request) {
       lastInvoiceNumber: string | null;
       invoiceIds: Set<string>;
     }>();
+    const priceKeySet = new Set<string>();
     const duplicatesList: Array<{
       invoiceId: string;
       invoiceNumber: string;
@@ -230,87 +229,133 @@ export async function GET(req: Request) {
       installmentTotal: number;
     }> = [];
 
-    for (const invoice of filteredInvoices) {
-      const { products, duplicates } = await extractInvoiceDataFromXml(invoice.xmlContent);
-      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-      const issueTime = issueDate?.getTime() || 0;
-      const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
-      const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
+    // Process in batches of XML_BATCH_SIZE
+    for (let i = 0; i < filteredInvoices.length; i += XML_BATCH_SIZE) {
+      const batchMeta = filteredInvoices.slice(i, i + XML_BATCH_SIZE);
+      const batchIds = batchMeta.map((inv) => inv.id);
 
-      for (const product of products) {
-        const key = `${product.code}::${product.description}::${product.unit}`;
-        const existing = priceMap.get(key);
+      // Load xmlContent for this batch only
+      const batchWithXml = await prisma.invoice.findMany({
+        where: { id: { in: batchIds } },
+        select: { id: true, xmlContent: true },
+      });
+      const xmlMap = new Map(batchWithXml.map((inv) => [inv.id, inv.xmlContent]));
 
-        if (!existing) {
-          priceMap.set(key, {
-            code: product.code,
-            description: product.description,
-            unit: product.unit,
-            totalQuantity: product.quantity,
-            quantity2025: isFrom2025 ? product.quantity : 0,
-            quantity2026: isFrom2026ToToday ? product.quantity : 0,
-            totalValue: product.totalValue,
-            minPrice: product.unitPrice,
-            maxPrice: product.unitPrice,
-            lastPrice: product.unitPrice,
-            lastIssueDate: invoice.issueDate,
-            lastInvoiceNumber: invoice.number,
-            invoiceIds: new Set([invoice.id]),
+      // Parse XML in parallel within the batch
+      const batchResults = await Promise.all(
+        batchMeta.map(async (invoice) => {
+          const xml = xmlMap.get(invoice.id);
+          if (!xml) return null;
+          const parsed = await extractInvoiceDataFromXml(xml);
+          return { invoice, ...parsed };
+        })
+      );
+
+      for (const result of batchResults) {
+        if (!result) continue;
+        const { invoice, products, duplicates } = result;
+        const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+        const issueTime = issueDate?.getTime() || 0;
+        const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
+        const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
+
+        for (const product of products) {
+          const key = `${product.code}::${product.description}::${product.unit}`;
+
+          if (metaOnly) {
+            priceKeySet.add(key);
+            continue;
+          }
+
+          const existing = priceMap.get(key);
+
+          if (!existing) {
+            priceMap.set(key, {
+              code: product.code,
+              description: product.description,
+              unit: product.unit,
+              totalQuantity: product.quantity,
+              quantity2025: isFrom2025 ? product.quantity : 0,
+              quantity2026: isFrom2026ToToday ? product.quantity : 0,
+              totalValue: product.totalValue,
+              minPrice: product.unitPrice,
+              maxPrice: product.unitPrice,
+              lastPrice: product.unitPrice,
+              lastIssueDate: invoice.issueDate,
+              lastInvoiceNumber: invoice.number,
+              invoiceIds: new Set([invoice.id]),
+            });
+            continue;
+          }
+
+          existing.totalQuantity += product.quantity;
+          if (isFrom2025) existing.quantity2025 += product.quantity;
+          if (isFrom2026ToToday) existing.quantity2026 += product.quantity;
+          existing.totalValue += product.totalValue;
+          existing.minPrice = Math.min(existing.minPrice, product.unitPrice);
+          existing.maxPrice = Math.max(existing.maxPrice, product.unitPrice);
+          existing.invoiceIds.add(invoice.id);
+
+          if (!existing.lastIssueDate || invoice.issueDate > existing.lastIssueDate) {
+            existing.lastIssueDate = invoice.issueDate;
+            existing.lastPrice = product.unitPrice;
+            existing.lastInvoiceNumber = invoice.number;
+          }
+        }
+
+        const installmentTotal = duplicates.length;
+        if (metaOnly) continue;
+
+        for (const duplicate of duplicates) {
+          duplicatesList.push({
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.number,
+            installmentNumber: duplicate.installmentNumber,
+            dueDate: duplicate.dueDate,
+            installmentValue: duplicate.installmentValue,
+            installmentTotal,
           });
-          continue;
         }
-
-        existing.totalQuantity += product.quantity;
-        if (isFrom2025) existing.quantity2025 += product.quantity;
-        if (isFrom2026ToToday) existing.quantity2026 += product.quantity;
-        existing.totalValue += product.totalValue;
-        existing.minPrice = Math.min(existing.minPrice, product.unitPrice);
-        existing.maxPrice = Math.max(existing.maxPrice, product.unitPrice);
-        existing.invoiceIds.add(invoice.id);
-
-        if (!existing.lastIssueDate || invoice.issueDate > existing.lastIssueDate) {
-          existing.lastIssueDate = invoice.issueDate;
-          existing.lastPrice = product.unitPrice;
-          existing.lastInvoiceNumber = invoice.number;
-        }
-      }
-
-      const installmentTotal = duplicates.length;
-
-      for (const duplicate of duplicates) {
-        duplicatesList.push({
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.number,
-          installmentNumber: duplicate.installmentNumber,
-          dueDate: duplicate.dueDate,
-          installmentValue: duplicate.installmentValue,
-          installmentTotal,
-        });
       }
     }
 
-    const priceTable = Array.from(priceMap.values())
-      .map((item) => ({
-        code: item.code,
-        description: item.description,
-        unit: item.unit,
-        invoiceCount: item.invoiceIds.size,
-        totalQuantity: item.totalQuantity,
-        quantity2025: item.quantity2025,
-        quantity2026: item.quantity2026,
-        averagePrice: item.totalQuantity > 0 ? item.totalValue / item.totalQuantity : 0,
-        minPrice: item.minPrice,
-        maxPrice: item.maxPrice,
-        lastPrice: item.lastPrice,
-        lastIssueDate: item.lastIssueDate,
-        lastInvoiceNumber: item.lastInvoiceNumber,
-      }))
-      .sort((a, b) => {
-        const aTime = a.lastIssueDate ? new Date(a.lastIssueDate).getTime() : 0;
-        const bTime = b.lastIssueDate ? new Date(b.lastIssueDate).getTime() : 0;
-        if (aTime !== bTime) return bTime - aTime;
-        return a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
+    const priceTable = metaOnly
+      ? []
+      : Array.from(priceMap.values())
+        .map((item) => ({
+          code: item.code,
+          description: item.description,
+          unit: item.unit,
+          invoiceCount: item.invoiceIds.size,
+          totalQuantity: item.totalQuantity,
+          quantity2025: item.quantity2025,
+          quantity2026: item.quantity2026,
+          averagePrice: item.totalQuantity > 0 ? item.totalValue / item.totalQuantity : 0,
+          minPrice: item.minPrice,
+          maxPrice: item.maxPrice,
+          lastPrice: item.lastPrice,
+          lastIssueDate: item.lastIssueDate,
+          lastInvoiceNumber: item.lastInvoiceNumber,
+        }))
+        .sort((a, b) => {
+          const aTime = a.lastIssueDate ? new Date(a.lastIssueDate).getTime() : 0;
+          const bTime = b.lastIssueDate ? new Date(b.lastIssueDate).getTime() : 0;
+          if (aTime !== bTime) return bTime - aTime;
+          return a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
+        });
+
+    if (metaOnly) {
+      return NextResponse.json({
+        supplier: {
+          name: supplierName,
+          cnpj: supplierCnpj,
+        },
+        meta: {
+          totalPriceRows: priceKeySet.size,
+          priceRowsLimited: priceKeySet.size > MAX_PRICE_ROWS,
+        },
       });
+    }
     const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
     const totalProductsPurchased = priceTable.length;
 
@@ -337,9 +382,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       supplier: {
-        name: extracted?.name || latestInvoice.senderName || 'Fornecedor não identificado',
+        name: supplierName,
         fantasyName: extracted?.fantasyName,
-        cnpj: extracted?.cnpj || normalizeDocument(latestInvoice.senderCnpj),
+        cnpj: supplierCnpj,
         stateRegistration: extracted?.stateRegistration,
         municipalRegistration: extracted?.municipalRegistration,
         phone: extracted?.phone,

@@ -2,16 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import {
-  startOfMonth,
-  endOfMonth,
-  startOfQuarter,
-  endOfQuarter,
-  startOfYear,
-  endOfYear,
-  format,
-} from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+}
+
+function startOfQuarter(date: Date): Date {
+  const q = Math.floor(date.getMonth() / 3) * 3;
+  return new Date(date.getFullYear(), q, 1);
+}
+
+function endOfQuarter(date: Date): Date {
+  const q = Math.floor(date.getMonth() / 3) * 3 + 2;
+  return new Date(date.getFullYear(), q + 1, 0, 23, 59, 59, 999);
+}
+
+function startOfYear(date: Date): Date {
+  return new Date(date.getFullYear(), 0, 1);
+}
+
+function endOfYear(date: Date): Date {
+  return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
+}
+
+function formatPeriodLabel(now: Date, period: string): string {
+  switch (period) {
+    case 'quarter': {
+      const q = Math.ceil((now.getMonth() + 1) / 3);
+      return `${q}° Trimestre ${now.getFullYear()}`;
+    }
+    case 'year':
+      return String(now.getFullYear());
+    default: {
+      const monthName = now.toLocaleDateString('pt-BR', { month: 'long' });
+      return `${monthName} de ${now.getFullYear()}`;
+    }
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,23 +64,19 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     let dateFrom: Date;
     let dateTo: Date;
-    let periodLabel: string;
 
     switch (period) {
       case 'quarter':
         dateFrom = startOfQuarter(now);
         dateTo = endOfQuarter(now);
-        periodLabel = `${Math.ceil((now.getMonth() + 1) / 3)}° Trimestre ${format(now, 'yyyy')}`;
         break;
       case 'year':
         dateFrom = startOfYear(now);
         dateTo = endOfYear(now);
-        periodLabel = format(now, 'yyyy');
         break;
       default:
         dateFrom = startOfMonth(now);
         dateTo = endOfMonth(now);
-        periodLabel = format(now, "MMMM 'de' yyyy", { locale: ptBR });
         break;
     }
 
@@ -120,7 +147,7 @@ export async function GET(request: NextRequest) {
       errors,
       period: {
         type: period,
-        label: periodLabel,
+        label: formatPeriodLabel(now, period),
       },
       recentInvoices,
     });

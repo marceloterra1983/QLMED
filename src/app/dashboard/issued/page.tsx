@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
-import NfeDetailsModal from '@/components/NfeDetailsModal';
+import dynamic from 'next/dynamic';
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
+const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { formatCnpj, formatDate, formatTime, formatValue, getManifestBadge } from '@/lib/utils';

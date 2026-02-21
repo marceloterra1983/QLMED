@@ -10,11 +10,13 @@ import { formatCnpj, formatDate } from '@/lib/utils';
 interface Supplier {
   cnpj: string;
   name: string;
-  invoiceCount: number;
-  invoiceCount2025: number;
-  invoiceCount2026: number;
-  firstIssueDate: string | null;
   lastIssueDate: string | null;
+}
+
+interface SupplierPriceMetaResponse {
+  meta?: {
+    totalPriceRows?: number;
+  };
 }
 
 function formatDocument(document: string) {
@@ -38,12 +40,14 @@ export default function SuppliersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(20);
-  const [sortBy, setSortBy] = useState('documents2026');
+  const [sortBy, setSortBy] = useState('lastIssue');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPriceSupplier, setSelectedPriceSupplier] = useState<Supplier | null>(null);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
+  const [priceItemsCountMap, setPriceItemsCountMap] = useState<Record<string, number | null>>({});
+  const [priceItemsLoadingMap, setPriceItemsLoadingMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -56,6 +60,68 @@ export default function SuppliersPage() {
   useEffect(() => {
     loadSuppliers();
   }, [page, limit, search, sortBy, sortOrder]);
+
+  const getSupplierKey = (supplier: Supplier) => `${(supplier.cnpj || '').replace(/\D/g, '')}::${supplier.name}`;
+
+  const fetchSupplierPriceItemsCount = async (supplier: Supplier): Promise<number | null> => {
+    const params = new URLSearchParams();
+    if (supplier.cnpj) params.set('cnpj', supplier.cnpj);
+    if (supplier.name) params.set('name', supplier.name);
+    params.set('metaOnly', '1');
+
+    const res = await fetch(`/api/suppliers/details?${params.toString()}`);
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as SupplierPriceMetaResponse;
+    return typeof data?.meta?.totalPriceRows === 'number' ? data.meta.totalPriceRows : null;
+  };
+
+  useEffect(() => {
+    if (suppliers.length === 0) return;
+
+    const missingSuppliers = suppliers.filter((supplier) => {
+      const key = getSupplierKey(supplier);
+      return priceItemsCountMap[key] === undefined && !priceItemsLoadingMap[key];
+    });
+
+    if (missingSuppliers.length === 0) return;
+
+    let cancelled = false;
+
+    setPriceItemsLoadingMap((prev) => {
+      const next = { ...prev };
+      for (const supplier of missingSuppliers) {
+        next[getSupplierKey(supplier)] = true;
+      }
+      return next;
+    });
+
+    const loadCounts = async () => {
+      await Promise.all(
+        missingSuppliers.map(async (supplier) => {
+          const key = getSupplierKey(supplier);
+          let count: number | null = null;
+
+          try {
+            count = await fetchSupplierPriceItemsCount(supplier);
+          } catch {
+            count = null;
+          }
+
+          if (cancelled) return;
+
+          setPriceItemsCountMap((prev) => ({ ...prev, [key]: count }));
+          setPriceItemsLoadingMap((prev) => ({ ...prev, [key]: false }));
+        }),
+      );
+    };
+
+    loadCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [suppliers, priceItemsCountMap, priceItemsLoadingMap]);
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -120,7 +186,7 @@ export default function SuppliersPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setSortBy('documents2026');
+    setSortBy('lastIssue');
     setSortOrder('desc');
     setPage(1);
   };
@@ -128,14 +194,10 @@ export default function SuppliersPage() {
   const handleExport = () => {
     if (suppliers.length === 0) return;
 
-    const headers = ['Fornecedor', 'CNPJ/CPF', 'NF-e Recebidas', 'NF-e 2025', 'NF-e 2026', 'Primeira NF-e', 'Última NF-e'];
+    const headers = ['Fornecedor', 'CNPJ/CPF', 'Última NF-e'];
     const rows = suppliers.map((supplier) => [
       supplier.name,
       formatDocument(supplier.cnpj),
-      String(supplier.invoiceCount),
-      String(supplier.invoiceCount2025 || 0),
-      String(supplier.invoiceCount2026 || 0),
-      supplier.firstIssueDate ? formatDate(supplier.firstIssueDate) : '-',
       supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-',
     ]);
 
@@ -230,9 +292,6 @@ export default function SuppliersPage() {
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
               <option value="name">Nome</option>
-              <option value="documents">NF-e recebidas</option>
-              <option value="documents2025">NF-e em 2025</option>
-              <option value="documents2026">NF-e em 2026</option>
               <option value="lastIssue">Última NF-e</option>
             </select>
           </div>
@@ -255,7 +314,7 @@ export default function SuppliersPage() {
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[980px]">
+          <table className="w-full text-left border-collapse min-w-[840px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th
@@ -265,29 +324,12 @@ export default function SuppliersPage() {
                   <div className="flex items-center gap-1">Fornecedor {getSortIcon('name')}</div>
                 </th>
                 <th
-                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => handleSort('documents')}
-                >
-                  <div className="flex items-center justify-end gap-1">NF-e {getSortIcon('documents')}</div>
-                </th>
-                <th
-                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => handleSort('documents2025')}
-                >
-                  <div className="flex items-center justify-end gap-1">Qtde. NF-e 2025 {getSortIcon('documents2025')}</div>
-                </th>
-                <th
-                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => handleSort('documents2026')}
-                >
-                  <div className="flex items-center justify-end gap-1">Qtde. NF-e 2026 {getSortIcon('documents2026')}</div>
-                </th>
-                <th
                   className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('lastIssue')}
                 >
                   <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
                 </th>
+                <th className="px-4 py-3 text-center">Tabela de Preço</th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -296,16 +338,14 @@ export default function SuppliersPage() {
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-56" /></td>
-                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
-                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-28 mx-auto" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">storefront</span>
                     <p className="mt-2 text-sm font-medium">Nenhum fornecedor encontrado</p>
                     <p className="text-xs mt-1">
@@ -316,66 +356,72 @@ export default function SuppliersPage() {
               ) : (
                 suppliers.map((supplier) => (
                   <tr key={`${supplier.cnpj}-${supplier.name}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-2.5">
-                      <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
-                      <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
-                        {formatDocument(supplier.cnpj)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
-                        {supplier.invoiceCount.toLocaleString('pt-BR')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
-                        {(supplier.invoiceCount2025 || 0).toLocaleString('pt-BR')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
-                        {(supplier.invoiceCount2026 || 0).toLocaleString('pt-BR')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
-                        {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedSupplier(supplier);
-                            setIsDetailsOpen(true);
-                          }}
-                          className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Visualizar cadastro do fornecedor"
-                          aria-label="Visualizar cadastro do fornecedor"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">visibility</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedPriceSupplier(supplier);
-                            setIsPriceTableOpen(true);
-                          }}
-                          className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Visualizar tabela de preço"
-                          aria-label="Visualizar tabela de preço"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">table_view</span>
-                        </button>
-                        <button
-                          onClick={() => openSupplierInNewTab(supplier)}
-                          className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Abrir detalhes em nova aba"
-                          aria-label="Abrir detalhes em nova aba"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                        </button>
-                      </div>
-                    </td>
+                    {(() => {
+                      const supplierKey = getSupplierKey(supplier);
+                      const itemCount = priceItemsCountMap[supplierKey];
+                      const isItemCountLoading = priceItemsLoadingMap[supplierKey];
+
+                      return (
+                        <>
+                          <td className="px-4 py-2.5">
+                            <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                            <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
+                              {formatDocument(supplier.cnpj)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                              {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
+                                {isItemCountLoading
+                                  ? '...'
+                                  : itemCount === null || itemCount === undefined
+                                    ? '-'
+                                    : `${itemCount.toLocaleString('pt-BR')} itens`}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setSelectedPriceSupplier(supplier);
+                                  setIsPriceTableOpen(true);
+                                }}
+                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Visualizar itens da tabela de preço"
+                                aria-label="Visualizar itens da tabela de preço"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">table_view</span>
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedSupplier(supplier);
+                                  setIsDetailsOpen(true);
+                                }}
+                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Visualizar cadastro do fornecedor"
+                                aria-label="Visualizar cadastro do fornecedor"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">visibility</span>
+                              </button>
+                              <button
+                                onClick={() => openSupplierInNewTab(supplier)}
+                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Abrir detalhes em nova aba"
+                                aria-label="Abrir detalhes em nova aba"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))
               )}

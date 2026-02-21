@@ -25,6 +25,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=512"
 
 # Install Chromium and dependencies for Puppeteer PDF generation
 RUN apk add --no-cache \

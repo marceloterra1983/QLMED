@@ -78,42 +78,30 @@ export async function GET(req: Request) {
       ];
     }
 
-    const groupedInvoices = await prisma.invoice.groupBy({
-      by: ['senderCnpj', 'senderName'],
-      where,
-      _count: { _all: true },
-      _sum: { totalValue: true },
-      _max: { issueDate: true },
-      _min: { issueDate: true },
-    });
-
     const start2025 = new Date(Date.UTC(2025, 0, 1, 0, 0, 0));
     const start2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
     const start2027 = new Date(Date.UTC(2027, 0, 1, 0, 0, 0));
 
-    const groupedInvoices2025 = await prisma.invoice.groupBy({
-      by: ['senderCnpj', 'senderName'],
-      where: {
-        ...where,
-        issueDate: {
-          gte: start2025,
-          lt: start2026,
-        },
-      },
-      _count: { _all: true },
-    });
-
-    const groupedInvoices2026 = await prisma.invoice.groupBy({
-      by: ['senderCnpj', 'senderName'],
-      where: {
-        ...where,
-        issueDate: {
-          gte: start2026,
-          lt: start2027,
-        },
-      },
-      _count: { _all: true },
-    });
+    const [groupedInvoices, groupedInvoices2025, groupedInvoices2026] = await Promise.all([
+      prisma.invoice.groupBy({
+        by: ['senderCnpj', 'senderName'],
+        where,
+        _count: { _all: true },
+        _sum: { totalValue: true },
+        _max: { issueDate: true },
+        _min: { issueDate: true },
+      }),
+      prisma.invoice.groupBy({
+        by: ['senderCnpj', 'senderName'],
+        where: { ...where, issueDate: { gte: start2025, lt: start2026 } },
+        _count: { _all: true },
+      }),
+      prisma.invoice.groupBy({
+        by: ['senderCnpj', 'senderName'],
+        where: { ...where, issueDate: { gte: start2026, lt: start2027 } },
+        _count: { _all: true },
+      }),
+    ]);
 
     const yearCountMap2025 = buildYearCountMap(groupedInvoices2025);
     const yearCountMap2026 = buildYearCountMap(groupedInvoices2026);
