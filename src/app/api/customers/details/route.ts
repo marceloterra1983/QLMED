@@ -194,6 +194,21 @@ export async function GET(req: Request) {
     const confirmedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'confirmed').length;
     const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
     const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
+
+    // Fast path: metaOnly skips all XML batch processing
+    if (metaOnly) {
+      return NextResponse.json({
+        customer: {
+          name: customerName,
+          cnpj: customerCnpj,
+        },
+        meta: {
+          totalInvoices,
+          totalValue,
+        },
+      });
+    }
+
     const now = new Date();
     const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
 
@@ -339,18 +354,7 @@ export async function GET(req: Request) {
           return a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
         });
 
-    if (metaOnly) {
-      return NextResponse.json({
-        customer: {
-          name: customerName,
-          cnpj: customerCnpj,
-        },
-        meta: {
-          totalPriceRows: priceKeySet.size,
-          priceRowsLimited: priceKeySet.size > MAX_PRICE_ROWS,
-        },
-      });
-    }
+    // (metaOnly is handled above via fast path)
     const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
     const totalProductsPurchased = priceTable.length;
 

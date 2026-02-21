@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import SupplierDetailsModal from '@/components/SupplierDetailsModal';
@@ -15,7 +15,7 @@ interface Supplier {
 
 interface SupplierPriceMetaResponse {
   meta?: {
-    totalPriceRows?: number;
+    totalInvoices?: number;
   };
 }
 
@@ -48,6 +48,7 @@ export default function SuppliersPage() {
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
   const [priceItemsCountMap, setPriceItemsCountMap] = useState<Record<string, number | null>>({});
   const [priceItemsLoadingMap, setPriceItemsLoadingMap] = useState<Record<string, boolean>>({});
+  const priceItemsInFlightRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,11 +70,23 @@ export default function SuppliersPage() {
     if (supplier.name) params.set('name', supplier.name);
     params.set('metaOnly', '1');
 
-    const res = await fetch(`/api/suppliers/details?${params.toString()}`);
-    if (!res.ok) return null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const data = (await res.json()) as SupplierPriceMetaResponse;
-    return typeof data?.meta?.totalPriceRows === 'number' ? data.meta.totalPriceRows : null;
+    try {
+      const res = await fetch(`/api/suppliers/details?${params.toString()}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as SupplierPriceMetaResponse;
+      return typeof data?.meta?.totalInvoices === 'number' ? data.meta.totalInvoices : null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   };
 
   useEffect(() => {
@@ -81,12 +94,14 @@ export default function SuppliersPage() {
 
     const missingSuppliers = suppliers.filter((supplier) => {
       const key = getSupplierKey(supplier);
-      return priceItemsCountMap[key] === undefined && !priceItemsLoadingMap[key];
+      return priceItemsCountMap[key] === undefined && !priceItemsInFlightRef.current.has(key);
     });
 
     if (missingSuppliers.length === 0) return;
 
-    let cancelled = false;
+    for (const supplier of missingSuppliers) {
+      priceItemsInFlightRef.current.add(getSupplierKey(supplier));
+    }
 
     setPriceItemsLoadingMap((prev) => {
       const next = { ...prev };
@@ -97,31 +112,37 @@ export default function SuppliersPage() {
     });
 
     const loadCounts = async () => {
-      await Promise.all(
-        missingSuppliers.map(async (supplier) => {
-          const key = getSupplierKey(supplier);
-          let count: number | null = null;
+      const CONCURRENCY = 3;
 
-          try {
-            count = await fetchSupplierPriceItemsCount(supplier);
-          } catch {
-            count = null;
-          }
+      for (let index = 0; index < missingSuppliers.length; index += CONCURRENCY) {
+        const batch = missingSuppliers.slice(index, index + CONCURRENCY);
+        const countsUpdate: Record<string, number | null> = {};
+        const loadingUpdate: Record<string, boolean> = {};
 
-          if (cancelled) return;
+        await Promise.all(
+          batch.map(async (supplier) => {
+            const key = getSupplierKey(supplier);
+            let count: number | null = null;
 
-          setPriceItemsCountMap((prev) => ({ ...prev, [key]: count }));
-          setPriceItemsLoadingMap((prev) => ({ ...prev, [key]: false }));
-        }),
-      );
+            try {
+              count = await fetchSupplierPriceItemsCount(supplier);
+            } catch {
+              count = null;
+            }
+
+            countsUpdate[key] = count;
+            loadingUpdate[key] = false;
+            priceItemsInFlightRef.current.delete(key);
+          }),
+        );
+
+        setPriceItemsCountMap((prev) => ({ ...prev, ...countsUpdate }));
+        setPriceItemsLoadingMap((prev) => ({ ...prev, ...loadingUpdate }));
+      }
     };
 
     loadCounts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [suppliers, priceItemsCountMap, priceItemsLoadingMap]);
+  }, [suppliers]);
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -306,12 +327,6 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
-        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-          As informações dos fornecedores são exibidas a partir de 2021.
-        </p>
-      </div>
-
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[840px]">
@@ -323,13 +338,20 @@ export default function SuppliersPage() {
                 >
                   <div className="flex items-center gap-1">Fornecedor {getSortIcon('name')}</div>
                 </th>
+                <th className="px-4 py-3 text-center">
+                  <div className="flex flex-col items-center leading-tight">
+                    <span>Tabela de Preço</span>
+                    <span className="text-[10px] normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                      (itens)
+                    </span>
+                  </div>
+                </th>
                 <th
                   className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('lastIssue')}
                 >
                   <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
                 </th>
-                <th className="px-4 py-3 text-center">Tabela de Preço</th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -338,8 +360,8 @@ export default function SuppliersPage() {
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-56" /></td>
-                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-28 mx-auto" /></td>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
@@ -354,76 +376,72 @@ export default function SuppliersPage() {
                   </td>
                 </tr>
               ) : (
-                suppliers.map((supplier) => (
-                  <tr key={`${supplier.cnpj}-${supplier.name}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    {(() => {
-                      const supplierKey = getSupplierKey(supplier);
-                      const itemCount = priceItemsCountMap[supplierKey];
-                      const isItemCountLoading = priceItemsLoadingMap[supplierKey];
+                suppliers.map((supplier) => {
+                  const supplierKey = getSupplierKey(supplier);
+                  const itemCount = priceItemsCountMap[supplierKey];
+                  const isItemCountLoading = priceItemsLoadingMap[supplierKey];
 
-                      return (
-                        <>
-                          <td className="px-4 py-2.5">
-                            <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
-                            <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
-                              {formatDocument(supplier.cnpj)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
-                              {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center justify-center gap-2">
-                              <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
-                                {isItemCountLoading
-                                  ? '...'
-                                  : itemCount === null || itemCount === undefined
-                                    ? '-'
-                                    : `${itemCount.toLocaleString('pt-BR')} itens`}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setSelectedPriceSupplier(supplier);
-                                  setIsPriceTableOpen(true);
-                                }}
-                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                                title="Visualizar itens da tabela de preço"
-                                aria-label="Visualizar itens da tabela de preço"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">table_view</span>
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => {
-                                  setSelectedSupplier(supplier);
-                                  setIsDetailsOpen(true);
-                                }}
-                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                                title="Visualizar cadastro do fornecedor"
-                                aria-label="Visualizar cadastro do fornecedor"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">visibility</span>
-                              </button>
-                              <button
-                                onClick={() => openSupplierInNewTab(supplier)}
-                                className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                                title="Abrir detalhes em nova aba"
-                                aria-label="Abrir detalhes em nova aba"
-                              >
-                                <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      );
-                    })()}
-                  </tr>
-                ))
+                  return (
+                    <tr key={`${supplier.cnpj}-${supplier.name}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-2.5">
+                        <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                        <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
+                          {formatDocument(supplier.cnpj)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
+                            {isItemCountLoading
+                              ? '...'
+                              : itemCount === null || itemCount === undefined
+                                ? '-'
+                                : itemCount.toLocaleString('pt-BR')}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedPriceSupplier(supplier);
+                              setIsPriceTableOpen(true);
+                            }}
+                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Visualizar itens da tabela de preço"
+                            aria-label="Visualizar itens da tabela de preço"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">table_view</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                          {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setSelectedSupplier(supplier);
+                              setIsDetailsOpen(true);
+                            }}
+                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Visualizar cadastro do fornecedor"
+                            aria-label="Visualizar cadastro do fornecedor"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                          </button>
+                          <button
+                            onClick={() => openSupplierInNewTab(supplier)}
+                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Abrir detalhes em nova aba"
+                            aria-label="Abrir detalhes em nova aba"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

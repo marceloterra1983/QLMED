@@ -15,7 +15,7 @@ interface Customer {
 
 interface CustomerPriceMetaResponse {
   meta?: {
-    totalPriceRows?: number;
+    totalInvoices?: number;
   };
 }
 
@@ -81,7 +81,7 @@ export default function CustomersPage() {
       if (!res.ok) return null;
 
       const data = (await res.json()) as CustomerPriceMetaResponse;
-      return typeof data?.meta?.totalPriceRows === 'number' ? data.meta.totalPriceRows : null;
+      return typeof data?.meta?.totalInvoices === 'number' ? data.meta.totalInvoices : null;
     } catch {
       return null;
     } finally {
@@ -331,12 +331,6 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
-        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-          As informações dos clientes são exibidas a partir de 2021.
-        </p>
-      </div>
-
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[840px]">
@@ -399,7 +393,7 @@ export default function CustomersPage() {
                               ? '...'
                               : itemCount === null || itemCount === undefined
                                 ? '-'
-                                : `${itemCount.toLocaleString('pt-BR')} itens`}
+                                : itemCount.toLocaleString('pt-BR')}
                           </span>
                           <button
                             onClick={() => {
@@ -407,8 +401,8 @@ export default function CustomersPage() {
                               setIsPriceTableOpen(true);
                             }}
                             className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Visualizar itens da tabela de preço"
-                            aria-label="Visualizar itens da tabela de preço"
+                            title="Visualizar tabela de preço"
+                            aria-label="Visualizar tabela de preço"
                           >
                             <span className="material-symbols-outlined text-[20px]">table_view</span>
                           </button>
