@@ -96,6 +96,14 @@ export default function CtePage() {
     toast.success(`Iniciando download de ${selected.size} XML(s)`);
   };
 
+  const handleBulkDownloadPdf = () => {
+    if (selected.size === 0) return;
+    selected.forEach(id => {
+      window.open(`/api/invoices/${id}/pdf?download=true`, '_blank');
+    });
+    toast.success(`Iniciando download de ${selected.size} PDF(s)`);
+  };
+
   const confirmDelete = (target: 'bulk' | string) => {
     setDeleteTarget(target);
     setShowDeleteConfirm(true);
@@ -317,7 +325,7 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[18px]">download</span>
             Download XML
           </button>
-          <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             Download PDF
           </button>

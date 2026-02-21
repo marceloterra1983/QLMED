@@ -602,7 +602,10 @@ export default function DashboardPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-1">
                           {invoice.status === 'received' && (
-                            <button className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors uppercase tracking-wide">
+                            <button
+                              onClick={() => toast.info('Manifestação ainda não implementada.')}
+                              className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors uppercase tracking-wide"
+                            >
                               Manifestar
                             </button>
                           )}

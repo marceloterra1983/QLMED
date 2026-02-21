@@ -143,7 +143,6 @@ export class NsdocsClient {
       };
 
       const params = '?' + new URLSearchParams(paginatedFilters).toString();
-      console.log(`[NSDocs] Buscando página ${safetyCounter}, offset=${deslocamento}...`);
       const docs = await this.request<NsdocsDocumento[]>(`/documentos${params}`);
 
       if (!docs || !Array.isArray(docs) || docs.length === 0) {
@@ -151,7 +150,6 @@ export class NsdocsClient {
       } else {
         allDocs.push(...docs);
         deslocamento += docs.length;
-        console.log(`[NSDocs] Página ${safetyCounter}: ${docs.length} docs (total acumulado: ${allDocs.length})`);
         // Se retornou menos que o pageSize, não há mais páginas
         if (docs.length < pageSize) {
           hasMore = false;
@@ -159,11 +157,6 @@ export class NsdocsClient {
       }
     }
 
-    if (safetyCounter >= maxPages) {
-      console.warn(`[NSDocs] Atingiu limite de segurança de ${maxPages} páginas. Total: ${allDocs.length} docs.`);
-    }
-
-    console.log(`[NSDocs] Total de documentos encontrados: ${allDocs.length}`);
     return allDocs;
   }
 

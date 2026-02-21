@@ -8,8 +8,8 @@ interface AggregatedSupplier {
   cnpj: string;
   name: string;
   invoiceCount: number;
-  invoiceCount2025: number;
-  invoiceCount2026: number;
+  invoiceCountPrevYear: number;
+  invoiceCountCurrentYear: number;
   totalValue: number;
   firstIssueDate: Date | null;
   lastIssueDate: Date | null;
@@ -66,11 +66,13 @@ export async function GET(req: Request) {
       direction: 'received',
     };
 
-    const start2025 = new Date(Date.UTC(2025, 0, 1, 0, 0, 0));
-    const start2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
-    const start2027 = new Date(Date.UTC(2027, 0, 1, 0, 0, 0));
+    const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
+    const startPrevYear = new Date(Date.UTC(prevYear, 0, 1, 0, 0, 0));
+    const startCurrentYear = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+    const startNextYear = new Date(Date.UTC(currentYear + 1, 0, 1, 0, 0, 0));
 
-    const [groupedInvoices, groupedInvoices2025, groupedInvoices2026] = await Promise.all([
+    const [groupedInvoices, groupedPrevYear, groupedCurrentYear] = await Promise.all([
       prisma.invoice.groupBy({
         by: ['senderCnpj', 'senderName'],
         where,
@@ -81,18 +83,18 @@ export async function GET(req: Request) {
       }),
       prisma.invoice.groupBy({
         by: ['senderCnpj', 'senderName'],
-        where: { ...where, issueDate: { gte: start2025, lt: start2026 } },
+        where: { ...where, issueDate: { gte: startPrevYear, lt: startCurrentYear } },
         _count: { _all: true },
       }),
       prisma.invoice.groupBy({
         by: ['senderCnpj', 'senderName'],
-        where: { ...where, issueDate: { gte: start2026, lt: start2027 } },
+        where: { ...where, issueDate: { gte: startCurrentYear, lt: startNextYear } },
         _count: { _all: true },
       }),
     ]);
 
-    const yearCountMap2025 = buildYearCountMap(groupedInvoices2025);
-    const yearCountMap2026 = buildYearCountMap(groupedInvoices2026);
+    const yearCountMapPrev = buildYearCountMap(groupedPrevYear);
+    const yearCountMapCurrent = buildYearCountMap(groupedCurrentYear);
 
     const supplierMap = new Map<string, AggregatedSupplier>();
 
@@ -109,8 +111,8 @@ export async function GET(req: Request) {
           cnpj: grouped.senderCnpj || '',
           name: grouped.senderName || 'Fornecedor não identificado',
           invoiceCount,
-          invoiceCount2025: yearCountMap2025.get(key) || 0,
-          invoiceCount2026: yearCountMap2026.get(key) || 0,
+          invoiceCountPrevYear: yearCountMapPrev.get(key) || 0,
+          invoiceCountCurrentYear: yearCountMapCurrent.get(key) || 0,
           totalValue,
           firstIssueDate,
           lastIssueDate,
@@ -150,11 +152,11 @@ export async function GET(req: Request) {
         case 'documents':
           comparison = a.invoiceCount - b.invoiceCount;
           break;
-        case 'documents2025':
-          comparison = a.invoiceCount2025 - b.invoiceCount2025;
+        case 'documentsPrevYear':
+          comparison = a.invoiceCountPrevYear - b.invoiceCountPrevYear;
           break;
-        case 'documents2026':
-          comparison = a.invoiceCount2026 - b.invoiceCount2026;
+        case 'documentsCurrentYear':
+          comparison = a.invoiceCountCurrentYear - b.invoiceCountCurrentYear;
           break;
         case 'value':
           comparison = a.totalValue - b.totalValue;
@@ -192,6 +194,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       suppliers: paginatedSuppliers,
       summary,
+      years: { prevYear, currentYear },
       pagination: {
         page: normalizedPage,
         limit,

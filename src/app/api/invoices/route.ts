@@ -77,6 +77,7 @@ export async function GET(req: Request) {
         where,
         select: selectFields,
         orderBy: { [orderByField]: orderByDir },
+        take: 5000,
       });
 
       const filtered = allInvoices.filter((inv) => {
