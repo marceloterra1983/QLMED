@@ -11,7 +11,8 @@ interface Supplier {
   cnpj: string;
   name: string;
   invoiceCount: number;
-  totalValue: number;
+  invoiceCount2025: number;
+  invoiceCount2026: number;
   firstIssueDate: string | null;
   lastIssueDate: string | null;
 }
@@ -37,7 +38,7 @@ export default function SuppliersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(20);
-  const [sortBy, setSortBy] = useState('value');
+  const [sortBy, setSortBy] = useState('documents2026');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -119,7 +120,7 @@ export default function SuppliersPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setSortBy('value');
+    setSortBy('documents2026');
     setSortOrder('desc');
     setPage(1);
   };
@@ -127,12 +128,13 @@ export default function SuppliersPage() {
   const handleExport = () => {
     if (suppliers.length === 0) return;
 
-    const headers = ['Fornecedor', 'CNPJ/CPF', 'NF-e Recebidas', 'Valor Total', 'Primeira NF-e', 'Última NF-e'];
+    const headers = ['Fornecedor', 'CNPJ/CPF', 'NF-e Recebidas', 'NF-e 2025', 'NF-e 2026', 'Primeira NF-e', 'Última NF-e'];
     const rows = suppliers.map((supplier) => [
       supplier.name,
       formatDocument(supplier.cnpj),
       String(supplier.invoiceCount),
-      supplier.totalValue.toFixed(2).replace('.', ','),
+      String(supplier.invoiceCount2025 || 0),
+      String(supplier.invoiceCount2026 || 0),
       supplier.firstIssueDate ? formatDate(supplier.firstIssueDate) : '-',
       supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-',
     ]);
@@ -227,9 +229,10 @@ export default function SuppliersPage() {
               }}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
-              <option value="value">Valor total</option>
               <option value="name">Nome</option>
               <option value="documents">NF-e recebidas</option>
+              <option value="documents2025">NF-e em 2025</option>
+              <option value="documents2026">NF-e em 2026</option>
               <option value="lastIssue">Última NF-e</option>
             </select>
           </div>
@@ -252,7 +255,7 @@ export default function SuppliersPage() {
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[850px]">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th
@@ -269,9 +272,15 @@ export default function SuppliersPage() {
                 </th>
                 <th
                   className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => handleSort('value')}
+                  onClick={() => handleSort('documents2025')}
                 >
-                  <div className="flex items-center justify-end gap-1">Valor Total (R$) {getSortIcon('value')}</div>
+                  <div className="flex items-center justify-end gap-1">Qtde. NF-e 2025 {getSortIcon('documents2025')}</div>
+                </th>
+                <th
+                  className="px-4 py-3 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => handleSort('documents2026')}
+                >
+                  <div className="flex items-center justify-end gap-1">Qtde. NF-e 2026 {getSortIcon('documents2026')}</div>
                 </th>
                 <th
                   className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -289,13 +298,14 @@ export default function SuppliersPage() {
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-56" /></td>
                     <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-12 ml-auto" /></td>
                     <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
+                    <td className="px-4 py-2.5 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">storefront</span>
                     <p className="mt-2 text-sm font-medium">Nenhum fornecedor encontrado</p>
                     <p className="text-xs mt-1">
@@ -318,8 +328,13 @@ export default function SuppliersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <span className="text-[13px] font-bold font-mono text-slate-900 dark:text-white">
-                        {supplier.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
+                        {(supplier.invoiceCount2025 || 0).toLocaleString('pt-BR')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">
+                        {(supplier.invoiceCount2026 || 0).toLocaleString('pt-BR')}
                       </span>
                     </td>
                     <td className="px-4 py-2.5">

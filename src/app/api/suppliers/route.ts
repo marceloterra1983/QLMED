@@ -7,6 +7,8 @@ interface AggregatedSupplier {
   cnpj: string;
   name: string;
   invoiceCount: number;
+  invoiceCount2025: number;
+  invoiceCount2026: number;
   totalValue: number;
   firstIssueDate: Date | null;
   lastIssueDate: Date | null;
@@ -20,6 +22,23 @@ function toPositiveInt(value: string | null, fallback: number, max: number) {
 
 function compareStrings(left: string, right: string) {
   return left.localeCompare(right, 'pt-BR', { sensitivity: 'base' });
+}
+
+function buildSupplierKey(cnpj: string | null, name: string | null) {
+  if (cnpj) return cnpj;
+  return `no-doc:${name || ''}`;
+}
+
+function buildYearCountMap(
+  groupedInvoices: Array<{ senderCnpj: string | null; senderName: string | null; _count: { _all: number } }>
+) {
+  const yearCountMap = new Map<string, number>();
+  for (const grouped of groupedInvoices) {
+    const key = buildSupplierKey(grouped.senderCnpj, grouped.senderName);
+    const current = yearCountMap.get(key) || 0;
+    yearCountMap.set(key, current + (grouped._count._all || 0));
+  }
+  return yearCountMap;
 }
 
 export async function GET(req: Request) {
@@ -68,10 +87,41 @@ export async function GET(req: Request) {
       _min: { issueDate: true },
     });
 
+    const start2025 = new Date(Date.UTC(2025, 0, 1, 0, 0, 0));
+    const start2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
+    const start2027 = new Date(Date.UTC(2027, 0, 1, 0, 0, 0));
+
+    const groupedInvoices2025 = await prisma.invoice.groupBy({
+      by: ['senderCnpj', 'senderName'],
+      where: {
+        ...where,
+        issueDate: {
+          gte: start2025,
+          lt: start2026,
+        },
+      },
+      _count: { _all: true },
+    });
+
+    const groupedInvoices2026 = await prisma.invoice.groupBy({
+      by: ['senderCnpj', 'senderName'],
+      where: {
+        ...where,
+        issueDate: {
+          gte: start2026,
+          lt: start2027,
+        },
+      },
+      _count: { _all: true },
+    });
+
+    const yearCountMap2025 = buildYearCountMap(groupedInvoices2025);
+    const yearCountMap2026 = buildYearCountMap(groupedInvoices2026);
+
     const supplierMap = new Map<string, AggregatedSupplier>();
 
     for (const grouped of groupedInvoices) {
-      const key = grouped.senderCnpj || `no-doc:${grouped.senderName}`;
+      const key = buildSupplierKey(grouped.senderCnpj, grouped.senderName);
       const invoiceCount = grouped._count._all || 0;
       const totalValue = grouped._sum.totalValue || 0;
       const firstIssueDate = grouped._min.issueDate;
@@ -83,6 +133,8 @@ export async function GET(req: Request) {
           cnpj: grouped.senderCnpj || '',
           name: grouped.senderName || 'Fornecedor não identificado',
           invoiceCount,
+          invoiceCount2025: yearCountMap2025.get(key) || 0,
+          invoiceCount2026: yearCountMap2026.get(key) || 0,
           totalValue,
           firstIssueDate,
           lastIssueDate,
@@ -113,6 +165,12 @@ export async function GET(req: Request) {
           break;
         case 'documents':
           comparison = a.invoiceCount - b.invoiceCount;
+          break;
+        case 'documents2025':
+          comparison = a.invoiceCount2025 - b.invoiceCount2025;
+          break;
+        case 'documents2026':
+          comparison = a.invoiceCount2026 - b.invoiceCount2026;
           break;
         case 'value':
           comparison = a.totalValue - b.totalValue;
