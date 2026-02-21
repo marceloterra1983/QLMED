@@ -1,6 +1,6 @@
 import https from 'https';
-import xml2js from 'xml2js';
 import zlib from 'zlib';
+import { parseXmlSafe, parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import { promisify } from 'util';
 import { CertificateManager } from './certificate-manager';
 
@@ -119,14 +119,8 @@ export class SefazClient {
     emitente: string;
     tipo: 'nfe' | 'evento';
   }> {
-    const parser = new xml2js.Parser({
-      explicitArray: false,
-      ignoreAttrs: false,
-      tagNameProcessors: [xml2js.processors.stripPrefix],
-    });
-
     try {
-      const result = await parser.parseStringPromise(xml);
+      const result = await parseXmlSafeNoMerge(xml);
 
       // resNFe (resumo)
       if (result.resNFe) {
@@ -183,14 +177,7 @@ export class SefazClient {
   }
 
   private async parseResponse(xmlResponse: string): Promise<DistDFeResponse> {
-    // Parser com mergeAttrs para capturar NSU e schema dos docZip
-    const parser = new xml2js.Parser({
-      explicitArray: false,
-      mergeAttrs: true,
-      tagNameProcessors: [xml2js.processors.stripPrefix],
-    });
-
-    const result = await parser.parseStringPromise(xmlResponse);
+    const result = await parseXmlSafe(xmlResponse);
 
     const body = result?.Envelope?.Body;
     const retDist = body?.nfeDistDFeInteresseResponse?.nfeDistDFeInteresseResult?.retDistDFeInt;

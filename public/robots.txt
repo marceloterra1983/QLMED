@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard/
+Allow: /login
+Allow: /
+
+Sitemap: https://qlmed.com.br/sitemap.xml

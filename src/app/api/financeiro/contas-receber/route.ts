@@ -2,13 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import xml2js from 'xml2js';
-
-const parser = new xml2js.Parser({
-  explicitArray: false,
-  mergeAttrs: true,
-  tagNameProcessors: [xml2js.processors.stripPrefix],
-});
+import { parseXmlSafe } from '@/lib/safe-xml-parser';
 
 function val(obj: any, ...keys: string[]): string {
   for (const k of keys) {
@@ -34,7 +28,7 @@ async function extractDuplicatas(
   await Promise.all(
     invoiceBatch.map(async (invoice) => {
       try {
-        const result = await parser.parseStringPromise(invoice.xmlContent);
+        const result = await parseXmlSafe(invoice.xmlContent);
         const nfeProc = result.nfeProc;
         const nfe = nfeProc ? nfeProc.NFe : result.NFe;
         const infNFe = nfe?.infNFe;

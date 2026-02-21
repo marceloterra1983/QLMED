@@ -1,4 +1,4 @@
-import xml2js from 'xml2js';
+import { parseXmlSafe } from '@/lib/safe-xml-parser';
 
 export interface ParsedInvoice {
   accessKey: string;
@@ -12,13 +12,6 @@ export interface ParsedInvoice {
   recipientName: string;
   totalValue: number;
 }
-
-const parser = new xml2js.Parser({
-  explicitArray: false,
-  mergeAttrs: true,
-  trim: true,
-  tagNameProcessors: [xml2js.processors.stripPrefix],
-});
 
 function extractAccessKey(proc: any, inf: any, prefix: string): string {
   // 1. From protocoled response (most reliable)
@@ -130,7 +123,7 @@ function parseNFSe(result: any): ParsedInvoice | null {
  * Returns null if the XML cannot be parsed or is not a recognized document type.
  */
 export async function parseInvoiceXml(xmlContent: string): Promise<ParsedInvoice | null> {
-  const result = await parser.parseStringPromise(xmlContent);
+  const result = await parseXmlSafe(xmlContent);
 
   // Try NF-e first (most common)
   const nfe = parseNFe(result);

@@ -29,32 +29,32 @@ function toNumber(value: unknown): number {
   return Number.isFinite(number) ? number : 0;
 }
 
-async function extractSupplierDataFromXml(xmlContent: string) {
+async function extractCustomerDataFromXml(xmlContent: string) {
   try {
     const parsed = await parseXmlSafe(xmlContent);
     const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
-    const emit = infNFe?.emit || {};
-    const enderEmit = emit?.enderEmit || {};
+    const dest = infNFe?.dest || {};
+    const enderDest = dest?.enderDest || {};
 
     return {
-      name: cleanString(emit?.xNome),
-      fantasyName: cleanString(emit?.xFant),
-      cnpj: normalizeDocument(cleanString(emit?.CNPJ) || cleanString(emit?.CPF)),
-      stateRegistration: cleanString(emit?.IE),
-      municipalRegistration: cleanString(emit?.IM),
-      phone: cleanString(enderEmit?.fone) || cleanString(emit?.fone),
-      email: cleanString(emit?.email),
+      name: cleanString(dest?.xNome),
+      fantasyName: cleanString(dest?.xFant),
+      cnpj: normalizeDocument(cleanString(dest?.CNPJ) || cleanString(dest?.CPF)),
+      stateRegistration: cleanString(dest?.IE),
+      municipalRegistration: cleanString(dest?.IM),
+      phone: cleanString(enderDest?.fone) || cleanString(dest?.fone),
+      email: cleanString(dest?.email),
       address: {
-        street: cleanString(enderEmit?.xLgr),
-        number: cleanString(enderEmit?.nro),
-        complement: cleanString(enderEmit?.xCpl),
-        district: cleanString(enderEmit?.xBairro),
-        city: cleanString(enderEmit?.xMun),
-        state: cleanString(enderEmit?.UF),
-        zipCode: cleanString(enderEmit?.CEP),
-        country: cleanString(enderEmit?.xPais),
+        street: cleanString(enderDest?.xLgr),
+        number: cleanString(enderDest?.nro),
+        complement: cleanString(enderDest?.xCpl),
+        district: cleanString(enderDest?.xBairro),
+        city: cleanString(enderDest?.xMun),
+        state: cleanString(enderDest?.UF),
+        zipCode: cleanString(enderDest?.CEP),
+        country: cleanString(enderDest?.xPais),
       },
     };
   } catch {
@@ -118,13 +118,13 @@ export async function GET(req: Request) {
     const metaOnly = searchParams.get('metaOnly') === '1';
 
     if (!cnpj && !name) {
-      return NextResponse.json({ error: 'Fornecedor não informado' }, { status: 400 });
+      return NextResponse.json({ error: 'Cliente não informado' }, { status: 400 });
     }
 
     const baseWhere = {
       companyId: company.id,
       type: 'NFE' as const,
-      direction: 'received' as const,
+      direction: 'issued' as const,
     };
 
     const metadataSelect = {
@@ -133,31 +133,31 @@ export async function GET(req: Request) {
       number: true,
       series: true,
       issueDate: true,
-      senderCnpj: true,
-      senderName: true,
+      recipientCnpj: true,
+      recipientName: true,
       totalValue: true,
       status: true,
     };
 
-    let supplierWhere: any = null;
+    let customerWhere: any = null;
     if (cnpj) {
-      supplierWhere = { ...baseWhere, senderCnpj: { contains: cnpj } };
+      customerWhere = { ...baseWhere, recipientCnpj: { contains: cnpj } };
     } else if (name) {
-      supplierWhere = { ...baseWhere, senderName: name };
+      customerWhere = { ...baseWhere, recipientName: name };
     }
 
     // Step 1: Fetch metadata WITHOUT xmlContent (fast, lightweight)
     let invoices = await prisma.invoice.findMany({
-      where: supplierWhere,
+      where: customerWhere,
       orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
       take: MAX_INVOICES,
       select: metadataSelect,
     });
 
     if (invoices.length === 0 && cnpj && name) {
-      supplierWhere = { ...baseWhere, senderName: name };
+      customerWhere = { ...baseWhere, recipientName: name };
       invoices = await prisma.invoice.findMany({
-        where: supplierWhere,
+        where: customerWhere,
         orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
         take: MAX_INVOICES,
         select: metadataSelect,
@@ -166,24 +166,24 @@ export async function GET(req: Request) {
 
     const latestInvoice = invoices[0];
     if (!latestInvoice) {
-      return NextResponse.json({ error: 'Fornecedor não encontrado' }, { status: 404 });
+      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
     }
 
-    const normalizedLatestDocument = normalizeDocument(latestInvoice.senderCnpj);
+    const normalizedLatestDocument = normalizeDocument(latestInvoice.recipientCnpj);
     const filteredInvoices = normalizedLatestDocument
-      ? invoices.filter((invoice) => normalizeDocument(invoice.senderCnpj) === normalizedLatestDocument)
-      : invoices.filter((invoice) => invoice.senderName === latestInvoice.senderName);
+      ? invoices.filter((invoice) => normalizeDocument(invoice.recipientCnpj) === normalizedLatestDocument)
+      : invoices.filter((invoice) => invoice.recipientName === latestInvoice.recipientName);
 
-    // Step 2: Load xmlContent ONLY for the latest invoice (supplier info)
+    // Step 2: Load xmlContent ONLY for the latest invoice (customer info)
     const latestWithXml = await prisma.invoice.findUnique({
       where: { id: latestInvoice.id },
       select: { xmlContent: true },
     });
     const extracted = latestWithXml
-      ? await extractSupplierDataFromXml(latestWithXml.xmlContent)
+      ? await extractCustomerDataFromXml(latestWithXml.xmlContent)
       : null;
-    const supplierName = extracted?.name || latestInvoice.senderName || 'Fornecedor não identificado';
-    const supplierCnpj = extracted?.cnpj || normalizeDocument(latestInvoice.senderCnpj);
+    const customerName = extracted?.name || latestInvoice.recipientName || 'Cliente não identificado';
+    const customerCnpj = extracted?.cnpj || normalizeDocument(latestInvoice.recipientCnpj);
 
     // Step 3: Compute stats from metadata (no XML needed)
     const totalInvoices = filteredInvoices.length;
@@ -341,9 +341,9 @@ export async function GET(req: Request) {
 
     if (metaOnly) {
       return NextResponse.json({
-        supplier: {
-          name: supplierName,
-          cnpj: supplierCnpj,
+        customer: {
+          name: customerName,
+          cnpj: customerCnpj,
         },
         meta: {
           totalPriceRows: priceKeySet.size,
@@ -376,10 +376,10 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({
-      supplier: {
-        name: supplierName,
+      customer: {
+        name: customerName,
         fantasyName: extracted?.fantasyName,
-        cnpj: supplierCnpj,
+        cnpj: customerCnpj,
         stateRegistration: extracted?.stateRegistration,
         municipalRegistration: extracted?.municipalRegistration,
         phone: extracted?.phone,
@@ -416,7 +416,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Error fetching supplier details:', error);
+    console.error('Error fetching customer details:', error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

@@ -1,18 +1,13 @@
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { parseString } from 'xml2js';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import puppeteer from 'puppeteer';
 
 // ==================== Helpers ====================
 
 function parseXml(xml: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    parseString(xml, { explicitArray: false, trim: true, ignoreAttrs: false }, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  });
+  return parseXmlSafeNoMerge(xml);
 }
 
 function esc(text: string | null | undefined): string {
