@@ -11,6 +11,14 @@ export function flexMatch(haystack: string, needle: string): boolean {
   return normalizeForSearch(haystack).includes(needle);
 }
 
+/** Check if ALL search words match across any of the given fields (accent- and case-insensitive) */
+export function flexMatchAll(fields: string[], normalizedSearchWords: string[]): boolean {
+  const normalizedFields = fields.map(normalizeForSearch);
+  return normalizedSearchWords.every((word) =>
+    normalizedFields.some((field) => field.includes(word))
+  );
+}
+
 export function formatCnpj(cnpj: string): string {
   if (!cnpj || cnpj.length !== 14) return cnpj;
   return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');

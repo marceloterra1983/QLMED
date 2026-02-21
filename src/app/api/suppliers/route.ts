@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { normalizeForSearch, flexMatch } from '@/lib/utils';
+import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 
 interface AggregatedSupplier {
   cnpj: string;
@@ -134,14 +134,10 @@ export async function GET(req: Request) {
     let suppliers = Array.from(supplierMap.values());
 
     if (search) {
-      const normalizedSearch = normalizeForSearch(search);
-      const searchDigits = search.replace(/\D/g, '');
-      suppliers = suppliers.filter((s) => {
-        if (flexMatch(s.name, normalizedSearch)) return true;
-        if (s.cnpj.includes(search)) return true;
-        if (searchDigits && searchDigits !== search && s.cnpj.includes(searchDigits)) return true;
-        return false;
-      });
+      const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
+      suppliers = suppliers.filter((s) =>
+        flexMatchAll([s.name, s.cnpj, s.cnpj.replace(/\D/g, '')], searchWords)
+      );
     }
 
     suppliers.sort((a, b) => {

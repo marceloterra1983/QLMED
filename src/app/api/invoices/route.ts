@@ -3,7 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
-import { normalizeForSearch, flexMatch } from '@/lib/utils';
+import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 
 export async function GET(req: Request) {
   try {
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     if (dateFrom || dateTo) {
       where.issueDate = {};
-      if (dateFrom) where.issueDate.gte = new Date(dateFrom);
+      if (dateFrom) where.issueDate.gte = new Date(dateFrom + 'T00:00:00.000Z');
       if (dateTo) where.issueDate.lte = new Date(dateTo + 'T23:59:59.999Z');
     }
 
@@ -71,8 +71,7 @@ export async function GET(req: Request) {
     };
 
     if (search) {
-      const normalizedSearch = normalizeForSearch(search);
-      const searchDigits = search.replace(/\D/g, '');
+      const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
 
       const allInvoices = await prisma.invoice.findMany({
         where,
@@ -81,17 +80,17 @@ export async function GET(req: Request) {
       });
 
       const filtered = allInvoices.filter((inv) => {
-        if (flexMatch(inv.senderName || '', normalizedSearch)) return true;
-        if (flexMatch(inv.recipientName || '', normalizedSearch)) return true;
-        if ((inv.accessKey || '').includes(search)) return true;
-        if ((inv.number || '').includes(search)) return true;
-        if ((inv.senderCnpj || '').includes(search)) return true;
-        if ((inv.recipientCnpj || '').includes(search)) return true;
-        if (searchDigits && searchDigits !== search) {
-          if ((inv.senderCnpj || '').includes(searchDigits)) return true;
-          if ((inv.recipientCnpj || '').includes(searchDigits)) return true;
-        }
-        return false;
+        const fields = [
+          inv.senderName || '',
+          inv.recipientName || '',
+          inv.accessKey || '',
+          inv.number || '',
+          inv.senderCnpj || '',
+          inv.recipientCnpj || '',
+          (inv.senderCnpj || '').replace(/\D/g, ''),
+          (inv.recipientCnpj || '').replace(/\D/g, ''),
+        ];
+        return flexMatchAll(fields, searchWords);
       });
 
       const total = filtered.length;

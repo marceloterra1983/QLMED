@@ -90,6 +90,14 @@ export async function PATCH(
 
     const body = await req.json();
 
+    const validStatuses = ['received', 'confirmed', 'rejected'];
+    if (!body.status || !validStatuses.includes(body.status)) {
+      return NextResponse.json(
+        { error: `Status inválido. Valores aceitos: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: params.id,

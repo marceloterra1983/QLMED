@@ -12,6 +12,7 @@ const MAX_LIMIT = 200;
 interface ProductFromXml {
   code: string;
   description: string;
+  ncm: string | null;
   unit: string;
   anvisa: string | null;
   ean: string | null;
@@ -24,6 +25,7 @@ interface AggregatedProduct {
   key: string;
   code: string;
   description: string;
+  ncm: string | null;
   unit: string;
   anvisa: string | null;
   totalQuantity: number;
@@ -120,6 +122,7 @@ async function extractProductsFromXml(xmlContent: string): Promise<ProductFromXm
       return {
         code: cleanString(prod?.cProd) || '-',
         description: cleanString(prod?.xProd) || 'Item sem descrição',
+        ncm: cleanString(prod?.NCM),
         unit: cleanString(prod?.uCom) || '-',
         anvisa: extractAnvisa(det, prod),
         ean: cleanString(prod?.cEAN),
@@ -249,6 +252,7 @@ export async function GET(req: Request) {
               key,
               code: product.code,
               description: product.description,
+              ncm: product.ncm,
               unit: product.unit,
               anvisa: product.anvisa,
               totalQuantity: product.quantity,
@@ -278,6 +282,10 @@ export async function GET(req: Request) {
             existing.code = product.code;
           }
 
+          if (!existing.ncm && product.ncm) {
+            existing.ncm = product.ncm;
+          }
+
           if (issueDate && (!existing.lastIssueDate || issueDate > existing.lastIssueDate)) {
             existing.lastIssueDate = issueDate;
             existing.lastPrice = product.unitPrice;
@@ -292,6 +300,7 @@ export async function GET(req: Request) {
       key: item.key,
       code: item.code,
       description: item.description,
+      ncm: item.ncm,
       unit: item.unit,
       anvisa: item.anvisa,
       totalQuantity: item.totalQuantity,
@@ -310,16 +319,25 @@ export async function GET(req: Request) {
       products = products.filter((product) => {
         const normalizedDescription = normalizeForSearch(product.description);
         const normalizedCode = normalizeForSearch(product.code || '');
+        const normalizedNcm = normalizeForSearch(product.ncm || '');
         const normalizedAnvisa = normalizeForSearch(product.anvisa || '');
 
         if (normalizedDescription.includes(normalizedSearch)) return true;
         if (normalizedCode.includes(normalizedSearch)) return true;
+        if (normalizedNcm.includes(normalizedSearch)) return true;
         if (normalizedAnvisa.includes(normalizedSearch)) return true;
 
         if (searchDigits) {
           const codeDigits = (product.code || '').replace(/\D/g, '');
+          const ncmDigits = (product.ncm || '').replace(/\D/g, '');
           const anvisaDigits = (product.anvisa || '').replace(/\D/g, '');
-          if (codeDigits.includes(searchDigits) || anvisaDigits.includes(searchDigits)) return true;
+          if (
+            codeDigits.includes(searchDigits) ||
+            ncmDigits.includes(searchDigits) ||
+            anvisaDigits.includes(searchDigits)
+          ) {
+            return true;
+          }
         }
 
         return false;
@@ -335,6 +353,9 @@ export async function GET(req: Request) {
           break;
         case 'description':
           comparison = compareStrings(a.description, b.description);
+          break;
+        case 'ncm':
+          comparison = compareStrings(a.ncm || '', b.ncm || '');
           break;
         case 'anvisa':
           comparison = compareStrings(a.anvisa || '', b.anvisa || '');

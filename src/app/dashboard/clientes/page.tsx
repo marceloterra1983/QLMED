@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import CustomerDetailsModal from '@/components/CustomerDetailsModal';
@@ -10,13 +10,8 @@ import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
 interface Customer {
   cnpj: string;
   name: string;
+  invoiceCount: number;
   lastIssueDate: string | null;
-}
-
-interface CustomerPriceMetaResponse {
-  meta?: {
-    totalPriceRows?: number;
-  };
 }
 
 function formatDocument(document: string) {
@@ -46,9 +41,6 @@ export default function CustomersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPriceCustomer, setSelectedPriceCustomer] = useState<Customer | null>(null);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
-  const [priceItemsCountMap, setPriceItemsCountMap] = useState<Record<string, number | null>>({});
-  const [priceItemsLoadingMap, setPriceItemsLoadingMap] = useState<Record<string, boolean>>({});
-  const priceItemsInFlightRef = useRef<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const toggleGroup = (group: string) => {
@@ -71,89 +63,6 @@ export default function CustomersPage() {
   useEffect(() => {
     loadCustomers();
   }, [page, limit, search, sortBy, sortOrder]);
-
-  const getCustomerKey = (customer: Customer) => `${(customer.cnpj || '').replace(/\D/g, '')}::${customer.name}`;
-
-  const fetchCustomerPriceItemsCount = async (customer: Customer): Promise<number | null> => {
-    const params = new URLSearchParams();
-    if (customer.cnpj) params.set('cnpj', customer.cnpj);
-    if (customer.name) params.set('name', customer.name);
-    params.set('metaOnly', '1');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-    try {
-      const res = await fetch(`/api/customers/details?${params.toString()}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      if (!res.ok) return null;
-
-      const data = (await res.json()) as CustomerPriceMetaResponse;
-      if (typeof data?.meta?.totalPriceRows === 'number') return data.meta.totalPriceRows;
-      return null;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-
-  useEffect(() => {
-    if (customers.length === 0) return;
-
-    const missingCustomers = customers.filter((customer) => {
-      const key = getCustomerKey(customer);
-      return priceItemsCountMap[key] === undefined && !priceItemsInFlightRef.current.has(key);
-    });
-
-    if (missingCustomers.length === 0) return;
-
-    for (const customer of missingCustomers) {
-      priceItemsInFlightRef.current.add(getCustomerKey(customer));
-    }
-
-    setPriceItemsLoadingMap((prev) => {
-      const next = { ...prev };
-      for (const customer of missingCustomers) {
-        next[getCustomerKey(customer)] = true;
-      }
-      return next;
-    });
-
-    const loadCounts = async () => {
-      const CONCURRENCY = 3;
-
-      for (let index = 0; index < missingCustomers.length; index += CONCURRENCY) {
-        const batch = missingCustomers.slice(index, index + CONCURRENCY);
-        const countsUpdate: Record<string, number | null> = {};
-        const loadingUpdate: Record<string, boolean> = {};
-
-        await Promise.all(
-          batch.map(async (customer) => {
-            const key = getCustomerKey(customer);
-            let count: number | null = null;
-
-            try {
-              count = await fetchCustomerPriceItemsCount(customer);
-            } catch {
-              count = null;
-            }
-
-            countsUpdate[key] = count;
-            loadingUpdate[key] = false;
-            priceItemsInFlightRef.current.delete(key);
-          }),
-        );
-
-        setPriceItemsCountMap((prev) => ({ ...prev, ...countsUpdate }));
-        setPriceItemsLoadingMap((prev) => ({ ...prev, ...loadingUpdate }));
-      }
-    };
-
-    loadCounts();
-  }, [customers]);
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -395,10 +304,6 @@ export default function CustomersPage() {
                       : 'Sem data';
                     const showDivider = group !== lastGroup;
                     lastGroup = group;
-                    const customerKey = getCustomerKey(customer);
-                    const itemCount = priceItemsCountMap[customerKey];
-                    const isItemCountLoading = priceItemsLoadingMap[customerKey];
-
                     return (
                       <React.Fragment key={`${customer.cnpj}-${customer.name}`}>
                         {showDivider && (
@@ -427,11 +332,7 @@ export default function CustomersPage() {
                             <td className="px-4 py-2.5">
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
-                                  {isItemCountLoading
-                                    ? '...'
-                                    : itemCount === null || itemCount === undefined
-                                      ? '-'
-                                      : itemCount.toLocaleString('pt-BR')}
+                                  {customer.invoiceCount.toLocaleString('pt-BR')}
                                 </span>
                                 <button
                                   onClick={() => {

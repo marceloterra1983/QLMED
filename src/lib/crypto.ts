@@ -1,17 +1,19 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
+const LEGACY_SALT = 'qlmed-salt';
 
-function getEncryptionKey(): Buffer {
+function deriveKey(salt: Buffer): Buffer {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
     throw new Error('ENCRYPTION_KEY não configurada. Adicione ao .env');
   }
-  return crypto.scryptSync(key, 'qlmed-salt', 32);
+  return crypto.scryptSync(key, salt, 32);
 }
 
 export function encrypt(text: string): string {
-  const key = getEncryptionKey();
+  const salt = crypto.randomBytes(16);
+  const key = deriveKey(salt);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -19,26 +21,42 @@ export function encrypt(text: string): string {
   encrypted += cipher.final('hex');
   const authTag = cipher.getAuthTag().toString('hex');
 
-  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+  // Format: salt:iv:authTag:encrypted (4 parts = new format with random salt)
+  return `${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
 }
 
 export function decrypt(encryptedText: string): string {
-  const key = getEncryptionKey();
   const parts = encryptedText.split(':');
 
-  if (parts.length !== 3) {
-    // Compatibilidade: se não está criptografado, retorna como está
-    return encryptedText;
+  if (parts.length === 4) {
+    // New format: salt:iv:authTag:encrypted
+    const [saltHex, ivHex, authTagHex, encrypted] = parts;
+    const salt = Buffer.from(saltHex, 'hex');
+    const key = deriveKey(salt);
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
   }
 
-  const [ivHex, authTagHex, encrypted] = parts;
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
+  if (parts.length === 3) {
+    // Legacy format: iv:authTag:encrypted (hardcoded salt)
+    const [ivHex, authTagHex, encrypted] = parts;
+    const key = deriveKey(Buffer.from(LEGACY_SALT));
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  }
 
-  return decrypted;
+  // Not encrypted - return as-is for backward compatibility
+  return encryptedText;
 }

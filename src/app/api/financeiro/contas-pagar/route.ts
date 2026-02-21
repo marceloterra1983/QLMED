@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
-import { normalizeForSearch, flexMatch } from '@/lib/utils';
+import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 
 type DuplicataStatus = 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
 const VENCIMENTO_PRIORITY_ASC: Record<DuplicataStatus, number> = {
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     const nextMonthKey = `${nextMonthDate.getFullYear()}-${pad2(nextMonthDate.getMonth() + 1)}`;
 
     const baseDuplicatas = await getFinanceiroDuplicatas(company.id, 'received');
-    const normalizedSearch = normalizeForSearch(search.trim());
+    const searchWords = normalizeForSearch(search.trim()).split(/\s+/).filter(Boolean);
 
     const filtered: ContasPagarDuplicata[] = [];
     const summary = {
@@ -138,11 +138,8 @@ export async function GET(req: Request) {
       const emitenteNome = item.partyNome || '';
       const emitenteCnpj = item.partyCnpj || '';
       if (
-        normalizedSearch &&
-        !flexMatch(emitenteNome, normalizedSearch) &&
-        !emitenteCnpj.includes(normalizedSearch) &&
-        !item.nfNumero.includes(normalizedSearch) &&
-        !flexMatch(item.dupNumero, normalizedSearch)
+        searchWords.length > 0 &&
+        !flexMatchAll([emitenteNome, emitenteCnpj, item.nfNumero, item.dupNumero], searchWords)
       ) {
         continue;
       }

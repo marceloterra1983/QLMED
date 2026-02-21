@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import SupplierDetailsModal from '@/components/SupplierDetailsModal';
@@ -10,13 +10,8 @@ import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
 interface Supplier {
   cnpj: string;
   name: string;
+  invoiceCount: number;
   lastIssueDate: string | null;
-}
-
-interface SupplierPriceMetaResponse {
-  meta?: {
-    totalPriceRows?: number;
-  };
 }
 
 function formatDocument(document: string) {
@@ -46,9 +41,6 @@ export default function SuppliersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPriceSupplier, setSelectedPriceSupplier] = useState<Supplier | null>(null);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
-  const [priceItemsCountMap, setPriceItemsCountMap] = useState<Record<string, number | null>>({});
-  const [priceItemsLoadingMap, setPriceItemsLoadingMap] = useState<Record<string, boolean>>({});
-  const priceItemsInFlightRef = useRef<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const toggleGroup = (group: string) => {
@@ -71,88 +63,6 @@ export default function SuppliersPage() {
   useEffect(() => {
     loadSuppliers();
   }, [page, limit, search, sortBy, sortOrder]);
-
-  const getSupplierKey = (supplier: Supplier) => `${(supplier.cnpj || '').replace(/\D/g, '')}::${supplier.name}`;
-
-  const fetchSupplierPriceItemsCount = async (supplier: Supplier): Promise<number | null> => {
-    const params = new URLSearchParams();
-    if (supplier.cnpj) params.set('cnpj', supplier.cnpj);
-    if (supplier.name) params.set('name', supplier.name);
-    params.set('metaOnly', '1');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    try {
-      const res = await fetch(`/api/suppliers/details?${params.toString()}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      if (!res.ok) return null;
-
-      const data = (await res.json()) as SupplierPriceMetaResponse;
-      return typeof data?.meta?.totalPriceRows === 'number' ? data.meta.totalPriceRows : null;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-
-  useEffect(() => {
-    if (suppliers.length === 0) return;
-
-    const missingSuppliers = suppliers.filter((supplier) => {
-      const key = getSupplierKey(supplier);
-      return priceItemsCountMap[key] === undefined && !priceItemsInFlightRef.current.has(key);
-    });
-
-    if (missingSuppliers.length === 0) return;
-
-    for (const supplier of missingSuppliers) {
-      priceItemsInFlightRef.current.add(getSupplierKey(supplier));
-    }
-
-    setPriceItemsLoadingMap((prev) => {
-      const next = { ...prev };
-      for (const supplier of missingSuppliers) {
-        next[getSupplierKey(supplier)] = true;
-      }
-      return next;
-    });
-
-    const loadCounts = async () => {
-      const CONCURRENCY = 3;
-
-      for (let index = 0; index < missingSuppliers.length; index += CONCURRENCY) {
-        const batch = missingSuppliers.slice(index, index + CONCURRENCY);
-        const countsUpdate: Record<string, number | null> = {};
-        const loadingUpdate: Record<string, boolean> = {};
-
-        await Promise.all(
-          batch.map(async (supplier) => {
-            const key = getSupplierKey(supplier);
-            let count: number | null = null;
-
-            try {
-              count = await fetchSupplierPriceItemsCount(supplier);
-            } catch {
-              count = null;
-            }
-
-            countsUpdate[key] = count;
-            loadingUpdate[key] = false;
-            priceItemsInFlightRef.current.delete(key);
-          }),
-        );
-
-        setPriceItemsCountMap((prev) => ({ ...prev, ...countsUpdate }));
-        setPriceItemsLoadingMap((prev) => ({ ...prev, ...loadingUpdate }));
-      }
-    };
-
-    loadCounts();
-  }, [suppliers]);
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -394,10 +304,6 @@ export default function SuppliersPage() {
                       : 'Sem data';
                     const showDivider = group !== lastGroup;
                     lastGroup = group;
-                    const supplierKey = getSupplierKey(supplier);
-                    const itemCount = priceItemsCountMap[supplierKey];
-                    const isItemCountLoading = priceItemsLoadingMap[supplierKey];
-
                     return (
                       <React.Fragment key={`${supplier.cnpj}-${supplier.name}`}>
                         {showDivider && (
@@ -426,11 +332,7 @@ export default function SuppliersPage() {
                             <td className="px-4 py-2.5">
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
-                                  {isItemCountLoading
-                                    ? '...'
-                                    : itemCount === null || itemCount === undefined
-                                      ? '-'
-                                      : itemCount.toLocaleString('pt-BR')}
+                                  {supplier.invoiceCount.toLocaleString('pt-BR')}
                                 </span>
                                 <button
                                   onClick={() => {

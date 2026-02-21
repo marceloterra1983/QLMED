@@ -3,17 +3,16 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatDate, formatValue } from '@/lib/utils';
+import { formatCnpj, formatValue } from '@/lib/utils';
 
 interface ProductRow {
   key: string;
   code: string;
   description: string;
+  ncm: string | null;
   unit: string;
   anvisa: string | null;
   totalQuantity: number;
-  invoiceCount: number;
-  lastIssueDate: string | null;
   lastPrice: number;
   lastSupplierName: string | null;
   lastSupplierCnpj: string | null;
@@ -42,13 +41,12 @@ interface ProductsResponse {
 }
 
 type ProductSortField =
-  | 'lastIssue'
   | 'description'
   | 'code'
+  | 'ncm'
   | 'anvisa'
   | 'unit'
   | 'quantity'
-  | 'invoices'
   | 'lastPrice'
   | 'supplier';
 
@@ -77,7 +75,7 @@ export default function ProdutosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(50);
-  const [sortBy, setSortBy] = useState<ProductSortField>('lastIssue');
+  const [sortBy, setSortBy] = useState<ProductSortField>('quantity');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [meta, setMeta] = useState<{ invoicesLimited?: boolean; maxInvoices?: number } | null>(null);
 
@@ -140,7 +138,14 @@ export default function ProdutosPage() {
     }
 
     setSortBy(field);
-    if (field === 'description' || field === 'code' || field === 'anvisa' || field === 'unit' || field === 'supplier') {
+    if (
+      field === 'description' ||
+      field === 'code' ||
+      field === 'ncm' ||
+      field === 'anvisa' ||
+      field === 'unit' ||
+      field === 'supplier'
+    ) {
       setSortOrder('asc');
     } else {
       setSortOrder('desc');
@@ -166,7 +171,7 @@ export default function ProdutosPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setSortBy('lastIssue');
+    setSortBy('quantity');
     setSortOrder('desc');
     setPage(1);
   };
@@ -177,23 +182,21 @@ export default function ProdutosPage() {
     const headers = [
       'Codigo',
       'Produto',
+      'NCM',
       'ANVISA',
       'Unidade',
       'Qtde Comprada',
-      'Qtde NF-e',
       'Ultimo Preco',
-      'Ultima NF-e',
       'Ultimo Fornecedor',
     ];
     const rows = products.map((product) => [
       product.code,
       product.description,
+      product.ncm || '',
       product.anvisa || '',
       product.unit,
       formatQuantity(product.totalQuantity),
-      product.invoiceCount.toLocaleString('pt-BR'),
       formatValue(product.lastPrice),
-      product.lastIssueDate ? formatDate(product.lastIssueDate) : '',
       product.lastSupplierName || '',
     ]);
 
@@ -263,7 +266,7 @@ export default function ProdutosPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div className="md:col-span-4">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              Buscar por código, descrição ou ANVISA
+              Buscar por código, descrição, NCM ou ANVISA
             </label>
             <input
               type="text"
@@ -292,17 +295,17 @@ export default function ProdutosPage() {
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
+          <table className="w-full text-left border-collapse min-w-[1120px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastIssue')}>
-                  <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
-                </th>
                 <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
                   <div className="flex items-center gap-1">Código {getSortIcon('code')}</div>
                 </th>
                 <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}>
                   <div className="flex items-center gap-1">Produto {getSortIcon('description')}</div>
+                </th>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('ncm')}>
+                  <div className="flex items-center gap-1">NCM {getSortIcon('ncm')}</div>
                 </th>
                 <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('anvisa')}>
                   <div className="flex items-center gap-1">ANVISA {getSortIcon('anvisa')}</div>
@@ -312,9 +315,6 @@ export default function ProdutosPage() {
                 </th>
                 <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('quantity')}>
                   <div className="flex items-center justify-end gap-1">Qtde. Comprada {getSortIcon('quantity')}</div>
-                </th>
-                <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('invoices')}>
-                  <div className="flex items-center justify-end gap-1">Qtde. NF-e {getSortIcon('invoices')}</div>
                 </th>
                 <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastPrice')}>
                   <div className="flex items-center justify-end gap-1">Último Preço {getSortIcon('lastPrice')}</div>
@@ -328,12 +328,11 @@ export default function ProdutosPage() {
               {loading ? (
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-52" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-12" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-40" /></td>
@@ -341,7 +340,7 @@ export default function ProdutosPage() {
                 ))
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
                     <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
                     <p className="text-xs mt-1">A lista é montada automaticamente a partir das NF-e de entrada.</p>
@@ -351,15 +350,13 @@ export default function ProdutosPage() {
                 products.map((product) => (
                   <tr key={product.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-3 py-2">
-                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
-                        {product.lastIssueDate ? formatDate(product.lastIssueDate) : '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
                       <span className="text-[12px] font-mono font-semibold text-slate-900 dark:text-white">{product.code || '-'}</span>
                     </td>
                     <td className="px-3 py-2">
                       <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{product.description}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="text-[12px] font-mono text-slate-700 dark:text-slate-300">{product.ncm || '-'}</span>
                     </td>
                     <td className="px-3 py-2">
                       <span className="text-[12px] font-mono text-slate-700 dark:text-slate-300">{product.anvisa || '-'}</span>
@@ -369,9 +366,6 @@ export default function ProdutosPage() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <span className="text-[13px] font-bold text-slate-900 dark:text-white">{formatQuantity(product.totalQuantity)}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className="text-[13px] font-bold text-slate-900 dark:text-white">{product.invoiceCount.toLocaleString('pt-BR')}</span>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <span className="text-[13px] font-bold font-mono text-slate-900 dark:text-white">{formatValue(product.lastPrice)}</span>

@@ -81,9 +81,9 @@ export class SefazClient {
     const options = {
       cert: this.certPem,
       key: this.keyPem,
-      // SEFAZ servers may have incomplete certificate chains.
-      // Set SEFAZ_VERIFY_SSL=true in .env to enable strict verification.
-      rejectUnauthorized: process.env.SEFAZ_VERIFY_SSL === 'true',
+      // SSL verification enabled by default for security.
+      // Set SEFAZ_VERIFY_SSL=false only if SEFAZ has certificate chain issues.
+      rejectUnauthorized: process.env.SEFAZ_VERIFY_SSL !== 'false',
       method: 'POST' as const,
       headers: {
         'Content-Type': 'application/soap+xml; charset=utf-8',
