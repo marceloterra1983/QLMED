@@ -1,3 +1,16 @@
+/** Remove diacritics (accents) and lowercases a string for flexible search matching */
+export function normalizeForSearch(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+/** Check if haystack contains needle in an accent- and case-insensitive way */
+export function flexMatch(haystack: string, needle: string): boolean {
+  return normalizeForSearch(haystack).includes(needle);
+}
+
 export function formatCnpj(cnpj: string): string {
   if (!cnpj || cnpj.length !== 14) return cnpj;
   return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
@@ -96,6 +109,45 @@ export function getManifestBadge(status: string) {
           'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-800',
       };
   }
+}
+
+export function getDateGroupLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - day.getTime()) / 86400000);
+
+  if (diffDays === 0) return 'Hoje';
+
+  const dow = today.getDay() || 7;
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - dow + 1);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+  if (day >= startOfWeek && day < endOfWeek && diffDays !== 0) return 'Esta semana';
+
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+  if (day >= startOfLastWeek && day < startOfWeek) return 'Semana passada';
+
+  const startOfNextWeek = new Date(endOfWeek);
+  const endOfNextWeek = new Date(startOfNextWeek);
+  endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
+  if (day >= startOfNextWeek && day < endOfNextWeek) return 'Próxima semana';
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  if (day >= startOfMonth && day < startOfNextMonth) return 'Este mês';
+
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  if (day >= startOfLastMonth && day < startOfMonth) return 'Mês passado';
+
+  const endOfNextMonthStart = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+  if (day >= startOfNextMonth && day < endOfNextMonthStart) return 'Próximo mês';
+
+  return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
 export function getTypeBadge(type: string): string {

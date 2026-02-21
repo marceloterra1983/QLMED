@@ -195,20 +195,6 @@ export async function GET(req: Request) {
     const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
     const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
 
-    // Fast path: metaOnly skips all XML batch processing
-    if (metaOnly) {
-      return NextResponse.json({
-        supplier: {
-          name: supplierName,
-          cnpj: supplierCnpj,
-        },
-        meta: {
-          totalInvoices,
-          totalValue,
-        },
-      });
-    }
-
     const now = new Date();
     const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
 
@@ -354,7 +340,19 @@ export async function GET(req: Request) {
           return a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
         });
 
-    // (metaOnly is handled above via fast path)
+    if (metaOnly) {
+      return NextResponse.json({
+        supplier: {
+          name: supplierName,
+          cnpj: supplierCnpj,
+        },
+        meta: {
+          totalPriceRows: priceKeySet.size,
+          priceRowsLimited: priceKeySet.size > MAX_PRICE_ROWS,
+        },
+      });
+    }
+
     const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
     const totalProductsPurchased = priceTable.length;
 

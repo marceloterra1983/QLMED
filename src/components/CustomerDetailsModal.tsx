@@ -541,9 +541,14 @@ export default function CustomerDetailsModal({
                       className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {filteredAndSortedPriceTable.length} item(ns)
-                  </p>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {filteredAndSortedPriceTable.length.toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                      (itens)
+                    </p>
+                  </div>
                 </div>
 
                 {filteredAndSortedPriceTable.length === 0 ? (

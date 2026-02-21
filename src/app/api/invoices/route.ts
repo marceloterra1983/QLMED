@@ -3,6 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
+import { normalizeForSearch, flexMatch } from '@/lib/utils';
 
 export async function GET(req: Request) {
   try {
@@ -17,8 +18,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const search = searchParams.get('search') || '';
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const search = (searchParams.get('search') || '').trim();
     const type = searchParams.get('type') || '';
     const status = searchParams.get('status') || '';
     const sort = searchParams.get('sort') || 'emission';
@@ -29,17 +30,6 @@ export async function GET(req: Request) {
     const dateTo = searchParams.get('dateTo') || '';
 
     const where: any = { companyId: company.id };
-
-    if (search) {
-      where.OR = [
-        { accessKey: { contains: search } },
-        { number: { contains: search } },
-        { senderName: { contains: search } },
-        { senderCnpj: { contains: search } },
-        { recipientName: { contains: search } },
-        { recipientCnpj: { contains: search } },
-      ];
-    }
 
     if (type) where.type = type;
     if (status) where.status = status;
@@ -63,25 +53,60 @@ export async function GET(req: Request) {
     const orderByField = sortMapping[sort] || 'issueDate';
     const orderByDir = order === 'asc' ? 'asc' : 'desc';
 
+    const selectFields = {
+      id: true,
+      accessKey: true,
+      type: true,
+      direction: true,
+      number: true,
+      series: true,
+      issueDate: true,
+      senderCnpj: true,
+      senderName: true,
+      recipientCnpj: true,
+      recipientName: true,
+      totalValue: true,
+      status: true,
+      createdAt: true,
+    };
+
+    if (search) {
+      const normalizedSearch = normalizeForSearch(search);
+      const searchDigits = search.replace(/\D/g, '');
+
+      const allInvoices = await prisma.invoice.findMany({
+        where,
+        select: selectFields,
+        orderBy: { [orderByField]: orderByDir },
+      });
+
+      const filtered = allInvoices.filter((inv) => {
+        if (flexMatch(inv.senderName || '', normalizedSearch)) return true;
+        if (flexMatch(inv.recipientName || '', normalizedSearch)) return true;
+        if ((inv.accessKey || '').includes(search)) return true;
+        if ((inv.number || '').includes(search)) return true;
+        if ((inv.senderCnpj || '').includes(search)) return true;
+        if ((inv.recipientCnpj || '').includes(search)) return true;
+        if (searchDigits && searchDigits !== search) {
+          if ((inv.senderCnpj || '').includes(searchDigits)) return true;
+          if ((inv.recipientCnpj || '').includes(searchDigits)) return true;
+        }
+        return false;
+      });
+
+      const total = filtered.length;
+      const paginated = filtered.slice((page - 1) * limit, (page - 1) * limit + limit);
+
+      return NextResponse.json({
+        invoices: paginated,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      });
+    }
+
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,
-        select: {
-          id: true,
-          accessKey: true,
-          type: true,
-          direction: true,
-          number: true,
-          series: true,
-          issueDate: true,
-          senderCnpj: true,
-          senderName: true,
-          recipientCnpj: true,
-          recipientName: true,
-          totalValue: true,
-          status: true,
-          createdAt: true,
-        },
+        select: selectFields,
         orderBy: { [orderByField]: orderByDir },
         skip: (page - 1) * limit,
         take: limit,

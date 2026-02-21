@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import SupplierDetailsModal from '@/components/SupplierDetailsModal';
 import SupplierPriceTableModal from '@/components/SupplierPriceTableModal';
-import { formatCnpj, formatDate } from '@/lib/utils';
+import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
 
 interface Supplier {
   cnpj: string;
@@ -15,7 +15,7 @@ interface Supplier {
 
 interface SupplierPriceMetaResponse {
   meta?: {
-    totalInvoices?: number;
+    totalPriceRows?: number;
   };
 }
 
@@ -39,7 +39,7 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('lastIssue');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -49,6 +49,16 @@ export default function SuppliersPage() {
   const [priceItemsCountMap, setPriceItemsCountMap] = useState<Record<string, number | null>>({});
   const [priceItemsLoadingMap, setPriceItemsLoadingMap] = useState<Record<string, boolean>>({});
   const priceItemsInFlightRef = useRef<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -81,7 +91,7 @@ export default function SuppliersPage() {
       if (!res.ok) return null;
 
       const data = (await res.json()) as SupplierPriceMetaResponse;
-      return typeof data?.meta?.totalInvoices === 'number' ? data.meta.totalInvoices : null;
+      return typeof data?.meta?.totalPriceRows === 'number' ? data.meta.totalPriceRows : null;
     } catch {
       return null;
     } finally {
@@ -334,6 +344,12 @@ export default function SuppliersPage() {
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th
                   className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => handleSort('lastIssue')}
+                >
+                  <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
+                </th>
+                <th
+                  className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">Fornecedor {getSortIcon('name')}</div>
@@ -346,12 +362,6 @@ export default function SuppliersPage() {
                     </span>
                   </div>
                 </th>
-                <th
-                  className="px-4 py-3 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => handleSort('lastIssue')}
-                >
-                  <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
-                </th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -359,9 +369,9 @@ export default function SuppliersPage() {
               {loading ? (
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
+                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-56" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-28 mx-auto" /></td>
-                    <td className="px-4 py-2.5"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-2.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
@@ -376,72 +386,94 @@ export default function SuppliersPage() {
                   </td>
                 </tr>
               ) : (
-                suppliers.map((supplier) => {
-                  const supplierKey = getSupplierKey(supplier);
-                  const itemCount = priceItemsCountMap[supplierKey];
-                  const isItemCountLoading = priceItemsLoadingMap[supplierKey];
+                (() => {
+                  let lastGroup = '';
+                  return suppliers.map((supplier) => {
+                    const group = supplier.lastIssueDate
+                      ? getDateGroupLabel(supplier.lastIssueDate)
+                      : 'Sem data';
+                    const showDivider = group !== lastGroup;
+                    lastGroup = group;
+                    const supplierKey = getSupplierKey(supplier);
+                    const itemCount = priceItemsCountMap[supplierKey];
+                    const isItemCountLoading = priceItemsLoadingMap[supplierKey];
 
-                  return (
-                    <tr key={`${supplier.cnpj}-${supplier.name}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-2.5">
-                        <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
-                        <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
-                          {formatDocument(supplier.cnpj)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
-                            {isItemCountLoading
-                              ? '...'
-                              : itemCount === null || itemCount === undefined
-                                ? '-'
-                                : itemCount.toLocaleString('pt-BR')}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setSelectedPriceSupplier(supplier);
-                              setIsPriceTableOpen(true);
-                            }}
-                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Visualizar itens da tabela de preço"
-                            aria-label="Visualizar itens da tabela de preço"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">table_view</span>
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
-                          {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => {
-                              setSelectedSupplier(supplier);
-                              setIsDetailsOpen(true);
-                            }}
-                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Visualizar cadastro do fornecedor"
-                            aria-label="Visualizar cadastro do fornecedor"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                          </button>
-                          <button
-                            onClick={() => openSupplierInNewTab(supplier)}
-                            className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Abrir detalhes em nova aba"
-                            aria-label="Abrir detalhes em nova aba"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                    return (
+                      <React.Fragment key={`${supplier.cnpj}-${supplier.name}`}>
+                        {showDivider && (
+                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                            <td colSpan={4} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {!collapsedGroups.has(group) && (
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="px-4 py-2.5">
+                              <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                                {supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                              <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
+                                {formatDocument(supplier.cnpj)}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
+                                  {isItemCountLoading
+                                    ? '...'
+                                    : itemCount === null || itemCount === undefined
+                                      ? '-'
+                                      : itemCount.toLocaleString('pt-BR')}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setSelectedPriceSupplier(supplier);
+                                    setIsPriceTableOpen(true);
+                                  }}
+                                  className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                  title="Visualizar itens da tabela de preço"
+                                  aria-label="Visualizar itens da tabela de preço"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">table_view</span>
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => {
+                                    setSelectedSupplier(supplier);
+                                    setIsDetailsOpen(true);
+                                  }}
+                                  className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                  title="Visualizar cadastro do fornecedor"
+                                  aria-label="Visualizar cadastro do fornecedor"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                </button>
+                                <button
+                                  onClick={() => openSupplierInNewTab(supplier)}
+                                  className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                  title="Abrir detalhes em nova aba"
+                                  aria-label="Abrir detalhes em nova aba"
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                })()
               )}
             </tbody>
           </table>
@@ -458,7 +490,7 @@ export default function SuppliersPage() {
               }}
               className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value={20}>20 / página</option>
+              <option value={25}>25 / página</option>
               <option value={50}>50 / página</option>
               <option value={100}>100 / página</option>
             </select>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { normalizeForSearch, flexMatch } from '@/lib/utils';
 
 interface AggregatedSupplier {
   cnpj: string;
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = toPositiveInt(searchParams.get('page'), 1, 100000);
-    const limit = toPositiveInt(searchParams.get('limit'), 20, 100);
+    const limit = toPositiveInt(searchParams.get('limit'), 50, 100);
     const search = (searchParams.get('search') || '').trim();
     const sort = searchParams.get('sort') || 'name';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
@@ -64,19 +65,6 @@ export async function GET(req: Request) {
       type: 'NFE',
       direction: 'received',
     };
-
-    if (search) {
-      const searchDigits = search.replace(/\D/g, '');
-      const cnpjFilters = [{ senderCnpj: { contains: search } }];
-      if (searchDigits && searchDigits !== search) {
-        cnpjFilters.push({ senderCnpj: { contains: searchDigits } });
-      }
-
-      where.OR = [
-        { senderName: { contains: search, mode: 'insensitive' } },
-        ...cnpjFilters,
-      ];
-    }
 
     const start2025 = new Date(Date.UTC(2025, 0, 1, 0, 0, 0));
     const start2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
@@ -143,7 +131,19 @@ export async function GET(req: Request) {
       }
     }
 
-    const suppliers = Array.from(supplierMap.values());
+    let suppliers = Array.from(supplierMap.values());
+
+    if (search) {
+      const normalizedSearch = normalizeForSearch(search);
+      const searchDigits = search.replace(/\D/g, '');
+      suppliers = suppliers.filter((s) => {
+        if (flexMatch(s.name, normalizedSearch)) return true;
+        if (s.cnpj.includes(search)) return true;
+        if (searchDigits && searchDigits !== search && s.cnpj.includes(searchDigits)) return true;
+        return false;
+      });
+    }
+
     suppliers.sort((a, b) => {
       let comparison = 0;
 

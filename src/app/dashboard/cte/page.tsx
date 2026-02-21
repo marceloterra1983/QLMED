@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -9,7 +9,7 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatDate, formatTime, formatValue } from '@/lib/utils';
+import { formatDate, formatTime, formatValue, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
 
 export default function CtePage() {
@@ -24,7 +24,7 @@ export default function CtePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -33,6 +33,7 @@ export default function CtePage() {
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
@@ -42,6 +43,15 @@ export default function CtePage() {
   const openDetails = (id: string) => {
     setDetailsInvoiceId(id);
     setIsDetailsOpen(true);
+  };
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
   };
 
   // Debounce search input
@@ -171,17 +181,6 @@ export default function CtePage() {
       setSelected(new Set());
     } else {
       setSelected(new Set(invoices.map((inv) => inv.id)));
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Desacordo cancelado</span></>;
-      case 'rejected':
-        return <><span className="material-symbols-outlined text-[20px] text-red-500">error</span><span className="sr-only">Desacordo registrado</span></>;
-      default:
-        return <><span className="material-symbols-outlined text-[20px] text-amber-500">schedule</span><span className="sr-only">Sem manifestação</span></>;
     }
   };
 
@@ -386,7 +385,7 @@ export default function CtePage() {
             <caption className="sr-only">Lista de conhecimentos de transporte eletrônicos</caption>
           <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-4 py-4 w-10">
+                <th className="px-3 py-2.5 w-10">
                   <input
                     className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                     type="checkbox"
@@ -394,42 +393,38 @@ export default function CtePage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-4 py-4 w-10 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('status')}>
-                  <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
-                </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
-                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
-                </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
-                  <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
-                </th>
-                <th className="px-4 py-4 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
                 </th>
-                <th className="px-4 py-4 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
+                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
+                </th>
+                <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
                   <div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div>
                 </th>
-                <th className="px-4 py-4">Manifestação</th>
-                <th className="px-4 py-4 text-center">Ações</th>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
+                  <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
+                </th>
+                <th className="px-3 py-2.5">Manifestação</th>
+                <th className="px-3 py-2.5 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
                 Array.from({ length: limit }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-4" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-5 w-5 rounded-full" /></td>
-                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-16" /><Skeleton className="h-3 w-12" /></div></td>
-                    <td className="px-4 py-4"><div className="space-y-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-28" /></div></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-5 w-24 rounded-full" /></td>
-                    <td className="px-4 py-4"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-3 w-12 mt-1" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-5 w-24 rounded-full" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
                     <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
                     <Link
@@ -442,43 +437,62 @@ export default function CtePage() {
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => {
-                  const manifest = getCteManifestBadge(invoice.status);
-                  return (
-                    <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-4">
-                        <input
-                          className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
-                          type="checkbox"
-                          checked={selected.has(invoice.id)}
-                          onChange={() => toggleSelect(invoice.id)}
-                        />
-                      </td>
-                      <td className="px-4 py-4">{getStatusIcon(invoice.status)}</td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
-                        <div className="text-xs text-slate-400">{formatTime(invoice.issueDate)}</div>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                          • {manifest.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
-                      </td>
-                    </tr>
-                  );
-                })
+                (() => {
+                  let lastGroup = '';
+                  return invoices.map((invoice) => {
+                    const group = getDateGroupLabel(invoice.issueDate);
+                    const showDivider = group !== lastGroup;
+                    lastGroup = group;
+                    const manifest = getCteManifestBadge(invoice.status);
+                    return (
+                      <React.Fragment key={invoice.id}>
+                        {showDivider && (
+                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                            <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {!collapsedGroups.has(group) && (
+                        <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-3 py-2">
+                            <input
+                              className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                              type="checkbox"
+                              checked={selected.has(invoice.id)}
+                              onChange={() => toggleSelect(invoice.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
+                            <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
+                              • {manifest.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                          </td>
+                        </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                })()
               )}
             </tbody>
           </table>
@@ -493,7 +507,6 @@ export default function CtePage() {
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value={10}>10 / página</option>
               <option value={25}>25 / página</option>
               <option value={50}>50 / página</option>
               <option value={100}>100 / página</option>

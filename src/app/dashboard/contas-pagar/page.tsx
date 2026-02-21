@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatCurrency, formatDate, formatValue } from '@/lib/utils';
+import { formatCnpj, formatCurrency, formatDate, formatValue, getDateGroupLabel } from '@/lib/utils';
 
 interface Duplicata {
   invoiceId: string;
@@ -22,11 +22,18 @@ interface Duplicata {
   status: 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
   diasAtraso: number;
   diasParaVencer: number;
+  parcelaTotal?: number;
 }
 
 interface Summary {
   total: number;
   totalValor: number;
+  hoje: number;
+  hojeValor: number;
+  esteMes: number;
+  esteMesValor: number;
+  proximoMes: number;
+  proximoMesValor: number;
   vencidas: number;
   vencidasValor: number;
   venceHoje: number;
@@ -68,15 +75,25 @@ export default function ContasPagarPage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('upcoming');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
 
   // Debounce search
   useEffect(() => {
@@ -163,6 +180,18 @@ export default function ContasPagarPage() {
     return date.toLocaleDateString('pt-BR');
   };
 
+  const formatParcela = (dup: Duplicata) => {
+    const digits = (dup.dupNumero || '').replace(/\D/g, '');
+    const parsed = digits ? parseInt(digits, 10) : Number.NaN;
+    const parcelaAtual = Number.isFinite(parsed)
+      ? String(parsed).padStart(3, '0')
+      : (dup.dupNumero || '001');
+    const parcelaTotal = Math.max(1, dup.parcelaTotal || 1);
+    return parcelaTotal > 1
+      ? `${parcelaAtual} / ${String(parcelaTotal).padStart(3, '0')}`
+      : parcelaAtual;
+  };
+
   return (
     <div>
       {/* Header */}
@@ -188,61 +217,52 @@ export default function ContasPagarPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">today</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Hoje</p>
+                <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(summary.hojeValor)}</p>
+                <p className="text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">receipt_long</span>
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
+                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.esteMesValor)}</p>
+                <p className="text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">event_repeat</span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Próximo Mês</p>
+                <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.proximoMesValor)}</p>
+                <p className="text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">payments</span>
               </div>
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalValor)}</p>
                 <p className="text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors"
-            onClick={() => { setStatusFilter(statusFilter === 'overdue' ? '' : 'overdue'); setPage(1); }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-[20px]">warning</span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Vencidas</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(summary.vencidasValor)}</p>
-                <p className="text-xs text-slate-400">{summary.vencidas} duplicata{summary.vencidas !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition-colors"
-            onClick={() => { setStatusFilter(statusFilter === 'due_today' ? '' : 'due_today'); setPage(1); }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">schedule</span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Vence Hoje</p>
-                <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(summary.venceHojeValor)}</p>
-                <p className="text-xs text-slate-400">{summary.venceHoje} duplicata{summary.venceHoje !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
-            onClick={() => { setStatusFilter(statusFilter === 'upcoming' ? '' : 'upcoming'); setPage(1); }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[20px]">event_available</span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">A Vencer</p>
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(summary.aVencerValor)}</p>
-                <p className="text-xs text-slate-400">{summary.aVencer} duplicata{summary.aVencer !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
@@ -290,9 +310,9 @@ export default function ContasPagarPage() {
             title="Vencimento até"
           />
 
-          {(search || statusFilter || dateFrom || dateTo) && (
+          {(search || statusFilter !== 'upcoming' || dateFrom || dateTo) && (
             <button
-              onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+              onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter('upcoming'); setDateFrom(''); setDateTo(''); setPage(1); }}
               className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
@@ -313,7 +333,7 @@ export default function ContasPagarPage() {
           <div className="p-12 text-center">
             <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">payments</span>
             <p className="mt-4 text-slate-500 dark:text-slate-400">
-              {search || statusFilter || dateFrom || dateTo
+              {search || statusFilter !== 'upcoming' || dateFrom || dateTo
                 ? 'Nenhuma duplicata encontrada com os filtros aplicados.'
                 : 'Nenhuma duplicata encontrada nas NF-e recebidas.'}
             </p>
@@ -325,6 +345,12 @@ export default function ContasPagarPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <th
+                      className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
+                      onClick={() => handleSort('vencimento')}
+                    >
+                      <div className="flex items-center">Vencimento <SortIcon col="vencimento" /></div>
+                    </th>
                     <th
                       className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
                       onClick={() => handleSort('emitente')}
@@ -341,12 +367,6 @@ export default function ContasPagarPage() {
                       Parcela
                     </th>
                     <th
-                      className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('vencimento')}
-                    >
-                      <div className="flex items-center">Vencimento <SortIcon col="vencimento" /></div>
-                    </th>
-                    <th
                       className="text-right px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
                       onClick={() => handleSort('valor')}
                     >
@@ -361,57 +381,73 @@ export default function ContasPagarPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {duplicatas.map((dup, idx) => {
-                    const cfg = statusConfig[dup.status];
-                    return (
-                      <tr
-                        key={`${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                        className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${
-                          dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''
-                        }`}
-                      >
-                        <td className="px-4 py-3">
-                          <div>
-                            <p className="font-medium text-slate-900 dark:text-white truncate max-w-[250px]" title={dup.emitenteNome}>
-                              {dup.emitenteNome}
-                            </p>
-                            <p className="text-xs text-slate-400">{formatCnpj(dup.emitenteCnpj)}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
-                          {dup.faturaNumero && (
-                            <p className="text-xs text-slate-400">Fat. {dup.faturaNumero}</p>
+                  {(() => {
+                    let lastGroup = '';
+                    return duplicatas.map((dup, idx) => {
+                      const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
+                      const showDivider = group !== lastGroup;
+                      lastGroup = group;
+                      const cfg = statusConfig[dup.status];
+                      return (
+                        <React.Fragment key={`${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
+                          {showDivider && (
+                            <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                              <td colSpan={6} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-slate-600 dark:text-slate-400">{dup.dupNumero}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {formatVencimento(dup.dupVencimento)}
-                          </p>
-                          {dup.status === 'overdue' && (
-                            <p className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</p>
+                          {!collapsedGroups.has(group) && (
+                            <tr
+                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${
+                                dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''
+                              }`}
+                            >
+                              <td className="px-4 py-3">
+                                <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                  {formatVencimento(dup.dupVencimento)}
+                                </p>
+                                {dup.status === 'overdue' && (
+                                  <p className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</p>
+                                )}
+                                {dup.status === 'due_soon' && (
+                                  <p className="text-xs text-orange-500">em {dup.diasParaVencer} dia{dup.diasParaVencer !== 1 ? 's' : ''}</p>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white truncate max-w-[250px]" title={dup.emitenteNome}>
+                                    {dup.emitenteNome}
+                                  </p>
+                                  <p className="text-xs text-slate-400">{formatCnpj(dup.emitenteCnpj)}</p>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="font-mono text-slate-600 dark:text-slate-400">{formatParcela(dup)}</span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                  {formatCurrency(dup.dupValor)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes}`}>
+                                  <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
+                                  {cfg.label}
+                                </span>
+                              </td>
+                            </tr>
                           )}
-                          {dup.status === 'due_soon' && (
-                            <p className="text-xs text-orange-500">em {dup.diasParaVencer} dia{dup.diasParaVencer !== 1 ? 's' : ''}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {formatCurrency(dup.dupValor)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes}`}>
-                            <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
-                            {cfg.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        </React.Fragment>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -442,7 +478,7 @@ export default function ContasPagarPage() {
                       </div>
                       <div>
                         <p className="text-slate-400">Parcela</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300">{dup.dupNumero}</p>
+                        <p className="font-mono text-slate-700 dark:text-slate-300">{formatParcela(dup)}</p>
                       </div>
                       <div>
                         <p className="text-slate-400">Vencimento</p>
@@ -471,8 +507,7 @@ export default function ContasPagarPage() {
                   onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
                   className="ml-2 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
+                  <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={100}>100</option>
                 </select>

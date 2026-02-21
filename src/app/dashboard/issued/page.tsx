@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -8,7 +8,7 @@ const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsMod
 const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { formatCnpj, formatDate, formatTime, formatValue, getManifestBadge } from '@/lib/utils';
+import { formatDate, formatTime, formatValue, getManifestBadge, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
 import type { Invoice } from '@/types';
 
@@ -24,7 +24,7 @@ export default function IssuedInvoicesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -33,6 +33,16 @@ export default function IssuedInvoicesPage() {
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
 
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
@@ -172,17 +182,6 @@ export default function IssuedInvoicesPage() {
       setSelected(new Set());
     } else {
       setSelected(new Set(invoices.map((inv) => inv.id)));
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Autorizada</span></>;
-      case 'rejected':
-        return <><span className="material-symbols-outlined text-[20px] text-red-500">cancel</span><span className="sr-only">Cancelada</span></>;
-      default:
-        return <><span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span><span className="sr-only">Autorizada</span></>;
     }
   };
 
@@ -365,20 +364,17 @@ export default function IssuedInvoicesPage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-3 py-2.5 w-10 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('status')}>
-                   <div className="flex items-center gap-1">ST {getSortIcon('status')}</div>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
+                  <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
                 </th>
                 <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
                   <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
-                  <div className="flex items-center gap-1">Destinatário {getSortIcon('recipient')}</div>
-                </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
-                  <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
-                </th>
                 <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
                   <div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div>
+                </th>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
+                  <div className="flex items-center gap-1">Destinatário {getSortIcon('recipient')}</div>
                 </th>
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5 text-center">Ações</th>
@@ -389,18 +385,17 @@ export default function IssuedInvoicesPage() {
                 Array.from({ length: limit }).map((_, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-5 w-5 rounded-full" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-3 w-12 mt-1" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-5 w-24 rounded-full" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">output</span>
                     <p className="mt-2 text-sm font-medium">Nenhuma NF-e emitida encontrada</p>
                     <Link
@@ -413,43 +408,62 @@ export default function IssuedInvoicesPage() {
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => {
-                  const manifest = getManifestBadge(invoice.status);
-                  return (
-                    <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-3 py-2">
-                        <input
-                          className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
-                          type="checkbox"
-                          checked={selected.has(invoice.id)}
-                          onChange={() => toggleSelect(invoice.id)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">{getStatusIcon(invoice.status)}</td>
-                      <td className="px-3 py-2">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.recipientName}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</span>
-                        <span className="text-xs text-slate-400 ml-1.5">{formatTime(invoice.issueDate)}</span>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                          {"• "}{manifest.label}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
-                      </td>
-                    </tr>
-                  );
-                })
+                (() => {
+                  let lastGroup = '';
+                  return invoices.map((invoice) => {
+                    const group = getDateGroupLabel(invoice.issueDate);
+                    const showDivider = group !== lastGroup;
+                    lastGroup = group;
+                    const manifest = getManifestBadge(invoice.status);
+                    return (
+                      <React.Fragment key={invoice.id}>
+                        {showDivider && (
+                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                            <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {!collapsedGroups.has(group) && (
+                        <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-3 py-2">
+                            <input
+                              className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                              type="checkbox"
+                              checked={selected.has(invoice.id)}
+                              onChange={() => toggleSelect(invoice.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
+                            <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.recipientName}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
+                              {"• "}{manifest.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                          </td>
+                        </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                })()
               )}
             </tbody>
           </table>
@@ -464,7 +478,6 @@ export default function IssuedInvoicesPage() {
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value={10}>10 / página</option>
               <option value={25}>25 / página</option>
               <option value={50}>50 / página</option>
               <option value={100}>100 / página</option>

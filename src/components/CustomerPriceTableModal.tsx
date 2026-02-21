@@ -20,6 +20,7 @@ interface CustomerPriceRow {
   code: string;
   description: string;
   unit: string;
+  totalQuantity: number;
   quantity2025: number;
   quantity2026: number;
   lastPrice: number;
@@ -43,7 +44,14 @@ interface CustomerPriceTableModalProps {
   customer: CustomerRef | null;
 }
 
-type PriceSortKey = 'description' | 'code' | 'quantity2025' | 'quantity2026' | 'lastPrice' | 'lastIssueDate';
+type PriceSortKey =
+  | 'description'
+  | 'code'
+  | 'totalQuantity'
+  | 'quantity2025'
+  | 'quantity2026'
+  | 'lastPrice'
+  | 'lastIssueDate';
 type SortDirection = 'asc' | 'desc';
 
 function formatQuantity(value: number) {
@@ -119,7 +127,8 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
     const searchValue = searchTerm.trim().toLowerCase();
     const filteredRows = searchValue
       ? details.priceTable.filter((row) =>
-        row.description.toLowerCase().includes(searchValue) || row.code.toLowerCase().includes(searchValue))
+          row.description.toLowerCase().includes(searchValue) || row.code.toLowerCase().includes(searchValue),
+        )
       : details.priceTable;
 
     return [...filteredRows].sort((a, b) => {
@@ -129,6 +138,8 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
         compareValue = a.description.localeCompare(b.description, 'pt-BR', { sensitivity: 'base' });
       } else if (sortKey === 'code') {
         compareValue = a.code.localeCompare(b.code, 'pt-BR', { sensitivity: 'base' });
+      } else if (sortKey === 'totalQuantity') {
+        compareValue = a.totalQuantity - b.totalQuantity;
       } else if (sortKey === 'quantity2025') {
         compareValue = a.quantity2025 - b.quantity2025;
       } else if (sortKey === 'quantity2026') {
@@ -144,6 +155,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
       return sortDirection === 'asc' ? compareValue : -compareValue;
     });
   }, [details, searchTerm, sortDirection, sortKey]);
+
+  const filteredTotalQuantity = useMemo(
+    () => filteredAndSortedRows.reduce((acc, row) => acc + row.totalQuantity, 0),
+    [filteredAndSortedRows],
+  );
 
   const toggleSort = (key: PriceSortKey) => {
     if (sortKey === key) {
@@ -184,9 +200,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
           </div>
 
           {details.priceTable.length === 0 ? (
-            <div className="px-4 py-10 text-center text-slate-400 text-sm">
-              Sem itens para compor tabela de preço.
-            </div>
+            <div className="px-4 py-10 text-center text-slate-400 text-sm">Sem itens para compor tabela de preço.</div>
           ) : (
             <>
               <div className="mb-1 flex items-center justify-between gap-3">
@@ -204,10 +218,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {filteredAndSortedRows.length} item(ns)
+                    {filteredAndSortedRows.length.toLocaleString('pt-BR')}
                   </p>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                    2026 = de 01/01/2026 até hoje
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">(itens)</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    Qtde total: {formatQuantity(filteredTotalQuantity)}
                   </p>
                 </div>
               </div>
@@ -218,11 +233,15 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                 </div>
               ) : (
                 <div className="overflow-x-auto max-h-[420px] rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse min-w-[820px]">
+                  <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                         <th rowSpan={2} className="px-3 py-2 align-middle">
-                          <button type="button" onClick={() => toggleSort('code')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('code')}
+                            className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             Código
                             {getSortIcon('code') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('code')}</span>
@@ -230,18 +249,26 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                           </button>
                         </th>
                         <th rowSpan={2} className="px-3 py-2 align-middle">
-                          <button type="button" onClick={() => toggleSort('description')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('description')}
+                            className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             Produto
                             {getSortIcon('description') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('description')}</span>
                             )}
                           </button>
                         </th>
-                        <th colSpan={2} className="px-3 py-2 text-center">
+                        <th colSpan={3} className="px-3 py-2 text-center">
                           Qtde. Vendida
                         </th>
                         <th rowSpan={2} className="px-3 py-2 text-right align-middle">
-                          <button type="button" onClick={() => toggleSort('lastPrice')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('lastPrice')}
+                            className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             Último Preço
                             {getSortIcon('lastPrice') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('lastPrice')}</span>
@@ -249,7 +276,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                           </button>
                         </th>
                         <th rowSpan={2} className="px-3 py-2 align-middle">
-                          <button type="button" onClick={() => toggleSort('lastIssueDate')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('lastIssueDate')}
+                            className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             Última Venda
                             {getSortIcon('lastIssueDate') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('lastIssueDate')}</span>
@@ -259,7 +290,23 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                       </tr>
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                         <th className="px-3 py-2 text-right">
-                          <button type="button" onClick={() => toggleSort('quantity2025')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('totalQuantity')}
+                            className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
+                            Total
+                            {getSortIcon('totalQuantity') && (
+                              <span className="material-symbols-outlined text-[14px]">{getSortIcon('totalQuantity')}</span>
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('quantity2025')}
+                            className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             2025
                             {getSortIcon('quantity2025') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('quantity2025')}</span>
@@ -267,7 +314,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                           </button>
                         </th>
                         <th className="px-3 py-2 text-right">
-                          <button type="button" onClick={() => toggleSort('quantity2026')} className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSort('quantity2026')}
+                            className="ml-auto inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
+                          >
                             2026
                             {getSortIcon('quantity2026') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('quantity2026')}</span>
@@ -278,10 +329,16 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredAndSortedRows.map((row) => (
-                        <tr key={`${row.code}-${row.description}-${row.unit}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <tr
+                          key={`${row.code}-${row.description}-${row.unit}`}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                        >
                           <td className="px-3 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300">{row.code}</td>
                           <td className="px-3 py-1.5">
                             <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.description}</div>
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-xs font-semibold text-slate-900 dark:text-white">
+                            {formatQuantity(row.totalQuantity)}
                           </td>
                           <td className="px-3 py-1.5 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
                             {formatQuantity(row.quantity2025)}
