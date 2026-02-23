@@ -11,3 +11,5 @@ stitch_output
 *.zip
 *.md
 debug_import_xml.txt
+Dockerfile
+docker-compose*.yml
