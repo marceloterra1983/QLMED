@@ -17,8 +17,8 @@ module.exports = {
         'card-dark': '#1e293b',
       },
       fontFamily: {
-        display: ['Manrope', 'sans-serif'],
-        sans: ['Manrope', 'sans-serif'],
+        display: ['var(--font-manrope)', 'sans-serif'],
+        sans: ['var(--font-manrope)', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '0.25rem',

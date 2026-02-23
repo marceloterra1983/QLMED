@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-manrope), sans-serif;
 }
 
 .material-symbols-outlined {

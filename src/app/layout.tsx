@@ -1,6 +1,36 @@
 import type { Metadata } from 'next';
+import { Manrope } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-manrope',
+});
+
+const MATERIAL_ICONS = [
+  'arrow_back','arrow_downward','arrow_upward','business','calendar_month',
+  'call_made','call_received','cancel','check_circle','chevron_left',
+  'chevron_right','close','cloud_off','cloud_sync','cloud_upload',
+  'code','code_off','content_copy','dark_mode','dashboard',
+  'delete','delete_forever','description','desktop_windows','download',
+  'edit_note','error','event_repeat','expand_more','fact_check',
+  'filter_alt','filter_alt_off','first_page','folder_open','folder_zip',
+  'forward_to_inbox','group','history','home','hourglass_top',
+  'hub','info','inventory_2','last_page','light_mode',
+  'link','list_alt','local_shipping','login','logout',
+  'menu','monitoring','more_vert','no_encryption','open_in_new',
+  'output','payments','pending_actions','person','picture_as_pdf',
+  'print','progress_activity','receipt_long','refresh','request_quote',
+  'save','schedule','search','search_off','settings',
+  'storefront','sync','table_view','today','trending_down',
+  'trending_up','unfold_more','upcoming','verified_user','visibility',
+  'warning','wifi_tethering',
+].join(',');
+
+const materialSymbolsUrl = `https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&icon_names=${MATERIAL_ICONS}&display=swap`;
 
 export const metadata: Metadata = {
   title: 'QLMED - Gestão de Notas Fiscais',
@@ -14,18 +44,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={manrope.variable}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-          rel="stylesheet"
-        />
+        <link href={materialSymbolsUrl} rel="stylesheet" />
       </head>
       <body className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased">
         <Providers>{children}</Providers>
