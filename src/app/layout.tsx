@@ -44,13 +44,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={manrope.variable}>
+    <html lang="pt-BR" className={manrope.variable} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={materialSymbolsUrl} rel="stylesheet" />
       </head>
-      <body className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased">
+      <body className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
