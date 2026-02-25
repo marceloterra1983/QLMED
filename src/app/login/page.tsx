@@ -4,14 +4,20 @@ import { useEffect, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -32,7 +38,15 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Email ou senha incorretos');
+        if (result.error.includes('ACCOUNT_PENDING')) {
+          setError('Sua conta está aguardando aprovação do administrador.');
+        } else if (result.error.includes('ACCOUNT_REJECTED')) {
+          setError('Sua conta foi rejeitada. Entre em contato com o administrador.');
+        } else if (result.error.includes('ACCOUNT_INACTIVE')) {
+          setError('Sua conta está desativada. Entre em contato com o administrador.');
+        } else {
+          setError('Email ou senha incorretos');
+        }
       } else {
         router.push('/dashboard');
       }
@@ -43,7 +57,7 @@ export default function LoginPage() {
     }
   };
 
-  if (status === 'loading' || status === 'authenticated') {
+  if (!mounted || status === 'loading' || status === 'authenticated') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-background-dark dark:via-background-dark dark:to-blue-950/20 p-4">
         <p className="text-sm text-slate-600 dark:text-slate-300">Carregando...</p>
@@ -132,6 +146,14 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <div className="mt-6 text-center">
+            <Link
+              href="/register"
+              className="text-sm text-primary hover:text-primary-dark font-medium transition-colors"
+            >
+              Não tem conta? Cadastre-se
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -6,6 +6,11 @@ export interface Invoice {
   type: InvoiceType;
   direction?: InvoiceDirection;
   number: string;
+  cfop?: string | null;
+  cteRemetenteName?: string | null;
+  cteRecebedorName?: string | null;
+  cteRemetenteCnpj?: string | null;
+  cteRecebedorCnpj?: string | null;
   series: string | null;
   issueDate: string;
   senderCnpj: string;
@@ -14,6 +19,7 @@ export interface Invoice {
   recipientName: string;
   totalValue: number;
   status: InvoiceStatus;
+  createdAt?: string;
   xmlContent?: string;
   company?: { razaoSocial: string; cnpj: string };
 }

@@ -7,6 +7,7 @@ import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 interface AggregatedCustomer {
   cnpj: string;
   name: string;
+  city: string | null;
   invoiceCount: number;
   invoiceCountPrevYear: number;
   invoiceCountCurrentYear: number;
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = toPositiveInt(searchParams.get('page'), 1, 100000);
-    const limit = toPositiveInt(searchParams.get('limit'), 50, 100);
+    const limit = toPositiveInt(searchParams.get('limit'), 50, 500);
     const search = (searchParams.get('search') || '').trim();
     const sort = searchParams.get('sort') || 'name';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
@@ -110,6 +111,7 @@ export async function GET(req: Request) {
         customerMap.set(key, {
           cnpj: grouped.recipientCnpj || '',
           name: grouped.recipientName || 'Cliente não identificado',
+          city: null,
           invoiceCount,
           invoiceCountPrevYear: yearCountMapPrev.get(key) || 0,
           invoiceCountCurrentYear: yearCountMapCurrent.get(key) || 0,
@@ -135,11 +137,53 @@ export async function GET(req: Request) {
 
     let customers = Array.from(customerMap.values());
 
+    // Fetch city (xMun/UF) from most recent invoice per customer using DISTINCT ON
+    const allCnpjs = customers.map((c) => c.cnpj).filter(Boolean);
+    if (allCnpjs.length > 0) {
+      const latestXmls = await prisma.$queryRaw<Array<{ recipientCnpj: string; xmlContent: string | null }>>`
+        SELECT DISTINCT ON ("recipientCnpj") "recipientCnpj", "xmlContent"
+        FROM "Invoice"
+        WHERE "companyId" = ${company.id}
+          AND "type" = 'NFE'
+          AND "direction" = 'issued'
+          AND "recipientCnpj" = ANY(${allCnpjs})
+          AND "xmlContent" IS NOT NULL
+        ORDER BY "recipientCnpj", "issueDate" DESC
+      `;
+      const cityByKey = new Map<string, string>();
+      for (const row of latestXmls) {
+        if (!row.xmlContent) continue;
+        const enderDestBlock = row.xmlContent.match(/<enderDest\b[^>]*>[\s\S]*?<\/enderDest>/i)?.[0];
+        const xMun = enderDestBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]?.trim();
+        const uf = enderDestBlock?.match(/<UF>([\s\S]*?)<\/UF>/i)?.[1]?.trim();
+        if (xMun) cityByKey.set(row.recipientCnpj, uf ? `${xMun} - ${uf}` : xMun);
+      }
+      for (const c of customers) {
+        c.city = cityByKey.get(c.cnpj) || null;
+      }
+    }
+
+    const allNicknames = await prisma.contactNickname.findMany({
+      where: { companyId: company.id },
+      select: { cnpj: true, shortName: true },
+    });
+    const nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
+
     if (search) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
-      customers = customers.filter((c) =>
-        flexMatchAll([c.name, c.cnpj, c.cnpj.replace(/\D/g, '')], searchWords)
-      );
+      customers = customers.filter((c) => {
+        const nick = nicknameMap.get(c.cnpj) || '';
+        return flexMatchAll([c.name, c.cnpj, c.cnpj.replace(/\D/g, ''), nick], searchWords);
+      });
+    }
+
+    // Precompute city count for sort=city
+    const cityCountMap = new Map<string, number>();
+    if (sort === 'city') {
+      for (const c of customers) {
+        const key = c.city || '';
+        cityCountMap.set(key, (cityCountMap.get(key) || 0) + 1);
+      }
     }
 
     customers.sort((a, b) => {
@@ -167,6 +211,16 @@ export async function GET(req: Request) {
         case 'lastIssue':
           comparison = (a.lastIssueDate?.getTime() || 0) - (b.lastIssueDate?.getTime() || 0);
           break;
+        case 'city': {
+          const countA = cityCountMap.get(a.city || '') || 0;
+          const countB = cityCountMap.get(b.city || '') || 0;
+          // Cities with more customers first, then alphabetical within city, then by name
+          const byCityCount = countB - countA;
+          if (byCityCount !== 0) return byCityCount;
+          const byCityName = compareStrings(a.city || '', b.city || '');
+          if (byCityName !== 0) return byCityName;
+          return compareStrings(a.name, b.name);
+        }
         default:
           comparison = compareStrings(a.name, b.name);
           break;
@@ -185,6 +239,34 @@ export async function GET(req: Request) {
     const start = (normalizedPage - 1) * limit;
     const paginatedCustomers = customers.slice(start, start + limit);
 
+    // Compute price item count (distinct cProd::xProd::uCom) for paginated customers
+    const paginatedCnpjs = paginatedCustomers.map((c) => c.cnpj).filter(Boolean);
+    const priceItemCountMap = new Map<string, number>();
+    if (paginatedCnpjs.length > 0) {
+      const invoiceXmls = await prisma.invoice.findMany({
+        where: { companyId: company.id, type: 'NFE', direction: 'issued', recipientCnpj: { in: paginatedCnpjs } },
+        select: { recipientCnpj: true, xmlContent: true },
+      });
+      const productKeysByCnpj = new Map<string, Set<string>>();
+      for (const inv of invoiceXmls) {
+        if (!inv.recipientCnpj || !inv.xmlContent) continue;
+        let set = productKeysByCnpj.get(inv.recipientCnpj);
+        if (!set) { set = new Set(); productKeysByCnpj.set(inv.recipientCnpj, set); }
+        const detBlocks = inv.xmlContent.match(/<det\b[^>]*>[\s\S]*?<\/det>/gi) || [];
+        for (const det of detBlocks) {
+          const code = det.match(/<cProd>([\s\S]*?)<\/cProd>/i)?.[1]?.trim() || '';
+          const desc = det.match(/<xProd>([\s\S]*?)<\/xProd>/i)?.[1]?.trim() || '';
+          const unit = det.match(/<uCom>([\s\S]*?)<\/uCom>/i)?.[1]?.trim() || '';
+          if (code || desc) set.add(`${code}::${desc}::${unit}`);
+        }
+      }
+      for (const [cnpj, set] of Array.from(productKeysByCnpj.entries())) {
+        priceItemCountMap.set(cnpj, set.size);
+      }
+    }
+
+    // nicknameMap already fetched above for search
+
     const summary = customers.reduce((acc, customer) => {
       acc.totalInvoices += customer.invoiceCount;
       acc.totalValue += customer.totalValue;
@@ -192,7 +274,7 @@ export async function GET(req: Request) {
     }, { totalCustomers: total, totalInvoices: 0, totalValue: 0 });
 
     return NextResponse.json({
-      customers: paginatedCustomers,
+      customers: paginatedCustomers.map((c) => ({ ...c, shortName: nicknameMap.get(c.cnpj) || null, priceItemCount: priceItemCountMap.get(c.cnpj) ?? null })),
       summary,
       years: { prevYear, currentYear },
       pagination: {

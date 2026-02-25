@@ -3,8 +3,9 @@ const nextConfig = {
   output: 'standalone',
   compress: true,
   poweredByHeader: false,
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
+  serverExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
+  env: {
+    QLMED_API_KEY: process.env.QLMED_API_KEY,
   },
   async headers() {
     return [

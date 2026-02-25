@@ -3,15 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import type { Session } from 'next-auth';
 
 interface NavItem {
   label: string;
   icon: string;
   href: string;
   badge?: string;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -19,46 +20,17 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navItems: NavGroup[] = [
-  {
-    section: null,
-    items: [
-      { label: 'Visão Geral', icon: 'dashboard', href: '/dashboard' },
-    ],
-  },
-  {
-    section: 'Cadastros',
-    items: [
-      { label: 'Produtos', icon: 'inventory_2', href: '/dashboard/produtos' },
-      { label: 'Clientes', icon: 'group', href: '/dashboard/clientes' },
-      { label: 'Fornecedores', icon: 'storefront', href: '/dashboard/fornecedores' },
-    ],
-  },
-  {
-    section: 'Fiscal',
-    items: [
-      { label: 'NF-e Recebidas', icon: 'receipt_long', href: '/dashboard/invoices' },
-      { label: 'NF-e Emitidas', icon: 'output', href: '/dashboard/issued' },
-      { label: 'CT-e', icon: 'local_shipping', href: '/dashboard/cte' },
-    ],
-  },
-  {
-    section: 'Financeiro',
-    items: [
-      { label: 'Contas a Pagar', icon: 'payments', href: '/dashboard/contas-pagar' },
-      { label: 'Contas a Receber', icon: 'request_quote', href: '/dashboard/contas-receber' },
-    ],
-  },
-  {
-    section: 'Sistema',
-    items: [
-      { label: 'Sincronizar', icon: 'cloud_sync', href: '/dashboard/sync' },
-      { label: 'Erros', icon: 'warning', href: '/dashboard/errors' },
-      { label: 'Upload XML', icon: 'cloud_upload', href: '/dashboard/upload' },
-      { label: 'Configurações', icon: 'settings', href: '/dashboard/settings' },
-    ],
-  },
-];
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  editor: 'Editor',
+  viewer: 'Visualizador',
+};
+
+const ROLE_BADGE_COLORS: Record<string, string> = {
+  admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  editor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  viewer: 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400',
+};
 
 const SIDEBAR_MIN = 64;
 const SIDEBAR_DEFAULT = 256;
@@ -70,13 +42,76 @@ function SidebarContent({
   collapsed,
   onNavClick,
   onToggleCollapse,
+  pendingCount,
 }: {
   pathname: string;
-  session: any;
+  session: Session | null;
   collapsed: boolean;
   onNavClick?: () => void;
   onToggleCollapse?: () => void;
+  pendingCount: number;
 }) {
+  const role = session?.user?.role || 'viewer';
+  const isAdmin = role === 'admin';
+  const allowedPages: string[] = session?.user?.allowedPages ?? [];
+  const hasPageAccess = (path: string) => isAdmin || allowedPages.length === 0 || allowedPages.includes(path);
+
+  const allNavItems: NavGroup[] = [
+    {
+      section: null,
+      items: [
+        { label: 'Visão Geral', icon: 'dashboard', href: '/dashboard' },
+      ],
+    },
+    {
+      section: 'Cadastros',
+      items: [
+        { label: 'Produtos', icon: 'inventory_2', href: '/dashboard/produtos' },
+        { label: 'Clientes', icon: 'group', href: '/dashboard/clientes' },
+        { label: 'Fornecedores', icon: 'storefront', href: '/dashboard/fornecedores' },
+      ],
+    },
+    {
+      section: 'Fiscal',
+      items: [
+        { label: 'NF-e Recebidas', icon: 'receipt_long', href: '/dashboard/invoices' },
+        { label: 'NF-e Emitidas', icon: 'output', href: '/dashboard/issued' },
+        { label: 'CT-e', icon: 'local_shipping', href: '/dashboard/cte' },
+      ],
+    },
+    {
+      section: 'Financeiro',
+      items: [
+        { label: 'Contas a Pagar', icon: 'payments', href: '/dashboard/contas-pagar' },
+        { label: 'Contas a Receber', icon: 'request_quote', href: '/dashboard/contas-receber' },
+      ],
+    },
+    {
+      section: 'Sistema',
+      items: [
+        { label: 'Sincronizar', icon: 'cloud_sync', href: '/dashboard/sync' },
+        { label: 'Erros', icon: 'warning', href: '/dashboard/errors' },
+        { label: 'Upload XML', icon: 'cloud_upload', href: '/dashboard/upload' },
+        { label: 'Configurações', icon: 'settings', href: '/dashboard/settings' },
+        ...(isAdmin ? [{
+          label: 'Usuários',
+          icon: 'manage_accounts',
+          href: '/dashboard/usuarios',
+          badge: pendingCount > 0 ? String(pendingCount) : undefined,
+          adminOnly: true,
+        }] : []),
+      ],
+    },
+  ];
+
+  // Filter nav items based on allowedPages
+  const navItems: NavGroup[] = allNavItems
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.adminOnly || hasPageAccess(item.href)),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <>
       <div className={`flex flex-col gap-6 ${collapsed ? 'p-3' : 'p-5'}`}>
@@ -170,13 +205,8 @@ function SidebarContent({
 
       {/* User Profile */}
       <div className={`border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 ${collapsed ? 'p-2' : 'p-4'}`}>
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          title={collapsed ? 'Sair' : undefined}
-          className={`flex items-center w-full rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-100 dark:hover:border-slate-700 ${
-            collapsed ? 'justify-center p-2' : 'gap-3 p-2 text-left shadow-sm hover:shadow-md'
-          }`}
-        >
+        {/* User info */}
+        <div className={`flex items-center ${collapsed ? 'justify-center mb-2' : 'gap-3 mb-3'}`}>
           <div className="relative flex-shrink-0">
             <div className={`rounded-full border-2 border-primary/30 bg-primary/10 flex items-center justify-center ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}>
               <span className="material-symbols-outlined text-primary text-[20px]">person</span>
@@ -184,19 +214,45 @@ function SidebarContent({
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent rounded-full border-2 border-white dark:border-card-dark" />
           </div>
           {!collapsed && (
-            <>
-              <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0">
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
                   {session?.user?.name || 'Usuário'}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {session?.user?.email || ''}
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${ROLE_BADGE_COLORS[role] || ROLE_BADGE_COLORS.viewer}`}>
+                  {ROLE_LABELS[role] || role}
                 </span>
               </div>
-              <span className="material-symbols-outlined text-slate-400 text-[20px]">logout</span>
-            </>
+              <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {session?.user?.email || ''}
+              </span>
+            </div>
           )}
-        </button>
+        </div>
+
+        {/* Action buttons */}
+        <div className={`flex ${collapsed ? 'flex-col items-center gap-1' : 'gap-2'}`}>
+          <button
+            onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login'; })}
+            title="Trocar conta"
+            className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors ${
+              collapsed ? 'p-2' : 'flex-1 px-3 py-2'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">switch_account</span>
+            {!collapsed && <span className="text-xs font-medium">Trocar conta</span>}
+          </button>
+          <button
+            onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login'; })}
+            title="Sair"
+            className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
+              collapsed ? 'p-2' : 'flex-1 px-3 py-2'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+            {!collapsed && <span className="text-xs font-medium">Sair</span>}
+          </button>
+        </div>
       </div>
     </>
   );
@@ -208,17 +264,23 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [collapsed, setCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleToggleCollapse = useCallback(() => {
     setCollapsed(prev => {
       if (!prev) {
-        // Collapsing - store current width for later
         setSidebarWidth(SIDEBAR_MIN);
       } else {
         setSidebarWidth(SIDEBAR_DEFAULT);
@@ -231,6 +293,29 @@ export default function DashboardLayout({
     e.preventDefault();
     setIsResizing(true);
   }, []);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+    }
+  }, [status, router]);
+
+  // Fetch pending user count for admin badge
+  useEffect(() => {
+    if (session?.user?.role !== 'admin') return;
+    const fetchPending = async () => {
+      try {
+        const res = await fetch('/api/users/pending-count');
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCount(data.count || 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 60000); // refresh every minute
+    return () => clearInterval(interval);
+  }, [session?.user?.role]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -258,16 +343,20 @@ export default function DashboardLayout({
     };
   }, [isResizing]);
 
-  if (status === 'unauthenticated') {
-    redirect('/login');
-  }
-
   const actualWidth = collapsed ? SIDEBAR_MIN : sidebarWidth;
+
+  // Keep the first server/client render deterministic to avoid hydration mismatches
+  // caused by session-dependent navigation and browser-only state.
+  if (!mounted || status !== 'authenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+        <p className="text-sm text-slate-600 dark:text-slate-300">Carregando painel...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <a href="#main-content" className="skip-link">Pular para conteúdo principal</a>
-
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -287,6 +376,7 @@ export default function DashboardLayout({
           session={session}
           collapsed={collapsed}
           onToggleCollapse={handleToggleCollapse}
+          pendingCount={pendingCount}
         />
 
         {/* Resize handle */}
@@ -307,6 +397,7 @@ export default function DashboardLayout({
           session={session}
           collapsed={false}
           onNavClick={() => setSidebarOpen(false)}
+          pendingCount={pendingCount}
         />
       </aside>
 

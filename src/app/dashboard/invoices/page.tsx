@@ -9,15 +9,19 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatValue, getDateGroupLabel } from '@/lib/utils';
+import { formatDate, formatTime, formatCurrency, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
+import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
+import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
+import { useRole } from '@/hooks/useRole';
 
 export default function InvoicesPage() {
+  const { canWrite } = useRole();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -35,6 +39,21 @@ export default function InvoicesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+  const getReceivedTagLabel = (tag?: string | null) => (tag === 'Venda' ? 'Compra' : tag || '');
+  const isNeutralTag = (tag?: string | null) => !tag || tag === 'Compra' || tag === 'Venda';
+  const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
+    if (tag === 'Venda') {
+      return 'bg-emerald-200 text-emerald-900 dark:bg-emerald-500/35 dark:text-emerald-100';
+    }
+    if (tag === 'Compra') {
+      return 'bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100';
+    }
+    if (highlighted) {
+      return 'bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100';
+    }
+    return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+  };
 
   const toggleGroup = (group: string) => {
     setCollapsedGroups(prev => {
@@ -66,7 +85,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     loadInvoices();
-  }, [page, limit, search, statusFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [page, limit, search, tagFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {
     const headers = ['Numero', 'Chave', 'Emitente', 'Data', 'Valor', 'Status'];
@@ -89,20 +108,52 @@ export default function InvoicesPage() {
     toast.success('CSV exportado com sucesso!');
   };
 
-  const handleBulkDownloadXml = () => {
+  const handleBulkDownloadXml = async () => {
     if (selected.size === 0) return;
-    selected.forEach(id => {
-      window.open(`/api/invoices/${id}/download`, '_blank');
-    });
-    toast.success(`Iniciando download de ${selected.size} XML(s)`);
+    const ids = Array.from(selected);
+
+    try {
+      if (ids.length === 1) {
+        await downloadFileFromUrl(`/api/invoices/${ids[0]}/download`);
+      } else {
+        await downloadFileFromRequest(
+          '/api/invoices/bulk-download',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, format: 'xml' }),
+          },
+          'xml_lote.zip',
+        );
+      }
+      toast.success(`Download concluído: ${ids.length} XML(s)`);
+    } catch {
+      toast.error('Erro ao baixar XMLs selecionados');
+    }
   };
 
-  const handleBulkDownloadPdf = () => {
+  const handleBulkDownloadPdf = async () => {
     if (selected.size === 0) return;
-    selected.forEach(id => {
-      window.open(`/api/invoices/${id}/pdf?download=true`, '_blank');
-    });
-    toast.success(`Iniciando download de ${selected.size} PDF(s)`);
+    const ids = Array.from(selected);
+
+    try {
+      if (ids.length === 1) {
+        await downloadFileFromUrl(`/api/invoices/${ids[0]}/pdf?download=true`);
+      } else {
+        await downloadFileFromRequest(
+          '/api/invoices/bulk-download',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, format: 'pdf' }),
+          },
+          'pdf_lote.zip',
+        );
+      }
+      toast.success(`Download concluído: ${ids.length} PDF(s)`);
+    } catch {
+      toast.error('Erro ao baixar PDFs selecionados');
+    }
   };
 
   const confirmDelete = (target: 'bulk' | string) => {
@@ -138,7 +189,7 @@ export default function InvoicesPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set('search', search);
-      if (statusFilter) params.set('status', statusFilter);
+      if (tagFilter) params.set('cfopTag', tagFilter);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
       // HARDCODED FILTER FOR NFE RECEBIDAS
@@ -150,9 +201,17 @@ export default function InvoicesPage() {
       const res = await fetch(`/api/invoices?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setInvoices(data.invoices || []);
+        const loaded: Invoice[] = data.invoices || [];
+        setInvoices(loaded);
         setTotalPages(data.pagination?.pages || 1);
         setTotal(data.pagination?.total || 0);
+        const cnpjs = Array.from(new Set(loaded.map((inv) => inv.senderCnpj).filter(Boolean)));
+        if (cnpjs.length > 0) {
+          const p = new URLSearchParams();
+          cnpjs.forEach((c) => p.append('cnpjs', c));
+          const nr = await fetch(`/api/contacts/nickname/batch?${p}`);
+          if (nr.ok) { const nd = await nr.json(); setNicknames(new Map(Object.entries(nd.nicknames || {}))); }
+        } else { setNicknames(new Map()); }
       }
     } catch (err) {
       toast.error('Erro ao carregar notas fiscais');
@@ -197,10 +256,19 @@ export default function InvoicesPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setStatusFilter('');
+    setTagFilter('');
     setDateFrom('');
     setDateTo('');
     setPage(1);
+  };
+
+  const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
+    const full = (name || '').trim() || '-';
+    if (!cnpj) return { display: full, full: null };
+    const nick = nicknames.get(cnpj);
+    if (nick) return { display: nick, full };
+    const isCpf = cnpj.replace(/\D/g, '').length === 11;
+    return isCpf ? { display: 'PARTICULAR', full } : { display: full, full: null };
   };
 
   return (
@@ -265,16 +333,16 @@ export default function InvoicesPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status SEFAZ</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tipo de NF-e</label>
             <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              value={tagFilter}
+              onChange={(e) => { setTagFilter(e.target.value); setPage(1); }}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
               <option value="">Todos</option>
-              <option value="received">Recebida</option>
-              <option value="confirmed">Confirmada</option>
-              <option value="rejected">Rejeitada</option>
+              {getCfopTagOptions().map((tag) => (
+                <option key={tag} value={tag}>{getReceivedTagLabel(tag)}</option>
+              ))}
             </select>
           </div>
           <div className="flex gap-2">
@@ -315,11 +383,15 @@ export default function InvoicesPage() {
             <span className="material-symbols-outlined text-[18px]">fact_check</span>
             Manifestar
           </button>
-          <div className="h-4 w-px bg-slate-300"></div>
-          <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
-            <span className="material-symbols-outlined text-[18px]">delete</span>
-            Excluir
-          </button>
+          {canWrite && (
+            <>
+              <div className="h-4 w-px bg-slate-300"></div>
+              <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+                Excluir
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -340,20 +412,37 @@ export default function InvoicesPage() {
           </div>
         ) : (
           invoices.map((invoice) => {
+            const cfopTag = getCfopTagByCode(invoice.cfop);
+            const displayTag = getReceivedTagLabel(cfopTag);
+            const highlightRow = !isNeutralTag(displayTag);
             return (
-              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <div
+                key={invoice.id}
+                className={`border rounded-xl p-4 ${
+                  highlightRow
+                    ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60'
+                    : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
+                }`}
+              >
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                    {displayTag && (
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>
+                          {displayTag}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.senderName}</p>
+                {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><p className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
                     <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
+                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
                   </div>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
             );
@@ -424,6 +513,9 @@ export default function InvoicesPage() {
                     const group = getDateGroupLabel(invoice.issueDate);
                     const showDivider = group !== lastGroup;
                     lastGroup = group;
+                    const cfopTag = getCfopTagByCode(invoice.cfop);
+                    const displayTag = getReceivedTagLabel(cfopTag);
+                    const highlightRow = !isNeutralTag(displayTag);
                     return (
                       <React.Fragment key={invoice.id}>
                         {showDivider && (
@@ -437,7 +529,7 @@ export default function InvoicesPage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                        <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <tr className={`group transition-colors ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
                           <td className="px-3 py-2">
                             <input
                               className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
@@ -451,16 +543,23 @@ export default function InvoicesPage() {
                             <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
                           </td>
                           <td className="px-3 py-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                              {displayTag && (
+                                <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>
+                                  {displayTag}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 text-right">
-                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
+                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
                           </td>
                           <td className="px-3 py-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
+                            {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
                           </td>
                           <td className="px-3 py-2">
-                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
                         )}

@@ -3,6 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
+import prisma from '@/lib/prisma';
 
 type DuplicataStatus = 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
 const VENCIMENTO_PRIORITY_ASC: Record<DuplicataStatus, number> = {
@@ -18,18 +19,29 @@ interface ContasReceberDuplicata {
   nfNumero: string;
   clienteCnpj: string;
   clienteNome: string;
+  clienteNomeAbreviado: string;
   nfEmissao: Date;
   nfValorTotal: number;
   faturaNumero: string;
   faturaValorOriginal: number;
   faturaValorLiquido: number;
   dupNumero: string;
+  dupNumeroOriginal: string;
   dupVencimento: string;
+  dupVencimentoOriginal: string;
   dupValor: number;
   status: DuplicataStatus;
   diasAtraso: number;
   diasParaVencer: number;
   parcelaTotal: number;
+}
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function getNetInstallmentValue(valor: number, desconto: number): number {
+  return roundMoney(Math.max(0, valor - desconto));
 }
 
 function toEpochDay(dateKey: string): number {
@@ -88,7 +100,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')));
+    const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get('limit') || '50')));
     const search = searchParams.get('search') || '';
     const statusFilter = searchParams.get('status') || '';
     const dateFrom = searchParams.get('dateFrom') || '';
@@ -107,7 +119,91 @@ export async function GET(req: Request) {
     const nextMonthKey = `${nextMonthDate.getFullYear()}-${pad2(nextMonthDate.getMonth() + 1)}`;
 
     const baseDuplicatas = await getFinanceiroDuplicatas(company.id, 'issued');
+    const invoiceIds = Array.from(new Set(baseDuplicatas.map((item) => item.invoiceId)));
+    const manualInstallments = invoiceIds.length > 0
+      ? await prisma.financeiroDuplicataManualInstallment.findMany({
+          where: {
+            companyId: company.id,
+            invoiceId: { in: invoiceIds },
+          },
+          select: {
+            invoiceId: true,
+            dupNumero: true,
+            dupVencimento: true,
+            dupValor: true,
+            dupDesconto: true,
+          },
+          orderBy: [
+            { invoiceId: 'asc' },
+            { dupVencimento: 'asc' },
+            { dupNumero: 'asc' },
+          ],
+        })
+      : [];
+    const manualByInvoice = new Map<string, typeof manualInstallments>();
+    for (const item of manualInstallments) {
+      const list = manualByInvoice.get(item.invoiceId);
+      if (list) {
+        list.push(item);
+      } else {
+        manualByInvoice.set(item.invoiceId, [item]);
+      }
+    }
+    const invoiceIdsWithManual = new Set(manualByInvoice.keys());
+    const expandedDuplicatas = [];
+    const manualAppliedForInvoice = new Set<string>();
+    for (const item of baseDuplicatas) {
+      if (!invoiceIdsWithManual.has(item.invoiceId)) {
+        expandedDuplicatas.push(item);
+        continue;
+      }
+
+      if (manualAppliedForInvoice.has(item.invoiceId)) {
+        continue;
+      }
+
+      manualAppliedForInvoice.add(item.invoiceId);
+      const schedule = manualByInvoice.get(item.invoiceId) || [];
+      for (const parcela of schedule) {
+        expandedDuplicatas.push({
+          ...item,
+          dupNumero: parcela.dupNumero,
+          dupVencimento: parcela.dupVencimento,
+          dupValor: getNetInstallmentValue(parcela.dupValor, parcela.dupDesconto || 0),
+        });
+      }
+    }
+
+    const overrides = invoiceIds.length > 0
+      ? await prisma.financeiroDuplicataOverride.findMany({
+          where: {
+            companyId: company.id,
+            invoiceId: { in: invoiceIds },
+          },
+          select: {
+            invoiceId: true,
+            dupNumeroOriginal: true,
+            dupVencimentoOriginal: true,
+            emitenteNome: true,
+            emitenteCnpj: true,
+            faturaNumero: true,
+            dupNumero: true,
+            dupVencimento: true,
+            dupValor: true,
+          },
+        })
+      : [];
+    const overridesByKey = new Map(
+      overrides.map((item) => [
+        `${item.invoiceId}::${item.dupNumeroOriginal}::${item.dupVencimentoOriginal}`,
+        item,
+      ])
+    );
+
     const searchWords = normalizeForSearch(search.trim()).split(/\s+/).filter(Boolean);
+
+    const allNicknames = await prisma.contactNickname.findMany({ where: { companyId: company.id }, select: { cnpj: true, shortName: true } });
+    const nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
 
     const filtered: ContasReceberDuplicata[] = [];
     const summary = {
@@ -127,19 +223,23 @@ export async function GET(req: Request) {
       aVencerValor: 0,
     };
 
-    for (const item of baseDuplicatas) {
-      const vencimento = item.dupVencimento;
+    for (const item of expandedDuplicatas) {
+      const override = overridesByKey.get(`${item.invoiceId}::${item.dupNumero}::${item.dupVencimento}`);
+      const clienteNome = override?.emitenteNome?.trim() || item.partyNome || '';
+      const clienteCnpj = override?.emitenteCnpj?.trim() || item.partyCnpj || '';
+      const faturaNumero = override?.faturaNumero?.trim() || item.faturaNumero;
+      const dupNumero = override?.dupNumero?.trim() || item.dupNumero;
+      const vencimento = override?.dupVencimento?.trim() || item.dupVencimento;
+      const dupValor = typeof override?.dupValor === 'number' ? override.dupValor : item.dupValor;
+
       if (dateFrom && vencimento < dateFrom) continue;
       if (dateTo && vencimento > dateTo) continue;
 
       const statusInfo = getStatusFromVencimento(vencimento, todayEpochDay);
       if (!matchesStatusFilter(statusInfo.status, statusFilter)) continue;
-
-      const clienteNome = item.partyNome || '';
-      const clienteCnpj = item.partyCnpj || '';
       if (
         searchWords.length > 0 &&
-        !flexMatchAll([clienteNome, clienteCnpj, item.nfNumero, item.dupNumero], searchWords)
+        !flexMatchAll([clienteNome, clienteCnpj, item.nfNumero, dupNumero, nicknameMap.get(clienteCnpj) || ''], searchWords)
       ) {
         continue;
       }
@@ -150,14 +250,17 @@ export async function GET(req: Request) {
         nfNumero: item.nfNumero,
         clienteCnpj,
         clienteNome,
+        clienteNomeAbreviado: nicknameMap.get(clienteCnpj) || clienteNome,
         nfEmissao: item.nfEmissao,
         nfValorTotal: item.nfValorTotal,
-        faturaNumero: item.faturaNumero,
+        faturaNumero,
         faturaValorOriginal: item.faturaValorOriginal,
         faturaValorLiquido: item.faturaValorLiquido,
-        dupNumero: item.dupNumero,
-        dupVencimento: item.dupVencimento,
-        dupValor: item.dupValor,
+        dupNumero,
+        dupNumeroOriginal: item.dupNumero,
+        dupVencimento: vencimento,
+        dupVencimentoOriginal: item.dupVencimento,
+        dupValor,
         status: statusInfo.status,
         diasAtraso: statusInfo.diasAtraso,
         diasParaVencer: statusInfo.diasParaVencer,

@@ -1,8 +1,12 @@
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { extractFirstCfop, getCfopTagByCode } from '@/lib/cfop';
 
 export type FinanceiroDirection = 'received' | 'issued';
+interface FinanceiroDuplicatasOptions {
+  allowedTags?: string[];
+}
 
 export interface FinanceiroDuplicataBase {
   invoiceId: string;
@@ -50,6 +54,8 @@ interface InvoiceBatchRow {
 
 const BATCH_SIZE = 500;
 const MAX_CACHE_ENTRIES = 16;
+const IMPORT_NO_DUP_FALLBACK_DUE_DAYS = 47;
+const FINANCEIRO_DUPLICATAS_CACHE_VERSION = 'v3';
 
 const globalForFinanceiro = globalThis as unknown as {
   financeiroDuplicatasCache?: Map<string, FinanceiroCacheEntry>;
@@ -77,6 +83,18 @@ function num(obj: any, key: string): number {
   const value = obj?.[key];
   if (value == null || value === '') return 0;
   return parseFloat(String(value).replace(',', '.')) || 0;
+}
+
+function toDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDaysUtc(date: Date, days: number): Date {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() + days
+  ));
 }
 
 function extractTagValue(xml: string, tag: string): string {
@@ -195,8 +213,22 @@ function getParty(invoice: InvoiceBatchRow, direction: FinanceiroDirection) {
   };
 }
 
-function makeCacheKey(companyId: string, direction: FinanceiroDirection) {
-  return `${companyId}:${direction}`;
+function makeCacheKey(companyId: string, direction: FinanceiroDirection, allowedTags: string[]) {
+  return `${companyId}:${direction}:${allowedTags.join('|')}`;
+}
+
+function getEffectiveTagByDirection(
+  cfopTag: string | null,
+  direction: FinanceiroDirection
+): string | null {
+  if (!cfopTag) return null;
+  if (direction === 'received' && cfopTag === 'Venda') return 'Compra';
+  return cfopTag;
+}
+
+function isFinanceiroTagAllowed(tag: string | null, allowedTags: string[]): boolean {
+  if (!tag) return false;
+  return allowedTags.includes(tag);
 }
 
 function pruneCache() {
@@ -212,7 +244,8 @@ function pruneCache() {
 
 async function buildDuplicatas(
   where: Prisma.InvoiceWhereInput,
-  direction: FinanceiroDirection
+  direction: FinanceiroDirection,
+  allowedTags: string[]
 ): Promise<FinanceiroDuplicataBase[]> {
   const allDuplicatas: FinanceiroDuplicataBase[] = [];
   let cursorId: string | undefined;
@@ -240,10 +273,38 @@ async function buildDuplicatas(
     if (batch.length === 0) break;
 
     for (const invoice of batch) {
-      const parsedDuplicatas = await extractDuplicatasFromXml(invoice.xmlContent);
-      if (parsedDuplicatas.length === 0) continue;
+      const cfop = extractFirstCfop(invoice.xmlContent);
+      const cfopTag = getCfopTagByCode(cfop);
+      const effectiveTag = getEffectiveTagByDirection(cfopTag, direction);
+      if (!isFinanceiroTagAllowed(effectiveTag, allowedTags)) continue;
 
+      const parsedDuplicatas = await extractDuplicatasFromXml(invoice.xmlContent);
       const party = getParty(invoice, direction);
+      if (parsedDuplicatas.length === 0) {
+        // Import purchase NF-e often has no <dup>. Create one payable/receivable entry
+        // based on invoice total. Use a fallback due date in the future so it
+        // can be tracked in contas a pagar until formal installments are present.
+        if (effectiveTag === 'Compra Importação' && invoice.totalValue > 0) {
+          const fallbackDueDate = addDaysUtc(invoice.issueDate, IMPORT_NO_DUP_FALLBACK_DUE_DAYS);
+          allDuplicatas.push({
+            invoiceId: invoice.id,
+            accessKey: invoice.accessKey,
+            nfNumero: invoice.number,
+            partyCnpj: party.cnpj,
+            partyNome: party.nome,
+            nfEmissao: invoice.issueDate,
+            nfValorTotal: invoice.totalValue,
+            faturaNumero: '',
+            faturaValorOriginal: invoice.totalValue,
+            faturaValorLiquido: invoice.totalValue,
+            dupNumero: 'IMP',
+            dupVencimento: toDateKey(fallbackDueDate),
+            dupValor: invoice.totalValue,
+          });
+        }
+        continue;
+      }
+
       for (const dup of parsedDuplicatas) {
         allDuplicatas.push({
           invoiceId: invoice.id,
@@ -271,8 +332,13 @@ async function buildDuplicatas(
 
 export async function getFinanceiroDuplicatas(
   companyId: string,
-  direction: FinanceiroDirection
+  direction: FinanceiroDirection,
+  options?: FinanceiroDuplicatasOptions
 ): Promise<FinanceiroDuplicataBase[]> {
+  const allowedTags = options?.allowedTags?.length
+    ? Array.from(new Set(options.allowedTags))
+    : ['Compra', 'Venda'];
+
   const where: Prisma.InvoiceWhereInput = {
     companyId,
     type: 'NFE',
@@ -285,8 +351,8 @@ export async function getFinanceiroDuplicatas(
     _max: { updatedAt: true },
   });
 
-  const version = `${snapshot._count._all}:${snapshot._max.updatedAt?.toISOString() || 'none'}`;
-  const cacheKey = makeCacheKey(companyId, direction);
+  const version = `${FINANCEIRO_DUPLICATAS_CACHE_VERSION}:${snapshot._count._all}:${snapshot._max.updatedAt?.toISOString() || 'none'}`;
+  const cacheKey = makeCacheKey(companyId, direction, allowedTags);
   const cached = financeiroDuplicatasCache.get(cacheKey);
   if (cached && cached.version === version) {
     return cached.duplicatas;
@@ -299,7 +365,7 @@ export async function getFinanceiroDuplicatas(
   }
 
   const promise = (async () => {
-    const duplicatas = await buildDuplicatas(where, direction);
+    const duplicatas = await buildDuplicatas(where, direction, allowedTags);
     financeiroDuplicatasCache.set(cacheKey, {
       version,
       createdAt: Date.now(),

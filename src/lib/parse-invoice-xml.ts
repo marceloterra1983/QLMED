@@ -13,6 +13,11 @@ export interface ParsedInvoice {
   totalValue: number;
 }
 
+type PartyInfo = {
+  cnpj: string;
+  name: string;
+};
+
 function extractAccessKey(proc: any, inf: any, prefix: string): string {
   // 1. From protocoled response (most reliable)
   const protKey = prefix === 'NFe' ? 'protNFe' : 'protCTe';
@@ -28,6 +33,73 @@ function extractAccessKey(proc: any, inf: any, prefix: string): string {
   }
 
   return '';
+}
+
+function getPartyInfo(node: any): PartyInfo {
+  return {
+    cnpj: node?.CNPJ || node?.CPF || '',
+    name: node?.xNome || node?.xFant || '',
+  };
+}
+
+function hasPartyInfo(party: PartyInfo): boolean {
+  return Boolean((party.cnpj || '').trim() || (party.name || '').trim());
+}
+
+function extractCteTomador(infCte: any): PartyInfo {
+  const ide = infCte?.ide || {};
+  const rem = getPartyInfo(infCte?.rem || {});
+  const exped = getPartyInfo(infCte?.exped || {});
+  const receb = getPartyInfo(infCte?.receb || {});
+  const dest = getPartyInfo(infCte?.dest || {});
+
+  const toma4 = ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
+  const toma4Tom = getPartyInfo(toma4?.toma || {});
+  const toma4Direct = getPartyInfo(toma4 || {});
+  const ideToma = getPartyInfo(ide?.toma || {});
+  const infToma = getPartyInfo(infCte?.toma || {});
+
+  const explicitTomador = hasPartyInfo(toma4Tom)
+    ? toma4Tom
+    : hasPartyInfo(toma4Direct)
+      ? toma4Direct
+      : hasPartyInfo(ideToma)
+        ? ideToma
+        : hasPartyInfo(infToma)
+          ? infToma
+          : null;
+
+  const toma3Raw = ide?.toma3;
+  const toma03Raw = ide?.toma03;
+  const toma3Code = typeof toma3Raw === 'object' ? toma3Raw?.toma : toma3Raw;
+  const toma03Code = typeof toma03Raw === 'object' ? toma03Raw?.toma : toma03Raw;
+  const tpTomRaw = String(toma4?.tpTom ?? toma03Code ?? toma3Code ?? ide?.tpTom ?? '').trim();
+
+  const byCode: Record<string, PartyInfo> = {
+    '0': rem,
+    '1': exped,
+    '2': receb,
+    '3': dest,
+  };
+
+  if (tpTomRaw in byCode && hasPartyInfo(byCode[tpTomRaw])) {
+    return byCode[tpTomRaw];
+  }
+
+  if (tpTomRaw === '4' && explicitTomador && hasPartyInfo(explicitTomador)) {
+    return explicitTomador;
+  }
+
+  if (explicitTomador && hasPartyInfo(explicitTomador)) {
+    return explicitTomador;
+  }
+
+  if (hasPartyInfo(dest)) return dest;
+  if (hasPartyInfo(rem)) return rem;
+  if (hasPartyInfo(receb)) return receb;
+  if (hasPartyInfo(exped)) return exped;
+
+  return { cnpj: '', name: '' };
 }
 
 function parseNFe(result: any): ParsedInvoice | null {
@@ -66,8 +138,8 @@ function parseCTe(result: any): ParsedInvoice | null {
 
   const ide = infCte.ide || {};
   const emit = infCte.emit || {};
-  const dest = infCte.dest || {};
   const vPrest = infCte.vPrest || {};
+  const tomador = extractCteTomador(infCte);
 
   const accessKey = extractAccessKey(cteProc, infCte, 'CTe');
   if (!accessKey) return null;
@@ -80,8 +152,8 @@ function parseCTe(result: any): ParsedInvoice | null {
     issueDate: ide.dhEmi ? new Date(ide.dhEmi) : new Date(),
     senderCnpj: emit.CNPJ || emit.CPF || '',
     senderName: emit.xNome || '',
-    recipientCnpj: dest.CNPJ || dest.CPF || '',
-    recipientName: dest.xNome || '',
+    recipientCnpj: tomador.cnpj,
+    recipientName: tomador.name,
     totalValue: vPrest.vTPrest ? Number(vPrest.vTPrest) : 0,
   };
 }

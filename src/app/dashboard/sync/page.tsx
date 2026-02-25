@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { useRole } from '@/hooks/useRole';
 
 interface Company {
   id: string;
@@ -36,6 +37,8 @@ const initialMethodState: SyncMethodState = {
 };
 
 export default function SyncPage() {
+  const { canWrite } = useRole();
+  const [mounted, setMounted] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [hasNsdocsConfig, setHasNsdocsConfig] = useState<boolean | null>(null);
   const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
@@ -49,11 +52,16 @@ export default function SyncPage() {
 
   // States para importação de histórico
   const [importStartDate, setImportStartDate] = useState('2021-01-01');
-  const [importEndDate, setImportEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [importEndDate, setImportEndDate] = useState('');
   const [importStatus, setImportStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [importProgress, setImportProgress] = useState(0);
   const [currentImportPeriod, setCurrentImportPeriod] = useState('');
   const [importLogs, setImportLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+    setImportEndDate(new Date().toISOString().split('T')[0]);
+  }, []);
 
   // Carregar empresa fixa
   useEffect(() => {
@@ -370,7 +378,7 @@ export default function SyncPage() {
 
   const renderSyncCard = (method: 'sefaz' | 'nsdocs', methodState: SyncMethodState) => {
     const isSefaz = method === 'sefaz';
-    const disabled = isSefaz ? !hasCertificate : !hasNsdocsConfig;
+    const disabled = !canWrite || (isSefaz ? !hasCertificate : !hasNsdocsConfig);
     const isBusy = methodState.state === 'syncing' || methodState.state === 'polling';
 
     return (
@@ -472,8 +480,23 @@ export default function SyncPage() {
     );
   };
 
+  if (!mounted) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando sincronização...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
+      {!canWrite && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          Modo somente leitura — você não tem permissão para sincronizar.
+        </div>
+      )}
+
       {/* Page Header */}
       <div>
         <div className="flex items-center gap-3">
@@ -561,7 +584,7 @@ export default function SyncPage() {
                 type="date"
                 value={importStartDate}
                 onChange={(e) => setImportStartDate(e.target.value)}
-                disabled={!hasNsdocsConfig}
+                disabled={!hasNsdocsConfig || !canWrite}
                 className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
@@ -573,7 +596,7 @@ export default function SyncPage() {
                 type="date"
                 value={importEndDate}
                 onChange={(e) => setImportEndDate(e.target.value)}
-                disabled={!hasNsdocsConfig}
+                disabled={!hasNsdocsConfig || !canWrite}
                 className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
@@ -582,7 +605,7 @@ export default function SyncPage() {
           {(importStatus === 'idle' || importStatus === 'completed' || importStatus === 'error') && (
             <button
               onClick={() => { setImportStatus('idle'); handleImportHistory(); }}
-              disabled={!hasNsdocsConfig || !importStartDate || !importEndDate}
+              disabled={!hasNsdocsConfig || !importStartDate || !importEndDate || !canWrite}
               className="w-full py-2 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-600 text-white rounded-lg font-bold text-xs transition-all shadow-md shadow-violet-600/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[16px]">download</span>

@@ -1,0 +1,74 @@
+{
+  "name": "QLMED - Sync NF-e/CT-e",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "name": "Cron 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-app:3000/api/nsdocs/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "ca6e370b5e94cb57c94875bafa1435cb58bbae0adb61dae950b00eb2c106e30d" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "name": "Sync NF-e",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-app:3000/api/cte/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "ca6e370b5e94cb57c94875bafa1435cb58bbae0adb61dae950b00eb2c106e30d" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "name": "Sync CT-e",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400]
+    }
+  ],
+  "connections": {
+    "Cron 6h": {
+      "main": [
+        [
+          { "node": "Sync NF-e", "type": "main", "index": 0 },
+          { "node": "Sync CT-e", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

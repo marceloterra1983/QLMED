@@ -1,0 +1,2020 @@
+{
+  "generatedAt": "2026-02-24T00:59:31.138Z",
+  "mode": "apply",
+  "companyCount": 1,
+  "totalsBefore": {
+    "products": 3815,
+    "missingAnvisa": 262,
+    "missingType": 76,
+    "missingSubtype": 82,
+    "missingManufacturer": 372
+  },
+  "applied": {
+    "updatesFound": 229,
+    "updatesApplied": 229,
+    "byField": {
+      "anvisa_manufacturer": 219,
+      "product_type": 4,
+      "product_subtype": 9,
+      "anvisa_code": 1,
+      "anvisa_source": 1
+    },
+    "byReason": {
+      "manufacturer_by_mapping_code": 219,
+      "type_by_keyword": 4,
+      "subtype_by_keyword": 5,
+      "anvisa_by_code_majority": 1,
+      "anvisa_by_code_majority_source": 1,
+      "subtype_by_type_ncm": 1,
+      "subtype_by_anvisa": 2,
+      "subtype_default_by_type": 1
+    }
+  },
+  "inconsistencies": {
+    "codeWithMultipleAnvisa": [
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "10400204020",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "80693380001",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "MKUPUUX834",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "10360810025",
+        "topRatio": 0.75
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "355144",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "10171250047",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350514070E",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "600060Z",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510788",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "NYL501618",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10360810013",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "880200",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80034140034",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "5206003003",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80062900014",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "0700452001",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10355870082",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "16906",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80689090153",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "167032",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81588840003",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "A5027",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510924",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI2650006173",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81118469001",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "J3C035260",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10256400055",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450514070E",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "5119045035",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80062900012",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006304",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "A5025",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510924",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "PO1210",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10171250021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "HPPICV",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10166360050",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "10603",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10366900039",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "202010DS",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10306840137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "ECM0067",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80102511746",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "PO2010",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10196320047",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "83403200",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81918330003",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232126404",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450523070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350531070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450531070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450531100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110504",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "344CX100",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450510100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TCS260",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81425780021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "DCS29",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81425780019",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "BDXXSMHRK",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10360810027",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "BDXXLGHRK",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10360810027",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450545070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "34494",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450540070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TLS9040",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80078450021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006308",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110304",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110312",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "344126",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700162",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350531100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110306",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006404",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006306",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      }
+    ],
+    "anvisaWithMultipleTypes": [
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171610052",
+        "distinctTypes": 3,
+        "total": 5,
+        "topType": "ORTOPEDIA",
+        "topRatio": 0.4
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "81118460033",
+        "distinctTypes": 2,
+        "total": 195,
+        "topType": "ORTOPEDIA",
+        "topRatio": 0.949
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80102511412",
+        "distinctTypes": 2,
+        "total": 51,
+        "topType": "EQUIPAMENTOS",
+        "topRatio": 0.765
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171250042",
+        "distinctTypes": 2,
+        "total": 15,
+        "topType": "DISPOSITIVOS MEDICOS",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10443440009",
+        "distinctTypes": 2,
+        "total": 13,
+        "topType": "FORA DE LINHA - HEMOD.",
+        "topRatio": 0.923
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171250041",
+        "distinctTypes": 2,
+        "total": 12,
+        "topType": "DISPOSITIVOS MEDICOS",
+        "topRatio": 0.75
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80062900001",
+        "distinctTypes": 2,
+        "total": 9,
+        "topType": "HEMODINAMICA",
+        "topRatio": 0.556
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80483300016",
+        "distinctTypes": 2,
+        "total": 8,
+        "topType": "DISPOSITIVOS MEDICOS",
+        "topRatio": 0.875
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80102510788",
+        "distinctTypes": 2,
+        "total": 6,
+        "topType": "CARDIACA",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80493660023",
+        "distinctTypes": 2,
+        "total": 6,
+        "topType": "OUTROS",
+        "topRatio": 0.833
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80689090153",
+        "distinctTypes": 2,
+        "total": 3,
+        "topType": "MATERIAIS HOSPITALARES",
+        "topRatio": 0.667
+      }
+    ]
+  },
+  "suggestions": {
+    "possibleNewTypes": [
+      {
+        "code": "TEST123",
+        "description": "Test Product",
+        "product_type": "Teste",
+        "product_subtype": null
+      }
+    ],
+    "possibleNewSubtypes": [
+      {
+        "product_subtype": "JOELHO - MERIL",
+        "total": 710,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "IMPLANTES BUCO",
+        "total": 408,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - OSTEOMED",
+        "total": 184,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CAIXAS DE ORTOPEDIA",
+        "total": 147,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENAL BUCO",
+        "total": 132,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - NEOORTHO",
+        "total": 125,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - OSSEA",
+        "total": 119,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "STENT CONVENCIONAL - MERIL",
+        "total": 113,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "STENT FARMACOLÓGICO - MERIL",
+        "total": 101,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Prótese ou Órtese",
+        "total": 93,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CONJUNTO CEC",
+        "total": 89,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BUCO-MAXILO-FACIAL",
+        "total": 87,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "OUTROS",
+        "total": 82,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - OSSEA",
+        "total": 81,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BALÃO CORONÁRIO - MERIL",
+        "total": 79,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - BIOMETAL",
+        "total": 70,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Instrumento ou Aparelho Médico-cirúrgico",
+        "total": 69,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ACESSORIO",
+        "total": 65,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "GRAMPEADOR",
+        "total": 63,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "FIO DE SUTURA",
+        "total": 58,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CX CERVICAL OSTEOMED",
+        "total": 54,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ACESSORIOS",
+        "total": 47,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - ORTOBIO",
+        "total": 46,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "EQUIPAMENTOS - OUTROS",
+        "total": 44,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - OSTEOMED",
+        "total": 42,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - SARTORI",
+        "total": 41,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - NEOORTHO",
+        "total": 36,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BALÃO FARMACOLOGCO - FREEWAY",
+        "total": 36,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA MEC. AORTICA - SORIN",
+        "total": 34,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - HPBIO",
+        "total": 31,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "DRILL - MEDTRONIC",
+        "total": 30,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PATCH ORGANICO",
+        "total": 21,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CANULAS - SORIN",
+        "total": 21,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INTRODUTOR/BAINHA",
+        "total": 19,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CIMENTO",
+        "total": 19,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "KIT AUTO-TRANSFUSÃO",
+        "total": 18,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA MEC. MITRAL - SORIN",
+        "total": 17,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "EQUIPAMENTO",
+        "total": 17,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "FIO GUIA",
+        "total": 14,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Generico",
+        "total": 13,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PEÇAS DE MÃO",
+        "total": 13,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ESPONJA - TECHNODRY",
+        "total": 12,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA AORTICA - LABCOR",
+        "total": 12,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "SHUNT",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "COLA CIRURGICA",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ANEL CARBOMEDICS",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA AORTICA CARBOMEDICS",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ASPIRADOR ULTRASSONICO",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Filtragem e Purificação",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "SUPORTES",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - SARTORI",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PUNCH",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PINÇA - MACOM",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CONJ. VERTEBROPLAS. -MICRODENT",
+        "total": 8,
+        "distinct_types": 1
+      }
+    ]
+  },
+  "preview": [
+    {
+      "code": "4322606",
+      "description": "04257 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4322404",
+      "description": "04255 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ30017",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 300X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "24.TPLS15-1",
+      "description": "CATETER ELETRODO TEMP COM INTRODUTOR,  5FR 110/125CM GUIA J",
+      "fields": {
+        "anvisa_manufacturer": "DISPOMEDICA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "CA20050",
+      "description": "Cateter arterial 20Ga x 50mm",
+      "fields": {
+        "anvisa_manufacturer": "GABMED"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "40449",
+      "description": "CATETER UMBILICAL 3,5FR PVC POLYMED",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "650-02-30",
+      "description": "CATETER CENTRAL DE INSERCAO PERIFERICA COM INTRODUTOR PEEL-OFF SEM FIO GUIA -PICC GMI FR:2",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4322404",
+      "description": "04255 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "130101",
+      "description": "LL-IRRIGACAO AIR DUPLO ULTRASSONICO 4,0 X 7,0MM X 34CM - MODELO SONOCA",
+      "fields": {
+        "anvisa_manufacturer": "LIGA LIFE"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "ALC850",
+      "description": "SCS SIST DE CARDIOPLEGIA SANGUINEA",
+      "fields": {
+        "anvisa_manufacturer": "LIVANOVA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4322303",
+      "description": "04254 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "PPM1515",
+      "description": "FILAPROP SURGICAL MESH - PROLIPROPILENO 15 CM X 15 COM 1 UNIDADE",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ15009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 150X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "STC05650",
+      "description": "MERISTEEL - SUTURA DE ACO FIO PRATA - 45X4CM X 5 AG. 48 - CURVAT. 1/2 TAPER CUT",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "172-8-22-25",
+      "description": "INTRASAFE - CATETER INTRAVENOSO SAFETY VALVULADO GMI 22GX25MM - AZUL",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20012",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X12MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "420-06",
+      "description": "SONDA NELATON FR:06 - 1 PERFURACAO",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "230-06",
+      "description": "CANULA NASAL PARA OXIGENOTERAPIA GMI FR:06 - 2,10 M (NEONATAL)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ25020",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 250X20MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "544-35",
+      "description": "CATETER UMBILICAL GMI FR:3,5",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "544-25",
+      "description": "CATETER UMBILICAL GMI FR:2,5",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "AD-650-PA",
+      "description": "ADESIVO DE FIXACAO PARA CATETER PICC - GABILOCK (PEDIATRICO/ADULTO)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ25009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 250X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ30020",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 300X20MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ15015",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 150X15MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "230-09",
+      "description": "CANULA NASAL PARA OXIGENOTERAPIA GMI FR:09 - 2,10 M (PEDIATRICA)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "6496",
+      "description": "TESOURA MAYO STILLE 14 CM RETA",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "GC8037A36",
+      "description": "SONDA FAUCHER ESOF. DESC. 36FR GOODCOME",
+      "fields": {
+        "anvisa_manufacturer": "PHARMAPLAST FREE ZONE - EGITO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "GC8037A32",
+      "description": "SONDA FAUCHER ESOF. DESC. 32FR GOODCOME",
+      "fields": {
+        "anvisa_manufacturer": "PHARMAPLAST FREE ZONE - EGITO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "000165",
+      "description": "CILINDRO BALA GAS HELIUM PSI - RECARGA DE CILINDRO",
+      "fields": {
+        "product_type": "HEMODINAMICA",
+        "product_subtype": "HEMODINAMICA - OUTROS"
+      },
+      "reasons": [
+        "type_by_keyword",
+        "subtype_by_keyword"
+      ]
+    },
+    {
+      "code": "MOZ22509",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 225X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "TP00910",
+      "description": "Suporte Plastico",
+      "fields": {
+        "anvisa_code": "10216839008",
+        "anvisa_source": "auto_infer"
+      },
+      "reasons": [
+        "anvisa_by_code_majority",
+        "anvisa_by_code_majority_source"
+      ]
+    },
+    {
+      "code": "01",
+      "description": "SERVIÇO DE APOIO ADMINISTRATIVO",
+      "fields": {
+        "anvisa_manufacturer": "SONIA APARECIDA IRALA DE LIMA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ25017",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 250X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "1500-30-09",
+      "description": "GABIPORT CATETER TOTALMENTE IMPLANTAVEL GMI - FR 09 (ADULTO)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "VH-100",
+      "description": "INSTRU. ANULOPLASTIA FLX ANNULOFLEX MAN",
+      "fields": {
+        "anvisa_manufacturer": "LIVANOVA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "9043012031",
+      "description": "JUNTA DE ALUMINIO DO",
+      "fields": {
+        "product_subtype": "SUPORTES"
+      },
+      "reasons": [
+        "subtype_by_type_ncm"
+      ]
+    },
+    {
+      "code": "581-02-30-2",
+      "description": "CATETER CENTRAL DE INSERCAO PERIFERICA EM POLIURETANO GMI DL 02FR 30CM",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ27520",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 275X20MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ27514",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 275X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "VCM00184",
+      "description": "SUPORTE TROCADOR DE CALOR ES LOTE:441125-",
+      "fields": {
+        "anvisa_manufacturer": "CARDIO MEDICAL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "002794",
+      "description": "TP-HD00920-03 - Cabo Transdutor Pressao Arrow/Kontron",
+      "fields": {
+        "product_subtype": "ACESSORIOS"
+      },
+      "reasons": [
+        "subtype_by_anvisa"
+      ]
+    },
+    {
+      "code": "980030018",
+      "description": "Kit Irrigacao Autoclavavel",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "FT690T",
+      "description": "FT690T - MINICLIP YASARGIL PERMANENTE 5,0MM",
+      "fields": {
+        "anvisa_manufacturer": "B BRAUN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20012",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X12MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "11014",
+      "description": "CURETA DE LUCAS N. 86",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "1500-20-05",
+      "description": "GABIPORT CATETER TOTALMENTE IMPLANTAVEL GMI - FR 05 (PEDIATRICO)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "1500-10-04",
+      "description": "GABIPORT CATETER TOTALMENTE IMPLANTAVEL GMI - FR 04 (LACTANTE)",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ15012",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 150X12MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ22517",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 225X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "650-19-50",
+      "description": "CATETER CENTRAL DE INSERCAO PERIFERICA COM INTRODUTOR PEEL-OFF SEM FIO GUIA -PICC GMI FR:1",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "650-03-50G",
+      "description": "CATETER CENTRAL DE INSERCAO PERIFERICA COM INTRODUTOR PEEL-OFF E FIO GUIA -PICC GMI FR:3.0",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "SB-M",
+      "description": "CAIXA DE ESTERELIZACAO M LOTE:20220405-S6",
+      "fields": {
+        "anvisa_manufacturer": "WUHU"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ22525",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 225X25MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "175-13",
+      "description": "Afastador Semm-Muller - R/22",
+      "fields": {
+        "anvisa_manufacturer": "MUZYMED"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000084578",
+      "description": "AA10 -DISPOSITIVO DE FIXACAO ANGULADO",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "001826",
+      "description": "TP-HD00920-09 - Cabo Transdutor Pressao Datascope",
+      "fields": {
+        "product_subtype": "ACESSORIOS"
+      },
+      "reasons": [
+        "subtype_by_anvisa"
+      ]
+    },
+    {
+      "code": "10878",
+      "description": "SEPARADOR CAVIDADE",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "2491",
+      "description": "PORTA AGULHA MAYO HEGAR 17 CM C/ WIDIA",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "697",
+      "description": "PORTA AGULHA DERF 12CM WIDIA",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "FT250T",
+      "description": "FT250T - CLIP YASARGIL PAD TEMPOR 9,0MM",
+      "fields": {
+        "anvisa_manufacturer": "B BRAUN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "5600-033-001",
+      "description": "GUIA PROXIMAL HASTE FEMORAL R.A. INST. RA LT. 224039",
+      "fields": {
+        "anvisa_manufacturer": "ORTOBIO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "259-15",
+      "description": "Impactor Estriado 8mm - R/22",
+      "fields": {
+        "anvisa_manufacturer": "MUZYMED"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "500.00203",
+      "description": "EXTENSAO DE NYLON TRANCADO O2",
+      "fields": {
+        "product_subtype": "GENERICO"
+      },
+      "reasons": [
+        "subtype_by_keyword"
+      ]
+    },
+    {
+      "code": "252-04",
+      "description": "Formao Cabo Sextavado Stille 8mm x 20cm - R/22",
+      "fields": {
+        "anvisa_manufacturer": "MUZYMED"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "500.00103",
+      "description": "EXTENSAO DE NYLON TRANCADO AR",
+      "fields": {
+        "product_subtype": "GENERICO"
+      },
+      "reasons": [
+        "subtype_default_by_type"
+      ]
+    },
+    {
+      "code": "455",
+      "description": "ESTOJO INOX 36 X 22 X 9 - ECONOX",
+      "fields": {
+        "anvisa_manufacturer": "TECHIMPORT TECNOLOGIA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000096649",
+      "description": "EM200 -SIST MOTORES ALTA ROTACAO LEGEND EHS STYLUS",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00643169931473",
+      "description": "EF200 -INTERRUPTOR DE PE",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00643169588141",
+      "description": "EC300 -SISTEMA IPC",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000172183",
+      "description": "EA100 -CAIXA DE INSTRUMENTOS",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "10932",
+      "description": "CINZEL PROFUNDIDADE 7MM RETO",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "10934",
+      "description": "CINZEL PROFUNDIDADE 7MM CURVA FORTE",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ12509",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 125X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "187",
+      "description": "CANULA DE SUCCAO FERGUSSON 180MM X 2,0MM",
+      "fields": {
+        "anvisa_manufacturer": "QUINELATO"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "005523",
+      "description": "CASE PARA TRANSPORTE DE DRILL MIDAS ELÉTRICO.",
+      "fields": {
+        "product_type": "EQUIPAMENTOS",
+        "product_subtype": "EQUIPAMENTOS - OUTROS"
+      },
+      "reasons": [
+        "type_by_keyword",
+        "subtype_by_keyword"
+      ]
+    },
+    {
+      "code": "233-00",
+      "description": "C.P.A.P. NASAL GMI ATE 1000 G",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000084776",
+      "description": "AS07 -DISPOSITIVO DE FIXACAO RETO 7CM",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "544-40",
+      "description": "CATETER UMBILICAL GMI FR:4,0",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "0200X3T",
+      "description": "ADITIVOS PARA GASOLINA",
+      "fields": {
+        "product_type": "GASES MEDICINAIS",
+        "product_subtype": "GENERICO"
+      },
+      "reasons": [
+        "type_by_keyword",
+        "subtype_by_keyword"
+      ]
+    },
+    {
+      "code": "0200XAT",
+      "description": "ADITIVOS PARA GASOLINA",
+      "fields": {
+        "product_type": "GASES MEDICINAIS",
+        "product_subtype": "GENERICO"
+      },
+      "reasons": [
+        "type_by_keyword",
+        "subtype_by_keyword"
+      ]
+    },
+    {
+      "code": "00643169740983",
+      "description": "AA07 -DISPOSITIVO DE FIXACAO ANGULADO",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MHD6",
+      "description": "EDWARDS SENSOR FLOTRAC (152CM)                               LOTE: 63603446               ",
+      "fields": {
+        "anvisa_manufacturer": "EDWARDS"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000084738",
+      "description": "AF02 -DISPOSITIVO DE FIXACAO ATIVADO COM O PE - 10CM",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4322606",
+      "description": "04257 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ25014",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 250X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "KCS120702",
+      "description": "CATETER VENOSO CENTRAL DUPLO LUMEN 7FR X 20CM - ALTIUS CLASSIC Lote: 21J0764 x10 Val: 30/0",
+      "fields": {
+        "anvisa_manufacturer": "KIMAL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ22514",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 225X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "420-06",
+      "description": "SONDA NELATON FR:06 - 1 PERFURACAO",
+      "fields": {
+        "anvisa_manufacturer": "3M"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ30017",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 300X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ22520",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 225X20MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ15015",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 150X15MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20020",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X20MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ35009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 350X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ27517",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 275X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "VH-100",
+      "description": "INSTRU. ANULOPLASTIA FLX ANNULOFLEX MAN",
+      "fields": {
+        "anvisa_manufacturer": "LIVANOVA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ30009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 300X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ27514",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 275X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ35009",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 350X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000084707",
+      "description": "AD03 -PONTEIRA DE TREPANACAO AD03 LEGEND",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00763000084578",
+      "description": "AA10 -DISPOSITIVO DE FIXACAO ANGULADO",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "KCS120702",
+      "description": "CATETER VENOSO CENTRAL DUPLO LUMEN 7FR X 20CM - ALTIUS CLASSIC Lote: 21J0764 x10 Val: 30/0",
+      "fields": {
+        "anvisa_manufacturer": "KIMAL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4323202",
+      "description": "04015 - SEQUESTRATION SET X",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ35017",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 350X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "24.TPLS15-1",
+      "description": "CATETER ELETRODO TEMP COM INTRODUTOR,  5FR 110/125CM GUIA J",
+      "fields": {
+        "anvisa_manufacturer": "DISPOMEDICA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "455",
+      "description": "ESTOJO INOX 36 X 22 X 9 - ECONOX",
+      "fields": {
+        "anvisa_manufacturer": "TECHIMPORT TECNOLOGIA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MHD6",
+      "description": "EDWARDS SENSOR FLOTRAC (152CM)                               LOTE: 63603446               ",
+      "fields": {
+        "anvisa_manufacturer": "EDWARDS"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "00643169740983",
+      "description": "AA07 -DISPOSITIVO DE FIXACAO ANGULADO",
+      "fields": {
+        "anvisa_manufacturer": "MEDTRONIC"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ35017",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 350X17MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "4322606",
+      "description": "04257 - DISPOSITIVO DE ASPIRACAO E LAVAGEM PARA PROCEDIMENTO DE AUTOTRANSFUSAO - PROCEDURE",
+      "fields": {
+        "anvisa_manufacturer": "SORIN"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ40014",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 400X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ12509",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 125X09MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ30014",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 300X14MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "24.TPLS15-1",
+      "description": "CATETER ELETRODO TEMP COM INTRODUTOR,  5FR 110/125CM GUIA J",
+      "fields": {
+        "anvisa_manufacturer": "DISPOMEDICA"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "BBnIBS031",
+      "description": "Substituto ósseo injetável BoneBio HA Paste 3cc",
+      "fields": {
+        "anvisa_manufacturer": "BIOCERAMED"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ12512",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 125X12MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "G-NBOC2",
+      "description": "G-NBOC COLA CUTANEA GLUBRAN TISS 2 - 0,5ML                   LOTE: 106010521T (28-02-23)",
+      "fields": {
+        "anvisa_manufacturer": "GEM S.R.L"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    },
+    {
+      "code": "MOZ20015",
+      "description": "CATETER BALAO DE DILATACAO RX PTCA MOZEC - 200X15MM",
+      "fields": {
+        "anvisa_manufacturer": "MERIL"
+      },
+      "reasons": [
+        "manufacturer_by_mapping_code"
+      ]
+    }
+  ],
+  "totalsAfter": {
+    "products": 3815,
+    "missing_anvisa": 261,
+    "missing_type": 72,
+    "missing_subtype": 73,
+    "missing_manufacturer": 153
+  }
+}

@@ -13,6 +13,9 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
+ARG QLMED_API_KEY=""
+ENV QLMED_API_KEY=${QLMED_API_KEY}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

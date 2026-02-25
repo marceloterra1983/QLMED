@@ -135,11 +135,19 @@ export async function GET(req: Request) {
 
     let suppliers = Array.from(supplierMap.values());
 
+    // Fetch all nicknames for this company to include in search
+    const allNicknames = await prisma.contactNickname.findMany({
+      where: { companyId: company.id },
+      select: { cnpj: true, shortName: true },
+    });
+    const nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
+
     if (search) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
-      suppliers = suppliers.filter((s) =>
-        flexMatchAll([s.name, s.cnpj, s.cnpj.replace(/\D/g, '')], searchWords)
-      );
+      suppliers = suppliers.filter((s) => {
+        const nick = nicknameMap.get(s.cnpj) || '';
+        return flexMatchAll([s.name, s.cnpj, s.cnpj.replace(/\D/g, ''), nick], searchWords);
+      });
     }
 
     suppliers.sort((a, b) => {
@@ -185,6 +193,34 @@ export async function GET(req: Request) {
     const start = (normalizedPage - 1) * limit;
     const paginatedSuppliers = suppliers.slice(start, start + limit);
 
+    // Compute price item count (distinct cProd::xProd::uCom) for paginated suppliers
+    const paginatedCnpjs = paginatedSuppliers.map((s) => s.cnpj).filter(Boolean);
+    const priceItemCountMap = new Map<string, number>();
+    if (paginatedCnpjs.length > 0) {
+      const invoiceXmls = await prisma.invoice.findMany({
+        where: { companyId: company.id, type: 'NFE', direction: 'received', senderCnpj: { in: paginatedCnpjs } },
+        select: { senderCnpj: true, xmlContent: true },
+      });
+      const productKeysByCnpj = new Map<string, Set<string>>();
+      for (const inv of invoiceXmls) {
+        if (!inv.senderCnpj || !inv.xmlContent) continue;
+        let set = productKeysByCnpj.get(inv.senderCnpj);
+        if (!set) { set = new Set(); productKeysByCnpj.set(inv.senderCnpj, set); }
+        const detBlocks = inv.xmlContent.match(/<det\b[^>]*>[\s\S]*?<\/det>/gi) || [];
+        for (const det of detBlocks) {
+          const code = det.match(/<cProd>([\s\S]*?)<\/cProd>/i)?.[1]?.trim() || '';
+          const desc = det.match(/<xProd>([\s\S]*?)<\/xProd>/i)?.[1]?.trim() || '';
+          const unit = det.match(/<uCom>([\s\S]*?)<\/uCom>/i)?.[1]?.trim() || '';
+          if (code || desc) set.add(`${code}::${desc}::${unit}`);
+        }
+      }
+      for (const [cnpj, set] of Array.from(productKeysByCnpj.entries())) {
+        priceItemCountMap.set(cnpj, set.size);
+      }
+    }
+
+    // nicknameMap already fetched above for search
+
     const summary = suppliers.reduce((acc, supplier) => {
       acc.totalInvoices += supplier.invoiceCount;
       acc.totalValue += supplier.totalValue;
@@ -192,7 +228,7 @@ export async function GET(req: Request) {
     }, { totalSuppliers: total, totalInvoices: 0, totalValue: 0 });
 
     return NextResponse.json({
-      suppliers: paginatedSuppliers,
+      suppliers: paginatedSuppliers.map((s) => ({ ...s, shortName: nicknameMap.get(s.cnpj) || null, priceItemCount: priceItemCountMap.get(s.cnpj) ?? null })),
       summary,
       years: { prevYear, currentYear },
       pagination: {

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { buildOneDriveAuthorizeUrl } from '@/lib/onedrive-client';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth();
-  } catch {
+    await requireAdmin();
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

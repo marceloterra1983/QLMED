@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useRole } from '@/hooks/useRole';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -63,7 +64,9 @@ function formatBytes(bytes: number): string {
 }
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const { canManageSettings } = useRole();
+  const [mounted, setMounted] = useState(false);
 
   // Theme
   const [theme, setTheme] = useState<Theme>('system');
@@ -98,6 +101,10 @@ export default function SettingsPage() {
   const [oneDriveFilesLoading, setOneDriveFilesLoading] = useState(false);
   const [selectedOneDriveConnectionId, setSelectedOneDriveConnectionId] = useState<string | null>(null);
   const [oneDriveItems, setOneDriveItems] = useState<OneDriveItem[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ── Theme ──
   useEffect(() => {
@@ -407,8 +414,23 @@ export default function SettingsPage() {
       ? { label: 'Revalidar', color: 'red' as const }
       : { label: `${oneDriveConnections.length} conta(s)`, color: 'green' as const };
 
+  if (!mounted || status === 'loading') {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando configurações...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {!canManageSettings && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          Modo somente leitura — você não tem permissão para alterar configurações.
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="mb-2">
         <div className="flex items-center gap-3">
@@ -442,7 +464,8 @@ export default function SettingsPage() {
                   accept=".pfx,.p12"
                   ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                  disabled={!canManageSettings}
+                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -455,7 +478,8 @@ export default function SettingsPage() {
                   type="password"
                   value={certPassword}
                   onChange={(e) => setCertPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                  disabled={!canManageSettings}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="************"
                   required
                 />
@@ -463,7 +487,7 @@ export default function SettingsPage() {
 
               <button
                 type="submit"
-                disabled={certLoading || !file || !certPassword}
+                disabled={certLoading || !file || !certPassword || !canManageSettings}
                 className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {certLoading ? (
@@ -578,12 +602,13 @@ export default function SettingsPage() {
                 type="password"
                 value={apiToken}
                 onChange={(e) => setApiToken(e.target.value)}
+                disabled={!canManageSettings}
                 placeholder="Cole o token da API aqui..."
-                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleTestConnection}
-                disabled={nsdocsLoading || !apiToken}
+                disabled={nsdocsLoading || !apiToken || !canManageSettings}
                 className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">wifi_tethering</span>
@@ -659,7 +684,7 @@ export default function SettingsPage() {
           <div className="flex justify-end pt-2">
             <button
               onClick={handleNsdocsSave}
-              disabled={nsdocsLoading || !apiToken}
+              disabled={nsdocsLoading || !apiToken || !canManageSettings}
               className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
@@ -689,7 +714,7 @@ export default function SettingsPage() {
             />
             <button
               onClick={handleConnectOneDrive}
-              disabled={oneDriveLoading}
+              disabled={oneDriveLoading || !canManageSettings}
               className="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">link</span>

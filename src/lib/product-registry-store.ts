@@ -21,9 +21,12 @@ export interface ProductRegistryRow {
   anvisaRiskClass: string | null;
   anvisaManufacturer: string | null;
   anvisaManufacturerCountry: string | null;
+  manufacturerShortName: string | null;
   anvisaSyncedAt: Date | null;
+  shortName: string | null;
   productType: string | null;
   productSubtype: string | null;
+  outOfLine: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -98,7 +101,10 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS anvisa_expiration TEXT,
           ADD COLUMN IF NOT EXISTS anvisa_risk_class TEXT,
           ADD COLUMN IF NOT EXISTS anvisa_manufacturer TEXT,
-          ADD COLUMN IF NOT EXISTS anvisa_manufacturer_country TEXT
+          ADD COLUMN IF NOT EXISTS anvisa_manufacturer_country TEXT,
+          ADD COLUMN IF NOT EXISTS short_name TEXT,
+          ADD COLUMN IF NOT EXISTS manufacturer_short_name TEXT,
+          ADD COLUMN IF NOT EXISTS out_of_line BOOLEAN DEFAULT FALSE
       `);
 
       await prisma.$executeRawUnsafe(`
@@ -142,9 +148,12 @@ function mapRegistryRow(row: any): ProductRegistryRow {
     anvisaRiskClass: row.anvisa_risk_class ?? null,
     anvisaManufacturer: row.anvisa_manufacturer ?? null,
     anvisaManufacturerCountry: row.anvisa_manufacturer_country ?? null,
+    manufacturerShortName: row.manufacturer_short_name ?? null,
     anvisaSyncedAt: row.anvisa_synced_at ? new Date(row.anvisa_synced_at) : null,
+    shortName: row.short_name ?? null,
     productType: row.product_type ?? null,
     productSubtype: row.product_subtype ?? null,
+    outOfLine: row.out_of_line === true || row.out_of_line === 't' || row.out_of_line === 1,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -179,9 +188,12 @@ export async function getProductRegistryByKeys(
         anvisa_risk_class,
         anvisa_manufacturer,
         anvisa_manufacturer_country,
+        manufacturer_short_name,
         anvisa_synced_at,
+        short_name,
         product_type,
         product_subtype,
+        out_of_line,
         created_at,
         updated_at
       FROM product_registry
@@ -222,9 +234,12 @@ export async function getProductRegistryWithAnvisa(
         anvisa_risk_class,
         anvisa_manufacturer,
         anvisa_manufacturer_country,
+        manufacturer_short_name,
         anvisa_synced_at,
+        short_name,
         product_type,
         product_subtype,
+        out_of_line,
         created_at,
         updated_at
       FROM product_registry

@@ -10,7 +10,9 @@ import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
 interface Supplier {
   cnpj: string;
   name: string;
+  shortName: string | null;
   invoiceCount: number;
+  priceItemCount: number | null;
   lastIssueDate: string | null;
 }
 
@@ -324,7 +326,18 @@ export default function SuppliersPage() {
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
-                              <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                              {(() => {
+                                const isCpf = (supplier.cnpj || '').replace(/\D/g, '').length === 11;
+                                const label = supplier.shortName || (isCpf ? 'PARTICULAR' : null);
+                                return label ? (
+                                  <>
+                                    <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{label}</div>
+                                    <div className="text-[10px] leading-tight text-slate-400 dark:text-slate-500">{supplier.name}</div>
+                                  </>
+                                ) : (
+                                  <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{supplier.name}</div>
+                                );
+                              })()}
                               <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
                                 {formatDocument(supplier.cnpj)}
                               </div>
@@ -332,7 +345,7 @@ export default function SuppliersPage() {
                             <td className="px-4 py-2.5">
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
-                                  {supplier.invoiceCount.toLocaleString('pt-BR')}
+                                  {supplier.priceItemCount != null ? supplier.priceItemCount.toLocaleString('pt-BR') : '-'}
                                 </span>
                                 <button
                                   onClick={() => {

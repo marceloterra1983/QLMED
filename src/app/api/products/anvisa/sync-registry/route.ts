@@ -171,6 +171,8 @@ export async function POST(req: Request) {
           anvisaStatus: row.anvisaStatus ?? 'Não encontrado na ANVISA',
           anvisaExpiration: row.anvisaExpiration,
           anvisaRiskClass: row.anvisaRiskClass,
+          anvisaManufacturer: row.anvisaManufacturer ?? null,
+          anvisaManufacturerCountry: row.anvisaManufacturerCountry ?? null,
           anvisaSyncedAt: new Date(),
         }).catch(() => {});
       }
@@ -186,6 +188,8 @@ export async function POST(req: Request) {
           anvisaStatus: data.situacaoRegistro ?? row.anvisaStatus,
           anvisaExpiration: data.vencimentoRegistro ?? null,
           anvisaRiskClass: data.classeRisco ?? null,
+          anvisaManufacturer: (data as unknown as Record<string, unknown>).nomeFabricante as string ?? row.anvisaManufacturer ?? null,
+          anvisaManufacturerCountry: (data as unknown as Record<string, unknown>).paisFabricante as string ?? row.anvisaManufacturerCountry ?? null,
           anvisaSyncedAt: new Date(),
         });
         synced++;

@@ -30,11 +30,23 @@ export const authOptions: AuthOptions = {
           throw new Error('Senha incorreta');
         }
 
+        if (user.status === 'pending') {
+          throw new Error('ACCOUNT_PENDING');
+        }
+        if (user.status === 'rejected') {
+          throw new Error('ACCOUNT_REJECTED');
+        }
+        if (user.status === 'inactive') {
+          throw new Error('ACCOUNT_INACTIVE');
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
+          status: user.status,
+          allowedPages: user.allowedPages,
         };
       },
     }),
@@ -52,6 +64,29 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.status = user.status;
+        token.allowedPages = user.allowedPages ?? [];
+        token.dbRefreshedAt = Date.now();
+      }
+      // Always refresh role/status from DB if stale (>5 min) or missing valid role
+      const validRoles = ['admin', 'editor', 'viewer'];
+      const staleMs = 5 * 60 * 1000;
+      const needsRefresh = !validRoles.includes(token.role as string)
+        || !token.dbRefreshedAt
+        || (Date.now() - (token.dbRefreshedAt as number)) > staleMs;
+      if (needsRefresh && token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true, status: true, allowedPages: true },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.status = dbUser.status;
+            token.allowedPages = dbUser.allowedPages;
+            token.dbRefreshedAt = Date.now();
+          }
+        } catch { /* ignore DB errors in JWT callback */ }
       }
       return token;
     },
@@ -59,6 +94,8 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.status = token.status;
+        session.user.allowedPages = token.allowedPages ?? [];
       }
       return session;
     },

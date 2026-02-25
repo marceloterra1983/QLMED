@@ -6,6 +6,7 @@ import { decrypt } from './crypto';
 import { parseInvoiceXml } from './parse-invoice-xml';
 import { getNsdocsSyncWindow } from './nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from './source-status';
+import { resolveInvoiceDirection } from './invoice-direction';
 
 // Instância própria de Prisma para evitar import circular com prisma.ts
 const prisma = new PrismaClient();
@@ -190,22 +191,28 @@ async function syncViaSefaz(
         try {
           if (!doc.chave || doc.chave.length < 44 || !doc.xml) continue;
 
-          const exists = await prisma.invoice.findUnique({ where: { accessKey: doc.chave } });
-          if (exists) {
-            totalAtualizados++;
-            continue;
-          }
-
           const parsed = await parseInvoiceXml(doc.xml);
           if (!parsed) continue;
 
           const accessKey = parsed.accessKey || doc.chave;
-          const companyCnpjClean = cnpj.replace(/\D/g, '');
-          const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-          const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+          const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, accessKey);
 
-          await prisma.invoice.create({
-            data: {
+          const result = await prisma.invoice.upsert({
+            where: { accessKey },
+            update: {
+              type: parsed.type,
+              direction,
+              number: parsed.number,
+              series: parsed.series,
+              issueDate: parsed.issueDate,
+              senderCnpj: parsed.senderCnpj,
+              senderName: parsed.senderName,
+              recipientCnpj: parsed.recipientCnpj,
+              recipientName: parsed.recipientName,
+              totalValue: parsed.totalValue,
+              xmlContent: doc.xml,
+            },
+            create: {
               companyId,
               accessKey,
               type: parsed.type,
@@ -222,7 +229,11 @@ async function syncViaSefaz(
               xmlContent: doc.xml,
             },
           });
-          totalNovos++;
+          if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+            totalNovos++;
+          } else {
+            totalAtualizados++;
+          }
         } catch (docErr) {
           console.error(`[AutoSync] Erro ao processar doc ${doc.chave}:`, docErr);
         }
@@ -290,27 +301,25 @@ async function syncViaNsdocs(
         if (!parsed || !parsed.accessKey) continue;
 
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
-        const exists = await prisma.invoice.findUnique({
+        const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
+
+        const result = await prisma.invoice.upsert({
           where: { accessKey: parsed.accessKey },
-          select: { id: true, status: true },
-        });
-        if (exists) {
-          if (exists.status !== mappedStatus) {
-            await prisma.invoice.update({
-              where: { id: exists.id },
-              data: { status: mappedStatus },
-            });
-          }
-          totalAtualizados++;
-          continue;
-        }
-
-        const companyCnpjClean = cnpj.replace(/\D/g, '');
-        const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-        const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
-
-        await prisma.invoice.create({
-          data: {
+          update: {
+            type: parsed.type,
+            direction,
+            number: parsed.number,
+            series: parsed.series,
+            issueDate: parsed.issueDate,
+            senderCnpj: parsed.senderCnpj,
+            senderName: parsed.senderName,
+            recipientCnpj: parsed.recipientCnpj,
+            recipientName: parsed.recipientName,
+            totalValue: parsed.totalValue,
+            status: mappedStatus,
+            xmlContent,
+          },
+          create: {
             companyId,
             accessKey: parsed.accessKey,
             type: parsed.type,
@@ -327,7 +336,11 @@ async function syncViaNsdocs(
             xmlContent,
           },
         });
-        totalNovos++;
+        if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+          totalNovos++;
+        } else {
+          totalAtualizados++;
+        }
       } catch (docErr) {
         console.error(`[AutoSync] Erro no doc ${doc.id}:`, docErr);
       }

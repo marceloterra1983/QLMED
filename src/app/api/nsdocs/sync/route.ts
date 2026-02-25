@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { SefazClient } from '@/lib/sefaz-client';
@@ -9,6 +9,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getNsdocsSyncWindow } from '@/lib/nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
+import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12',
@@ -49,8 +50,10 @@ function getUfCodeFromCertificateSubject(subject?: string | null): string {
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    const auth = await requireEditor();
+    userId = auth.userId;
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 
@@ -154,12 +157,24 @@ export async function POST(request: NextRequest) {
                 if (!parsed) continue;
 
                 const accessKey = parsed.accessKey || doc.chave;
-                const companyCnpjClean = company.cnpj.replace(/\D/g, '');
-                const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-                const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+                const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, accessKey);
 
-                await prisma.invoice.create({
-                  data: {
+                const result = await prisma.invoice.upsert({
+                  where: { accessKey },
+                  update: {
+                    type: parsed.type,
+                    direction,
+                    number: parsed.number,
+                    series: parsed.series,
+                    issueDate: parsed.issueDate,
+                    senderCnpj: parsed.senderCnpj,
+                    senderName: parsed.senderName,
+                    recipientCnpj: parsed.recipientCnpj,
+                    recipientName: parsed.recipientName,
+                    totalValue: parsed.totalValue,
+                    xmlContent: doc.xml,
+                  },
+                  create: {
                     companyId,
                     accessKey,
                     type: parsed.type,
@@ -176,13 +191,13 @@ export async function POST(request: NextRequest) {
                     xmlContent: doc.xml,
                   },
                 });
-                totalNovos++;
-              } catch (docErr: any) {
-                if (docErr?.code === 'P2002') {
-                  totalAtualizados++;
+                if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+                  totalNovos++;
                 } else {
-                  console.error(`[SEFAZ Sync] Erro ao processar documento:`, docErr);
+                  totalAtualizados++;
                 }
+              } catch (docErr: any) {
+                console.error(`[SEFAZ Sync] Erro ao processar documento:`, docErr);
               }
             }
             
@@ -285,14 +300,25 @@ export async function POST(request: NextRequest) {
               if (!parsed || !parsed.accessKey) continue;
 
               const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
-              const companyCnpjClean = companyCnpj.replace(/\D/g, '');
-              const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-              const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+              const direction = resolveInvoiceDirection(companyCnpj, parsed.senderCnpj, parsed.accessKey);
 
               // Use upsert to handle race conditions on accessKey
               const result = await prisma.invoice.upsert({
                 where: { accessKey: parsed.accessKey },
-                update: { status: mappedStatus },
+                update: {
+                  type: parsed.type,
+                  direction,
+                  number: parsed.number,
+                  series: parsed.series,
+                  issueDate: parsed.issueDate,
+                  senderCnpj: parsed.senderCnpj,
+                  senderName: parsed.senderName,
+                  recipientCnpj: parsed.recipientCnpj,
+                  recipientName: parsed.recipientName,
+                  totalValue: parsed.totalValue,
+                  status: mappedStatus,
+                  xmlContent,
+                },
                 create: {
                   companyId,
                   accessKey: parsed.accessKey,

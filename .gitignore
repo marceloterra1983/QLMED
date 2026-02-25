@@ -48,3 +48,22 @@ migrate-*.js
 migrate-*.sh
 pgloader.load
 test-insert.js
+
+# temp files
+*.pdf
+*.xls
+*.xlsx
+*.csv
+*.jpeg
+*.jpg
+*.png
+=1
+tmp-*.xml
+scripts/smtp-test.log
+scripts/test-smtp.sh
+scripts/dirty-names*.js
+scripts/clean-names*.js
+scripts/clean3.js
+scripts/check-dirty.js
+scripts/reclassify.js
+scripts/classify.js

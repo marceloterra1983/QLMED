@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient, NsdocsDocumento } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { decrypt } from '@/lib/crypto';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
+import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 
 export const maxDuration = 60; // Start with 60s for Vercel/Next.js function
 
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    const auth = await requireEditor();
+    userId = auth.userId;
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 
@@ -90,24 +93,32 @@ export async function POST(request: NextRequest) {
         }
 
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
+        const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
         const exists = await prisma.invoice.findUnique({
           where: { accessKey: parsed.accessKey },
           select: { id: true, status: true },
         });
         if (exists) {
-          if (exists.status !== mappedStatus) {
-            await prisma.invoice.update({
-              where: { id: exists.id },
-              data: { status: mappedStatus },
-            });
-          }
+          await prisma.invoice.update({
+            where: { id: exists.id },
+            data: {
+              type: parsed.type,
+              direction,
+              number: parsed.number,
+              series: parsed.series,
+              issueDate: parsed.issueDate,
+              senderCnpj: parsed.senderCnpj,
+              senderName: parsed.senderName,
+              recipientCnpj: parsed.recipientCnpj,
+              recipientName: parsed.recipientName,
+              totalValue: parsed.totalValue,
+              status: mappedStatus,
+              xmlContent,
+            },
+          });
           skipped++;
           continue;
         }
-
-        const companyCnpjClean = company.cnpj.replace(/\D/g, '');
-        const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-        const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
 
         await prisma.invoice.create({
           data: {

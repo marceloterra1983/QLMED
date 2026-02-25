@@ -109,6 +109,32 @@ function modFreteCode(m: string): string {
   return map[m] || m || '';
 }
 
+type PdfInvoiceView = {
+  type: string;
+  number: string;
+  series: string | null;
+  issueDate: Date;
+  senderCnpj: string;
+  senderName: string;
+  recipientCnpj: string;
+  recipientName: string;
+  totalValue: number;
+  status: string;
+  accessKey: string;
+  direction: string;
+  company: { razaoSocial: string; cnpj: string };
+};
+
+function getPdfFilename(invoice: PdfInvoiceView): string {
+  if (invoice.type === 'CTE') {
+    return `QLMED/${invoice.accessKey}-cte.pdf`;
+  }
+
+  const typeLabel: Record<string, string> = { NFE: 'NFe', CTE: 'CTe', NFSE: 'NFSe' };
+  const tl = typeLabel[invoice.type] || invoice.type;
+  return `DANFE_${tl}_${invoice.number}_${invoice.accessKey.slice(0, 12)}.pdf`;
+}
+
 // ==================== Data Extraction ====================
 
 interface DanfeProduct {
@@ -209,6 +235,493 @@ interface DanfeData {
 
   infCpl: string;
   infAdFisco: string;
+}
+
+interface CtePartyData {
+  nome: string;
+  doc: string;
+  ie: string;
+  fone: string;
+  endereco: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  cep: string;
+  pais: string;
+}
+
+interface CteDocRef {
+  modelo: string;
+  serie: string;
+  numero: string;
+  chave: string;
+}
+
+interface CteComp {
+  nome: string;
+  valor: string;
+}
+
+interface CteCargaMedida {
+  tipo: string;
+  quantidade: string;
+  unidade: string;
+}
+
+interface CteObsCont {
+  campo: string;
+  texto: string;
+}
+
+interface CteData {
+  chCTe: string;
+  nCT: string;
+  serie: string;
+  modelo: string;
+  fl: string;
+  dhEmi: string;
+  nProt: string;
+  dhRecbto: string;
+  modal: string;
+  tpServico: string;
+  tpCte: string;
+  tomPapel: string;
+  indGlobalizado: string;
+  cfop: string;
+  natOp: string;
+  inicioPrest: string;
+  terminoPrest: string;
+  emit: CtePartyData;
+  rem: CtePartyData;
+  dest: CtePartyData;
+  exped: CtePartyData;
+  receb: CtePartyData;
+  tom: CtePartyData;
+  prodPred: string;
+  vCarga: string;
+  vTPrest: string;
+  vRec: string;
+  componentes: CteComp[];
+  medidas: CteCargaMedida[];
+  cst: string;
+  vBC: string;
+  pICMS: string;
+  vICMS: string;
+  redBc: string;
+  icmsSt: string;
+  docs: CteDocRef[];
+  obs: string;
+  obsCont: CteObsCont[];
+  rntrc: string;
+  versao: string;
+}
+
+type Party = {
+  nome: string;
+  cnpj: string;
+};
+
+function hasParty(party: Party): boolean {
+  return Boolean((party.nome || '').trim() || (party.cnpj || '').trim());
+}
+
+function getParty(node: any): Party {
+  return {
+    nome: gv(node, 'xNome') || gv(node, 'xFant'),
+    cnpj: gv(node, 'CNPJ') || gv(node, 'CPF'),
+  };
+}
+
+function getCteModalLabel(modalCode: string): string {
+  const modalMap: Record<string, string> = {
+    '01': 'Rodoviário',
+    '02': 'Aéreo',
+    '03': 'Aquaviário',
+    '04': 'Ferroviário',
+    '05': 'Dutoviário',
+    '06': 'Multimodal',
+  };
+  return modalMap[modalCode] || modalCode || '-';
+}
+
+function getCteTpServLabel(tpServCode: string): string {
+  const serviceMap: Record<string, string> = {
+    '0': 'Normal',
+    '1': 'Subcontratação',
+    '2': 'Redespacho',
+    '3': 'Redespacho Intermediário',
+    '4': 'Serviço Vinculado a Multimodal',
+  };
+  return serviceMap[tpServCode] || tpServCode || '-';
+}
+
+function parseCteTomador(infCte: any): { party: Party; papel: string } {
+  const rem = getParty(infCte?.rem || {});
+  const exped = getParty(infCte?.exped || {});
+  const receb = getParty(infCte?.receb || {});
+  const dest = getParty(infCte?.dest || {});
+
+  const toma4 = infCte?.ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
+  const explicitTomador = getParty(toma4?.toma || toma4 || infCte?.ide?.toma || infCte?.toma || {});
+  const ide = infCte?.ide || {};
+  const toma3Raw = ide?.toma3;
+  const toma03Raw = ide?.toma03;
+  const toma3Code = typeof toma3Raw === 'object' ? (toma3Raw?.toma ?? '') : toma3Raw;
+  const toma03Code = typeof toma03Raw === 'object' ? (toma03Raw?.toma ?? '') : toma03Raw;
+  const tpTomRaw = String(gv(toma4, 'tpTom') || toma03Code || toma3Code || gv(ide, 'tpTom') || '').trim();
+
+  const codeMap: Record<string, { party: Party; papel: string }> = {
+    '0': { party: rem, papel: 'Remetente' },
+    '1': { party: exped, papel: 'Expedidor' },
+    '2': { party: receb, papel: 'Recebedor' },
+    '3': { party: dest, papel: 'Destinatário' },
+  };
+
+  if (tpTomRaw in codeMap && hasParty(codeMap[tpTomRaw].party)) {
+    return codeMap[tpTomRaw];
+  }
+
+  if (tpTomRaw === '4' && hasParty(explicitTomador)) {
+    return { party: explicitTomador, papel: 'Outros' };
+  }
+
+  if (hasParty(explicitTomador)) return { party: explicitTomador, papel: 'Tomador' };
+  if (hasParty(dest)) return { party: dest, papel: 'Destinatário' };
+  if (hasParty(rem)) return { party: rem, papel: 'Remetente' };
+  if (hasParty(receb)) return { party: receb, papel: 'Recebedor' };
+  if (hasParty(exped)) return { party: exped, papel: 'Expedidor' };
+
+  return { party: { nome: '', cnpj: '' }, papel: 'Tomador' };
+}
+
+function getCteTypeLabel(tpCteCode: string): string {
+  const map: Record<string, string> = {
+    '0': 'Normal',
+    '1': 'Complementar',
+    '2': 'Anulação',
+    '3': 'Substituto',
+  };
+  return map[tpCteCode] || tpCteCode || '-';
+}
+
+function getGlobalizadoLabel(raw: string): string {
+  const normalized = String(raw || '').trim();
+  if (normalized === '1' || normalized.toLowerCase() === 'sim') return 'Sim';
+  if (normalized === '0' || normalized.toLowerCase() === 'nao' || normalized.toLowerCase() === 'não') return 'Não';
+  return normalized || 'Não';
+}
+
+function normalizeCteParty(node: any, ender: any): CtePartyData {
+  const doc = gv(node, 'CNPJ') || gv(node, 'CPF');
+  const xLgr = gv(ender, 'xLgr');
+  const nro = gv(ender, 'nro');
+  const xCpl = gv(ender, 'xCpl');
+  return {
+    nome: gv(node, 'xNome') || gv(node, 'xFant'),
+    doc,
+    ie: gv(node, 'IE'),
+    fone: gv(node, 'fone') || gv(ender, 'fone'),
+    endereco: [xLgr, nro, xCpl].filter(Boolean).join(', '),
+    bairro: gv(ender, 'xBairro'),
+    municipio: gv(ender, 'xMun'),
+    uf: gv(ender, 'UF'),
+    cep: gv(ender, 'CEP'),
+    pais: gv(ender, 'xPais') || gv(ender, 'cPais'),
+  };
+}
+
+function parseNfeKey(chave: string): { modelo: string; serie: string; numero: string } {
+  const digits = (chave || '').replace(/\D/g, '');
+  if (digits.length !== 44) {
+    return { modelo: '-', serie: '-', numero: '-' };
+  }
+  return {
+    modelo: digits.slice(20, 22),
+    serie: String(Number(digits.slice(22, 25))).padStart(3, '0'),
+    numero: String(Number(digits.slice(25, 34))).padStart(9, '0'),
+  };
+}
+
+function formatDocRefNumber(numero: string): string {
+  const digits = (numero || '').replace(/\D/g, '');
+  if (!digits) return '-';
+  return String(Number(digits)).padStart(9, '0');
+}
+
+function emptyCtePartyData(): CtePartyData {
+  return {
+    nome: '',
+    doc: '',
+    ie: '',
+    fone: '',
+    endereco: '',
+    bairro: '',
+    municipio: '',
+    uf: '',
+    cep: '',
+    pais: '',
+  };
+}
+
+function fmtCteNumber(numero: string): string {
+  const digits = (numero || '').replace(/\D/g, '').padStart(9, '0');
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+}
+
+function fmtCteSerie(serie: string): string {
+  const digits = (serie || '').replace(/\D/g, '');
+  if (!digits) return '001';
+  return String(Number(digits)).padStart(3, '0');
+}
+
+function fmtCteModelo(modelo: string): string {
+  const digits = (modelo || '').replace(/\D/g, '');
+  if (!digits) return '57';
+  return digits.padStart(2, '0');
+}
+
+function cteUnidadeLabel(unidade: string): string {
+  const map: Record<string, string> = {
+    '00': 'M3',
+    '01': 'KG',
+    '02': 'TON',
+    '03': 'UND',
+    '04': 'LTS',
+    '05': 'MMBTU',
+  };
+  return map[String(unidade || '').trim()] || unidade || '';
+}
+
+function formatCteQtdMedida(medida: CteCargaMedida): string {
+  const qtd = fmtNum(medida.quantidade || '0', 4);
+  const unid = cteUnidadeLabel(medida.unidade || '');
+  return unid ? `${qtd}/${unid}` : qtd;
+}
+
+function formatCtePartyAddress(party: CtePartyData): string {
+  if (!party.endereco) return '-';
+  return party.endereco;
+}
+
+function formatCtePartyCity(party: CtePartyData): string {
+  const city = [party.municipio, party.uf].filter(Boolean).join(' - ');
+  return city || '-';
+}
+
+function extractCteData(parsed: any, invoice: PdfInvoiceView): CteData {
+  const cteProc = parsed.cteProc || parsed;
+  const cteNode = cteProc?.CTe || parsed?.CTe || cteProc;
+  const infCte = cteNode?.infCte || cteNode || {};
+  const ide = infCte?.ide || {};
+  const emitNode = infCte?.emit || {};
+  const remNode = infCte?.rem || {};
+  const expedNode = infCte?.exped || {};
+  const recebNode = infCte?.receb || {};
+  const destNode = infCte?.dest || {};
+  const emit = normalizeCteParty(emitNode, emitNode?.enderEmit || {});
+  const rem = normalizeCteParty(remNode, remNode?.enderReme || {});
+  const exped = normalizeCteParty(expedNode, expedNode?.enderExped || {});
+  const receb = normalizeCteParty(recebNode, recebNode?.enderReceb || {});
+  const dest = normalizeCteParty(destNode, destNode?.enderDest || {});
+
+  const vPrest = infCte?.vPrest || {};
+  const prot = cteProc?.protCTe?.infProt || {};
+  const compl = infCte?.compl || {};
+  const infCteNorm = infCte?.infCTeNorm || {};
+  const infCarga = infCteNorm?.infCarga || {};
+  const imp = infCte?.imp || {};
+  const icms = imp?.ICMS || {};
+
+  const icmsKey = Object.keys(icms).find((key) => key.startsWith('ICMS')) || '';
+  const icmsNode = icmsKey ? icms[icmsKey] : {};
+
+  const obsContArray = ensureArray(compl?.ObsCont).map((node: any) => ({
+    campo: gv(node, '$', 'xCampo') || gv(node, 'xCampo'),
+    texto: gv(node, 'xTexto') || gv(node, '_'),
+  })).filter((item) => item.campo || item.texto);
+
+  const obsText = [gv(compl, 'xObs'), ...obsContArray.map((item) => `${item.campo}: ${item.texto}`)]
+    .filter((value) => value && String(value).trim().length > 0)
+    .join('\n');
+
+  const idAttr = gv(infCte, '$', 'Id');
+  const idKey = idAttr ? idAttr.replace(/^CTe/, '') : '';
+  const tomadorBase = parseCteTomador(infCte);
+  const toma4 = ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
+  const toma3Raw = ide?.toma3;
+  const toma03Raw = ide?.toma03;
+  const toma3Code = typeof toma3Raw === 'object' ? (toma3Raw?.toma ?? '') : toma3Raw;
+  const toma03Code = typeof toma03Raw === 'object' ? (toma03Raw?.toma ?? '') : toma03Raw;
+  const tpTomRaw = String(gv(toma4, 'tpTom') || toma03Code || toma3Code || gv(ide, 'tpTom') || '').trim();
+  const toma4Node = toma4?.toma || {};
+
+  let tomNode: any = {};
+  let tomEnder: any = {};
+  let tomPapel = tomadorBase.papel || 'Tomador';
+  if (tpTomRaw === '0') {
+    tomNode = remNode;
+    tomEnder = remNode?.enderReme || {};
+    tomPapel = 'Remetente';
+  } else if (tpTomRaw === '1') {
+    tomNode = expedNode;
+    tomEnder = expedNode?.enderExped || {};
+    tomPapel = 'Expedidor';
+  } else if (tpTomRaw === '2') {
+    tomNode = recebNode;
+    tomEnder = recebNode?.enderReceb || {};
+    tomPapel = 'Recebedor';
+  } else if (tpTomRaw === '3') {
+    tomNode = destNode;
+    tomEnder = destNode?.enderDest || {};
+    tomPapel = 'Destinatário';
+  } else if (tpTomRaw === '4') {
+    tomNode = toma4Node;
+    tomEnder = toma4Node?.enderToma || toma4?.enderToma || {};
+    tomPapel = 'Outros';
+  }
+
+  let tom = normalizeCteParty(tomNode, tomEnder);
+  if (!tom.nome && tomadorBase.party.nome) tom.nome = tomadorBase.party.nome;
+  if (!tom.doc && tomadorBase.party.cnpj) tom.doc = tomadorBase.party.cnpj;
+  if (!tom.nome) tom.nome = invoice.recipientName || '-';
+  if (!tom.doc) tom.doc = invoice.recipientCnpj || '';
+
+  const compArray = ensureArray(vPrest?.Comp).map((item: any) => ({
+    nome: gv(item, 'xNome'),
+    valor: gv(item, 'vComp'),
+  })).filter((item) => item.nome || item.valor);
+
+  const medArray = ensureArray(infCarga?.infQ).map((item: any) => ({
+    tipo: gv(item, 'tpMed'),
+    quantidade: gv(item, 'qCarga'),
+    unidade: gv(item, 'cUnid'),
+  })).filter((item) => item.tipo || item.quantidade);
+
+  const docRefs: CteDocRef[] = [];
+  const infNFeList = ensureArray(infCteNorm?.infDoc?.infNFe);
+  for (const item of infNFeList) {
+    const key = gv(item, 'chave');
+    if (!key) continue;
+    const parsedNfe = parseNfeKey(key);
+    docRefs.push({
+      modelo: parsedNfe.modelo === '55' ? 'NF-e' : parsedNfe.modelo,
+      serie: parsedNfe.serie,
+      numero: formatDocRefNumber(parsedNfe.numero),
+      chave: key,
+    });
+  }
+  const infCteList = ensureArray(infCteNorm?.infDoc?.infCTe);
+  for (const item of infCteList) {
+    const key = gv(item, 'chCTe');
+    if (!key) continue;
+    const digits = key.replace(/\D/g, '');
+    docRefs.push({
+      modelo: 'CT-e',
+      serie: digits.length === 44 ? String(Number(digits.slice(22, 25))).padStart(3, '0') : '-',
+      numero: digits.length === 44 ? String(Number(digits.slice(25, 34))).padStart(9, '0') : '-',
+      chave: key,
+    });
+  }
+
+  return {
+    chCTe: gv(prot, 'chCTe') || idKey || invoice.accessKey,
+    nCT: gv(ide, 'nCT') || invoice.number,
+    serie: gv(ide, 'serie') || invoice.series || '1',
+    modelo: gv(ide, 'mod') || '57',
+    fl: '1/1',
+    dhEmi: gv(ide, 'dhEmi') || invoice.issueDate.toISOString(),
+    nProt: gv(prot, 'nProt'),
+    dhRecbto: gv(prot, 'dhRecbto'),
+    modal: getCteModalLabel(gv(ide, 'modal')),
+    tpServico: getCteTpServLabel(gv(ide, 'tpServ')),
+    tpCte: getCteTypeLabel(gv(ide, 'tpCTe')),
+    tomPapel,
+    indGlobalizado: getGlobalizadoLabel(gv(ide, 'indGlobalizado')),
+    cfop: gv(ide, 'CFOP'),
+    natOp: gv(ide, 'natOp'),
+    inicioPrest: `${gv(ide, 'xMunIni') || '-'} - ${gv(ide, 'UFIni') || '-'}`,
+    terminoPrest: `${gv(ide, 'xMunFim') || '-'} - ${gv(ide, 'UFFim') || '-'}`,
+    emit: {
+      ...emit,
+      nome: emit.nome || invoice.senderName,
+      doc: emit.doc || invoice.senderCnpj,
+    },
+    rem,
+    dest,
+    exped,
+    receb,
+    tom,
+    prodPred: gv(infCarga, 'proPred'),
+    vCarga: gv(infCarga, 'vCarga'),
+    vTPrest: gv(vPrest, 'vTPrest') || String(invoice.totalValue || 0),
+    vRec: gv(vPrest, 'vRec') || gv(vPrest, 'vTPrest') || String(invoice.totalValue || 0),
+    componentes: compArray,
+    medidas: medArray,
+    cst: gv(icmsNode, 'CST'),
+    vBC: gv(icmsNode, 'vBC'),
+    pICMS: gv(icmsNode, 'pICMS'),
+    vICMS: gv(icmsNode, 'vICMS'),
+    redBc: gv(icmsNode, 'pRedBC') || '0.00',
+    icmsSt: gv(icmsNode, 'vICMSST') || '0.00',
+    docs: docRefs,
+    obs: obsText,
+    obsCont: obsContArray,
+    rntrc: gv(infCteNorm, 'infModal', 'rodo', 'RNTRC'),
+    versao: gv(infCte, '$', 'versao') || gv(cteProc, '$', 'versao') || '4.00',
+  };
+}
+
+function buildCteDataFromInvoice(invoice: PdfInvoiceView): CteData {
+  const emit = emptyCtePartyData();
+  emit.nome = invoice.senderName || '-';
+  emit.doc = invoice.senderCnpj || '';
+
+  const tom = emptyCtePartyData();
+  tom.nome = invoice.recipientName || '-';
+  tom.doc = invoice.recipientCnpj || '';
+
+  return {
+    chCTe: invoice.accessKey,
+    nCT: invoice.number || '-',
+    serie: invoice.series || '1',
+    modelo: '57',
+    fl: '1/1',
+    dhEmi: invoice.issueDate?.toISOString?.() || new Date().toISOString(),
+    nProt: '',
+    dhRecbto: '',
+    modal: '-',
+    tpServico: '-',
+    tpCte: '-',
+    tomPapel: 'Tomador',
+    indGlobalizado: 'Não',
+    cfop: '',
+    vTPrest: String(invoice.totalValue || 0),
+    vRec: String(invoice.totalValue || 0),
+    natOp: '-',
+    inicioPrest: '-',
+    terminoPrest: '-',
+    emit,
+    rem: emptyCtePartyData(),
+    dest: emptyCtePartyData(),
+    exped: emptyCtePartyData(),
+    receb: emptyCtePartyData(),
+    tom,
+    prodPred: '',
+    vCarga: '',
+    componentes: [],
+    medidas: [],
+    cst: '',
+    vBC: '',
+    pICMS: '',
+    vICMS: '',
+    redBc: '',
+    icmsSt: '',
+    docs: [],
+    obs: '',
+    obsCont: [],
+    rntrc: '',
+    versao: '4.00',
+  };
 }
 
 function extractDanfeData(parsed: any): DanfeData {
@@ -895,21 +1408,366 @@ function buildDanfeHtml(d: DanfeData, autoPrint: boolean): string {
 </html>`;
 }
 
-// ==================== Fallback for non-NFe ====================
+function buildCteHtml(d: CteData, autoPrint: boolean): string {
+  const now = new Date().toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const title = `QLMED/${d.chCTe}-cte.pdf`;
+  const protocolo = d.nProt ? `${esc(d.nProt)} - ${fmtDateTime(d.dhRecbto)}` : '-';
+  const medidas = d.medidas.length > 0
+    ? d.medidas
+    : [{ tipo: '-', quantidade: '0', unidade: '' }];
+  const docs = d.docs.length > 0
+    ? d.docs
+    : [{ modelo: '-', serie: '-', numero: '-', chave: '-' }];
+  const componentes = d.componentes.length > 0
+    ? d.componentes
+    : [{ nome: '-', valor: '0' }];
 
-function buildFallbackHtml(
-  invoice: { type: string; number: string; series: string | null; issueDate: Date; senderCnpj: string; senderName: string; recipientCnpj: string; recipientName: string; totalValue: number; status: string; accessKey: string; direction: string; company: { razaoSocial: string; cnpj: string } },
-  autoPrint: boolean
-): string {
-  const typeLabel: Record<string, string> = { NFE: 'NF-e', CTE: 'CT-e', NFSE: 'NFS-e' };
-  const tl = typeLabel[invoice.type] || invoice.type;
-  const now = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const cubagemMedida = medidas.find((m) => /(^|\s)M3(\s|$)/i.test(m.tipo) || cteUnidadeLabel(m.unidade) === 'M3');
+  const volumeMedida = medidas.find((m) => /VOLUME|UNIDADE|VOLUMES|UND/i.test(m.tipo));
+  const cubagem = cubagemMedida ? fmtNum(cubagemMedida.quantidade || '0', 2) : '0,00';
+  const qtdVolumes = volumeMedida ? fmtNum(volumeMedida.quantidade || '0', 2) : '0,00';
+
+  const partyBlock = (label: string, party: CtePartyData) => `
+    <div class="cte-party-title">${esc(label)}: <span class="cte-party-name">${esc(party.nome || '-')}</span></div>
+    <div><span class="cte-inline-lbl">ENDEREÇO:</span> ${esc(formatCtePartyAddress(party))}</div>
+    <div><span class="cte-inline-lbl">BAIRRO:</span> ${esc(party.bairro || '-')}</div>
+    <div><span class="cte-inline-lbl">MUNICÍPIO:</span> ${esc(formatCtePartyCity(party))} <span class="cte-inline-lbl">CEP:</span> ${esc(fmtCep(party.cep || ''))}</div>
+    <div><span class="cte-inline-lbl">CNPJ / CPF:</span> ${esc(fmtCnpj(party.doc || ''))} <span class="cte-inline-lbl">INSCR. EST.:</span> ${esc(party.ie || '')}</div>
+    <div><span class="cte-inline-lbl">PAÍS:</span> ${esc(party.pais || 'BRASIL')} <span class="cte-inline-lbl">FONE:</span> ${esc(fmtFone(party.fone || ''))}</div>
+  `;
+
+  const medidasRows = medidas.map((m, index) => `
+    <tr>
+      <td>${esc(m.tipo || '-')}</td>
+      <td class="right">${esc(formatCteQtdMedida(m))}</td>
+      <td class="right">${index === 0 ? esc(cubagem) : ''}</td>
+      <td class="right">${index === 0 ? esc(qtdVolumes) : ''}</td>
+    </tr>
+  `).join('');
+
+  const compRows = (() => {
+    const rows: string[] = [];
+    for (let i = 0; i < componentes.length; i += 2) {
+      const c1 = componentes[i];
+      const c2 = componentes[i + 1];
+      rows.push(`
+        <tr>
+          <td>${esc(c1?.nome || '-')}</td>
+          <td class="right">${fmtNum(c1?.valor || '0', 2)}</td>
+          <td>${esc(c2?.nome || '-')}</td>
+          <td class="right">${fmtNum(c2?.valor || '0', 2)}</td>
+        </tr>
+      `);
+    }
+    return rows.join('');
+  })();
+
+  const docRows = docs.map((doc) => `
+    <tr>
+      <td class="center">${esc(doc.modelo || '-')}</td>
+      <td class="center">${esc(doc.serie || '-')}</td>
+      <td class="center">${esc(doc.numero || '-')}</td>
+      <td class="mono">${esc(doc.chave || '-')}</td>
+    </tr>
+  `).join('');
+
+  const usoExclusivo = d.obsCont.length > 0
+    ? d.obsCont.map((item) => `${item.campo}: ${item.texto}`).join('\n')
+    : d.obs || '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>${tl} ${invoice.number}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    ${CSS}
+    table.cte { width: 100%; border-collapse: collapse; margin-top: -1px; }
+    table.cte td, table.cte th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; font-size: 8px; }
+    table.cte th { background: #f5f5f5; text-transform: uppercase; font-size: 6px; font-weight: 700; text-align: center; }
+    .cte-section-title { background: #f5f5f5; font-size: 7px; font-weight: 700; text-transform: uppercase; padding: 2px 4px; }
+    .cte-lbl { display: block; font-size: 6px; font-weight: 700; text-transform: uppercase; color: #333; line-height: 1.2; }
+    .cte-val { display: block; font-size: 9px; font-weight: 700; line-height: 1.3; }
+    .cte-val-mono { display: block; font-size: 8px; font-family: 'Courier New', monospace; font-weight: 700; line-height: 1.3; letter-spacing: 0.4px; }
+    .cte-inline-lbl { font-size: 6px; font-weight: 700; text-transform: uppercase; color: #333; margin-right: 2px; }
+    .cte-party-title { font-size: 7px; font-weight: 700; margin-bottom: 2px; text-transform: uppercase; }
+    .cte-party-name { font-size: 8px; font-weight: 700; }
+    .cte-docbox-title { font-size: 12px; font-weight: 800; text-align: center; line-height: 1.1; }
+    .cte-docbox-sub { font-size: 7px; text-align: center; line-height: 1.2; margin-top: 2px; }
+    .cte-docbox-num { font-size: 11px; font-weight: 800; text-align: center; margin-top: 3px; }
+    .mono { font-family: 'Courier New', monospace; font-size: 8px; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <table class="cte">
+      <tr>
+        <td style="width:80%; font-size:7px; line-height:1.25;">
+          DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO EM PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE TRANSPORTE<br><br>
+          <span class="cte-inline-lbl">NOME:</span><br>
+          <span class="cte-inline-lbl">RG:</span><br>
+          <span class="cte-inline-lbl">CHEGADA DATA / HORA:</span><br>
+          <span class="cte-inline-lbl">SAÍDA DATA / HORA:</span><br>
+          <span class="cte-inline-lbl">ASSINATURA / CARIMBO</span>
+        </td>
+        <td style="width:20%;" class="center">
+          <div style="font-size:11px; font-weight:800;">CT-E</div>
+          <div style="font-size:10px; font-weight:700; margin-top:2px;">Nº ${fmtCteNumber(d.nCT)}</div>
+          <div style="font-size:8px;">Série ${fmtCteSerie(d.serie)}</div>
+          <div style="font-size:8px;">MODAL</div>
+          <div style="font-size:9px; font-weight:700;">${esc(d.modal || '-')}</div>
+        </td>
+      </tr>
+    </table>
+    <div class="canhoto-line"></div>
+
+    <table class="cte">
+      <tr>
+        <td style="width:40%;">
+          <div style="font-size:12px; font-weight:800; line-height:1.15;">${esc(d.emit.nome || '-')}</div>
+          <div style="font-size:8px; line-height:1.35; margin-top:3px;">
+            ${esc(formatCtePartyAddress(d.emit))}<br>
+            ${esc(d.emit.bairro || '-')} - ${esc(formatCtePartyCity(d.emit))}<br>
+            Telefone: ${esc(fmtFone(d.emit.fone || ''))} CEP: ${esc(fmtCep(d.emit.cep || ''))}<br>
+            CNPJ: ${esc(fmtCnpj(d.emit.doc || ''))} IE: ${esc(d.emit.ie || '')}
+          </div>
+        </td>
+        <td style="width:22%;">
+          <div class="cte-docbox-title">DACTE</div>
+          <div class="cte-docbox-sub">Documento Auxiliar do Conhecimento de Transporte Eletrônico</div>
+          <div class="cte-docbox-num">MOD ${fmtCteModelo(d.modelo)} / SÉRIE ${fmtCteSerie(d.serie)}</div>
+          <div class="cte-docbox-num">NÚMERO ${fmtCteNumber(d.nCT)}</div>
+          <div class="cte-docbox-sub">FL ${esc(d.fl || '1/1')}</div>
+        </td>
+        <td style="width:38%;">
+          <span class="cte-lbl">DATA E HORA DE EMISSÃO</span>
+          <span class="cte-val">${fmtDateTime(d.dhEmi)}</span>
+          <span class="cte-lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+          <span class="cte-val">${esc(protocolo)}</span>
+          <span class="cte-lbl">CHAVE DE ACESSO</span>
+          <span class="cte-val-mono">${fmtKey(d.chCTe)}</span>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td style="width:16%;">
+          <span class="cte-lbl">TIPO DO CT-E</span>
+          <span class="cte-val">${esc(d.tpCte || '-')}</span>
+        </td>
+        <td style="width:16%;">
+          <span class="cte-lbl">TIPO DO SERVIÇO</span>
+          <span class="cte-val">${esc(d.tpServico || '-')}</span>
+        </td>
+        <td style="width:16%;">
+          <span class="cte-lbl">TOMADOR DO SERVIÇO</span>
+          <span class="cte-val">${esc(d.tomPapel || '-')}</span>
+        </td>
+        <td style="width:16%;">
+          <span class="cte-lbl">IND. CT-E GLOBALIZADO</span>
+          <span class="cte-val">${esc(d.indGlobalizado || 'Não')}</span>
+        </td>
+        <td style="width:36%;">
+          <span class="cte-lbl">Consulta de autenticidade</span>
+          <span class="cte-val" style="font-size:8px;">www.cte.fazenda.gov.br ou Sefaz autorizadora</span>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span class="cte-lbl">CFOP - NATUREZA DA OPERAÇÃO</span>
+          <span class="cte-val">${esc(`${d.cfop || '-'} - ${d.natOp || '-'}`)}</span>
+        </td>
+        <td colspan="3">
+          <span class="cte-lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+          <span class="cte-val">${esc(protocolo)}</span>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span class="cte-lbl">INÍCIO DA PRESTAÇÃO</span>
+          <span class="cte-val">${esc(d.inicioPrest || '-')}</span>
+        </td>
+        <td colspan="3">
+          <span class="cte-lbl">TÉRMINO DA PRESTAÇÃO</span>
+          <span class="cte-val">${esc(d.terminoPrest || '-')}</span>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td style="width:50%;">${partyBlock('REMETENTE', d.rem)}</td>
+        <td style="width:50%;">${partyBlock('DESTINATÁRIO', d.dest)}</td>
+      </tr>
+      <tr>
+        <td>${partyBlock('EXPEDIDOR', d.exped)}</td>
+        <td>${partyBlock('RECEBEDOR', d.receb)}</td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td>
+          <div class="cte-party-title">TOMADOR DO SERVIÇO: <span class="cte-party-name">${esc(d.tom.nome || '-')}</span></div>
+          <div><span class="cte-inline-lbl">ENDEREÇO:</span> ${esc(formatCtePartyAddress(d.tom))}</div>
+          <div><span class="cte-inline-lbl">MUNICÍPIO:</span> ${esc(formatCtePartyCity(d.tom))} <span class="cte-inline-lbl">CEP:</span> ${esc(fmtCep(d.tom.cep || ''))}</div>
+          <div><span class="cte-inline-lbl">CNPJ / CPF:</span> ${esc(fmtCnpj(d.tom.doc || ''))} <span class="cte-inline-lbl">INSCR. EST.:</span> ${esc(d.tom.ie || '')}</div>
+          <div><span class="cte-inline-lbl">PAÍS:</span> ${esc(d.tom.pais || 'BRASIL')} <span class="cte-inline-lbl">FONE:</span> ${esc(fmtFone(d.tom.fone || ''))}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td style="width:44%;">
+          <span class="cte-lbl">PRODUTO PREDOMINANTE</span>
+          <span class="cte-val">${esc(d.prodPred || '-')}</span>
+        </td>
+        <td style="width:36%;">
+          <span class="cte-lbl">OUTRAS CARACTERÍSTICAS DA CARGA</span>
+          <span class="cte-val">-</span>
+        </td>
+        <td style="width:20%;" class="right">
+          <span class="cte-lbl">VALOR TOTAL DA CARGA</span>
+          <span class="cte-val">${fmtNum(d.vCarga || '0', 2)}</span>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <th style="width:35%;">TIPO MEDIDA</th>
+        <th style="width:20%;">QTDE/UN.MEDIDA</th>
+        <th style="width:25%;">CUBAGEM (M³)</th>
+        <th style="width:20%;">QUANTIDADE DE VOLUMES (UND)</th>
+      </tr>
+      ${medidasRows}
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td colspan="2" class="cte-section-title">COMPONENTES DO VALOR DA PRESTAÇÃO DE SERVIÇO</td>
+      </tr>
+      <tr>
+        <td style="width:70%; padding:0;">
+          <table class="cte" style="margin-top:0;">
+            <tr>
+              <th style="width:35%;">NOME</th>
+              <th style="width:15%;">VALOR</th>
+              <th style="width:35%;">NOME</th>
+              <th style="width:15%;">VALOR</th>
+            </tr>
+            ${compRows}
+          </table>
+        </td>
+        <td style="width:30%;">
+          <span class="cte-lbl">VALOR TOTAL DO SERVIÇO</span>
+          <span class="cte-val right">${fmtNum(d.vTPrest || '0', 2)}</span>
+          <span class="cte-lbl" style="margin-top:6px;">VALOR TOTAL A RECEBER</span>
+          <span class="cte-val right">${fmtNum(d.vRec || d.vTPrest || '0', 2)}</span>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td colspan="6" class="cte-section-title">INFORMAÇÕES RELATIVAS AO IMPOSTO</td>
+      </tr>
+      <tr>
+        <th style="width:35%;">CLASSIFICAÇÃO TRIBUTÁRIA DO SERVIÇO</th>
+        <th style="width:15%;">BASE DE CÁLCULO</th>
+        <th style="width:12%;">ALÍQUOTA ICMS (%)</th>
+        <th style="width:12%;">VALOR ICMS</th>
+        <th style="width:12%;">% RED. BC. CALC.</th>
+        <th style="width:14%;">ICMS ST</th>
+      </tr>
+      <tr>
+        <td>${esc(d.cst ? `${d.cst} - TRIBUTAÇÃO` : '-')}</td>
+        <td class="right">${fmtNum(d.vBC || '0', 2)}</td>
+        <td class="right">${fmtNum(d.pICMS || '0', 2)}</td>
+        <td class="right">${fmtNum(d.vICMS || '0', 2)}</td>
+        <td class="right">${fmtNum(d.redBc || '0', 2)}</td>
+        <td class="right">${fmtNum(d.icmsSt || '0', 2)}</td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td colspan="4" class="cte-section-title">DOCUMENTOS ORIGINÁRIOS</td>
+      </tr>
+      <tr>
+        <th style="width:10%;">MODELO</th>
+        <th style="width:10%;">SÉRIE</th>
+        <th style="width:15%;">NÚMERO</th>
+        <th style="width:65%;">CHAVE DE ACESSO</th>
+      </tr>
+      ${docRows}
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td class="cte-section-title">OBSERVAÇÕES</td>
+      </tr>
+      <tr>
+        <td style="white-space:pre-wrap; line-height:1.35;">${esc(d.obs || '-')}</td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td class="cte-section-title">INFORMAÇÕES ESPECÍFICAS DO MODAL RODOVIÁRIO</td>
+      </tr>
+      <tr>
+        <td>
+          <span class="cte-lbl">RNTRC DA EMPRESA</span>
+          <span class="cte-val">${esc(d.rntrc || '-')}</span>
+        </td>
+      </tr>
+    </table>
+
+    <table class="cte">
+      <tr>
+        <td style="width:70%;">
+          <div class="cte-section-title">USO EXCLUSIVO DO EMISSOR DO CT-E</div>
+          <div style="white-space:pre-wrap; line-height:1.35; min-height:38px;">${esc(usoExclusivo || '-')}</div>
+        </td>
+        <td style="width:30%;">
+          <div class="cte-section-title">RESERVADO AO FISCO</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="footer-line">
+      <span>DATA E HORA DA IMPRESSÃO: ${now}</span>
+      <span>nsdocs - https://app.nsdocs.com.br</span>
+      <span>${esc(d.versao || '4.00')}</span>
+    </div>
+  </div>
+  ${autoPrint ? '<script>window.addEventListener("load", function() { window.print(); });</script>' : ''}
+</body>
+</html>`;
+}
+
+// ==================== Fallback for non-NFe ====================
+
+function buildFallbackHtml(invoice: PdfInvoiceView, autoPrint: boolean): string {
+  const typeLabel: Record<string, string> = { NFE: 'NF-e', CTE: 'CT-e', NFSE: 'NFS-e' };
+  const tl = typeLabel[invoice.type] || invoice.type;
+  const now = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const title = invoice.type === 'CTE' ? getPdfFilename(invoice) : `${tl} ${invoice.number}`;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
   <style>
     ${CSS}
     .simple-header { background: #333; color: #fff; padding: 15px 20px; }
@@ -1005,18 +1863,30 @@ export async function GET(
         const parsed = await parseXml(invoice.xmlContent);
         const data = extractDanfeData(parsed);
         html = buildDanfeHtml(data, autoPrint);
+      } else if (invoice.xmlContent && invoice.type === 'CTE') {
+        const parsed = await parseXml(invoice.xmlContent);
+        const data = extractCteData(parsed, invoice as PdfInvoiceView);
+        html = buildCteHtml(data, autoPrint);
+      } else if (invoice.type === 'CTE') {
+        const data = buildCteDataFromInvoice(invoice as PdfInvoiceView);
+        html = buildCteHtml(data, autoPrint);
       } else {
-        html = buildFallbackHtml(invoice as any, autoPrint);
+        html = buildFallbackHtml(invoice as PdfInvoiceView, autoPrint);
       }
     } catch (parseErr) {
       console.error('[PDF] XML parse error, using fallback:', parseErr);
-      html = buildFallbackHtml(invoice as any, autoPrint);
+      if (invoice.type === 'CTE') {
+        const data = buildCteDataFromInvoice(invoice as PdfInvoiceView);
+        html = buildCteHtml(data, autoPrint);
+      } else {
+        html = buildFallbackHtml(invoice as PdfInvoiceView, autoPrint);
+      }
     }
 
     if (download) {
-      const typeLabel: Record<string, string> = { NFE: 'NFe', CTE: 'CTe', NFSE: 'NFSe' };
-      const tl = typeLabel[invoice.type] || invoice.type;
-      const filename = `DANFE_${tl}_${invoice.number}_${invoice.accessKey.slice(0, 12)}.pdf`;
+      const filename = getPdfFilename(invoice as PdfInvoiceView);
+      const fallbackFilename = filename.replace(/[\\/]/g, '_');
+      const encodedFilename = encodeURIComponent(filename);
 
       const browser = await puppeteer.launch({
         headless: true,
@@ -1035,7 +1905,10 @@ export async function GET(
         return new Response(Buffer.from(pdfBuffer), {
           headers: {
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Disposition': `attachment; filename="${fallbackFilename}"; filename*=UTF-8''${encodedFilename}`,
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            Pragma: 'no-cache',
+            Expires: '0',
           },
         });
       } finally {
@@ -1044,7 +1917,12 @@ export async function GET(
     }
 
     return new Response(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
     });
   } catch (error) {
     console.error('[PDF] Internal error:', error);

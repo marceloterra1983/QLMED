@@ -9,10 +9,13 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatValue, getDateGroupLabel } from '@/lib/utils';
+import { formatDate, formatTime, formatCurrency, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
+import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
+import { useRole } from '@/hooks/useRole';
 
 export default function CtePage() {
+  const { canWrite } = useRole();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
@@ -34,6 +37,31 @@ export default function CtePage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+
+  const normalizeName = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
+
+  const abbreviateQlMed = (value: string | null | undefined): string => {
+    const normalized = normalizeName(value);
+    if (!normalized) return '-';
+    if (/\bQL\s*MED\b/i.test(normalized)) return 'QL MED';
+    return normalized;
+  };
+
+  const getNick = (cnpj: string | null | undefined, fallbackName: string | null | undefined): { display: string; full: string | null } => {
+    const full = abbreviateQlMed(fallbackName);
+    if (!cnpj) return { display: full, full: null };
+    const nick = nicknames.get(cnpj);
+    if (nick) return { display: nick, full };
+    const isCpf = cnpj.replace(/\D/g, '').length === 11;
+    return isCpf ? { display: 'PARTICULAR', full } : { display: full, full: null };
+  };
+
+  const getFreightFlow = (invoice: Invoice): { remetente: string; remetenteFull: string | null; recebedor: string; recebedorFull: string | null } => {
+    const rem = getNick(invoice.cteRemetenteCnpj, invoice.cteRemetenteName || '-');
+    const rec = getNick(invoice.cteRecebedorCnpj, invoice.cteRecebedorName || '-');
+    return { remetente: rem.display, remetenteFull: rem.full, recebedor: rec.display, recebedorFull: rec.full };
+  };
 
   const openModal = (id: string) => {
     setSelectedInvoiceId(id);
@@ -67,12 +95,13 @@ export default function CtePage() {
     loadInvoices();
   }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
-  const handleExport = () => {
-    const headers = ['Numero', 'Chave', 'Emitente', 'Data', 'Valor', 'Status'];
+	  const handleExport = () => {
+    const headers = ['Numero', 'Chave', 'Emitente', 'Tomador', 'Data', 'Valor', 'Status'];
     const rows = invoices.map(inv => [
       inv.number,
       inv.accessKey,
-      inv.senderName,
+      abbreviateQlMed(inv.senderName),
+      abbreviateQlMed(inv.recipientName),
       formatDate(inv.issueDate),
       inv.totalValue,
       inv.status,
@@ -88,20 +117,117 @@ export default function CtePage() {
     toast.success('CSV exportado com sucesso!');
   };
 
-  const handleBulkDownloadXml = () => {
+  const handleBulkDownloadXml = async () => {
     if (selected.size === 0) return;
-    selected.forEach(id => {
-      window.open(`/api/invoices/${id}/download`, '_blank');
-    });
-    toast.success(`Iniciando download de ${selected.size} XML(s)`);
+    const ids = Array.from(selected);
+
+    try {
+      if (ids.length === 1) {
+        await downloadFileFromUrl(`/api/invoices/${ids[0]}/download`);
+      } else {
+        await downloadFileFromRequest(
+          '/api/invoices/bulk-download',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, format: 'xml' }),
+          },
+          'xml_lote.zip',
+        );
+      }
+      toast.success(`Download concluído: ${ids.length} XML(s)`);
+    } catch {
+      toast.error('Erro ao baixar XMLs selecionados');
+    }
   };
 
-  const handleBulkDownloadPdf = () => {
+  const handleBulkDownloadPdf = async () => {
     if (selected.size === 0) return;
-    selected.forEach(id => {
-      window.open(`/api/invoices/${id}/pdf?download=true`, '_blank');
-    });
-    toast.success(`Iniciando download de ${selected.size} PDF(s)`);
+    const ids = Array.from(selected);
+
+    try {
+      if (ids.length === 1) {
+        await downloadFileFromUrl(`/api/invoices/${ids[0]}/pdf?download=true`);
+      } else {
+        await downloadFileFromRequest(
+          '/api/invoices/bulk-download',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, format: 'pdf' }),
+          },
+          'pdf_lote.zip',
+        );
+      }
+      toast.success(`Download concluído: ${ids.length} PDF(s)`);
+    } catch {
+      toast.error('Erro ao baixar PDFs selecionados');
+    }
+  };
+
+  const resolveBulkManifestAction = (): (
+    | { targetStatus: 'rejected' | 'confirmed'; actionLabel: string }
+    | { error: string }
+    | null
+  ) => {
+    const selectedInvoices = invoices.filter((invoice) => selected.has(invoice.id));
+    if (selectedInvoices.length === 0) return null;
+
+    const allRejected = selectedInvoices.every((invoice) => invoice.status === 'rejected');
+    const hasRejected = selectedInvoices.some((invoice) => invoice.status === 'rejected');
+
+    if (hasRejected && !allRejected) {
+      return { error: 'Selecione apenas CT-es no mesmo estágio para manifestar em lote.' };
+    }
+
+    if (allRejected) {
+      return { targetStatus: 'confirmed', actionLabel: 'Cancelar desacordo' };
+    }
+
+    return { targetStatus: 'rejected', actionLabel: 'Registrar desacordo' };
+  };
+
+  const handleBulkManifest = async () => {
+    if (selected.size === 0) return;
+
+    const action = resolveBulkManifestAction();
+    if (!action) return;
+    if ('error' in action) {
+      toast.error(action.error);
+      return;
+    }
+
+    const ids = Array.from(selected);
+    if (!window.confirm(`${action.actionLabel} para ${ids.length} CT-e(s) selecionado(s)?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/cte/manifest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, targetStatus: action.targetStatus }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error || 'Falha ao manifestar CT-es selecionados.');
+        return;
+      }
+
+      toast.success(`${action.actionLabel} aplicado em ${data.updated || 0} CT-e(s).`);
+      if (data?.skipped > 0) {
+        toast.info(`${data.skipped} item(ns) não elegível(is) foram ignorados.`);
+      }
+      if (data?.provider === 'local' && data?.providerNote) {
+        toast.info(data.providerNote);
+      }
+
+      setSelected(new Set());
+      loadInvoices();
+    } catch {
+      toast.error('Erro de rede ao manifestar CT-es.');
+    }
   };
 
   const confirmDelete = (target: 'bulk' | string) => {
@@ -148,9 +274,30 @@ export default function CtePage() {
       const res = await fetch(`/api/invoices?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setInvoices(data.invoices || []);
+        const loaded: Invoice[] = data.invoices || [];
+        setInvoices(loaded);
         setTotalPages(data.pagination?.pages || 1);
         setTotal(data.pagination?.total || 0);
+
+        // Fetch nicknames for all CNPJs present in this page
+        const cnpjSet = new Set<string>();
+        for (const inv of loaded) {
+          if (inv.senderCnpj) cnpjSet.add(inv.senderCnpj);
+          if (inv.recipientCnpj) cnpjSet.add(inv.recipientCnpj);
+          if (inv.cteRemetenteCnpj) cnpjSet.add(inv.cteRemetenteCnpj);
+          if (inv.cteRecebedorCnpj) cnpjSet.add(inv.cteRecebedorCnpj);
+        }
+        if (cnpjSet.size > 0) {
+          const params2 = new URLSearchParams();
+          Array.from(cnpjSet).forEach((c) => params2.append('cnpjs', c));
+          const nickRes = await fetch(`/api/contacts/nickname/batch?${params2}`);
+          if (nickRes.ok) {
+            const nickData = await nickRes.json();
+            setNicknames(new Map(Object.entries(nickData.nicknames || {})));
+          }
+        } else {
+          setNicknames(new Map());
+        }
       }
     } catch (err) {
       toast.error('Erro ao carregar CT-es');
@@ -223,6 +370,11 @@ export default function CtePage() {
     setDateTo('');
     setPage(1);
   };
+
+  const manifestAction = resolveBulkManifestAction();
+  const manifestButtonLabel = manifestAction && !('error' in manifestAction)
+    ? manifestAction.actionLabel
+    : 'Manifestar';
 
   return (
     <>
@@ -329,18 +481,24 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             Download PDF
           </button>
-          <button
-            onClick={() => toast.info('Envio de manifestação de CT-e ainda não implementado nesta tela.')}
-            className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">fact_check</span>
-            Manifestar
-          </button>
-          <div className="h-4 w-px bg-slate-300"></div>
-          <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
-            <span className="material-symbols-outlined text-[18px]">delete</span>
-            Excluir
-          </button>
+          {canWrite && (
+            <button
+              onClick={handleBulkManifest}
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">fact_check</span>
+              {manifestButtonLabel}
+            </button>
+          )}
+          {canWrite && (
+            <>
+              <div className="h-4 w-px bg-slate-300"></div>
+              <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+                Excluir
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -359,26 +517,37 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
             <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
           </div>
-        ) : (
-          invoices.map((invoice) => {
-            const manifest = getCteManifestBadge(invoice.status);
-            return (
-              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-2">
+	        ) : (
+	          invoices.map((invoice) => {
+	            const manifest = getCteManifestBadge(invoice.status);
+              const flow = getFreightFlow(invoice);
+	            return (
+	              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+	                <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                    {manifest.label}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{invoice.senderName}</p>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <div>
-                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatValue(invoice.totalValue)}</span>
+	                    {manifest.label}
+	                  </span>
+	                </div>
+                  <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
+                    <span className="truncate">{flow.remetente}</span>
+                    <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
+                    <span className="truncate">{flow.recebedor}</span>
                   </div>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                  {(() => { const e = getNick(invoice.senderCnpj, invoice.senderName); return e.full ? (
+                    <><p className="text-sm font-bold text-slate-800 dark:text-slate-200">{e.display}</p><p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">{e.full}</p></>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">{e.display}</p>
+                  ); })()}
+	                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
+	                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+	                  <div>
+	                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
+                  </div>
+                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
             );
@@ -413,6 +582,9 @@ export default function CtePage() {
                 <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
                   <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
                 </th>
+                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
+                  <div className="flex items-center gap-1">Tomador {getSortIcon('recipient')}</div>
+                </th>
                 <th className="px-3 py-2.5">Manifestação</th>
                 <th className="px-3 py-2.5 text-center">Ações</th>
               </tr>
@@ -426,13 +598,14 @@ export default function CtePage() {
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-5 w-24 rounded-full" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
                     <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
                     <Link
@@ -447,16 +620,17 @@ export default function CtePage() {
               ) : (
                 (() => {
                   let lastGroup = '';
-                  return invoices.map((invoice) => {
-                    const group = getDateGroupLabel(invoice.issueDate);
-                    const showDivider = group !== lastGroup;
-                    lastGroup = group;
-                    const manifest = getCteManifestBadge(invoice.status);
-                    return (
-                      <React.Fragment key={invoice.id}>
+	                  return invoices.map((invoice) => {
+	                    const group = getDateGroupLabel(invoice.issueDate);
+	                    const showDivider = group !== lastGroup;
+	                    lastGroup = group;
+	                    const manifest = getCteManifestBadge(invoice.status);
+                      const flow = getFreightFlow(invoice);
+	                    return (
+	                      <React.Fragment key={invoice.id}>
                         {showDivider && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <td colSpan={8} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
@@ -481,19 +655,41 @@ export default function CtePage() {
                           <td className="px-3 py-2">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                           </td>
-                          <td className="px-3 py-2 text-right">
-                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatValue(invoice.totalValue)}</span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.senderName}</span>
-                          </td>
+	                          <td className="px-3 py-2 text-right">
+	                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+	                          </td>
+	                          <td className="px-3 py-2">
+                              <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
+                                <span className="truncate">{flow.remetente}</span>
+                                <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
+                                <span className="truncate">{flow.recebedor}</span>
+                              </div>
+                              {(() => { const e = getNick(invoice.senderCnpj, invoice.senderName); return e.full ? (
+                                <>
+                                  <span className="text-sm font-bold text-slate-900 dark:text-white">{e.display}</span>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">{e.full}</div>
+                                </>
+                              ) : (
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{e.display}</span>
+                              ); })()}
+	                          </td>
+	                          <td className="px-3 py-2">
+                              {(() => { const r = getNick(invoice.recipientCnpj, invoice.recipientName || '-'); return r.full ? (
+                                <>
+                                  <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500">{r.full}</div>
+                                </>
+                              ) : (
+                                <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
+                              ); })()}
+	                          </td>
                           <td className="px-3 py-2">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
                               • {manifest.label}
                             </span>
                           </td>
                           <td className="px-3 py-2">
-                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={confirmDelete} />
+                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
                         )}

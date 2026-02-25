@@ -1,0 +1,198 @@
+{
+  "name": "Contas a Pagar/Receber Semanal",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Segunda 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.15.9:3000/api/financeiro/contas-pagar?limit=2000",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ca6e370b5e94cb57c94875bafa1435cb58bbae0adb61dae950b00eb2c106e30d"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Buscar Contas a Pagar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.15.9:3000/api/financeiro/contas-receber?limit=2000",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ca6e370b5e94cb57c94875bafa1435cb58bbae0adb61dae950b00eb2c106e30d"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Buscar Contas a Receber",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst pagar = items[0]?.json || {};\nconst receber = items[1]?.json || {};\n\nconst hoje = new Date();\nconst seg = new Date(hoje);\nseg.setDate(hoje.getDate() - hoje.getDay() + 1);\nconst dom = new Date(seg);\ndom.setDate(seg.getDate() + 6);\n\nconst mesesAbrev = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];\nconst fmtDate = (d) => {\n  const parts = d.split('-');\n  return `${parseInt(parts[2])}/${mesesAbrev[parseInt(parts[1])-1]}`;\n};\nconst fmtParcela = (num, total) => `${parseInt(num)}/${parseInt(total)}`;\nconst fmtMoney = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});\nconst fmtDateRange = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;\nconst pad2 = (n) => String(n).padStart(2,'0');\n\nconst semanaIni = `${seg.getFullYear()}-${pad2(seg.getMonth()+1)}-${pad2(seg.getDate())}`;\nconst semanaFim = `${dom.getFullYear()}-${pad2(dom.getMonth()+1)}-${pad2(dom.getDate())}`;\n\n// Mês atual\nconst mesAtualIni = `${hoje.getFullYear()}-${pad2(hoje.getMonth()+1)}-01`;\nconst ultimoDiaMesAtual = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();\nconst mesAtualFim = `${hoje.getFullYear()}-${pad2(hoje.getMonth()+1)}-${pad2(ultimoDiaMesAtual)}`;\nconst nomeMesAtual = hoje.toLocaleString('pt-BR', {month: 'long', year: 'numeric'});\n\n// Próximo mês\nconst proxMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 1);\nconst proxMesIni = `${proxMes.getFullYear()}-${pad2(proxMes.getMonth()+1)}-01`;\nconst ultimoDiaProxMes = new Date(proxMes.getFullYear(), proxMes.getMonth()+1, 0).getDate();\nconst proxMesFim = `${proxMes.getFullYear()}-${pad2(proxMes.getMonth()+1)}-${pad2(ultimoDiaProxMes)}`;\nconst nomeProxMes = proxMes.toLocaleString('pt-BR', {month: 'long', year: 'numeric'});\n\nconst allPagar = pagar.duplicatas || [];\nconst allReceber = receber.duplicatas || [];\n\n// Filtros\nconst pagarSemana = allPagar.filter(d => d.dupVencimento >= semanaIni && d.dupVencimento <= semanaFim);\nconst receberSemana = allReceber.filter(d => d.dupVencimento >= semanaIni && d.dupVencimento <= semanaFim);\nconst vencidas = allPagar.filter(d => d.status === 'overdue');\n\nconst pagarMesAtual = allPagar.filter(d => d.dupVencimento >= mesAtualIni && d.dupVencimento <= mesAtualFim);\nconst receberMesAtual = allReceber.filter(d => d.dupVencimento >= mesAtualIni && d.dupVencimento <= mesAtualFim);\nconst pagarProxMes = allPagar.filter(d => d.dupVencimento >= proxMesIni && d.dupVencimento <= proxMesFim);\nconst receberProxMes = allReceber.filter(d => d.dupVencimento >= proxMesIni && d.dupVencimento <= proxMesFim);\n\nconst totalArr = (arr) => arr.reduce((s,d) => s + d.dupValor, 0);\n\n// Helper: tabela pagar consolidada por fornecedor\nconst tabelaPagarConsolidada = (lista, corTitulo, titulo) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">💰 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum registro.</p>`;\n  } else {\n    const grupos = {};\n    for (const d of lista) {\n      const nome = d.emitenteNomeAbreviado || d.emitenteNome;\n      if (!grupos[nome]) grupos[nome] = { nfs: new Set(), total: 0, items: [] };\n      grupos[nome].nfs.add(d.nfNumero);\n      grupos[nome].total += d.dupValor;\n      grupos[nome].items.push(d);\n    }\n    const sorted = Object.entries(grupos).sort((a,b) => b[1].total - a[1].total);\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Fornecedor</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">NFs</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Total</th></tr>`;\n    for (const [nome, g] of sorted) {\n      const nfList = Array.from(g.nfs).join(', ');\n      h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${nome}<br><span style=\\\"font-size:11px; color:#888;\\\">(NFs: ${nfList})</span></td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${g.nfs.size}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(g.total)}</td></tr>`;\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"2\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#e74c3c;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: tabela receber consolidada por cliente\nconst tabelaReceberConsolidada = (lista, corTitulo, titulo) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">📥 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum registro.</p>`;\n  } else {\n    const grupos = {};\n    for (const d of lista) {\n      const nome = d.clienteNomeAbreviado || d.clienteNome;\n      if (!grupos[nome]) grupos[nome] = { nfs: new Set(), total: 0, items: [] };\n      grupos[nome].nfs.add(d.nfNumero);\n      grupos[nome].total += d.dupValor;\n      grupos[nome].items.push(d);\n    }\n    const sorted = Object.entries(grupos).sort((a,b) => b[1].total - a[1].total);\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Cliente</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">NFs</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Total</th></tr>`;\n    for (const [nome, g] of sorted) {\n      const nfList = Array.from(g.nfs).join(', ');\n      h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${nome}<br><span style=\\\"font-size:11px; color:#888;\\\">(NFs: ${nfList})</span></td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${g.nfs.size}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(g.total)}</td></tr>`;\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"2\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#27ae60;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: tabela pagar semanal com divisórias por dia\nconst diasSemana = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];\nconst tabelaPagarSemanal = (lista, corTitulo, titulo, seg) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">💰 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum vencimento nesta semana.</p>`;\n  } else {\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Venc.</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Fornecedor</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">NF</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Parcela</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Valor</th></tr>`;\n    const diasAgrupados = [[1],[2],[3],[4],[5],[6,0]];\n    const labelsGrupo = ['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sáb/Dom → Segunda'];\n    for (let g = 0; g < diasAgrupados.length; g++) {\n      const diasDoGrupo = [];\n      for (const dow of diasAgrupados[g]) {\n        const offset = dow === 0 ? 6 : dow - 1;\n        const dia = new Date(seg);\n        dia.setDate(seg.getDate() + offset);\n        const diaStr = `${dia.getFullYear()}-${pad2(dia.getMonth()+1)}-${pad2(dia.getDate())}`;\n        diasDoGrupo.push(diaStr);\n      }\n      const doDia = lista.filter(d => diasDoGrupo.includes(d.dupVencimento));\n      if (doDia.length === 0) continue;\n      const labelDatas = g === 5 ? fmtDate((() => { const proxSeg = new Date(seg); proxSeg.setDate(seg.getDate() + 7); return `${proxSeg.getFullYear()}-${pad2(proxSeg.getMonth()+1)}-${pad2(proxSeg.getDate())}`; })()) : diasDoGrupo.map(ds => fmtDate(ds)).join(' e ');\n      h += `<tr><td colspan=\\\"5\\\" style=\\\"padding:8px 8px 4px; background:#eef2f7; font-weight:bold; color:#2c3e50; font-size:12px; border-bottom:1px solid #ddd;\\\">📌 ${labelsGrupo[g]} — ${labelDatas}</td></tr>`;\n      for (const d of doDia) {\n        const sc = d.status === 'overdue' ? '#e74c3c' : d.status === 'due_today' ? '#f39c12' : '#333';\n        h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtDate(d.dupVencimento)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; color:${sc};\\\">${d.emitenteNomeAbreviado || d.emitenteNome}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.nfNumero}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtParcela(d.dupNumero, d.parcelaTotal)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(d.dupValor)}</td></tr>`;\n      }\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"4\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#e74c3c;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: tabela receber semanal com divisórias por dia\nconst tabelaReceberSemanal = (lista, corTitulo, titulo, seg) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">📥 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum recebimento nesta semana.</p>`;\n  } else {\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Venc.</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Cliente</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">NF</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Parcela</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Valor</th></tr>`;\n    const diasAgrupados2 = [[1],[2],[3],[4],[5],[6,0]];\n    const labelsGrupo2 = ['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sáb/Dom → Segunda'];\n    for (let g = 0; g < diasAgrupados2.length; g++) {\n      const diasDoGrupo = [];\n      for (const dow of diasAgrupados2[g]) {\n        const offset = dow === 0 ? 6 : dow - 1;\n        const dia = new Date(seg);\n        dia.setDate(seg.getDate() + offset);\n        const diaStr = `${dia.getFullYear()}-${pad2(dia.getMonth()+1)}-${pad2(dia.getDate())}`;\n        diasDoGrupo.push(diaStr);\n      }\n      const doDia = lista.filter(d => diasDoGrupo.includes(d.dupVencimento));\n      if (doDia.length === 0) continue;\n      const labelDatas = g === 5 ? fmtDate((() => { const proxSeg = new Date(seg); proxSeg.setDate(seg.getDate() + 7); return `${proxSeg.getFullYear()}-${pad2(proxSeg.getMonth()+1)}-${pad2(proxSeg.getDate())}`; })()) : diasDoGrupo.map(ds => fmtDate(ds)).join(' e ');\n      h += `<tr><td colspan=\\\"5\\\" style=\\\"padding:8px 8px 4px; background:#eaf5ee; font-weight:bold; color:#1a5e2a; font-size:12px; border-bottom:1px solid #ddd;\\\">📌 ${labelsGrupo2[g]} — ${labelDatas}</td></tr>`;\n      for (const d of doDia) {\n        h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtDate(d.dupVencimento)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.clienteNomeAbreviado || d.clienteNome}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.nfNumero}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtParcela(d.dupNumero, d.parcelaTotal)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(d.dupValor)}</td></tr>`;\n      }\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"4\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#27ae60;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: tabela pagar\nconst tabelaPagar = (lista, corTitulo, titulo) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">💰 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum registro.</p>`;\n  } else {\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Venc.</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Fornecedor</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">NF</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Parcela</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Valor</th></tr>`;\n    for (const d of lista) {\n      const sc = d.status === 'overdue' ? '#e74c3c' : d.status === 'due_today' ? '#f39c12' : '#333';\n      h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtDate(d.dupVencimento)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; color:${sc};\\\">${d.emitenteNomeAbreviado || d.emitenteNome}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.nfNumero}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtParcela(d.dupNumero, d.parcelaTotal)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(d.dupValor)}</td></tr>`;\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"4\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#e74c3c;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: tabela receber\nconst tabelaReceber = (lista, corTitulo, titulo) => {\n  let h = `<div style=\\\"padding: 15px;\\\">`;\n  h += `<h2 style=\\\"color: ${corTitulo}; font-size: 16px; border-bottom: 2px solid ${corTitulo}; padding-bottom: 5px;\\\">📥 ${titulo}</h2>`;\n  if (lista.length === 0) {\n    h += `<p style=\\\"color: #888;\\\">Nenhum registro.</p>`;\n  } else {\n    h += `<table style=\\\"width:100%; border-collapse: collapse; font-size: 13px;\\\">`;\n    h += `<tr style=\\\"background: #f8f8f8;\\\"><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Venc.</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">Cliente</th><th style=\\\"padding:8px; text-align:left; border-bottom:2px solid #ddd;\\\">NF</th><th style=\\\"padding:8px; text-align:center; border-bottom:2px solid #ddd;\\\">Parcela</th><th style=\\\"padding:8px; text-align:right; border-bottom:2px solid #ddd;\\\">Valor</th></tr>`;\n    for (const d of lista) {\n      h += `<tr><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtDate(d.dupVencimento)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.clienteNomeAbreviado || d.clienteNome}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee;\\\">${d.nfNumero}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:center;\\\">${fmtParcela(d.dupNumero, d.parcelaTotal)}</td><td style=\\\"padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;\\\">${fmtMoney(d.dupValor)}</td></tr>`;\n    }\n    h += `<tr style=\\\"background:#f8f8f8; font-weight:bold;\\\"><td colspan=\\\"4\\\" style=\\\"padding:8px;\\\">TOTAL</td><td style=\\\"padding:8px; text-align:right; color:#27ae60;\\\">${fmtMoney(totalArr(lista))}</td></tr>`;\n    h += `</table>`;\n  }\n  h += `</div>`;\n  return h;\n};\n\n// Helper: section header\nconst sectionHeader = (titulo, cor) => {\n  return `<div style=\\\"background: ${cor}; color: white; padding: 12px 20px; margin-top: 10px;\\\"><h2 style=\\\"margin:0; font-size: 18px;\\\">${titulo}</h2></div>`;\n};\n\n// Helper: summary cards\nconst summaryCards = (pagarLista, receberLista, labelPagar, labelReceber) => {\n  let h = `<div style=\\\"display: flex; gap: 10px; padding: 15px; background: #f5f5f5;\\\">`;\n  h += `<div style=\\\"flex:1; background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c;\\\">`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${labelPagar}</div>`;\n  h += `<div style=\\\"font-size: 20px; font-weight: bold; color: #e74c3c;\\\">${fmtMoney(totalArr(pagarLista))}</div>`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${pagarLista.length} título(s)</div></div>`;\n  h += `<div style=\\\"flex:1; background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #27ae60;\\\">`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${labelReceber}</div>`;\n  h += `<div style=\\\"font-size: 20px; font-weight: bold; color: #27ae60;\\\">${fmtMoney(totalArr(receberLista))}</div>`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${receberLista.length} título(s)</div></div>`;\n  h += `</div>`;\n  return h;\n};\n\nlet html = `<div style=\\\"font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;\\\">`;\n\n// === HEADER ===\nhtml += `<div style=\\\"background: #1e3a5f; color: white; padding: 20px; border-radius: 8px 8px 0 0;\\\">`;\nhtml += `<h1 style=\\\"margin:0; font-size: 22px;\\\">📊 Contas a Pagar/Receber</h1>`;\nhtml += `<p style=\\\"margin: 5px 0 0; opacity: 0.8;\\\">Semana ${fmtDateRange(seg)} a ${fmtDateRange(dom)}</p>`;\nhtml += `</div>`;\n\n// === AVISO EXPERIMENTAL ===\nhtml += `<div style=\\\"background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 15px; margin: 0;\\\"><strong style=\\\"color: #856404;\\\">⚠️ Relatório experimental</strong><span style=\\\"color: #856404;\\\"> — Este relatório é gerado automaticamente e pode conter erros. Confira os dados no painel antes de tomar decisões.</span></div>`;\n\n// === SEMANAL ===\nhtml += sectionHeader('📅 Esta Semana', '#2c3e50');\nhtml += summaryCards(pagarSemana, receberSemana, 'A PAGAR ESTA SEMANA', 'A RECEBER ESTA SEMANA');\nif (vencidas.length > 0) {\n  html += `<div style=\\\"padding: 0 15px;\\\"><div style=\\\"background: #fdf0f0; border-left: 4px solid #c0392b; padding: 10px 12px; margin-top: 5px; border-radius: 4px;\\\"><strong style=\\\"color: #c0392b;\\\">⚠️ ${vencidas.length} título(s) vencido(s)</strong> — Total: <strong>${fmtMoney(totalArr(vencidas))}</strong></div></div>`;\n}\nhtml += tabelaPagarSemanal(pagarSemana, '#e74c3c', 'Contas a Pagar — Esta Semana', seg);\nhtml += tabelaReceberSemanal(receberSemana, '#27ae60', 'Contas a Receber — Esta Semana', seg);\n\n// === MÊS ATUAL ===\nhtml += sectionHeader(`📆 Relatório Contas a Pagar/Receber — ${nomeMesAtual.charAt(0).toUpperCase() + nomeMesAtual.slice(1)}`, '#1a5276');\nhtml += summaryCards(pagarMesAtual, receberMesAtual, `A PAGAR EM ${nomeMesAtual.toUpperCase()}`, `A RECEBER EM ${nomeMesAtual.toUpperCase()}`);\nhtml += tabelaPagarConsolidada(pagarMesAtual, '#e74c3c', `Contas a Pagar — ${nomeMesAtual.charAt(0).toUpperCase() + nomeMesAtual.slice(1)}`);\nhtml += tabelaReceberConsolidada(receberMesAtual, '#27ae60', `Contas a Receber — ${nomeMesAtual.charAt(0).toUpperCase() + nomeMesAtual.slice(1)}`);\n\n// === PRÓXIMO MÊS ===\nhtml += sectionHeader(`📆 Relatório Contas a Pagar/Receber — ${nomeProxMes.charAt(0).toUpperCase() + nomeProxMes.slice(1)}`, '#7d3c98');\nhtml += summaryCards(pagarProxMes, receberProxMes, `A PAGAR EM ${nomeProxMes.toUpperCase()}`, `A RECEBER EM ${nomeProxMes.toUpperCase()}`);\nhtml += tabelaPagarConsolidada(pagarProxMes, '#e74c3c', `Contas a Pagar — ${nomeProxMes.charAt(0).toUpperCase() + nomeProxMes.slice(1)}`);\nhtml += tabelaReceberConsolidada(receberProxMes, '#27ae60', `Contas a Receber — ${nomeProxMes.charAt(0).toUpperCase() + nomeProxMes.slice(1)}`);\n\n// === CONSOLIDADO ANO ATUAL ===\nconst anoAtual = hoje.getFullYear();\nconst anoAtualIni = `${anoAtual}-01-01`;\nconst anoAtualFim = `${anoAtual}-12-31`;\nconst proxAno = anoAtual + 1;\nconst proxAnoIni = `${proxAno}-01-01`;\nconst proxAnoFim = `${proxAno}-12-31`;\n\nconst meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];\n\nconst consolidadoTotal = (allP, allR, anoIni, anoFim, ano) => {\n  const pAno = allP.filter(d => d.dupVencimento >= anoIni && d.dupVencimento <= anoFim);\n  const rAno = allR.filter(d => d.dupVencimento >= anoIni && d.dupVencimento <= anoFim);\n  const vp = totalArr(pAno);\n  const vr = totalArr(rAno);\n  const saldo = vr - vp;\n  const saldoCor = saldo >= 0 ? '#27ae60' : '#e74c3c';\n  let h = `<div style=\\\"display: flex; gap: 10px; padding: 15px; background: #f5f5f5;\\\">`;\n  h += `<div style=\\\"flex:1; background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c;\\\">`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">TOTAL A PAGAR ${ano}</div>`;\n  h += `<div style=\\\"font-size: 20px; font-weight: bold; color: #e74c3c;\\\">${fmtMoney(vp)}</div>`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${pAno.length} título(s)</div></div>`;\n  h += `<div style=\\\"flex:1; background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #27ae60;\\\">`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">TOTAL A RECEBER ${ano}</div>`;\n  h += `<div style=\\\"font-size: 20px; font-weight: bold; color: #27ae60;\\\">${fmtMoney(vr)}</div>`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${rAno.length} título(s)</div></div>`;\n  h += `<div style=\\\"flex:1; background: white; padding: 12px; border-radius: 6px; border-left: 4px solid ${saldoCor};\\\">`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">SALDO ${ano}</div>`;\n  h += `<div style=\\\"font-size: 20px; font-weight: bold; color: ${saldoCor};\\\">${fmtMoney(saldo)}</div>`;\n  h += `<div style=\\\"font-size: 12px; color: #888;\\\">${saldo >= 0 ? 'Positivo' : 'Negativo'}</div></div>`;\n  h += `</div>`;\n  return h;\n};\n\nhtml += sectionHeader(`📊 Consolidado ${anoAtual}`, '#0b5345');\nhtml += consolidadoTotal(allPagar, allReceber, anoAtualIni, anoAtualFim, anoAtual);\n\nhtml += sectionHeader(`📊 Consolidado ${proxAno}`, '#4a235a');\nhtml += consolidadoTotal(allPagar, allReceber, proxAnoIni, proxAnoFim, proxAno);\n\n// === FOOTER ===\nhtml += `<div style=\\\"padding: 15px; background: #f5f5f5; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px; color: #888;\\\">`;\nhtml += `Gerado automaticamente pelo QLMED em ${new Date().toLocaleString('pt-BR', {timeZone: 'America/Sao_Paulo'})}`;\nhtml += ` | <a href=\\\"https://app.qlmed.com.br/dashboard/contas-pagar\\\" style=\\\"color: #1e3a5f;\\\">Ver no painel</a>`;\nhtml += `</div></div>`;\n\nconst subject = `Contas a Pagar/Receber Semanal (${fmtDateRange(seg)} a ${fmtDateRange(dom)})`;\n\nreturn [{ json: { subject, html } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Montar Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "adm@qlmed.com.br",
+        "toEmail": "financeiro@qlmed.com.br",
+        "bccEmail": "marcelo@qlmed.com.br",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "html": "={{ $json.html }}"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "GURrAYnPAA14r3Eb",
+          "name": "QLMED Outlook SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Segunda 8h": {
+      "main": [
+        [
+          {
+            "node": "Buscar Contas a Pagar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar Contas a Receber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Contas a Pagar": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Contas a Receber": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Montar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Email": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

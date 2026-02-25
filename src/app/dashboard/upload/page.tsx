@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
+import { useRole } from '@/hooks/useRole';
 
 interface UploadResult {
   success: string[];
@@ -9,6 +10,7 @@ interface UploadResult {
 }
 
 export default function UploadPage() {
+  const { canWrite } = useRole();
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -132,6 +134,13 @@ export default function UploadPage() {
 
   return (
     <>
+      {!canWrite && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          Modo somente leitura — você não tem permissão para fazer upload.
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -148,15 +157,17 @@ export default function UploadPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Dropzone */}
           <div
-            className={`bg-white dark:bg-card-dark border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${
-              dragActive
-                ? 'border-primary bg-primary/5'
-                : 'border-slate-300 dark:border-slate-700 hover:border-primary/50'
+            className={`bg-white dark:bg-card-dark border-2 border-dashed rounded-xl p-12 text-center transition-all ${
+              !canWrite
+                ? 'border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed'
+                : dragActive
+                  ? 'border-primary bg-primary/5 cursor-pointer'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-primary/50 cursor-pointer'
             }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
+            onDragEnter={canWrite ? handleDrag : undefined}
+            onDragLeave={canWrite ? handleDrag : undefined}
+            onDragOver={canWrite ? handleDrag : undefined}
+            onDrop={canWrite ? handleDrop : undefined}
           >
             <input
               ref={fileInputRef}
@@ -183,14 +194,16 @@ export default function UploadPage() {
             <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg text-sm font-bold hover:bg-primary/20 transition-colors"
+                disabled={!canWrite}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg text-sm font-bold hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-[18px]">description</span>
                 Selecionar Arquivos
               </button>
               <button
                 onClick={() => folderInputRef.current?.click()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-bold hover:bg-amber-500/20 transition-colors"
+                disabled={!canWrite}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-bold hover:bg-amber-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-[18px]">folder_open</span>
                 Selecionar Pasta
@@ -237,7 +250,7 @@ export default function UploadPage() {
           {/* Upload Button */}
           <button
             onClick={handleUpload}
-            disabled={files.length === 0 || uploading}
+            disabled={files.length === 0 || uploading || !canWrite}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-lg font-bold transition-all shadow-lg shadow-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

@@ -35,8 +35,10 @@ interface ProductRow {
   lastInvoiceId?: string | null;
   lastInvoiceNumber?: string | null;
   shortName?: string | null;
+  manufacturerShortName?: string | null;
   productType?: string | null;
   productSubtype?: string | null;
+  outOfLine?: boolean;
 }
 
 interface ProductsSummary {
@@ -82,6 +84,24 @@ function formatOptional(value: number | null) {
   return formatValue(value);
 }
 
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query || !text) return text;
+  try {
+    const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!escaped) return text;
+    const re = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(re);
+    if (parts.length <= 1) return text;
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.trim().toLowerCase()
+        ? <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit px-0.5 rounded">{part}</mark>
+        : part
+    );
+  } catch {
+    return text;
+  }
+}
+
 
 export default function ProdutosPage() {
   const { canWrite } = useRole();
@@ -102,8 +122,9 @@ export default function ProdutosPage() {
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [subtypeFilter, setSubtypeFilter] = useState<string>('');
-  const [sortBy, setSortBy] = useState<SortField>('lastIssueDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<SortField>('productType');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
 
   // --- action states ---
   const [isSyncingAnvisa, setIsSyncingAnvisa] = useState(false);
@@ -111,6 +132,8 @@ export default function ProdutosPage() {
   const [isImportingXls, setIsImportingXls] = useState(false);
   const [isImportingOpenData, setIsImportingOpenData] = useState(false);
   const [isImportingTypes, setIsImportingTypes] = useState(false);
+  const [manageTypesOpen, setManageTypesOpen] = useState(false);
+  const [manageManufacturersOpen, setManageManufacturersOpen] = useState(false);
   const [editingAnvisaKey, setEditingAnvisaKey] = useState<string | null>(null);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
@@ -121,7 +144,24 @@ export default function ProdutosPage() {
 
   // --- group collapsing ---
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const toggleGroup = (g: string) => setCollapsedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  const toggleGroup = (g: string) => setCollapsedGroups((prev) => {
+    const n = new Set(prev);
+    if (n.has(g)) {
+      n.delete(g);
+      // When expanding a line, collapse all its groups
+      if (g.startsWith('line:')) {
+        const lineName = g.slice(5);
+        for (const p of filtered) {
+          if ((p.productType || 'Sem linha') === lineName) {
+            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}`);
+          }
+        }
+      }
+    } else {
+      n.add(g);
+    }
+    return n;
+  });
 
   // --- multi-select ---
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -136,11 +176,12 @@ export default function ProdutosPage() {
     enableSubtype: false, productSubtype: '',
     enableNcm: false, ncm: '',
     enableAnvisa: false, anvisa: '',
+    enableOutOfLine: false, outOfLine: false,
   });
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const openBulkEdit = () => {
-    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '' });
+    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '', enableOutOfLine: false, outOfLine: false });
     setBulkEditOpen(true);
   };
 
@@ -150,6 +191,7 @@ export default function ProdutosPage() {
     if (bulkFields.enableSubtype) fields.productSubtype = bulkFields.productSubtype || null;
     if (bulkFields.enableNcm) fields.ncm = bulkFields.ncm || null;
     if (bulkFields.enableAnvisa) fields.anvisa = bulkFields.anvisa || null;
+    if (bulkFields.enableOutOfLine) (fields as any).outOfLine = bulkFields.outOfLine;
     if (Object.keys(fields).length === 0) { toast.error('Selecione pelo menos um campo para editar'); return; }
 
     const selectedProducts = allProducts.filter((p) => selectedKeys.has(p.key));
@@ -327,6 +369,12 @@ export default function ProdutosPage() {
       result = result.filter((p) => (p.productSubtype || '') === subtypeFilter);
     }
 
+    if (lineStatusFilter === 'active') {
+      result = result.filter((p) => !p.outOfLine);
+    } else if (lineStatusFilter === 'outOfLine') {
+      result = result.filter((p) => !!p.outOfLine);
+    }
+
     result = [...result].sort((a, b) => {
       let cmp = 0;
       switch (sortBy) {
@@ -359,6 +407,7 @@ export default function ProdutosPage() {
         case 'productType':
           cmp = (a.productType || '').localeCompare(b.productType || '', 'pt-BR');
           if (cmp === 0) cmp = (a.productSubtype || '').localeCompare(b.productSubtype || '', 'pt-BR');
+          if (cmp === 0) cmp = (a.lastSupplierName || '').localeCompare(b.lastSupplierName || '', 'pt-BR');
           break;
       }
       if (cmp === 0) cmp = (a.description || '').localeCompare(b.description || '', 'pt-BR');
@@ -366,7 +415,30 @@ export default function ProdutosPage() {
     });
 
     return result;
-  }, [allProducts, search, onlyMissing, typeFilter, subtypeFilter, sortBy, sortOrder]);
+  }, [allProducts, search, onlyMissing, typeFilter, subtypeFilter, sortBy, sortOrder, lineStatusFilter]);
+
+  // Collapse all groups when no search; expand all when searching
+  useEffect(() => {
+    if (search) {
+      // Expand everything when searching
+      setCollapsedGroups(new Set());
+      return;
+    }
+    // Collapse by default (lines for productType sort, groups for others)
+    if (filtered.length > 0) {
+      const groups = new Set(filtered.map((p) => {
+        switch (sortBy) {
+          case 'supplier':    return p.lastSupplierName || 'Sem fabricante';
+          case 'productType': return `line:${p.productType || 'Sem linha'}`;
+          case 'ncm':         return p.ncm ? p.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM';
+          case 'anvisa':      return p.anvisa ? 'Com ANVISA' : 'Sem ANVISA';
+          default:            return '';
+        }
+      }));
+      setCollapsedGroups(groups);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy, search === '' ? '' : 'searching']);
 
   // show all filtered results (no pagination)
   const visible = filtered;
@@ -374,7 +446,7 @@ export default function ProdutosPage() {
   const getGroupLabel = (product: ProductRow): string => {
     switch (sortBy) {
       case 'supplier':    return product.lastSupplierName || 'Sem fabricante';
-      case 'productType': return product.productSubtype || product.productType || 'Sem tipo';
+      case 'productType': return `group:${product.productType || 'Sem linha'}|${product.productSubtype || 'Sem grupo'}`;
       case 'ncm':         return product.ncm ? product.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM';
       case 'anvisa':      return product.anvisa ? 'Com ANVISA' : 'Sem ANVISA';
       case 'lastIssueDate': {
@@ -388,6 +460,8 @@ export default function ProdutosPage() {
     }
   };
 
+  const getLineLabel = (product: ProductRow): string => `line:${product.productType || 'Sem linha'}`;
+
   // --- visible keys for select-all (depends on getGroupLabel) ---
   const visibleKeys = useMemo(() => {
     const keys: string[] = [];
@@ -395,7 +469,10 @@ export default function ProdutosPage() {
     for (const p of filtered) {
       const g = getGroupLabel(p);
       if (g !== lastGroup) lastGroup = g;
-      if (!collapsedGroups.has(g)) keys.push(p.key);
+      const lineKey = sortBy === 'productType' ? getLineLabel(p) : '';
+      if (collapsedGroups.has(g)) continue;
+      if (sortBy === 'productType' && collapsedGroups.has(lineKey)) continue;
+      keys.push(p.key);
     }
     return keys;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -410,6 +487,25 @@ export default function ProdutosPage() {
     }
   };
 
+  const handleToggleOutOfLine = async (product: ProductRow) => {
+    const newVal = !product.outOfLine;
+    try {
+      const res = await fetch('/api/products/bulk-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: [{ productKey: product.key, code: product.code, description: product.description, ncm: product.ncm, unit: product.unit, ean: product.ean }],
+          fields: { outOfLine: newVal },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setAllProducts((prev) => prev.map((p) => p.key === product.key ? { ...p, outOfLine: newVal } : p));
+      toast.success(newVal ? 'Produto marcado como fora de linha' : 'Produto restaurado para em linha');
+    } catch {
+      toast.error('Erro ao atualizar produto');
+    }
+  };
+
   // ---- handlers ----
   const handleSort = (field: SortField) => {
     if (sortBy === field) {
@@ -417,7 +513,6 @@ export default function ProdutosPage() {
     } else {
       setSortBy(field);
       setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(field) ? 'asc' : 'desc');
-      setCollapsedGroups(new Set());
     }
   };
 
@@ -796,7 +891,7 @@ export default function ProdutosPage() {
   const handleImportTypes = async (file: File) => {
     if (isImportingTypes) return;
     setIsImportingTypes(true);
-    const toastId = toast.loading('Importando tipos de produto...');
+    const toastId = toast.loading('Importando linhas de produto...');
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -804,12 +899,12 @@ export default function ProdutosPage() {
       const result = await res.json();
       if (!res.ok) throw new Error(result?.error || 'Falha na importação');
       toast.success(
-        `Tipos importados! Atualizados: ${result.matched} de ${result.parsed} itens do arquivo`,
+        `Linhas importadas! Atualizados: ${result.matched} de ${result.parsed} itens do arquivo`,
         { id: toastId },
       );
       loadProducts();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao importar tipos', { id: toastId });
+      toast.error(e instanceof Error ? e.message : 'Erro ao importar linhas', { id: toastId });
     } finally {
       setIsImportingTypes(false);
       if (typesInputRef.current) typesInputRef.current.value = '';
@@ -856,7 +951,7 @@ export default function ProdutosPage() {
         setAutoClassifyPreview(data);
       } else {
         toast.success(
-          `Classificação concluída! ${data.updatesApplied} produto(s) atualizados — ANVISA: ${data.byField.anvisa}, Tipo: ${data.byField.productType}, Subtipo: ${data.byField.productSubtype}`,
+          `Classificação concluída! ${data.updatesApplied} produto(s) atualizados — ANVISA: ${data.byField.anvisa}, Linha: ${data.byField.productType}, Grupo: ${data.byField.productSubtype}`,
           { id: toastId, duration: 10000 },
         );
         setAutoClassifyPreview(null);
@@ -887,54 +982,6 @@ export default function ProdutosPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {canWrite && (
-            <>
-              <button
-                onClick={handleSyncAnvisa}
-                disabled={isSyncingAnvisa}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${isSyncingAnvisa ? 'animate-spin' : ''}`}>autorenew</span>
-                {isSyncingAnvisa ? 'Sincronizando...' : 'Sincronizar ANVISA'}
-              </button>
-              <button
-                onClick={() => handleAutoClassify(true)}
-                disabled={isAutoClassifying}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shadow-sm disabled:opacity-60"
-                title="Analisa produtos e preenche ANVISA, tipo e subtipo automaticamente por similaridade"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${isAutoClassifying ? 'animate-spin' : ''}`}>{isAutoClassifying ? 'sync' : 'auto_fix_high'}</span>
-                {isAutoClassifying ? 'Analisando...' : 'Auto-classificar'}
-              </button>
-              <button
-                onClick={handleBulkSyncRegistry}
-                disabled={syncingRegistry}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-teal-200 dark:border-teal-800 rounded-lg text-sm font-bold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors shadow-sm disabled:opacity-60"
-                title="Consulta a API pública da ANVISA para atualizar nome do produto, detentor, situação e vencimento do registro"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${syncingRegistry ? 'animate-spin' : ''}`}>verified</span>
-                {syncingRegistry ? 'Consultando...' : 'Buscar Registros ANVISA'}
-              </button>
-              <input
-                ref={openDataInputRef}
-                type="file"
-                accept=".xls,.xlsx,.csv"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleOpenDataImport(f); }}
-              />
-              <button
-                onClick={() => openDataInputRef.current?.click()}
-                disabled={isImportingOpenData}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-teal-200 dark:border-teal-800 rounded-lg text-sm font-bold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors shadow-sm disabled:opacity-60"
-                title="Importar arquivo de dados abertos da ANVISA (dados.anvisa.gov.br) com situação, vencimento e detentor dos registros"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${isImportingOpenData ? 'animate-spin' : ''}`}>
-                  {isImportingOpenData ? 'sync' : 'upload_file'}
-                </span>
-                {isImportingOpenData ? 'Processando...' : 'Dados Abertos ANVISA'}
-              </button>
-            </>
-          )}
           <button
             onClick={loadProducts}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
@@ -944,76 +991,24 @@ export default function ProdutosPage() {
           </button>
           {canWrite && (
             <>
-              <input
-                ref={xlsInputRef}
-                type="file"
-                accept=".xls,.xlsx,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleXlsImport(file);
-                }}
-              />
               <button
-                onClick={() => xlsInputRef.current?.click()}
-                disabled={isImportingXls}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors shadow-sm disabled:opacity-60"
-                title="Importar planilha XLS com códigos ANVISA (colunas: Código, Reg. Anvisa)"
+                onClick={() => setManageTypesOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
+                title="Gerenciar linhas e grupos de produto"
               >
-                <span className={`material-symbols-outlined text-[20px] ${isImportingXls ? 'animate-spin' : ''}`}>
-                  {isImportingXls ? 'sync' : 'upload'}
-                </span>
-                {isImportingXls ? 'Importando...' : 'Importar XLS'}
+                <span className="material-symbols-outlined text-[20px]">tune</span>
+                Gerenciar Linhas
               </button>
-              <input
-                ref={typesInputRef}
-                type="file"
-                accept=".xls,.xlsx"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportTypes(f); }}
-              />
               <button
-                onClick={() => typesInputRef.current?.click()}
-                disabled={isImportingTypes}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm disabled:opacity-60"
-                title="Importar tipos e subtipos de produto (planilha SPICA Prod_Tipo)"
+                onClick={() => setManageManufacturersOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
+                title="Gerenciar fabricantes e nomes abreviados"
               >
-                <span className={`material-symbols-outlined text-[20px] ${isImportingTypes ? 'animate-spin' : ''}`}>
-                  {isImportingTypes ? 'sync' : 'category'}
-                </span>
-                {isImportingTypes ? 'Importando...' : 'Importar Tipos'}
+                <span className="material-symbols-outlined text-[20px]">factory</span>
+                Gerenciar Fabricantes
               </button>
             </>
           )}
-          <button
-            onClick={handleExportMissingAnvisa}
-            disabled={loading || missingCount === 0}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shadow-sm disabled:opacity-40"
-            title="Exportar planilha com todos os produtos sem ANVISA"
-          >
-            <span className="material-symbols-outlined text-[20px]">download</span>
-            Exportar sem ANVISA
-          </button>
-          <a
-            href="https://consultas.anvisa.gov.br/#/saude/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-teal-200 dark:border-teal-800 rounded-lg text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors shadow-sm"
-            title="Consulta pública ANVISA – Produtos para Saúde"
-          >
-            <span className="material-symbols-outlined text-[20px]">biotech</span>
-            ANVISA Saúde
-          </a>
-          <a
-            href="https://consultas.anvisa.gov.br/#/medicamentos/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-teal-200 dark:border-teal-800 rounded-lg text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors shadow-sm"
-            title="Consulta pública ANVISA – Medicamentos"
-          >
-            <span className="material-symbols-outlined text-[20px]">medication</span>
-            ANVISA Medicamentos
-          </a>
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
@@ -1025,65 +1020,39 @@ export default function ProdutosPage() {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wider text-slate-500">Produtos únicos</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">
-            {loading ? <span className="inline-block w-12 h-5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" /> : summary.totalProducts.toLocaleString('pt-BR')}
-          </p>
-        </div>
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wider text-slate-500">Com ANVISA</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">
-            {loading ? <span className="inline-block w-12 h-5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" /> : summary.productsWithAnvisa.toLocaleString('pt-BR')}
-          </p>
-        </div>
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wider text-slate-500">Qtde comprada</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">
-            {loading ? <span className="inline-block w-12 h-5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" /> : formatQuantity(summary.totalQuantity)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wider text-slate-500">NF-e processadas</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">
-            {loading ? <span className="inline-block w-12 h-5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" /> : summary.invoicesProcessed.toLocaleString('pt-BR')}
-          </p>
-        </div>
-      </div>
 
 
       {/* Search + filters */}
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
         <div className="flex gap-3 items-end">
           <div className="shrink-0">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
-            <div className="flex gap-1">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
+            <select
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); }}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+            >
+              <option value="">Todos</option>
+              {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
+                <option key={t!} value={t!}>{t}</option>
+              ))}
+            </select>
+          </div>
+          {typeFilter && (
+            <div className="shrink-0">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Grupo</label>
               <select
-                value={sortBy}
-                onChange={(e) => {
-                  const f = e.target.value as SortField;
-                  setSortBy(f);
-                  setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
-                  setCollapsedGroups(new Set());
-                }}
+                value={subtypeFilter}
+                onChange={(e) => setSubtypeFilter(e.target.value)}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               >
-                <option value="lastIssueDate">Última Compra</option>
-                <option value="ncm">NCM</option>
-                <option value="anvisa">ANVISA</option>
-                <option value="productType">Tipo</option>
+                <option value="">Todos</option>
+                {Array.from(new Set(allProducts.filter((p) => p.productType === typeFilter).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => (
+                  <option key={s!} value={s!}>{s}</option>
+                ))}
               </select>
-              <button
-                onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-                className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors"
-                title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
-              >
-                <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
-              </button>
             </div>
-          </div>
+          )}
           <div className="flex-1">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
               Buscar por código, descrição, NCM, ANVISA ou fornecedor
@@ -1107,46 +1076,49 @@ export default function ProdutosPage() {
               )}
             </div>
           </div>
-          <div className="shrink-0 flex flex-col justify-end">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">&nbsp;</label>
-            <button
-              onClick={() => setOnlyMissing((v) => !v)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${onlyMissing ? 'bg-red-600 text-white border-red-600' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-red-300 hover:text-red-600'}`}
-              title="Filtrar somente produtos sem ANVISA"
-            >
-              Sem ANVISA {missingCount > 0 && <span className={`ml-1 text-[11px] font-bold ${onlyMissing ? 'opacity-80' : 'text-red-500'}`}>{missingCount}</span>}
-            </button>
-          </div>
           <div className="shrink-0">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tipo</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); }}
-              className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-            >
-              <option value="">Todos</option>
-              {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
-                <option key={t!} value={t!}>{t}</option>
-              ))}
-            </select>
-          </div>
-          {typeFilter && (
-            <div className="shrink-0">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subtipo</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
+            <div className="flex gap-1">
               <select
-                value={subtypeFilter}
-                onChange={(e) => setSubtypeFilter(e.target.value)}
+                value={sortBy}
+                onChange={(e) => {
+                  const f = e.target.value as SortField;
+                  setSortBy(f);
+                  setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
+                  setCollapsedGroups(new Set());
+                }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               >
-                <option value="">Todos</option>
-                {Array.from(new Set(allProducts.filter((p) => p.productType === typeFilter).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => (
-                  <option key={s!} value={s!}>{s}</option>
-                ))}
+                <option value="productType">Linha</option>
+                <option value="lastIssueDate">Últ. Compra</option>
+                <option value="ncm">NCM</option>
+                <option value="anvisa">ANVISA</option>
               </select>
+              <button
+                onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors"
+                title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
+              >
+                <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+              </button>
             </div>
-          )}
+          </div>
+          <div className="shrink-0 flex flex-col justify-end">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              {([['all', 'Todos'], ['active', 'Em Linha'], ['outOfLine', 'Fora de Linha']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setLineStatusFilter(val)}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${lineStatusFilter === val ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
-            onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSortBy('lastIssueDate'); setSortOrder('desc'); }}
+            onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
@@ -1155,21 +1127,13 @@ export default function ProdutosPage() {
         </div>
 
         {/* Active filter indicators */}
-        {(search || onlyMissing || typeFilter) && (
+        {(search || typeFilter) && (
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             <span className="text-xs text-slate-500">Filtros ativos:</span>
             {search && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
                 "{search}"
                 <button onClick={() => setSearch('')} className="hover:opacity-70">
-                  <span className="material-symbols-outlined text-[13px]">close</span>
-                </button>
-              </span>
-            )}
-            {onlyMissing && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium dark:bg-red-900/30 dark:text-red-400">
-                Sem ANVISA
-                <button onClick={() => setOnlyMissing(false)} className="hover:opacity-70">
                   <span className="material-symbols-outlined text-[13px]">close</span>
                 </button>
               </span>
@@ -1197,11 +1161,13 @@ export default function ProdutosPage() {
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         {(() => {
           const allGroups = Array.from(new Set(visible.map(getGroupLabel)));
+          const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
+          const allKeys = [...allGroups, ...allLines];
           if (allGroups.length <= 1) return null;
           return (
             <div className="flex justify-end gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-              <button onClick={() => setCollapsedGroups(new Set(allGroups))} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Recolher tudo</button>
-              <button onClick={() => setCollapsedGroups(new Set())} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Expandir tudo</button>
+              <button onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? allLines : allGroups))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
+              <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
             </div>
           );
         })()}
@@ -1234,19 +1200,12 @@ export default function ProdutosPage() {
                 <th className="px-3 py-1.5">
                   <div className="flex items-center gap-1">Fabricante</div>
                 </th>
-                <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('productType')}>
-                  <div className="flex items-center gap-1">Tipo <SortIcon field="productType" /></div>
-                </th>
-                <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('totalQuantity')}>
-                  <div className="flex items-center justify-end gap-1">Qtde <SortIcon field="totalQuantity" /></div>
-                </th>
-                <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('invoiceCount')}>
-                  <div className="flex items-center justify-end gap-1">NF-es <SortIcon field="invoiceCount" /></div>
-                </th>
                 <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastIssueDate')}>
-                  <div className="flex items-center justify-end gap-1">Última Compra <SortIcon field="lastIssueDate" /></div>
+                  <div className="flex items-center justify-end gap-1">Últ. Compra <SortIcon field="lastIssueDate" /></div>
                 </th>
-                <th className="px-3 py-1.5">NF-e</th>
+                <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastPrice')}>
+                  <div className="flex items-center justify-end gap-1">Últ. Preço <SortIcon field="lastPrice" /></div>
+                </th>
                 <th className="px-3 py-1.5 text-center">Ações</th>
               </tr>
             </thead>
@@ -1261,16 +1220,15 @@ export default function ProdutosPage() {
                     <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-28" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-8 ml-auto" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-24 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-8 mx-auto" /></td>
                   </tr>
                 ))
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={9} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
                     <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
                     <p className="text-xs mt-1">
@@ -1282,6 +1240,98 @@ export default function ProdutosPage() {
                 </tr>
               ) : (
                 (() => {
+                  if (sortBy === 'productType') {
+                    // Two-level hierarchy: Linha (type) → Grupo (subtype) → products
+                    const lineCountMap = new Map<string, number>();
+                    const groupCountMap = new Map<string, number>();
+                    for (const p of visible) {
+                      const lk = getLineLabel(p);
+                      const gk = getGroupLabel(p);
+                      lineCountMap.set(lk, (lineCountMap.get(lk) || 0) + 1);
+                      groupCountMap.set(gk, (groupCountMap.get(gk) || 0) + 1);
+                    }
+                    let lastLine = '';
+                    let lastGrp = '';
+                    let lastSupplier = '';
+                    return visible.map((product) => {
+                      const lineKey = getLineLabel(product);
+                      const grpKey = getGroupLabel(product);
+                      const lineName = product.productType || 'Sem linha';
+                      const grpName = product.productSubtype || 'Sem grupo';
+                      const showLine = lineKey !== lastLine;
+                      const showGrp = grpKey !== lastGrp;
+                      if (showLine) { lastGrp = ''; lastSupplier = ''; }
+                      if (showGrp) lastSupplier = '';
+                      lastLine = lineKey;
+                      lastGrp = grpKey;
+                      const supplier = product.lastSupplierName || '';
+                      const showSupplierDivider = !showGrp && supplier !== lastSupplier;
+                      const isFirstInGrp = showGrp;
+                      lastSupplier = supplier;
+                      const lineCollapsed = collapsedGroups.has(lineKey);
+                      const grpCollapsed = collapsedGroups.has(grpKey);
+                      return (
+                        <React.Fragment key={product.key}>
+                          {showLine && (
+                            <tr className="cursor-pointer select-none group/line" onClick={() => toggleGroup(lineKey)}>
+                              <td colSpan={9} className="px-0 py-0">
+                                <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
+                                  <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                  <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+                                  <span className="text-[13px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
+                                  <span className="text-[11px] font-bold text-indigo-500/80 dark:text-indigo-400/80 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full min-w-[28px] text-center">{lineCountMap.get(lineKey)}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          {!lineCollapsed && showGrp && (
+                            <tr className="cursor-pointer select-none group/grp" onClick={() => toggleGroup(grpKey)}>
+                              <td colSpan={9} className="px-0 py-0">
+                                <div className="flex items-center gap-2 pl-8 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
+                                  <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                  <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
+                                  <span className="text-[10px] font-bold text-amber-500/80 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(grpKey)}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          {!lineCollapsed && !grpCollapsed && (isFirstInGrp || showSupplierDivider) && (
+                            <tr>
+                              <td colSpan={9} className="px-0 py-0">
+                                <div className="flex items-center gap-1.5 pl-14 pr-4 py-0.5 bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800/40">
+                                  <span className="material-symbols-outlined text-[12px] text-slate-300 dark:text-slate-600">local_shipping</span>
+                                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{supplier || 'Sem fornecedor'}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          {!lineCollapsed && !grpCollapsed && (
+                    <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
+                    <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-1"><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
+                    <td className="px-3 py-1 text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
+                        <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Histórico de compras e vendas"><span className="material-symbols-outlined text-[18px]">history</span></button>
+                      </div>
+                    </td>
+                  </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    });
+                  }
+
+                  // Single-level grouping for other sort modes
                   const groupCountMap = new Map<string, number>();
                   for (const p of visible) { const g = getGroupLabel(p); groupCountMap.set(g, (groupCountMap.get(g) || 0) + 1); }
                   let lastGroup = '';
@@ -1293,101 +1343,32 @@ export default function ProdutosPage() {
                       <React.Fragment key={product.key}>
                         {showDivider && group && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={12} className="px-3 py-1 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
-                              <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[15px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-                                {sortBy === 'productType' && product.productType && product.productSubtype && (
-                                  <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{product.productType}</span>
-                                )}
-                                {sortBy === 'productType' && product.productType && product.productSubtype && (
-                                  <span className="text-slate-300 dark:text-slate-600 text-xs">›</span>
-                                )}
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
-                                <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{groupCountMap.get(group)}</span>
+                            <td colSpan={9} className="px-0 py-0">
+                              <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(group)}</span>
                               </div>
                             </td>
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                  <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                  <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
                     <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedKeys.has(product.key)}
-                        onChange={() => toggleSelect(product.key)}
-                        className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer"
-                      />
+                      <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
-                    <td className="px-3 py-1">
-                      <span className="text-[12px] font-mono font-semibold text-slate-900 dark:text-white">{product.code || '-'}</span>
-                    </td>
-                    <td className="px-3 py-1">
-                      <span className="text-[12px] font-semibold text-slate-900 dark:text-white">{product.description}</span>
-                    </td>
-                    <td className="px-3 py-1">
-                      <span className="text-[12px] font-mono text-slate-700 dark:text-slate-300">{product.ncm || '-'}</span>
-                    </td>
-                    <td className="px-3 py-1">
-                      <span className={`text-[12px] font-mono ${product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>
-                        {product.anvisa || '—'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1">
-                      <span className="text-[12px] text-slate-600 dark:text-slate-400">{product.anvisaManufacturer || '-'}</span>
-                    </td>
-                    <td className="px-3 py-1">
-                      {product.productType ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="inline-block px-1.5 py-0 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800 whitespace-nowrap w-fit">
-                            {product.productType}
-                          </span>
-                          {product.productSubtype && (
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[160px]">{product.productSubtype}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[12px] text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-1 text-right">
-                      <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{formatQuantity(product.totalQuantity)}</span>
-                    </td>
-                    <td className="px-3 py-1 text-right">
-                      <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">{product.invoiceCount}</span>
-                    </td>
-                    <td className="px-3 py-1 text-right">
-                      <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</span>
-                    </td>
-                    <td className="px-3 py-1">
-                      {product.lastInvoiceNumber ? (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setInvoiceModalId(product.lastInvoiceId || null); }}
-                          className="inline-flex items-center gap-1 text-[11px] font-mono text-primary hover:text-primary-dark hover:underline transition-colors"
-                          title="Abrir NF-e"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                          {product.lastInvoiceNumber}
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-400">-</span>
-                      )}
-                    </td>
+                    <td className="px-3 py-1"><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
+                    <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-0.5">
-                        <button
-                          onClick={() => openDetail(product)}
-                          className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Ver detalhes do produto"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">visibility</span>
-                        </button>
-                        <button
-                          onClick={() => openHistory(product)}
-                          className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                          title="Histórico de compras e vendas"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">history</span>
-                        </button>
+                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
+                        <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Histórico de compras e vendas"><span className="material-symbols-outlined text-[18px]">history</span></button>
                       </div>
                     </td>
                   </tr>
@@ -1456,7 +1437,7 @@ export default function ProdutosPage() {
                   {autoClassifyPreview.updatesFound} alteração(ões) encontrada(s) de {autoClassifyPreview.totalProducts} produtos
                   {autoClassifyPreview.byField && (
                     <span className="ml-2">
-                      — ANVISA: <b>{autoClassifyPreview.byField.anvisa}</b>, Tipo: <b>{autoClassifyPreview.byField.productType}</b>, Subtipo: <b>{autoClassifyPreview.byField.productSubtype}</b>
+                      — ANVISA: <b>{autoClassifyPreview.byField.anvisa}</b>, Linha: <b>{autoClassifyPreview.byField.productType}</b>, Grupo: <b>{autoClassifyPreview.byField.productSubtype}</b>
                     </span>
                   )}
                 </p>
@@ -1498,12 +1479,12 @@ export default function ProdutosPage() {
                             )}
                             {item.fields.product_type && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                                Tipo: {item.fields.product_type}
+                                Linha: {item.fields.product_type}
                               </span>
                             )}
                             {item.fields.product_subtype && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
-                                Subtipo: {item.fields.product_subtype}
+                                Grupo: {item.fields.product_subtype}
                               </span>
                             )}
                           </div>
@@ -1546,130 +1527,126 @@ export default function ProdutosPage() {
       )}
 
       {/* Bulk edit modal */}
-      {bulkEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
-          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Editar em massa</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</p>
+      {bulkEditOpen && (() => {
+        const bulkInputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow";
+        const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine].filter(Boolean).length;
+
+        const BulkFieldRow = ({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) => (
+          <div className={`rounded-xl border transition-colors ${checked ? 'border-primary/30 dark:border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.04]' : 'border-slate-200 dark:border-slate-700'}`}>
+            <label className="flex items-center gap-3 px-4 py-3 cursor-pointer">
+              <div className="relative flex items-center">
+                <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${checked ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
+                  {checked && <span className="material-symbols-outlined text-[14px] text-white">check</span>}
+                </div>
               </div>
-              <button onClick={() => setBulkEditOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
+              <span className={`material-symbols-outlined text-[18px] transition-colors ${checked ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>{icon}</span>
+              <span className={`text-[13px] font-bold uppercase tracking-wider transition-colors ${checked ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
+            </label>
+            {checked && children && (
+              <div className="px-4 pb-3 pt-0">
+                {children}
+              </div>
+            )}
+          </div>
+        );
+
+        return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
+          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                  <span className="material-symbols-outlined text-[24px] text-primary">edit_note</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Editar em massa</h3>
+                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    <span className="font-semibold text-primary">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button onClick={() => setBulkEditOpen(false)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
-                Marque os campos que deseja alterar. Campos não marcados permanecerão inalterados.
-              </p>
-
-              {/* Tipo */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={bulkFields.enableType} onChange={(e) => setBulkFields((f) => ({ ...f, enableType: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Tipo</span>
-                </label>
-                {bulkFields.enableType && (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={bulkFields.productType}
-                      onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))}
-                      placeholder="Deixe em branco para limpar"
-                      list="bulk-types-list"
-                      className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    />
-                    <datalist id="bulk-types-list">
-                      {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
-                        <option key={t!} value={t!} />
-                      ))}
-                    </datalist>
-                  </div>
-                )}
+            {/* Body */}
+            <div className="px-5 py-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-900/10 border border-blue-200/50 dark:border-blue-800/30">
+                <span className="material-symbols-outlined text-[16px] text-blue-500">info</span>
+                <p className="text-[12px] text-blue-700 dark:text-blue-300">Marque os campos que deseja alterar. Campos não marcados permanecerão inalterados.</p>
               </div>
 
-              {/* Subtipo */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={bulkFields.enableSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, enableSubtype: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Subtipo</span>
-                </label>
-                {bulkFields.enableSubtype && (
-                  <input
-                    type="text"
-                    value={bulkFields.productSubtype}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))}
-                    placeholder="Deixe em branco para limpar"
-                    list="bulk-subtypes-list"
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  />
-                )}
+              <BulkFieldRow checked={bulkFields.enableType} onChange={(v) => setBulkFields((f) => ({ ...f, enableType: v }))} icon="category" label="Linha">
+                <input type="text" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Deixe em branco para limpar" list="bulk-types-list" className={bulkInputCls} />
+                <datalist id="bulk-types-list">
+                  {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
+                    <option key={t!} value={t!} />
+                  ))}
+                </datalist>
+              </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableSubtype} onChange={(v) => setBulkFields((f) => ({ ...f, enableSubtype: v }))} icon="folder" label="Grupo">
+                <input type="text" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Deixe em branco para limpar" list="bulk-subtypes-list" className={bulkInputCls} />
                 <datalist id="bulk-subtypes-list">
                   {Array.from(new Set(
-                    allProducts
-                      .filter((p) => !bulkFields.productType || p.productType === bulkFields.productType)
-                      .map((p) => p.productSubtype).filter(Boolean)
+                    allProducts.filter((p) => !bulkFields.productType || p.productType === bulkFields.productType).map((p) => p.productSubtype).filter(Boolean)
                   )).sort().map((s) => <option key={s!} value={s!} />)}
                 </datalist>
-              </div>
+              </BulkFieldRow>
 
-              {/* NCM */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={bulkFields.enableNcm} onChange={(e) => setBulkFields((f) => ({ ...f, enableNcm: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">NCM</span>
-                </label>
-                {bulkFields.enableNcm && (
-                  <input
-                    type="text"
-                    value={bulkFields.ncm}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))}
-                    placeholder="Ex: 90189099"
-                    maxLength={8}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  />
-                )}
-              </div>
+              <BulkFieldRow checked={bulkFields.enableNcm} onChange={(v) => setBulkFields((f) => ({ ...f, enableNcm: v }))} icon="tag" label="NCM">
+                <input type="text" value={bulkFields.ncm} onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))} placeholder="Ex: 90189099" maxLength={8} className={`${bulkInputCls} font-mono`} />
+              </BulkFieldRow>
 
-              {/* ANVISA */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={bulkFields.enableAnvisa} onChange={(e) => setBulkFields((f) => ({ ...f, enableAnvisa: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">ANVISA</span>
-                </label>
-                {bulkFields.enableAnvisa && (
-                  <input
-                    type="text"
-                    value={bulkFields.anvisa}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))}
-                    placeholder="11 dígitos — deixe em branco para limpar"
-                    maxLength={13}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  />
-                )}
-              </div>
+              <BulkFieldRow checked={bulkFields.enableAnvisa} onChange={(v) => setBulkFields((f) => ({ ...f, enableAnvisa: v }))} icon="verified" label="ANVISA">
+                <input type="text" value={bulkFields.anvisa} onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))} placeholder="11 dígitos — deixe em branco para limpar" maxLength={13} className={`${bulkInputCls} font-mono`} />
+              </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableOutOfLine} onChange={(v) => setBulkFields((f) => ({ ...f, enableOutOfLine: v }))} icon="toggle_on" label="Status">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBulkFields((f) => ({ ...f, outOfLine: false }))}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${!bulkFields.outOfLine ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-none' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                    Em Linha
+                  </button>
+                  <button
+                    onClick={() => setBulkFields((f) => ({ ...f, outOfLine: true }))}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${bulkFields.outOfLine ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">block</span>
+                    Fora de Linha
+                  </button>
+                </div>
+              </BulkFieldRow>
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-              <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 transition-colors">
+            {/* Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+              <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 Cancelar
               </button>
               <button
                 onClick={handleBulkSave}
-                disabled={isBulkSaving || (!bulkFields.enableType && !bulkFields.enableSubtype && !bulkFields.enableNcm && !bulkFields.enableAnvisa)}
-                className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-40"
+                disabled={isBulkSaving || enabledCount === 0}
+                className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
               >
                 {isBulkSaving ? (
-                  <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span> Salvando...</>
+                  <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Salvando...</>
                 ) : (
-                  <><span className="material-symbols-outlined text-[16px]">save</span> Salvar</>
+                  <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && `(${enabledCount})`}</>
                 )}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Product detail modal */}
       {detailProduct && (() => {
@@ -1679,62 +1656,89 @@ export default function ProdutosPage() {
           ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
           : 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
 
-        const SectionCard = ({ id, icon, iconColor, title, badge, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; children: React.ReactNode }) => (
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 overflow-hidden">
-            <button
-              onClick={() => toggleDetailSection(id)}
-              className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-            >
-              <span className={`material-symbols-outlined text-[18px] ${iconColor}`}>{icon}</span>
-              <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex-1 text-left">{title}</h4>
-              {badge}
-              <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: detailOpenSections.has(id) ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
-            </button>
-            {detailOpenSections.has(id) && (
-              <div className="px-4 pb-4 pt-0">
-                {children}
-              </div>
-            )}
+        const SectionCard = ({ id, icon, iconColor, title, badge, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; children: React.ReactNode }) => {
+          const isOpen = detailOpenSections.has(id);
+          return (
+            <div className={`rounded-2xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/20'}`}>
+              <button
+                onClick={() => toggleDetailSection(id)}
+                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOpen ? 'bg-primary/10 dark:bg-primary/20' : 'bg-slate-100 dark:bg-slate-800'} transition-colors`}>
+                  <span className={`material-symbols-outlined text-[18px] ${isOpen ? iconColor : 'text-slate-400 dark:text-slate-500'} transition-colors`}>{icon}</span>
+                </div>
+                <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex-1 text-left">{title}</h4>
+                {badge}
+                <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+              </button>
+              {isOpen && (
+                <div className="px-5 pb-5 pt-1 border-t border-slate-100 dark:border-slate-800/50">
+                  {children}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const DetailField = ({ label, children, colSpan2, mono }: { label: string; children: React.ReactNode; colSpan2?: boolean; mono?: boolean }) => (
+          <div className={`${colSpan2 ? 'col-span-2' : ''}`}>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{label}</label>
+            {children}
           </div>
         );
 
+        const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed";
+
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
-            <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
 
               {/* ── Header ── */}
-              <div className="flex items-start justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[22px] text-primary">inventory_2</span>
+              <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+                {/* Out of line banner */}
+                {detailProduct.outOfLine && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-400 via-red-500 to-red-400" />
+                )}
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                    <span className="material-symbols-outlined text-[24px] text-primary">inventory_2</span>
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">{detailProduct.description}</h3>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {detailProduct.code && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300">
-                          <span className="material-symbols-outlined text-[12px]">qr_code</span>{detailProduct.code}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                      {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
+                      {detailProduct.description}
+                    </h3>
+                    {detailProduct.shortName && (
+                      <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      {detailProduct.outOfLine && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-[10px] font-bold text-red-600 dark:text-red-400">
+                          <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
                         </span>
                       )}
-                      {detailProduct.unit && (
-                        <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-[11px] font-bold text-blue-700 dark:text-blue-400">{detailProduct.unit}</span>
+                      {detailProduct.productType && (
+                        <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
+                      )}
+                      {detailProduct.productSubtype && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
                       )}
                       {detailProduct.ean && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                          EAN: {detailProduct.ean}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400">
+                          EAN {detailProduct.ean}
                         </span>
                       )}
                       {detailProduct.anvisa && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900/30 text-[11px] font-mono font-semibold text-teal-700 dark:text-teal-400">
-                          <span className="material-symbols-outlined text-[12px]">verified</span>ANVISA: {detailProduct.anvisa}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-[10px] font-mono font-bold text-teal-600 dark:text-teal-400">
+                          <span className="material-symbols-outlined text-[11px]">verified</span>{detailProduct.anvisa}
                         </span>
                       )}
                     </div>
                   </div>
+                  <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
                 </div>
-                <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 ml-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
               </div>
 
               {/* ── Body ── */}
@@ -1742,111 +1746,51 @@ export default function ProdutosPage() {
 
                 {/* ── Card: Dados do Cadastro ── */}
                 <SectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro">
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Nome Abreviado */}
-                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nome Abreviado</label>
-                      <input
-                        type="text"
-                        value={detailShortName}
-                        onChange={(e) => setDetailShortName(e.target.value)}
-                        maxLength={100}
-                        placeholder="Nome curto para identificação rápida"
-                        disabled={!canWrite}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <DetailField label="Nome Abreviado" colSpan2>
+                      <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={inputCls} />
+                    </DetailField>
 
-                    {/* NCM */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">NCM</label>
-                      <input
-                        type="text"
-                        value={detailNcm}
-                        onChange={(e) => setDetailNcm(e.target.value)}
-                        maxLength={8}
-                        placeholder="Ex: 90189099"
-                        disabled={!canWrite}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                      />
-                    </div>
+                    <DetailField label="NCM">
+                      <input type="text" value={detailNcm} onChange={(e) => setDetailNcm(e.target.value)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} className={`${inputCls} font-mono`} />
+                    </DetailField>
 
-                    {/* Tipo */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tipo</label>
-                      <input
-                        type="text"
-                        value={detailType}
-                        onChange={(e) => setDetailType(e.target.value)}
-                        placeholder="ex: Medicamento"
-                        disabled={!canWrite}
-                        list="detail-types-list"
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                      />
+                    <DetailField label="Linha">
+                      <input type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="ex: Medicamento" disabled={!canWrite} list="detail-types-list" className={inputCls} />
                       <datalist id="detail-types-list">
                         {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => <option key={t!} value={t!} />)}
                       </datalist>
-                    </div>
+                    </DetailField>
 
-                    {/* Subtipo */}
-                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Subtipo</label>
-                      <input
-                        type="text"
-                        value={detailSubtype}
-                        onChange={(e) => setDetailSubtype(e.target.value)}
-                        placeholder="ex: Antibiótico"
-                        disabled={!canWrite}
-                        list="detail-subtypes-list"
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                      />
+                    <DetailField label="Grupo" colSpan2>
+                      <input type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="ex: Antibiótico" disabled={!canWrite} list="detail-subtypes-list" className={inputCls} />
                       <datalist id="detail-subtypes-list">
                         {Array.from(new Set(allProducts.filter((p) => !detailType || p.productType === detailType).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => <option key={s!} value={s!} />)}
                       </datalist>
-                    </div>
+                    </DetailField>
 
-                    {/* Dados Comerciais resumidos */}
-                    <div className="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Últ. Preço Compra</p>
-                        <p className="text-[13px] font-bold text-slate-800 dark:text-white">{formatValue(detailProduct.lastPrice)}</p>
-                      </div>
-                      {detailProduct.lastSalePrice != null && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Últ. Preço Venda</p>
-                          <p className="text-[13px] font-bold text-slate-800 dark:text-white">{formatOptional(detailProduct.lastSalePrice)}</p>
+                    {detailProduct.lastSupplierName && (
+                      <DetailField label="Fabricante / Fornecedor" colSpan2>
+                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                          <span className="material-symbols-outlined text-[16px] text-slate-400">local_shipping</span>
+                          <span className="text-sm text-slate-800 dark:text-white">{detailProduct.lastSupplierName}</span>
                         </div>
-                      )}
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última Compra</p>
-                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatDate(detailProduct.lastIssueDate)}</p>
-                      </div>
-                      {detailProduct.lastSaleDate && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última Venda</p>
-                          <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatDate(detailProduct.lastSaleDate)}</p>
+                      </DetailField>
+                    )}
+
+                    {/* Fora de Linha toggle */}
+                    <div className="col-span-2 mt-1">
+                      <label className="flex items-center gap-3 cursor-pointer px-3 py-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <div className="relative">
+                          <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
+                          <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-5 transition-transform"></div>
                         </div>
-                      )}
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Qtde Total</p>
-                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatQuantity(detailProduct.totalQuantity)}</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Último Fornecedor</p>
-                        <p className="text-[12px] font-semibold text-slate-800 dark:text-white truncate" title={detailProduct.lastSupplierName || '-'}>{detailProduct.lastSupplierName || '-'}</p>
-                      </div>
-                      {detailProduct.lastInvoiceNumber && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última NF-e</p>
-                          <button
-                            onClick={() => { setDetailProduct(null); setInvoiceModalId(detailProduct.lastInvoiceId || null); }}
-                            className="text-[13px] font-mono font-semibold text-primary hover:text-primary-dark hover:underline transition-colors flex items-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                            {detailProduct.lastInvoiceNumber}
-                          </button>
+                        <div>
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Fora de Linha</span>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">Marcar produto como descontinuado</p>
                         </div>
-                      )}
+                      </label>
                     </div>
                   </div>
                 </SectionCard>
@@ -1854,89 +1798,84 @@ export default function ProdutosPage() {
                 {/* ── Card: Dados da ANVISA ── */}
                 <SectionCard id="anvisa" icon="verified_user" iconColor="text-teal-600 dark:text-teal-400" title="Dados da ANVISA"
                   badge={detailProduct.anvisaStatus ? (
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
+                    <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
                   ) : undefined}
                 >
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Código ANVISA input */}
-                      <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Código ANVISA</label>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <DetailField label="Código ANVISA" colSpan2>
                         <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={detailAnvisa}
-                            onChange={(e) => setDetailAnvisa(e.target.value)}
-                            maxLength={13}
-                            placeholder="11 dígitos numéricos"
-                            disabled={!canWrite}
-                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                          />
+                          <input type="text" value={detailAnvisa} onChange={(e) => setDetailAnvisa(e.target.value)} maxLength={13} placeholder="11 dígitos numéricos" disabled={!canWrite} className={`flex-1 ${inputCls} font-mono`} />
                           {canWrite && detailAnvisa && (
-                            <button
-                              onClick={() => setDetailAnvisa('')}
-                              className="px-2.5 border border-red-200 dark:border-red-800 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm transition-colors"
-                              title="Limpar código ANVISA"
-                            >
+                            <button onClick={() => setDetailAnvisa('')} className="px-3 border border-red-200 dark:border-red-800/60 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm transition-colors" title="Limpar código ANVISA">
                               <span className="material-symbols-outlined text-[16px]">delete</span>
                             </button>
                           )}
                           {canWrite && detailProduct.anvisa && (
-                            <button
-                              onClick={() => handleSyncRegistry(detailProduct)}
-                              disabled={syncingRegistry}
-                              className="flex items-center gap-1.5 px-3 py-2 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg text-[12px] font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
-                              title="Consultar dados do registro na ANVISA"
-                            >
+                            <button onClick={() => handleSyncRegistry(detailProduct)} disabled={syncingRegistry} className="flex items-center gap-1.5 px-3.5 py-2.5 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl text-[12px] font-semibold transition-colors disabled:opacity-60 whitespace-nowrap" title="Consultar dados do registro na ANVISA">
                               <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'sync' : 'verified'}</span>
                               {syncingRegistry ? 'Consultando...' : 'Buscar'}
                             </button>
                           )}
                         </div>
-                      </div>
+                      </DetailField>
+
                       {detailProduct.anvisaMatchedProductName && (
-                        <div className="col-span-2 bg-teal-50/50 dark:bg-teal-900/10 border border-teal-200/60 dark:border-teal-800/60 rounded-xl px-3 py-2.5">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-teal-500 dark:text-teal-400 mb-0.5">Produto Registrado</p>
-                          <p className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{detailProduct.anvisaMatchedProductName}</p>
+                        <div className="col-span-2 bg-teal-50/60 dark:bg-teal-900/10 border border-teal-200/50 dark:border-teal-800/40 rounded-xl px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-teal-500 dark:text-teal-400 mb-1">Produto Registrado</p>
+                          <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300 leading-snug">{detailProduct.anvisaMatchedProductName}</p>
                         </div>
                       )}
+
                       {detailProduct.anvisaHolder && (
-                        <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Detentor do Registro</p>
-                          <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
+                        <div className="col-span-2">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Detentor do Registro</p>
+                          <p className="text-[13px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
                         </div>
                       )}
+
                       {detailProduct.anvisaManufacturer && (
-                        <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">
+                        <div className="col-span-2">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">
                             Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` · ${detailProduct.anvisaManufacturerCountry}` : ''}
                           </p>
-                          <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaManufacturer}</p>
-                        </div>
-                      )}
-                      {detailProduct.anvisaStatus && (
-                        <div className={`rounded-xl px-3 py-2.5 border ${anvisaStatusColor}`}>
-                          <p className="text-[10px] uppercase tracking-wider font-bold opacity-60 mb-0.5">Situação</p>
-                          <p className="text-[12px] font-bold">{detailProduct.anvisaStatus}</p>
-                        </div>
-                      )}
-                      {(detailProduct.anvisaExpiration || detailProduct.anvisaStatus) && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Vencimento</p>
-                          <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
-                            {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
+                          <p className="text-[13px] text-slate-700 dark:text-slate-300">
+                            {detailProduct.manufacturerShortName ? (
+                              <><span className="font-semibold">{detailProduct.manufacturerShortName}</span> <span className="text-slate-400">({detailProduct.anvisaManufacturer})</span></>
+                            ) : detailProduct.anvisaManufacturer}
                           </p>
                         </div>
                       )}
+
+                      {/* Status + Vencimento side by side */}
+                      {(detailProduct.anvisaStatus || detailProduct.anvisaExpiration) && (
+                        <>
+                          {detailProduct.anvisaStatus && (
+                            <div className={`rounded-xl px-4 py-3 border ${anvisaStatusColor}`}>
+                              <p className="text-[10px] uppercase tracking-wider font-bold opacity-60 mb-1">Situação</p>
+                              <p className="text-[13px] font-bold">{detailProduct.anvisaStatus}</p>
+                            </div>
+                          )}
+                          <div>
+                            <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Vencimento</p>
+                              <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+                                {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
                       {detailProduct.anvisaProcess && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Processo</p>
-                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Processo</p>
+                          <p className="text-[12px] font-mono text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
                         </div>
                       )}
                       {detailProduct.anvisaRiskClass && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Classe de Risco</p>
-                          <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Classe de Risco</p>
+                          <p className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
                         </div>
                       )}
                     </div>
@@ -1947,16 +1886,13 @@ export default function ProdutosPage() {
               {/* ── Footer ── */}
               {canWrite && (
                 <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-                  <button
-                    onClick={() => setDetailProduct(null)}
-                    className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                  >
+                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     Fechar
                   </button>
                   <button
                     onClick={handleSaveDetail}
                     disabled={savingDetail || !detailDirty}
-                    className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
                   >
                     {savingDetail ? (
                       <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Salvando...</>
@@ -1968,7 +1904,7 @@ export default function ProdutosPage() {
               )}
               {!canWrite && (
                 <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Fechar</button>
+                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
                 </div>
               )}
             </div>
@@ -1979,36 +1915,39 @@ export default function ProdutosPage() {
       {/* History modal */}
       {historyProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setHistoryProduct(null)}>
-          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
+            <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
+                  <span className="material-symbols-outlined text-[24px] text-blue-500">history</span>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
-                    {historyProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{historyProduct.code}</span><span className="text-slate-400 dark:text-slate-500 mx-1.5">-</span></>}
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                    {historyProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{historyProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                     {historyProduct.description}
                   </h3>
                   {historyProduct.shortName && (
-                    <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{historyProduct.shortName}</p>
+                    <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{historyProduct.shortName}</p>
                   )}
-                  {(historyProduct.productType || historyProduct.productSubtype) && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {historyProduct.productType && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{historyProduct.productType}</span>
-                      )}
-                      {historyProduct.productSubtype && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{historyProduct.productSubtype}</span>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    {historyProduct.productType && (
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{historyProduct.productType}</span>
+                    )}
+                    {historyProduct.productSubtype && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{historyProduct.productSubtype}</span>
+                    )}
+                    {historyProduct.outOfLine && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-[10px] font-bold text-red-600 dark:text-red-400">
+                        <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <button onClick={() => setHistoryProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
               </div>
-              <button onClick={() => setHistoryProduct(null)} className="flex-shrink-0 ml-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
             </div>
 
             {/* Tabs + Content */}
@@ -2032,7 +1971,12 @@ export default function ProdutosPage() {
                     if (!map.has(name)) map.set(name, []);
                     map.get(name)!.push(h);
                   }
-                  return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
+                  // Sort groups by most recent invoice date (descending)
+                  return Array.from(map.entries()).sort((a, b) => {
+                    const latestA = a[1].reduce((max, h) => h.issueDate && h.issueDate > max ? h.issueDate : max, '');
+                    const latestB = b[1].reduce((max, h) => h.issueDate && h.issueDate > max ? h.issueDate : max, '');
+                    return latestB.localeCompare(latestA);
+                  });
                 };
 
                 const toggleGroup = (key: string) => {
@@ -2075,15 +2019,15 @@ export default function ProdutosPage() {
                 };
 
                 const colorMap = {
-                  blue: { bg: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40', icon: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300', badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400', btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' },
-                  amber: { bg: 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40', icon: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20' },
-                  purple: { bg: 'bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40', icon: 'text-purple-500', text: 'text-purple-700 dark:text-purple-300', badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400', btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+                  blue: { bg: 'bg-blue-50/80 dark:bg-blue-900/15', ring: 'ring-1 ring-blue-200/60 dark:ring-blue-800/30', icon: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300', badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200/50 dark:ring-blue-800/30', btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20', sectionBg: 'from-blue-500/10 to-blue-500/0 dark:from-blue-500/15 dark:to-blue-500/0' },
+                  amber: { bg: 'bg-amber-50/80 dark:bg-amber-900/15', ring: 'ring-1 ring-amber-200/60 dark:ring-amber-800/30', icon: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30', btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20', sectionBg: 'from-amber-500/10 to-amber-500/0 dark:from-amber-500/15 dark:to-amber-500/0' },
+                  purple: { bg: 'bg-purple-50/80 dark:bg-purple-900/15', ring: 'ring-1 ring-purple-200/60 dark:ring-purple-800/30', icon: 'text-purple-500', text: 'text-purple-700 dark:text-purple-300', badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 ring-1 ring-purple-200/50 dark:ring-purple-800/30', btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20', sectionBg: 'from-purple-500/10 to-purple-500/0 dark:from-purple-500/15 dark:to-purple-500/0' },
                 };
 
                 const SummaryCards = ({ stats, color }: { stats: ReturnType<typeof calcStats>; color: 'blue' | 'amber' | 'purple' }) => {
                   const cm = colorMap[color];
                   return (
-                  <div className="grid grid-cols-5 gap-2 mb-3">
+                  <div className="grid grid-cols-5 gap-2 mb-4">
                     {[
                       { label: 'Total', value: formatValue(stats.totalValue), icon: 'payments' },
                       { label: 'Qtde Total', value: formatQuantity(stats.totalQty), icon: 'inventory_2' },
@@ -2091,12 +2035,12 @@ export default function ProdutosPage() {
                       { label: 'Último Preço', value: formatValue(stats.lastPrice), icon: 'trending_up' },
                       { label: 'Preço Médio', value: formatValue(stats.avgPrice), icon: 'analytics' },
                     ].map(c => (
-                      <div key={c.label} className={`rounded-lg px-2.5 py-2 ${cm.bg}`}>
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <span className={`material-symbols-outlined text-[12px] ${cm.icon}`}>{c.icon}</span>
+                      <div key={c.label} className={`rounded-xl px-3 py-2.5 ${cm.bg} ${cm.ring}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`material-symbols-outlined text-[13px] ${cm.icon}`}>{c.icon}</span>
                           <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">{c.label}</span>
                         </div>
-                        <div className={`text-[13px] font-bold ${cm.text}`}>{c.value}</div>
+                        <div className={`text-[14px] font-extrabold ${cm.text}`}>{c.value}</div>
                       </div>
                     ))}
                   </div>
@@ -2108,21 +2052,21 @@ export default function ProdutosPage() {
                   const groups = groupBy(items, nameKey);
 
                   return (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {groups.map(([name, rows], gi) => {
                         const gk = `${groupKey}-${name}`;
                         const isOpen = expandedGroups.has(gk) || (gi === 0 && !expandedGroups.has(`${gk}-closed`));
                         const isRowsExpanded = expandedRows.has(gk);
                         const visibleRows = isRowsExpanded ? rows : rows.slice(0, 3);
                         const remaining = rows.length - 3;
+                        const grpTotal = rows.reduce((s, r) => s + r.totalValue, 0);
 
                         return (
-                          <div key={gk} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                          <div key={gk} className={`rounded-xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50'}`}>
                             <button
-                              className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${isOpen ? 'bg-white dark:bg-slate-800/80' : 'bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/60'}`}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${isOpen ? 'bg-white dark:bg-slate-800/80' : 'bg-slate-50/80 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
                               onClick={() => {
                                 if (gi === 0) {
-                                  // For first group, track explicit close
                                   const closedKey = `${gk}-closed`;
                                   if (isOpen) {
                                     setExpandedGroups(prev => { const n = new Set(prev); n.delete(gk); n.add(closedKey); return n; });
@@ -2134,46 +2078,46 @@ export default function ProdutosPage() {
                                 }
                               }}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={`material-symbols-outlined text-[16px] transition-transform ${isOpen ? 'rotate-90' : ''} ${cm.icon}`}>chevron_right</span>
-                                <span className="text-[12px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${cm.icon}`}>chevron_right</span>
+                                <span className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${cm.badge}`}>{rows.length}</span>
                               </div>
-                              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatValue(rows.reduce((s, r) => s + r.totalValue, 0))}</span>
+                              <span className={`text-[12px] font-bold ${cm.text}`}>{formatValue(grpTotal)}</span>
                             </button>
                             {isOpen && (
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800/50">
                                 <table className="w-full text-[11px]">
                                   <thead>
-                                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                      <th className="px-2 py-1.5 text-left font-bold">Data</th>
-                                      <th className="px-2 py-1.5 text-left font-bold">NF-e</th>
-                                      <th className="px-2 py-1.5 text-right font-bold">Qtde</th>
-                                      <th className="px-2 py-1.5 text-right font-bold">Vlr Unit.</th>
-                                      <th className="px-2 py-1.5 text-right font-bold">Total</th>
-                                      <th className="px-2 py-1.5 text-left font-bold">Lote</th>
-                                      <th className="px-2 py-1.5 text-left font-bold">Validade</th>
+                                    <tr className="bg-slate-50/80 dark:bg-slate-800/40">
+                                      <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Data</th>
+                                      <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">NF-e</th>
+                                      <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Qtde</th>
+                                      <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Vlr Unit.</th>
+                                      <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total</th>
+                                      <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Lote</th>
+                                      <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Validade</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                     {visibleRows.map((h, i) => (
-                                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
-                                        <td className="px-2 py-1.5">
+                                      <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition-colors">
+                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
+                                        <td className="px-3 py-2">
                                           <button
                                             onClick={() => { setHistoryProduct(null); setInvoiceModalId(h.invoiceId); }}
-                                            className="text-primary hover:text-primary-dark hover:underline font-mono transition-colors"
+                                            className="text-primary hover:text-primary-dark hover:underline font-mono font-medium transition-colors"
                                           >
                                             {h.invoiceNumber || '-'}
                                           </button>
                                         </td>
-                                        <td className="px-2 py-1.5 text-right font-medium text-slate-800 dark:text-white">{formatQuantity(h.quantity)}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-400">{formatValue(h.unitPrice)}</td>
-                                        <td className="px-2 py-1.5 text-right font-medium text-slate-800 dark:text-white">{formatValue(h.totalValue)}</td>
-                                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-400 font-mono">
+                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatQuantity(h.quantity)}</td>
+                                        <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatValue(h.unitPrice)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatValue(h.totalValue)}</td>
+                                        <td className="px-3 py-2 text-slate-600 dark:text-slate-400 font-mono">
                                           <TruncatedCell text={h.batch || '-'} id={`${gk}-batch-${i}`} />
                                         </td>
-                                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                        <td className="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                           <TruncatedCell text={h.expiry ? formatDate(h.expiry) : '-'} id={`${gk}-expiry-${i}`} />
                                         </td>
                                       </tr>
@@ -2183,7 +2127,7 @@ export default function ProdutosPage() {
                                 {remaining > 0 && (
                                   <button
                                     onClick={() => toggleRows(gk)}
-                                    className={`w-full py-1.5 text-[11px] font-medium transition-colors ${cm.btn}`}
+                                    className={`w-full py-2 text-[11px] font-semibold transition-colors border-t border-slate-100 dark:border-slate-800/50 ${cm.btn}`}
                                   >
                                     {isRowsExpanded ? 'Mostrar menos' : `Ver mais ${remaining} registro${remaining > 1 ? 's' : ''}`}
                                   </button>
@@ -2214,41 +2158,46 @@ export default function ProdutosPage() {
                   });
                 };
 
-                const SectionCard = ({ sectionKey, defaultOpen, icon, iconColor, label, count, totalValue, loading, empty, emptyMsg, children }: {
-                  sectionKey: string; defaultOpen: boolean; icon: string; iconColor: string; label: string; count: number; totalValue: number; loading: boolean; empty: boolean; emptyMsg: string; children: React.ReactNode;
+                const HistSectionCard = ({ sectionKey, defaultOpen, icon, iconColor, label, count, totalValue, loading, empty, emptyMsg, color, children }: {
+                  sectionKey: string; defaultOpen: boolean; icon: string; iconColor: string; label: string; count: number; totalValue: number; loading: boolean; empty: boolean; emptyMsg: string; color: 'blue' | 'amber' | 'purple'; children: React.ReactNode;
                 }) => {
                   const isOpen = isSectionOpen(sectionKey, defaultOpen);
+                  const cm = colorMap[color];
+                  const badgeCls = cm.badge;
                   return (
-                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark overflow-hidden">
+                    <div className={`rounded-2xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/20'}`}>
                       <button
                         onClick={() => toggleSection(sectionKey, defaultOpen)}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className={`material-symbols-outlined text-[16px] transition-transform ${isOpen ? 'rotate-90' : ''} ${iconColor}`}>chevron_right</span>
-                          <span className={`material-symbols-outlined text-[16px] ${iconColor}`}>{icon}</span>
-                          <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</h4>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? `bg-gradient-to-br ${cm.sectionBg}` : 'bg-slate-100 dark:bg-slate-800'}`}>
+                            <span className={`material-symbols-outlined text-[18px] transition-colors ${isOpen ? iconColor : 'text-slate-400 dark:text-slate-500'}`}>{icon}</span>
+                          </div>
+                          <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">{label}</h4>
                           {count > 0 && (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              iconColor.includes('blue') ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                              iconColor.includes('amber') ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
-                              'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                            }`}>{count}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeCls}`}>{count}</span>
                           )}
                         </div>
-                        {!loading && count > 0 && (
-                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatValue(totalValue)}</span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {!loading && count > 0 && (
+                            <span className={`text-[13px] font-bold ${cm.text}`}>{formatValue(totalValue)}</span>
+                          )}
+                          <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                        </div>
                       </button>
                       {isOpen && (
-                        <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+                        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800/50">
                           {loading ? (
-                            <div className="flex items-center gap-2 py-2 text-slate-400 text-[12px]">
-                              <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
-                              Carregando...
+                            <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-[13px]">
+                              <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+                              Carregando histórico...
                             </div>
                           ) : empty ? (
-                            <p className="text-[12px] text-slate-400 py-1">{emptyMsg}</p>
+                            <div className="flex flex-col items-center py-6">
+                              <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+                              <p className="text-[13px] text-slate-400 dark:text-slate-500">{emptyMsg}</p>
+                            </div>
                           ) : (
                             <>{children}</>
                           )}
@@ -2260,28 +2209,28 @@ export default function ProdutosPage() {
 
                 return (
                   <>
-                    <SectionCard sectionKey="compras" defaultOpen={true} icon="shopping_cart" iconColor="text-blue-500" label="Histórico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado.">
+                    <HistSectionCard sectionKey="compras" defaultOpen={true} icon="shopping_cart" iconColor="text-blue-500" label="Histórico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado." color="blue">
                       <SummaryCards stats={calcStats(purchaseHistory)} color="blue" />
                       <HistoryTable items={purchaseHistory} nameKey="supplierName" groupKey="purchase" color="blue" />
-                    </SectionCard>
+                    </HistSectionCard>
 
-                    <SectionCard sectionKey="vendas" defaultOpen={true} icon="storefront" iconColor="text-amber-500" label="Histórico de Vendas" count={salesHistory.length} totalValue={salesHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingSalesHistory} empty={salesHistory.length === 0} emptyMsg="Nenhum registro de venda encontrado.">
+                    <HistSectionCard sectionKey="vendas" defaultOpen={true} icon="storefront" iconColor="text-amber-500" label="Histórico de Vendas" count={salesHistory.length} totalValue={salesHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingSalesHistory} empty={salesHistory.length === 0} emptyMsg="Nenhum registro de venda encontrado." color="amber">
                       <SummaryCards stats={calcStats(salesHistory)} color="amber" />
                       <HistoryTable items={salesHistory} nameKey="customerName" groupKey="sales" color="amber" />
-                    </SectionCard>
+                    </HistSectionCard>
 
-                    <SectionCard sectionKey="consig" defaultOpen={false} icon="swap_horiz" iconColor="text-purple-500" label="Movimentações (Consignação)" count={consignmentHistory.length} totalValue={consignmentHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingConsignment} empty={consignmentHistory.length === 0} emptyMsg="Nenhuma movimentação de consignação encontrada.">
+                    <HistSectionCard sectionKey="consig" defaultOpen={false} icon="swap_horiz" iconColor="text-purple-500" label="Movimentações (Consignação)" count={consignmentHistory.length} totalValue={consignmentHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingConsignment} empty={consignmentHistory.length === 0} emptyMsg="Nenhuma movimentação de consignação encontrada." color="purple">
                       <SummaryCards stats={calcStats(consignmentHistory)} color="purple" />
                       <HistoryTable items={consignmentHistory} nameKey="customerName" groupKey="consignment" color="purple" />
-                    </SectionCard>
+                    </HistSectionCard>
                   </>
                 );
               })()}
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end px-6 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-              <button onClick={() => setHistoryProduct(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Fechar</button>
+            <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+              <button onClick={() => setHistoryProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
             </div>
           </div>
         </div>
@@ -2293,6 +2242,554 @@ export default function ProdutosPage() {
         onClose={() => setInvoiceModalId(null)}
         invoiceId={invoiceModalId}
       />
+
+      {/* Manage Types Modal */}
+      {manageTypesOpen && (
+        <ManageTypesModal
+          allProducts={allProducts}
+          onClose={() => setManageTypesOpen(false)}
+          onUpdated={loadProducts}
+        />
+      )}
+
+      {/* Manage Manufacturers Modal */}
+      {manageManufacturersOpen && (
+        <ManageManufacturersModal
+          allProducts={allProducts}
+          onClose={() => setManageManufacturersOpen(false)}
+          onUpdated={loadProducts}
+        />
+      )}
     </>
+  );
+}
+
+/* ─── Manage Types Modal ─── */
+
+function ManageTypesModal({ allProducts, onClose, onUpdated }: {
+  allProducts: ProductRow[];
+  onClose: () => void;
+  onUpdated: () => Promise<void>;
+}) {
+  const [expandedType, setExpandedType] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<{ field: 'productType' | 'productSubtype'; oldValue: string; parentType?: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newSubtypeFor, setNewSubtypeFor] = useState<string | null>(null);
+  const [newSubtypeName, setNewSubtypeName] = useState('');
+
+  // Build type → subtypes map with counts
+  const typeMap = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    for (const p of allProducts) {
+      const t = p.productType || '';
+      if (!t) continue;
+      if (!map.has(t)) map.set(t, new Map());
+      const sub = p.productSubtype || '';
+      if (sub) {
+        const subs = map.get(t)!;
+        subs.set(sub, (subs.get(sub) || 0) + 1);
+      }
+    }
+    return map;
+  }, [allProducts]);
+
+  const typeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of allProducts) {
+      if (p.productType) counts.set(p.productType, (counts.get(p.productType) || 0) + 1);
+    }
+    return counts;
+  }, [allProducts]);
+
+  const sortedTypes = useMemo(() => Array.from(typeCounts.keys()).sort(), [typeCounts]);
+
+  const callApi = async (field: 'productType' | 'productSubtype', oldValue: string, newValue: string | null, parentType?: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/products/rename-type', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, oldValue, newValue, parentType }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      const result = await res.json();
+      toast.success(`${result.updated} produto(s) atualizado(s)`);
+      await onUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRename = async () => {
+    if (!editingItem || !editValue.trim()) return;
+    await callApi(editingItem.field, editingItem.oldValue, editValue.trim(), editingItem.parentType);
+    setEditingItem(null);
+    setEditValue('');
+  };
+
+  const handleDelete = async (field: 'productType' | 'productSubtype', oldValue: string, parentType?: string) => {
+    if (!confirm(`Remover "${oldValue}" de todos os produtos?`)) return;
+    await callApi(field, oldValue, null, parentType);
+  };
+
+  const startEdit = (field: 'productType' | 'productSubtype', oldValue: string, parentType?: string) => {
+    setEditingItem({ field, oldValue, parentType });
+    setEditValue(oldValue);
+  };
+
+  const inlineInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow";
+  const actionBtnCls = "p-1.5 rounded-lg transition-colors";
+
+  const InlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
+      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
+      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}>
+        <span className="material-symbols-outlined text-[18px]">check</span>
+      </button>
+      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}>
+        <span className="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </form>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 dark:from-indigo-500/30 dark:to-indigo-500/10 flex items-center justify-center ring-1 ring-indigo-500/20 dark:ring-indigo-500/30">
+              <span className="material-symbols-outlined text-[24px] text-indigo-500">account_tree</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Gerenciar Linhas e Grupos</h2>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                <span className="font-semibold text-indigo-500">{sortedTypes.length}</span> linha{sortedTypes.length !== 1 ? 's' : ''} cadastrada{sortedTypes.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+          {sortedTypes.length === 0 && (
+            <div className="flex flex-col items-center py-8">
+              <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhuma linha cadastrada.</p>
+            </div>
+          )}
+
+          {sortedTypes.map((type) => {
+            const count = typeCounts.get(type) || 0;
+            const subs = typeMap.get(type);
+            const isExpanded = expandedType === type;
+            const isEditing = editingItem?.field === 'productType' && editingItem.oldValue === type;
+
+            return (
+              <div key={type} className={`rounded-xl border overflow-hidden transition-colors ${isExpanded ? 'border-indigo-200/60 dark:border-indigo-800/30 shadow-sm' : 'border-slate-200 dark:border-slate-700'}`}>
+                {/* Line header */}
+                <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors ${isExpanded ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-950/30 dark:to-transparent' : 'bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
+                  <button onClick={() => setExpandedType(isExpanded ? null : type)} className="text-indigo-400 dark:text-indigo-500">
+                    <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                  </button>
+
+                  {isEditing ? (
+                    <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleRename} onCancel={() => setEditingItem(null)} disabled={saving} />
+                  ) : (
+                    <>
+                      <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+                      <span className="flex-1 text-[13px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>
+                        {type}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
+                      <button onClick={() => startEdit('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear">
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
+                      <button onClick={() => handleDelete('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}>
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Subtypes list */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 px-4 py-2 space-y-0.5">
+                    {subs && subs.size > 0 ? (
+                      Array.from(subs.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([sub, subCount]) => {
+                        const isSubEditing = editingItem?.field === 'productSubtype' && editingItem.oldValue === sub && editingItem.parentType === type;
+                        return (
+                          <div key={sub} className="flex items-center gap-2 py-1.5 pl-7 group/sub rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/30 transition-colors">
+                            {isSubEditing ? (
+                              <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleRename} onCancel={() => setEditingItem(null)} disabled={saving} />
+                            ) : (
+                              <>
+                                <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
+                                <span className="flex-1 text-[13px] text-slate-600 dark:text-slate-300">{sub}</span>
+                                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
+                                <button onClick={() => startEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-0 group-hover/sub:opacity-100 transition-opacity`} title="Renomear">
+                                  <span className="material-symbols-outlined text-[15px]">edit</span>
+                                </button>
+                                <button onClick={() => handleDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}>
+                                  <span className="material-symbols-outlined text-[15px]">delete</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-[12px] text-slate-400 dark:text-slate-500 pl-7 py-1">Nenhum grupo</p>
+                    )}
+
+                    {/* Add subtype */}
+                    {newSubtypeFor === type ? (
+                      <div className="pl-7 py-1">
+                        <InlineForm
+                          value={newSubtypeName}
+                          onChange={setNewSubtypeName}
+                          onSubmit={async () => {
+                            if (!newSubtypeName.trim()) return;
+                            try {
+                              const res = await fetch('/api/products/rename-type', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'addGroup', parentType: type, subtypeName: newSubtypeName.trim() }),
+                              });
+                              if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+                              toast.success(`Grupo "${newSubtypeName.trim()}" criado`);
+                              await onUpdated();
+                            } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); }
+                            setNewSubtypeName('');
+                            setNewSubtypeFor(null);
+                          }}
+                          onCancel={() => setNewSubtypeFor(null)}
+                          placeholder="Novo grupo..."
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setNewSubtypeFor(type); setNewSubtypeName(''); }}
+                        className="flex items-center gap-1.5 pl-7 py-1.5 text-[12px] font-medium text-slate-400 hover:text-amber-500 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">add_circle</span>
+                        Adicionar grupo
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add new type */}
+          <div className="pt-2">
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newTypeName.trim()) return;
+                try {
+                  const res = await fetch('/api/products/rename-type', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'addLine', name: newTypeName.trim() }),
+                  });
+                  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+                  toast.success(`Linha "${newTypeName.trim()}" criada`);
+                  await onUpdated();
+                } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); }
+                setNewTypeName('');
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                placeholder="Nova linha..."
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow"
+              />
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Adicionar
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Manage Manufacturers Modal ─── */
+
+function ManageManufacturersModal({ allProducts, onClose, onUpdated }: {
+  allProducts: ProductRow[];
+  onClose: () => void;
+  onUpdated: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [editingMfr, setEditingMfr] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editingShort, setEditingShort] = useState<string | null>(null);
+  const [shortValue, setShortValue] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [newMfrName, setNewMfrName] = useState('');
+  const [newMfrShort, setNewMfrShort] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
+
+  // Build manufacturer list with counts and current short names
+  const manufacturers = useMemo(() => {
+    const map = new Map<string, { count: number; shortName: string | null }>();
+    for (const p of allProducts) {
+      const mfr = p.anvisaManufacturer;
+      if (!mfr) continue;
+      const existing = map.get(mfr);
+      if (existing) {
+        existing.count++;
+        if (!existing.shortName && p.manufacturerShortName) existing.shortName = p.manufacturerShortName;
+      } else {
+        map.set(mfr, { count: 1, shortName: p.manufacturerShortName || null });
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, info]) => ({ name, count: info.count, shortName: info.shortName }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allProducts]);
+
+  const filtered = useMemo(() => {
+    if (!searchFilter) return manufacturers;
+    const q = searchFilter.toLowerCase();
+    return manufacturers.filter((m) => m.name.toLowerCase().includes(q) || (m.shortName && m.shortName.toLowerCase().includes(q)));
+  }, [manufacturers, searchFilter]);
+
+  const callApi = async (body: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/products/rename-manufacturer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      const result = await res.json();
+      toast.success(`${result.updated} produto(s) atualizado(s)`);
+      await onUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRename = async (oldVal: string) => {
+    if (!editValue.trim() || editValue.trim() === oldVal) { setEditingMfr(null); return; }
+    await callApi({ action: 'rename', oldValue: oldVal, newValue: editValue.trim() });
+    setEditingMfr(null);
+  };
+
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Remover fabricante "${name}" de todos os produtos?`)) return;
+    await callApi({ action: 'delete', oldValue: name });
+  };
+
+  const handleAddNew = async () => {
+    if (!newMfrName.trim()) return;
+    setAddingNew(true);
+    try {
+      const res = await fetch('/api/products/rename-manufacturer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', name: newMfrName.trim(), shortName: newMfrShort.trim() || null }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      toast.success(`Fabricante "${newMfrName.trim()}" adicionado`);
+      setNewMfrName('');
+      setNewMfrShort('');
+      await onUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro');
+    } finally {
+      setAddingNew(false);
+    }
+  };
+
+  const handleShortName = async (manufacturer: string) => {
+    const val = shortValue.trim() || null;
+    await callApi({ action: 'shortName', manufacturer, shortName: val });
+    setEditingShort(null);
+  };
+
+  const mfrInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow";
+  const mfrActionBtn = "p-1.5 rounded-lg transition-colors";
+
+  const MfrInlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
+      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={mfrInputCls} disabled={disabled} />
+      <button type="submit" disabled={disabled} className={`${mfrActionBtn} text-primary hover:bg-primary/10`}>
+        <span className="material-symbols-outlined text-[18px]">check</span>
+      </button>
+      <button type="button" onClick={onCancel} className={`${mfrActionBtn} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}>
+        <span className="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </form>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500/20 to-teal-500/5 dark:from-teal-500/30 dark:to-teal-500/10 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30">
+              <span className="material-symbols-outlined text-[24px] text-teal-500">factory</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Gerenciar Fabricantes</h2>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                <span className="font-semibold text-teal-500">{filtered.length}</span> fabricante{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search + Add */}
+        <div className="px-5 pt-4 pb-3 space-y-3 bg-white/50 dark:bg-card-dark/50 border-b border-slate-100 dark:border-slate-800/50">
+          <div className="relative">
+            <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+            <input
+              type="text"
+              placeholder="Buscar fabricante..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow"
+            />
+          </div>
+
+          {/* Add new manufacturer */}
+          <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
+            <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
+            <div className="flex gap-2">
+              <input
+                placeholder="Nome completo"
+                value={newMfrName}
+                onChange={(e) => setNewMfrName(e.target.value)}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
+              />
+              <input
+                placeholder="Abreviado"
+                value={newMfrShort}
+                onChange={(e) => setNewMfrShort(e.target.value)}
+                className="w-36 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
+              />
+              <button
+                onClick={handleAddNew}
+                disabled={addingNew || !newMfrName.trim()}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center py-8">
+              <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhum fabricante encontrado.</p>
+            </div>
+          )}
+
+          {filtered.map((mfr) => {
+            const isEditingName = editingMfr === mfr.name;
+            const isEditingShortName = editingShort === mfr.name;
+
+            return (
+              <div key={mfr.name} className="group/mfr rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600 transition-colors overflow-hidden">
+                {/* Manufacturer name row */}
+                <div className="flex items-center gap-2.5 px-4 py-2.5">
+                  {isEditingName ? (
+                    <MfrInlineForm value={editValue} onChange={setEditValue} onSubmit={() => handleRename(mfr.name)} onCancel={() => setEditingMfr(null)} disabled={saving} />
+                  ) : (
+                    <>
+                      <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[16px] text-teal-500">factory</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate block" title={mfr.name}>{mfr.name}</span>
+                        {mfr.shortName && (
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">{mfr.shortName}</span>
+                        )}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
+                      <button onClick={() => { setEditingMfr(mfr.name); setEditValue(mfr.name); }} className={`${mfrActionBtn} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear">
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
+                      <button onClick={() => handleDelete(mfr.name)} className={`${mfrActionBtn} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}>
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Short name row */}
+                {!isEditingName && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold w-24 shrink-0">Abreviado</span>
+                    {isEditingShortName ? (
+                      <MfrInlineForm value={shortValue} onChange={setShortValue} onSubmit={() => handleShortName(mfr.name)} onCancel={() => setEditingShort(null)} placeholder="Ex: Medtronic" disabled={saving} />
+                    ) : (
+                      <>
+                        <span className={`flex-1 text-[13px] ${mfr.shortName ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500 italic'}`}>
+                          {mfr.shortName || 'não definido'}
+                        </span>
+                        <button
+                          onClick={() => { setEditingShort(mfr.name); setShortValue(mfr.shortName || ''); }}
+                          className={`${mfrActionBtn} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`}
+                          title="Definir nome abreviado"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

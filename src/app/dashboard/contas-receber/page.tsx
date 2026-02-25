@@ -2,8 +2,65 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
+import Modal from '@/components/ui/Modal';
 import { formatCnpj, formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { useRole } from '@/hooks/useRole';
+
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
+
+function parseCurrencyInput(value: string): number {
+  const text = String(value || '').trim();
+  if (!text) return Number.NaN;
+  const sanitized = text
+    .replace(/\s+/g, '')
+    .replace(/R\$/gi, '')
+    .replace(/[^0-9,.-]/g, '');
+
+  const normalized = (() => {
+    if (sanitized.includes(',')) {
+      return sanitized.replace(/\./g, '').replace(',', '.');
+    }
+    if (!sanitized.includes('.')) {
+      return sanitized;
+    }
+    const parts = sanitized.split('.');
+    const decimalPart = parts[parts.length - 1];
+    if (decimalPart.length <= 2) {
+      return `${parts.slice(0, -1).join('')}.${decimalPart}`;
+    }
+    return parts.join('');
+  })();
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function toCurrencyInput(value: number): string {
+  if (!Number.isFinite(value)) return '';
+  return formatCurrency(roundMoney(value));
+}
+
+function getNextDupNumero(rows: Array<Pick<DuplicataEditForm, 'dupNumero'>>): string {
+  const maxNumber = rows.reduce((max, row) => {
+    const digits = String(row.dupNumero || '').replace(/\D/g, '');
+    const parsed = digits ? parseInt(digits, 10) : Number.NaN;
+    return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+  }, 0);
+  return String(maxNumber + 1).padStart(3, '0');
+}
+
+function createEditRowId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 interface Duplicata {
   invoiceId: string;
@@ -17,12 +74,35 @@ interface Duplicata {
   faturaValorOriginal: number;
   faturaValorLiquido: number;
   dupNumero: string;
+  dupNumeroOriginal: string;
   dupVencimento: string;
+  dupVencimentoOriginal: string;
   dupValor: number;
+  dupDesconto?: number;
   status: 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
   diasAtraso: number;
   diasParaVencer: number;
   parcelaTotal?: number;
+}
+
+interface InvoiceHeader {
+  id: string;
+  number: string;
+  issueDate: string;
+  totalValue: number;
+  clienteNome: string;
+  clienteCnpj: string;
+}
+
+interface DuplicataEditForm {
+  id: string;
+  invoiceId: string;
+  dupNumeroOriginal: string;
+  dupVencimentoOriginal: string;
+  dupNumero: string;
+  dupVencimento: string;
+  dupValor: string;
+  dupDesconto: string;
 }
 
 interface Summary {
@@ -66,6 +146,7 @@ const statusConfig: Record<string, { label: string; classes: string; icon: strin
 };
 
 export default function ContasReceberPage() {
+  const { canWrite } = useRole();
   const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,9 +162,18 @@ export default function ContasReceberPage() {
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+  const [selectedDuplicata, setSelectedDuplicata] = useState<Duplicata | null>(null);
+  const [invoiceHeader, setInvoiceHeader] = useState<InvoiceHeader | null>(null);
+  const [editingDuplicatas, setEditingDuplicatas] = useState<DuplicataEditForm[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
   const toggleGroup = (group: string) => {
-    setCollapsedGroups(prev => {
+    setCollapsedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(group)) next.delete(group);
       else next.add(group);
@@ -120,10 +210,18 @@ export default function ContasReceberPage() {
       const res = await fetch(`/api/financeiro/contas-receber?${params}`);
       if (!res.ok) throw new Error('Erro ao carregar dados');
       const data = await res.json();
-      setDuplicatas(data.duplicatas);
+      const loaded = data.duplicatas || [];
+      setDuplicatas(loaded);
       setSummary(data.summary);
       setTotal(data.pagination.total);
       setTotalPages(data.pagination.pages);
+      const cnpjs = Array.from(new Set(loaded.map((d: any) => d.clienteCnpj).filter(Boolean)));
+      if (cnpjs.length > 0) {
+        const p = new URLSearchParams();
+        cnpjs.forEach((c: any) => p.append('cnpjs', c));
+        const nr = await fetch(`/api/contacts/nickname/batch?${p}`);
+        if (nr.ok) { const nd = await nr.json(); setNicknames(new Map(Object.entries(nd.nicknames || {}))); }
+      } else { setNicknames(new Map()); }
     } catch {
       toast.error('Erro ao carregar contas a receber');
     } finally {
@@ -131,9 +229,18 @@ export default function ContasReceberPage() {
     }
   };
 
+  const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
+    const full = (name || '').trim() || '-';
+    if (!cnpj) return { display: full, full: null };
+    const nick = nicknames.get(cnpj);
+    if (nick) return { display: nick, full };
+    const isCpf = cnpj.replace(/\D/g, '').length === 11;
+    return isCpf ? { display: 'PARTICULAR', full } : { display: full, full: null };
+  };
+
   const handleSort = (col: string) => {
     if (sortBy === col) {
-      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortBy(col);
       setSortOrder('asc');
@@ -143,7 +250,7 @@ export default function ContasReceberPage() {
 
   const handleExport = () => {
     const headers = ['Cliente', 'CNPJ', 'NF-e', 'Fatura', 'Duplicata', 'Vencimento', 'Valor', 'Status'];
-    const rows = duplicatas.map(d => [
+    const rows = duplicatas.map((d) => [
       d.clienteNome,
       d.clienteCnpj,
       d.nfNumero,
@@ -153,7 +260,7 @@ export default function ContasReceberPage() {
       d.dupValor.toFixed(2).replace('.', ','),
       statusConfig[d.status]?.label || d.status,
     ]);
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -174,6 +281,208 @@ export default function ContasReceberPage() {
     return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
+  const openInvoiceModal = (invoiceId: string) => {
+    setDetailsInvoiceId(invoiceId);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const openDetails = async (dup: Duplicata) => {
+    setSelectedDuplicata(dup);
+    setInvoiceHeader({
+      id: dup.invoiceId,
+      number: dup.nfNumero,
+      issueDate: dup.nfEmissao,
+      totalValue: dup.nfValorTotal,
+      clienteNome: dup.clienteNome,
+      clienteCnpj: dup.clienteCnpj,
+    });
+    setEditingDuplicatas([]);
+    setIsDetailsOpen(true);
+    setLoadingDetails(true);
+
+    try {
+      const res = await fetch(`/api/financeiro/contas-receber/invoice/${dup.invoiceId}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao carregar parcelas da nota');
+      }
+
+      const data = await res.json();
+      const rows: Duplicata[] = Array.isArray(data.duplicatas) && data.duplicatas.length > 0
+        ? data.duplicatas
+        : [dup];
+      setInvoiceHeader(data.invoice || {
+        id: dup.invoiceId,
+        number: dup.nfNumero,
+        issueDate: dup.nfEmissao,
+        totalValue: dup.nfValorTotal,
+        clienteNome: dup.clienteNome,
+        clienteCnpj: dup.clienteCnpj,
+      });
+      setEditingDuplicatas(rows.map((row) => ({
+        id: createEditRowId(),
+        invoiceId: row.invoiceId,
+        dupNumeroOriginal: row.dupNumeroOriginal || row.dupNumero,
+        dupVencimentoOriginal: row.dupVencimentoOriginal || row.dupVencimento,
+        dupNumero: row.dupNumero,
+        dupVencimento: row.dupVencimento,
+        dupValor: toCurrencyInput(Number(row.dupValor ?? 0)),
+        dupDesconto: toCurrencyInput(Number(row.dupDesconto ?? 0)),
+      })));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar detalhes da duplicata';
+      toast.error(message);
+      setEditingDuplicatas([{
+        id: createEditRowId(),
+        invoiceId: dup.invoiceId,
+        dupNumeroOriginal: dup.dupNumeroOriginal || dup.dupNumero,
+        dupVencimentoOriginal: dup.dupVencimentoOriginal || dup.dupVencimento,
+        dupNumero: dup.dupNumero,
+        dupVencimento: dup.dupVencimento,
+        dupValor: toCurrencyInput(Number(dup.dupValor ?? 0)),
+        dupDesconto: toCurrencyInput(Number(dup.dupDesconto ?? 0)),
+      }]);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const closeDetails = () => {
+    if (savingDetails) return;
+    setIsDetailsOpen(false);
+    setSelectedDuplicata(null);
+    setInvoiceHeader(null);
+    setEditingDuplicatas([]);
+  };
+
+  const updateEditingDuplicata = (
+    index: number,
+    field: 'dupVencimento' | 'dupValor' | 'dupDesconto',
+    value: string
+  ) => {
+    setEditingDuplicatas((prev) => prev.map((item, i) => (
+      i === index
+        ? { ...item, [field]: value }
+        : item
+    )));
+  };
+
+  const normalizeEditingCurrencyField = (index: number, field: 'dupValor' | 'dupDesconto') => {
+    setEditingDuplicatas((prev) => prev.map((item, i) => {
+      if (i !== index) return item;
+      const parsedValue = parseCurrencyInput(item[field]);
+      return {
+        ...item,
+        [field]: Number.isFinite(parsedValue) ? toCurrencyInput(parsedValue) : '',
+      };
+    }));
+  };
+
+  const addInstallment = () => {
+    setEditingDuplicatas((prev) => {
+      const invoiceId = invoiceHeader?.id || selectedDuplicata?.invoiceId || prev[0]?.invoiceId || '';
+      const nextNumber = getNextDupNumero(prev);
+      const lastDueDate = prev[prev.length - 1]?.dupVencimento || '';
+      return [
+        ...prev,
+        {
+          id: createEditRowId(),
+          invoiceId,
+          dupNumeroOriginal: nextNumber,
+          dupVencimentoOriginal: lastDueDate,
+          dupNumero: nextNumber,
+          dupVencimento: lastDueDate,
+          dupValor: '',
+          dupDesconto: toCurrencyInput(0),
+        },
+      ];
+    });
+  };
+
+  const removeInstallment = (index: number) => {
+    setEditingDuplicatas((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleSaveDetails = async () => {
+    if (!invoiceHeader || editingDuplicatas.length === 0) return;
+
+    const seenDupNumero = new Set<string>();
+    const installmentsPayload: Array<{ dupNumero: string; dupVencimento: string; dupValor: number; dupDesconto: number }> = [];
+
+    for (const row of editingDuplicatas) {
+      if (!row.dupVencimento) {
+        toast.error('Informe o vencimento de todas as parcelas.');
+        return;
+      }
+      const dupNumero = String(row.dupNumero || '').trim() || String(installmentsPayload.length + 1).padStart(3, '0');
+      if (seenDupNumero.has(dupNumero)) {
+        toast.error('Existem parcelas com o mesmo número. Ajuste antes de salvar.');
+        return;
+      }
+      seenDupNumero.add(dupNumero);
+
+      const parsedValue = parseCurrencyInput(row.dupValor);
+      if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+        toast.error('Informe um valor válido para todas as parcelas.');
+        return;
+      }
+      const parsedDiscount = parseCurrencyInput(row.dupDesconto);
+      if (!Number.isFinite(parsedDiscount) || parsedDiscount < 0) {
+        toast.error('Informe um desconto válido para todas as parcelas.');
+        return;
+      }
+      if (parsedDiscount > parsedValue) {
+        toast.error('O desconto não pode ser maior que o valor da parcela.');
+        return;
+      }
+
+      installmentsPayload.push({
+        dupNumero,
+        dupVencimento: row.dupVencimento,
+        dupValor: roundMoney(parsedValue),
+        dupDesconto: roundMoney(parsedDiscount),
+      });
+    }
+
+    const totalParcelas = roundMoney(
+      installmentsPayload.reduce((sum, item) => sum + Math.max(0, item.dupValor - item.dupDesconto), 0)
+    );
+    const totalNota = roundMoney(invoiceHeader.totalValue || 0);
+    const diffTotal = roundMoney(totalNota - totalParcelas);
+    if (Math.abs(diffTotal) > 0.01) {
+      toast.error(`A soma das parcelas (${formatCurrency(totalParcelas)}) deve bater com o valor da nota (${formatCurrency(totalNota)}).`);
+      return;
+    }
+
+    setSavingDetails(true);
+    try {
+      const res = await fetch(`/api/financeiro/contas-receber/invoice/${invoiceHeader.id}/installments`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installments: installmentsPayload }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao salvar parcelas');
+      }
+
+      toast.success('Parcelas atualizadas com sucesso.');
+      setIsDetailsOpen(false);
+      setSelectedDuplicata(null);
+      setInvoiceHeader(null);
+      setEditingDuplicatas([]);
+      await loadData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar alterações';
+      toast.error(message);
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
   const formatParcela = (dup: Duplicata) => {
     const digits = (dup.dupNumero || '').replace(/\D/g, '');
     const parsed = digits ? parseInt(digits, 10) : Number.NaN;
@@ -185,6 +494,38 @@ export default function ContasReceberPage() {
       ? `${parcelaAtual} / ${String(parcelaTotal).padStart(3, '0')}`
       : parcelaAtual;
   };
+
+  const getParcelaLabel = (dupNumero: string, idx: number, total: number) => {
+    const digits = (dupNumero || '').replace(/\D/g, '');
+    const parsed = digits ? parseInt(digits, 10) : Number.NaN;
+    const parcelaAtual = Number.isFinite(parsed)
+      ? String(parsed).padStart(3, '0')
+      : String(idx + 1).padStart(3, '0');
+    if (total <= 1) return parcelaAtual;
+    return `${parcelaAtual} / ${String(total).padStart(3, '0')}`;
+  };
+
+  const parsedEditingValues = editingDuplicatas.map((row) => parseCurrencyInput(row.dupValor));
+  const parsedEditingDiscounts = editingDuplicatas.map((row) => parseCurrencyInput(row.dupDesconto));
+  const hasInvalidEditingValue = parsedEditingValues.some((value) => !Number.isFinite(value) || value < 0)
+    || parsedEditingDiscounts.some((value) => !Number.isFinite(value) || value < 0)
+    || parsedEditingValues.some((value, idx) => Number.isFinite(value) && Number.isFinite(parsedEditingDiscounts[idx]) && parsedEditingDiscounts[idx] > value);
+  const totalParcelasEdicao = roundMoney(
+    parsedEditingValues.reduce((sum, value, idx) => {
+      const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+      const discount = parsedEditingDiscounts[idx];
+      const safeDiscount = Number.isFinite(discount) ? Math.max(0, discount) : 0;
+      return sum + Math.max(0, safeValue - safeDiscount);
+    }, 0)
+  );
+  const totalDescontoEdicao = roundMoney(
+    parsedEditingDiscounts.reduce((sum, value) => sum + (Number.isFinite(value) ? Math.max(0, value) : 0), 0)
+  );
+  const totalNotaEdicao = roundMoney(invoiceHeader?.totalValue || selectedDuplicata?.nfValorTotal || 0);
+  const diferencaEdicao = roundMoney(totalNotaEdicao - totalParcelasEdicao);
+  const parcelasConferem = Math.abs(diferencaEdicao) <= 0.01;
+  const totaisValidos = parcelasConferem && !hasInvalidEditingValue;
+  const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
 
   return (
     <div>
@@ -372,6 +713,9 @@ export default function ContasReceberPage() {
                     >
                       <div className="flex items-center justify-center">Status <SortIcon col="status" /></div>
                     </th>
+                    <th className="text-center px-4 py-3 font-semibold text-slate-500 dark:text-slate-400">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -386,7 +730,7 @@ export default function ContasReceberPage() {
                         <React.Fragment key={`${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
                           {showDivider && (
                             <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                              <td colSpan={6} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                              <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                                 <div className="flex items-center gap-2">
                                   <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
@@ -413,9 +757,7 @@ export default function ContasReceberPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <div>
-                                  <p className="font-medium text-slate-900 dark:text-white truncate max-w-[250px]" title={dup.clienteNome}>
-                                    {dup.clienteNome}
-                                  </p>
+                                  {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title={n.full}>{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate max-w-[250px]" title={n.display}>{n.display}</p>); })()}
                                   <p className="text-xs text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
                                 </div>
                               </td>
@@ -435,6 +777,15 @@ export default function ContasReceberPage() {
                                   <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
                                   {cfg.label}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => openDetails(dup)}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                  title="Visualizar e editar"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">visibility</span>
+                                </button>
                               </td>
                             </tr>
                           )}
@@ -457,7 +808,7 @@ export default function ContasReceberPage() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-white truncate">{dup.clienteNome}</p>
+                        {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
                         <p className="text-xs text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes} ml-2 flex-shrink-0`}>
@@ -486,6 +837,15 @@ export default function ContasReceberPage() {
                       {dup.status === 'overdue' && (
                         <span className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
                       )}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={() => openDetails(dup)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">visibility</span>
+                        Ver / Editar
+                      </button>
                     </div>
                   </div>
                 );
@@ -543,6 +903,195 @@ export default function ContasReceberPage() {
           </>
         )}
       </div>
+
+      <Modal
+        isOpen={isDetailsOpen}
+        onClose={closeDetails}
+        title="Visualizar / Editar Duplicatas"
+        width="max-w-4xl"
+      >
+        {(selectedDuplicata || invoiceHeader) && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
+                <p className="text-[11px] uppercase tracking-wider text-slate-400">Número da NF-e</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {invoiceHeader?.number || selectedDuplicata?.nfNumero}
+                  </p>
+                  <button
+                    onClick={() => openInvoiceModal((invoiceHeader?.id || selectedDuplicata?.invoiceId || ''))}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-primary border border-primary/30 hover:bg-primary/10 transition-colors"
+                    disabled={!(invoiceHeader?.id || selectedDuplicata?.invoiceId)}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                    Ver NF-e
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
+                <p className="text-[11px] uppercase tracking-wider text-slate-400">Emissão</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  {formatDate(invoiceHeader?.issueDate || selectedDuplicata?.nfEmissao || '')}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
+                <p className="text-[11px] uppercase tracking-wider text-slate-400">Cliente</p>
+                {(() => { const cnpj = invoiceHeader?.clienteCnpj || selectedDuplicata?.clienteCnpj; const nome = invoiceHeader?.clienteNome || selectedDuplicata?.clienteNome; const n = getNick(cnpj, nome); return n.full ? (<><p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={n.full}>{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate" title={n.display}>{n.display}</p>); })()}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {formatCnpj(invoiceHeader?.clienteCnpj || selectedDuplicata?.clienteCnpj || '')}
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Parcelas da Nota
+                </h4>
+                {canWrite && (
+                  <button
+                    type="button"
+                    onClick={addInstallment}
+                    disabled={loadingDetails || savingDetails}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Adicionar parcela
+                  </button>
+                )}
+              </div>
+              {loadingDetails ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <Skeleton key={idx} className="h-12 rounded-lg" />
+                  ))}
+                </div>
+              ) : editingDuplicatas.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Nenhuma parcela encontrada para esta nota.
+                </p>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Parcela</th>
+                        <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Vencimento</th>
+                        <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Valor</th>
+                        <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Desconto</th>
+                        {canWrite && <th className="text-center px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Ação</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editingDuplicatas.map((row, idx) => (
+                        <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                          <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
+                            {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="date"
+                              value={row.dupVencimento}
+                              onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
+                              readOnly={!canWrite}
+                              className={`w-full px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.dupValor}
+                              onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
+                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
+                              placeholder="R$ 0,00"
+                              readOnly={!canWrite}
+                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.dupDesconto}
+                              onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
+                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
+                              placeholder="R$ 0,00"
+                              readOnly={!canWrite}
+                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                            />
+                          </td>
+                          {canWrite && (
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeInstallment(idx)}
+                              disabled={editingDuplicatas.length <= 1 || savingDetails}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
+                              title="Remover parcela"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {!loadingDetails && editingDuplicatas.length > 0 && (
+                <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                  totaisValidos
+                    ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
+                    : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+                }`}>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                    <span>Valor da nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
+                    <span>Soma das parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
+                    <span>Desconto total: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
+                    <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
+                  </div>
+                  {hasInvalidEditingValue ? (
+                    <p className="mt-1 text-xs">
+                      Preencha valores e descontos válidos (ex.: R$ 12.542,83) e mantenha desconto menor ou igual ao valor.
+                    </p>
+                  ) : !parcelasConferem && (
+                    <p className="mt-1 text-xs">
+                      A soma das parcelas deve ser igual ao valor total da nota para salvar.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={closeDetails}
+                disabled={savingDetails}
+                className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
+              >
+                {canWrite ? 'Cancelar' : 'Fechar'}
+              </button>
+              {canWrite && (
+                <button
+                  onClick={handleSaveDetails}
+                  disabled={!canSaveDetails}
+                  className="px-3 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+      <InvoiceDetailsModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        invoiceId={detailsInvoiceId}
+      />
     </div>
   );
 }

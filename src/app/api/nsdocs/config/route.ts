@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
@@ -47,8 +47,10 @@ export async function GET(_request: NextRequest) {
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    const auth = await requireAdmin();
+    userId = auth.userId;
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 
@@ -104,8 +106,9 @@ export async function POST(request: NextRequest) {
 // PUT - Testa conexão com a API NSDocs
 export async function PUT(request: NextRequest) {
   try {
-    await requireAuth();
-  } catch {
+    await requireAdmin();
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

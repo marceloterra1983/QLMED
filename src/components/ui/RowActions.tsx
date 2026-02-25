@@ -7,7 +7,7 @@ interface RowActionsProps {
   invoiceId: string;
   onView: (id: string) => void;
   onDetails: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export default function RowActions({ invoiceId, onView, onDetails, onDelete }: RowActionsProps) {
@@ -26,12 +26,7 @@ export default function RowActions({ invoiceId, onView, onDetails, onDelete }: R
   }, [open]);
 
   const handlePrint = () => {
-    const printWindow = window.open(`/api/invoices/${invoiceId}/pdf`, '_blank');
-    if (printWindow) {
-      printWindow.addEventListener('load', () => {
-        printWindow.print();
-      });
-    }
+    window.open(`/api/invoices/${invoiceId}/pdf?print=true`, '_blank');
   };
 
   const handleSaveXml = () => {
@@ -41,8 +36,7 @@ export default function RowActions({ invoiceId, onView, onDetails, onDelete }: R
 
   const handleSavePdf = () => {
     const link = document.createElement('a');
-    link.href = `/api/invoices/${invoiceId}/pdf`;
-    link.download = `nota-${invoiceId}.pdf`;
+    link.href = `/api/invoices/${invoiceId}/pdf?download=true`;
     link.click();
     setOpen(false);
   };
@@ -68,7 +62,7 @@ export default function RowActions({ invoiceId, onView, onDetails, onDelete }: R
     { label: 'Salvar PDF', icon: 'picture_as_pdf', action: handleSavePdf },
     { label: 'Encaminhar', icon: 'forward_to_inbox', action: handleForward },
     { label: 'Anotações', icon: 'edit_note', action: handleNotes },
-    { label: 'Excluir', icon: 'delete', action: () => { onDelete(invoiceId); setOpen(false); }, danger: true },
+    ...(onDelete ? [{ label: 'Excluir', icon: 'delete', action: () => { onDelete(invoiceId); setOpen(false); }, danger: true }] : []),
   ];
 
   return (

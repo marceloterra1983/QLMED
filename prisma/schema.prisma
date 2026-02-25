@@ -37,16 +37,32 @@ enum SyncStatus {
   error
 }
 
+enum UserRole {
+  admin
+  editor
+  viewer
+}
+
+enum UserStatus {
+  pending
+  active
+  inactive
+  rejected
+}
+
 // ── Models ──
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   passwordHash String
   name         String
-  role         String    @default("user")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  phone        String?
+  role         UserRole   @default(viewer)
+  status       UserStatus @default(pending)
+  allowedPages String[]   @default([])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   companies    Company[]
 }
 
@@ -58,6 +74,9 @@ model Company {
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   invoices          Invoice[]
+  duplicataOverrides FinanceiroDuplicataOverride[]
+  manualInstallments FinanceiroDuplicataManualInstallment[]
+  contactNicknames   ContactNickname[]
   nsdocsConfig      NsdocsConfig?
   certificateConfig CertificateConfig?
   oneDriveConnections OneDriveConnection[]
@@ -154,6 +173,8 @@ model Invoice {
   xmlContent     String
   companyId      String
   company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  duplicataOverrides FinanceiroDuplicataOverride[]
+  manualInstallments FinanceiroDuplicataManualInstallment[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -165,4 +186,57 @@ model Invoice {
   @@index([companyId, type, direction, senderCnpj])
   @@index([companyId, status])
   @@index([senderName])
+}
+
+model FinanceiroDuplicataOverride {
+  id                    String   @id @default(cuid())
+  companyId             String
+  company               Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId             String
+  invoice               Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  dupNumeroOriginal     String
+  dupVencimentoOriginal String
+  emitenteNome          String?
+  emitenteCnpj          String?
+  faturaNumero          String?
+  dupNumero             String?
+  dupVencimento         String?
+  dupValor              Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([companyId, invoiceId, dupNumeroOriginal, dupVencimentoOriginal], map: "company_invoice_dup_original")
+  @@index([companyId])
+  @@index([invoiceId])
+}
+
+model ContactNickname {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cnpj      String
+  shortName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, cnpj])
+  @@index([companyId])
+}
+
+model FinanceiroDuplicataManualInstallment {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  dupNumero     String
+  dupVencimento String
+  dupValor      Float
+  dupDesconto   Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([companyId, invoiceId, dupNumero], map: "company_invoice_manual_dup_num")
+  @@index([companyId])
+  @@index([invoiceId])
 }

@@ -1,0 +1,71 @@
+{
+  "name": "QLMED - Captura Email XML",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "options": {
+          "unseen": true
+        }
+      },
+      "name": "IMAP Trigger",
+      "type": "n8n-nodes-base.imapEmail",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.attachments?.[0]?.filename || '' }}",
+              "operation": "endsWith",
+              "value2": ".xml"
+            }
+          ]
+        }
+      },
+      "name": "Tem XML?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-app:3000/api/invoices/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "ca6e370b5e94cb57c94875bafa1435cb58bbae0adb61dae950b00eb2c106e30d" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "file", "parameterType": "formBinaryData", "inputDataFieldName": "attachment_0" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "name": "Upload XML ao QLMED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 200]
+    }
+  ],
+  "connections": {
+    "IMAP Trigger": {
+      "main": [[{ "node": "Tem XML?", "type": "main", "index": 0 }]]
+    },
+    "Tem XML?": {
+      "main": [
+        [{ "node": "Upload XML ao QLMED", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  }
+}

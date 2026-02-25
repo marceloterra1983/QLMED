@@ -1,0 +1,794 @@
+{
+  "generatedAt": "2026-02-24T01:02:43.288Z",
+  "mode": "dry-run",
+  "companyCount": 1,
+  "totalsBefore": {
+    "products": 3815,
+    "missingAnvisa": 263,
+    "missingType": 72,
+    "missingSubtype": 73,
+    "missingManufacturer": 110
+  },
+  "applied": {
+    "updatesFound": 0,
+    "updatesApplied": 0,
+    "byField": {},
+    "byReason": {}
+  },
+  "inconsistencies": {
+    "codeWithMultipleAnvisa": [
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "10400204020",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "80693380001",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "MKUPUUX834",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "10360810025",
+        "topRatio": 0.75
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "355144",
+        "distinctAnvisa": 2,
+        "total": 4,
+        "topAnvisa": "10171250047",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350514070E",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "600060Z",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510788",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "NYL501618",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10360810013",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "880200",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80034140034",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "5206003003",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80062900014",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "0700452001",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10355870082",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "16906",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80689090153",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "167032",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81588840003",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "A5027",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510924",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI2650006173",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81118469001",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "J3C035260",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "10256400055",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450514070E",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "5119045035",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80062900012",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006304",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "A5025",
+        "distinctAnvisa": 2,
+        "total": 3,
+        "topAnvisa": "80102510924",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "PO1210",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10171250021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "HPPICV",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10166360050",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "10603",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10366900039",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "202010DS",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10306840137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "ECM0067",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80102511746",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "PO2010",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10196320047",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "83403200",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81918330003",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232126404",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450523070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350531070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450531070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450531100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110504",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "344CX100",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450510100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TCS260",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81425780021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "DCS29",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81425780019",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "BDXXSMHRK",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10360810027",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "BDXXLGHRK",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10360810027",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450545070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490025",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "34494",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700137",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1450540070E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TLS9040",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80078450021",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006308",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110304",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110312",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "344126",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "10247700162",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "1350531100E",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "80482490024",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0232110306",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006404",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460033",
+        "topRatio": 0.5
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "code": "TI0231006306",
+        "distinctAnvisa": 2,
+        "total": 2,
+        "topAnvisa": "81118460034",
+        "topRatio": 0.5
+      }
+    ],
+    "anvisaWithMultipleTypes": [
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171610052",
+        "distinctTypes": 3,
+        "total": 5,
+        "topType": "ORTOPEDIA",
+        "topRatio": 0.4
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "81118460033",
+        "distinctTypes": 2,
+        "total": 195,
+        "topType": "ORTOPEDIA",
+        "topRatio": 0.949
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80102511412",
+        "distinctTypes": 2,
+        "total": 51,
+        "topType": "EQUIPAMENTOS",
+        "topRatio": 0.765
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171250042",
+        "distinctTypes": 2,
+        "total": 15,
+        "topType": "Dispositivos Médicos",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10443440009",
+        "distinctTypes": 2,
+        "total": 13,
+        "topType": "FORA DE LINHA - HEMOD.",
+        "topRatio": 0.923
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "10171250041",
+        "distinctTypes": 2,
+        "total": 12,
+        "topType": "Dispositivos Médicos",
+        "topRatio": 0.75
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80062900001",
+        "distinctTypes": 2,
+        "total": 9,
+        "topType": "HEMODINAMICA",
+        "topRatio": 0.556
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80483300016",
+        "distinctTypes": 2,
+        "total": 8,
+        "topType": "Dispositivos Médicos",
+        "topRatio": 0.875
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80102510788",
+        "distinctTypes": 2,
+        "total": 6,
+        "topType": "CARDIACA",
+        "topRatio": 0.667
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80493660023",
+        "distinctTypes": 2,
+        "total": 6,
+        "topType": "OUTROS",
+        "topRatio": 0.833
+      },
+      {
+        "companyId": "cmlrdunyx0002zthpl4jo7dld",
+        "anvisa": "80689090153",
+        "distinctTypes": 2,
+        "total": 3,
+        "topType": "Materiais Hospitalares",
+        "topRatio": 0.667
+      }
+    ]
+  },
+  "suggestions": {
+    "possibleNewTypes": [
+      {
+        "code": "TEST123",
+        "description": "Test Product",
+        "product_type": "Teste",
+        "product_subtype": null
+      }
+    ],
+    "possibleNewSubtypes": [
+      {
+        "product_subtype": "JOELHO - MERIL",
+        "total": 710,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "IMPLANTES BUCO",
+        "total": 408,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - OSTEOMED",
+        "total": 184,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CAIXAS DE ORTOPEDIA",
+        "total": 147,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL BUCO",
+        "total": 132,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - NEOORTHO",
+        "total": 125,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - OSSEA",
+        "total": 119,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "STENT CONVENCIONAL - MERIL",
+        "total": 113,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "STENT FARMACOLÓGICO - MERIL",
+        "total": 101,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Prótese ou Órtese",
+        "total": 93,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CONJUNTO CEC",
+        "total": 89,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BUCO-MAXILO-FACIAL",
+        "total": 87,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "OUTROS",
+        "total": 82,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - OSSEA",
+        "total": 81,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BALÃO CORONÁRIO - MERIL",
+        "total": 79,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - BIOMETAL",
+        "total": 70,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Instrumento ou Aparelho Médico-cirúrgico",
+        "total": 69,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ACESSORIO",
+        "total": 65,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "GRAMPEADOR",
+        "total": 63,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "FIO DE SUTURA",
+        "total": 58,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CX CERVICAL OSTEOMED",
+        "total": 54,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ACESSORIOS",
+        "total": 47,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - ORTOBIO",
+        "total": 46,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "EQUIPAMENTOS - OUTROS",
+        "total": 44,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - OSTEOMED",
+        "total": 42,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - SARTORI",
+        "total": 41,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - NEOORTHO",
+        "total": 36,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "BALAO FARMACOLOGICO - FREEWAY",
+        "total": 36,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA MEC. AORTICA - SORIN",
+        "total": 34,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ITENS - HPBIO",
+        "total": 31,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "DRILL - MEDTRONIC",
+        "total": 30,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PATCH ORGANICO",
+        "total": 21,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CANULAS - SORIN",
+        "total": 21,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INTRODUTOR/BAINHA",
+        "total": 19,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CIMENTO",
+        "total": 19,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "KIT AUTO-TRANSFUSÃO",
+        "total": 18,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA MEC. MITRAL - SORIN",
+        "total": 17,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "EQUIPAMENTO",
+        "total": 17,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "FIO GUIA",
+        "total": 14,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Generico",
+        "total": 13,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PEÇAS DE MÃO",
+        "total": 13,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA AORTICA - LABCOR",
+        "total": 12,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ESPONJA - TECHNODRY",
+        "total": 12,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "SHUNT",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "COLA CIRURGICA",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ANEL CARBOMEDICS",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "VALVULA AORTICA CARBOMEDICS",
+        "total": 11,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "ASPIRADOR ULTRASSONICO",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "Filtragem e Purificação",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "SUPORTES",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PINÇA - MACOM",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "PUNCH",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "INSTRUMENTAL - SARTORI",
+        "total": 8,
+        "distinct_types": 1
+      },
+      {
+        "product_subtype": "CONJ. VERTEBROPLAS. -MICRODENT",
+        "total": 8,
+        "distinct_types": 1
+      }
+    ]
+  },
+  "preview": [],
+  "totalsAfter": {
+    "products": 3815,
+    "missing_anvisa": 263,
+    "missing_type": 72,
+    "missing_subtype": 73,
+    "missing_manufacturer": 110
+  }
+}

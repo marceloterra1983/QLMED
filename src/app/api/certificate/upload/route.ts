@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma'; // Assumindo que existe
 import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
@@ -8,8 +8,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    const auth = await requireAdmin();
+    userId = auth.userId;
+  } catch (e: any) {
+    if (e.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

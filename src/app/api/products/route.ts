@@ -38,6 +38,8 @@ interface AggregatedProduct {
   lastIssueDate: Date | null;
   lastSupplierName: string | null;
   lastSupplierCnpj: string | null;
+  lastInvoiceId: string | null;
+  lastInvoiceNumber: string | null;
   invoiceIds: Set<string>;
   productType: string | null;
   productSubtype: string | null;
@@ -520,6 +522,8 @@ export async function GET(req: Request) {
               lastIssueDate: issueDate,
               lastSupplierName: invoice.senderName || null,
               lastSupplierCnpj: invoice.senderCnpj || null,
+              lastInvoiceId: invoice.id,
+              lastInvoiceNumber: invoice.number || null,
               invoiceIds: new Set([invoice.id]),
               productType: null,
               productSubtype: null,
@@ -556,6 +560,8 @@ export async function GET(req: Request) {
             existing.lastPrice = product.unitPrice;
             existing.lastSupplierName = invoice.senderName || null;
             existing.lastSupplierCnpj = invoice.senderCnpj || null;
+            existing.lastInvoiceId = invoice.id;
+            existing.lastInvoiceNumber = invoice.number || null;
           }
         }
       }
@@ -585,6 +591,7 @@ export async function GET(req: Request) {
       anvisaRiskClass: null as string | null,
       anvisaManufacturer: null as string | null,
       anvisaManufacturerCountry: null as string | null,
+      manufacturerShortName: null as string | null,
       anvisaDataset: null as 'medicamentos' | 'produtos_saude' | null,
       totalQuantity: item.totalQuantity,
       invoiceCount: item.invoiceIds.size,
@@ -595,8 +602,12 @@ export async function GET(req: Request) {
       averagePrice: item.totalQuantity > 0 ? item.totalValue / item.totalQuantity : 0,
       lastSupplierName: item.lastSupplierName,
       lastSupplierCnpj: item.lastSupplierCnpj,
+      lastInvoiceId: item.lastInvoiceId,
+      lastInvoiceNumber: item.lastInvoiceNumber,
+      shortName: null as string | null,
       productType: null as string | null,
       productSubtype: null as string | null,
+      outOfLine: false,
     }));
 
     if (useIssuedNfeLookup) {
@@ -968,10 +979,12 @@ export async function GET(req: Request) {
           product.ean = registry.ean;
         }
 
+        if (registry.shortName) product.shortName = registry.shortName;
         if (registry.productType) {
           product.productType = registry.productType;
           product.productSubtype = registry.productSubtype;
         }
+        if (registry.outOfLine) product.outOfLine = true;
 
         // Always apply open-data enrichment (expiration, risk class, holder, product name)
         // regardless of ANVISA source — these come from the ANVISA open data import
@@ -983,6 +996,7 @@ export async function GET(req: Request) {
         if (registry.anvisaStatus && !product.anvisaStatus) product.anvisaStatus = registry.anvisaStatus;
         if (registry.anvisaManufacturer) product.anvisaManufacturer = registry.anvisaManufacturer;
         if (registry.anvisaManufacturerCountry) product.anvisaManufacturerCountry = registry.anvisaManufacturerCountry;
+        if (registry.manufacturerShortName) product.manufacturerShortName = registry.manufacturerShortName;
 
         const registryAnvisa = normalizeAnvisaRegistration(registry.anvisaCode);
         const registrySource = cleanString(registry.anvisaSource) as

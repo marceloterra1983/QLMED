@@ -13,7 +13,6 @@ import {
   formatDateShort,
   formatTime,
   formatAccessKey,
-  formatValue,
   getStatusDisplay,
   getTypeBadge,
   statusDotClasses,
@@ -596,7 +595,7 @@ export default function DashboardPage() {
                               : 'text-slate-900 dark:text-white'
                           }`}
                         >
-                          {formatValue(invoice.totalValue)}
+                          {formatCurrency(invoice.totalValue)}
                         </span>
                       </td>
                       <td className="px-6 py-4">

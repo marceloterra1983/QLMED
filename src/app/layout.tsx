@@ -50,7 +50,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={materialSymbolsUrl} rel="stylesheet" />
       </head>
-      <body className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased" suppressHydrationWarning>
+      <body suppressHydrationWarning className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

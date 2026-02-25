@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 
 export async function POST(req: Request) {
   try {
     let userId: string;
     try {
-      userId = await requireAuth();
-    } catch {
+      const auth = await requireEditor();
+      userId = auth.userId;
+    } catch (e: any) {
+      if (e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -58,9 +61,7 @@ export async function POST(req: Request) {
         }
 
         // Determinar direção: emitida ou recebida
-        const companyCnpjClean = company.cnpj.replace(/\D/g, '');
-        const senderCnpjClean = parsed.senderCnpj.replace(/\D/g, '');
-        const direction = senderCnpjClean === companyCnpjClean ? 'issued' : 'received';
+        const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
 
         await prisma.invoice.create({
           data: {
