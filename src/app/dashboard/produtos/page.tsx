@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatValue } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 
 interface ProductRow {
   key: string;
@@ -25,11 +26,15 @@ interface ProductRow {
   anvisaManufacturer?: string | null;
   anvisaManufacturerCountry?: string | null;
   totalQuantity: number;
+  invoiceCount: number;
   lastPrice: number;
   lastIssueDate: string | null;
   lastSaleDate: string | null;
   lastSalePrice: number | null;
   lastSupplierName?: string | null;
+  lastInvoiceId?: string | null;
+  lastInvoiceNumber?: string | null;
+  shortName?: string | null;
   productType?: string | null;
   productSubtype?: string | null;
 }
@@ -52,7 +57,7 @@ interface ProductsResponse {
   };
 }
 
-type SortField = 'description' | 'code' | 'ncm' | 'anvisa' | 'lastPrice' | 'lastIssueDate' | 'lastSaleDate' | 'supplier' | 'productType';
+type SortField = 'description' | 'code' | 'ncm' | 'anvisa' | 'lastPrice' | 'lastIssueDate' | 'lastSaleDate' | 'supplier' | 'productType' | 'totalQuantity' | 'invoiceCount';
 
 function normalizeSearch(s: string) {
   return s
@@ -107,6 +112,9 @@ export default function ProdutosPage() {
   const [isImportingOpenData, setIsImportingOpenData] = useState(false);
   const [isImportingTypes, setIsImportingTypes] = useState(false);
   const [editingAnvisaKey, setEditingAnvisaKey] = useState<string | null>(null);
+  const [isAutoClassifying, setIsAutoClassifying] = useState(false);
+  const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
+  const [autoClassifyPreview, setAutoClassifyPreview] = useState<any>(null);
   const xlsInputRef = useRef<HTMLInputElement>(null);
   const openDataInputRef = useRef<HTMLInputElement>(null);
   const typesInputRef = useRef<HTMLInputElement>(null);
@@ -115,11 +123,152 @@ export default function ProdutosPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (g: string) => setCollapsedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
 
+  // --- multi-select ---
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const toggleSelect = (key: string) => {
+    setSelectedKeys((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  };
+
+  // --- bulk edit ---
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkFields, setBulkFields] = useState({
+    enableType: false, productType: '',
+    enableSubtype: false, productSubtype: '',
+    enableNcm: false, ncm: '',
+    enableAnvisa: false, anvisa: '',
+  });
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
+
+  const openBulkEdit = () => {
+    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '' });
+    setBulkEditOpen(true);
+  };
+
+  const handleBulkSave = async () => {
+    const fields: Record<string, string | null> = {};
+    if (bulkFields.enableType) fields.productType = bulkFields.productType || null;
+    if (bulkFields.enableSubtype) fields.productSubtype = bulkFields.productSubtype || null;
+    if (bulkFields.enableNcm) fields.ncm = bulkFields.ncm || null;
+    if (bulkFields.enableAnvisa) fields.anvisa = bulkFields.anvisa || null;
+    if (Object.keys(fields).length === 0) { toast.error('Selecione pelo menos um campo para editar'); return; }
+
+    const selectedProducts = allProducts.filter((p) => selectedKeys.has(p.key));
+    if (selectedProducts.length === 0) return;
+
+    setIsBulkSaving(true);
+    const toastId = toast.loading(`Atualizando ${selectedProducts.length} produto(s)...`);
+    try {
+      const res = await fetch('/api/products/bulk-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: selectedProducts.map((p) => ({ productKey: p.key, code: p.code, description: p.description, ncm: p.ncm, unit: p.unit, ean: p.ean })),
+          fields,
+        }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error || 'Falha'); }
+      const result = await res.json();
+      toast.success(`${result.updated} produto(s) atualizados com sucesso`, { id: toastId });
+      setBulkEditOpen(false);
+      setSelectedKeys(new Set());
+      await loadProducts();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao atualizar', { id: toastId });
+    } finally {
+      setIsBulkSaving(false);
+    }
+  };
+
   // --- product detail modal ---
   const [detailProduct, setDetailProduct] = useState<ProductRow | null>(null);
   const [detailAnvisa, setDetailAnvisa] = useState('');
+  const [detailNcm, setDetailNcm] = useState('');
+  const [detailType, setDetailType] = useState('');
+  const [detailSubtype, setDetailSubtype] = useState('');
+  const [detailShortName, setDetailShortName] = useState('');
+  const [detailOpenSections, setDetailOpenSections] = useState<Set<string>>(new Set());
+  const toggleDetailSection = (s: string) => setDetailOpenSections((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
   const [savingDetail, setSavingDetail] = useState(false);
   const [syncingRegistry, setSyncingRegistry] = useState(false);
+
+  // --- purchase/sales history ---
+  interface HistoryItem {
+    invoiceId: string;
+    invoiceNumber: string | null;
+    issueDate: string | null;
+    supplierName: string | null;
+    customerName: string | null;
+    quantity: number;
+    unitPrice: number;
+    totalValue: number;
+    batch: string | null;
+    expiry: string | null;
+    fabrication: string | null;
+  }
+  const [purchaseHistory, setPurchaseHistory] = useState<HistoryItem[]>([]);
+  const [salesHistory, setSalesHistory] = useState<HistoryItem[]>([]);
+  const [consignmentHistory, setConsignmentHistory] = useState<HistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingSalesHistory, setLoadingSalesHistory] = useState(false);
+  const [loadingConsignment, setLoadingConsignment] = useState(false);
+
+  const openDetail = (product: ProductRow) => {
+    setDetailProduct(product);
+    setDetailAnvisa(product.anvisa || '');
+    setDetailNcm(product.ncm || '');
+    setDetailType(product.productType || '');
+    setDetailSubtype(product.productSubtype || '');
+    setDetailShortName(product.shortName || '');
+  };
+
+  const [historyProduct, setHistoryProduct] = useState<ProductRow | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [expandedBatch, setExpandedBatch] = useState<Set<string>>(new Set());
+  const openHistory = (product: ProductRow) => {
+    setHistoryProduct(product);
+    setPurchaseHistory([]);
+    setSalesHistory([]);
+    setConsignmentHistory([]);
+    setExpandedGroups(new Set());
+    setExpandedRows(new Set());
+    setExpandedBatch(new Set());
+    if (product.code) {
+      const params = new URLSearchParams({ code: product.code });
+      if (product.unit) params.set('unit', product.unit);
+      setLoadingHistory(true);
+      fetch(`/api/products/history?${params}`)
+        .then(r => r.json())
+        .then(d => setPurchaseHistory(d.history || []))
+        .catch(() => {})
+        .finally(() => setLoadingHistory(false));
+      const salesParams = new URLSearchParams({ code: product.code, direction: 'issued', description: product.description });
+      if (product.unit) salesParams.set('unit', product.unit);
+      setLoadingSalesHistory(true);
+      fetch(`/api/products/history?${salesParams}`)
+        .then(r => r.json())
+        .then(d => setSalesHistory(d.history || []))
+        .catch(() => {})
+        .finally(() => setLoadingSalesHistory(false));
+      // Consignment history (issued only)
+      const consigParams = new URLSearchParams({ code: product.code, direction: 'issued', description: product.description, filter: 'consignment' });
+      if (product.unit) consigParams.set('unit', product.unit);
+      setLoadingConsignment(true);
+      fetch(`/api/products/history?${consigParams}`)
+        .then(r => r.json())
+        .then(d => setConsignmentHistory(d.history || []))
+        .catch(() => {})
+        .finally(() => setLoadingConsignment(false));
+    }
+  };
+
+  const detailDirty = detailProduct && (
+    detailAnvisa !== (detailProduct.anvisa || '') ||
+    detailNcm !== (detailProduct.ncm || '') ||
+    detailType !== (detailProduct.productType || '') ||
+    detailSubtype !== (detailProduct.productSubtype || '') ||
+    detailShortName !== (detailProduct.shortName || '')
+  );
 
   // ---- load all products once ----
   const loadProducts = async () => {
@@ -236,6 +385,28 @@ export default function ProdutosPage() {
       case 'description': return (product.description?.[0] || '#').toUpperCase();
       case 'code':        return product.code ? product.code[0].toUpperCase() : '#';
       default:            return '';
+    }
+  };
+
+  // --- visible keys for select-all (depends on getGroupLabel) ---
+  const visibleKeys = useMemo(() => {
+    const keys: string[] = [];
+    let lastGroup = '';
+    for (const p of filtered) {
+      const g = getGroupLabel(p);
+      if (g !== lastGroup) lastGroup = g;
+      if (!collapsedGroups.has(g)) keys.push(p.key);
+    }
+    return keys;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, collapsedGroups, sortBy]);
+  const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((k) => selectedKeys.has(k));
+  const someVisibleSelected = visibleKeys.some((k) => selectedKeys.has(k));
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedKeys((prev) => { const n = new Set(prev); visibleKeys.forEach((k) => n.delete(k)); return n; });
+    } else {
+      setSelectedKeys((prev) => { const n = new Set(prev); visibleKeys.forEach((k) => n.add(k)); return n; });
     }
   };
 
@@ -423,9 +594,42 @@ export default function ProdutosPage() {
   const handleSaveDetail = async () => {
     if (!detailProduct) return;
     setSavingDetail(true);
-    const ok = await saveAnvisa(detailProduct, detailAnvisa);
-    setSavingDetail(false);
-    if (ok) setDetailProduct(null);
+    const fields: Record<string, string | null> = {};
+
+    const anvisaDigits = detailAnvisa.replace(/\D/g, '');
+    if (detailAnvisa !== (detailProduct.anvisa || '')) {
+      if (anvisaDigits && anvisaDigits.length !== 11) {
+        toast.error('Código ANVISA inválido. Informe exatamente 11 dígitos.');
+        setSavingDetail(false);
+        return;
+      }
+      fields.anvisa = anvisaDigits || null;
+    }
+    if (detailNcm !== (detailProduct.ncm || '')) fields.ncm = detailNcm.trim() || null;
+    if (detailType !== (detailProduct.productType || '')) fields.productType = detailType.trim() || null;
+    if (detailSubtype !== (detailProduct.productSubtype || '')) fields.productSubtype = detailSubtype.trim() || null;
+    if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
+
+    if (Object.keys(fields).length === 0) { setSavingDetail(false); return; }
+
+    try {
+      const res = await fetch('/api/products/bulk-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: [{ productKey: detailProduct.key, code: detailProduct.code, description: detailProduct.description, ncm: detailProduct.ncm, unit: detailProduct.unit, ean: detailProduct.ean }],
+          fields,
+        }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      toast.success('Produto atualizado');
+      setDetailProduct(null);
+      await loadProducts();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setSavingDetail(false);
+    }
   };
 
   const handleSyncRegistry = async (product: ProductRow) => {
@@ -637,6 +841,35 @@ export default function ProdutosPage() {
   };
 
 
+  const handleAutoClassify = async (dryRun: boolean) => {
+    setIsAutoClassifying(true);
+    const toastId = dryRun ? undefined : toast.loading('Analisando e classificando produtos...');
+    try {
+      const res = await fetch('/api/products/auto-classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (dryRun) {
+        setAutoClassifyPreview(data);
+      } else {
+        toast.success(
+          `Classificação concluída! ${data.updatesApplied} produto(s) atualizados — ANVISA: ${data.byField.anvisa}, Tipo: ${data.byField.productType}, Subtipo: ${data.byField.productSubtype}`,
+          { id: toastId, duration: 10000 },
+        );
+        setAutoClassifyPreview(null);
+        await loadProducts();
+      }
+    } catch {
+      if (toastId) toast.error('Erro ao classificar produtos', { id: toastId });
+      else toast.error('Erro ao analisar produtos');
+    } finally {
+      setIsAutoClassifying(false);
+    }
+  };
+
   const missingCount = meta?.anvisaStats?.missing ?? allProducts.filter((p) => !p.anvisa).length;
 
   return (
@@ -663,6 +896,15 @@ export default function ProdutosPage() {
               >
                 <span className={`material-symbols-outlined text-[20px] ${isSyncingAnvisa ? 'animate-spin' : ''}`}>autorenew</span>
                 {isSyncingAnvisa ? 'Sincronizando...' : 'Sincronizar ANVISA'}
+              </button>
+              <button
+                onClick={() => handleAutoClassify(true)}
+                disabled={isAutoClassifying}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shadow-sm disabled:opacity-60"
+                title="Analisa produtos e preenche ANVISA, tipo e subtipo automaticamente por similaridade"
+              >
+                <span className={`material-symbols-outlined text-[20px] ${isAutoClassifying ? 'animate-spin' : ''}`}>{isAutoClassifying ? 'sync' : 'auto_fix_high'}</span>
+                {isAutoClassifying ? 'Analisando...' : 'Auto-classificar'}
               </button>
               <button
                 onClick={handleBulkSyncRegistry}
@@ -811,44 +1053,6 @@ export default function ProdutosPage() {
         </div>
       </div>
 
-      {/* ANVISA stats */}
-      {!loading && meta?.anvisaStats && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark px-4 py-3 shadow-sm">
-          <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2.5">Origem dos códigos ANVISA</p>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-              <span className="material-symbols-outlined text-[14px]">description</span>
-              XML da NF-e: {meta.anvisaStats.xml.toLocaleString('pt-BR')}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-              <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-              NF-e de saída: {meta.anvisaStats.issuedNfe.toLocaleString('pt-BR')}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
-              <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-              Catálogo ANVISA: {meta.anvisaStats.catalog.toLocaleString('pt-BR')}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
-              <span className="material-symbols-outlined text-[14px]">edit</span>
-              Manual: {meta.anvisaStats.manual.toLocaleString('pt-BR')}
-            </span>
-            <button
-              onClick={() => { setOnlyMissing((v) => !v); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                onlyMissing
-                  ? 'bg-red-600 text-white border-red-600'
-                  : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 hover:bg-red-100'
-              }`}
-              title={onlyMissing ? 'Clique para remover filtro' : 'Clique para filtrar somente sem ANVISA'}
-            >
-              <span className="material-symbols-outlined text-[14px]">warning</span>
-              Sem ANVISA: {meta.anvisaStats.missing.toLocaleString('pt-BR')}
-              {!onlyMissing && <span className="material-symbols-outlined text-[12px] opacity-60">filter_alt</span>}
-              {onlyMissing && <span className="material-symbols-outlined text-[12px]">filter_alt_off</span>}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Search + filters */}
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
@@ -869,7 +1073,6 @@ export default function ProdutosPage() {
                 <option value="lastIssueDate">Última Compra</option>
                 <option value="ncm">NCM</option>
                 <option value="anvisa">ANVISA</option>
-                <option value="supplier">Fornecedor</option>
                 <option value="productType">Tipo</option>
               </select>
               <button
@@ -903,6 +1106,16 @@ export default function ProdutosPage() {
                 </button>
               )}
             </div>
+          </div>
+          <div className="shrink-0 flex flex-col justify-end">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">&nbsp;</label>
+            <button
+              onClick={() => setOnlyMissing((v) => !v)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${onlyMissing ? 'bg-red-600 text-white border-red-600' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-red-300 hover:text-red-600'}`}
+              title="Filtrar somente produtos sem ANVISA"
+            >
+              Sem ANVISA {missingCount > 0 && <span className={`ml-1 text-[11px] font-bold ${onlyMissing ? 'opacity-80' : 'text-red-500'}`}>{missingCount}</span>}
+            </button>
           </div>
           <div className="shrink-0">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tipo</label>
@@ -993,9 +1206,19 @@ export default function ProdutosPage() {
           );
         })()}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1140px]">
+          <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                <th className="px-3 py-1.5 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer"
+                    title="Selecionar todos visíveis"
+                  />
+                </th>
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
                   <div className="flex items-center gap-1">Código <SortIcon field="code" /></div>
                 </th>
@@ -1008,15 +1231,22 @@ export default function ProdutosPage() {
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('anvisa')}>
                   <div className="flex items-center gap-1">ANVISA <SortIcon field="anvisa" /></div>
                 </th>
-                <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('supplier')}>
-                  <div className="flex items-center gap-1">Fornecedor <SortIcon field="supplier" /></div>
+                <th className="px-3 py-1.5">
+                  <div className="flex items-center gap-1">Fabricante</div>
                 </th>
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('productType')}>
                   <div className="flex items-center gap-1">Tipo <SortIcon field="productType" /></div>
                 </th>
+                <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('totalQuantity')}>
+                  <div className="flex items-center justify-end gap-1">Qtde <SortIcon field="totalQuantity" /></div>
+                </th>
+                <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('invoiceCount')}>
+                  <div className="flex items-center justify-end gap-1">NF-es <SortIcon field="invoiceCount" /></div>
+                </th>
                 <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastIssueDate')}>
                   <div className="flex items-center justify-end gap-1">Última Compra <SortIcon field="lastIssueDate" /></div>
                 </th>
+                <th className="px-3 py-1.5">NF-e</th>
                 <th className="px-3 py-1.5 text-center">Ações</th>
               </tr>
             </thead>
@@ -1024,19 +1254,23 @@ export default function ProdutosPage() {
               {loading ? (
                 Array.from({ length: 20 }).map((_, i) => (
                   <tr key={i}>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-52" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-28" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-8 ml-auto" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-24 ml-auto" /></td>
+                    <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-8 mx-auto" /></td>
                   </tr>
                 ))
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={12} className="px-6 py-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
                     <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
                     <p className="text-xs mt-1">
@@ -1059,7 +1293,7 @@ export default function ProdutosPage() {
                       <React.Fragment key={product.key}>
                         {showDivider && group && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={8} className="px-3 py-1 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <td colSpan={12} className="px-3 py-1 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[15px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 {sortBy === 'productType' && product.productType && product.productSubtype && (
@@ -1075,7 +1309,15 @@ export default function ProdutosPage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                  <tr key={product.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+                  <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                    <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedKeys.has(product.key)}
+                        onChange={() => toggleSelect(product.key)}
+                        className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-1">
                       <span className="text-[12px] font-mono font-semibold text-slate-900 dark:text-white">{product.code || '-'}</span>
                     </td>
@@ -1091,7 +1333,7 @@ export default function ProdutosPage() {
                       </span>
                     </td>
                     <td className="px-3 py-1">
-                      <span className="text-[12px] text-slate-600 dark:text-slate-400">{product.lastSupplierName || '-'}</span>
+                      <span className="text-[12px] text-slate-600 dark:text-slate-400">{product.anvisaManufacturer || '-'}</span>
                     </td>
                     <td className="px-3 py-1">
                       {product.productType ? (
@@ -1108,16 +1350,45 @@ export default function ProdutosPage() {
                       )}
                     </td>
                     <td className="px-3 py-1 text-right">
+                      <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{formatQuantity(product.totalQuantity)}</span>
+                    </td>
+                    <td className="px-3 py-1 text-right">
+                      <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">{product.invoiceCount}</span>
+                    </td>
+                    <td className="px-3 py-1 text-right">
                       <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</span>
                     </td>
+                    <td className="px-3 py-1">
+                      {product.lastInvoiceNumber ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setInvoiceModalId(product.lastInvoiceId || null); }}
+                          className="inline-flex items-center gap-1 text-[11px] font-mono text-primary hover:text-primary-dark hover:underline transition-colors"
+                          title="Abrir NF-e"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                          {product.lastInvoiceNumber}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">-</span>
+                      )}
+                    </td>
                     <td className="px-3 py-1 text-center">
-                      <button
-                        onClick={() => { setDetailProduct(product); setDetailAnvisa(product.anvisa || ''); }}
-                        className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                        title="Ver detalhes do produto"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">visibility</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-0.5">
+                        <button
+                          onClick={() => openDetail(product)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="Ver detalhes do produto"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">visibility</span>
+                        </button>
+                        <button
+                          onClick={() => openHistory(product)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          title="Histórico de compras e vendas"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">history</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                         )}
@@ -1144,166 +1415,884 @@ export default function ProdutosPage() {
         )}
       </div>
 
-      {/* Product detail modal */}
-      {detailProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
-          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+      {/* Bulk action toolbar */}
+      {selectedKeys.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shadow-2xl border border-slate-700">
+          <span className="material-symbols-outlined text-[20px] text-primary">checklist</span>
+          <span className="text-sm font-semibold">
+            {selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
+          </span>
+          <div className="w-px h-5 bg-slate-600" />
+          {canWrite && (
+            <button
+              onClick={openBulkEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              Editar em massa
+            </button>
+          )}
+          <button
+            onClick={() => setSelectedKeys(new Set())}
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+            Limpar
+          </button>
+        </div>
+      )}
+
+      {/* Auto-classify preview modal */}
+      {autoClassifyPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setAutoClassifyPreview(null)}>
+          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{detailProduct.description}</h3>
-                <p className="text-[11px] font-mono text-slate-400 mt-0.5">{detailProduct.code || 'Sem código'}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] text-amber-500">auto_fix_high</span>
+                  Auto-classificação — Preview
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {autoClassifyPreview.updatesFound} alteração(ões) encontrada(s) de {autoClassifyPreview.totalProducts} produtos
+                  {autoClassifyPreview.byField && (
+                    <span className="ml-2">
+                      — ANVISA: <b>{autoClassifyPreview.byField.anvisa}</b>, Tipo: <b>{autoClassifyPreview.byField.productType}</b>, Subtipo: <b>{autoClassifyPreview.byField.productSubtype}</b>
+                    </span>
+                  )}
+                </p>
               </div>
-              <button onClick={() => setDetailProduct(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+              <button onClick={() => setAutoClassifyPreview(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
-              {/* Info grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Unidade</p>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{detailProduct.unit || '-'}</p>
+            <div className="overflow-y-auto flex-1">
+              {autoClassifyPreview.updatesFound === 0 ? (
+                <div className="px-6 py-12 text-center text-slate-400">
+                  <span className="material-symbols-outlined text-[48px] opacity-30">check_circle</span>
+                  <p className="mt-2 text-sm font-medium">Nenhum preenchimento automático encontrado</p>
+                  <p className="text-xs mt-1">Todos os produtos já possuem os campos preenchidos ou não foram encontrados padrões suficientes.</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">NCM</p>
-                  <p className="text-[13px] font-mono font-semibold text-slate-800 dark:text-white">{detailProduct.ncm || '-'}</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">EAN</p>
-                  <p className="text-[13px] font-mono font-semibold text-slate-800 dark:text-white">{detailProduct.ean || '-'}</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Último Preço</p>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatValue(detailProduct.lastPrice)}</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Último Fornecedor</p>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{detailProduct.lastSupplierName || '-'}</p>
-                </div>
-                {detailProduct.productType && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Tipo</p>
-                    <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{detailProduct.productType}</p>
-                  </div>
-                )}
-                {detailProduct.productSubtype && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Subtipo</p>
-                    <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{detailProduct.productSubtype}</p>
-                  </div>
-                )}
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última Compra</p>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatDate(detailProduct.lastIssueDate)}</p>
-                </div>
-                {detailProduct.anvisaMatchedProductName && (
-                  <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Produto ANVISA</p>
-                    <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaMatchedProductName}</p>
-                  </div>
-                )}
-                {detailProduct.anvisaHolder && (
-                  <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Detentor do Registro</p>
-                    <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
-                  </div>
-                )}
-                {detailProduct.anvisaManufacturer && (
-                  <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">
-                      Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` · ${detailProduct.anvisaManufacturerCountry}` : ''}
-                    </p>
-                    <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaManufacturer}</p>
-                  </div>
-                )}
-                {detailProduct.anvisaProcess && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Processo</p>
-                    <p className="text-[12px] font-mono text-slate-700 dark:text-slate-300">{detailProduct.anvisaProcess}</p>
-                  </div>
-                )}
-                {detailProduct.anvisaStatus && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Situação</p>
-                    <p className={`text-[12px] font-semibold ${
-                      detailProduct.anvisaStatus?.toLowerCase().includes('válid') ? 'text-green-600 dark:text-green-400' :
-                      detailProduct.anvisaStatus?.toLowerCase().includes('vencid') ? 'text-red-600 dark:text-red-400' :
-                      detailProduct.anvisaStatus?.toLowerCase().includes('cancel') ? 'text-red-600 dark:text-red-400' :
-                      'text-slate-700 dark:text-slate-300'
-                    }`}>{detailProduct.anvisaStatus}</p>
-                  </div>
-                )}
-                {(detailProduct.anvisaExpiration || detailProduct.anvisaStatus) && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Vencimento</p>
-                    <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
-                      {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
-                    </p>
-                  </div>
-                )}
-                {detailProduct.anvisaRiskClass && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Classe de Risco</p>
-                    <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0">
+                    <tr className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                      <th className="px-4 py-2">Produto</th>
+                      <th className="px-4 py-2">Alterações</th>
+                      <th className="px-4 py-2">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {(autoClassifyPreview.preview || []).map((item: any, i: number) => (
+                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <td className="px-4 py-2 max-w-[200px]">
+                          <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.description}</p>
+                          {item.code && <p className="text-[10px] font-mono text-slate-400">{item.code}</p>}
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {item.fields.anvisa_code && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
+                                ANVISA: {item.fields.anvisa_code}
+                              </span>
+                            )}
+                            {item.fields.product_type && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                                Tipo: {item.fields.product_type}
+                              </span>
+                            )}
+                            {item.fields.product_subtype && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
+                                Subtipo: {item.fields.product_subtype}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[280px]">{item.reason}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {autoClassifyPreview.updatesFound > 50 && (
+                <p className="px-4 py-2 text-xs text-slate-400 text-center border-t border-slate-100 dark:border-slate-800">
+                  Mostrando 50 de {autoClassifyPreview.updatesFound} alterações
+                </p>
+              )}
+            </div>
+
+            {autoClassifyPreview.updatesFound > 0 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/30">
+                <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleAutoClassify(false)}
+                  disabled={isAutoClassifying}
+                  className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60"
+                >
+                  {isAutoClassifying ? (
+                    <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Aplicando...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteração(ões)</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk edit modal */}
+      {bulkEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
+          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Editar em massa</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</p>
+              </div>
+              <button onClick={() => setBulkEditOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
+                Marque os campos que deseja alterar. Campos não marcados permanecerão inalterados.
+              </p>
+
+              {/* Tipo */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={bulkFields.enableType} onChange={(e) => setBulkFields((f) => ({ ...f, enableType: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Tipo</span>
+                </label>
+                {bulkFields.enableType && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={bulkFields.productType}
+                      onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))}
+                      placeholder="Deixe em branco para limpar"
+                      list="bulk-types-list"
+                      className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                    />
+                    <datalist id="bulk-types-list">
+                      {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
+                        <option key={t!} value={t!} />
+                      ))}
+                    </datalist>
                   </div>
                 )}
               </div>
 
-              {/* ANVISA registry sync */}
-              {detailProduct.anvisa && (
-                <button
-                  onClick={() => handleSyncRegistry(detailProduct)}
-                  disabled={syncingRegistry}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-teal-200 dark:border-teal-800 rounded-lg text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-60"
-                >
-                  <span className={`material-symbols-outlined text-[18px] ${syncingRegistry ? 'animate-spin' : ''}`}>
-                    {syncingRegistry ? 'sync' : 'verified'}
-                  </span>
-                  {syncingRegistry ? 'Consultando ANVISA...' : 'Buscar dados do registro na ANVISA'}
-                </button>
-              )}
+              {/* Subtipo */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={bulkFields.enableSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, enableSubtype: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Subtipo</span>
+                </label>
+                {bulkFields.enableSubtype && (
+                  <input
+                    type="text"
+                    value={bulkFields.productSubtype}
+                    onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))}
+                    placeholder="Deixe em branco para limpar"
+                    list="bulk-subtypes-list"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  />
+                )}
+                <datalist id="bulk-subtypes-list">
+                  {Array.from(new Set(
+                    allProducts
+                      .filter((p) => !bulkFields.productType || p.productType === bulkFields.productType)
+                      .map((p) => p.productSubtype).filter(Boolean)
+                  )).sort().map((s) => <option key={s!} value={s!} />)}
+                </datalist>
+              </div>
 
-              {/* ANVISA edit */}
-              {canWrite && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Código ANVISA
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={detailAnvisa}
-                      onChange={(e) => setDetailAnvisa(e.target.value)}
-                      maxLength={13}
-                      placeholder="11 dígitos numéricos"
-                      className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    />
-                    <button
-                      onClick={handleSaveDetail}
-                      disabled={savingDetail || detailAnvisa === (detailProduct.anvisa || '')}
-                      className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-40"
-                    >
-                      {savingDetail ? 'Salvando...' : 'Salvar'}
-                    </button>
-                    {detailAnvisa && (
-                      <button
-                        onClick={() => setDetailAnvisa('')}
-                        className="px-3 py-2 border border-red-200 dark:border-red-800 text-red-500 rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Remover código ANVISA"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* NCM */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={bulkFields.enableNcm} onChange={(e) => setBulkFields((f) => ({ ...f, enableNcm: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">NCM</span>
+                </label>
+                {bulkFields.enableNcm && (
+                  <input
+                    type="text"
+                    value={bulkFields.ncm}
+                    onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))}
+                    placeholder="Ex: 90189099"
+                    maxLength={8}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  />
+                )}
+              </div>
+
+              {/* ANVISA */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={bulkFields.enableAnvisa} onChange={(e) => setBulkFields((f) => ({ ...f, enableAnvisa: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">ANVISA</span>
+                </label>
+                {bulkFields.enableAnvisa && (
+                  <input
+                    type="text"
+                    value={bulkFields.anvisa}
+                    onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))}
+                    placeholder="11 dígitos — deixe em branco para limpar"
+                    maxLength={13}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+              <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkSave}
+                disabled={isBulkSaving || (!bulkFields.enableType && !bulkFields.enableSubtype && !bulkFields.enableNcm && !bulkFields.enableAnvisa)}
+                className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-40"
+              >
+                {isBulkSaving ? (
+                  <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span> Salvando...</>
+                ) : (
+                  <><span className="material-symbols-outlined text-[16px]">save</span> Salvar</>
+                )}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Product detail modal */}
+      {detailProduct && (() => {
+        const anvisaStatusColor = detailProduct.anvisaStatus?.toLowerCase().includes('válid')
+          ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+          : detailProduct.anvisaStatus?.toLowerCase().includes('vencid') || detailProduct.anvisaStatus?.toLowerCase().includes('cancel')
+          ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          : 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
+
+        const SectionCard = ({ id, icon, iconColor, title, badge, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; children: React.ReactNode }) => (
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 overflow-hidden">
+            <button
+              onClick={() => toggleDetailSection(id)}
+              className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${iconColor}`}>{icon}</span>
+              <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex-1 text-left">{title}</h4>
+              {badge}
+              <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: detailOpenSections.has(id) ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+            </button>
+            {detailOpenSections.has(id) && (
+              <div className="px-4 pb-4 pt-0">
+                {children}
+              </div>
+            )}
+          </div>
+        );
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
+            <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+              {/* ── Header ── */}
+              <div className="flex items-start justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[22px] text-primary">inventory_2</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">{detailProduct.description}</h3>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {detailProduct.code && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300">
+                          <span className="material-symbols-outlined text-[12px]">qr_code</span>{detailProduct.code}
+                        </span>
+                      )}
+                      {detailProduct.unit && (
+                        <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-[11px] font-bold text-blue-700 dark:text-blue-400">{detailProduct.unit}</span>
+                      )}
+                      {detailProduct.ean && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          EAN: {detailProduct.ean}
+                        </span>
+                      )}
+                      {detailProduct.anvisa && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900/30 text-[11px] font-mono font-semibold text-teal-700 dark:text-teal-400">
+                          <span className="material-symbols-outlined text-[12px]">verified</span>ANVISA: {detailProduct.anvisa}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 ml-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              {/* ── Body ── */}
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+
+                {/* ── Card: Dados do Cadastro ── */}
+                <SectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Nome Abreviado */}
+                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nome Abreviado</label>
+                      <input
+                        type="text"
+                        value={detailShortName}
+                        onChange={(e) => setDetailShortName(e.target.value)}
+                        maxLength={100}
+                        placeholder="Nome curto para identificação rápida"
+                        disabled={!canWrite}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* NCM */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">NCM</label>
+                      <input
+                        type="text"
+                        value={detailNcm}
+                        onChange={(e) => setDetailNcm(e.target.value)}
+                        maxLength={8}
+                        placeholder="Ex: 90189099"
+                        disabled={!canWrite}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Tipo */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tipo</label>
+                      <input
+                        type="text"
+                        value={detailType}
+                        onChange={(e) => setDetailType(e.target.value)}
+                        placeholder="ex: Medicamento"
+                        disabled={!canWrite}
+                        list="detail-types-list"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                      />
+                      <datalist id="detail-types-list">
+                        {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => <option key={t!} value={t!} />)}
+                      </datalist>
+                    </div>
+
+                    {/* Subtipo */}
+                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Subtipo</label>
+                      <input
+                        type="text"
+                        value={detailSubtype}
+                        onChange={(e) => setDetailSubtype(e.target.value)}
+                        placeholder="ex: Antibiótico"
+                        disabled={!canWrite}
+                        list="detail-subtypes-list"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                      />
+                      <datalist id="detail-subtypes-list">
+                        {Array.from(new Set(allProducts.filter((p) => !detailType || p.productType === detailType).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => <option key={s!} value={s!} />)}
+                      </datalist>
+                    </div>
+
+                    {/* Dados Comerciais resumidos */}
+                    <div className="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Últ. Preço Compra</p>
+                        <p className="text-[13px] font-bold text-slate-800 dark:text-white">{formatValue(detailProduct.lastPrice)}</p>
+                      </div>
+                      {detailProduct.lastSalePrice != null && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Últ. Preço Venda</p>
+                          <p className="text-[13px] font-bold text-slate-800 dark:text-white">{formatOptional(detailProduct.lastSalePrice)}</p>
+                        </div>
+                      )}
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última Compra</p>
+                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatDate(detailProduct.lastIssueDate)}</p>
+                      </div>
+                      {detailProduct.lastSaleDate && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última Venda</p>
+                          <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatDate(detailProduct.lastSaleDate)}</p>
+                        </div>
+                      )}
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Qtde Total</p>
+                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{formatQuantity(detailProduct.totalQuantity)}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Último Fornecedor</p>
+                        <p className="text-[12px] font-semibold text-slate-800 dark:text-white truncate" title={detailProduct.lastSupplierName || '-'}>{detailProduct.lastSupplierName || '-'}</p>
+                      </div>
+                      {detailProduct.lastInvoiceNumber && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Última NF-e</p>
+                          <button
+                            onClick={() => { setDetailProduct(null); setInvoiceModalId(detailProduct.lastInvoiceId || null); }}
+                            className="text-[13px] font-mono font-semibold text-primary hover:text-primary-dark hover:underline transition-colors flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                            {detailProduct.lastInvoiceNumber}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SectionCard>
+
+                {/* ── Card: Dados da ANVISA ── */}
+                <SectionCard id="anvisa" icon="verified_user" iconColor="text-teal-600 dark:text-teal-400" title="Dados da ANVISA"
+                  badge={detailProduct.anvisaStatus ? (
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
+                  ) : undefined}
+                >
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Código ANVISA input */}
+                      <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Código ANVISA</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={detailAnvisa}
+                            onChange={(e) => setDetailAnvisa(e.target.value)}
+                            maxLength={13}
+                            placeholder="11 dígitos numéricos"
+                            disabled={!canWrite}
+                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white font-mono text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                          />
+                          {canWrite && detailAnvisa && (
+                            <button
+                              onClick={() => setDetailAnvisa('')}
+                              className="px-2.5 border border-red-200 dark:border-red-800 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm transition-colors"
+                              title="Limpar código ANVISA"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          )}
+                          {canWrite && detailProduct.anvisa && (
+                            <button
+                              onClick={() => handleSyncRegistry(detailProduct)}
+                              disabled={syncingRegistry}
+                              className="flex items-center gap-1.5 px-3 py-2 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg text-[12px] font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
+                              title="Consultar dados do registro na ANVISA"
+                            >
+                              <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'sync' : 'verified'}</span>
+                              {syncingRegistry ? 'Consultando...' : 'Buscar'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {detailProduct.anvisaMatchedProductName && (
+                        <div className="col-span-2 bg-teal-50/50 dark:bg-teal-900/10 border border-teal-200/60 dark:border-teal-800/60 rounded-xl px-3 py-2.5">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-teal-500 dark:text-teal-400 mb-0.5">Produto Registrado</p>
+                          <p className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{detailProduct.anvisaMatchedProductName}</p>
+                        </div>
+                      )}
+                      {detailProduct.anvisaHolder && (
+                        <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Detentor do Registro</p>
+                          <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
+                        </div>
+                      )}
+                      {detailProduct.anvisaManufacturer && (
+                        <div className="col-span-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">
+                            Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` · ${detailProduct.anvisaManufacturerCountry}` : ''}
+                          </p>
+                          <p className="text-[12px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaManufacturer}</p>
+                        </div>
+                      )}
+                      {detailProduct.anvisaStatus && (
+                        <div className={`rounded-xl px-3 py-2.5 border ${anvisaStatusColor}`}>
+                          <p className="text-[10px] uppercase tracking-wider font-bold opacity-60 mb-0.5">Situação</p>
+                          <p className="text-[12px] font-bold">{detailProduct.anvisaStatus}</p>
+                        </div>
+                      )}
+                      {(detailProduct.anvisaExpiration || detailProduct.anvisaStatus) && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Vencimento</p>
+                          <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
+                            {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
+                          </p>
+                        </div>
+                      )}
+                      {detailProduct.anvisaProcess && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Processo</p>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
+                        </div>
+                      )}
+                      {detailProduct.anvisaRiskClass && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Classe de Risco</p>
+                          <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+                        </div>
+                      )}
+                    </div>
+                </SectionCard>
+
+              </div>
+
+              {/* ── Footer ── */}
+              {canWrite && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+                  <button
+                    onClick={() => setDetailProduct(null)}
+                    className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={handleSaveDetail}
+                    disabled={savingDetail || !detailDirty}
+                    className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/30 disabled:opacity-40 disabled:shadow-none"
+                  >
+                    {savingDetail ? (
+                      <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Salvando...</>
+                    ) : (
+                      <><span className="material-symbols-outlined text-[16px]">save</span>Salvar alterações</>
+                    )}
+                  </button>
+                </div>
+              )}
+              {!canWrite && (
+                <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Fechar</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* History modal */}
+      {historyProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setHistoryProduct(null)}>
+          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
+                    {historyProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{historyProduct.code}</span><span className="text-slate-400 dark:text-slate-500 mx-1.5">-</span></>}
+                    {historyProduct.description}
+                  </h3>
+                  {historyProduct.shortName && (
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{historyProduct.shortName}</p>
+                  )}
+                  {(historyProduct.productType || historyProduct.productSubtype) && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {historyProduct.productType && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{historyProduct.productType}</span>
+                      )}
+                      {historyProduct.productSubtype && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{historyProduct.productSubtype}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setHistoryProduct(null)} className="flex-shrink-0 ml-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Tabs + Content */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+              {/* Helper: summary stats */}
+              {(() => {
+                const calcStats = (items: HistoryItem[]) => {
+                  const totalValue = items.reduce((s, h) => s + h.totalValue, 0);
+                  const totalQty = items.reduce((s, h) => s + h.quantity, 0);
+                  const invoiceCount = new Set(items.map(h => h.invoiceId)).size;
+                  const sorted = [...items].sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+                  const lastPrice = sorted.length > 0 ? sorted[0].unitPrice : 0;
+                  const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
+                  return { totalValue, totalQty, invoiceCount, lastPrice, avgPrice };
+                };
+
+                const groupBy = (items: HistoryItem[], key: 'supplierName' | 'customerName') => {
+                  const map = new Map<string, HistoryItem[]>();
+                  for (const h of items) {
+                    const name = h[key] || 'Não identificado';
+                    if (!map.has(name)) map.set(name, []);
+                    map.get(name)!.push(h);
+                  }
+                  return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
+                };
+
+                const toggleGroup = (key: string) => {
+                  setExpandedGroups(prev => {
+                    const next = new Set(prev);
+                    if (next.has(key)) next.delete(key); else next.add(key);
+                    return next;
+                  });
+                };
+
+                const toggleRows = (key: string) => {
+                  setExpandedRows(prev => {
+                    const next = new Set(prev);
+                    if (next.has(key)) next.delete(key); else next.add(key);
+                    return next;
+                  });
+                };
+
+                const toggleBatch = (key: string) => {
+                  setExpandedBatch(prev => {
+                    const next = new Set(prev);
+                    if (next.has(key)) next.delete(key); else next.add(key);
+                    return next;
+                  });
+                };
+
+                const TruncatedCell = ({ text, id }: { text: string | null; id: string }) => {
+                  if (!text || text === '-') return <span>-</span>;
+                  if (text.length <= 20) return <span>{text}</span>;
+                  const isExpanded = expandedBatch.has(id);
+                  return (
+                    <span
+                      className="cursor-pointer hover:text-blue-500 transition-colors"
+                      title={text}
+                      onClick={() => toggleBatch(id)}
+                    >
+                      {isExpanded ? text : text.slice(0, 18) + '...'}
+                    </span>
+                  );
+                };
+
+                const colorMap = {
+                  blue: { bg: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40', icon: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300', badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400', btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' },
+                  amber: { bg: 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40', icon: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400', btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20' },
+                  purple: { bg: 'bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40', icon: 'text-purple-500', text: 'text-purple-700 dark:text-purple-300', badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400', btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+                };
+
+                const SummaryCards = ({ stats, color }: { stats: ReturnType<typeof calcStats>; color: 'blue' | 'amber' | 'purple' }) => {
+                  const cm = colorMap[color];
+                  return (
+                  <div className="grid grid-cols-5 gap-2 mb-3">
+                    {[
+                      { label: 'Total', value: formatValue(stats.totalValue), icon: 'payments' },
+                      { label: 'Qtde Total', value: formatQuantity(stats.totalQty), icon: 'inventory_2' },
+                      { label: 'Notas', value: String(stats.invoiceCount), icon: 'receipt_long' },
+                      { label: 'Último Preço', value: formatValue(stats.lastPrice), icon: 'trending_up' },
+                      { label: 'Preço Médio', value: formatValue(stats.avgPrice), icon: 'analytics' },
+                    ].map(c => (
+                      <div key={c.label} className={`rounded-lg px-2.5 py-2 ${cm.bg}`}>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className={`material-symbols-outlined text-[12px] ${cm.icon}`}>{c.icon}</span>
+                          <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">{c.label}</span>
+                        </div>
+                        <div className={`text-[13px] font-bold ${cm.text}`}>{c.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  );
+                };
+
+                const HistoryTable = ({ items, nameKey, groupKey, color }: { items: HistoryItem[]; nameKey: 'supplierName' | 'customerName'; groupKey: string; color: 'blue' | 'amber' | 'purple' }) => {
+                  const cm = colorMap[color];
+                  const groups = groupBy(items, nameKey);
+
+                  return (
+                    <div className="space-y-2">
+                      {groups.map(([name, rows], gi) => {
+                        const gk = `${groupKey}-${name}`;
+                        const isOpen = expandedGroups.has(gk) || (gi === 0 && !expandedGroups.has(`${gk}-closed`));
+                        const isRowsExpanded = expandedRows.has(gk);
+                        const visibleRows = isRowsExpanded ? rows : rows.slice(0, 3);
+                        const remaining = rows.length - 3;
+
+                        return (
+                          <div key={gk} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            <button
+                              className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${isOpen ? 'bg-white dark:bg-slate-800/80' : 'bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/60'}`}
+                              onClick={() => {
+                                if (gi === 0) {
+                                  // For first group, track explicit close
+                                  const closedKey = `${gk}-closed`;
+                                  if (isOpen) {
+                                    setExpandedGroups(prev => { const n = new Set(prev); n.delete(gk); n.add(closedKey); return n; });
+                                  } else {
+                                    setExpandedGroups(prev => { const n = new Set(prev); n.add(gk); n.delete(closedKey); return n; });
+                                  }
+                                } else {
+                                  toggleGroup(gk);
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`material-symbols-outlined text-[16px] transition-transform ${isOpen ? 'rotate-90' : ''} ${cm.icon}`}>chevron_right</span>
+                                <span className="text-[12px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${cm.badge}`}>{rows.length}</span>
+                              </div>
+                              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatValue(rows.reduce((s, r) => s + r.totalValue, 0))}</span>
+                            </button>
+                            {isOpen && (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-[11px]">
+                                  <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                      <th className="px-2 py-1.5 text-left font-bold">Data</th>
+                                      <th className="px-2 py-1.5 text-left font-bold">NF-e</th>
+                                      <th className="px-2 py-1.5 text-right font-bold">Qtde</th>
+                                      <th className="px-2 py-1.5 text-right font-bold">Vlr Unit.</th>
+                                      <th className="px-2 py-1.5 text-right font-bold">Total</th>
+                                      <th className="px-2 py-1.5 text-left font-bold">Lote</th>
+                                      <th className="px-2 py-1.5 text-left font-bold">Validade</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {visibleRows.map((h, i) => (
+                                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                        <td className="px-2 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
+                                        <td className="px-2 py-1.5">
+                                          <button
+                                            onClick={() => { setHistoryProduct(null); setInvoiceModalId(h.invoiceId); }}
+                                            className="text-primary hover:text-primary-dark hover:underline font-mono transition-colors"
+                                          >
+                                            {h.invoiceNumber || '-'}
+                                          </button>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right font-medium text-slate-800 dark:text-white">{formatQuantity(h.quantity)}</td>
+                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-400">{formatValue(h.unitPrice)}</td>
+                                        <td className="px-2 py-1.5 text-right font-medium text-slate-800 dark:text-white">{formatValue(h.totalValue)}</td>
+                                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-400 font-mono">
+                                          <TruncatedCell text={h.batch || '-'} id={`${gk}-batch-${i}`} />
+                                        </td>
+                                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                          <TruncatedCell text={h.expiry ? formatDate(h.expiry) : '-'} id={`${gk}-expiry-${i}`} />
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {remaining > 0 && (
+                                  <button
+                                    onClick={() => toggleRows(gk)}
+                                    className={`w-full py-1.5 text-[11px] font-medium transition-colors ${cm.btn}`}
+                                  >
+                                    {isRowsExpanded ? 'Mostrar menos' : `Ver mais ${remaining} registro${remaining > 1 ? 's' : ''}`}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                };
+
+                // Section toggle: compras/vendas open by default (track close), consig closed by default (track open)
+                const isSectionOpen = (key: string, defaultOpen: boolean) =>
+                  defaultOpen ? !expandedGroups.has(`__${key}_closed__`) : expandedGroups.has(`__${key}_open__`);
+                const toggleSection = (key: string, defaultOpen: boolean) => {
+                  setExpandedGroups(prev => {
+                    const n = new Set(prev);
+                    if (defaultOpen) {
+                      const k = `__${key}_closed__`;
+                      if (n.has(k)) n.delete(k); else n.add(k);
+                    } else {
+                      const k = `__${key}_open__`;
+                      if (n.has(k)) n.delete(k); else n.add(k);
+                    }
+                    return n;
+                  });
+                };
+
+                const SectionCard = ({ sectionKey, defaultOpen, icon, iconColor, label, count, totalValue, loading, empty, emptyMsg, children }: {
+                  sectionKey: string; defaultOpen: boolean; icon: string; iconColor: string; label: string; count: number; totalValue: number; loading: boolean; empty: boolean; emptyMsg: string; children: React.ReactNode;
+                }) => {
+                  const isOpen = isSectionOpen(sectionKey, defaultOpen);
+                  return (
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark overflow-hidden">
+                      <button
+                        onClick={() => toggleSection(sectionKey, defaultOpen)}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`material-symbols-outlined text-[16px] transition-transform ${isOpen ? 'rotate-90' : ''} ${iconColor}`}>chevron_right</span>
+                          <span className={`material-symbols-outlined text-[16px] ${iconColor}`}>{icon}</span>
+                          <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</h4>
+                          {count > 0 && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              iconColor.includes('blue') ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                              iconColor.includes('amber') ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                              'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            }`}>{count}</span>
+                          )}
+                        </div>
+                        {!loading && count > 0 && (
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatValue(totalValue)}</span>
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+                          {loading ? (
+                            <div className="flex items-center gap-2 py-2 text-slate-400 text-[12px]">
+                              <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+                              Carregando...
+                            </div>
+                          ) : empty ? (
+                            <p className="text-[12px] text-slate-400 py-1">{emptyMsg}</p>
+                          ) : (
+                            <>{children}</>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                return (
+                  <>
+                    <SectionCard sectionKey="compras" defaultOpen={true} icon="shopping_cart" iconColor="text-blue-500" label="Histórico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado.">
+                      <SummaryCards stats={calcStats(purchaseHistory)} color="blue" />
+                      <HistoryTable items={purchaseHistory} nameKey="supplierName" groupKey="purchase" color="blue" />
+                    </SectionCard>
+
+                    <SectionCard sectionKey="vendas" defaultOpen={true} icon="storefront" iconColor="text-amber-500" label="Histórico de Vendas" count={salesHistory.length} totalValue={salesHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingSalesHistory} empty={salesHistory.length === 0} emptyMsg="Nenhum registro de venda encontrado.">
+                      <SummaryCards stats={calcStats(salesHistory)} color="amber" />
+                      <HistoryTable items={salesHistory} nameKey="customerName" groupKey="sales" color="amber" />
+                    </SectionCard>
+
+                    <SectionCard sectionKey="consig" defaultOpen={false} icon="swap_horiz" iconColor="text-purple-500" label="Movimentações (Consignação)" count={consignmentHistory.length} totalValue={consignmentHistory.reduce((s, h) => s + h.totalValue, 0)} loading={loadingConsignment} empty={consignmentHistory.length === 0} emptyMsg="Nenhuma movimentação de consignação encontrada.">
+                      <SummaryCards stats={calcStats(consignmentHistory)} color="purple" />
+                      <HistoryTable items={consignmentHistory} nameKey="customerName" groupKey="consignment" color="purple" />
+                    </SectionCard>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end px-6 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+              <button onClick={() => setHistoryProduct(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice detail modal */}
+      <InvoiceDetailsModal
+        isOpen={!!invoiceModalId}
+        onClose={() => setInvoiceModalId(null)}
+        invoiceId={invoiceModalId}
+      />
     </>
   );
 }
