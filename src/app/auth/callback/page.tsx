@@ -167,10 +167,10 @@ export default async function OneDriveCallbackPage({ searchParams }: CallbackPag
       ) : null}
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <Link className="text-blue-700 underline" href="/dashboard/settings">
+        <Link className="text-blue-700 underline" href="/sistema/settings">
           Voltar para Configurações
         </Link>
-        <Link className="text-blue-700 underline" href="/dashboard">
+        <Link className="text-blue-700 underline" href="/visaogeral">
           Ir para Dashboard
         </Link>
       </div>

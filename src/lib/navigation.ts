@@ -12,41 +12,41 @@ export const PAGE_GROUPS: PageGroup[] = [
   {
     section: 'Geral',
     pages: [
-      { label: 'Visão Geral', path: '/dashboard' },
+      { label: 'Visão Geral', path: '/visaogeral' },
     ],
   },
   {
     section: 'Cadastros',
     pages: [
-      { label: 'Produtos', path: '/dashboard/produtos' },
-      { label: 'ANVISA', path: '/dashboard/anvisa' },
-      { label: 'Clientes', path: '/dashboard/clientes' },
-      { label: 'Fornecedores', path: '/dashboard/fornecedores' },
+      { label: 'Produtos', path: '/cadastro/produtos' },
+      { label: 'ANVISA', path: '/cadastro/anvisa' },
+      { label: 'Clientes', path: '/cadastro/clientes' },
+      { label: 'Fornecedores', path: '/cadastro/fornecedores' },
     ],
   },
   {
     section: 'Fiscal',
     pages: [
-      { label: 'NF-e Recebidas', path: '/dashboard/invoices' },
-      { label: 'NF-e Emitidas', path: '/dashboard/issued' },
-      { label: 'CT-e', path: '/dashboard/cte' },
+      { label: 'NF-e Recebidas', path: '/fiscal/invoices' },
+      { label: 'NF-e Emitidas', path: '/fiscal/issued' },
+      { label: 'CT-e', path: '/fiscal/cte' },
     ],
   },
   {
     section: 'Financeiro',
     pages: [
-      { label: 'Contas a Pagar', path: '/dashboard/contas-pagar' },
-      { label: 'Contas a Receber', path: '/dashboard/contas-receber' },
+      { label: 'Contas a Pagar', path: '/financeiro/contas-pagar' },
+      { label: 'Contas a Receber', path: '/financeiro/contas-receber' },
     ],
   },
   {
     section: 'Sistema',
     pages: [
-      { label: 'Sincronizar', path: '/dashboard/sync' },
-      { label: 'Erros', path: '/dashboard/errors' },
-      { label: 'Upload XML', path: '/dashboard/upload' },
-      { label: 'Automações', path: '/dashboard/automacoes' },
-      { label: 'Configurações', path: '/dashboard/settings' },
+      { label: 'Sincronizar', path: '/sistema/sync' },
+      { label: 'Erros', path: '/sistema/errors' },
+      { label: 'Upload XML', path: '/sistema/upload' },
+      { label: 'Automações', path: '/sistema/automacoes' },
+      { label: 'Configurações', path: '/sistema/settings' },
     ],
   },
 ];

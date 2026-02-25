@@ -75,7 +75,11 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
+    '/visaogeral/:path*',
+    '/cadastro/:path*',
+    '/fiscal/:path*',
+    '/financeiro/:path*',
+    '/sistema/:path*',
     '/api/companies/:path*',
     '/api/invoices/:path*',
     '/api/dashboard/:path*',

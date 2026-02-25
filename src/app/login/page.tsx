@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/dashboard');
+      router.replace('/visaogeral');
     }
   }, [status, router]);
 
@@ -48,7 +48,7 @@ export default function LoginPage() {
           setError('Email ou senha incorretos');
         }
       } else {
-        router.push('/dashboard');
+        router.push('/visaogeral');
       }
     } catch {
       setError('Erro ao fazer login');
