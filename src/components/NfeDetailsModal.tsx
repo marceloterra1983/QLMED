@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { toast } from 'sonner';
 
 interface NfeDetailsModalProps {
@@ -9,33 +9,68 @@ interface NfeDetailsModalProps {
   invoiceId: string | null;
 }
 
-interface FieldProps {
-  label: string;
-  value?: string;
-  className?: string;
-}
-
-function Field({ label, value, className = '' }: FieldProps) {
+function Field({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">{label}</p>
-      <p className="text-sm text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
+      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionBlock({ title, icon, iconColor = 'text-primary', children }: { title: string; icon: string; iconColor?: string; children: React.ReactNode }) {
+  const bgMap: Record<string, string> = {
+    'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
+    'text-indigo-500': 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30',
+    'text-teal-500': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
+    'text-amber-500': 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
+    'text-emerald-500': 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30',
+    'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
+    'text-orange-500': 'bg-orange-500/10 dark:bg-orange-500/20 ring-orange-500/20 dark:ring-orange-500/30',
+    'text-violet-500': 'bg-violet-500/10 dark:bg-violet-500/20 ring-violet-500/20 dark:ring-violet-500/30',
+  };
+  const bg = bgMap[iconColor] || bgMap['text-primary'];
+
   return (
-    <div className="border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
-      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{children}</h4>
+    <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/60">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${bg}`}>
+          <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
+        </div>
+        <h4 className="text-[13px] font-bold text-slate-900 dark:text-white">{title}</h4>
+      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
 
-function SectionCard({ children }: { children: React.ReactNode }) {
+function TaxCard({ label, color, data }: { label: string; color: string; data: any }) {
+  if (!data) return null;
+  const colorMap: Record<string, string> = {
+    blue: 'from-blue-500/10 to-blue-500/5 ring-blue-500/15 dark:from-blue-500/20 dark:to-blue-500/10 dark:ring-blue-500/25',
+    emerald: 'from-emerald-500/10 to-emerald-500/5 ring-emerald-500/15 dark:from-emerald-500/20 dark:to-emerald-500/10 dark:ring-emerald-500/25',
+    amber: 'from-amber-500/10 to-amber-500/5 ring-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/10 dark:ring-amber-500/25',
+    violet: 'from-violet-500/10 to-violet-500/5 ring-violet-500/15 dark:from-violet-500/20 dark:to-violet-500/10 dark:ring-violet-500/25',
+  };
+  const textMap: Record<string, string> = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    emerald: 'text-emerald-600 dark:text-emerald-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    violet: 'text-violet-600 dark:text-violet-400',
+  };
+  const cls = colorMap[color] || colorMap.blue;
+  const txtCls = textMap[color] || textMap.blue;
+
   return (
-    <div className="border-l-2 border-primary/30 bg-slate-50/50 dark:bg-slate-800/30 rounded-r-lg p-5 mb-5">
-      {children}
+    <div className={`rounded-xl bg-gradient-to-br ring-1 p-3 ${cls}`}>
+      <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${txtCls}`}>{label}</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Field label="Origem" value={data.orig} />
+        <Field label="CST" value={data.cst} />
+        <Field label="Base Cálculo" value={formatMoney(data.baseCalculo)} />
+        <Field label="Alíquota" value={data.aliquota ? `${data.aliquota}%` : '-'} />
+        <Field label="Valor" value={formatMoney(data.valor)} />
+      </div>
     </div>
   );
 }
@@ -60,24 +95,20 @@ function formatMoney(val: string) {
 function formatCnpjDisplay(cnpj: string) {
   if (!cnpj) return '-';
   const clean = cnpj.replace(/\D/g, '');
-  if (clean.length === 14) {
-    return clean.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  }
-  if (clean.length === 11) {
-    return clean.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
-  }
+  if (clean.length === 14) return clean.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  if (clean.length === 11) return clean.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
   return cnpj;
 }
 
 const TABS = [
-  { id: 'nfe', label: 'NF-e' },
-  { id: 'emitente', label: 'Emitente' },
-  { id: 'destinatario', label: 'Destinatário' },
-  { id: 'produtos', label: 'Produtos e Serviços' },
-  { id: 'totais', label: 'Totais' },
-  { id: 'transporte', label: 'Transporte' },
-  { id: 'cobranca', label: 'Cobrança' },
-  { id: 'infAdicionais', label: 'Inf. Adicionais' },
+  { id: 'nfe', label: 'NF-e', icon: 'description' },
+  { id: 'emitente', label: 'Emitente', icon: 'storefront' },
+  { id: 'destinatario', label: 'Destinatário', icon: 'person' },
+  { id: 'produtos', label: 'Produtos', icon: 'inventory_2' },
+  { id: 'totais', label: 'Totais', icon: 'calculate' },
+  { id: 'transporte', label: 'Transporte', icon: 'local_shipping' },
+  { id: 'cobranca', label: 'Cobrança', icon: 'account_balance' },
+  { id: 'infAdicionais', label: 'Inf. Adicionais', icon: 'info' },
 ];
 
 // --- Tab Content Components ---
@@ -85,10 +116,9 @@ const TABS = [
 function TabNfe({ data }: { data: any }) {
   const nfe = data.nfe;
   return (
-    <div className="space-y-5">
-      <SectionCard>
-        <SectionTitle>Dados da NF-e</SectionTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+    <div className="space-y-4">
+      <SectionBlock title="Dados da NF-e" icon="receipt_long" iconColor="text-primary">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 gap-y-3">
           <Field label="Modelo" value={nfe.modelo} />
           <Field label="Série" value={nfe.serie} />
           <Field label="Número" value={nfe.numero} />
@@ -96,62 +126,67 @@ function TabNfe({ data }: { data: any }) {
           <Field label="Data Saída/Entrada" value={formatDateBr(nfe.dataSaidaEntrada)} />
           <Field label="Valor Total" value={formatMoney(nfe.valorTotal)} />
         </div>
-      </SectionCard>
+      </SectionBlock>
 
-      <SectionCard>
-        <SectionTitle>Emitente</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <SectionBlock title="Emitente" icon="storefront" iconColor="text-orange-500">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.emitente?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.emitente?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.emitente?.ie} />
           <Field label="UF" value={nfe.emitente?.uf} />
         </div>
-      </SectionCard>
+      </SectionBlock>
 
-      <SectionCard>
-        <SectionTitle>Destinatário</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <SectionBlock title="Destinatário" icon="person" iconColor="text-indigo-500">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.destinatario?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.destinatario?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.destinatario?.ie} />
           <Field label="UF" value={nfe.destinatario?.uf} />
         </div>
-      </SectionCard>
+      </SectionBlock>
 
-      <SectionCard>
-        <SectionTitle>Destino da Operação</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <SectionBlock title="Destino da Operação" icon="swap_horiz" iconColor="text-teal-500">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
           <Field label="Destino da Operação" value={nfe.destinoOperacao} />
           <Field label="Consumidor Final" value={nfe.consumidorFinal} />
           <Field label="Presença do Comprador" value={nfe.presencaComprador} />
         </div>
-      </SectionCard>
+      </SectionBlock>
 
-      <SectionCard>
-        <SectionTitle>Emissão</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <SectionBlock title="Emissão" icon="settings" iconColor="text-amber-500">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
           <Field label="Processo" value={nfe.processo} />
           <Field label="Versão do Processo" value={nfe.versaoProcesso} />
           <Field label="Tipo de Emissão" value={nfe.tipoEmissao} />
           <Field label="Finalidade" value={nfe.finalidade} />
         </div>
-      </SectionCard>
+      </SectionBlock>
 
-      <SectionCard>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <SectionBlock title="Operação" icon="assignment" iconColor="text-violet-500">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
           <Field label="Natureza da Operação" value={nfe.naturezaOperacao} />
           <Field label="Tipo da Operação" value={nfe.tipoOperacao} />
           <Field label="Digest Value da NF-e" value={nfe.digestValue} />
         </div>
-      </SectionCard>
+      </SectionBlock>
     </div>
   );
 }
 
 function TabEmitDest({ data, type }: { data: any; type: 'emitente' | 'destinatario' }) {
   const entity = data[type];
-  if (!entity) return <p className="text-sm text-slate-400 p-4">Dados não disponíveis</p>;
-  const title = type === 'emitente' ? 'Dados do Emitente' : 'Dados do Destinatário';
+  if (!entity) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-2">
+      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">person_off</span>
+      <span className="text-[13px] text-slate-400">Dados não disponíveis</span>
+    </div>
+  );
+
+  const isEmit = type === 'emitente';
+  const title = isEmit ? 'Dados do Emitente' : 'Dados do Destinatário';
+  const icon = isEmit ? 'storefront' : 'person';
+  const iconColor = isEmit ? 'text-orange-500' : 'text-indigo-500';
 
   const crtMap: Record<string, string> = {
     '1': '1 - Simples Nacional',
@@ -160,45 +195,44 @@ function TabEmitDest({ data, type }: { data: any; type: 'emitente' | 'destinatar
   };
 
   return (
-    <SectionCard>
-      <SectionTitle>{title}</SectionTitle>
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <SectionBlock title={title} icon={icon} iconColor={iconColor}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="Nome / Razão Social" value={entity.razaoSocial} />
           <Field label="Nome Fantasia" value={entity.fantasia} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(entity.cnpj)} />
           <Field label="Endereço" value={entity.endereco} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="Bairro / Distrito" value={entity.bairro} />
           <Field label="CEP" value={entity.cep} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="Município" value={entity.municipio} />
           <Field label="Telefone" value={entity.telefone} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="UF" value={entity.uf} />
           <Field label="País" value={entity.pais} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="Inscrição Estadual" value={entity.ie} />
-          <Field label="Inscrição Estadual do Substituto Tributário" value={entity.ieSt} />
+          <Field label="IE Substituto Tributário" value={entity.ieSt} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
           <Field label="Inscrição Municipal" value={entity.im} />
-          <Field label="Município da Ocorrência do Fato Gerador do ICMS" value={entity.municipioIcms} />
+          <Field label="Município ICMS" value={entity.municipioIcms} />
         </div>
-        {type === 'emitente' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {isEmit && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
             <Field label="CNAE Fiscal" value={entity.cnae} />
-            <Field label="Código de Regime Tributário" value={crtMap[entity.crt] || entity.crt} />
+            <Field label="Regime Tributário" value={crtMap[entity.crt] || entity.crt} />
           </div>
         )}
       </div>
-    </SectionCard>
+    </SectionBlock>
   );
 }
 
@@ -216,49 +250,52 @@ function TabProdutos({ data }: { data: any }) {
   };
 
   if (produtos.length === 0) {
-    return <p className="text-sm text-slate-400 p-4">Nenhum produto encontrado</p>;
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-2">
+        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">inventory_2</span>
+        <span className="text-[13px] text-slate-400">Nenhum produto encontrado</span>
+      </div>
+    );
   }
 
   return (
-    <SectionCard>
-      <SectionTitle>Dados dos Produtos e Serviços</SectionTitle>
-      <div className="overflow-x-auto">
+    <SectionBlock title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" iconColor="text-emerald-500">
+      <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-700 text-xs uppercase text-slate-500 font-bold tracking-wider">
-              <th className="px-3 py-3 w-8"></th>
-              <th className="px-3 py-3 text-left">Num.</th>
-              <th className="px-3 py-3 text-left">Descrição</th>
-              <th className="px-3 py-3 text-right">Quantidade</th>
-              <th className="px-3 py-3 text-left">Unidade Comercial</th>
-              <th className="px-3 py-3 text-right">Valor (R$)</th>
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+              <th className="px-3 py-2.5 w-8"></th>
+              <th className="px-3 py-2.5 text-left">Num.</th>
+              <th className="px-3 py-2.5 text-left">Descrição</th>
+              <th className="px-3 py-2.5 text-right">Qtd.</th>
+              <th className="px-3 py-2.5 text-left">Unid.</th>
+              <th className="px-3 py-2.5 text-right">Valor (R$)</th>
             </tr>
           </thead>
           <tbody>
             {produtos.map((prod: any, idx: number) => (
-              <>
+              <Fragment key={idx}>
                 <tr
-                  key={`row-${idx}`}
                   onClick={() => toggle(idx)}
-                  className={`border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${
-                    expanded.has(idx) ? 'bg-slate-100 dark:bg-slate-800/60' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                  className={`border-b border-slate-100 dark:border-slate-800/60 cursor-pointer transition-colors ${
+                    expanded.has(idx) ? 'bg-slate-50 dark:bg-slate-800/40' : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/20'
                   }`}
                 >
-                  <td className="px-3 py-3">
-                    <span className={`material-symbols-outlined text-[18px] text-slate-400 transition-transform ${expanded.has(idx) ? 'rotate-180' : ''}`}>
+                  <td className="px-3 py-2.5">
+                    <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${expanded.has(idx) ? 'rotate-180' : ''}`}>
                       expand_more
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{prod.num}</td>
-                  <td className="px-3 py-3 text-slate-800 dark:text-slate-200 font-medium">{prod.descricao}</td>
-                  <td className="px-3 py-3 text-right text-slate-600 dark:text-slate-300">{prod.quantidade}</td>
-                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{prod.unidade}</td>
-                  <td className="px-3 py-3 text-right font-bold text-slate-800 dark:text-slate-200">{formatMoney(prod.valorTotal)}</td>
+                  <td className="px-3 py-2.5 text-xs font-mono text-slate-500 dark:text-slate-400">{prod.num}</td>
+                  <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{prod.descricao}</td>
+                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-slate-600 dark:text-slate-300">{prod.quantidade}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{prod.unidade}</td>
+                  <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</td>
                 </tr>
                 {expanded.has(idx) && (
-                  <tr key={`detail-${idx}`}>
-                    <td colSpan={6} className="bg-slate-50 dark:bg-slate-900/40 px-6 py-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                  <tr>
+                    <td colSpan={6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
                         <Field label="Código" value={prod.codigo} />
                         <Field label="NCM" value={prod.ncm} />
                         <Field label="CFOP" value={prod.cfop} />
@@ -267,134 +304,102 @@ function TabProdutos({ data }: { data: any }) {
                         <Field label="Valor Unitário" value={formatMoney(prod.valorUnitario)} />
                         <Field label="Desconto" value={formatMoney(prod.valorDesconto)} />
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                          <p className="text-xs font-bold text-primary mb-2">ICMS</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Field label="Origem" value={prod.icms?.orig} />
-                            <Field label="CST" value={prod.icms?.cst} />
-                            <Field label="Base Cálculo" value={formatMoney(prod.icms?.baseCalculo)} />
-                            <Field label="Alíquota" value={prod.icms?.aliquota ? `${prod.icms.aliquota}%` : '-'} />
-                            <Field label="Valor" value={formatMoney(prod.icms?.valor)} />
-                          </div>
-                        </div>
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                          <p className="text-xs font-bold text-primary mb-2">IPI</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Field label="CST" value={prod.ipi?.cst} />
-                            <Field label="Base Cálculo" value={formatMoney(prod.ipi?.baseCalculo)} />
-                            <Field label="Alíquota" value={prod.ipi?.aliquota ? `${prod.ipi.aliquota}%` : '-'} />
-                            <Field label="Valor" value={formatMoney(prod.ipi?.valor)} />
-                          </div>
-                        </div>
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                          <p className="text-xs font-bold text-primary mb-2">PIS</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Field label="CST" value={prod.pis?.cst} />
-                            <Field label="Base Cálculo" value={formatMoney(prod.pis?.baseCalculo)} />
-                            <Field label="Alíquota" value={prod.pis?.aliquota ? `${prod.pis.aliquota}%` : '-'} />
-                            <Field label="Valor" value={formatMoney(prod.pis?.valor)} />
-                          </div>
-                        </div>
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                          <p className="text-xs font-bold text-primary mb-2">COFINS</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Field label="CST" value={prod.cofins?.cst} />
-                            <Field label="Base Cálculo" value={formatMoney(prod.cofins?.baseCalculo)} />
-                            <Field label="Alíquota" value={prod.cofins?.aliquota ? `${prod.cofins.aliquota}%` : '-'} />
-                            <Field label="Valor" value={formatMoney(prod.cofins?.valor)} />
-                          </div>
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <TaxCard label="ICMS" color="blue" data={prod.icms} />
+                        <TaxCard label="IPI" color="emerald" data={prod.ipi} />
+                        <TaxCard label="PIS" color="amber" data={prod.pis} />
+                        <TaxCard label="COFINS" color="violet" data={prod.cofins} />
                       </div>
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
-    </SectionCard>
+    </SectionBlock>
   );
 }
 
 function TabTotais({ data }: { data: any }) {
   const t = data.totais || {};
   return (
-    <SectionCard>
-      <SectionTitle>Totais</SectionTitle>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+    <SectionBlock title="Totais da NF-e" icon="calculate" iconColor="text-emerald-500">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3">
         <Field label="Base de Cálculo do ICMS" value={formatMoney(t.baseCalculoIcms)} />
         <Field label="Valor do ICMS" value={formatMoney(t.valorIcms)} />
         <Field label="Valor do ICMS Desonerado" value={formatMoney(t.icmsDesonerado)} />
         <Field label="Valor do FCP" value={formatMoney(t.fcp)} />
         <Field label="Valor Total ICMS FCP" value={formatMoney(t.fcpSt)} />
-        <Field label="Valor Total ICMS Interestadual UF Destino" value={formatMoney(t.icmsInterestadual)} />
-        <Field label="Valor Total ICMS Interestadual UF Rem." value={formatMoney(t.icmsInterestadualRem)} />
-        <Field label="Base de Cálc. ICMS ST" value={formatMoney(t.baseCalculoIcmsSt)} />
+        <Field label="ICMS Interestadual UF Destino" value={formatMoney(t.icmsInterestadual)} />
+        <Field label="ICMS Interestadual UF Rem." value={formatMoney(t.icmsInterestadualRem)} />
+        <Field label="Base Cálc. ICMS ST" value={formatMoney(t.baseCalculoIcmsSt)} />
         <Field label="Valor ICMS Substituição" value={formatMoney(t.icmsSubstituicao)} />
-        <Field label="Valor Total do FCP retido por ST" value={formatMoney(t.fcpRetidoSt)} />
-        <Field label="Valor do FCP retido anteriormente por ST" value={formatMoney(t.fcpRetidoAnteriormenteSt)} />
-        <Field label="Valor Total dos Produtos" value={formatMoney(t.valorTotalProdutos)} />
+        <Field label="FCP retido por ST" value={formatMoney(t.fcpRetidoSt)} />
+        <Field label="FCP retido ant. por ST" value={formatMoney(t.fcpRetidoAnteriormenteSt)} />
+        <Field label="Total dos Produtos" value={formatMoney(t.valorTotalProdutos)} />
         <Field label="Valor do Frete" value={formatMoney(t.valorFrete)} />
         <Field label="Valor do Seguro" value={formatMoney(t.valorSeguro)} />
-        <Field label="Valor Total dos Descontos" value={formatMoney(t.valorDescontos)} />
+        <Field label="Total dos Descontos" value={formatMoney(t.valorDescontos)} />
         <Field label="Valor Total do II" value={formatMoney(t.valorII)} />
         <Field label="Valor Total do IPI" value={formatMoney(t.valorIpi)} />
         <Field label="Valor do IPI Devolvido" value={formatMoney(t.valorIpiDevolvido)} />
         <Field label="Valor do PIS" value={formatMoney(t.valorPis)} />
         <Field label="Valor da COFINS" value={formatMoney(t.valorCofins)} />
-        <Field label="Outras Despesas Acessórias" value={formatMoney(t.outrasDespesas)} />
+        <Field label="Outras Despesas" value={formatMoney(t.outrasDespesas)} />
         <Field label="Valor Total da NFe" value={formatMoney(t.valorTotalNfe)} />
-        <Field label="Valor Aproximado dos Tributos" value={formatMoney(t.valorAproximadoTributos)} />
+        <Field label="Aprox. Tributos" value={formatMoney(t.valorAproximadoTributos)} />
       </div>
-    </SectionCard>
+    </SectionBlock>
   );
 }
 
 function TabTransporte({ data }: { data: any }) {
   const transp = data.transporte;
-  if (!transp) return <p className="text-sm text-slate-400 p-4">Dados de transporte não disponíveis</p>;
+  if (!transp) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-2">
+      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">local_shipping</span>
+      <span className="text-[13px] text-slate-400">Dados de transporte não disponíveis</span>
+    </div>
+  );
 
   return (
-    <div className="space-y-5">
-      <SectionCard>
-        <SectionTitle>Dados do Transporte</SectionTitle>
+    <div className="space-y-4">
+      <SectionBlock title="Dados do Transporte" icon="local_shipping" iconColor="text-teal-500">
         <Field label="Modalidade do Frete" value={transp.modalidadeFrete} />
-      </SectionCard>
+      </SectionBlock>
 
       {transp.transportador?.cnpj && (
-        <SectionCard>
-          <SectionTitle>Transportador</SectionTitle>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SectionBlock title="Transportador" icon="badge" iconColor="text-indigo-500">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
               <Field label="CNPJ" value={formatCnpjDisplay(transp.transportador.cnpj)} />
               <Field label="Razão Social / Nome" value={transp.transportador.razaoSocial} />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
               <Field label="Inscrição Estadual" value={transp.transportador.ie} />
-              <Field label="Endereço Completo" value={transp.transportador.endereco} />
+              <Field label="Endereço" value={transp.transportador.endereco} />
               <Field label="Município" value={transp.transportador.municipio} />
               <Field label="UF" value={transp.transportador.uf} />
             </div>
           </div>
-        </SectionCard>
+        </SectionBlock>
       )}
 
       {transp.volumes?.length > 0 && (
-        <SectionCard>
-          <SectionTitle>Volumes</SectionTitle>
+        <SectionBlock title="Volumes" icon="package_2" iconColor="text-amber-500">
           {transp.volumes.map((vol: any, i: number) => (
-            <div key={i} className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-3">
+            <div key={i} className={`grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 ${i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}`}>
               <Field label="Quantidade" value={vol.quantidade} />
               <Field label="Espécie" value={vol.especie} />
-              <Field label="Marca dos Volumes" value={vol.marca} />
+              <Field label="Marca" value={vol.marca} />
               <Field label="Numeração" value={vol.numeracao} />
               <Field label="Peso Líquido" value={vol.pesoLiquido} />
               <Field label="Peso Bruto" value={vol.pesoBruto} />
             </div>
           ))}
-        </SectionCard>
+        </SectionBlock>
       )}
     </div>
   );
@@ -403,69 +408,72 @@ function TabTransporte({ data }: { data: any }) {
 function TabCobranca({ data }: { data: any }) {
   const cobr = data.cobranca || {};
 
+  const hasContent = cobr.formasPagamento?.length || cobr.fatura || cobr.duplicatas?.length;
+  if (!hasContent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-2">
+        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">account_balance</span>
+        <span className="text-[13px] text-slate-400">Dados de cobrança não disponíveis</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {cobr.formasPagamento?.length > 0 && (
-        <SectionCard>
-          <SectionTitle>Formas de Pagamento</SectionTitle>
+        <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary">
           {cobr.formasPagamento.map((p: any, i: number) => (
-            <div key={i} className="mb-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+            <div key={i} className={i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-3">
                 <Field label="Forma de Pagamento" value={p.forma} />
-                <Field label="Valor do Pagamento" value={formatMoney(p.valor)} />
-                <Field label="Tipo de Integração Pagamento" value={p.tipoIntegracao} />
-                <Field label="CNPJ da Credenciadora" value={p.cnpjCredenciadora} />
+                <Field label="Valor" value={formatMoney(p.valor)} />
+                <Field label="Tipo Integração" value={p.tipoIntegracao} />
+                <Field label="CNPJ Credenciadora" value={p.cnpjCredenciadora} />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Field label="Número de autorização" value={p.autorizacao} />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+                <Field label="Autorização" value={p.autorizacao} />
                 <Field label="Troco" value={formatMoney(p.troco)} />
-                <Field label="Bandeira da operadora" value={p.bandeira} />
+                <Field label="Bandeira" value={p.bandeira} />
               </div>
             </div>
           ))}
-        </SectionCard>
+        </SectionBlock>
       )}
 
       {cobr.fatura && (
-        <SectionCard>
-          <SectionTitle>Fatura</SectionTitle>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SectionBlock title="Fatura" icon="receipt" iconColor="text-amber-500">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
             <Field label="Número" value={cobr.fatura.numero} />
             <Field label="Valor Original" value={formatMoney(cobr.fatura.valorOriginal)} />
             <Field label="Valor Desconto" value={formatMoney(cobr.fatura.valorDesconto)} />
             <Field label="Valor Líquido" value={formatMoney(cobr.fatura.valorLiquido)} />
           </div>
-        </SectionCard>
+        </SectionBlock>
       )}
 
       {cobr.duplicatas?.length > 0 && (
-        <SectionCard>
-          <SectionTitle>Duplicatas</SectionTitle>
-          <div className="overflow-x-auto">
+        <SectionBlock title="Duplicatas" icon="payments" iconColor="text-rose-500">
+          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 text-xs uppercase text-slate-500 font-bold">
-                  <th className="px-3 py-2 text-left">Número</th>
-                  <th className="px-3 py-2 text-left">Vencimento</th>
-                  <th className="px-3 py-2 text-right">Valor</th>
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                  <th className="px-3 py-2.5 text-left">Número</th>
+                  <th className="px-3 py-2.5 text-left">Vencimento</th>
+                  <th className="px-3 py-2.5 text-right">Valor</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {cobr.duplicatas.map((d: any, i: number) => (
-                  <tr key={i} className={`border-b border-slate-100 dark:border-slate-800 ${i % 2 === 0 ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}`}>
-                    <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300">{d.numero}</td>
-                    <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300">{d.vencimento}</td>
-                    <td className="px-3 py-2.5 text-right font-bold text-slate-800 dark:text-slate-200">{formatMoney(d.valor)}</td>
+                  <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
+                    <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</td>
+                    <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{d.vencimento}</td>
+                    <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(d.valor)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </SectionCard>
-      )}
-
-      {!cobr.formasPagamento?.length && !cobr.fatura && !cobr.duplicatas?.length && (
-        <p className="text-sm text-slate-400 p-4">Dados de cobrança não disponíveis</p>
+        </SectionBlock>
       )}
     </div>
   );
@@ -474,27 +482,24 @@ function TabCobranca({ data }: { data: any }) {
 function TabInfAdicionais({ data }: { data: any }) {
   const inf = data.infAdicionais || {};
   return (
-    <div className="space-y-5">
-      <SectionCard>
-        <SectionTitle>Informações Adicionais</SectionTitle>
+    <div className="space-y-4">
+      <SectionBlock title="Informações Adicionais" icon="info" iconColor="text-violet-500">
         <Field label="Formato de Impressão DANFE" value={inf.formatoImpressao} />
-      </SectionCard>
+      </SectionBlock>
 
       {inf.infComplementar && (
-        <SectionCard>
-          <SectionTitle>Informações Complementares de Interesse do Contribuinte</SectionTitle>
+        <SectionBlock title="Informações Complementares" icon="article" iconColor="text-indigo-500">
           <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Descrição</p>
-            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infComplementar}</p>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Descrição</p>
+            <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infComplementar}</p>
           </div>
-        </SectionCard>
+        </SectionBlock>
       )}
 
       {inf.infFisco && (
-        <SectionCard>
-          <SectionTitle>Informações de Interesse do Fisco</SectionTitle>
-          <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infFisco}</p>
-        </SectionCard>
+        <SectionBlock title="Informações do Fisco" icon="gavel" iconColor="text-amber-500">
+          <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infFisco}</p>
+        </SectionBlock>
       )}
     </div>
   );
@@ -530,7 +535,19 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetai
 
   const copyAccessKey = () => {
     if (!data?.accessKey) return;
-    navigator.clipboard.writeText(data.accessKey).then(() => toast.success('Chave copiada!'));
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(data.accessKey).then(() => toast.success('Chave copiada!'));
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = data.accessKey;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      toast.success('Chave copiada!');
+    }
   };
 
   const scrollTabs = (dir: 'left' | 'right') => {
@@ -552,106 +569,116 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetai
     }
   };
 
+  const activeTabData = TABS.find(t => t.id === activeTab);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <div
-        className="relative bg-white dark:bg-card-dark rounded-t-xl sm:rounded-xl shadow-2xl w-full max-w-5xl h-full sm:h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white">Detalhes da NF-e</h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="Fechar"
-          >
-            <span className="material-symbols-outlined text-[22px]">close</span>
-          </button>
+        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
+                <span className="material-symbols-outlined text-[22px] text-primary">description</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
+                  {data ? `NF-e ${data.number}` : 'Detalhes da NF-e'}
+                </h3>
+                {data?.series && (
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Série {data.series}</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              aria-label="Fechar"
+              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              title="Fechar"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          {/* Access Key Bar */}
+          {data?.accessKey && (
+            <div className="flex items-center gap-2.5 mt-3 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/50">
+              <span className="material-symbols-outlined text-[14px] text-slate-400">key</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Chave</span>
+              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
+                {data.accessKey.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim()}
+              </span>
+              <button
+                onClick={copyAccessKey}
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:text-primary transition-colors"
+                title="Copiar chave de acesso"
+              >
+                <span className="material-symbols-outlined text-[15px]">content_copy</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Key Info Bar */}
-        {data && (
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
-            <div className="flex items-center gap-8">
-              <div>
-                <p className="text-xs text-slate-400 font-medium">Número</p>
-                <p className="text-base font-bold text-primary">{data.number}</p>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-400 font-medium">Chave de Acesso</p>
-                <div className="flex items-center gap-2">
-                  <p
-                    className="text-sm font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-700 dark:text-slate-300 truncate cursor-pointer select-all"
-                    onClick={copyAccessKey}
-                    title="Clique para copiar"
-                  >
-                    {data.accessKey}
-                  </p>
-                  <button onClick={copyAccessKey} className="flex-shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-primary transition-colors" title="Copiar">
-                    <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-xs text-slate-400 font-medium">Série</p>
-              <p className="text-base font-bold text-primary">{data.series || '-'}</p>
-            </div>
-          </div>
-        )}
-
         {/* Tabs */}
-        <div className="flex items-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark">
+        <div className="flex items-center border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-1 shrink-0">
           <button
             onClick={() => scrollTabs('left')}
-            className="flex-shrink-0 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll esquerda"
           >
-            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           </button>
           <div
             ref={tabsRef}
-            className="flex-1 flex items-center overflow-x-auto scrollbar-none gap-1"
+            className="flex-1 flex items-center overflow-x-auto gap-0.5 px-1"
             style={{ scrollbarWidth: 'none' }}
           >
             {TABS.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
-                    ? 'text-primary border-primary font-bold'
-                    : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
+                    ? 'text-primary border-primary bg-primary/5 dark:bg-primary/10'
+                    : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
                 }`}
               >
-                {tab.label}
+                <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </div>
           <button
             onClick={() => scrollTabs('right')}
-            className="flex-shrink-0 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll direita"
           >
-            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
-              <span className="material-symbols-outlined text-[40px] animate-spin">progress_activity</span>
-              <p className="text-sm font-medium">Carregando detalhes...</p>
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                <span className="material-symbols-outlined text-[28px] text-primary animate-spin">progress_activity</span>
+              </div>
+              <p className="text-[13px] font-medium text-slate-400">Carregando detalhes...</p>
             </div>
           )}
           {error && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-red-400">
-              <span className="material-symbols-outlined text-[40px]">error</span>
-              <p className="text-sm font-medium">{error}</p>
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
+                <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
+              </div>
+              <p className="text-[13px] font-medium text-red-400">{error}</p>
             </div>
           )}
           {data && !loading && renderTabContent()}

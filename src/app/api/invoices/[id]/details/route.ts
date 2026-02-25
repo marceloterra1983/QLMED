@@ -223,6 +223,173 @@ function parseInfAdicionais(infAdFisco: any, infCpl: any, ide: any) {
   };
 }
 
+function parseCteParty(node: any) {
+  if (!node) return null;
+  const ender = node.enderReme || node.enderDest || node.enderExped || node.enderReceb || node.enderToma || {};
+  return {
+    cnpj: val(node, 'CNPJ', 'CPF'),
+    razaoSocial: val(node, 'xNome'),
+    fantasia: val(node, 'xFant'),
+    ie: val(node, 'IE'),
+    endereco: [val(ender, 'xLgr'), val(ender, 'nro'), val(ender, 'xCpl')].filter(Boolean).join(', '),
+    bairro: val(ender, 'xBairro'),
+    cep: val(ender, 'CEP'),
+    municipio: [val(ender, 'cMun'), val(ender, 'xMun')].filter(Boolean).join(' - '),
+    uf: val(ender, 'UF'),
+    pais: val(ender, 'xPais') || 'BRASIL',
+    telefone: val(node, 'fone') || val(ender, 'fone'),
+    email: val(node, 'email'),
+  };
+}
+
+function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
+  const ide = infCte.ide || {};
+  const emit = infCte.emit || {};
+  const rem = infCte.rem || {};
+  const dest = infCte.dest || {};
+  const exped = infCte.exped || {};
+  const receb = infCte.receb || {};
+  const vPrest = infCte.vPrest || {};
+  const infCteNorm = infCte.infCteNorm || {};
+  const infCarga = infCteNorm.infCarga || {};
+  const infDoc = infCteNorm.infDoc || {};
+  const seg = infCteNorm.seg || {};
+  const imp = infCte.imp || {};
+  const infAdic = infCte.infAdic || {};
+
+  const protCTe = cteProc?.protCTe?.infProt || {};
+
+  // Tomador resolution
+  const tomaMap: Record<string, string> = {
+    '0': 'Remetente', '1': 'Expedidor', '2': 'Recebedor', '3': 'Destinatário', '4': 'Outros',
+  };
+  const tomaCode = val(ide, 'toma3', 'toma4') ? val(ide.toma3 || ide.toma4 || {}, 'toma') : '';
+
+  // Modal
+  const modalMap: Record<string, string> = {
+    '01': 'Rodoviário', '02': 'Aéreo', '03': 'Aquaviário', '04': 'Ferroviário', '05': 'Dutoviário', '06': 'Multimodal',
+  };
+
+  // Tipo CT-e
+  const tpCTeMap: Record<string, string> = {
+    '0': '0 - CT-e Normal', '1': '1 - CT-e de Complemento de Valores',
+    '2': '2 - CT-e de Anulação', '3': '3 - CT-e Substituto',
+  };
+
+  // Tipo Serviço
+  const tpServMap: Record<string, string> = {
+    '0': '0 - Normal', '1': '1 - Subcontratação', '2': '2 - Redespacho',
+    '3': '3 - Redespacho Intermediário', '4': '4 - Serviço Vinculado a Multimodal',
+  };
+
+  // ICMS do CT-e
+  const icmsNode = imp.ICMS ? Object.values(imp.ICMS)[0] as any : {};
+
+  // NF-e referenciadas
+  const infNFeItems = infDoc.infNFe;
+  const nfeRefs = infNFeItems ? (Array.isArray(infNFeItems) ? infNFeItems : [infNFeItems]) : [];
+  const infNFItems = infDoc.infNF;
+  const nfRefs = infNFItems ? (Array.isArray(infNFItems) ? infNFItems : [infNFItems]) : [];
+  const infOutrosItems = infDoc.infOutros;
+  const outrosRefs = infOutrosItems ? (Array.isArray(infOutrosItems) ? infOutrosItems : [infOutrosItems]) : [];
+
+  // Componentes de valor
+  const compItems = vPrest.Comp;
+  const componentes = compItems ? (Array.isArray(compItems) ? compItems : [compItems]) : [];
+
+  // Medidas da carga
+  const infQItems = infCarga.infQ;
+  const medidas = infQItems ? (Array.isArray(infQItems) ? infQItems : [infQItems]) : [];
+
+  const cUnidMap: Record<string, string> = {
+    '00': 'M3', '01': 'KG', '02': 'TON', '03': 'UN', '04': 'LT', '05': 'MMBTU',
+  };
+
+  return {
+    docType: 'CTE' as const,
+    accessKey: invoice.accessKey,
+    number: invoice.number,
+    series: invoice.series || '',
+    cte: {
+      modelo: val(ide, 'mod'),
+      serie: val(ide, 'serie'),
+      numero: val(ide, 'nCT'),
+      dataEmissao: val(ide, 'dhEmi'),
+      cfop: val(ide, 'CFOP'),
+      natOp: val(ide, 'natOp'),
+      tipoCte: tpCTeMap[ide.tpCTe] || val(ide, 'tpCTe'),
+      tipoServico: tpServMap[ide.tpServ] || val(ide, 'tpServ'),
+      modal: modalMap[ide.modal] || val(ide, 'modal'),
+      tomador: tomaMap[tomaCode] || tomaCode,
+      municipioOrigem: [val(ide, 'cMunIni'), val(ide, 'xMunIni')].filter(Boolean).join(' - '),
+      ufOrigem: val(ide, 'UFIni'),
+      municipioDestino: [val(ide, 'cMunFim'), val(ide, 'xMunFim')].filter(Boolean).join(' - '),
+      ufDestino: val(ide, 'UFFim'),
+      valorPrestacao: num(vPrest, 'vTPrest'),
+      valorReceber: num(vPrest, 'vRec'),
+      protocolo: val(protCTe, 'nProt'),
+      dataAutorizacao: val(protCTe, 'dhRecbto'),
+    },
+    emitente: parseCteParty(emit),
+    remetente: parseCteParty(rem),
+    destinatario: parseCteParty(dest),
+    expedidor: parseCteParty(exped),
+    recebedor: parseCteParty(receb),
+    carga: {
+      valorCarga: num(infCarga, 'vCarga'),
+      produtoPredominante: val(infCarga, 'proPred'),
+      outrCaract: val(infCarga, 'xOutCat'),
+      medidas: medidas.map((q: any) => ({
+        unidade: cUnidMap[val(q, 'cUnid')] || val(q, 'cUnid'),
+        tipoMedida: val(q, 'tpMed'),
+        quantidade: num(q, 'qCarga'),
+      })),
+    },
+    documentos: {
+      nfeRefs: nfeRefs.map((n: any) => ({
+        chave: val(n, 'chave'),
+      })),
+      nfRefs: nfRefs.map((n: any) => ({
+        serie: val(n, 'serie'),
+        numero: val(n, 'nDoc'),
+        dataEmissao: val(n, 'dEmi'),
+        valorTotal: num(n, 'vBC'),
+      })),
+      outrosRefs: outrosRefs.map((o: any) => ({
+        tipo: val(o, 'tpDoc'),
+        descricao: val(o, 'descOutros'),
+        numero: val(o, 'nDoc'),
+        dataEmissao: val(o, 'dEmi'),
+        valor: num(o, 'vDocFisc'),
+      })),
+    },
+    componentes: componentes.map((c: any) => ({
+      nome: val(c, 'xNome'),
+      valor: num(c, 'vComp'),
+    })),
+    impostos: {
+      icms: {
+        cst: val(icmsNode, 'CST'),
+        baseCalculo: num(icmsNode, 'vBC'),
+        aliquota: num(icmsNode, 'pICMS'),
+        valor: num(icmsNode, 'vICMS'),
+        reducaoBC: num(icmsNode, 'pRedBC'),
+        icmsOutraUF: num(icmsNode, 'vICMSOutraUF'),
+      },
+      valorTotalTributos: num(imp, 'vTotTrib') || num(infCte, 'vTotTrib'),
+    },
+    seguro: {
+      responsavel: val(seg, 'respSeg'),
+      nomeSeguradora: val(seg, 'xSeg'),
+      apolice: val(seg, 'nApol'),
+    },
+    infAdicionais: {
+      infAdFisco: val(infAdic, 'infAdFisco'),
+      infCpl: val(infAdic, 'infCpl'),
+    },
+  };
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -251,6 +418,16 @@ export async function GET(
     const nfe = nfeProc ? nfeProc.NFe : result.NFe;
     const infNFe = nfe ? nfe.infNFe : null;
 
+    // Try CT-e first
+    const cteProc = result.cteProc || result;
+    const cteRoot = cteProc?.CTe || result.CTe;
+    const infCte = cteRoot?.infCte;
+
+    if (infCte) {
+      return NextResponse.json(parseCteDetails(invoice, infCte, cteProc));
+    }
+
+    // Otherwise try NF-e
     if (!infNFe) {
       return NextResponse.json({ error: 'Formato XML não suportado para detalhes' }, { status: 400 });
     }
@@ -296,6 +473,7 @@ export async function GET(
     const protNFe = nfeProc?.protNFe?.infProt || {};
 
     const details = {
+      docType: 'NFE' as const,
       accessKey: invoice.accessKey,
       number: invoice.number,
       series: invoice.series || '',

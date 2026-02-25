@@ -1531,53 +1531,68 @@ export default function ProdutosPage() {
         const bulkInputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow";
         const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine].filter(Boolean).length;
 
-        const BulkFieldRow = ({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) => (
-          <div className={`rounded-xl border transition-colors ${checked ? 'border-primary/30 dark:border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.04]' : 'border-slate-200 dark:border-slate-700'}`}>
-            <label className="flex items-center gap-3 px-4 py-3 cursor-pointer">
+        const fieldIconMap: Record<string, { bg: string; color: string }> = {
+          category: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30', color: 'text-indigo-500' },
+          folder: { bg: 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30', color: 'text-amber-500' },
+          tag: { bg: 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30', color: 'text-teal-500' },
+          verified: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30', color: 'text-emerald-500' },
+          toggle_on: { bg: 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30', color: 'text-rose-500' },
+        };
+
+        const BulkFieldRow = ({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) => {
+          const fm = fieldIconMap[icon] || { bg: 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30', color: 'text-primary' };
+          return (
+          <div className={`bg-white dark:bg-card-dark rounded-2xl ring-1 overflow-hidden transition-all ${checked ? 'ring-primary/30 dark:ring-primary/40 shadow-sm shadow-primary/5' : 'ring-slate-200/60 dark:ring-slate-800/50'}`}>
+            <label className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
               <div className="relative flex items-center">
                 <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${checked ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary scale-105' : 'border-slate-300 dark:border-slate-600'}`}>
                   {checked && <span className="material-symbols-outlined text-[14px] text-white">check</span>}
                 </div>
               </div>
-              <span className={`material-symbols-outlined text-[18px] transition-colors ${checked ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>{icon}</span>
-              <span className={`text-[13px] font-bold uppercase tracking-wider transition-colors ${checked ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${fm.bg}`}>
+                <span className={`material-symbols-outlined text-[15px] ${fm.color}`}>{icon}</span>
+              </div>
+              <span className={`text-[13px] font-bold transition-colors ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
             </label>
             {checked && children && (
-              <div className="px-4 pb-3 pt-0">
+              <div className="px-4 pb-3.5 pt-0">
                 {children}
               </div>
             )}
           </div>
-        );
+          );
+        };
 
         return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
-          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
+          <div className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-md h-full sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
 
             {/* Header */}
-            <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-                  <span className="material-symbols-outlined text-[24px] text-primary">edit_note</span>
+            <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
+                  <span className="material-symbols-outlined text-[22px] text-primary">edit_note</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Editar em massa</h3>
-                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    <span className="font-semibold text-primary">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
+                  <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">Editar em massa</h3>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    <span className="font-bold text-primary">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
                   </p>
                 </div>
-                <button onClick={() => setBulkEditOpen(false)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onClick={() => setBulkEditOpen(false)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-5 py-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-900/10 border border-blue-200/50 dark:border-blue-800/30">
-                <span className="material-symbols-outlined text-[16px] text-blue-500">info</span>
-                <p className="text-[12px] text-blue-700 dark:text-blue-300">Marque os campos que deseja alterar. Campos não marcados permanecerão inalterados.</p>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-900/10 ring-1 ring-blue-200/50 dark:ring-blue-800/30">
+                <div className="w-6 h-6 rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-[13px] text-blue-500">info</span>
+                </div>
+                <p className="text-[12px] text-blue-700 dark:text-blue-300 leading-relaxed">Marque os campos que deseja alterar. Campos não marcados permanecerão inalterados.</p>
               </div>
 
               <BulkFieldRow checked={bulkFields.enableType} onChange={(v) => setBulkFields((f) => ({ ...f, enableType: v }))} icon="category" label="Linha">
@@ -1610,14 +1625,14 @@ export default function ProdutosPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setBulkFields((f) => ({ ...f, outOfLine: false }))}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${!bulkFields.outOfLine ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-none' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${!bulkFields.outOfLine ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-emerald-300 dark:ring-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                   >
                     <span className="material-symbols-outlined text-[16px]">check_circle</span>
                     Em Linha
                   </button>
                   <button
                     onClick={() => setBulkFields((f) => ({ ...f, outOfLine: true }))}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${bulkFields.outOfLine ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${bulkFields.outOfLine ? 'bg-red-50 dark:bg-red-900/20 ring-red-300 dark:ring-red-700 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                   >
                     <span className="material-symbols-outlined text-[16px]">block</span>
                     Fora de Linha
@@ -1627,19 +1642,19 @@ export default function ProdutosPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
               <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 Cancelar
               </button>
               <button
                 onClick={handleBulkSave}
                 disabled={isBulkSaving || enabledCount === 0}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
               >
                 {isBulkSaving ? (
-                  <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Salvando...</>
+                  <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
                 ) : (
-                  <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && `(${enabledCount})`}</>
+                  <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
                 )}
               </button>
             </div>
@@ -1656,23 +1671,34 @@ export default function ProdutosPage() {
           ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
           : 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
 
+        const iconBgMap: Record<string, string> = {
+          'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
+          'text-teal-500': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
+          'text-teal-600 dark:text-teal-400': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
+          'text-amber-500': 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
+          'text-emerald-500': 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30',
+          'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
+          'text-violet-500': 'bg-violet-500/10 dark:bg-violet-500/20 ring-violet-500/20 dark:ring-violet-500/30',
+        };
+
         const SectionCard = ({ id, icon, iconColor, title, badge, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; children: React.ReactNode }) => {
           const isOpen = detailOpenSections.has(id);
+          const ibg = iconBgMap[iconColor] || iconBgMap['text-primary'];
           return (
-            <div className={`rounded-2xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/20'}`}>
+            <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
               <button
                 onClick={() => toggleDetailSection(id)}
-                className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOpen ? 'bg-primary/10 dark:bg-primary/20' : 'bg-slate-100 dark:bg-slate-800'} transition-colors`}>
-                  <span className={`material-symbols-outlined text-[18px] ${isOpen ? iconColor : 'text-slate-400 dark:text-slate-500'} transition-colors`}>{icon}</span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${ibg}`}>
+                  <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
                 </div>
-                <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex-1 text-left">{title}</h4>
+                <h4 className="text-[13px] font-bold text-slate-900 dark:text-white flex-1 text-left">{title}</h4>
                 {badge}
-                <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
               </button>
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 border-t border-slate-100 dark:border-slate-800/50">
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800/60">
                   {children}
                 </div>
               )}
@@ -1680,7 +1706,7 @@ export default function ProdutosPage() {
           );
         };
 
-        const DetailField = ({ label, children, colSpan2, mono }: { label: string; children: React.ReactNode; colSpan2?: boolean; mono?: boolean }) => (
+        const DetailField = ({ label, children, colSpan2 }: { label: string; children: React.ReactNode; colSpan2?: boolean; mono?: boolean }) => (
           <div className={`${colSpan2 ? 'col-span-2' : ''}`}>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{label}</label>
             {children}
@@ -1690,26 +1716,26 @@ export default function ProdutosPage() {
         const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed";
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
-            <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
+            <div className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
 
               {/* ── Header ── */}
-              <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
+              <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
                 {/* Out of line banner */}
                 {detailProduct.outOfLine && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-400 via-red-500 to-red-400" />
                 )}
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-                    <span className="material-symbols-outlined text-[24px] text-primary">inventory_2</span>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                    <span className="material-symbols-outlined text-[22px] text-primary">inventory_2</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">
                       {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                       {detailProduct.description}
                     </h3>
                     {detailProduct.shortName && (
-                      <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
+                      <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                       {detailProduct.outOfLine && (
@@ -1735,14 +1761,34 @@ export default function ProdutosPage() {
                       )}
                     </div>
                   </div>
-                  <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <span className="material-symbols-outlined text-[20px]">close</span>
                   </button>
+                </div>
+
+                {/* Quick stats bar */}
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {[
+                    { label: 'Último Preço', value: formatValue(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
+                    { label: 'Qtde Total', value: formatQuantity(detailProduct.totalQuantity), icon: 'inventory_2', color: 'text-blue-500 bg-blue-500/10 ring-blue-500/20' },
+                    { label: 'Notas', value: String(detailProduct.invoiceCount), icon: 'receipt_long', color: 'text-amber-500 bg-amber-500/10 ring-amber-500/20' },
+                    { label: 'Última Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_today', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
+                  ].map(s => (
+                    <div key={s.label} className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${s.color}`}>
+                        <span className="material-symbols-outlined text-[13px]">{s.icon}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{s.label}</p>
+                        <p className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{s.value}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* ── Body ── */}
-              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+              <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
 
                 {/* ── Card: Dados do Cadastro ── */}
                 <SectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro">
@@ -1772,22 +1818,22 @@ export default function ProdutosPage() {
                     {detailProduct.lastSupplierName && (
                       <DetailField label="Fabricante / Fornecedor" colSpan2>
                         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                          <span className="material-symbols-outlined text-[16px] text-slate-400">local_shipping</span>
-                          <span className="text-sm text-slate-800 dark:text-white">{detailProduct.lastSupplierName}</span>
+                          <span className="material-symbols-outlined text-[16px] text-orange-500">local_shipping</span>
+                          <span className="text-sm font-medium text-slate-800 dark:text-white">{detailProduct.lastSupplierName}</span>
                         </div>
                       </DetailField>
                     )}
 
                     {/* Fora de Linha toggle */}
                     <div className="col-span-2 mt-1">
-                      <label className="flex items-center gap-3 cursor-pointer px-3 py-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <label className={`flex items-center gap-3 cursor-pointer px-3 py-3 rounded-xl border transition-colors ${detailProduct.outOfLine ? 'border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
                         <div className="relative">
                           <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
                           <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
                           <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-5 transition-transform"></div>
                         </div>
                         <div>
-                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Fora de Linha</span>
+                          <span className={`text-sm font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>Fora de Linha</span>
                           <p className="text-[11px] text-slate-400 dark:text-slate-500">Marcar produto como descontinuado</p>
                         </div>
                       </label>
@@ -1796,7 +1842,7 @@ export default function ProdutosPage() {
                 </SectionCard>
 
                 {/* ── Card: Dados da ANVISA ── */}
-                <SectionCard id="anvisa" icon="verified_user" iconColor="text-teal-600 dark:text-teal-400" title="Dados da ANVISA"
+                <SectionCard id="anvisa" icon="verified_user" iconColor="text-teal-500" title="Dados da ANVISA"
                   badge={detailProduct.anvisaStatus ? (
                     <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
                   ) : undefined}
@@ -1812,7 +1858,7 @@ export default function ProdutosPage() {
                           )}
                           {canWrite && detailProduct.anvisa && (
                             <button onClick={() => handleSyncRegistry(detailProduct)} disabled={syncingRegistry} className="flex items-center gap-1.5 px-3.5 py-2.5 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl text-[12px] font-semibold transition-colors disabled:opacity-60 whitespace-nowrap" title="Consultar dados do registro na ANVISA">
-                              <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'sync' : 'verified'}</span>
+                              <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'progress_activity' : 'verified'}</span>
                               {syncingRegistry ? 'Consultando...' : 'Buscar'}
                             </button>
                           )}
@@ -1826,56 +1872,62 @@ export default function ProdutosPage() {
                         </div>
                       )}
 
-                      {detailProduct.anvisaHolder && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Detentor do Registro</p>
-                          <p className="text-[13px] text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
-                        </div>
-                      )}
-
-                      {detailProduct.anvisaManufacturer && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">
-                            Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` · ${detailProduct.anvisaManufacturerCountry}` : ''}
-                          </p>
-                          <p className="text-[13px] text-slate-700 dark:text-slate-300">
-                            {detailProduct.manufacturerShortName ? (
-                              <><span className="font-semibold">{detailProduct.manufacturerShortName}</span> <span className="text-slate-400">({detailProduct.anvisaManufacturer})</span></>
-                            ) : detailProduct.anvisaManufacturer}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Status + Vencimento side by side */}
-                      {(detailProduct.anvisaStatus || detailProduct.anvisaExpiration) && (
-                        <>
-                          {detailProduct.anvisaStatus && (
-                            <div className={`rounded-xl px-4 py-3 border ${anvisaStatusColor}`}>
-                              <p className="text-[10px] uppercase tracking-wider font-bold opacity-60 mb-1">Situação</p>
-                              <p className="text-[13px] font-bold">{detailProduct.anvisaStatus}</p>
+                      {(detailProduct.anvisaHolder || detailProduct.anvisaManufacturer) && (
+                        <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {detailProduct.anvisaHolder && (
+                            <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="material-symbols-outlined text-[12px] text-slate-400">business</span>
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Detentor do Registro</p>
+                              </div>
+                              <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
                             </div>
                           )}
-                          <div>
-                            <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Vencimento</p>
-                              <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
-                                {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
+                          {detailProduct.anvisaManufacturer && (
+                            <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="material-symbols-outlined text-[12px] text-slate-400">factory</span>
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">
+                                  Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` · ${detailProduct.anvisaManufacturerCountry}` : ''}
+                                </p>
+                              </div>
+                              <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                                {detailProduct.manufacturerShortName ? (
+                                  <><span className="font-semibold">{detailProduct.manufacturerShortName}</span> <span className="text-slate-400 text-[11px]">({detailProduct.anvisaManufacturer})</span></>
+                                ) : detailProduct.anvisaManufacturer}
                               </p>
                             </div>
-                          </div>
-                        </>
-                      )}
-
-                      {detailProduct.anvisaProcess && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Processo</p>
-                          <p className="text-[12px] font-mono text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
+                          )}
                         </div>
                       )}
-                      {detailProduct.anvisaRiskClass && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-1">Classe de Risco</p>
-                          <p className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+
+                      {/* Status + Vencimento + Processo + Risco grid */}
+                      {(detailProduct.anvisaStatus || detailProduct.anvisaExpiration || detailProduct.anvisaProcess || detailProduct.anvisaRiskClass) && (
+                        <div className="col-span-2 grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {detailProduct.anvisaStatus && (
+                            <div className={`rounded-xl px-3.5 py-2.5 border ${anvisaStatusColor}`}>
+                              <p className="text-[9px] uppercase tracking-wider font-bold opacity-60 mb-0.5">Situação</p>
+                              <p className="text-[12px] font-bold">{detailProduct.anvisaStatus}</p>
+                            </div>
+                          )}
+                          <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                            <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Vencimento</p>
+                            <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
+                              {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
+                            </p>
+                          </div>
+                          {detailProduct.anvisaProcess && (
+                            <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                              <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Processo</p>
+                              <p className="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
+                            </div>
+                          )}
+                          {detailProduct.anvisaRiskClass && (
+                            <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                              <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Classe de Risco</p>
+                              <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1884,29 +1936,34 @@ export default function ProdutosPage() {
               </div>
 
               {/* ── Footer ── */}
-              {canWrite && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    Fechar
-                  </button>
+              <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+                <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  Fechar
+                </button>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={handleSaveDetail}
-                    disabled={savingDetail || !detailDirty}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                    onClick={() => openHistory(detailProduct)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                    title="Ver histórico de compras e vendas"
                   >
-                    {savingDetail ? (
-                      <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Salvando...</>
-                    ) : (
-                      <><span className="material-symbols-outlined text-[16px]">save</span>Salvar alterações</>
-                    )}
+                    <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
+                    <span className="hidden sm:inline">Histórico</span>
                   </button>
+                  {canWrite && (
+                    <button
+                      onClick={handleSaveDetail}
+                      disabled={savingDetail || !detailDirty}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                    >
+                      {savingDetail ? (
+                        <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
+                      ) : (
+                        <><span className="material-symbols-outlined text-[16px]">save</span>Salvar</>
+                      )}
+                    </button>
+                  )}
                 </div>
-              )}
-              {!canWrite && (
-                <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         );
@@ -1914,21 +1971,21 @@ export default function ProdutosPage() {
 
       {/* History modal */}
       {historyProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setHistoryProduct(null)}>
-          <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setHistoryProduct(null)}>
+          <div className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
-                  <span className="material-symbols-outlined text-[24px] text-blue-500">history</span>
+            <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
+                  <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                  <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">
                     {historyProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{historyProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                     {historyProduct.description}
                   </h3>
                   {historyProduct.shortName && (
-                    <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">{historyProduct.shortName}</p>
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{historyProduct.shortName}</p>
                   )}
                   <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     {historyProduct.productType && (
@@ -1944,15 +2001,14 @@ export default function ProdutosPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => setHistoryProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button onClick={() => setHistoryProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
             </div>
 
-            {/* Tabs + Content */}
-            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-              {/* Helper: summary stats */}
+            {/* Content */}
+            <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4">
               {(() => {
                 const calcStats = (items: HistoryItem[]) => {
                   const totalValue = items.reduce((s, h) => s + h.totalValue, 0);
@@ -1971,7 +2027,6 @@ export default function ProdutosPage() {
                     if (!map.has(name)) map.set(name, []);
                     map.get(name)!.push(h);
                   }
-                  // Sort groups by most recent invoice date (descending)
                   return Array.from(map.entries()).sort((a, b) => {
                     const latestA = a[1].reduce((max, h) => h.issueDate && h.issueDate > max ? h.issueDate : max, '');
                     const latestB = b[1].reduce((max, h) => h.issueDate && h.issueDate > max ? h.issueDate : max, '');
@@ -2019,15 +2074,48 @@ export default function ProdutosPage() {
                 };
 
                 const colorMap = {
-                  blue: { bg: 'bg-blue-50/80 dark:bg-blue-900/15', ring: 'ring-1 ring-blue-200/60 dark:ring-blue-800/30', icon: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300', badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200/50 dark:ring-blue-800/30', btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20', sectionBg: 'from-blue-500/10 to-blue-500/0 dark:from-blue-500/15 dark:to-blue-500/0' },
-                  amber: { bg: 'bg-amber-50/80 dark:bg-amber-900/15', ring: 'ring-1 ring-amber-200/60 dark:ring-amber-800/30', icon: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30', btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20', sectionBg: 'from-amber-500/10 to-amber-500/0 dark:from-amber-500/15 dark:to-amber-500/0' },
-                  purple: { bg: 'bg-purple-50/80 dark:bg-purple-900/15', ring: 'ring-1 ring-purple-200/60 dark:ring-purple-800/30', icon: 'text-purple-500', text: 'text-purple-700 dark:text-purple-300', badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 ring-1 ring-purple-200/50 dark:ring-purple-800/30', btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20', sectionBg: 'from-purple-500/10 to-purple-500/0 dark:from-purple-500/15 dark:to-purple-500/0' },
+                  blue: {
+                    iconBg: 'bg-blue-500/10 dark:bg-blue-500/20 ring-blue-500/20 dark:ring-blue-500/30',
+                    statBg: 'bg-blue-50/80 dark:bg-blue-900/15',
+                    statRing: 'ring-1 ring-blue-200/60 dark:ring-blue-800/30',
+                    statIconBg: 'bg-blue-500/10 ring-blue-500/20',
+                    icon: 'text-blue-500',
+                    text: 'text-blue-700 dark:text-blue-300',
+                    badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200/50 dark:ring-blue-800/30',
+                    btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+                    groupBorder: 'border-blue-200/40 dark:border-blue-800/30',
+                    groupHover: 'hover:bg-blue-50/50 dark:hover:bg-blue-900/10',
+                  },
+                  amber: {
+                    iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
+                    statBg: 'bg-amber-50/80 dark:bg-amber-900/15',
+                    statRing: 'ring-1 ring-amber-200/60 dark:ring-amber-800/30',
+                    statIconBg: 'bg-amber-500/10 ring-amber-500/20',
+                    icon: 'text-amber-500',
+                    text: 'text-amber-700 dark:text-amber-300',
+                    badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30',
+                    btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20',
+                    groupBorder: 'border-amber-200/40 dark:border-amber-800/30',
+                    groupHover: 'hover:bg-amber-50/50 dark:hover:bg-amber-900/10',
+                  },
+                  purple: {
+                    iconBg: 'bg-purple-500/10 dark:bg-purple-500/20 ring-purple-500/20 dark:ring-purple-500/30',
+                    statBg: 'bg-purple-50/80 dark:bg-purple-900/15',
+                    statRing: 'ring-1 ring-purple-200/60 dark:ring-purple-800/30',
+                    statIconBg: 'bg-purple-500/10 ring-purple-500/20',
+                    icon: 'text-purple-500',
+                    text: 'text-purple-700 dark:text-purple-300',
+                    badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 ring-1 ring-purple-200/50 dark:ring-purple-800/30',
+                    btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20',
+                    groupBorder: 'border-purple-200/40 dark:border-purple-800/30',
+                    groupHover: 'hover:bg-purple-50/50 dark:hover:bg-purple-900/10',
+                  },
                 };
 
                 const SummaryCards = ({ stats, color }: { stats: ReturnType<typeof calcStats>; color: 'blue' | 'amber' | 'purple' }) => {
                   const cm = colorMap[color];
                   return (
-                  <div className="grid grid-cols-5 gap-2 mb-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
                     {[
                       { label: 'Total', value: formatValue(stats.totalValue), icon: 'payments' },
                       { label: 'Qtde Total', value: formatQuantity(stats.totalQty), icon: 'inventory_2' },
@@ -2035,12 +2123,14 @@ export default function ProdutosPage() {
                       { label: 'Último Preço', value: formatValue(stats.lastPrice), icon: 'trending_up' },
                       { label: 'Preço Médio', value: formatValue(stats.avgPrice), icon: 'analytics' },
                     ].map(c => (
-                      <div key={c.label} className={`rounded-xl px-3 py-2.5 ${cm.bg} ${cm.ring}`}>
-                        <div className="flex items-center gap-1.5 mb-1">
+                      <div key={c.label} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${cm.statBg} ${cm.statRing}`}>
+                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${cm.statIconBg}`}>
                           <span className={`material-symbols-outlined text-[13px] ${cm.icon}`}>{c.icon}</span>
-                          <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">{c.label}</span>
                         </div>
-                        <div className={`text-[14px] font-extrabold ${cm.text}`}>{c.value}</div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">{c.label}</p>
+                          <p className={`text-[13px] font-extrabold ${cm.text} truncate`}>{c.value}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2062,9 +2152,9 @@ export default function ProdutosPage() {
                         const grpTotal = rows.reduce((s, r) => s + r.totalValue, 0);
 
                         return (
-                          <div key={gk} className={`rounded-xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50'}`}>
+                          <div key={gk} className={`rounded-xl overflow-hidden transition-colors ring-1 ${isOpen ? 'ring-slate-200 dark:ring-slate-700 bg-white dark:bg-card-dark shadow-sm' : `ring-slate-200/50 dark:ring-slate-700/40 ${cm.groupHover}`}`}>
                             <button
-                              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${isOpen ? 'bg-white dark:bg-slate-800/80' : 'bg-slate-50/80 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${isOpen ? '' : 'bg-white/60 dark:bg-slate-800/30'}`}
                               onClick={() => {
                                 if (gi === 0) {
                                   const closedKey = `${gk}-closed`;
@@ -2083,13 +2173,13 @@ export default function ProdutosPage() {
                                 <span className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${cm.badge}`}>{rows.length}</span>
                               </div>
-                              <span className={`text-[12px] font-bold ${cm.text}`}>{formatValue(grpTotal)}</span>
+                              <span className={`text-[12px] font-bold tabular-nums ${cm.text}`}>{formatValue(grpTotal)}</span>
                             </button>
                             {isOpen && (
-                              <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800/50">
+                              <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800/60">
                                 <table className="w-full text-[11px]">
                                   <thead>
-                                    <tr className="bg-slate-50/80 dark:bg-slate-800/40">
+                                    <tr className="bg-slate-50 dark:bg-slate-900/70">
                                       <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Data</th>
                                       <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">NF-e</th>
                                       <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Qtde</th>
@@ -2101,7 +2191,7 @@ export default function ProdutosPage() {
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                     {visibleRows.map((h, i) => (
-                                      <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition-colors">
+                                      <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                                         <td className="px-3 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
                                         <td className="px-3 py-2">
                                           <button
@@ -2127,9 +2217,13 @@ export default function ProdutosPage() {
                                 {remaining > 0 && (
                                   <button
                                     onClick={() => toggleRows(gk)}
-                                    className={`w-full py-2 text-[11px] font-semibold transition-colors border-t border-slate-100 dark:border-slate-800/50 ${cm.btn}`}
+                                    className={`w-full py-2.5 text-[11px] font-semibold transition-colors border-t border-slate-100 dark:border-slate-800/50 ${cm.btn}`}
                                   >
-                                    {isRowsExpanded ? 'Mostrar menos' : `Ver mais ${remaining} registro${remaining > 1 ? 's' : ''}`}
+                                    {isRowsExpanded ? (
+                                      <><span className="material-symbols-outlined text-[13px] align-middle mr-1">expand_less</span>Mostrar menos</>
+                                    ) : (
+                                      <><span className="material-symbols-outlined text-[13px] align-middle mr-1">expand_more</span>Ver mais {remaining} registro{remaining > 1 ? 's' : ''}</>
+                                    )}
                                   </button>
                                 )}
                               </div>
@@ -2163,39 +2257,42 @@ export default function ProdutosPage() {
                 }) => {
                   const isOpen = isSectionOpen(sectionKey, defaultOpen);
                   const cm = colorMap[color];
-                  const badgeCls = cm.badge;
                   return (
-                    <div className={`rounded-2xl border overflow-hidden transition-colors ${isOpen ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 shadow-sm' : 'border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/20'}`}>
+                    <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
                       <button
                         onClick={() => toggleSection(sectionKey, defaultOpen)}
-                        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? `bg-gradient-to-br ${cm.sectionBg}` : 'bg-slate-100 dark:bg-slate-800'}`}>
-                            <span className={`material-symbols-outlined text-[18px] transition-colors ${isOpen ? iconColor : 'text-slate-400 dark:text-slate-500'}`}>{icon}</span>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${cm.iconBg}`}>
+                            <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
                           </div>
-                          <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">{label}</h4>
+                          <h4 className="text-[13px] font-bold text-slate-900 dark:text-white">{label}</h4>
                           {count > 0 && (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeCls}`}>{count}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${cm.badge}`}>{count}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           {!loading && count > 0 && (
-                            <span className={`text-[13px] font-bold ${cm.text}`}>{formatValue(totalValue)}</span>
+                            <span className={`text-[13px] font-bold tabular-nums ${cm.text}`}>{formatValue(totalValue)}</span>
                           )}
-                          <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                          <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                         </div>
                       </button>
                       {isOpen && (
-                        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800/50">
+                        <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-800/60">
                           {loading ? (
-                            <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-[13px]">
-                              <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
-                              Carregando histórico...
+                            <div className="flex flex-col items-center justify-center gap-2 py-8">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${cm.iconBg}`}>
+                                <span className={`material-symbols-outlined text-[20px] ${cm.icon} animate-spin`}>progress_activity</span>
+                              </div>
+                              <p className="text-[13px] font-medium text-slate-400">Carregando histórico...</p>
                             </div>
                           ) : empty ? (
-                            <div className="flex flex-col items-center py-6">
-                              <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+                            <div className="flex flex-col items-center py-8">
+                              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50 mb-2">
+                                <span className="material-symbols-outlined text-[24px] text-slate-300 dark:text-slate-600">inbox</span>
+                              </div>
                               <p className="text-[13px] text-slate-400 dark:text-slate-500">{emptyMsg}</p>
                             </div>
                           ) : (
@@ -2229,7 +2326,7 @@ export default function ProdutosPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
+            <div className="flex justify-end px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
               <button onClick={() => setHistoryProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
             </div>
           </div>

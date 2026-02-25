@@ -89,6 +89,35 @@ function formatAndHighlightXml(xml: string): { html: string; lineCount: number }
   return { html: highlighted.join('\n'), lineCount: lines.length };
 }
 
+const DOC_THEME: Record<string, { icon: string; label: string; gradient: string; ring: string; text: string; pdfLabel: string }> = {
+  NFE: {
+    icon: 'description',
+    label: 'NF-e',
+    gradient: 'from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10',
+    ring: 'ring-primary/20 dark:ring-primary/30',
+    text: 'text-primary',
+    pdfLabel: 'DANFE',
+  },
+  CTE: {
+    icon: 'local_shipping',
+    label: 'CT-e',
+    gradient: 'from-teal-500/20 to-teal-500/5 dark:from-teal-500/30 dark:to-teal-500/10',
+    ring: 'ring-teal-500/20 dark:ring-teal-500/30',
+    text: 'text-teal-500',
+    pdfLabel: 'DACTE',
+  },
+  NFSE: {
+    icon: 'receipt_long',
+    label: 'NFS-e',
+    gradient: 'from-violet-500/20 to-violet-500/5 dark:from-violet-500/30 dark:to-violet-500/10',
+    ring: 'ring-violet-500/20 dark:ring-violet-500/30',
+    text: 'text-violet-500',
+    pdfLabel: 'PDF',
+  },
+};
+
+const DEFAULT_THEME = DOC_THEME.NFE;
+
 export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: InvoiceDetailsModalProps) {
   const [view, setView] = useState<'danfe' | 'xml'>('danfe');
   const [xmlContent, setXmlContent] = useState<string | null>(null);
@@ -118,6 +147,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
 
   if (!isOpen || !invoiceId) return null;
 
+  const theme = (meta?.type ? DOC_THEME[meta.type] : null) || DEFAULT_THEME;
   const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
 
   const handlePrint = () => {
@@ -177,23 +207,21 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
     }
   };
 
-  const ActionButton = ({ onClick, icon, label, variant = 'default', disabled }: { onClick: () => void; icon: string; label: string; variant?: 'default' | 'primary' | 'active'; disabled?: boolean }) => {
-    const cls = variant === 'primary'
-      ? 'bg-primary hover:bg-primary-dark text-white shadow-sm shadow-primary/25'
-      : variant === 'active'
-        ? 'bg-primary text-white shadow-sm shadow-primary/25'
-        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600';
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50 ${cls}`}
-        title={label}
-      >
-        <span className={`material-symbols-outlined text-[17px] ${disabled ? 'animate-spin' : ''}`}>{icon}</span>
-        <span className="hidden sm:inline">{label}</span>
-      </button>
-    );
+  const copyXml = () => {
+    if (!xmlContent) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(xmlContent).then(() => toast.success('XML copiado!'));
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = xmlContent;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      toast.success('XML copiado!');
+    }
   };
 
   return (
@@ -209,59 +237,83 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         aria-modal="true"
       >
         {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-                <span className="material-symbols-outlined text-[22px] text-primary">description</span>
+        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Icon + Title */}
+            <div className="flex items-center gap-3 min-w-0 shrink-0">
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring} shrink-0`}>
+                <span className={`material-symbols-outlined text-[22px] ${theme.text}`}>{theme.icon}</span>
               </div>
-              <div>
-                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
-                  {meta?.number ? `NF-e ${meta.number}` : 'Visualizar Documento'}
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  {meta?.number ? `${theme.label} ${meta.number}` : 'Visualizar Documento'}
                 </h3>
-                {meta?.type && (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">{meta.type === 'entrada' ? 'Nota de Entrada' : meta.type === 'saida' ? 'Nota de Saída' : meta.type}</span>
-                )}
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                  {view === 'danfe' ? theme.pdfLabel : 'XML'}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* View toggle */}
+            {/* Right: Controls */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* DANFE / XML toggle */}
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                 <button
                   onClick={() => view === 'xml' && toggleXmlView()}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
+                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-bold transition-all ${
                     view === 'danfe'
                       ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">description</span>
-                  DANFE
+                  <span className="material-symbols-outlined text-[14px] sm:text-[15px]">description</span>
+                  <span>{theme.pdfLabel}</span>
                 </button>
                 <button
                   onClick={() => view === 'danfe' && toggleXmlView()}
                   disabled={loadingXml}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all ${
+                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-bold transition-all ${
                     view === 'xml'
                       ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[15px] ${loadingXml ? 'animate-spin' : ''}`}>
-                    {loadingXml ? 'sync' : 'code'}
+                  <span className={`material-symbols-outlined text-[14px] sm:text-[15px] ${loadingXml ? 'animate-spin' : ''}`}>
+                    {loadingXml ? 'progress_activity' : 'code'}
                   </span>
-                  XML
+                  <span>XML</span>
                 </button>
               </div>
 
-              <div className="w-px h-7 bg-slate-200 dark:bg-slate-700 mx-1" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
-              <ActionButton onClick={handleDownloadPdf} icon="picture_as_pdf" label="PDF" />
-              <ActionButton onClick={handleDownloadXml} icon="data_object" label="XML" />
-              <ActionButton onClick={handlePrint} icon="print" label="Imprimir" variant="primary" />
+              {/* Action buttons */}
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[12px] sm:text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                title="Baixar PDF"
+              >
+                <span className="material-symbols-outlined text-[16px] text-rose-500">picture_as_pdf</span>
+                <span className="hidden md:inline">PDF</span>
+              </button>
+              <button
+                onClick={handleDownloadXml}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[12px] sm:text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                title="Baixar XML"
+              >
+                <span className="material-symbols-outlined text-[16px] text-amber-500">data_object</span>
+                <span className="hidden md:inline">XML</span>
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[12px] sm:text-[13px] font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 transition-all"
+                title="Imprimir"
+              >
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                <span className="hidden md:inline">Imprimir</span>
+              </button>
 
-              <div className="w-px h-7 bg-slate-200 dark:bg-slate-700 mx-1" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5" />
 
               <button
                 onClick={onClose}
@@ -284,7 +336,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               </span>
               <button
                 onClick={copyAccessKey}
-                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:text-primary transition-colors"
+                className={`flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:${theme.text} transition-colors`}
                 title="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
@@ -304,40 +356,55 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               />
             </div>
           ) : (
-            <div className="w-full h-full bg-[#1e1e2e] overflow-auto">
+            <div className="w-full h-full bg-[#1e1e2e] overflow-auto relative">
               {loadingXml ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
-                  <span className="material-symbols-outlined text-[36px] text-slate-500 animate-spin">sync</span>
-                  <span className="text-[13px] text-slate-500">Carregando XML...</span>
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">
+                    <span className="material-symbols-outlined text-[28px] text-amber-500 animate-spin">progress_activity</span>
+                  </div>
+                  <p className="text-[13px] font-medium text-slate-500">Carregando XML...</p>
                 </div>
               ) : xmlHighlighted ? (
-                <div className="flex h-full">
-                  {/* Line numbers */}
-                  <div className="flex-shrink-0 py-4 pr-0 select-none border-r border-[#313244]">
-                    <pre className="text-[11px] font-mono leading-[1.6] text-[#6c7086] text-right px-3">
-                      {Array.from({ length: xmlHighlighted.lineCount }, (_, i) => i + 1).join('\n')}
-                    </pre>
+                <>
+                  {/* Floating copy button */}
+                  <button
+                    onClick={copyXml}
+                    className="absolute top-3 right-5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#313244] hover:bg-[#45475a] text-[11px] font-bold text-slate-400 hover:text-slate-200 transition-all ring-1 ring-[#45475a]"
+                    title="Copiar XML"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                    Copiar
+                  </button>
+                  <div className="flex h-full">
+                    {/* Line numbers */}
+                    <div className="flex-shrink-0 py-4 pr-0 select-none border-r border-[#313244]">
+                      <pre className="text-[11px] font-mono leading-[1.6] text-[#6c7086] text-right px-3">
+                        {Array.from({ length: xmlHighlighted.lineCount }, (_, i) => i + 1).join('\n')}
+                      </pre>
+                    </div>
+                    {/* Code content */}
+                    <div className="flex-1 overflow-auto py-4 px-4">
+                      <style dangerouslySetInnerHTML={{ __html: `
+                        .xml-code .xml-bracket { color: #6c7086; }
+                        .xml-code .xml-tag { color: #89b4fa; font-weight: 600; }
+                        .xml-code .xml-attr { color: #f9e2af; }
+                        .xml-code .xml-val { color: #a6e3a1; }
+                        .xml-code .xml-text { color: #cdd6f4; }
+                        .xml-code .xml-decl { color: #9399b2; }
+                      `}} />
+                      <pre
+                        className="xml-code text-[11px] font-mono leading-[1.6] whitespace-pre"
+                        dangerouslySetInnerHTML={{ __html: xmlHighlighted.html }}
+                      />
+                    </div>
                   </div>
-                  {/* Code content */}
-                  <div className="flex-1 overflow-auto py-4 px-4">
-                    <style dangerouslySetInnerHTML={{ __html: `
-                      .xml-code .xml-bracket { color: #6c7086; }
-                      .xml-code .xml-tag { color: #89b4fa; font-weight: 600; }
-                      .xml-code .xml-attr { color: #f9e2af; }
-                      .xml-code .xml-val { color: #a6e3a1; }
-                      .xml-code .xml-text { color: #cdd6f4; }
-                      .xml-code .xml-decl { color: #9399b2; }
-                    `}} />
-                    <pre
-                      className="xml-code text-[11px] font-mono leading-[1.6] whitespace-pre"
-                      dangerouslySetInnerHTML={{ __html: xmlHighlighted.html }}
-                    />
-                  </div>
-                </div>
+                </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <span className="material-symbols-outlined text-[40px] text-slate-600">code_off</span>
-                  <span className="text-[13px] text-slate-500">XML não disponível</span>
+                <div className="flex flex-col items-center justify-center h-full gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center ring-1 ring-slate-600/50">
+                    <span className="material-symbols-outlined text-[28px] text-slate-500">code_off</span>
+                  </div>
+                  <p className="text-[13px] font-medium text-slate-500">XML não disponível</p>
                 </div>
               )}
             </div>

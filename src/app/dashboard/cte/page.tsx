@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
-const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
+const CteDetailsModal = dynamic(() => import('@/components/CteDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
@@ -779,7 +779,7 @@ export default function CtePage() {
         onClose={() => setIsModalOpen(false)}
         invoiceId={selectedInvoiceId}
       />
-      <NfeDetailsModal
+      <CteDetailsModal
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         invoiceId={detailsInvoiceId}
