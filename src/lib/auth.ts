@@ -1,8 +1,18 @@
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { timingSafeEqual } from 'crypto';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 function isValidApiKey(): boolean {
   try {
@@ -12,7 +22,7 @@ function isValidApiKey(): boolean {
     if (validated === '1') return true;
     const key = h.get('x-api-key');
     const expected = process.env.QLMED_API_KEY;
-    return !!key && !!expected && key === expected;
+    return !!key && !!expected && safeEqual(key, expected);
   } catch {
     return false;
   }

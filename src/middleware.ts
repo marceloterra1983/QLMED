@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { timingSafeEqual } from 'crypto';
 
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
@@ -9,6 +10,15 @@ const AUTH_COOKIE_NAMES = [
   'next-auth.csrf-token',
   '__Host-next-auth.csrf-token',
 ];
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 function clearAuthCookies(response: NextResponse) {
   for (const name of AUTH_COOKIE_NAMES) {
@@ -28,7 +38,7 @@ export async function middleware(req: NextRequest) {
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
     const expected = process.env.QLMED_API_KEY;
-    if (apiKey && expected && apiKey === expected) {
+    if (apiKey && expected && safeEqual(apiKey, expected)) {
       const requestHeaders = new Headers(req.headers);
       requestHeaders.set('x-api-key-validated', '1');
       return NextResponse.next({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 
 const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml'] as const;
 type Action = (typeof VALID_ACTIONS)[number];
@@ -6,8 +7,12 @@ type Action = (typeof VALID_ACTIONS)[number];
 function validateApiKey(req: NextRequest): boolean {
   const key = req.headers.get('x-api-key');
   const expected = process.env.QLMED_API_KEY;
-  if (!expected) return false;
-  return key === expected;
+  if (!key || !expected || key.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(key), Buffer.from(expected));
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
