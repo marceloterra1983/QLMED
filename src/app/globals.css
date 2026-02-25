@@ -3,23 +3,15 @@
 @tailwind utilities;
 
 /* ── Material Symbols Outlined — self-hosted font ──
- * Two subsets (A–H and H–W) downloaded from Google Fonts.
- * When adding new icons: re-download woff2 files with updated icon_names
- * then run:  bash scripts/check-icons.sh
+ * Full font (all icons) downloaded from Google Fonts.
+ * No subsetting needed — works with any icon name.
  */
 @font-face {
   font-family: 'Material Symbols Outlined';
   font-style: normal;
   font-weight: 100 700;
   font-display: swap;
-  src: url('/fonts/material-symbols-a.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Material Symbols Outlined';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: swap;
-  src: url('/fonts/material-symbols-b.woff2') format('woff2');
+  src: url('/fonts/material-symbols.woff2') format('woff2');
 }
 
 body {
