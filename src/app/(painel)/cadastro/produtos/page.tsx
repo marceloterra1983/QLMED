@@ -262,12 +262,12 @@ export default function ProdutosPage() {
     const n = new Set(prev);
     if (n.has(g)) {
       n.delete(g);
-      // When expanding a line, collapse all its groups
+      // When expanding a line, collapse all its groups by default
       if (g.startsWith('line:')) {
         const lineName = g.slice(5);
         for (const p of filtered) {
           if ((p.productType || 'Sem linha') === lineName) {
-            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}|${p.productSubgroup || ''}`);
+            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}`);
           }
         }
       }
@@ -705,15 +705,21 @@ export default function ProdutosPage() {
     }
     // Collapse by default (lines for productType sort, groups for others)
     if (filteredLen > 0) {
-      const groups = new Set(filtered.map((p) => {
+      const groups = new Set<string>();
+      for (const p of filtered) {
         switch (sortBy) {
-          case 'supplier':    return p.lastSupplierName || 'Sem fabricante';
-          case 'productType': return `line:${p.productType || 'Sem linha'}`;
-          case 'ncm':         return p.ncm ? p.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM';
-          case 'anvisa':      return p.anvisa ? 'Com ANVISA' : 'Sem ANVISA';
-          default:            return '';
+          case 'supplier':    groups.add(p.lastSupplierName || 'Sem fabricante'); break;
+          case 'productType': {
+            groups.add(`line:${p.productType || 'Sem linha'}`);
+            // Also pre-collapse all groups so they start collapsed when line is expanded
+            groups.add(`group:${p.productType || 'Sem linha'}|${p.productSubtype || 'Sem grupo'}`);
+            break;
+          }
+          case 'ncm':         groups.add(p.ncm ? p.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM'); break;
+          case 'anvisa':      groups.add(p.anvisa ? 'Com ANVISA' : 'Sem ANVISA'); break;
+          default:            break;
         }
-      }));
+      }
       setCollapsedGroups(groups);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
