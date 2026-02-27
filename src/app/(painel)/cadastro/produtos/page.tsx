@@ -235,10 +235,7 @@ export default function ProdutosPage() {
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, onlyMissing, typeFilter, subtypeFilter, subgroupFilter, sortBy, sortOrder, lineStatusFilter]);
+  // (pagination removed — all products loaded at once)
 
   // Backward-compat alias: many places reference `allProducts` / `filtered`
   const allProducts = products;
@@ -424,7 +421,8 @@ export default function ProdutosPage() {
   const [loadingSalesHistory, setLoadingSalesHistory] = useState(false);
   const [loadingConsignment, setLoadingConsignment] = useState(false);
 
-  const openDetail = (product: ProductRow, initialSections?: string[]) => {
+  const openDetail = async (product: ProductRow, initialSections?: string[]) => {
+    // Show modal immediately with lightweight data
     setDetailProduct(product);
     setDetailAnvisa(product.anvisa || '');
     setDetailNcm(product.ncm || '');
@@ -446,6 +444,35 @@ export default function ProdutosPage() {
     setDetailIpi(product.fiscalIpi != null ? String(product.fiscalIpi) : '');
     setDetailFcp(product.fiscalFcp != null ? String(product.fiscalFcp) : '');
     setDetailOpenSections(new Set(initialSections || []));
+
+    // Load full details (ANVISA, fiscal, aggregates) in background
+    try {
+      const res = await fetch(`/api/products/details?key=${encodeURIComponent(product.key)}`);
+      if (res.ok) {
+        const full = (await res.json()) as ProductRow;
+        setDetailProduct(full);
+        setDetailAnvisa(full.anvisa || '');
+        setDetailNcm(full.ncm || '');
+        setDetailType(full.productType || '');
+        setDetailSubtype(full.productSubtype || '');
+        setDetailSubgroup(full.productSubgroup || '');
+        setDetailShortName(full.shortName || '');
+        setDetailSitTributaria(full.fiscalSitTributaria || '');
+        setDetailNomeTributacao(full.fiscalNomeTributacao || '');
+        setDetailIcms(full.fiscalIcms != null ? String(full.fiscalIcms) : '');
+        setDetailPis(full.fiscalPis != null ? String(full.fiscalPis) : '');
+        setDetailCofins(full.fiscalCofins != null ? String(full.fiscalCofins) : '');
+        setDetailFiscalObs(full.fiscalObs || '');
+        setDetailCest(full.fiscalCest || '');
+        setDetailOrigem(full.fiscalOrigem || '');
+        setDetailCfopEntrada(full.fiscalCfopEntrada || '');
+        setDetailCfopSaida(full.fiscalCfopSaida || '');
+        setDetailIpi(full.fiscalIpi != null ? String(full.fiscalIpi) : '');
+        setDetailFcp(full.fiscalFcp != null ? String(full.fiscalFcp) : '');
+      }
+    } catch {
+      // Modal still works with lightweight data
+    }
   };
 
   const [historyProduct, setHistoryProduct] = useState<ProductRow | null>(null);
@@ -560,8 +587,6 @@ export default function ProdutosPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        page: String(currentPage),
-        limit: '50',
         sort: serverSortField,
         order: sortOrder,
         lineStatus: lineStatusFilter,
@@ -580,7 +605,7 @@ export default function ProdutosPage() {
       setSummary(
         data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 },
       );
-      setPagination(data.pagination || { page: 1, limit: 50, total: 0, pages: 1 });
+      setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
       setMeta(data.meta || null);
 
       // If aggregates are missing, trigger rebuild in background then reload
@@ -597,7 +622,7 @@ export default function ProdutosPage() {
               .then((d: ProductsResponse) => {
                 setProducts(d.products || []);
                 setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
-                setPagination(d.pagination || { page: 1, limit: 50, total: 0, pages: 1 });
+                setPagination({ page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
                 setMeta(d.meta || null);
               })
               .catch(() => {});
@@ -610,7 +635,7 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
+  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
 
   useEffect(() => {
     loadProducts();
@@ -1740,34 +1765,11 @@ export default function ProdutosPage() {
           </table>
         </div>
 
-        {!loading && pagination.total > 0 && (
+        {!loading && filtered.length > 0 && (
           <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex items-center justify-between">
             <span className="text-sm text-slate-500">
-              {((pagination.page - 1) * pagination.limit + 1).toLocaleString('pt-BR')}-{Math.min(pagination.page * pagination.limit, pagination.total).toLocaleString('pt-BR')} de {pagination.total.toLocaleString('pt-BR')} produto{pagination.total !== 1 ? 's' : ''}
+              {filtered.length.toLocaleString('pt-BR')} produto{filtered.length !== 1 ? 's' : ''}
             </span>
-            {pagination.pages > 1 && (
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={pagination.page <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[14px]">chevron_left</span>
-                  Anterior
-                </button>
-                <span className="text-xs text-slate-500 tabular-nums">
-                  Pág. {pagination.page} / {pagination.pages}
-                </span>
-                <button
-                  disabled={pagination.page >= pagination.pages}
-                  onClick={() => setCurrentPage((p) => Math.min(pagination.pages, p + 1))}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Próximo
-                  <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

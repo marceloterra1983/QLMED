@@ -1,0 +1,141 @@
+import { NextResponse } from 'next/server';
+import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { ensureProductRegistryTable } from '@/lib/product-registry-store';
+
+export async function GET(req: Request) {
+  try {
+    let userId: string;
+    try {
+      userId = await requireAuth();
+    } catch {
+      return unauthorizedResponse();
+    }
+
+    const company = await getOrCreateSingleCompany(userId);
+    await ensureProductRegistryTable();
+
+    const { searchParams } = new URL(req.url);
+    const key = searchParams.get('key');
+
+    if (!key) {
+      return NextResponse.json({ error: 'Parâmetro key obrigatório' }, { status: 400 });
+    }
+
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `
+      SELECT
+        pr.product_key,
+        pr.code,
+        pr.description,
+        pr.ncm,
+        pr.unit,
+        pr.ean,
+        pr.short_name,
+        pr.manufacturer_short_name,
+        pr.anvisa_code,
+        pr.anvisa_source,
+        pr.anvisa_confidence,
+        pr.anvisa_matched_product_name,
+        pr.anvisa_holder,
+        pr.anvisa_process,
+        pr.anvisa_status,
+        pr.anvisa_expiration,
+        pr.anvisa_risk_class,
+        pr.anvisa_manufacturer,
+        pr.anvisa_manufacturer_country,
+        pr.product_type,
+        pr.product_subtype,
+        pr.product_subgroup,
+        pr.out_of_line,
+        pr.fiscal_sit_tributaria,
+        pr.fiscal_nome_tributacao,
+        pr.fiscal_icms,
+        pr.fiscal_pis,
+        pr.fiscal_cofins,
+        pr.fiscal_obs,
+        pr.fiscal_cest,
+        pr.fiscal_origem,
+        pr.fiscal_cfop_entrada,
+        pr.fiscal_cfop_saida,
+        pr.fiscal_ipi,
+        pr.fiscal_fcp,
+        pr.agg_total_quantity,
+        pr.agg_total_value,
+        pr.agg_invoice_count,
+        pr.agg_last_price,
+        pr.agg_average_price,
+        pr.agg_last_issue_date,
+        pr.agg_last_supplier_name,
+        pr.agg_last_supplier_cnpj,
+        pr.agg_last_invoice_number,
+        pr.agg_last_sale_date,
+        pr.agg_last_sale_price,
+        pr.agg_resale_quantity
+      FROM product_registry pr
+      WHERE pr.company_id = $1 AND pr.product_key = $2
+      LIMIT 1
+      `,
+      company.id,
+      key,
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
+    }
+
+    const row = rows[0];
+    return NextResponse.json({
+      key: row.product_key,
+      code: row.code || '-',
+      description: row.description || '',
+      ncm: row.ncm || null,
+      unit: row.unit || '-',
+      ean: row.ean || null,
+      anvisa: row.anvisa_code || null,
+      anvisaMatchMethod: row.anvisa_source || null,
+      anvisaConfidence: row.anvisa_confidence != null ? Number(row.anvisa_confidence) : null,
+      anvisaMatchedProductName: row.anvisa_matched_product_name || null,
+      anvisaHolder: row.anvisa_holder || null,
+      anvisaProcess: row.anvisa_process || null,
+      anvisaStatus: row.anvisa_status || null,
+      anvisaExpiration: row.anvisa_expiration || null,
+      anvisaRiskClass: row.anvisa_risk_class || null,
+      anvisaManufacturer: row.anvisa_manufacturer || null,
+      anvisaManufacturerCountry: row.anvisa_manufacturer_country || null,
+      manufacturerShortName: row.manufacturer_short_name || null,
+      shortName: row.short_name || null,
+      productType: row.product_type || null,
+      productSubtype: row.product_subtype || null,
+      productSubgroup: row.product_subgroup || null,
+      outOfLine: row.out_of_line === true || row.out_of_line === 't',
+      totalQuantity: Number(row.agg_total_quantity || 0),
+      invoiceCount: Number(row.agg_invoice_count || 0),
+      lastPrice: Number(row.agg_last_price || 0),
+      averagePrice: Number(row.agg_average_price || 0),
+      lastIssueDate: row.agg_last_issue_date || null,
+      lastSaleDate: row.agg_last_sale_date || null,
+      lastSalePrice: row.agg_last_sale_price != null ? Number(row.agg_last_sale_price) : null,
+      lastSupplierName: row.agg_last_supplier_name || null,
+      lastSupplierCnpj: row.agg_last_supplier_cnpj || null,
+      lastInvoiceNumber: row.agg_last_invoice_number || null,
+      lastInvoiceId: null,
+      fiscalSitTributaria: row.fiscal_sit_tributaria || null,
+      fiscalNomeTributacao: row.fiscal_nome_tributacao || null,
+      fiscalIcms: row.fiscal_icms != null ? Number(row.fiscal_icms) : null,
+      fiscalPis: row.fiscal_pis != null ? Number(row.fiscal_pis) : null,
+      fiscalCofins: row.fiscal_cofins != null ? Number(row.fiscal_cofins) : null,
+      fiscalObs: row.fiscal_obs || null,
+      fiscalCest: row.fiscal_cest || null,
+      fiscalOrigem: row.fiscal_origem || null,
+      fiscalCfopEntrada: row.fiscal_cfop_entrada || null,
+      fiscalCfopSaida: row.fiscal_cfop_saida || null,
+      fiscalIpi: row.fiscal_ipi != null ? Number(row.fiscal_ipi) : null,
+      fiscalFcp: row.fiscal_fcp != null ? Number(row.fiscal_fcp) : null,
+    });
+  } catch (error) {
+    console.error('[products/details] Error:', error);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
+}
