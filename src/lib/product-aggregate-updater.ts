@@ -344,6 +344,25 @@ export function scheduleNightlyRebuild() {
               );
             }
 
+            // Stamp remaining registry products with no invoice match
+            await prisma.$executeRawUnsafe(
+              `
+              UPDATE product_registry SET
+                agg_total_quantity = COALESCE(agg_total_quantity, 0),
+                agg_total_value = COALESCE(agg_total_value, 0),
+                agg_invoice_count = COALESCE(agg_invoice_count, 0),
+                agg_last_price = COALESCE(agg_last_price, 0),
+                agg_average_price = COALESCE(agg_average_price, 0),
+                agg_computed_at = NOW(),
+                agg_search_text = COALESCE(agg_search_text,
+                  LOWER(COALESCE(code, '') || ' ' || COALESCE(description, '') || ' ' || COALESCE(ncm, '') || ' ' || COALESCE(anvisa_code, ''))),
+                updated_at = NOW()
+              WHERE company_id = $1
+                AND agg_computed_at IS NULL
+              `,
+              company.id,
+            );
+
             console.log(`[product-aggregates] Rebuilt ${entries.length} products for company ${company.id}`);
           } catch (err) {
             console.error(`[product-aggregates] Rebuild failed for company ${company.id}:`, err);

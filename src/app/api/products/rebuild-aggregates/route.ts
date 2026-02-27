@@ -194,6 +194,26 @@ export async function POST() {
       );
     }
 
+    // Mark remaining registry products (that had no invoice match) as computed
+    // so they appear in the listing. Zero out their aggregates and build search text.
+    const stampedCount = await prisma.$executeRawUnsafe(
+      `
+      UPDATE product_registry SET
+        agg_total_quantity = COALESCE(agg_total_quantity, 0),
+        agg_total_value = COALESCE(agg_total_value, 0),
+        agg_invoice_count = COALESCE(agg_invoice_count, 0),
+        agg_last_price = COALESCE(agg_last_price, 0),
+        agg_average_price = COALESCE(agg_average_price, 0),
+        agg_computed_at = NOW(),
+        agg_search_text = COALESCE(agg_search_text,
+          LOWER(COALESCE(code, '') || ' ' || COALESCE(description, '') || ' ' || COALESCE(ncm, '') || ' ' || COALESCE(anvisa_code, ''))),
+        updated_at = NOW()
+      WHERE company_id = $1
+        AND agg_computed_at IS NULL
+      `,
+      company.id,
+    );
+
     const totalTime = Date.now() - startTime;
 
     return NextResponse.json({
@@ -201,6 +221,7 @@ export async function POST() {
       totalProducts: entries.length,
       updatedCount,
       createdCount,
+      stampedCount: typeof stampedCount === 'number' ? stampedCount : 0,
       aggregationTimeMs: aggregationTime,
       totalTimeMs: totalTime,
     });
