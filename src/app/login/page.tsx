@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
   const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +18,24 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    const saved = localStorage.getItem('qlmed-theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDark(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('qlmed-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('qlmed-theme', 'light');
+    }
+  };
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -73,18 +91,22 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
+        {/* Logo - click to toggle dark mode */}
         <div className="text-center mb-8">
-          <div className="relative w-[240px] h-[73px] mx-auto mb-4">
+          <button
+            onClick={toggleTheme}
+            className="relative w-[240px] h-[73px] mx-auto mb-4 block cursor-pointer transition-transform hover:scale-105 active:scale-95"
+            title="Alternar tema claro/escuro"
+          >
             <Image
               src="/logo.png"
               alt="QL MED Logo"
               fill
               sizes="240px"
-              className="object-contain"
+              className={`object-contain transition-all duration-300 ${isDark ? 'brightness-0 invert' : ''}`}
               priority
             />
-          </div>
+          </button>
         </div>
 
         {/* Form */}
