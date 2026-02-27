@@ -150,7 +150,8 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
-          <p>QL MED Produtos Hospitalares LTDA &mdash; CNPJ 07.382.369/0001-30</p>
+          <p>QL MED Produtos Hospitalares LTDA</p>
+          <p>CNPJ 07.382.369/0001-30</p>
           <p>Campo Grande, MS &mdash; Brasil</p>
           <p>&copy; {new Date().getFullYear()} QL MED. Todos os direitos reservados.</p>
         </div>
