@@ -574,7 +574,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetai
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-transparent sm:bg-black/60 sm:backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4 bg-white dark:bg-[#1a1e2e] sm:bg-black/60 sm:dark:bg-black/60 sm:backdrop-blur-sm">
       <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
       <div
         className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
@@ -690,7 +690,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetai
         <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
           <button
             onClick={onClose}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-[15px] active:bg-slate-200 dark:active:bg-slate-700 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             Voltar

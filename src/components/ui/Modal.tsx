@@ -33,7 +33,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-transparent sm:bg-slate-900/50 sm:backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center sm:p-4 bg-white dark:bg-card-dark sm:bg-slate-900/50 sm:dark:bg-slate-900/50 sm:backdrop-blur-sm transition-opacity">
       <div
         className="absolute inset-0 hidden sm:block"
         onClick={onClose}
@@ -41,7 +41,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       ></div>
       <div
         ref={modalRef}
-        className={`relative bg-white dark:bg-card-dark rounded-none sm:rounded-xl shadow-2xl w-full ${width} h-full sm:h-auto max-h-screen sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative bg-white dark:bg-card-dark sm:rounded-xl shadow-2xl w-full ${width} h-full sm:h-auto max-h-screen sm:max-h-[90vh] flex flex-col overflow-hidden sm:animate-in sm:fade-in sm:zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >
@@ -69,9 +69,9 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
         <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
           <button
             onClick={onClose}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-[15px] active:bg-slate-200 dark:active:bg-slate-700 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
           >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
             Voltar
           </button>
         </div>

@@ -1510,54 +1510,9 @@ export default function ProdutosPage() {
 
       {/* Search + filters */}
       <MobileFilterWrapper activeFilterCount={[search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter !== 'all' ? lineStatusFilter : ''].filter(Boolean).length} title="Filtros" icon="inventory_2">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="shrink-0">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); setSubgroupFilter(''); }}
-              className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-            >
-              <option value="">Todos</option>
-              {hierOptions.lines.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          {typeFilter && (
-            <div className="shrink-0">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Grupo</label>
-              <select
-                value={subtypeFilter}
-                onChange={(e) => { setSubtypeFilter(e.target.value); setSubgroupFilter(''); }}
-                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-              >
-                <option value="">Todos</option>
-                {hierOptions.groupsFor(typeFilter).map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {subtypeFilter && (() => {
-            const subgroups = hierOptions.subgroupsFor(typeFilter, subtypeFilter);
-            return subgroups.length > 0 ? (
-              <div className="shrink-0">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subgrupo</label>
-                <select
-                  value={subgroupFilter}
-                  onChange={(e) => setSubgroupFilter(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                >
-                  <option value="">Todos</option>
-                  {subgroups.map((s) => (
-                    <option key={s!} value={s!}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            ) : null;
-          })()}
-          <div className="flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+          {/* Search - full width on mobile, flex-1 on desktop */}
+          <div className="w-full md:flex-1 md:order-last">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
               Buscar por código, descrição, NCM, ANVISA ou fornecedor
             </label>
@@ -1580,54 +1535,106 @@ export default function ProdutosPage() {
               )}
             </div>
           </div>
-          <div className="shrink-0">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
-            <div className="flex gap-1">
+          {/* Hierarchy selects - grid on mobile */}
+          <div className="grid grid-cols-2 gap-3 md:contents">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
               <select
-                value={sortBy}
-                onChange={(e) => {
-                  const f = e.target.value as SortField;
-                  setSortBy(f);
-                  setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
-                  setCollapsedGroups(new Set());
-                }}
-                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                value={typeFilter}
+                onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); setSubgroupFilter(''); }}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               >
-                <option value="productType">Linha</option>
-                <option value="lastIssueDate">Últ. Compra</option>
-                <option value="ncm">NCM</option>
-                <option value="anvisa">ANVISA</option>
+                <option value="">Todos</option>
+                {hierOptions.lines.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
-              <button
-                onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-                className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors"
-                title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
-              >
-                <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
-              </button>
             </div>
-          </div>
-          <div className="shrink-0 flex flex-col justify-end">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-              {([['all', 'Todos'], ['active', 'Em Linha'], ['outOfLine', 'Fora de Linha']] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setLineStatusFilter(val)}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${lineStatusFilter === val ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            {typeFilter && (
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Grupo</label>
+                <select
+                  value={subtypeFilter}
+                  onChange={(e) => { setSubtypeFilter(e.target.value); setSubgroupFilter(''); }}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
+                  <option value="">Todos</option>
+                  {hierOptions.groupsFor(typeFilter).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {subtypeFilter && (() => {
+              const subgroups = hierOptions.subgroupsFor(typeFilter, subtypeFilter);
+              return subgroups.length > 0 ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subgrupo</label>
+                  <select
+                    value={subgroupFilter}
+                    onChange={(e) => setSubgroupFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  >
+                    <option value="">Todos</option>
+                    {subgroups.map((s) => (
+                      <option key={s!} value={s!}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null;
+            })()}
           </div>
-          <button
-            onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
-            Limpar
-          </button>
+          {/* Sort + Status + Clear - row on mobile */}
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="shrink-0">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
+              <div className="flex gap-1">
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    const f = e.target.value as SortField;
+                    setSortBy(f);
+                    setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
+                    setCollapsedGroups(new Set());
+                  }}
+                  className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                >
+                  <option value="productType">Linha</option>
+                  <option value="lastIssueDate">Últ. Compra</option>
+                  <option value="ncm">NCM</option>
+                  <option value="anvisa">ANVISA</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                  className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors"
+                  title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
+                >
+                  <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                </button>
+              </div>
+            </div>
+            <div className="shrink-0 flex flex-col justify-end">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+              <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                {([['all', 'Todos'], ['active', 'Em Linha'], ['outOfLine', 'Fora de Linha']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setLineStatusFilter(val)}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${lineStatusFilter === val ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+              Limpar
+            </button>
+          </div>
         </div>
 
         {/* Active filter indicators */}
