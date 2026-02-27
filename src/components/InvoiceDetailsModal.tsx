@@ -241,11 +241,8 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div className="flex items-center justify-between gap-3">
-            {/* Left: Back + Icon + Title */}
+            {/* Left: Icon + Title */}
             <div className="flex items-center gap-3 min-w-0 shrink-0">
-              <button onClick={onClose} className="sm:hidden p-1 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" aria-label="Voltar">
-                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-              </button>
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring} shrink-0 hidden sm:flex`}>
                 <span className={`material-symbols-outlined text-[22px] ${theme.text}`}>{theme.icon}</span>
               </div>
@@ -414,6 +411,17 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               )}
             </div>
           )}
+        </div>
+
+        {/* Footer - mobile only */}
+        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-[15px] active:bg-slate-200 dark:active:bg-slate-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            Voltar
+          </button>
         </div>
       </div>
     </div>

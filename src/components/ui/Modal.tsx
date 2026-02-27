@@ -47,19 +47,9 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Back button - mobile only */}
-            <button
-              onClick={onClose}
-              className="sm:hidden p-1 -ml-1 mr-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              aria-label="Voltar"
-            >
-              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-            </button>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-              {title}
-            </h3>
-          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
+            {title}
+          </h3>
           {/* Close button - desktop only */}
           <button
             onClick={onClose}
@@ -73,6 +63,17 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {children}
+        </div>
+
+        {/* Footer - mobile only */}
+        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-[15px] active:bg-slate-200 dark:active:bg-slate-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            Voltar
+          </button>
         </div>
       </div>
     </div>
