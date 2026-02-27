@@ -5,6 +5,7 @@ import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import {
   ensureProductSettingsCatalogTable,
   upsertProductSettingsCatalogEntry,
+  type ProductSettingsCatalogSection,
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 
@@ -20,8 +21,6 @@ const DB_COLUMN: Record<FiscalField, string> = {
   cfopEntrada: 'fiscal_cfop_entrada',
   cfopSaida: 'fiscal_cfop_saida',
 };
-
-import type { ProductSettingsCatalogSection } from '@/lib/product-settings-catalog';
 
 const CATALOG_SECTION: Record<FiscalField, ProductSettingsCatalogSection> = {
   ncm: 'fiscal_ncm',

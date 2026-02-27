@@ -6,6 +6,8 @@ import {
   ensureProductSettingsCatalogTable,
   listProductSettingsCatalogEntries,
   upsertProductSettingsCatalogEntry,
+  type ProductSettingsCatalogSection,
+  type ProductSettingsCatalogEntry,
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 
@@ -446,8 +448,6 @@ export async function GET() {
 }
 
 /* ─── Seed default fiscal catalog values ─── */
-
-import type { ProductSettingsCatalogSection, ProductSettingsCatalogEntry } from '@/lib/product-settings-catalog';
 
 const DEFAULT_FISCAL_SEEDS: { section: ProductSettingsCatalogSection; values: string[] }[] = [
   {

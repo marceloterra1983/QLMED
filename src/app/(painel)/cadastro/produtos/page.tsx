@@ -3481,26 +3481,27 @@ function SettingsModal({ onClose, onUpdated }: {
 
             {/* ════════════ DADOS FISCAIS ════════════ */}
             {activeSection === 'fiscal' && (
-              <div className="flex flex-col h-full">
-                {/* Fiscal sub-tabs — scrollable chip row */}
-                <div className="px-5 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/50 shrink-0">
-                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <div className="flex flex-col sm:flex-row h-full min-h-0">
+                {/* Fiscal vertical sidebar (sm+) / horizontal scroll (mobile) */}
+                <div className="shrink-0 sm:w-40 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/20">
+                  <div className="flex sm:flex-col overflow-x-auto sm:overflow-x-visible sm:py-2 scrollbar-none">
                     {FISCAL_TABS.map((tab) => {
                       const isActive = fiscalTab === tab.key;
                       const itemCount = fiscalItemsMap[tab.key].size;
                       return (
                         <button key={tab.key} onClick={() => { setFiscalTab(tab.key); setFiscalEditItem(null); setNewFiscalName(''); setFiscalSearch(''); }}
-                          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${isActive ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-700/40 shadow-sm' : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-                          <span className={`material-symbols-outlined text-[14px] ${isActive ? 'text-amber-500 dark:text-amber-400' : ''}`}>{tab.icon}</span>
-                          <span className="whitespace-nowrap">{tab.label}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{itemCount}</span>
+                          className={`shrink-0 flex items-center gap-2 px-4 py-2.5 sm:py-2 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-amber-50/80 dark:bg-amber-900/15 border-b-2 sm:border-b-0 sm:border-r-2 border-amber-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
+                          <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-amber-500 dark:text-amber-400' : 'text-slate-400'}`}>{tab.icon}</span>
+                          <span className={`text-[12px] font-semibold ${isActive ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>{tab.label}</span>
+                          <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{itemCount}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1.5">
+                {/* Fiscal content area */}
+                <div className="flex-1 min-w-0 overflow-y-auto px-4 py-4 space-y-1.5">
                   {/* Search + count header */}
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
@@ -3521,7 +3522,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     const isEditing = fiscalEditItem?.field === fiscalTab && fiscalEditItem.oldValue === value;
                     const useMonospace = fiscalTab === 'ncm' || fiscalTab === 'cest' || fiscalTab === 'cfopEntrada' || fiscalTab === 'cfopSaida';
                     return (
-                      <div key={value} className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group/item">
+                      <div key={value} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group/item">
                         {isEditing ? (
                           <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
                             <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
