@@ -89,7 +89,7 @@ export default function LoginPage() {
         {/* Form */}
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
           <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-5">
-            Sistema interno de gestão fiscal da QL MED. Acesso restrito a colaboradores autorizados.
+            Sistema interno de gestão da QL MED. Acesso restrito a colaboradores autorizados.
           </p>
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">
             {error && (
