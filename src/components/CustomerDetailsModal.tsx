@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useModalBackButton } from '@/hooks/useModalBackButton';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import RowActions from '@/components/ui/RowActions';
@@ -361,6 +362,7 @@ export default function CustomerDetailsModal({
   customer,
   inline = false,
 }: CustomerDetailsModalProps) {
+  useModalBackButton(isOpen && !inline, onClose);
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<CustomerDetailsResponse | null>(null);
   const [shortName, setShortName] = useState('');
@@ -1334,9 +1336,9 @@ export default function CustomerDetailsModal({
       {inline ? (
         <div className="space-y-3">{content}</div>
       ) : (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-transparent sm:bg-black/60 sm:backdrop-blur-sm">
           <div
-            className="absolute inset-0"
+            className="absolute inset-0 hidden sm:block"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -1349,7 +1351,10 @@ export default function CustomerDetailsModal({
             <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
+                  <button onClick={onClose} className="sm:hidden p-1 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" aria-label="Voltar">
+                    <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                  </button>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
                     <span className="material-symbols-outlined text-[22px] text-primary">person</span>
                   </div>
                   <div className="min-w-0">
@@ -1365,7 +1370,7 @@ export default function CustomerDetailsModal({
                 <button
                   onClick={onClose}
                   aria-label="Fechar"
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                  className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                   title="Fechar"
                 >
                   <span className="material-symbols-outlined text-[20px]">close</span>

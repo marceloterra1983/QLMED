@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useModalBackButton } from '@/hooks/useModalBackButton';
 
 interface InvoiceDetailsModalProps {
   isOpen: boolean;
@@ -119,6 +120,7 @@ const DOC_THEME: Record<string, { icon: string; label: string; gradient: string;
 const DEFAULT_THEME = DOC_THEME.NFE;
 
 export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: InvoiceDetailsModalProps) {
+  useModalBackButton(isOpen, onClose);
   const [view, setView] = useState<'danfe' | 'xml'>('danfe');
   const [xmlContent, setXmlContent] = useState<string | null>(null);
   const [loadingXml, setLoadingXml] = useState(false);
@@ -225,9 +227,9 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-transparent sm:bg-black/60 sm:backdrop-blur-sm">
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 hidden sm:block"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -239,9 +241,12 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div className="flex items-center justify-between gap-3">
-            {/* Left: Icon + Title */}
+            {/* Left: Back + Icon + Title */}
             <div className="flex items-center gap-3 min-w-0 shrink-0">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring} shrink-0`}>
+              <button onClick={onClose} className="sm:hidden p-1 -ml-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" aria-label="Voltar">
+                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+              </button>
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring} shrink-0 hidden sm:flex`}>
                 <span className={`material-symbols-outlined text-[22px] ${theme.text}`}>{theme.icon}</span>
               </div>
               <div className="min-w-0">
@@ -313,12 +318,12 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 <span className="hidden md:inline">Imprimir</span>
               </button>
 
-              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
               <button
                 onClick={onClose}
                 aria-label="Fechar documento"
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title="Fechar"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
