@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
 import { Providers } from './providers';
+import { PWARegister } from '@/components/PWARegister';
 import './globals.css';
 
 const manrope = Manrope({
@@ -20,6 +21,20 @@ export const metadata: Metadata = {
   title: 'QLMED - Gestão de Notas Fiscais',
   description: 'Plataforma completa para gerenciamento de notas fiscais eletrônicas. Receba, consulte e gerencie XMLs de NF-e, CT-e e NFS-e.',
   keywords: ['notas fiscais', 'XML', 'NF-e', 'CT-e', 'NFS-e', 'gestão fiscal'],
+  manifest: '/manifest.json',
+  themeColor: '#7c3aed',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'QLMED',
+  },
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +46,7 @@ export default function RootLayout({
     <html lang="pt-BR" className={manrope.variable} suppressHydrationWarning>
       <head />
       <body suppressHydrationWarning className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased">
+        <PWARegister />
         <Providers>{children}</Providers>
       </body>
     </html>

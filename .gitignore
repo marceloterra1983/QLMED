@@ -57,6 +57,10 @@ test-insert.js
 *.jpeg
 *.jpg
 *.png
+!public/icon-192.png
+!public/icon-512.png
+!public/apple-touch-icon.png
+!public/logo.png
 =1
 tmp-*.xml
 scripts/smtp-test.log
