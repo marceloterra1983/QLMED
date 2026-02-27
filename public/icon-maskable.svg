@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="256" cy="268" r="185"/>
+    </clipPath>
+  </defs>
+  <!-- Full bleed background for maskable -->
+  <rect width="512" height="512" fill="#2952b8"/>
+  <!-- Circle -->
+  <circle cx="256" cy="268" r="185" fill="#2952b8"/>
+  <!-- Notch cutout (clipped to circle) -->
+  <g clip-path="url(#circleClip)">
+    <rect x="272" y="83" width="190" height="140" fill="white"/>
+  </g>
+  <!-- White "L" inside safe zone -->
+  <rect x="158" y="132" width="70" height="248" rx="3" fill="white"/>
+  <rect x="158" y="310" width="195" height="70" rx="3" fill="white"/>
+</svg>

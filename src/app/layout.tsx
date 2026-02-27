@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: 'Plataforma completa para gerenciamento de notas fiscais eletrônicas. Receba, consulte e gerencie XMLs de NF-e, CT-e e NFS-e.',
   keywords: ['notas fiscais', 'XML', 'NF-e', 'CT-e', 'NFS-e', 'gestão fiscal'],
   manifest: '/manifest.json',
-  themeColor: '#7c3aed',
+  themeColor: '#2952b8',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
