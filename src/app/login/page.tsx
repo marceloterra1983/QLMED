@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -85,8 +84,6 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-4">Bem-vindo de volta</h2>
-          <p className="text-sm text-slate-500 mt-1">Entre na sua conta para continuar</p>
         </div>
 
         {/* Form */}
@@ -146,14 +143,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              href="/register"
-              className="text-sm text-primary hover:text-primary-dark font-medium transition-colors"
-            >
-              Não tem conta? Cadastre-se
-            </Link>
-          </div>
         </div>
       </div>
     </div>
