@@ -29,6 +29,7 @@ export const PAGE_GROUPS: PageGroup[] = [
     pages: [
       { label: 'NF-e Recebidas', path: '/fiscal/invoices' },
       { label: 'NF-e Emitidas', path: '/fiscal/issued' },
+      { label: 'NFS-e Recebidas', path: '/fiscal/nfse-recebidas' },
       { label: 'CT-e', path: '/fiscal/cte' },
     ],
   },

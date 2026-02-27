@@ -108,6 +108,7 @@ export async function PATCH(req: Request) {
       if ('fiscalCfopSaida'      in fields) updates.push('fiscal_cfop_saida = EXCLUDED.fiscal_cfop_saida');
       if ('fiscalIpi'            in fields) updates.push('fiscal_ipi = EXCLUDED.fiscal_ipi');
       if ('fiscalFcp'            in fields) updates.push('fiscal_fcp = EXCLUDED.fiscal_fcp');
+      if ('codigo'               in fields) updates.push('codigo = EXCLUDED.codigo');
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO product_registry
@@ -116,6 +117,7 @@ export async function PATCH(req: Request) {
             out_of_line,
             fiscal_sit_tributaria, fiscal_nome_tributacao, fiscal_icms, fiscal_pis, fiscal_cofins, fiscal_obs,
             fiscal_cest, fiscal_origem, fiscal_cfop_entrada, fiscal_cfop_saida, fiscal_ipi, fiscal_fcp,
+            codigo,
             created_at, updated_at)
          VALUES
            (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
@@ -123,6 +125,7 @@ export async function PATCH(req: Request) {
             $14,
             $15, $16, $17, $18, $19, $20,
             $21, $22, $23, $24, $25, $26,
+            $27,
             NOW(), NOW())
          ON CONFLICT (company_id, product_key) DO UPDATE SET
            ${updates.join(',\n           ')}`,
@@ -152,6 +155,7 @@ export async function PATCH(req: Request) {
         'fiscalCfopSaida'      in fields ? cleanString(fields.fiscalCfopSaida)       : null,
         'fiscalIpi'            in fields ? toNullableNumber(fields.fiscalIpi)         : null,
         'fiscalFcp'            in fields ? toNullableNumber(fields.fiscalFcp)         : null,
+        'codigo'               in fields ? cleanString(fields.codigo)                : null,
       );
 
       updated++;

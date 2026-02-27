@@ -122,6 +122,7 @@ export async function GET(req: Request) {
       `
       SELECT
         pr.product_key,
+        pr.codigo,
         pr.code,
         pr.description,
         pr.ncm,
@@ -150,6 +151,7 @@ export async function GET(req: Request) {
     // Map to lightweight ProductRow — enough for table display
     const products = rows.map((row: any) => ({
       key: row.product_key,
+      codigo: row.codigo || null,
       code: row.code || '-',
       description: row.description || '',
       ncm: row.ncm || null,

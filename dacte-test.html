@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>DACTE - CT-e 000.031.084</title>
+  <style>
+    
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #e9e9e9; }
+.page { width: 210mm; margin: 10mm auto; background: #fff; padding: 5mm; }
+@media print {
+  body { background: #fff; }
+  .page { width: 100%; margin: 0; padding: 5mm; box-shadow: none; }
+  @page { size: A4 portrait; margin: 5mm; }
+}
+
+table.danfe { width: 100%; border-collapse: collapse; margin-top: -1px; }
+table.danfe td, table.danfe th { border: 1px solid #000; padding: 1px 3px; vertical-align: top; font-size: 8px; }
+table.danfe .lbl { display: block; font-size: 6px; font-weight: bold; text-transform: uppercase; color: #333; line-height: 1.2; margin-bottom: 0px; }
+table.danfe .val { display: block; font-size: 9px; font-weight: 600; line-height: 1.3; }
+table.danfe .val-lg { display: block; font-size: 11px; font-weight: 700; line-height: 1.3; }
+table.danfe .val-mono { display: block; font-size: 8px; font-family: 'Courier New', monospace; line-height: 1.4; }
+table.danfe .center { text-align: center; }
+table.danfe .right { text-align: right; }
+table.danfe .no-border-t { border-top: none; }
+table.danfe .no-border-b { border-bottom: none; }
+table.danfe .no-border-l { border-left: none; }
+table.danfe .no-border-r { border-right: none; }
+table.danfe .section-title { background: #f5f5f5; font-size: 7px; font-weight: bold; text-transform: uppercase; padding: 2px 4px; }
+
+.canhoto-wrapper { margin-bottom: 2mm; }
+.canhoto-line { border-bottom: 1px dashed #000; margin: 2mm 0; }
+
+.danfe-box { text-align: center; padding: 2px 4px; }
+.danfe-box .danfe-title { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+.danfe-box .danfe-sub { font-size: 7px; line-height: 1.3; }
+.danfe-box .entry-exit { display: flex; justify-content: center; align-items: center; gap: 4px; margin: 3px 0; font-size: 7px; }
+.danfe-box .entry-exit .box { width: 14px; height: 14px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+.danfe-box .nf-num { font-size: 11px; font-weight: bold; margin: 2px 0; }
+.danfe-box .nf-serie { font-size: 8px; }
+.danfe-box .nf-page { font-size: 8px; }
+
+.key-area { font-size: 7px; }
+.key-area .key-value { font-family: 'Courier New', monospace; font-size: 9px; font-weight: bold; letter-spacing: 0.5px; word-break: break-all; margin-top: 2px; }
+.key-area .consulta { font-size: 6.5px; color: #333; margin-top: 4px; line-height: 1.3; }
+
+.nfe-badge { font-size: 14px; font-weight: bold; text-align: center; }
+
+table.prods { width: 100%; border-collapse: collapse; margin-top: -1px; }
+table.prods td, table.prods th { border: 1px solid #000; padding: 1px 2px; font-size: 7px; vertical-align: top; }
+table.prods th { font-size: 6px; font-weight: bold; text-transform: uppercase; text-align: center; background: #f5f5f5; padding: 2px; }
+table.prods td.right { text-align: right; }
+table.prods td.center { text-align: center; }
+table.prods .prod-desc { font-size: 7px; font-weight: 600; }
+table.prods .prod-info { font-size: 6.5px; color: #444; }
+
+.footer-line { font-size: 7px; display: flex; justify-content: space-between; padding: 3px 0; margin-top: 2mm; color: #555; }
+
+.parcelas-grid { display: flex; flex-wrap: wrap; gap: 0; }
+.parcela-item { border: 1px solid #000; border-left: none; padding: 1px 4px; font-size: 7px; min-width: 100px; }
+.parcela-item:first-child { border-left: 1px solid #000; }
+.parcela-item .lbl { font-size: 5.5px; font-weight: bold; text-transform: uppercase; }
+.parcela-item .val { font-size: 7.5px; font-weight: 600; }
+
+    /* DACTE extras */
+    .dacte-header { display:grid; grid-template-columns:1fr auto; gap:0; border:1px solid #000; margin-bottom:4px; }
+    .dacte-emit-box { padding:6px 8px; border-right:1px solid #000; }
+    .dacte-emit-nome { font-size:13px; font-weight:bold; margin-bottom:2px; }
+    .dacte-emit-end { font-size:8px; color:#333; }
+    .dacte-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px 12px; min-width:180px; text-align:center; }
+    .dacte-title { font-size:14px; font-weight:900; letter-spacing:2px; }
+    .dacte-subtitle { font-size:7px; font-weight:bold; margin-bottom:4px; }
+    .dacte-model { font-size:9px; font-weight:bold; }
+    .dacte-num { font-size:10px; font-weight:bold; margin-top:4px; }
+
+    .section { border:1px solid #000; margin-bottom:3px; }
+    .section-header { background:#eee; font-size:7px; font-weight:bold; text-transform:uppercase; padding:1px 4px; border-bottom:1px solid #000; letter-spacing:.5px; }
+    .section-body { display:flex; flex-wrap:wrap; padding:2px; gap:0; }
+    .field { display:flex; flex-direction:column; padding:1px 4px; min-width:80px; flex:1; }
+    .field.full { flex:0 0 100%; width:100%; }
+    .lbl { font-size:6px; color:#555; text-transform:uppercase; font-weight:bold; }
+    .val { font-size:9px; }
+
+    .percurso { display:flex; align-items:center; justify-content:center; gap:20px; padding:8px; }
+    .percurso-item { text-align:center; }
+    .percurso-mun { font-size:13px; font-weight:bold; }
+    .percurso-uf { font-size:11px; color:#555; }
+    .percurso-label { font-size:7px; color:#888; text-transform:uppercase; }
+    .percurso-arrow { font-size:24px; color:#999; }
+
+    .comps-table { width:100%; border-collapse:collapse; font-size:8px; }
+    .comps-table th { background:#eee; padding:2px 4px; text-align:left; font-size:7px; font-weight:bold; border-bottom:1px solid #ccc; }
+    .comps-table td { padding:2px 4px; border-bottom:1px solid #f0f0f0; }
+    .comp-val { width:80px; }
+    .comps-total { display:flex; justify-content:space-between; padding:4px 8px; border-top:2px solid #000; font-weight:bold; font-size:9px; }
+
+    .key-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; }
+    .key-box .lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:1px; }
+    .key-box .key-val { font-family:monospace; font-size:9px; letter-spacing:.3px; font-weight:bold; }
+
+    .prot-box { display:flex; justify-content:space-between; align-items:center; border:1px solid #000; padding:4px 8px; margin-bottom:3px; background:#f9f9f9; }
+    .prot-label { font-size:7px; color:#555; text-transform:uppercase; }
+    .prot-val { font-size:9px; font-weight:bold; }
+
+    .doc-ref { font-family:monospace; font-size:8px; letter-spacing:.3px; padding:1px 0; border-bottom:1px solid #eee; }
+    .right { text-align:right; }
+    .obs-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; font-size:8px; min-height:30px; }
+    .obs-box .lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:2px; }
+
+    @media print {
+      body { margin:0; }
+      .page { margin:0; padding:4mm; box-shadow:none; }
+      .no-print { display:none; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- CHAVE DE ACESSO -->
+  <div class="key-box">
+    <div class="lbl">CHAVE DE ACESSO</div>
+    <div class="key-val">5026 0146 9700 3000 0393 5700 1000 0310 8410 0192 1371</div>
+  </div>
+
+  <!-- HEADER: EMITENTE + TÍTULO DACTE -->
+  <div class="dacte-header">
+    <div class="dacte-emit-box">
+      <div class="dacte-emit-nome">PANTANAL OPERADOR DE TRANSPORTE MULTIMODAL LT</div>
+      <div class="dacte-emit-end">
+        RUA SAO COSME E DAMIAO, 620 - VILA PROGRESSO<br>
+        CAMPO GRANDE/MS &nbsp;&bull;&nbsp; CEP: 79050-390 &nbsp;&bull;&nbsp; Fone: <br>
+        CNPJ: 46.970.030/0003-93 &nbsp;&bull;&nbsp; IE: 284742406
+      </div>
+    </div>
+    <div class="dacte-title-box">
+      <div class="dacte-subtitle">DOCUMENTO AUXILIAR DO</div>
+      <div class="dacte-title">DACTE</div>
+      <div class="dacte-subtitle">CONHECIMENTO DE TRANSPORTE ELETR&Ocirc;NICO</div>
+      <div class="dacte-model">Modelo 57</div>
+      <div class="dacte-num">N&ordm; 000.031.084 &nbsp; S&eacute;rie 1</div>
+      <div style="font-size:8px; margin-top:2px;">Emiss&atilde;o: 29/01/2026</div>
+    </div>
+  </div>
+
+  <!-- PROTOCOLO DE AUTORIZAÇÃO -->
+  <div class="prot-box">
+    <div><div class="prot-label">Protocolo de Autoriza&ccedil;&atilde;o de Uso</div><div class="prot-val">150260001561524</div></div>
+    <div><div class="prot-label">Data/Hora Recebimento</div><div class="prot-val">29/01/2026 19:40:35</div></div>
+  </div>
+
+  <!-- PERCURSO -->
+  <div class="section"><div class="section-header">Percurso</div><div class="section-body"><div class="percurso">
+    <div class="percurso-item">
+      <div class="percurso-mun">CAMPO GRANDE</div>
+      <div class="percurso-uf">MS</div>
+      <div class="percurso-label">Origem</div>
+    </div>
+    <div class="percurso-arrow">&#8594;</div>
+    <div class="percurso-item">
+      <div class="percurso-mun">RONDONOPOLIS</div>
+      <div class="percurso-uf">MT</div>
+      <div class="percurso-label">Destino</div>
+    </div>
+  </div></div></div>
+
+  <!-- NATUREZA / CFOP / TIPO -->
+  <div class="section"><div class="section-header">Informações do CT-e</div><div class="section-body">
+    <div class="field full"><span class="lbl">Natureza da Opera&ccedil;&atilde;o</span><span class="val">Transp a est comercial</span></div>
+    <div class="field" style="max-width:80px"><span class="lbl">CFOP</span><span class="val">6353</span></div>
+    <div class="field" style=""><span class="lbl">Tipo do CT-e</span><span class="val">CT-e Normal</span></div>
+    <div class="field" style=""><span class="lbl">Tipo de Servi&ccedil;o</span><span class="val">Normal</span></div>
+    <div class="field" style=""><span class="lbl">Modal</span><span class="val">Rodoviário</span></div>
+    <div class="field" style=""><span class="lbl">Tomador do Servi&ccedil;o</span><span class="val">Remetente</span></div>
+  </div></div>
+
+  <!-- EMITENTE -->
+  <div class="section"><div class="section-header">Emitente</div><div class="section-body">
+    <div class="field full"><span class="lbl">Raz&atilde;o Social</span><span class="val">PANTANAL OPERADOR DE TRANSPORTE MULTIMODAL LT</span></div>
+    <div class="field" style=""><span class="lbl">CNPJ</span><span class="val">46.970.030/0003-93</span></div>
+    <div class="field" style=""><span class="lbl">Inscri&ccedil;&atilde;o Estadual</span><span class="val">284742406</span></div>
+    <div class="field" style=""><span class="lbl">Fone</span><span class="val"></span></div>
+    <div class="field full"><span class="lbl">Endere&ccedil;o</span><span class="val">RUA SAO COSME E DAMIAO, 620 - VILA PROGRESSO</span></div>
+    <div class="field" style=""><span class="lbl">Munic&iacute;pio</span><span class="val">CAMPO GRANDE</span></div>
+    <div class="field" style="max-width:40px"><span class="lbl">UF</span><span class="val">MS</span></div>
+    <div class="field" style=""><span class="lbl">CEP</span><span class="val">79050-390</span></div>
+  </div></div>
+
+  <!-- REMETENTE -->
+  <div class="section"><div class="section-header">Remetente</div><div class="section-body">
+    <div class="field full"><span class="lbl">Raz&atilde;o Social / Nome</span><span class="val">QL MED - MATERIAIS HOSPITALARE</span></div>
+    <div class="field" style=""><span class="lbl">CNPJ/CPF</span><span class="val">07.832.309/0001-97</span></div>
+    <div class="field" style=""><span class="lbl">Inscri&ccedil;&atilde;o Estadual</span><span class="val">283379189</span></div>
+    <div class="field" style=""><span class="lbl">Fone</span><span class="val">(67)3326-3520</span></div>
+    <div class="field full"><span class="lbl">Endere&ccedil;o</span><span class="val">RUA SALOMAO NAHAS, 44 - CHACARA CACHOEIRA II</span></div>
+    <div class="field" style=""><span class="lbl">Munic&iacute;pio</span><span class="val">CAMPO GRANDE</span></div>
+    <div class="field" style="max-width:40px"><span class="lbl">UF</span><span class="val">MS</span></div>
+    <div class="field" style=""><span class="lbl">CEP</span><span class="val">79040-044</span></div>
+  </div></div>
+
+  <!-- EXPEDIDOR (se existir e diferente do remetente) -->
+  
+
+  <!-- RECEBEDOR (se existir e diferente do destinatário) -->
+  
+
+  <!-- DESTINATÁRIO -->
+  <div class="section"><div class="section-header">Destinat&aacute;rio</div><div class="section-body">
+    <div class="field full"><span class="lbl">Raz&atilde;o Social / Nome</span><span class="val">STA CASA DE MISERICORDIA E MAT</span></div>
+    <div class="field" style=""><span class="lbl">CNPJ/CPF</span><span class="val">03.099.157/0001-04</span></div>
+    <div class="field" style=""><span class="lbl">Inscri&ccedil;&atilde;o Estadual</span><span class="val"></span></div>
+    <div class="field" style=""><span class="lbl">Fone</span><span class="val">(66)3410-2700</span></div>
+    <div class="field full"><span class="lbl">Endere&ccedil;o</span><span class="val">R ACYR REZENDE S. SILVA, 100 - VILA BIRIGUI</span></div>
+    <div class="field" style=""><span class="lbl">Munic&iacute;pio</span><span class="val">RONDONOPOLIS</span></div>
+    <div class="field" style="max-width:40px"><span class="lbl">UF</span><span class="val">MT</span></div>
+    <div class="field" style=""><span class="lbl">CEP</span><span class="val">78710-129</span></div>
+  </div></div>
+
+  <!-- VALORES DA PRESTAÇÃO -->
+  <div class="section">
+    <div class="section-header">Valores da Presta&ccedil;&atilde;o do Servi&ccedil;o</div>
+    <table class="comps-table">
+      <thead><tr><th>Componente</th><th class="right">Valor</th></tr></thead>
+      <tbody><tr><td class="comp-nome">FRETE PESO</td><td class="comp-val right">R$ 135,41</td></tr><tr><td class="comp-nome">FRETE VALOR</td><td class="comp-val right">R$ 42,00</td></tr><tr><td class="comp-nome">DESPACHO</td><td class="comp-val right">R$ 17,02</td></tr><tr><td class="comp-nome">GRIS</td><td class="comp-val right">R$ 16,50</td></tr><tr><td class="comp-nome">PEDAGIO</td><td class="comp-val right">R$ 12,26</td></tr><tr><td class="comp-nome">TAS</td><td class="comp-val right">R$ 10,92</td></tr><tr><td class="comp-nome">CAT</td><td class="comp-val right">R$ 14,00</td></tr></tbody>
+    </table>
+    <div class="comps-total">
+      <span>VALOR TOTAL DA PRESTA&Ccedil;&Atilde;O</span>
+      <span>R$ 248,11</span>
+    </div>
+    <div class="comps-total" style="border-top:1px solid #ccc; font-weight:normal; font-size:8px;">
+      <span>VALOR A RECEBER</span>
+      <span>R$ 248,11</span>
+    </div>
+  </div>
+
+  <!-- IMPOSTOS -->
+  <div class="section"><div class="section-header">C&aacute;lculo do Imposto</div><div class="section-body">
+    <div class="field" style=""><span class="lbl">CST</span><span class="val">00</span></div>
+    <div class="field" style=""><span class="lbl">Base de C&aacute;lculo do ICMS</span><span class="val">R$ 248,11</span></div>
+    <div class="field" style=""><span class="lbl">Al&iacute;quota do ICMS (%)</span><span class="val">12,00%</span></div>
+    <div class="field" style=""><span class="lbl">Valor do ICMS</span><span class="val">R$ 29,77</span></div>
+    <div class="field" style=""><span class="lbl">Valor Total dos Tributos</span><span class="val">R$ 29,77</span></div>
+  </div></div>
+
+  <!-- INFORMAÇÕES DA CARGA -->
+  <div class="section"><div class="section-header">Informa&ccedil;&otilde;es da Carga</div><div class="section-body">
+    <div class="field full"><span class="lbl">Produto Predominante</span><span class="val">297918 - PATCH ORGANICO LABCOR 5CM X 10CM</span></div>
+    <div class="field" style=""><span class="lbl">Valor da Carga</span><span class="val">R$ 3.500,00</span></div>
+    <div class="field" style=""><span class="lbl">Valor p/ Averba&ccedil;&atilde;o</span><span class="val">R$ 3.500,00</span></div>
+    <div class="field" style=""><span class="lbl">Peso Real (kg)</span><span class="val">20,0000</span></div>
+    <div class="field" style=""><span class="lbl">Peso p/ C&aacute;lculo (kg)</span><span class="val">20,0000</span></div>
+  </div></div>
+
+  <!-- DOCUMENTOS ORIGINÁRIOS -->
+  <div class="section">
+    <div class="section-header">Documentos Origin&aacute;rios (NF-e / NF)</div>
+    <div class="section-body" style="flex-direction:column; padding:4px 8px;">
+      <div class="doc-ref">5026 0107 8323 0900 0197 5500 2000 0640 3710 0464 0327</div>
+    </div>
+  </div>
+
+  <!-- MODAL RODOVIÁRIO -->
+  <div class="section"><div class="section-header">Modal Rodovi&aacute;rio</div><div class="section-body">
+    <div class="field" style=""><span class="lbl">RNTRC</span><span class="val">55222744</span></div>
+  </div></div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="obs-box">
+    <div class="lbl">Observa&ccedil;&otilde;es / Dados do Produto</div>
+    <div>Transporte subcontratado/redespachado para J. E TRANSPORTES LTDA, CNPJ 43.555.056/0001-15, IE: 00138974039. CST: 00 - Apolice seguro: 5177202456540001996 - Seguradora: 61573796000166 ALLIANZ SEGUROS S.A. | 1: Transporte subcontratado/redespachado para J. E TRANSPORTES LTDA, CNPJ 43.555.056/0001-15, IE: 00138974039. | 2: CST: 00 - Apolice seguro: 5177202456540001996 - Seguradora: 61573796000166 ALLIANZ SEGUROS S.A. | RESPSEG: 46970030000393 | 4: TABELA: PROMOCIONAL  PR50388 - ROTA: CG1P/RO1P - TARIF: 150 - TIPO MERCAD: MAT. MEDICO HOSPITALAR | 5: Tratamento de dados pessoais pode ser dado para execucao de contrato de transporte (LGPD art. 7, V).</div>
+  </div>
+
+  <!-- QR CODE URL (fallback textual) -->
+  <div style="font-size:7px; color:#888; border-top:1px solid #eee; padding-top:3px; margin-top:2px; word-break:break-all;">
+    QR Code: http://www.dfe.ms.gov.br/cte/qrcode?chCTe=50260146970030000393570010000310841001921371&amp;tpAmb=1
+  </div>
+
+  <!-- RODAPÉ -->
+  <div class="footer-line">
+    <span>DATA E HORA DE IMPRESS&Atilde;O: 27/02/2026, 11:27:42</span>
+    <span>QLMED - Sistema de Gest&atilde;o Fiscal</span>
+  </div>
+
+</div>
+
+</body>
+</html>

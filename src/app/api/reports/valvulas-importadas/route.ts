@@ -6,20 +6,14 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { isImportEntryCfop, getCfopTagByCode } from '@/lib/cfop';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 
-/* ── Inline helpers (same pattern as products/route.ts) ── */
+import { isResaleCustomer } from '@/lib/resale-customers';
 
-const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
+/* ── Inline helpers (same pattern as products/route.ts) ── */
 
 /* CNPJs that should be merged as the same customer. Key = secondary CNPJ, Value = primary CNPJ */
 const CNPJ_MERGE_MAP: Record<string, string> = {
   '60967551002790': '03604782000166', // Instituto Presbiteriano Mackenzie → Associação Beneficiente Douradense
 };
-
-function isResaleCustomer(recipientName: string | null | undefined): boolean {
-  if (!recipientName) return false;
-  const upper = recipientName.toUpperCase();
-  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
-}
 
 const UNIT_ALIASES: Record<string, string> = {
   UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',

@@ -232,7 +232,13 @@ async function generatePdf(html: string): Promise<Buffer> {
 
 /* ── Send email ── */
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function sendEmail(to: string, pdfBuffer: Buffer): Promise<void> {
+  if (!process.env.SMTP_PASS) {
+    throw new Error('SMTP_PASS não configurado no servidor');
+  }
+
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.office365.com',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -292,6 +298,9 @@ export async function GET(req: NextRequest) {
     if (action === 'email') {
       if (!to) {
         return NextResponse.json({ error: 'Parâmetro "to" obrigatório' }, { status: 400 });
+      }
+      if (!EMAIL_REGEX.test(to)) {
+        return NextResponse.json({ error: 'Endereço de email inválido' }, { status: 400 });
       }
       await sendEmail(to, pdfBuffer);
       return NextResponse.json({ ok: true });

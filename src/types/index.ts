@@ -15,6 +15,7 @@ export interface Invoice {
   issueDate: string;
   senderCnpj: string;
   senderName: string;
+  senderCity?: string | null;
   recipientCnpj: string;
   recipientName: string;
   totalValue: number;

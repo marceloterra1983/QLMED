@@ -16,6 +16,10 @@ import {
   type ProductFromXml,
 } from '@/lib/product-aggregation';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
+import { extractAllTaxData } from '@/lib/parse-invoice-tax';
+import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
+import { extractPartyFiscalData } from '@/lib/parse-invoice-xml';
+import { upsertContactFiscal } from '@/lib/contact-fiscal-store';
 
 /**
  * Update product aggregates for a single invoice after it's been upserted.
@@ -58,8 +62,57 @@ export async function updateProductAggregatesForInvoice(opts: {
       // Normal sale — update last sale date
       await updateSaleDate(opts, products);
     }
+
+    // Extract and persist tax data from the XML (NF-e only)
+    await extractAndStoreTaxData(opts.invoiceId, opts.companyId, opts.xmlContent);
+
+    // Extract and persist fiscal data (IE, IM, CRT) for both parties
+    await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
   } catch (err) {
     console.error('[product-aggregate-updater] Error:', err);
+  }
+}
+
+async function extractAndStoreTaxData(
+  invoiceId: string,
+  companyId: string,
+  xmlContent: string,
+) {
+  try {
+    const { totals, items } = await extractAllTaxData(xmlContent);
+
+    if (totals) {
+      await upsertTaxTotals({ invoiceId, companyId, ...totals });
+    }
+
+    if (items.length > 0) {
+      await upsertItemTaxes(invoiceId, companyId, items);
+
+      // Update product_registry fiscal fields with tax rates from this invoice
+      for (const item of items) {
+        if (!item.productCode) continue;
+        await prisma.$executeRawUnsafe(
+          `UPDATE product_registry SET
+            fiscal_icms = COALESCE($2, fiscal_icms),
+            fiscal_pis = COALESCE($3, fiscal_pis),
+            fiscal_cofins = COALESCE($4, fiscal_cofins),
+            fiscal_ipi = COALESCE($5, fiscal_ipi),
+            fiscal_cfop_entrada = COALESCE($6, fiscal_cfop_entrada),
+            updated_at = NOW()
+          WHERE company_id = $1
+            AND UPPER(TRIM(code)) = UPPER(TRIM($7))`,
+          companyId,
+          item.aliqIcms,
+          item.aliqPis,
+          item.aliqCofins,
+          item.aliqIpi,
+          item.cfop,
+          item.productCode,
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[product-aggregate-updater] Tax extraction error:', err);
   }
 }
 
@@ -210,8 +263,8 @@ async function updateResaleDeductions(
     await prisma.$executeRawUnsafe(
       `
       UPDATE product_registry SET
-        agg_total_quantity = COALESCE(agg_total_quantity, 0) - $2,
-        agg_total_value = COALESCE(agg_total_value, 0) - $3,
+        agg_total_quantity = GREATEST(COALESCE(agg_total_quantity, 0) - $2, 0),
+        agg_total_value = GREATEST(COALESCE(agg_total_value, 0) - $3, 0),
         agg_resale_quantity = COALESCE(agg_resale_quantity, 0) + $2,
         agg_average_price = CASE
           WHEN (COALESCE(agg_total_quantity, 0) - $2) > 0
@@ -261,6 +314,36 @@ async function updateSaleDate(
       product.unitPrice,
       key,
     );
+  }
+}
+
+async function extractAndStoreContactFiscal(
+  invoiceId: string,
+  companyId: string,
+  xmlContent: string,
+) {
+  try {
+    const [emit, dest] = await Promise.all([
+      extractPartyFiscalData(xmlContent, 'emit'),
+      extractPartyFiscalData(xmlContent, 'dest'),
+    ]);
+
+    if (emit?.cnpj) {
+      await upsertContactFiscal({
+        companyId, cnpj: emit.cnpj,
+        ie: emit.ie, im: emit.im, crt: emit.crt, uf: emit.uf,
+        sourceInvoiceId: invoiceId,
+      });
+    }
+    if (dest?.cnpj) {
+      await upsertContactFiscal({
+        companyId, cnpj: dest.cnpj,
+        ie: dest.ie, im: dest.im, crt: dest.crt, uf: dest.uf,
+        sourceInvoiceId: invoiceId,
+      });
+    }
+  } catch (err) {
+    console.error('[product-aggregate-updater] Contact fiscal extraction error:', err);
   }
 }
 

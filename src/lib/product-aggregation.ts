@@ -8,20 +8,14 @@ import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { normalizeForSearch } from '@/lib/utils';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
+import { isResaleCustomer } from '@/lib/resale-customers';
+
+export { isResaleCustomer };
 
 const MAX_INVOICES = 3000;
 const MAX_ISSUED_INVOICES = 3000;
 const MAX_IMPORT_INVOICES = 500;
 const XML_BATCH_SIZE = 50;
-
-/* ── Resale customers (Navix/Prime) ── */
-const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
-
-export function isResaleCustomer(recipientName: string | null | undefined): boolean {
-  if (!recipientName) return false;
-  const upper = recipientName.toUpperCase();
-  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
-}
 
 export interface ProductFromXml {
   code: string;

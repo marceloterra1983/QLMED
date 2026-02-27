@@ -10,6 +10,7 @@ const optional = [
   'CLIENT_ID',
   'CLIENT_SECRET',
   'REDIRECT_URI',
+  'RECEITA_NFSE_VERIFY_SSL',
 ] as const;
 
 export function validateEnv() {

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate } from '@/lib/utils';
+import { formatQuantity, formatPrice } from '@/lib/modal-helpers';
 
 interface SupplierRef {
   cnpj: string;
@@ -45,14 +46,6 @@ interface SupplierPriceTableModalProps {
 
 type PriceSortKey = 'description' | 'code' | 'quantity2025' | 'quantity2026' | 'lastPrice' | 'lastIssueDate';
 type SortDirection = 'asc' | 'desc';
-
-function formatQuantity(value: number) {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
-}
-
-function formatPrice(value: number) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
 
 async function fetchSupplierDetails(targetSupplier: SupplierRef): Promise<SupplierDetailsResponse> {
   const params = new URLSearchParams();

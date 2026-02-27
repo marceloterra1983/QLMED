@@ -10,6 +10,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 
 interface ProductRow {
   key: string;
+  codigo?: string | null;
   code: string;
   description: string;
   ncm: string | null;
@@ -49,8 +50,6 @@ interface ProductRow {
   fiscalObs?: string | null;
   fiscalCest?: string | null;
   fiscalOrigem?: string | null;
-  fiscalCfopEntrada?: string | null;
-  fiscalCfopSaida?: string | null;
   fiscalIpi?: number | null;
   fiscalFcp?: number | null;
 }
@@ -93,6 +92,25 @@ function formatDate(value: string | null) {
   return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR');
 }
 
+function getAnvisaExpirationBadge(expiration: string | null | undefined): { label: string; className: string } | null {
+  if (!expiration) return null;
+  const trimmed = expiration.trim().toUpperCase();
+  if (!trimmed || trimmed === 'N/A' || trimmed.includes('INDETERMINADA') || trimmed.includes('VIGENTE')) return null;
+  // Parse DD/MM/YYYY or YYYY-MM-DD
+  let date: Date | null = null;
+  const brMatch = trimmed.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  if (brMatch) date = new Date(Number(brMatch[3]), Number(brMatch[2]) - 1, Number(brMatch[1]));
+  else {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) date = d;
+  }
+  if (!date) return null;
+  const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  if (days < 0) return { label: 'Vencido', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/40' };
+  if (days <= 90) return { label: `${days}d`, className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800/40' };
+  return null;
+}
+
 function formatOptional(value: number | null) {
   if (value == null) return '-';
   return formatValue(value);
@@ -133,7 +151,7 @@ const DETAIL_INPUT_CLS = "w-full px-3 py-2.5 border border-slate-200 dark:border
 function DetailSectionCard({ id, icon, iconColor, title, badge, isOpen, onToggle, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; isOpen: boolean; onToggle: (id: string) => void; children: React.ReactNode }) {
   const ibg = iconBgMap[iconColor] || iconBgMap['text-primary'];
   return (
-    <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+    <div data-section-id={id} className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
       <button
         onClick={() => onToggle(id)}
         className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
@@ -378,10 +396,16 @@ export default function ProdutosPage() {
   const [detailProduct, setDetailProduct] = useState<ProductRow | null>(null);
   const [detailAnvisa, setDetailAnvisa] = useState('');
   const [detailNcm, setDetailNcm] = useState('');
+  const [detailNcmInfo, setDetailNcmInfo] = useState<{ hierarchy: Array<{ codigo: string; descricao: string }>; fullDescription: string } | null>(null);
+  const [detailNcmExpanded, setDetailNcmExpanded] = useState(false);
+  const [ncmSuggestions, setNcmSuggestions] = useState<Array<{ codigo: string; descricao: string; fullDescription: string }>>([]);
+  const [ncmSuggestionsOpen, setNcmSuggestionsOpen] = useState(false);
+  const ncmInputRef = useRef<HTMLInputElement>(null);
   const [detailType, setDetailType] = useState('');
   const [detailSubtype, setDetailSubtype] = useState('');
   const [detailSubgroup, setDetailSubgroup] = useState('');
   const [detailNewMode, setDetailNewMode] = useState({ type: false, subtype: false, subgroup: false });
+  const [detailCodigo, setDetailCodigo] = useState('');
   const [detailShortName, setDetailShortName] = useState('');
   const [detailSitTributaria, setDetailSitTributaria] = useState('');
   const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
@@ -391,14 +415,61 @@ export default function ProdutosPage() {
   const [detailFiscalObs, setDetailFiscalObs] = useState('');
   const [detailCest, setDetailCest] = useState('');
   const [detailOrigem, setDetailOrigem] = useState('');
-  const [detailCfopEntrada, setDetailCfopEntrada] = useState('');
-  const [detailCfopSaida, setDetailCfopSaida] = useState('');
+
   const [detailIpi, setDetailIpi] = useState('');
   const [detailFcp, setDetailFcp] = useState('');
   const [detailOpenSections, setDetailOpenSections] = useState<Set<string>>(new Set());
+  const [detailScrollTo, setDetailScrollTo] = useState<string | null>(null);
   const toggleDetailSection = (s: string) => setDetailOpenSections((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+
+  useEffect(() => {
+    if (!detailScrollTo) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-section-id="${detailScrollTo}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setDetailScrollTo(null);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [detailScrollTo]);
   const [savingDetail, setSavingDetail] = useState(false);
   const [syncingRegistry, setSyncingRegistry] = useState(false);
+  const [anvisaValidation, setAnvisaValidation] = useState<{
+    status: string | null;
+    productName: string | null;
+    company: string | null;
+    expiration: string | null;
+    riskClass: string | null;
+    notFound?: boolean;
+    loading?: boolean;
+  } | null>(null);
+
+  // ANVISA real-time validation with debounce
+  useEffect(() => {
+    const digits = detailAnvisa.replace(/\D/g, '');
+    if (digits.length < 7) { setAnvisaValidation(null); return; }
+    setAnvisaValidation({ status: null, productName: null, company: null, expiration: null, riskClass: null, loading: true });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/anvisa/validate?code=${digits}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAnvisaValidation({
+            status: data.status,
+            productName: data.productName,
+            company: data.company,
+            expiration: data.expiration,
+            riskClass: data.riskClass,
+            notFound: data.notFound || false,
+          });
+        } else {
+          setAnvisaValidation(null);
+        }
+      } catch {
+        setAnvisaValidation(null);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [detailAnvisa]);
 
   // --- purchase/sales history ---
   interface HistoryItem {
@@ -421,6 +492,37 @@ export default function ProdutosPage() {
   const [loadingSalesHistory, setLoadingSalesHistory] = useState(false);
   const [loadingConsignment, setLoadingConsignment] = useState(false);
 
+  // NCM description lookup with debounce
+  useEffect(() => {
+    const digits = detailNcm.replace(/\D/g, '');
+    if (digits.length < 4) { setDetailNcmInfo(null); setNcmSuggestions([]); setDetailNcmExpanded(false); return; }
+    const timer = setTimeout(async () => {
+      try {
+        // Fetch full info for exact code
+        const res = await fetch(`/api/ncm/${digits}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDetailNcmInfo({ hierarchy: data.hierarchy || [], fullDescription: data.fullDescription || data.descricao || '' });
+        } else {
+          setDetailNcmInfo(null);
+        }
+        // Fetch suggestions for autocomplete (by code prefix)
+        if (digits.length < 8) {
+          const sRes = await fetch(`/api/ncm/search?q=${digits}&limit=8`);
+          if (sRes.ok) {
+            setNcmSuggestions(await sRes.json());
+          }
+        } else {
+          setNcmSuggestions([]);
+        }
+      } catch {
+        setDetailNcmInfo(null);
+        setNcmSuggestions([]);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [detailNcm]);
+
   const openDetail = async (product: ProductRow, initialSections?: string[]) => {
     // Show modal immediately with lightweight data
     setDetailProduct(product);
@@ -430,6 +532,7 @@ export default function ProdutosPage() {
     setDetailSubtype(product.productSubtype || '');
     setDetailSubgroup(product.productSubgroup || '');
     setDetailNewMode({ type: false, subtype: false, subgroup: false });
+    setDetailCodigo(product.codigo || '');
     setDetailShortName(product.shortName || '');
     setDetailSitTributaria(product.fiscalSitTributaria || '');
     setDetailNomeTributacao(product.fiscalNomeTributacao || '');
@@ -439,11 +542,12 @@ export default function ProdutosPage() {
     setDetailFiscalObs(product.fiscalObs || '');
     setDetailCest(product.fiscalCest || '');
     setDetailOrigem(product.fiscalOrigem || '');
-    setDetailCfopEntrada(product.fiscalCfopEntrada || '');
-    setDetailCfopSaida(product.fiscalCfopSaida || '');
     setDetailIpi(product.fiscalIpi != null ? String(product.fiscalIpi) : '');
     setDetailFcp(product.fiscalFcp != null ? String(product.fiscalFcp) : '');
-    setDetailOpenSections(new Set(initialSections || []));
+    const nextOpenSections = new Set(initialSections || []);
+    nextOpenSections.add('geral');
+    setDetailOpenSections(nextOpenSections);
+    setDetailScrollTo(initialSections?.length ? initialSections[0] : null);
 
     // Load full details (ANVISA, fiscal, aggregates) in background
     try {
@@ -456,6 +560,7 @@ export default function ProdutosPage() {
         setDetailType(full.productType || '');
         setDetailSubtype(full.productSubtype || '');
         setDetailSubgroup(full.productSubgroup || '');
+        setDetailCodigo(full.codigo || '');
         setDetailShortName(full.shortName || '');
         setDetailSitTributaria(full.fiscalSitTributaria || '');
         setDetailNomeTributacao(full.fiscalNomeTributacao || '');
@@ -465,8 +570,6 @@ export default function ProdutosPage() {
         setDetailFiscalObs(full.fiscalObs || '');
         setDetailCest(full.fiscalCest || '');
         setDetailOrigem(full.fiscalOrigem || '');
-        setDetailCfopEntrada(full.fiscalCfopEntrada || '');
-        setDetailCfopSaida(full.fiscalCfopSaida || '');
         setDetailIpi(full.fiscalIpi != null ? String(full.fiscalIpi) : '');
         setDetailFcp(full.fiscalFcp != null ? String(full.fiscalFcp) : '');
       }
@@ -517,6 +620,7 @@ export default function ProdutosPage() {
   };
 
   const detailDirty = detailProduct && (
+    detailCodigo !== (detailProduct.codigo || '') ||
     detailAnvisa !== (detailProduct.anvisa || '') ||
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
@@ -531,8 +635,6 @@ export default function ProdutosPage() {
     detailFiscalObs !== (detailProduct.fiscalObs || '') ||
     detailCest !== (detailProduct.fiscalCest || '') ||
     detailOrigem !== (detailProduct.fiscalOrigem || '') ||
-    detailCfopEntrada !== (detailProduct.fiscalCfopEntrada || '') ||
-    detailCfopSaida !== (detailProduct.fiscalCfopSaida || '') ||
     detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '') ||
     detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')
   );
@@ -718,8 +820,9 @@ export default function ProdutosPage() {
 
   // Collapse all groups when no search; expand all when searching
   const filteredLen = filtered.length;
+  const isSearching = search !== '';
   useEffect(() => {
-    if (search) {
+    if (isSearching) {
       // Expand everything when searching
       setCollapsedGroups(new Set());
       return;
@@ -743,8 +846,9 @@ export default function ProdutosPage() {
       }
       setCollapsedGroups(groups);
     }
+  // filtered is derived from products and doesn't change identity independently of filteredLen
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, filteredLen, search === '' ? '' : 'searching']);
+  }, [sortBy, filteredLen, isSearching]);
 
   // show all filtered results (no pagination)
   const visible = filtered;
@@ -843,11 +947,30 @@ export default function ProdutosPage() {
       const data = (await res.json()) as ProductsResponse;
       const all = data.products || [];
       if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto para exportar'); return; }
-      const headers = ['Codigo', 'Produto', 'NCM', 'ANVISA', 'Ultimo Preco', 'Ultimo Preco Venda', 'Data Ultima Compra', 'Data Ultima Venda'];
+      const esc = (v: string | null | undefined) => {
+        const s = v || '';
+        return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const fmtNum = (v: number | null | undefined) => v != null ? String(v).replace('.', ',') : '';
+      const headers = [
+        'Codigo', 'Referencia', 'Produto', 'Nome Abreviado', 'Unidade', 'EAN',
+        'Linha', 'Grupo', 'Subgrupo', 'Fora de Linha',
+        'NCM', 'CEST', 'Origem', 'CST ICMS', 'Nome Tributacao',
+        'ICMS %', 'PIS %', 'COFINS %', 'IPI %', 'FCP %', 'Obs Fiscal',
+        'ANVISA', 'Status ANVISA', 'Vencimento ANVISA', 'Classe Risco', 'Processo ANVISA',
+        'Produto Registrado', 'Detentor Registro', 'Fabricante', 'Pais Fabricante',
+        'Ultimo Preco Compra', 'Ultimo Preco Venda', 'Qtde Total', 'Notas',
+        'Data Ultima Compra', 'Data Ultima Venda', 'Ultimo Fornecedor',
+      ];
       const rows = all.map((p: any) => [
-        p.code, p.description, p.ncm || '', p.anvisa || '',
-        formatValue(p.lastPrice), formatOptional(p.lastSalePrice),
-        formatDate(p.lastIssueDate), formatDate(p.lastSaleDate),
+        esc(p.codigo), esc(p.code), esc(p.description), esc(p.shortName), esc(p.unit), esc(p.ean),
+        esc(p.productType), esc(p.productSubtype), esc(p.productSubgroup), p.outOfLine ? 'Sim' : 'Nao',
+        esc(p.ncm), esc(p.fiscalCest), esc(p.fiscalOrigem), esc(p.fiscalSitTributaria), esc(p.fiscalNomeTributacao),
+        fmtNum(p.fiscalIcms), fmtNum(p.fiscalPis), fmtNum(p.fiscalCofins), fmtNum(p.fiscalIpi), fmtNum(p.fiscalFcp), esc(p.fiscalObs),
+        esc(p.anvisa), esc(p.anvisaStatus), formatDate(p.anvisaExpiration), esc(p.anvisaRiskClass), esc(p.anvisaProcess),
+        esc(p.anvisaMatchedProductName), esc(p.anvisaHolder), esc(p.anvisaManufacturer), esc(p.anvisaManufacturerCountry),
+        formatValue(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
+        formatDate(p.lastIssueDate), formatDate(p.lastSaleDate), esc(p.lastSupplierName),
       ]);
       const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
@@ -872,7 +995,7 @@ export default function ProdutosPage() {
       const data = (await res.json()) as ProductsResponse;
       const missing = data.products || [];
       if (missing.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto sem ANVISA'); return; }
-      const headers = ['Codigo', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
+      const headers = ['Referencia', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
       const rows = missing.map((p: any) => [
         p.code, p.description, p.ncm || '', p.ean || '',
         formatValue(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
@@ -1033,6 +1156,7 @@ export default function ProdutosPage() {
     if (detailType !== (detailProduct.productType || '')) fields.productType = detailType.trim() || null;
     if (detailSubtype !== (detailProduct.productSubtype || '')) fields.productSubtype = detailSubtype.trim() || null;
     if (detailSubgroup !== (detailProduct.productSubgroup || '')) fields.productSubgroup = detailSubgroup.trim() || null;
+    if (detailCodigo !== (detailProduct.codigo || '')) fields.codigo = detailCodigo.trim() || null;
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
     if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
     if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
@@ -1042,8 +1166,6 @@ export default function ProdutosPage() {
     if (detailFiscalObs !== (detailProduct.fiscalObs || '')) fields.fiscalObs = detailFiscalObs.trim() || null;
     if (detailCest !== (detailProduct.fiscalCest || '')) fields.fiscalCest = detailCest.trim() || null;
     if (detailOrigem !== (detailProduct.fiscalOrigem || '')) fields.fiscalOrigem = detailOrigem.trim() || null;
-    if (detailCfopEntrada !== (detailProduct.fiscalCfopEntrada || '')) fields.fiscalCfopEntrada = detailCfopEntrada.trim() || null;
-    if (detailCfopSaida !== (detailProduct.fiscalCfopSaida || '')) fields.fiscalCfopSaida = detailCfopSaida.trim() || null;
     if (detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '')) fields.fiscalIpi = detailIpi.trim() ? Number(detailIpi) : null;
     if (detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')) fields.fiscalFcp = detailFcp.trim() ? Number(detailFcp) : null;
 
@@ -1717,9 +1839,9 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
@@ -1764,9 +1886,9 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
@@ -2110,6 +2232,7 @@ export default function ProdutosPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">
+                      {detailProduct.codigo && <><span className="font-mono text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                       {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                       {detailProduct.description}
                     </h3>
@@ -2148,247 +2271,260 @@ export default function ProdutosPage() {
                   </button>
                 </div>
 
-                {/* Quick stats bar */}
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {[
-                    { label: 'Último Preço', value: formatValue(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
-                    { label: 'Qtde Total', value: formatQuantity(detailProduct.totalQuantity), icon: 'inventory_2', color: 'text-blue-500 bg-blue-500/10 ring-blue-500/20' },
-                    { label: 'Notas', value: String(detailProduct.invoiceCount), icon: 'receipt_long', color: 'text-amber-500 bg-amber-500/10 ring-amber-500/20' },
-                    { label: 'Última Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_month', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
-                  ].map(s => (
-                    <div key={s.label} className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${s.color}`}>
-                        <span className="material-symbols-outlined text-[13px]">{s.icon}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{s.label}</p>
-                        <p className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{s.value}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* ── Body ── */}
               <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
+                {/* ── Card: Dados Gerais ── */}
+                <DetailSectionCard id="geral" icon="analytics" iconColor="text-emerald-500" title="Dados Gerais" isOpen={detailOpenSections.has('geral')} onToggle={toggleDetailSection}>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+                    {[
+                      { label: 'Último Preço', value: formatValue(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
+                      { label: 'Qtde Total', value: formatQuantity(detailProduct.totalQuantity), icon: 'inventory_2', color: 'text-blue-500 bg-blue-500/10 ring-blue-500/20' },
+                      { label: 'Notas', value: String(detailProduct.invoiceCount), icon: 'receipt_long', color: 'text-amber-500 bg-amber-500/10 ring-amber-500/20' },
+                      { label: 'Última Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_month', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
+                    ].map(s => (
+                      <div key={s.label} className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${s.color}`}>
+                          <span className="material-symbols-outlined text-[13px]">{s.icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{s.label}</p>
+                          <p className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{s.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DetailSectionCard>
 
                 {/* ── Card: Dados do Cadastro ── */}
                 <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-2 mt-1">
+                    <DetailField label="Código Interno">
+                      <input type="text" value={detailCodigo} onChange={(e) => setDetailCodigo(e.target.value)} maxLength={50} placeholder="Código interno da empresa" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                    </DetailField>
+
                     <DetailField label="Nome Abreviado" colSpan2>
                       <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
                     </DetailField>
 
-                    <DetailField label="Linha">
-                      {detailNewMode.type ? (
-                        <div className="flex gap-1.5">
-                          <input autoFocus type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="Nome da nova linha" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
-                        </div>
-                      ) : (
-                        <select value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
-                          <option value="">— Nenhuma —</option>
-                          {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
-                          <option value="__new__">+ Criar nova linha...</option>
-                        </select>
-                      )}
-                    </DetailField>
+                    <div className="grid grid-cols-3 gap-2">
+                      <DetailField label="Linha">
+                        {detailNewMode.type ? (
+                          <div className="flex gap-1">
+                            <input autoFocus type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="Nova linha" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                            <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                          </div>
+                        ) : (
+                          <select value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                            <option value="">— Nenhuma —</option>
+                            {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
+                            <option value="__new__">+ Criar nova...</option>
+                          </select>
+                        )}
+                      </DetailField>
 
-                    <DetailField label="Grupo">
-                      {detailNewMode.subtype ? (
-                        <div className="flex gap-1.5">
-                          <input autoFocus type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="Nome do novo grupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
-                        </div>
-                      ) : (
-                        <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
-                          <option value="">— Nenhum —</option>
-                          {detailType ? (
-                            hierOptions.groupsFor(detailType).map((s) => <option key={s} value={s}>{s}</option>)
-                          ) : (
-                            <>
-                              {hierOptions.groupsByLine.map((entry) => (
-                                <optgroup key={entry.line} label={entry.line}>
-                                  {entry.groups.map((g) => <option key={g} value={g}>{g}</option>)}
-                                </optgroup>
-                              ))}
-                              {hierOptions.orphanGroups.length > 0 && (
-                                <optgroup label="Outros">
-                                  {hierOptions.orphanGroups.map((g) => <option key={g} value={g}>{g}</option>)}
-                                </optgroup>
-                              )}
-                            </>
-                          )}
-                          <option value="__new__">+ Criar novo grupo...</option>
-                        </select>
-                      )}
-                    </DetailField>
+                      <DetailField label="Grupo">
+                        {detailNewMode.subtype ? (
+                          <div className="flex gap-1">
+                            <input autoFocus type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="Novo grupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                            <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                          </div>
+                        ) : (
+                          <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                            <option value="">— Nenhum —</option>
+                            {detailType ? (
+                              hierOptions.groupsFor(detailType).map((s) => <option key={s} value={s}>{s}</option>)
+                            ) : (
+                              <>
+                                {hierOptions.groupsByLine.map((entry) => (
+                                  <optgroup key={entry.line} label={entry.line}>
+                                    {entry.groups.map((g) => <option key={g} value={g}>{g}</option>)}
+                                  </optgroup>
+                                ))}
+                                {hierOptions.orphanGroups.length > 0 && (
+                                  <optgroup label="Outros">
+                                    {hierOptions.orphanGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                                  </optgroup>
+                                )}
+                              </>
+                            )}
+                            <option value="__new__">+ Criar novo...</option>
+                          </select>
+                        )}
+                      </DetailField>
 
-                    <DetailField label="Subgrupo">
-                      {detailNewMode.subgroup ? (
-                        <div className="flex gap-1.5">
-                          <input autoFocus type="text" value={detailSubgroup} onChange={(e) => setDetailSubgroup(e.target.value)} placeholder="Nome do novo subgrupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
-                        </div>
-                      ) : (
-                        <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
-                          <option value="">— Nenhum —</option>
-                          {detailType && detailSubtype ? (
-                            hierOptions.subgroupsFor(detailType, detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
-                          ) : detailSubtype ? (
-                            hierOptions.subgroupsForGroup(detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
-                          ) : (
-                            <>
-                              {hierOptions.subgroupsByGroup.map((entry) => (
-                                <optgroup key={entry.group} label={entry.group}>
-                                  {entry.subgroups.map((s) => <option key={s} value={s}>{s}</option>)}
-                                </optgroup>
-                              ))}
-                              {hierOptions.orphanSubgroups.length > 0 && (
-                                <optgroup label="Outros">
-                                  {hierOptions.orphanSubgroups.map((s) => <option key={s} value={s}>{s}</option>)}
-                                </optgroup>
-                              )}
-                            </>
-                          )}
-                          <option value="__new__">+ Criar novo subgrupo...</option>
-                        </select>
-                      )}
-                    </DetailField>
+                      <DetailField label="Subgrupo">
+                        {detailNewMode.subgroup ? (
+                          <div className="flex gap-1">
+                            <input autoFocus type="text" value={detailSubgroup} onChange={(e) => setDetailSubgroup(e.target.value)} placeholder="Novo subgrupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                            <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                          </div>
+                        ) : (
+                          <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                            <option value="">— Nenhum —</option>
+                            {detailType && detailSubtype ? (
+                              hierOptions.subgroupsFor(detailType, detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                            ) : detailSubtype ? (
+                              hierOptions.subgroupsForGroup(detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                            ) : (
+                              <>
+                                {hierOptions.subgroupsByGroup.map((entry) => (
+                                  <optgroup key={entry.group} label={entry.group}>
+                                    {entry.subgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </optgroup>
+                                ))}
+                                {hierOptions.orphanSubgroups.length > 0 && (
+                                  <optgroup label="Outros">
+                                    {hierOptions.orphanSubgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </optgroup>
+                                )}
+                              </>
+                            )}
+                            <option value="__new__">+ Criar novo...</option>
+                          </select>
+                        )}
+                      </DetailField>
+                    </div>
 
                     {detailProduct.lastSupplierName && (
-                      <DetailField label="Fabricante / Fornecedor" colSpan2>
-                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                          <span className="material-symbols-outlined text-[16px] text-orange-500">local_shipping</span>
-                          <span className="text-sm font-medium text-slate-800 dark:text-white">{detailProduct.lastSupplierName}</span>
-                        </div>
-                      </DetailField>
+                      <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
+                        <span className="material-symbols-outlined text-[14px] text-orange-500">local_shipping</span>
+                        <span>Fabricante:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{detailProduct.lastSupplierName}</span>
+                      </div>
                     )}
 
-                    {/* Fora de Linha toggle */}
-                    <div className="col-span-2 mt-1">
-                      <label className={`flex items-center gap-3 cursor-pointer px-3 py-3 rounded-xl border transition-colors ${detailProduct.outOfLine ? 'border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
-                        <div className="relative">
-                          <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
-                          <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
-                          <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-5 transition-transform"></div>
-                        </div>
-                        <div>
-                          <span className={`text-sm font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>Fora de Linha</span>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500">Marcar produto como descontinuado</p>
-                        </div>
-                      </label>
-                    </div>
+                    <label className={`flex items-center gap-2.5 cursor-pointer px-2.5 py-2 rounded-xl border transition-colors ${detailProduct.outOfLine ? 'border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
+                      <div className="relative">
+                        <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
+                        <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
+                        <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
+                      </div>
+                      <span className={`text-[12px] font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>Fora de Linha</span>
+                    </label>
                   </div>
                 </DetailSectionCard>
 
                 {/* ── Card: Dados Fiscais ── */}
                 <DetailSectionCard id="fiscal" icon="receipt_long" iconColor="text-amber-500" title="Dados Fiscais" isOpen={detailOpenSections.has('fiscal')} onToggle={toggleDetailSection}>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {/* ─── Classificação Fiscal ─── */}
-                    <div className="col-span-2 flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Classificação Fiscal</span>
-                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                  <div className="space-y-2 mt-1">
+                    {/* ─── NCM + CEST ─── */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <DetailField label="NCM">
+                          <div className="relative">
+                            <input ref={ncmInputRef} type="text" value={detailNcm} onChange={(e) => { setDetailNcm(e.target.value); setNcmSuggestionsOpen(true); }} onFocus={() => setNcmSuggestionsOpen(true)} onBlur={() => setTimeout(() => setNcmSuggestionsOpen(false), 200)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                            {ncmSuggestionsOpen && ncmSuggestions.length > 0 && (
+                              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                {ncmSuggestions.map((s) => (
+                                  <button key={s.codigo} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { const d = s.codigo.replace(/\D/g, ''); setDetailNcm(d); setNcmSuggestionsOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0">
+                                    <span className="font-mono text-[12px] font-bold text-amber-600 dark:text-amber-400">{s.codigo}</span>
+                                    <span className="ml-2 text-[12px] text-slate-600 dark:text-slate-400">{s.descricao}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {detailNcmInfo && detailNcmInfo.hierarchy.length > 0 && (() => {
+                            const levels = detailNcmInfo.hierarchy;
+                            const last = levels[levels.length - 1];
+                            const hasMore = levels.length > 1;
+                            return (
+                              <div className="mt-1">
+                                {!detailNcmExpanded && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold">
+                                      <span className="font-mono opacity-70">{last.codigo}</span>
+                                      <span>{last.descricao}</span>
+                                    </span>
+                                    {hasMore && (
+                                      <button type="button" onClick={() => setDetailNcmExpanded(true)} className="text-[10px] text-amber-500 dark:text-amber-400 hover:underline whitespace-nowrap">ver hierarquia</button>
+                                    )}
+                                  </div>
+                                )}
+                                {detailNcmExpanded && (
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {levels.map((level, i) => (
+                                      <React.Fragment key={level.codigo}>
+                                        {i > 0 && <span className="material-symbols-outlined text-[12px] text-slate-300 dark:text-slate-600">chevron_right</span>}
+                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight ${i === levels.length - 1 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                          <span className="font-mono opacity-70">{level.codigo}</span>
+                                          <span>{level.descricao}</span>
+                                        </span>
+                                      </React.Fragment>
+                                    ))}
+                                    <button type="button" onClick={() => setDetailNcmExpanded(false)} className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:underline whitespace-nowrap ml-1">recolher</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </DetailField>
+                      </div>
+                      <DetailField label="CEST">
+                        <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="1300400" disabled={!canWrite} list="detail-fiscal-cest-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <datalist id="detail-fiscal-cest-list">
+                          {Array.from(new Set(products.map((p) => p.fiscalCest).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                        </datalist>
+                      </DetailField>
                     </div>
 
-                    <DetailField label="NCM">
-                      <input type="text" value={detailNcm} onChange={(e) => setDetailNcm(e.target.value)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} list="detail-fiscal-ncm-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
-                      <datalist id="detail-fiscal-ncm-list">
-                        {Array.from(new Set(products.map((p) => p.ncm).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                      </datalist>
-                    </DetailField>
-
-                    <DetailField label="CEST">
-                      <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="Ex: 1300400" disabled={!canWrite} list="detail-fiscal-cest-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
-                      <datalist id="detail-fiscal-cest-list">
-                        {Array.from(new Set(products.map((p) => p.fiscalCest).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                      </datalist>
-                    </DetailField>
-
-                    <DetailField label="Origem" colSpan2>
-                      <select value={detailOrigem} onChange={(e) => setDetailOrigem(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
-                        <option value="">— Selecione —</option>
-                        <option value="0">0 – Nacional</option>
-                        <option value="1">1 – Estrangeira (importação direta)</option>
-                        <option value="2">2 – Estrangeira (mercado interno)</option>
-                        <option value="3">3 – Nacional, conteúdo importado &gt;40%</option>
-                        <option value="5">5 – Nacional, conteúdo importado ≤40%</option>
-                        <option value="8">8 – Nacional, conteúdo importado &gt;70%</option>
-                      </select>
-                    </DetailField>
-
-                    {/* ─── Tributação ─── */}
-                    <div className="col-span-2 flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tributação</span>
-                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                    {/* ─── Origem + CST + Nome Tributação ─── */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <DetailField label="Origem">
+                        <select value={detailOrigem} onChange={(e) => setDetailOrigem(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">—</option>
+                          <option value="0">0 – Nacional</option>
+                          <option value="1">1 – Estrangeira (import.)</option>
+                          <option value="2">2 – Estrangeira (merc. int.)</option>
+                          <option value="3">3 – Nacional &gt;40% import.</option>
+                          <option value="5">5 – Nacional ≤40% import.</option>
+                          <option value="8">8 – Nacional &gt;70% import.</option>
+                        </select>
+                      </DetailField>
+                      <DetailField label="CST ICMS">
+                        <select value={detailSitTributaria} onChange={(e) => setDetailSitTributaria(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          <option value="00">00 – Trib. integral</option>
+                          <option value="10">10 – ICMS por ST</option>
+                          <option value="20">20 – Redução BC</option>
+                          <option value="30">30 – Isenta c/ ST</option>
+                          <option value="40">40 – Isenta</option>
+                          <option value="41">41 – Não tributada</option>
+                          <option value="50">50 – Suspensão</option>
+                          <option value="51">51 – Diferimento</option>
+                          <option value="60">60 – ST anterior</option>
+                          <option value="70">70 – Red. BC + ST</option>
+                          <option value="90">90 – Outras</option>
+                        </select>
+                      </DetailField>
+                      <DetailField label="Nome Tributação">
+                        <input type="text" value={detailNomeTributacao} onChange={(e) => setDetailNomeTributacao(e.target.value)} maxLength={200} placeholder="Ex: Isento" disabled={!canWrite} list="detail-fiscal-nome-list" className={DETAIL_INPUT_CLS} />
+                        <datalist id="detail-fiscal-nome-list">
+                          {Array.from(new Set(products.map((p) => p.fiscalNomeTributacao).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                        </datalist>
+                      </DetailField>
                     </div>
-
-                    <DetailField label="CST ICMS">
-                      <select value={detailSitTributaria} onChange={(e) => setDetailSitTributaria(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
-                        <option value="">— Selecione —</option>
-                        <option value="00">00 – Tributada integralmente</option>
-                        <option value="10">10 – Tributada com ICMS por ST</option>
-                        <option value="20">20 – Com redução de BC</option>
-                        <option value="30">30 – Isenta/não tributada com ST</option>
-                        <option value="40">40 – Isenta</option>
-                        <option value="41">41 – Não tributada</option>
-                        <option value="50">50 – Suspensão</option>
-                        <option value="51">51 – Diferimento</option>
-                        <option value="60">60 – ICMS cobrado anteriormente por ST</option>
-                        <option value="70">70 – Redução BC + ST</option>
-                        <option value="90">90 – Outras</option>
-                      </select>
-                    </DetailField>
-
-                    <DetailField label="Nome da Tributação">
-                      <input type="text" value={detailNomeTributacao} onChange={(e) => setDetailNomeTributacao(e.target.value)} maxLength={200} placeholder="Ex: Tributação integral, Isento, etc." disabled={!canWrite} list="detail-fiscal-nome-list" className={DETAIL_INPUT_CLS} />
-                      <datalist id="detail-fiscal-nome-list">
-                        {Array.from(new Set(products.map((p) => p.fiscalNomeTributacao).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                      </datalist>
-                    </DetailField>
 
                     {/* ─── Alíquotas (%) ─── */}
-                    <div className="col-span-2 flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Alíquotas (%)</span>
-                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
-                    </div>
-
-                    <div className="col-span-2 grid grid-cols-5 gap-3">
-                      <DetailField label="ICMS">
-                        <input type="number" step="0.01" min="0" max="100" value={detailIcms} onChange={(e) => setDetailIcms(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                    <div className="grid grid-cols-5 gap-2">
+                      <DetailField label="ICMS %">
+                        <input type="number" step="0.01" min="0" max="100" value={detailIcms} onChange={(e) => setDetailIcms(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
                       </DetailField>
-                      <DetailField label="PIS">
-                        <input type="number" step="0.01" min="0" max="100" value={detailPis} onChange={(e) => setDetailPis(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <DetailField label="PIS %">
+                        <input type="number" step="0.01" min="0" max="100" value={detailPis} onChange={(e) => setDetailPis(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
                       </DetailField>
-                      <DetailField label="COFINS">
-                        <input type="number" step="0.01" min="0" max="100" value={detailCofins} onChange={(e) => setDetailCofins(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <DetailField label="COFINS %">
+                        <input type="number" step="0.01" min="0" max="100" value={detailCofins} onChange={(e) => setDetailCofins(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
                       </DetailField>
-                      <DetailField label="IPI">
-                        <input type="number" step="0.01" min="0" max="100" value={detailIpi} onChange={(e) => setDetailIpi(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <DetailField label="IPI %">
+                        <input type="number" step="0.01" min="0" max="100" value={detailIpi} onChange={(e) => setDetailIpi(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
                       </DetailField>
-                      <DetailField label="FCP">
-                        <input type="number" step="0.01" min="0" max="100" value={detailFcp} onChange={(e) => setDetailFcp(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <DetailField label="FCP %">
+                        <input type="number" step="0.01" min="0" max="100" value={detailFcp} onChange={(e) => setDetailFcp(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
                       </DetailField>
                     </div>
-
-                    {/* ─── CFOP Padrão ─── */}
-                    <div className="col-span-2 flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CFOP Padrão</span>
-                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
-                    </div>
-
-                    <DetailField label="Entrada">
-                      <input type="text" value={detailCfopEntrada} onChange={(e) => setDetailCfopEntrada(e.target.value)} maxLength={4} placeholder="Ex: 5102" disabled={!canWrite} list="detail-fiscal-cfop-entrada-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
-                      <datalist id="detail-fiscal-cfop-entrada-list">
-                        {Array.from(new Set(products.map((p) => p.fiscalCfopEntrada).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                      </datalist>
-                    </DetailField>
-                    <DetailField label="Saída">
-                      <input type="text" value={detailCfopSaida} onChange={(e) => setDetailCfopSaida(e.target.value)} maxLength={4} placeholder="Ex: 6102" disabled={!canWrite} list="detail-fiscal-cfop-saida-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
-                      <datalist id="detail-fiscal-cfop-saida-list">
-                        {Array.from(new Set(products.map((p) => p.fiscalCfopSaida).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                      </datalist>
-                    </DetailField>
 
                     <DetailField label="Obs. Fiscal" colSpan2>
                       <textarea value={detailFiscalObs} onChange={(e) => setDetailFiscalObs(e.target.value)} maxLength={500} rows={2} placeholder="Observações fiscais do produto" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} resize-none`} />
@@ -2419,6 +2555,51 @@ export default function ProdutosPage() {
                           )}
                         </div>
                       </DetailField>
+
+                      {/* Real-time ANVISA validation */}
+                      {anvisaValidation && (
+                        <div className="col-span-2">
+                          {anvisaValidation.loading ? (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/30 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                              <span className="material-symbols-outlined text-[14px] text-slate-400 animate-spin">progress_activity</span>
+                              <span className="text-[11px] text-slate-400">Validando na ANVISA...</span>
+                            </div>
+                          ) : anvisaValidation.notFound ? (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/30 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+                              <span className="material-symbols-outlined text-[14px] text-slate-400">help_outline</span>
+                              <span className="text-[11px] font-medium text-slate-400">Não encontrado na ANVISA</span>
+                            </div>
+                          ) : (
+                            <div className="rounded-xl bg-teal-50/40 dark:bg-teal-900/10 border border-teal-200/40 dark:border-teal-800/30 px-3 py-2.5 space-y-1.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {anvisaValidation.status && (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    anvisaValidation.status.toLowerCase().includes('valid') || anvisaValidation.status.toLowerCase().includes('ativ')
+                                      ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                      : anvisaValidation.status.toLowerCase().includes('cancel') || anvisaValidation.status.toLowerCase().includes('caduc')
+                                        ? 'bg-red-50 text-red-600 ring-1 ring-red-500/20 dark:bg-red-900/30 dark:text-red-400'
+                                        : 'bg-amber-50 text-amber-600 ring-1 ring-amber-500/20 dark:bg-amber-900/30 dark:text-amber-400'
+                                  }`}>
+                                    {anvisaValidation.status}
+                                  </span>
+                                )}
+                                {anvisaValidation.riskClass && (
+                                  <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">Classe {anvisaValidation.riskClass}</span>
+                                )}
+                                {anvisaValidation.expiration && (
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">Val. {anvisaValidation.expiration}</span>
+                                )}
+                              </div>
+                              {anvisaValidation.productName && (
+                                <p className="text-[12px] font-medium text-slate-700 dark:text-slate-300 leading-snug">{anvisaValidation.productName}</p>
+                              )}
+                              {anvisaValidation.company && (
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500">{anvisaValidation.company}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {detailProduct.anvisaMatchedProductName && (
                         <div className="col-span-2 bg-teal-50/60 dark:bg-teal-900/10 border border-teal-200/50 dark:border-teal-800/40 rounded-xl px-4 py-3">
@@ -2904,7 +3085,7 @@ export default function ProdutosPage() {
 
 type SettingsSection = 'lines' | 'manufacturers' | 'fiscal';
 type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida';
-type SettingsCountItem = { value: string; count: number };
+type SettingsCountItem = { value: string; count: number; description?: string };
 type SettingsSubgroupItem = { name: string; count: number };
 type SettingsGroupItem = { name: string; count: number; subgroups: SettingsSubgroupItem[] };
 type SettingsLineItem = { name: string; count: number; groups: SettingsGroupItem[] };
@@ -2940,8 +3121,8 @@ const FISCAL_TABS: { key: FiscalTab; label: string; icon: string; field: keyof P
   { key: 'fiscalNomeTributacao', label: 'Tributação', icon: 'description', field: 'fiscalNomeTributacao' },
   { key: 'cest', label: 'CEST', icon: 'verified', field: 'fiscalCest' },
   { key: 'origem', label: 'Origem', icon: 'public', field: 'fiscalOrigem' },
-  { key: 'cfopEntrada', label: 'CFOP Entrada', icon: 'login', field: 'fiscalCfopEntrada' },
-  { key: 'cfopSaida', label: 'CFOP Saída', icon: 'logout', field: 'fiscalCfopSaida' },
+  { key: 'cfopEntrada', label: 'CFOP Entrada', icon: 'login', field: 'fiscalCfopEntrada' as keyof ProductRow },
+  { key: 'cfopSaida', label: 'CFOP Saída', icon: 'logout', field: 'fiscalCfopSaida' as keyof ProductRow },
 ];
 
 function buildSubtypeCountKey(type: string, subtype: string) {
@@ -3049,9 +3230,13 @@ function SettingsModal({ onClose, onUpdated }: {
   // --- fiscal ---
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalTab, setFiscalTab] = useState<FiscalTab>('ncm');
+  const [ncmDescCache, setNcmDescCache] = useState<Record<string, { descricao: string; fullDescription: string; hierarchy?: Array<{ codigo: string; descricao: string }> }>>({});
+  const [ncmExpandedItems, setNcmExpandedItems] = useState<Set<string>>(new Set());
+  const [cfopDescCache, setCfopDescCache] = useState<Record<string, string>>({});
   const [fiscalEditItem, setFiscalEditItem] = useState<{ field: FiscalTab; oldValue: string } | null>(null);
   const [fiscalEditValue, setFiscalEditValue] = useState('');
   const [newFiscalName, setNewFiscalName] = useState('');
+  const [syncingNcmBulk, setSyncingNcmBulk] = useState(false);
 
   // ==== data: lines ====
   const typeMap = useMemo(() => {
@@ -3148,8 +3333,16 @@ function SettingsModal({ onClose, onUpdated }: {
     for (const item of settingsData?.fiscal.fiscalNomeTributacao || []) result.fiscalNomeTributacao.set(item.value, item.count || 0);
     for (const item of settingsData?.fiscal.cest || []) result.cest.set(item.value, item.count || 0);
     for (const item of settingsData?.fiscal.origem || []) result.origem.set(item.value, item.count || 0);
-    for (const item of settingsData?.fiscal.cfopEntrada || []) result.cfopEntrada.set(item.value, item.count || 0);
-    for (const item of settingsData?.fiscal.cfopSaida || []) result.cfopSaida.set(item.value, item.count || 0);
+    const descMap: Record<string, string> = {};
+    for (const item of settingsData?.fiscal.cfopEntrada || []) {
+      result.cfopEntrada.set(item.value, item.count || 0);
+      if (item.description) descMap[item.value] = item.description;
+    }
+    for (const item of settingsData?.fiscal.cfopSaida || []) {
+      result.cfopSaida.set(item.value, item.count || 0);
+      if (item.description) descMap[item.value] = item.description;
+    }
+    if (Object.keys(descMap).length > 0) setCfopDescCache(prev => ({ ...prev, ...descMap }));
     return result;
   }, [settingsData]);
 
@@ -3162,11 +3355,41 @@ function SettingsModal({ onClose, onUpdated }: {
   }, [settingsData, fiscalItemsMap]);
 
   const currentFiscalItems = useMemo(() => {
-    const items = Array.from(fiscalItemsMap[fiscalTab].entries()).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
+    const sortByCount = fiscalTab === 'ncm' || fiscalTab === 'cfopEntrada' || fiscalTab === 'cfopSaida';
+    const items = Array.from(fiscalItemsMap[fiscalTab].entries()).sort(sortByCount
+      ? ([a, ca], [b, cb]) => cb - ca || a.localeCompare(b, 'pt-BR')
+      : ([a], [b]) => a.localeCompare(b, 'pt-BR'));
     if (!fiscalSearch) return items;
     const q = fiscalSearch.toLowerCase();
-    return items.filter(([value]) => value.toLowerCase().includes(q));
-  }, [fiscalItemsMap, fiscalTab, fiscalSearch]);
+    return items.filter(([value]) => {
+      if (value.toLowerCase().includes(q)) return true;
+      const desc = cfopDescCache[value];
+      return desc ? desc.toLowerCase().includes(q) : false;
+    });
+  }, [fiscalItemsMap, fiscalTab, fiscalSearch, cfopDescCache]);
+
+  // Fetch NCM descriptions for visible items in settings NCM tab
+  useEffect(() => {
+    if (fiscalTab !== 'ncm' || currentFiscalItems.length === 0) return;
+    let cancelled = false;
+    const toFetch = currentFiscalItems.map(([v]) => v.replace(/\D/g, '')).filter((d) => d.length >= 4 && !ncmDescCache[d]);
+    if (toFetch.length === 0) return;
+    (async () => {
+      const batch: Record<string, { descricao: string; fullDescription: string; hierarchy?: Array<{ codigo: string; descricao: string }> }> = {};
+      for (const code of toFetch.slice(0, 30)) {
+        try {
+          const res = await fetch(`/api/ncm/${code}`);
+          if (!res.ok) continue;
+          const data = await res.json();
+          batch[code] = { descricao: data.descricao || '', fullDescription: data.fullDescription || data.descricao || '', hierarchy: data.hierarchy || [] };
+        } catch { /* skip */ }
+      }
+      if (!cancelled && Object.keys(batch).length > 0) {
+        setNcmDescCache((prev) => ({ ...prev, ...batch }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [fiscalTab, currentFiscalItems, ncmDescCache]);
 
   // ==== API helpers ====
   const callTypeApi = async (field: 'productType' | 'productSubtype' | 'productSubgroup', oldValue: string, newValue: string | null, parentType?: string, parentSubtype?: string) => {
@@ -3639,6 +3862,16 @@ function SettingsModal({ onClose, onUpdated }: {
                             <div className="w-1 h-4 rounded-full bg-amber-400 dark:bg-amber-500 shrink-0" />
                             {(() => {
                               const dashIdx = value.indexOf(' – ');
+                              const isCfop = fiscalTab === 'cfopEntrada' || fiscalTab === 'cfopSaida';
+                              // CFOP with description from cache (raw code like "1918")
+                              if (isCfop && dashIdx < 0 && cfopDescCache[value]) {
+                                return (
+                                  <span className="flex-1 text-[13px] min-w-0 break-words">
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{value}</span>
+                                    <span className="ml-1.5 text-slate-500 dark:text-slate-400">{cfopDescCache[value]}</span>
+                                  </span>
+                                );
+                              }
                               if (dashIdx > 0) {
                                 const code = value.slice(0, dashIdx);
                                 const desc = value.slice(dashIdx + 3);
@@ -3649,23 +3882,93 @@ function SettingsModal({ onClose, onUpdated }: {
                                   </span>
                                 );
                               }
+                              const ncmDigits = fiscalTab === 'ncm' ? value.replace(/\D/g, '') : '';
+                              const ncmInfo = ncmDigits.length >= 4 ? ncmDescCache[ncmDigits] : null;
+                              if (fiscalTab === 'ncm') {
+                                const formatted = ncmDigits.length === 8 ? `${ncmDigits.slice(0,4)}.${ncmDigits.slice(4,6)}.${ncmDigits.slice(6,8)}` : value;
+                                const hierarchy = ncmInfo?.hierarchy || [];
+                                const isExpanded = ncmExpandedItems.has(value);
+                                const toggleExpand = () => setNcmExpandedItems((prev) => { const n = new Set(prev); n.has(value) ? n.delete(value) : n.add(value); return n; });
+                                return (
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-[13px] shrink-0">{formatted}</span>
+                                      {ncmInfo && <span className="text-[12px] text-slate-600 dark:text-slate-300 truncate">{ncmInfo.descricao}</span>}
+                                      {hierarchy.length > 1 && (
+                                        <button onClick={toggleExpand} className="shrink-0 ml-auto text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
+                                          <span className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    {isExpanded && hierarchy.length > 0 && (
+                                      <div className="mt-1 ml-1 border-l-2 border-amber-200/60 dark:border-amber-800/40 pl-2.5 space-y-0.5">
+                                        {hierarchy.map((h, i) => {
+                                          const hCode = h.codigo.replace(/\D/g, '');
+                                          const hFormatted = hCode.length === 8 ? `${hCode.slice(0,4)}.${hCode.slice(4,6)}.${hCode.slice(6,8)}`
+                                            : hCode.length === 6 ? `${hCode.slice(0,4)}.${hCode.slice(4,6)}`
+                                            : hCode.length === 4 ? hCode : h.codigo;
+                                          const isLeaf = i === hierarchy.length - 1;
+                                          return (
+                                            <div key={i} className="flex items-baseline gap-1.5 text-[11px]" style={{ paddingLeft: `${i * 10}px` }}>
+                                              <span className={`font-mono shrink-0 ${isLeaf ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>{hFormatted}</span>
+                                              <span className={isLeaf ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}>{h.descricao}</span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
                               return <span className={`flex-1 text-[13px] font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>;
                             })()}
                             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold min-w-[28px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'bg-transparent text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                            {fiscalTab !== 'ncm' && (<>
                             <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                             <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            </>)}
                           </>
                         )}
                       </div>
                     );
                   })}
 
+                  {fiscalTab === 'ncm' && (
+                  <div className="pt-2">
+                    <button
+                      onClick={async () => {
+                        setSyncingNcmBulk(true);
+                        try {
+                          const res = await fetch('/api/ncm/bulk-sync', { method: 'POST' });
+                          const data = await res.json();
+                          if (data.ok) {
+                            toast.success(`Tabela SISCOMEX sincronizada: ${data.total?.toLocaleString('pt-BR') || 0} NCMs`);
+                            await refreshAfterMutation();
+                          } else {
+                            toast.error(data.error || 'Erro ao sincronizar SISCOMEX');
+                          }
+                        } catch {
+                          toast.error('Erro de rede ao sincronizar SISCOMEX');
+                        } finally {
+                          setSyncingNcmBulk(false);
+                        }
+                      }}
+                      disabled={syncingNcmBulk}
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"
+                    >
+                      <span className={`material-symbols-outlined text-[18px] ${syncingNcmBulk ? 'animate-spin' : ''}`}>{syncingNcmBulk ? 'progress_activity' : 'cloud_download'}</span>
+                      {syncingNcmBulk ? 'Sincronizando SISCOMEX...' : 'Sincronizar tabela SISCOMEX'}
+                    </button>
+                  </div>
+                  )}
+                  {fiscalTab !== 'ncm' && (
                   <div className="pt-2">
                     <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(); }} className="flex items-center gap-2">
                       <input placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
                       <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </form>
                   </div>
+                  )}
                 </div>
               </div>
             )}

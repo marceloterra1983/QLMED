@@ -60,6 +60,7 @@ export async function GET(req: Request) {
     const search = (searchParams.get('search') || '').trim();
     const sort = searchParams.get('sort') || 'name';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+    const exportAll = searchParams.get('exportAll') === '1';
 
     const where: any = {
       companyId: company.id,
@@ -237,7 +238,7 @@ export async function GET(req: Request) {
     const pages = Math.max(1, Math.ceil(total / limit));
     const normalizedPage = Math.min(page, pages);
     const start = (normalizedPage - 1) * limit;
-    const paginatedCustomers = customers.slice(start, start + limit);
+    const paginatedCustomers = exportAll ? customers : customers.slice(start, start + limit);
 
     // Compute price item count (distinct cProd::xProd::uCom) for paginated customers
     const paginatedCnpjs = paginatedCustomers.map((c) => c.cnpj).filter(Boolean);
@@ -273,8 +274,59 @@ export async function GET(req: Request) {
       return acc;
     }, { totalCustomers: total, totalInvoices: 0, totalValue: 0 });
 
+    // Enrich with CNPJ cache + overrides for export
+    let cnpjCacheMap = new Map<string, any>();
+    let overrideMap = new Map<string, any>();
+    if (exportAll) {
+      const exportCnpjs = paginatedCustomers.map((c) => c.cnpj).filter((c) => c && c.replace(/\D/g, '').length === 14);
+      if (exportCnpjs.length > 0) {
+        const digits = exportCnpjs.map((c) => c.replace(/\D/g, ''));
+        try {
+          const rows = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT cnpj, data FROM cnpj_cache WHERE cnpj = ANY($1)`,
+            digits,
+          );
+          for (const r of rows) {
+            const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+            cnpjCacheMap.set(r.cnpj, d);
+          }
+        } catch { /* table may not exist */ }
+        const overrides = await prisma.contactOverride.findMany({
+          where: { companyId: company.id, cnpj: { in: digits } },
+        });
+        for (const o of overrides) overrideMap.set(o.cnpj, o);
+      }
+    }
+
     return NextResponse.json({
-      customers: paginatedCustomers.map((c) => ({ ...c, shortName: nicknameMap.get(c.cnpj) || null, priceItemCount: priceItemCountMap.get(c.cnpj) ?? null })),
+      customers: paginatedCustomers.map((c) => {
+        const base: any = { ...c, shortName: nicknameMap.get(c.cnpj) || null, priceItemCount: priceItemCountMap.get(c.cnpj) ?? null };
+        if (exportAll) {
+          const digits = (c.cnpj || '').replace(/\D/g, '');
+          const cnpj = cnpjCacheMap.get(digits);
+          const ovr = overrideMap.get(digits);
+          base.receita = cnpj ? {
+            razaoSocial: cnpj.razaoSocial || null,
+            nomeFantasia: cnpj.nomeFantasia || null,
+            situacao: cnpj.situacaoCadastral || cnpj.descSituacao || null,
+            cnaePrincipal: cnpj.cnaePrincipal ? `${cnpj.cnaePrincipal.codigo} - ${cnpj.cnaePrincipal.descricao}` : null,
+            porte: cnpj.porte || null,
+            naturezaJuridica: cnpj.naturezaJuridica || null,
+            telefone: cnpj.telefone || null,
+            email: cnpj.email || null,
+            endereco: cnpj.endereco || null,
+            simplesNacional: cnpj.simplesNacional,
+            mei: cnpj.mei,
+            capitalSocial: cnpj.capitalSocial,
+          } : null;
+          base.override = ovr ? {
+            phone: ovr.phone, email: ovr.email,
+            street: ovr.street, number: ovr.number, complement: ovr.complement,
+            district: ovr.district, city: ovr.city, state: ovr.state, zipCode: ovr.zipCode,
+          } : null;
+        }
+        return base;
+      }),
       summary,
       years: { prevYear, currentYear },
       pagination: {

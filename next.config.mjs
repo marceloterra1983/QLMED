@@ -1,9 +1,18 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === 'production';
+const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 const nextConfig = {
-  output: 'standalone',
+  ...(isProd ? { output: 'standalone' } : {}),
   compress: true,
   poweredByHeader: false,
-  serverExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
+  ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
+  experimental: {
+    serverComponentsExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
+  },
   async headers() {
     return [
       {

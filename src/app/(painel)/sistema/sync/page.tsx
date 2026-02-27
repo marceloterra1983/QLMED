@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 
@@ -22,6 +22,7 @@ interface SyncLog {
   completedAt: string | null;
 }
 
+type SyncMethod = 'sefaz' | 'nsdocs' | 'receita_nfse';
 type SyncState = 'idle' | 'syncing' | 'polling' | 'completed' | 'error';
 
 interface SyncMethodState {
@@ -41,14 +42,17 @@ export default function SyncPage() {
   const [mounted, setMounted] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [hasNsdocsConfig, setHasNsdocsConfig] = useState<boolean | null>(null);
+  const [hasReceitaConfig, setHasReceitaConfig] = useState<boolean | null>(null);
   const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
   const [logs, setLogs] = useState<SyncLog[]>([]);
 
   // States separados por método
   const [sefazState, setSefazState] = useState<SyncMethodState>({ ...initialMethodState });
   const [nsdocsState, setNsdocsState] = useState<SyncMethodState>({ ...initialMethodState });
+  const [receitaState, setReceitaState] = useState<SyncMethodState>({ ...initialMethodState });
   const sefazPollingRef = useRef<NodeJS.Timeout | null>(null);
   const nsdocsPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const receitaPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // States para importação de histórico
   const [importStartDate, setImportStartDate] = useState('2021-01-01');
@@ -77,12 +81,15 @@ export default function SyncPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/nsdocs/config').then(r => r.json()),
+      fetch('/api/receita/nfse/config').then(r => r.json()),
       fetch('/api/certificate/info').then(r => r.json()),
-    ]).then(([nsdocsData, certData]) => {
+    ]).then(([nsdocsData, receitaData, certData]) => {
       setHasNsdocsConfig(!!nsdocsData.config);
+      setHasReceitaConfig(!!receitaData.config);
       setHasCertificate(!!certData.hasCertificate);
     }).catch(() => {
       setHasNsdocsConfig(false);
+      setHasReceitaConfig(false);
       setHasCertificate(false);
       toast.error('Erro ao verificar configurações');
     });
@@ -95,6 +102,7 @@ export default function SyncPage() {
     return () => {
       if (sefazPollingRef.current) clearInterval(sefazPollingRef.current);
       if (nsdocsPollingRef.current) clearInterval(nsdocsPollingRef.current);
+      if (receitaPollingRef.current) clearInterval(receitaPollingRef.current);
     };
   }, []);
 
@@ -105,9 +113,30 @@ export default function SyncPage() {
       .catch(() => toast.error('Erro ao carregar histórico'));
   };
 
-  const handleSync = async (method: 'sefaz' | 'nsdocs') => {
-    const setState = method === 'sefaz' ? setSefazState : setNsdocsState;
-    const pollingRef = method === 'sefaz' ? sefazPollingRef : nsdocsPollingRef;
+  const handleSync = async (method: SyncMethod) => {
+    const setStateMap = {
+      sefaz: setSefazState,
+      nsdocs: setNsdocsState,
+      receita_nfse: setReceitaState,
+    } as const;
+    const pollingRefMap = {
+      sefaz: sefazPollingRef,
+      nsdocs: nsdocsPollingRef,
+      receita_nfse: receitaPollingRef,
+    } as const;
+    const syncMessageMap: Record<SyncMethod, string> = {
+      sefaz: 'Consultando SEFAZ diretamente...',
+      nsdocs: 'Importando documentos via NSDocs...',
+      receita_nfse: 'Importando NFS-e recebidas via Receita (ADN)...',
+    };
+    const successLabelMap: Record<SyncMethod, string> = {
+      sefaz: 'SEFAZ',
+      nsdocs: 'NSDOCS',
+      receita_nfse: 'RECEITA NFS-E',
+    };
+
+    const setState = setStateMap[method];
+    const pollingRef = pollingRefMap[method];
 
     setState({ state: 'syncing', message: 'Iniciando sincronização...', result: null });
 
@@ -127,7 +156,7 @@ export default function SyncPage() {
       const { syncLogId } = data;
       setState({
         state: 'polling',
-        message: method === 'sefaz' ? 'Consultando SEFAZ diretamente...' : 'Importando documentos via NSDocs...',
+        message: syncMessageMap[method],
         result: null,
       });
 
@@ -152,7 +181,7 @@ export default function SyncPage() {
                 total: pollData.totalDocumentos || 0,
               },
             });
-            toast.success(`Sincronização ${method.toUpperCase()} concluída!`);
+            toast.success(`Sincronização ${successLabelMap[method]} concluída!`);
             loadLogs();
           } else if (pollData.status === 'error') {
             if (pollingRef.current) clearInterval(pollingRef.current);
@@ -298,23 +327,33 @@ export default function SyncPage() {
 
   const nsdocsLogs = logs.filter((log) => log.syncMethod === 'nsdocs');
   const sefazLogs = logs.filter((log) => log.syncMethod === 'sefaz');
+  const receitaLogs = logs.filter((log) => log.syncMethod === 'receita_nfse');
 
   const renderHistoryCard = (
-    method: 'nsdocs' | 'sefaz',
+    method: SyncMethod,
     title: string,
     icon: string,
     methodLogs: SyncLog[],
   ) => {
     const isSefaz = method === 'sefaz';
+    const isReceita = method === 'receita_nfse';
 
     return (
       <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-            isSefaz ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-sky-100 dark:bg-sky-900/30'
+            isSefaz
+              ? 'bg-emerald-100 dark:bg-emerald-900/30'
+              : isReceita
+                ? 'bg-orange-100 dark:bg-orange-900/30'
+                : 'bg-sky-100 dark:bg-sky-900/30'
           }`}>
             <span className={`material-symbols-outlined text-[16px] ${
-              isSefaz ? 'text-emerald-700 dark:text-emerald-400' : 'text-sky-700 dark:text-sky-400'
+              isSefaz
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : isReceita
+                  ? 'text-orange-700 dark:text-orange-400'
+                  : 'text-sky-700 dark:text-sky-400'
             }`}>{icon}</span>
           </div>
           <div className="flex items-center justify-between w-full gap-3">
@@ -376,9 +415,54 @@ export default function SyncPage() {
     );
   };
 
-  const renderSyncCard = (method: 'sefaz' | 'nsdocs', methodState: SyncMethodState) => {
-    const isSefaz = method === 'sefaz';
-    const disabled = !canWrite || (isSefaz ? !hasCertificate : !hasNsdocsConfig);
+  const renderSyncCard = (method: SyncMethod, methodState: SyncMethodState) => {
+    const metaMap: Record<SyncMethod, {
+      title: string;
+      description: string;
+      icon: string;
+      iconBg: string;
+      iconColor: string;
+      buttonClass: string;
+      pulseClass: string;
+      disabledReason: ReactNode;
+      enabled: boolean;
+    }> = {
+      sefaz: {
+        title: 'Sincronização SEFAZ',
+        description: 'Consulta direta via certificado digital A1',
+        icon: 'verified_user',
+        iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        buttonClass: 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-emerald-600/30 hover:shadow-lg hover:shadow-emerald-600/40',
+        pulseClass: 'bg-gradient-to-r from-emerald-500 to-emerald-400',
+        enabled: Boolean(hasCertificate),
+        disabledReason: <>Configure o <a href="/sistema/settings" className="underline font-semibold">Certificado Digital</a> para usar esta opção</>,
+      },
+      nsdocs: {
+        title: 'Sincronização NSDocs',
+        description: 'Consulta via API NSDocs',
+        icon: 'hub',
+        iconBg: 'bg-sky-100 dark:bg-sky-900/30',
+        iconColor: 'text-sky-600 dark:text-sky-400',
+        buttonClass: 'bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-600 text-white shadow-sky-600/30 hover:shadow-lg hover:shadow-sky-600/40',
+        pulseClass: 'bg-gradient-to-r from-sky-500 to-sky-400',
+        enabled: Boolean(hasNsdocsConfig),
+        disabledReason: <>Configure a <a href="/sistema/settings" className="underline font-semibold">Integração NSDocs</a> para usar esta opção</>,
+      },
+      receita_nfse: {
+        title: 'Sincronização Receita NFS-e',
+        description: 'Consulta ADN (Receita) para NFS-e recebidas e emitidas',
+        icon: 'account_balance',
+        iconBg: 'bg-orange-100 dark:bg-orange-900/30',
+        iconColor: 'text-orange-600 dark:text-orange-400',
+        buttonClass: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white shadow-orange-600/30 hover:shadow-lg hover:shadow-orange-600/40',
+        pulseClass: 'bg-gradient-to-r from-orange-500 to-orange-400',
+        enabled: Boolean(hasReceitaConfig) && Boolean(hasCertificate),
+        disabledReason: <>Configure o <a href="/sistema/settings" className="underline font-semibold">Certificado Digital</a> e a <a href="/sistema/settings" className="underline font-semibold">Integração Receita NFS-e</a> para usar esta opção</>,
+      },
+    };
+    const meta = metaMap[method];
+    const disabled = !canWrite || !meta.enabled;
     const isBusy = methodState.state === 'syncing' || methodState.state === 'polling';
 
     return (
@@ -386,52 +470,32 @@ export default function SyncPage() {
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                isSefaz
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                  : 'bg-sky-100 dark:bg-sky-900/30'
-              }`}>
-                <span className={`material-symbols-outlined text-[20px] ${
-                  isSefaz
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-sky-600 dark:text-sky-400'
-                }`}>
-                  {isSefaz ? 'verified_user' : 'hub'}
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${meta.iconBg}`}>
+                <span className={`material-symbols-outlined text-[20px] ${meta.iconColor}`}>
+                  {meta.icon}
                 </span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Sincronização {isSefaz ? 'SEFAZ' : 'NSDocs'}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {isSefaz
-                    ? 'Consulta direta via certificado digital A1'
-                    : 'Consulta via API NSDocs'}
-                </p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{meta.title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{meta.description}</p>
               </div>
             </div>
             <button
               onClick={() => handleSync(method)}
               disabled={disabled || isBusy}
-              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
-                isSefaz
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-emerald-600/30 hover:shadow-lg hover:shadow-emerald-600/40'
-                  : 'bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-600 text-white shadow-sky-600/30 hover:shadow-lg hover:shadow-sky-600/40'
-              }`}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${meta.buttonClass}`}
             >
               <span className={`material-symbols-outlined text-[16px] ${isBusy ? 'animate-spin' : ''}`}>
                 {isBusy ? 'sync' : 'cloud_download'}
               </span>
-              {isBusy ? 'Consultando...' : `Sincronizar ${isSefaz ? 'SEFAZ' : 'NSDocs'}`}
+              {isBusy ? 'Consultando...' : `Sincronizar ${meta.title.replace('Sincronização ', '')}`}
             </button>
           </div>
 
           {disabled && (
             <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-2.5 py-1.5">
               <span className="material-symbols-outlined text-[16px]">info</span>
-              {isSefaz
-                ? <>Configure o <a href="/sistema/settings" className="underline font-semibold">Certificado Digital</a> para usar esta opção</>
-                : <>Configure a <a href="/sistema/settings" className="underline font-semibold">Integração NSDocs</a> para usar esta opção</>}
+              {meta.disabledReason}
             </div>
           )}
 
@@ -440,9 +504,7 @@ export default function SyncPage() {
             <div className="mt-3">
               {isBusy && (
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div className={`h-1.5 rounded-full animate-pulse ${
-                    isSefaz ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-sky-500 to-sky-400'
-                  }`} style={{ width: methodState.state === 'syncing' ? '30%' : '70%' }} />
+                  <div className={`h-1.5 rounded-full animate-pulse ${meta.pulseClass}`} style={{ width: methodState.state === 'syncing' ? '30%' : '70%' }} />
                 </div>
               )}
 
@@ -503,7 +565,7 @@ export default function SyncPage() {
           <span className="material-symbols-outlined text-[24px] text-primary">cloud_sync</span>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ ou NSDocs</p>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ, NSDocs ou Receita NFS-e (ADN)</p>
           </div>
         </div>
       </div>
@@ -536,18 +598,27 @@ export default function SyncPage() {
             <span className="material-symbols-outlined text-[14px]">hub</span>
             NSDocs: {hasNsdocsConfig ? 'Ativa' : 'Inativa'}
           </div>
+
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+            hasReceitaConfig
+              ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800'
+              : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+          }`}>
+            <span className="material-symbols-outlined text-[14px]">account_balance</span>
+            Receita NFS-e: {hasReceitaConfig ? 'Ativa' : 'Inativa'}
+          </div>
         </div>
       </div>
 
       {/* No Config Warning */}
-      {hasCertificate === false && hasNsdocsConfig === false && (
+      {hasCertificate === false && hasNsdocsConfig === false && hasReceitaConfig === false && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400 text-[20px] mt-0.5">warning</span>
             <div>
               <h3 className="font-bold text-yellow-900 dark:text-yellow-300 text-sm">Nenhuma integração configurada</h3>
               <p className="text-xs text-yellow-800 dark:text-yellow-400 mt-1">
-                Para sincronizar notas, configure o <a href="/sistema/settings" className="underline font-semibold hover:text-yellow-600">Certificado Digital</a> (Recomendado) ou a <a href="/sistema/settings" className="underline font-semibold hover:text-yellow-600">Integração NSDocs</a>.
+                Para sincronizar notas, configure o <a href="/sistema/settings" className="underline font-semibold hover:text-yellow-600">Certificado Digital</a>, a <a href="/sistema/settings" className="underline font-semibold hover:text-yellow-600">Integração NSDocs</a> e/ou a <a href="/sistema/settings" className="underline font-semibold hover:text-yellow-600">Integração Receita NFS-e</a>.
               </p>
             </div>
           </div>
@@ -560,7 +631,10 @@ export default function SyncPage() {
       {/* CARD 2: NSDocs Sync */}
       {renderSyncCard('nsdocs', nsdocsState)}
 
-      {/* CARD 3: Importar Histórico (NSDocs) */}
+      {/* CARD 3: Receita NFS-e Sync */}
+      {renderSyncCard('receita_nfse', receitaState)}
+
+      {/* CARD 4: Importar Histórico (NSDocs) */}
       <div className={`bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden ${!hasNsdocsConfig ? 'opacity-60' : ''}`}>
         <div className="p-4">
           <div className="flex items-center gap-3 mb-3">
@@ -660,7 +734,7 @@ export default function SyncPage() {
         </div>
       </div>
 
-      {/* CARD 4: Histórico de Sincronizações */}
+      {/* CARD 5: Histórico de Sincronizações */}
       <div className="space-y-3">
         <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -687,7 +761,10 @@ export default function SyncPage() {
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {renderHistoryCard('nsdocs', 'Histórico NSDocs', 'hub', nsdocsLogs)}
-            {renderHistoryCard('sefaz', 'Histórico SEFAZ', 'verified_user', sefazLogs)}
+            {renderHistoryCard('receita_nfse', 'Histórico Receita NFS-e', 'account_balance', receitaLogs)}
+            <div className="xl:col-span-2">
+              {renderHistoryCard('sefaz', 'Histórico SEFAZ', 'verified_user', sefazLogs)}
+            </div>
           </div>
         )}
       </div>

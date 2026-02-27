@@ -159,7 +159,36 @@ function parseCTe(result: any): ParsedInvoice | null {
 }
 
 function parseNFSe(result: any): ParsedInvoice | null {
-  // NFS-e pode vir em diferentes schemas (ABRASF, Ginfes, etc.)
+  // NFS-e pode vir em diferentes schemas (ABRASF, Ginfes, padrão nacional ADN etc.)
+  const nfseNacional = result?.NFSe?.infNFSe || result?.infNFSe;
+  if (nfseNacional) {
+    const dps = nfseNacional.DPS?.infDPS || {};
+    const toma = dps.toma || {};
+    const emit = nfseNacional.emit || dps.prest || {};
+    const totalValueRaw = nfseNacional.valores?.vLiq
+      || dps.valores?.vServPrest?.vServ
+      || dps.valores?.vServPrest?.vLiq
+      || dps.valores?.vServPrest?.vServPrest;
+
+    const accessKeyFromId = String(nfseNacional.Id || dps.Id || '')
+      .replace(/^NFS/i, '')
+      .replace(/^DPS/i, '');
+
+    return {
+      accessKey: accessKeyFromId || `NFSE-${String(nfseNacional.nNFSe || dps.nDPS || '')}`,
+      type: 'NFSE',
+      number: String(nfseNacional.nNFSe || dps.nDPS || ''),
+      series: String(dps.serie || ''),
+      issueDate: dps.dhEmi ? new Date(dps.dhEmi) : (nfseNacional.dhProc ? new Date(nfseNacional.dhProc) : new Date()),
+      senderCnpj: String(emit.CNPJ || emit.CPF || ''),
+      senderName: String(emit.xNome || ''),
+      recipientCnpj: String(toma.CNPJ || toma.CPF || ''),
+      recipientName: String(toma.xNome || ''),
+      totalValue: totalValueRaw ? Number(totalValueRaw) : 0,
+    };
+  }
+
+  // Schemas ABRASF/municipais
   const compNfse = result.CompNfse || result.ConsultarNfseResposta?.ListaNfse?.CompNfse;
   const nfse = compNfse?.Nfse?.InfNfse || result.Nfse?.InfNfse || result.InfNfse;
   if (!nfse) return null;
@@ -188,6 +217,50 @@ function parseNFSe(result: any): ParsedInvoice | null {
     recipientName: tomador.RazaoSocial || tomador.NomeFantasia || '',
     totalValue: servico.Valores?.ValorServicos ? Number(servico.Valores.ValorServicos) : (servico.ValorServicos ? Number(servico.ValorServicos) : 0),
   };
+}
+
+// ── Fiscal party data (IE, IM, CRT, UF) ──
+
+export interface PartyFiscalData {
+  cnpj: string;
+  ie: string | null;
+  im: string | null;
+  crt: string | null;
+  uf: string | null;
+}
+
+/**
+ * Extract fiscal data (IE, IM, CRT, UF) from emitter or recipient in NF-e XML.
+ */
+export async function extractPartyFiscalData(
+  xmlContent: string,
+  party: 'emit' | 'dest',
+): Promise<PartyFiscalData | null> {
+  try {
+    const result = await parseXmlSafe(xmlContent);
+    const nfeProc = result?.nfeProc || result;
+    const nfe = nfeProc?.NFe || result?.NFe;
+    const infNFe = nfe?.infNFe;
+    if (!infNFe) return null;
+
+    const node = infNFe[party];
+    if (!node) return null;
+
+    const cnpj = (node.CNPJ || node.CPF || '').trim();
+    if (!cnpj) return null;
+
+    const enderNode = node[party === 'emit' ? 'enderEmit' : 'enderDest'] || {};
+
+    return {
+      cnpj,
+      ie: node.IE ? String(node.IE).trim() || null : null,
+      im: node.IM ? String(node.IM).trim() || null : null,
+      crt: node.CRT ? String(node.CRT).trim() || null : null,
+      uf: enderNode.UF ? String(enderNode.UF).trim() || null : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

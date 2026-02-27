@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate } from '@/lib/utils';
+import { formatQuantity, formatPrice } from '@/lib/modal-helpers';
 
 interface CustomerRef {
   cnpj: string;
@@ -53,14 +54,6 @@ type PriceSortKey =
   | 'lastPrice'
   | 'lastIssueDate';
 type SortDirection = 'asc' | 'desc';
-
-function formatQuantity(value: number) {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
-}
-
-function formatPrice(value: number) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
 
 async function fetchCustomerDetails(targetCustomer: CustomerRef): Promise<CustomerDetailsResponse> {
   const params = new URLSearchParams();

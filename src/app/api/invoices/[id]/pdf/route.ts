@@ -1414,69 +1414,95 @@ function buildCteHtml(d: CteData, autoPrint: boolean): string {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
   const title = `QLMED/${d.chCTe}-cte.pdf`;
-  const protocolo = d.nProt ? `${esc(d.nProt)} - ${fmtDateTime(d.dhRecbto)}` : '-';
-  const medidas = d.medidas.length > 0
-    ? d.medidas
-    : [{ tipo: '-', quantidade: '0', unidade: '' }];
   const docs = d.docs.length > 0
     ? d.docs
     : [{ modelo: '-', serie: '-', numero: '-', chave: '-' }];
   const componentes = d.componentes.length > 0
     ? d.componentes
     : [{ nome: '-', valor: '0' }];
+  const medidas = d.medidas.length > 0
+    ? d.medidas
+    : [{ tipo: '-', quantidade: '0', unidade: '' }];
 
-  const cubagemMedida = medidas.find((m) => /(^|\s)M3(\s|$)/i.test(m.tipo) || cteUnidadeLabel(m.unidade) === 'M3');
-  const volumeMedida = medidas.find((m) => /VOLUME|UNIDADE|VOLUMES|UND/i.test(m.tipo));
-  const cubagem = cubagemMedida ? fmtNum(cubagemMedida.quantidade || '0', 2) : '0,00';
-  const qtdVolumes = volumeMedida ? fmtNum(volumeMedida.quantidade || '0', 2) : '0,00';
+  const partySection = (label: string, party: CtePartyData) => {
+    if (!party.nome && !party.doc) return '';
+    return `
+    <div class="dacte-section"><div class="dacte-section-header">${esc(label)}</div><div class="dacte-section-body">
+      <div class="dacte-field full"><span class="dacte-lbl">Razão Social / Nome</span><span class="dacte-val">${esc(party.nome || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">CNPJ/CPF</span><span class="dacte-val">${esc(fmtCnpj(party.doc || ''))}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Inscrição Estadual</span><span class="dacte-val">${esc(party.ie || '')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Fone</span><span class="dacte-val">${esc(fmtFone(party.fone || ''))}</span></div>
+      <div class="dacte-field full"><span class="dacte-lbl">Endereço</span><span class="dacte-val">${esc(formatCtePartyAddress(party))}${party.bairro ? ` - ${esc(party.bairro)}` : ''}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Município</span><span class="dacte-val">${esc(party.municipio || '-')}</span></div>
+      <div class="dacte-field" style="max-width:40px"><span class="dacte-lbl">UF</span><span class="dacte-val">${esc(party.uf || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">CEP</span><span class="dacte-val">${esc(fmtCep(party.cep || ''))}</span></div>
+    </div></div>`;
+  };
 
-  const partyBlock = (label: string, party: CtePartyData) => `
-    <div class="cte-party-title">${esc(label)}: <span class="cte-party-name">${esc(party.nome || '-')}</span></div>
-    <div><span class="cte-inline-lbl">ENDEREÇO:</span> ${esc(formatCtePartyAddress(party))}</div>
-    <div><span class="cte-inline-lbl">BAIRRO:</span> ${esc(party.bairro || '-')}</div>
-    <div><span class="cte-inline-lbl">MUNICÍPIO:</span> ${esc(formatCtePartyCity(party))} <span class="cte-inline-lbl">CEP:</span> ${esc(fmtCep(party.cep || ''))}</div>
-    <div><span class="cte-inline-lbl">CNPJ / CPF:</span> ${esc(fmtCnpj(party.doc || ''))} <span class="cte-inline-lbl">INSCR. EST.:</span> ${esc(party.ie || '')}</div>
-    <div><span class="cte-inline-lbl">PAÍS:</span> ${esc(party.pais || 'BRASIL')} <span class="cte-inline-lbl">FONE:</span> ${esc(fmtFone(party.fone || ''))}</div>
+  const compTableRows = componentes.map((c) => `
+    <tr><td class="dacte-comp-nome">${esc(c.nome || '-')}</td><td class="dacte-comp-val right">R$ ${fmtNum(c.valor || '0', 2)}</td></tr>
+  `).join('');
+
+  const docRefRows = docs.map((doc) =>
+    `<div class="dacte-doc-ref">${esc(fmtKey(doc.chave || '-'))}</div>`
+  ).join('');
+
+  const medidaRows = medidas.map((m) => `
+    <div class="dacte-field"><span class="dacte-lbl">${esc(m.tipo || 'Peso')}</span><span class="dacte-val">${esc(formatCteQtdMedida(m))}</span></div>
+  `).join('');
+
+  // Observations: combine obs + obsCont
+  const obsLines: string[] = [];
+  if (d.obs) obsLines.push(d.obs);
+  for (const item of d.obsCont) {
+    obsLines.push(`${item.campo}: ${item.texto}`);
+  }
+  const obsText = obsLines.join(' | ');
+
+  // Origin / Destination from inicioPrest / terminoPrest
+  const [munOrigem, ufOrigem] = (d.inicioPrest || ' - ').split(' - ').map((s) => s.trim());
+  const [munDestino, ufDestino] = (d.terminoPrest || ' - ').split(' - ').map((s) => s.trim());
+
+  const DACTE_CSS = `
+    .dacte-header { display:grid; grid-template-columns:1fr auto; gap:0; border:1px solid #000; margin-bottom:4px; }
+    .dacte-emit-box { padding:6px 8px; border-right:1px solid #000; }
+    .dacte-emit-nome { font-size:13px; font-weight:bold; margin-bottom:2px; }
+    .dacte-emit-end { font-size:8px; color:#333; line-height:1.4; }
+    .dacte-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px 12px; min-width:180px; text-align:center; }
+    .dacte-title { font-size:14px; font-weight:900; letter-spacing:2px; }
+    .dacte-subtitle { font-size:7px; font-weight:bold; margin-bottom:4px; }
+    .dacte-model { font-size:9px; font-weight:bold; }
+    .dacte-num { font-size:10px; font-weight:bold; margin-top:4px; }
+    .dacte-section { border:1px solid #000; margin-bottom:3px; }
+    .dacte-section-header { background:#eee; font-size:7px; font-weight:bold; text-transform:uppercase; padding:1px 4px; border-bottom:1px solid #000; letter-spacing:.5px; }
+    .dacte-section-body { display:flex; flex-wrap:wrap; padding:2px; gap:0; }
+    .dacte-field { display:flex; flex-direction:column; padding:1px 4px; min-width:80px; flex:1; }
+    .dacte-field.full { flex:0 0 100%; width:100%; }
+    .dacte-lbl { font-size:6px; color:#555; text-transform:uppercase; font-weight:bold; }
+    .dacte-val { font-size:9px; }
+    .dacte-percurso { display:flex; align-items:center; justify-content:center; gap:20px; padding:8px; }
+    .dacte-percurso-item { text-align:center; }
+    .dacte-percurso-mun { font-size:13px; font-weight:bold; }
+    .dacte-percurso-uf { font-size:11px; color:#555; }
+    .dacte-percurso-label { font-size:7px; color:#888; text-transform:uppercase; }
+    .dacte-percurso-arrow { font-size:24px; color:#999; }
+    .dacte-comps-table { width:100%; border-collapse:collapse; font-size:8px; }
+    .dacte-comps-table th { background:#eee; padding:2px 4px; text-align:left; font-size:7px; font-weight:bold; border-bottom:1px solid #ccc; }
+    .dacte-comps-table td { padding:2px 4px; border-bottom:1px solid #f0f0f0; }
+    .dacte-comp-val { width:80px; }
+    .dacte-comps-total { display:flex; justify-content:space-between; padding:4px 8px; border-top:2px solid #000; font-weight:bold; font-size:9px; }
+    .dacte-comps-subtotal { display:flex; justify-content:space-between; padding:4px 8px; border-top:1px solid #ccc; font-weight:normal; font-size:8px; }
+    .dacte-key-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; }
+    .dacte-key-box .dacte-lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:1px; }
+    .dacte-key-val { font-family:monospace; font-size:9px; letter-spacing:.3px; font-weight:bold; }
+    .dacte-prot-box { display:flex; justify-content:space-between; align-items:center; border:1px solid #000; padding:4px 8px; margin-bottom:3px; background:#f9f9f9; }
+    .dacte-prot-label { font-size:7px; color:#555; text-transform:uppercase; }
+    .dacte-prot-val { font-size:9px; font-weight:bold; }
+    .dacte-doc-ref { font-family:monospace; font-size:8px; letter-spacing:.3px; padding:1px 0; border-bottom:1px solid #eee; }
+    .dacte-obs-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; font-size:8px; min-height:30px; }
+    .dacte-obs-box .dacte-lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:2px; }
+    .right { text-align:right; }
   `;
-
-  const medidasRows = medidas.map((m, index) => `
-    <tr>
-      <td>${esc(m.tipo || '-')}</td>
-      <td class="right">${esc(formatCteQtdMedida(m))}</td>
-      <td class="right">${index === 0 ? esc(cubagem) : ''}</td>
-      <td class="right">${index === 0 ? esc(qtdVolumes) : ''}</td>
-    </tr>
-  `).join('');
-
-  const compRows = (() => {
-    const rows: string[] = [];
-    for (let i = 0; i < componentes.length; i += 2) {
-      const c1 = componentes[i];
-      const c2 = componentes[i + 1];
-      rows.push(`
-        <tr>
-          <td>${esc(c1?.nome || '-')}</td>
-          <td class="right">${fmtNum(c1?.valor || '0', 2)}</td>
-          <td>${esc(c2?.nome || '-')}</td>
-          <td class="right">${fmtNum(c2?.valor || '0', 2)}</td>
-        </tr>
-      `);
-    }
-    return rows.join('');
-  })();
-
-  const docRows = docs.map((doc) => `
-    <tr>
-      <td class="center">${esc(doc.modelo || '-')}</td>
-      <td class="center">${esc(doc.serie || '-')}</td>
-      <td class="center">${esc(doc.numero || '-')}</td>
-      <td class="mono">${esc(doc.chave || '-')}</td>
-    </tr>
-  `).join('');
-
-  const usoExclusivo = d.obsCont.length > 0
-    ? d.obsCont.map((item) => `${item.campo}: ${item.texto}`).join('\n')
-    : d.obs || '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1486,269 +1512,566 @@ function buildCteHtml(d: CteData, autoPrint: boolean): string {
   <title>${title}</title>
   <style>
     ${CSS}
-    table.cte { width: 100%; border-collapse: collapse; margin-top: -1px; }
-    table.cte td, table.cte th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; font-size: 8px; }
-    table.cte th { background: #f5f5f5; text-transform: uppercase; font-size: 6px; font-weight: 700; text-align: center; }
-    .cte-section-title { background: #f5f5f5; font-size: 7px; font-weight: 700; text-transform: uppercase; padding: 2px 4px; }
-    .cte-lbl { display: block; font-size: 6px; font-weight: 700; text-transform: uppercase; color: #333; line-height: 1.2; }
-    .cte-val { display: block; font-size: 9px; font-weight: 700; line-height: 1.3; }
-    .cte-val-mono { display: block; font-size: 8px; font-family: 'Courier New', monospace; font-weight: 700; line-height: 1.3; letter-spacing: 0.4px; }
-    .cte-inline-lbl { font-size: 6px; font-weight: 700; text-transform: uppercase; color: #333; margin-right: 2px; }
-    .cte-party-title { font-size: 7px; font-weight: 700; margin-bottom: 2px; text-transform: uppercase; }
-    .cte-party-name { font-size: 8px; font-weight: 700; }
-    .cte-docbox-title { font-size: 12px; font-weight: 800; text-align: center; line-height: 1.1; }
-    .cte-docbox-sub { font-size: 7px; text-align: center; line-height: 1.2; margin-top: 2px; }
-    .cte-docbox-num { font-size: 11px; font-weight: 800; text-align: center; margin-top: 3px; }
-    .mono { font-family: 'Courier New', monospace; font-size: 8px; }
-    .right { text-align: right; }
-    .center { text-align: center; }
+    ${DACTE_CSS}
+    @media print {
+      body { margin:0; }
+      .page { margin:0; padding:4mm; box-shadow:none; }
+      .no-print { display:none; }
+    }
   </style>
 </head>
 <body>
   <div class="page">
-    <table class="cte">
-      <tr>
-        <td style="width:80%; font-size:7px; line-height:1.25;">
-          DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO EM PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE TRANSPORTE<br><br>
-          <span class="cte-inline-lbl">NOME:</span><br>
-          <span class="cte-inline-lbl">RG:</span><br>
-          <span class="cte-inline-lbl">CHEGADA DATA / HORA:</span><br>
-          <span class="cte-inline-lbl">SAÍDA DATA / HORA:</span><br>
-          <span class="cte-inline-lbl">ASSINATURA / CARIMBO</span>
-        </td>
-        <td style="width:20%;" class="center">
-          <div style="font-size:11px; font-weight:800;">CT-E</div>
-          <div style="font-size:10px; font-weight:700; margin-top:2px;">Nº ${fmtCteNumber(d.nCT)}</div>
-          <div style="font-size:8px;">Série ${fmtCteSerie(d.serie)}</div>
-          <div style="font-size:8px;">MODAL</div>
-          <div style="font-size:9px; font-weight:700;">${esc(d.modal || '-')}</div>
-        </td>
-      </tr>
-    </table>
-    <div class="canhoto-line"></div>
 
-    <table class="cte">
-      <tr>
-        <td style="width:40%;">
-          <div style="font-size:12px; font-weight:800; line-height:1.15;">${esc(d.emit.nome || '-')}</div>
-          <div style="font-size:8px; line-height:1.35; margin-top:3px;">
-            ${esc(formatCtePartyAddress(d.emit))}<br>
-            ${esc(d.emit.bairro || '-')} - ${esc(formatCtePartyCity(d.emit))}<br>
-            Telefone: ${esc(fmtFone(d.emit.fone || ''))} CEP: ${esc(fmtCep(d.emit.cep || ''))}<br>
-            CNPJ: ${esc(fmtCnpj(d.emit.doc || ''))} IE: ${esc(d.emit.ie || '')}
-          </div>
-        </td>
-        <td style="width:22%;">
-          <div class="cte-docbox-title">DACTE</div>
-          <div class="cte-docbox-sub">Documento Auxiliar do Conhecimento de Transporte Eletrônico</div>
-          <div class="cte-docbox-num">MOD ${fmtCteModelo(d.modelo)} / SÉRIE ${fmtCteSerie(d.serie)}</div>
-          <div class="cte-docbox-num">NÚMERO ${fmtCteNumber(d.nCT)}</div>
-          <div class="cte-docbox-sub">FL ${esc(d.fl || '1/1')}</div>
-        </td>
-        <td style="width:38%;">
-          <span class="cte-lbl">DATA E HORA DE EMISSÃO</span>
-          <span class="cte-val">${fmtDateTime(d.dhEmi)}</span>
-          <span class="cte-lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
-          <span class="cte-val">${esc(protocolo)}</span>
-          <span class="cte-lbl">CHAVE DE ACESSO</span>
-          <span class="cte-val-mono">${fmtKey(d.chCTe)}</span>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td style="width:16%;">
-          <span class="cte-lbl">TIPO DO CT-E</span>
-          <span class="cte-val">${esc(d.tpCte || '-')}</span>
-        </td>
-        <td style="width:16%;">
-          <span class="cte-lbl">TIPO DO SERVIÇO</span>
-          <span class="cte-val">${esc(d.tpServico || '-')}</span>
-        </td>
-        <td style="width:16%;">
-          <span class="cte-lbl">TOMADOR DO SERVIÇO</span>
-          <span class="cte-val">${esc(d.tomPapel || '-')}</span>
-        </td>
-        <td style="width:16%;">
-          <span class="cte-lbl">IND. CT-E GLOBALIZADO</span>
-          <span class="cte-val">${esc(d.indGlobalizado || 'Não')}</span>
-        </td>
-        <td style="width:36%;">
-          <span class="cte-lbl">Consulta de autenticidade</span>
-          <span class="cte-val" style="font-size:8px;">www.cte.fazenda.gov.br ou Sefaz autorizadora</span>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2">
-          <span class="cte-lbl">CFOP - NATUREZA DA OPERAÇÃO</span>
-          <span class="cte-val">${esc(`${d.cfop || '-'} - ${d.natOp || '-'}`)}</span>
-        </td>
-        <td colspan="3">
-          <span class="cte-lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
-          <span class="cte-val">${esc(protocolo)}</span>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2">
-          <span class="cte-lbl">INÍCIO DA PRESTAÇÃO</span>
-          <span class="cte-val">${esc(d.inicioPrest || '-')}</span>
-        </td>
-        <td colspan="3">
-          <span class="cte-lbl">TÉRMINO DA PRESTAÇÃO</span>
-          <span class="cte-val">${esc(d.terminoPrest || '-')}</span>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td style="width:50%;">${partyBlock('REMETENTE', d.rem)}</td>
-        <td style="width:50%;">${partyBlock('DESTINATÁRIO', d.dest)}</td>
-      </tr>
-      <tr>
-        <td>${partyBlock('EXPEDIDOR', d.exped)}</td>
-        <td>${partyBlock('RECEBEDOR', d.receb)}</td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td>
-          <div class="cte-party-title">TOMADOR DO SERVIÇO: <span class="cte-party-name">${esc(d.tom.nome || '-')}</span></div>
-          <div><span class="cte-inline-lbl">ENDEREÇO:</span> ${esc(formatCtePartyAddress(d.tom))}</div>
-          <div><span class="cte-inline-lbl">MUNICÍPIO:</span> ${esc(formatCtePartyCity(d.tom))} <span class="cte-inline-lbl">CEP:</span> ${esc(fmtCep(d.tom.cep || ''))}</div>
-          <div><span class="cte-inline-lbl">CNPJ / CPF:</span> ${esc(fmtCnpj(d.tom.doc || ''))} <span class="cte-inline-lbl">INSCR. EST.:</span> ${esc(d.tom.ie || '')}</div>
-          <div><span class="cte-inline-lbl">PAÍS:</span> ${esc(d.tom.pais || 'BRASIL')} <span class="cte-inline-lbl">FONE:</span> ${esc(fmtFone(d.tom.fone || ''))}</div>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td style="width:44%;">
-          <span class="cte-lbl">PRODUTO PREDOMINANTE</span>
-          <span class="cte-val">${esc(d.prodPred || '-')}</span>
-        </td>
-        <td style="width:36%;">
-          <span class="cte-lbl">OUTRAS CARACTERÍSTICAS DA CARGA</span>
-          <span class="cte-val">-</span>
-        </td>
-        <td style="width:20%;" class="right">
-          <span class="cte-lbl">VALOR TOTAL DA CARGA</span>
-          <span class="cte-val">${fmtNum(d.vCarga || '0', 2)}</span>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <th style="width:35%;">TIPO MEDIDA</th>
-        <th style="width:20%;">QTDE/UN.MEDIDA</th>
-        <th style="width:25%;">CUBAGEM (M³)</th>
-        <th style="width:20%;">QUANTIDADE DE VOLUMES (UND)</th>
-      </tr>
-      ${medidasRows}
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td colspan="2" class="cte-section-title">COMPONENTES DO VALOR DA PRESTAÇÃO DE SERVIÇO</td>
-      </tr>
-      <tr>
-        <td style="width:70%; padding:0;">
-          <table class="cte" style="margin-top:0;">
-            <tr>
-              <th style="width:35%;">NOME</th>
-              <th style="width:15%;">VALOR</th>
-              <th style="width:35%;">NOME</th>
-              <th style="width:15%;">VALOR</th>
-            </tr>
-            ${compRows}
-          </table>
-        </td>
-        <td style="width:30%;">
-          <span class="cte-lbl">VALOR TOTAL DO SERVIÇO</span>
-          <span class="cte-val right">${fmtNum(d.vTPrest || '0', 2)}</span>
-          <span class="cte-lbl" style="margin-top:6px;">VALOR TOTAL A RECEBER</span>
-          <span class="cte-val right">${fmtNum(d.vRec || d.vTPrest || '0', 2)}</span>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td colspan="6" class="cte-section-title">INFORMAÇÕES RELATIVAS AO IMPOSTO</td>
-      </tr>
-      <tr>
-        <th style="width:35%;">CLASSIFICAÇÃO TRIBUTÁRIA DO SERVIÇO</th>
-        <th style="width:15%;">BASE DE CÁLCULO</th>
-        <th style="width:12%;">ALÍQUOTA ICMS (%)</th>
-        <th style="width:12%;">VALOR ICMS</th>
-        <th style="width:12%;">% RED. BC. CALC.</th>
-        <th style="width:14%;">ICMS ST</th>
-      </tr>
-      <tr>
-        <td>${esc(d.cst ? `${d.cst} - TRIBUTAÇÃO` : '-')}</td>
-        <td class="right">${fmtNum(d.vBC || '0', 2)}</td>
-        <td class="right">${fmtNum(d.pICMS || '0', 2)}</td>
-        <td class="right">${fmtNum(d.vICMS || '0', 2)}</td>
-        <td class="right">${fmtNum(d.redBc || '0', 2)}</td>
-        <td class="right">${fmtNum(d.icmsSt || '0', 2)}</td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td colspan="4" class="cte-section-title">DOCUMENTOS ORIGINÁRIOS</td>
-      </tr>
-      <tr>
-        <th style="width:10%;">MODELO</th>
-        <th style="width:10%;">SÉRIE</th>
-        <th style="width:15%;">NÚMERO</th>
-        <th style="width:65%;">CHAVE DE ACESSO</th>
-      </tr>
-      ${docRows}
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td class="cte-section-title">OBSERVAÇÕES</td>
-      </tr>
-      <tr>
-        <td style="white-space:pre-wrap; line-height:1.35;">${esc(d.obs || '-')}</td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td class="cte-section-title">INFORMAÇÕES ESPECÍFICAS DO MODAL RODOVIÁRIO</td>
-      </tr>
-      <tr>
-        <td>
-          <span class="cte-lbl">RNTRC DA EMPRESA</span>
-          <span class="cte-val">${esc(d.rntrc || '-')}</span>
-        </td>
-      </tr>
-    </table>
-
-    <table class="cte">
-      <tr>
-        <td style="width:70%;">
-          <div class="cte-section-title">USO EXCLUSIVO DO EMISSOR DO CT-E</div>
-          <div style="white-space:pre-wrap; line-height:1.35; min-height:38px;">${esc(usoExclusivo || '-')}</div>
-        </td>
-        <td style="width:30%;">
-          <div class="cte-section-title">RESERVADO AO FISCO</div>
-        </td>
-      </tr>
-    </table>
-
-    <div class="footer-line">
-      <span>DATA E HORA DA IMPRESSÃO: ${now}</span>
-      <span>nsdocs - https://app.nsdocs.com.br</span>
-      <span>${esc(d.versao || '4.00')}</span>
+    <!-- CHAVE DE ACESSO -->
+    <div class="dacte-key-box">
+      <div class="dacte-lbl">CHAVE DE ACESSO</div>
+      <div class="dacte-key-val">${fmtKey(d.chCTe)}</div>
     </div>
+
+    <!-- HEADER: EMITENTE + TÍTULO DACTE -->
+    <div class="dacte-header">
+      <div class="dacte-emit-box">
+        <div class="dacte-emit-nome">${esc(d.emit.nome || '-')}</div>
+        <div class="dacte-emit-end">
+          ${esc(formatCtePartyAddress(d.emit))}${d.emit.bairro ? ` - ${esc(d.emit.bairro)}` : ''}<br>
+          ${esc(formatCtePartyCity(d.emit))} &nbsp;&bull;&nbsp; CEP: ${esc(fmtCep(d.emit.cep || ''))} &nbsp;&bull;&nbsp; Fone: ${esc(fmtFone(d.emit.fone || ''))}<br>
+          CNPJ: ${esc(fmtCnpj(d.emit.doc || ''))} &nbsp;&bull;&nbsp; IE: ${esc(d.emit.ie || '')}
+        </div>
+      </div>
+      <div class="dacte-title-box">
+        <div class="dacte-subtitle">DOCUMENTO AUXILIAR DO</div>
+        <div class="dacte-title">DACTE</div>
+        <div class="dacte-subtitle">CONHECIMENTO DE TRANSPORTE ELETR&Ocirc;NICO</div>
+        <div class="dacte-model">Modelo ${fmtCteModelo(d.modelo)}</div>
+        <div class="dacte-num">N&ordm; ${fmtCteNumber(d.nCT)} &nbsp; S&eacute;rie ${fmtCteSerie(d.serie)}</div>
+        <div style="font-size:8px; margin-top:2px;">Emiss&atilde;o: ${fmtDate(d.dhEmi)}</div>
+      </div>
+    </div>
+
+    <!-- PROTOCOLO DE AUTORIZAÇÃO -->
+    ${d.nProt ? `
+    <div class="dacte-prot-box">
+      <div><div class="dacte-prot-label">Protocolo de Autoriza&ccedil;&atilde;o de Uso</div><div class="dacte-prot-val">${esc(d.nProt)}</div></div>
+      <div><div class="dacte-prot-label">Data/Hora Recebimento</div><div class="dacte-prot-val">${fmtDateTime(d.dhRecbto)}</div></div>
+    </div>` : ''}
+
+    <!-- PERCURSO -->
+    <div class="dacte-section"><div class="dacte-section-header">Percurso</div><div class="dacte-section-body"><div class="dacte-percurso">
+      <div class="dacte-percurso-item">
+        <div class="dacte-percurso-mun">${esc(munOrigem || '-')}</div>
+        <div class="dacte-percurso-uf">${esc(ufOrigem || '-')}</div>
+        <div class="dacte-percurso-label">Origem</div>
+      </div>
+      <div class="dacte-percurso-arrow">&#8594;</div>
+      <div class="dacte-percurso-item">
+        <div class="dacte-percurso-mun">${esc(munDestino || '-')}</div>
+        <div class="dacte-percurso-uf">${esc(ufDestino || '-')}</div>
+        <div class="dacte-percurso-label">Destino</div>
+      </div>
+    </div></div></div>
+
+    <!-- INFORMAÇÕES DO CT-e -->
+    <div class="dacte-section"><div class="dacte-section-header">Informa&ccedil;&otilde;es do CT-e</div><div class="dacte-section-body">
+      <div class="dacte-field full"><span class="dacte-lbl">Natureza da Opera&ccedil;&atilde;o</span><span class="dacte-val">${esc(d.natOp || '-')}</span></div>
+      <div class="dacte-field" style="max-width:80px"><span class="dacte-lbl">CFOP</span><span class="dacte-val">${esc(d.cfop || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Tipo do CT-e</span><span class="dacte-val">${esc(d.tpCte || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Tipo de Servi&ccedil;o</span><span class="dacte-val">${esc(d.tpServico || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Modal</span><span class="dacte-val">${esc(d.modal || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Tomador do Servi&ccedil;o</span><span class="dacte-val">${esc(d.tomPapel || '-')}</span></div>
+    </div></div>
+
+    <!-- EMITENTE -->
+    ${partySection('Emitente', d.emit)}
+
+    <!-- REMETENTE -->
+    ${partySection('Remetente', d.rem)}
+
+    <!-- EXPEDIDOR -->
+    ${partySection('Expedidor', d.exped)}
+
+    <!-- RECEBEDOR -->
+    ${partySection('Recebedor', d.receb)}
+
+    <!-- DESTINATÁRIO -->
+    ${partySection('Destinat&aacute;rio', d.dest)}
+
+    <!-- TOMADOR DO SERVIÇO -->
+    <div class="dacte-section"><div class="dacte-section-header">Tomador do Servi&ccedil;o</div><div class="dacte-section-body">
+      <div class="dacte-field full"><span class="dacte-lbl">Raz&atilde;o Social / Nome</span><span class="dacte-val">${esc(d.tom.nome || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">CNPJ/CPF</span><span class="dacte-val">${esc(fmtCnpj(d.tom.doc || ''))}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Inscri&ccedil;&atilde;o Estadual</span><span class="dacte-val">${esc(d.tom.ie || '')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Fone</span><span class="dacte-val">${esc(fmtFone(d.tom.fone || ''))}</span></div>
+      <div class="dacte-field full"><span class="dacte-lbl">Endere&ccedil;o</span><span class="dacte-val">${esc(formatCtePartyAddress(d.tom))}${d.tom.bairro ? ` - ${esc(d.tom.bairro)}` : ''}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Munic&iacute;pio</span><span class="dacte-val">${esc(formatCtePartyCity(d.tom))}</span></div>
+      <div class="dacte-field" style="max-width:40px"><span class="dacte-lbl">UF</span><span class="dacte-val">${esc(d.tom.uf || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">CEP</span><span class="dacte-val">${esc(fmtCep(d.tom.cep || ''))}</span></div>
+    </div></div>
+
+    <!-- VALORES DA PRESTAÇÃO -->
+    <div class="dacte-section">
+      <div class="dacte-section-header">Valores da Presta&ccedil;&atilde;o do Servi&ccedil;o</div>
+      <table class="dacte-comps-table">
+        <thead><tr><th>Componente</th><th class="right">Valor</th></tr></thead>
+        <tbody>${compTableRows}</tbody>
+      </table>
+      <div class="dacte-comps-total">
+        <span>VALOR TOTAL DA PRESTA&Ccedil;&Atilde;O</span>
+        <span>R$ ${fmtNum(d.vTPrest || '0', 2)}</span>
+      </div>
+      <div class="dacte-comps-subtotal">
+        <span>VALOR A RECEBER</span>
+        <span>R$ ${fmtNum(d.vRec || d.vTPrest || '0', 2)}</span>
+      </div>
+    </div>
+
+    <!-- IMPOSTOS -->
+    <div class="dacte-section"><div class="dacte-section-header">C&aacute;lculo do Imposto</div><div class="dacte-section-body">
+      <div class="dacte-field"><span class="dacte-lbl">CST</span><span class="dacte-val">${esc(d.cst || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Base de C&aacute;lculo do ICMS</span><span class="dacte-val">R$ ${fmtNum(d.vBC || '0', 2)}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Al&iacute;quota do ICMS (%)</span><span class="dacte-val">${fmtNum(d.pICMS || '0', 2)}%</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Valor do ICMS</span><span class="dacte-val">R$ ${fmtNum(d.vICMS || '0', 2)}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Valor Total dos Tributos</span><span class="dacte-val">R$ ${fmtNum(d.vICMS || '0', 2)}</span></div>
+    </div></div>
+
+    <!-- INFORMAÇÕES DA CARGA -->
+    <div class="dacte-section"><div class="dacte-section-header">Informa&ccedil;&otilde;es da Carga</div><div class="dacte-section-body">
+      <div class="dacte-field full"><span class="dacte-lbl">Produto Predominante</span><span class="dacte-val">${esc(d.prodPred || '-')}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Valor da Carga</span><span class="dacte-val">R$ ${fmtNum(d.vCarga || '0', 2)}</span></div>
+      <div class="dacte-field"><span class="dacte-lbl">Valor p/ Averba&ccedil;&atilde;o</span><span class="dacte-val">R$ ${fmtNum(d.vCarga || '0', 2)}</span></div>
+      ${medidaRows}
+    </div></div>
+
+    <!-- DOCUMENTOS ORIGINÁRIOS -->
+    <div class="dacte-section">
+      <div class="dacte-section-header">Documentos Origin&aacute;rios (NF-e / NF)</div>
+      <div class="dacte-section-body" style="flex-direction:column; padding:4px 8px;">
+        ${docRefRows}
+      </div>
+    </div>
+
+    <!-- MODAL RODOVIÁRIO -->
+    <div class="dacte-section"><div class="dacte-section-header">Modal Rodovi&aacute;rio</div><div class="dacte-section-body">
+      <div class="dacte-field"><span class="dacte-lbl">RNTRC</span><span class="dacte-val">${esc(d.rntrc || '-')}</span></div>
+    </div></div>
+
+    <!-- OBSERVAÇÕES -->
+    <div class="dacte-obs-box">
+      <div class="dacte-lbl">Observa&ccedil;&otilde;es / Dados do Produto</div>
+      <div>${esc(obsText || '-')}</div>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="footer-line">
+      <span>DATA E HORA DE IMPRESS&Atilde;O: ${now}</span>
+      <span>QLMED - Sistema de Gest&atilde;o Fiscal</span>
+    </div>
+
+  </div>
+  ${autoPrint ? '<script>window.addEventListener("load", function() { window.print(); });</script>' : ''}
+</body>
+</html>`;
+}
+
+// ==================== NFS-e ====================
+
+interface NfsePartyData {
+  nome: string;
+  fantasia: string;
+  doc: string;
+  im: string;
+  email: string;
+  fone: string;
+  endereco: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  cep: string;
+}
+
+interface NfseData {
+  nNFSe: string;
+  serie: string;
+  dhEmi: string;
+  dCompet: string;
+  accessKey: string;
+  xLocEmi: string;
+  xLocPrestacao: string;
+  xTribNac: string;
+  xTribMun: string;
+  xNBS: string;
+  cTribNac: string;
+  cTribMun: string;
+  xDescServ: string;
+  emit: NfsePartyData;
+  toma: NfsePartyData;
+  vServ: string;
+  vLiq: string;
+  vCalcDR: string;
+  vDR: string;
+  vBC: string;
+  pAliq: string;
+  vISSQN: string;
+  vTotalRet: string;
+  cStat: string;
+  nDFSe: string;
+  opSimpNac: string;
+  regEspTrib: string;
+  tpRetISSQN: string;
+}
+
+function emptyNfseParty(): NfsePartyData {
+  return { nome: '', fantasia: '', doc: '', im: '', email: '', fone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' };
+}
+
+function normalizeNfseParty(node: any, enderNode: any): NfsePartyData {
+  return {
+    nome: gv(node, 'xNome') || gv(node, 'RazaoSocial') || '',
+    fantasia: gv(node, 'xFant') || gv(node, 'NomeFantasia') || '',
+    doc: gv(node, 'CNPJ') || gv(node, 'CPF') || gv(node, 'CpfCnpj', 'Cnpj') || gv(node, 'Cnpj') || '',
+    im: gv(node, 'IM') || gv(node, 'InscricaoMunicipal') || '',
+    email: gv(node, 'email') || gv(node, 'Email') || '',
+    fone: gv(enderNode, 'fone') || gv(node, 'Contato', 'Telefone') || '',
+    endereco: [gv(enderNode, 'xLgr') || gv(enderNode, 'Endereco'), gv(enderNode, 'nro') || gv(enderNode, 'Numero')].filter(Boolean).join(', '),
+    bairro: gv(enderNode, 'xBairro') || gv(enderNode, 'Bairro') || '',
+    municipio: gv(enderNode, 'xMun') || '',
+    uf: gv(enderNode, 'UF') || '',
+    cep: gv(enderNode, 'CEP') || gv(enderNode, 'Cep') || '',
+  };
+}
+
+// Map IBGE municipality codes to names (most common in MS + capitals)
+function ibgeMunName(code: string): string {
+  const map: Record<string, string> = {
+    '5002704': 'CAMPO GRANDE', '5003702': 'DOURADOS', '5000203': 'AGUA CLARA',
+    '5007109': 'TRES LAGOAS', '5003207': 'CORUMBA', '5005707': 'PONTA PORA',
+    '3550308': 'SAO PAULO', '3304557': 'RIO DE JANEIRO', '3106200': 'BELO HORIZONTE',
+    '5300108': 'BRASILIA', '4106902': 'CURITIBA', '4314902': 'PORTO ALEGRE',
+    '2927408': 'SALVADOR', '2611606': 'RECIFE', '2304400': 'FORTALEZA',
+    '1302603': 'MANAUS', '1501402': 'BELEM', '5208707': 'GOIANIA',
+  };
+  return map[code] || code;
+}
+
+function extractNfseData(parsed: any, invoice: PdfInvoiceView): NfseData {
+  // ADN / Padrão Nacional
+  const infNFSe = parsed?.NFSe?.infNFSe || parsed?.infNFSe;
+  if (infNFSe) {
+    const dps = infNFSe.DPS?.infDPS || {};
+    const emitNode = infNFSe.emit || dps.prest || {};
+    const tomaNode = dps.toma || {};
+    const servNode = dps.serv || {};
+    const cServNode = servNode.cServ || {};
+    const valoresTop = infNFSe.valores || {};
+    const valoresDps = dps.valores || {};
+    const tribNode = valoresDps.trib || {};
+    const tribMun = tribNode.tribMun || {};
+    const vServPrest = valoresDps.vServPrest || {};
+    const vDedRed = valoresDps.vDedRed || {};
+    const regTrib = emitNode.regTrib || dps.prest?.regTrib || {};
+
+    const emitEnder = emitNode.enderNac || {};
+    const tomaEnder = tomaNode.end?.endNac || tomaNode.end || {};
+    const tomaEnderFields = tomaNode.end || {};
+
+    const emit = normalizeNfseParty(emitNode, emitEnder);
+    if (!emit.municipio && gv(emitEnder, 'cMun')) emit.municipio = ibgeMunName(gv(emitEnder, 'cMun'));
+
+    const toma = normalizeNfseParty(tomaNode, { ...tomaEnder, ...tomaEnderFields });
+    if (!toma.municipio && gv(tomaEnder, 'cMun')) toma.municipio = ibgeMunName(gv(tomaEnder, 'cMun'));
+    if (!toma.endereco) {
+      toma.endereco = [gv(tomaEnderFields, 'xLgr'), gv(tomaEnderFields, 'nro')].filter(Boolean).join(', ');
+      toma.bairro = gv(tomaEnderFields, 'xBairro') || toma.bairro;
+    }
+
+    return {
+      nNFSe: gv(infNFSe, 'nNFSe') || gv(dps, 'nDPS') || invoice.number,
+      serie: gv(dps, 'serie') || invoice.series || '',
+      dhEmi: gv(dps, 'dhEmi') || gv(infNFSe, 'dhProc') || invoice.issueDate.toISOString(),
+      dCompet: gv(dps, 'dCompet') || '',
+      accessKey: invoice.accessKey,
+      xLocEmi: gv(infNFSe, 'xLocEmi') || '',
+      xLocPrestacao: gv(infNFSe, 'xLocPrestacao') || '',
+      xTribNac: gv(infNFSe, 'xTribNac') || '',
+      xTribMun: gv(infNFSe, 'xTribMun') || '',
+      xNBS: gv(infNFSe, 'xNBS') || '',
+      cTribNac: gv(cServNode, 'cTribNac') || '',
+      cTribMun: gv(cServNode, 'cTribMun') || '',
+      xDescServ: gv(cServNode, 'xDescServ') || '',
+      emit: { ...emit, nome: emit.nome || invoice.senderName, doc: emit.doc || invoice.senderCnpj },
+      toma: { ...toma, nome: toma.nome || invoice.recipientName, doc: toma.doc || invoice.recipientCnpj },
+      vServ: gv(vServPrest, 'vServ') || String(invoice.totalValue || 0),
+      vLiq: gv(valoresTop, 'vLiq') || gv(vServPrest, 'vLiq') || gv(vServPrest, 'vServ') || String(invoice.totalValue || 0),
+      vCalcDR: gv(valoresTop, 'vCalcDR') || '',
+      vDR: gv(vDedRed, 'vDR') || '',
+      vBC: gv(valoresTop, 'vBC') || '',
+      pAliq: gv(valoresTop, 'pAliqAplic') || gv(tribMun, 'pAliq') || '',
+      vISSQN: gv(valoresTop, 'vISSQN') || '',
+      vTotalRet: gv(valoresTop, 'vTotalRet') || '',
+      cStat: gv(infNFSe, 'cStat') || '',
+      nDFSe: gv(infNFSe, 'nDFSe') || '',
+      opSimpNac: gv(regTrib, 'opSimpNac') || '',
+      regEspTrib: gv(regTrib, 'regEspTrib') || '',
+      tpRetISSQN: gv(tribMun, 'tpRetISSQN') || '',
+    };
+  }
+
+  // ABRASF / Municipal
+  const compNfse = parsed?.CompNfse || parsed?.ConsultarNfseResposta?.ListaNfse?.CompNfse;
+  const nfse = compNfse?.Nfse?.InfNfse || parsed?.Nfse?.InfNfse || parsed?.InfNfse;
+  if (nfse) {
+    const servico = nfse.Servico || {};
+    const valores = servico.Valores || {};
+    const prestador = nfse.PrestadorServico || nfse.Prestador || {};
+    const tomador = nfse.TomadorServico || nfse.Tomador || {};
+    const idPrest = prestador.IdentificacaoPrestador || {};
+    const idToma = tomador.IdentificacaoTomador || {};
+    const enderPrest = prestador.Endereco || {};
+    const enderToma = tomador.Endereco || {};
+
+    const emit: NfsePartyData = {
+      nome: gv(prestador, 'RazaoSocial') || gv(prestador, 'NomeFantasia') || invoice.senderName,
+      fantasia: gv(prestador, 'NomeFantasia') || '',
+      doc: gv(idPrest, 'CpfCnpj', 'Cnpj') || gv(idPrest, 'Cnpj') || invoice.senderCnpj,
+      im: gv(idPrest, 'InscricaoMunicipal') || '',
+      email: gv(prestador, 'Contato', 'Email') || '',
+      fone: gv(prestador, 'Contato', 'Telefone') || '',
+      endereco: [gv(enderPrest, 'Endereco'), gv(enderPrest, 'Numero')].filter(Boolean).join(', '),
+      bairro: gv(enderPrest, 'Bairro') || '',
+      municipio: gv(enderPrest, 'Cidade') || '',
+      uf: gv(enderPrest, 'Estado') || gv(enderPrest, 'Uf') || '',
+      cep: gv(enderPrest, 'Cep') || '',
+    };
+    const toma: NfsePartyData = {
+      nome: gv(tomador, 'RazaoSocial') || gv(tomador, 'NomeFantasia') || invoice.recipientName,
+      fantasia: '',
+      doc: gv(idToma, 'CpfCnpj', 'Cnpj') || gv(idToma, 'Cnpj') || invoice.recipientCnpj,
+      im: gv(idToma, 'InscricaoMunicipal') || '',
+      email: gv(tomador, 'Contato', 'Email') || '',
+      fone: gv(tomador, 'Contato', 'Telefone') || '',
+      endereco: [gv(enderToma, 'Endereco'), gv(enderToma, 'Numero')].filter(Boolean).join(', '),
+      bairro: gv(enderToma, 'Bairro') || '',
+      municipio: gv(enderToma, 'Cidade') || '',
+      uf: gv(enderToma, 'Estado') || gv(enderToma, 'Uf') || '',
+      cep: gv(enderToma, 'Cep') || '',
+    };
+
+    return {
+      nNFSe: gv(nfse, 'Numero') || invoice.number,
+      serie: '',
+      dhEmi: gv(nfse, 'DataEmissao') || invoice.issueDate.toISOString(),
+      dCompet: gv(nfse, 'Competencia') || '',
+      accessKey: invoice.accessKey,
+      xLocEmi: '',
+      xLocPrestacao: gv(servico, 'MunicipioIncidencia') || '',
+      xTribNac: gv(servico, 'Discriminacao') || '',
+      xTribMun: '',
+      xNBS: '',
+      cTribNac: gv(servico, 'ItemListaServico') || gv(servico, 'CodigoTributacaoMunicipio') || '',
+      cTribMun: gv(servico, 'CodigoTributacaoMunicipio') || '',
+      xDescServ: gv(servico, 'Discriminacao') || '',
+      emit,
+      toma,
+      vServ: gv(valores, 'ValorServicos') || String(invoice.totalValue || 0),
+      vLiq: gv(valores, 'ValorLiquidoNfse') || gv(valores, 'ValorServicos') || String(invoice.totalValue || 0),
+      vCalcDR: '',
+      vDR: gv(valores, 'ValorDeducoes') || '',
+      vBC: gv(valores, 'BaseCalculo') || '',
+      pAliq: gv(valores, 'Aliquota') || '',
+      vISSQN: gv(valores, 'ValorIss') || '',
+      vTotalRet: gv(valores, 'ValorIssRetido') || '',
+      cStat: '',
+      nDFSe: gv(nfse, 'CodigoVerificacao') || '',
+      opSimpNac: '',
+      regEspTrib: '',
+      tpRetISSQN: '',
+    };
+  }
+
+  // Fallback from invoice metadata only
+  const emit = emptyNfseParty();
+  emit.nome = invoice.senderName;
+  emit.doc = invoice.senderCnpj;
+  const toma = emptyNfseParty();
+  toma.nome = invoice.recipientName;
+  toma.doc = invoice.recipientCnpj;
+  return {
+    nNFSe: invoice.number, serie: invoice.series || '', dhEmi: invoice.issueDate.toISOString(),
+    dCompet: '', accessKey: invoice.accessKey, xLocEmi: '', xLocPrestacao: '',
+    xTribNac: '', xTribMun: '', xNBS: '', cTribNac: '', cTribMun: '', xDescServ: '',
+    emit, toma, vServ: String(invoice.totalValue || 0), vLiq: String(invoice.totalValue || 0),
+    vCalcDR: '', vDR: '', vBC: '', pAliq: '', vISSQN: '', vTotalRet: '',
+    cStat: '', nDFSe: '', opSimpNac: '', regEspTrib: '', tpRetISSQN: '',
+  };
+}
+
+function buildNfseHtml(d: NfseData, autoPrint: boolean): string {
+  const now = new Date().toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const title = `NFS-e ${d.nNFSe}`;
+
+  const retLabel: Record<string, string> = {
+    '1': 'ISS Retido pelo Tomador',
+    '2': 'ISS Retido pelo Intermediário',
+    '0': 'Sem retenção',
+  };
+  const simpNacLabel: Record<string, string> = {
+    '1': 'Não optante',
+    '2': 'Optante - Microempresa',
+    '3': 'Optante - Empresa de Pequeno Porte',
+  };
+
+  const partySection = (label: string, party: NfsePartyData) => `
+    <div class="nfse-section"><div class="nfse-section-header">${esc(label)}</div><div class="nfse-section-body">
+      <div class="nfse-field full"><span class="nfse-lbl">Razão Social</span><span class="nfse-val">${esc(party.nome || '-')}</span></div>
+      ${party.fantasia ? `<div class="nfse-field full"><span class="nfse-lbl">Nome Fantasia</span><span class="nfse-val">${esc(party.fantasia)}</span></div>` : ''}
+      <div class="nfse-field"><span class="nfse-lbl">CNPJ/CPF</span><span class="nfse-val">${esc(fmtCnpj(party.doc || ''))}</span></div>
+      ${party.im ? `<div class="nfse-field"><span class="nfse-lbl">Inscrição Municipal</span><span class="nfse-val">${esc(party.im)}</span></div>` : ''}
+      ${party.email ? `<div class="nfse-field"><span class="nfse-lbl">E-mail</span><span class="nfse-val">${esc(party.email)}</span></div>` : ''}
+      ${party.fone ? `<div class="nfse-field"><span class="nfse-lbl">Telefone</span><span class="nfse-val">${esc(fmtFone(party.fone))}</span></div>` : ''}
+      ${party.endereco ? `<div class="nfse-field full"><span class="nfse-lbl">Endereço</span><span class="nfse-val">${esc(party.endereco)}${party.bairro ? ` - ${esc(party.bairro)}` : ''}</span></div>` : ''}
+      ${party.municipio || party.uf ? `
+      <div class="nfse-field"><span class="nfse-lbl">Município</span><span class="nfse-val">${esc(party.municipio || '-')}</span></div>
+      <div class="nfse-field" style="max-width:40px"><span class="nfse-lbl">UF</span><span class="nfse-val">${esc(party.uf || '-')}</span></div>
+      ${party.cep ? `<div class="nfse-field"><span class="nfse-lbl">CEP</span><span class="nfse-val">${esc(fmtCep(party.cep))}</span></div>` : ''}` : ''}
+    </div></div>`;
+
+  const NFSE_CSS = `
+    .nfse-header { display:grid; grid-template-columns:1fr auto; gap:0; border:1px solid #000; margin-bottom:4px; }
+    .nfse-emit-box { padding:6px 8px; border-right:1px solid #000; }
+    .nfse-emit-nome { font-size:13px; font-weight:bold; margin-bottom:2px; }
+    .nfse-emit-end { font-size:8px; color:#333; line-height:1.4; }
+    .nfse-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px 14px; min-width:170px; text-align:center; }
+    .nfse-title { font-size:14px; font-weight:900; letter-spacing:2px; }
+    .nfse-subtitle { font-size:7px; font-weight:bold; margin-bottom:4px; }
+    .nfse-num { font-size:12px; font-weight:bold; margin-top:4px; }
+    .nfse-section { border:1px solid #000; margin-bottom:3px; }
+    .nfse-section-header { background:#eee; font-size:7px; font-weight:bold; text-transform:uppercase; padding:1px 4px; border-bottom:1px solid #000; letter-spacing:.5px; }
+    .nfse-section-body { display:flex; flex-wrap:wrap; padding:2px; gap:0; }
+    .nfse-field { display:flex; flex-direction:column; padding:1px 4px; min-width:80px; flex:1; }
+    .nfse-field.full { flex:0 0 100%; width:100%; }
+    .nfse-lbl { font-size:6px; color:#555; text-transform:uppercase; font-weight:bold; }
+    .nfse-val { font-size:9px; }
+    .nfse-key-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; }
+    .nfse-key-box .nfse-lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:1px; }
+    .nfse-key-val { font-family:monospace; font-size:9px; letter-spacing:.3px; font-weight:bold; }
+    .nfse-status-box { display:flex; justify-content:space-between; align-items:center; border:1px solid #000; padding:4px 8px; margin-bottom:3px; background:#f9f9f9; }
+    .nfse-status-label { font-size:7px; color:#555; text-transform:uppercase; }
+    .nfse-status-val { font-size:9px; font-weight:bold; }
+    .nfse-desc-box { border:1px solid #000; padding:4px 6px; margin-bottom:3px; font-size:8px; line-height:1.4; }
+    .nfse-desc-box .nfse-lbl { font-size:6.5px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:2px; }
+    .nfse-valor-destaque { display:flex; justify-content:space-between; padding:4px 8px; border-top:2px solid #000; font-weight:bold; font-size:10px; }
+    .nfse-valor-sub { display:flex; justify-content:space-between; padding:3px 8px; border-top:1px solid #ccc; font-size:8px; }
+    .right { text-align:right; }
+  `;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(title)}</title>
+  <style>
+    ${CSS}
+    ${NFSE_CSS}
+    @media print {
+      body { margin:0; }
+      .page { margin:0; padding:4mm; box-shadow:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- CHAVE DE ACESSO / IDENTIFICAÇÃO -->
+    <div class="nfse-key-box">
+      <div class="nfse-lbl">Identificação da NFS-e</div>
+      <div class="nfse-key-val">${esc(d.accessKey)}</div>
+    </div>
+
+    <!-- HEADER: PRESTADOR + TÍTULO -->
+    <div class="nfse-header">
+      <div class="nfse-emit-box">
+        <div class="nfse-emit-nome">${esc(d.emit.nome || '-')}</div>
+        <div class="nfse-emit-end">
+          ${d.emit.endereco ? `${esc(d.emit.endereco)}${d.emit.bairro ? ` - ${esc(d.emit.bairro)}` : ''}<br>` : ''}
+          ${d.emit.municipio || d.emit.uf ? `${esc(d.emit.municipio)}/${esc(d.emit.uf)}` : ''}${d.emit.cep ? ` &nbsp;&bull;&nbsp; CEP: ${esc(fmtCep(d.emit.cep))}` : ''}<br>
+          CNPJ: ${esc(fmtCnpj(d.emit.doc || ''))}${d.emit.im ? ` &nbsp;&bull;&nbsp; IM: ${esc(d.emit.im)}` : ''}
+          ${d.emit.email ? `<br>E-mail: ${esc(d.emit.email)}` : ''}
+        </div>
+      </div>
+      <div class="nfse-title-box">
+        <div class="nfse-subtitle">NOTA FISCAL DE</div>
+        <div class="nfse-title">SERVIÇO</div>
+        <div class="nfse-subtitle">ELETR&Ocirc;NICA - NFS-e</div>
+        <div class="nfse-num">N&ordm; ${esc(d.nNFSe)}</div>
+        ${d.serie ? `<div style="font-size:8px;">S&eacute;rie ${esc(d.serie)}</div>` : ''}
+        <div style="font-size:8px; margin-top:2px;">Emiss&atilde;o: ${fmtDate(d.dhEmi)}</div>
+      </div>
+    </div>
+
+    <!-- STATUS / COMPETÊNCIA -->
+    <div class="nfse-status-box">
+      ${d.dCompet ? `<div><div class="nfse-status-label">Compet&ecirc;ncia</div><div class="nfse-status-val">${fmtDate(d.dCompet)}</div></div>` : ''}
+      ${d.xLocPrestacao ? `<div><div class="nfse-status-label">Local da Presta&ccedil;&atilde;o</div><div class="nfse-status-val">${esc(d.xLocPrestacao)}</div></div>` : ''}
+      ${d.nDFSe ? `<div><div class="nfse-status-label">N&ordm; DFS-e</div><div class="nfse-status-val">${esc(d.nDFSe)}</div></div>` : ''}
+    </div>
+
+    <!-- PRESTADOR -->
+    ${partySection('Prestador de Servi&ccedil;os', d.emit)}
+
+    <!-- TOMADOR -->
+    ${partySection('Tomador de Servi&ccedil;os', d.toma)}
+
+    <!-- CLASSIFICAÇÃO DO SERVIÇO -->
+    <div class="nfse-section"><div class="nfse-section-header">Servi&ccedil;o</div><div class="nfse-section-body">
+      ${d.cTribNac ? `<div class="nfse-field"><span class="nfse-lbl">C&oacute;digo Tributa&ccedil;&atilde;o Nacional</span><span class="nfse-val">${esc(d.cTribNac)}</span></div>` : ''}
+      ${d.cTribMun ? `<div class="nfse-field"><span class="nfse-lbl">C&oacute;digo Tributa&ccedil;&atilde;o Municipal</span><span class="nfse-val">${esc(d.cTribMun)}</span></div>` : ''}
+      ${d.xNBS ? `<div class="nfse-field"><span class="nfse-lbl">NBS</span><span class="nfse-val">${esc(d.xNBS)}</span></div>` : ''}
+      ${d.xTribNac ? `<div class="nfse-field full"><span class="nfse-lbl">Descri&ccedil;&atilde;o Nacional</span><span class="nfse-val">${esc(d.xTribNac)}</span></div>` : ''}
+      ${d.xTribMun ? `<div class="nfse-field full"><span class="nfse-lbl">Descri&ccedil;&atilde;o Municipal</span><span class="nfse-val">${esc(d.xTribMun)}</span></div>` : ''}
+    </div></div>
+
+    <!-- DESCRIÇÃO DO SERVIÇO -->
+    ${d.xDescServ ? `
+    <div class="nfse-desc-box">
+      <div class="nfse-lbl">Discrimina&ccedil;&atilde;o do Servi&ccedil;o</div>
+      <div style="white-space:pre-wrap;">${esc(d.xDescServ)}</div>
+    </div>` : ''}
+
+    <!-- VALORES -->
+    <div class="nfse-section">
+      <div class="nfse-section-header">Valores</div>
+      <div class="nfse-valor-destaque">
+        <span>VALOR L&Iacute;QUIDO DA NFS-e</span>
+        <span>R$ ${fmtNum(d.vLiq || '0', 2)}</span>
+      </div>
+      <div class="nfse-valor-sub">
+        <span>Valor Bruto dos Servi&ccedil;os</span>
+        <span>R$ ${fmtNum(d.vServ || '0', 2)}</span>
+      </div>
+      ${d.vDR ? `<div class="nfse-valor-sub"><span>Dedu&ccedil;&otilde;es / Redu&ccedil;&otilde;es</span><span>R$ ${fmtNum(d.vDR, 2)}</span></div>` : ''}
+      ${d.vCalcDR ? `<div class="nfse-valor-sub"><span>Base Dedu&ccedil;&atilde;o/Redu&ccedil;&atilde;o</span><span>R$ ${fmtNum(d.vCalcDR, 2)}</span></div>` : ''}
+    </div>
+
+    <!-- TRIBUTOS -->
+    <div class="nfse-section"><div class="nfse-section-header">Tributos</div><div class="nfse-section-body">
+      ${d.vBC ? `<div class="nfse-field"><span class="nfse-lbl">Base de C&aacute;lculo</span><span class="nfse-val">R$ ${fmtNum(d.vBC, 2)}</span></div>` : ''}
+      ${d.pAliq ? `<div class="nfse-field"><span class="nfse-lbl">Al&iacute;quota ISS</span><span class="nfse-val">${fmtNum(d.pAliq, 2)}%</span></div>` : ''}
+      ${d.vISSQN ? `<div class="nfse-field"><span class="nfse-lbl">Valor ISSQN</span><span class="nfse-val">R$ ${fmtNum(d.vISSQN, 2)}</span></div>` : ''}
+      ${d.vTotalRet ? `<div class="nfse-field"><span class="nfse-lbl">Valor Retido</span><span class="nfse-val">R$ ${fmtNum(d.vTotalRet, 2)}</span></div>` : ''}
+      ${d.tpRetISSQN ? `<div class="nfse-field full"><span class="nfse-lbl">Tipo de Reten&ccedil;&atilde;o</span><span class="nfse-val">${esc(retLabel[d.tpRetISSQN] || d.tpRetISSQN)}</span></div>` : ''}
+      ${d.opSimpNac ? `<div class="nfse-field full"><span class="nfse-lbl">Simples Nacional</span><span class="nfse-val">${esc(simpNacLabel[d.opSimpNac] || d.opSimpNac)}</span></div>` : ''}
+    </div></div>
+
+    <!-- RODAPÉ -->
+    <div class="footer-line">
+      <span>DATA E HORA DE IMPRESS&Atilde;O: ${now}</span>
+      <span>QLMED - Sistema de Gest&atilde;o Fiscal</span>
+    </div>
+
   </div>
   ${autoPrint ? '<script>window.addEventListener("load", function() { window.print(); });</script>' : ''}
 </body>
@@ -1870,6 +2193,13 @@ export async function GET(
       } else if (invoice.type === 'CTE') {
         const data = buildCteDataFromInvoice(invoice as PdfInvoiceView);
         html = buildCteHtml(data, autoPrint);
+      } else if (invoice.xmlContent && invoice.type === 'NFSE') {
+        const parsed = await parseXml(invoice.xmlContent);
+        const data = extractNfseData(parsed, invoice as PdfInvoiceView);
+        html = buildNfseHtml(data, autoPrint);
+      } else if (invoice.type === 'NFSE') {
+        const data = extractNfseData({}, invoice as PdfInvoiceView);
+        html = buildNfseHtml(data, autoPrint);
       } else {
         html = buildFallbackHtml(invoice as PdfInvoiceView, autoPrint);
       }
@@ -1878,6 +2208,9 @@ export async function GET(
       if (invoice.type === 'CTE') {
         const data = buildCteDataFromInvoice(invoice as PdfInvoiceView);
         html = buildCteHtml(data, autoPrint);
+      } else if (invoice.type === 'NFSE') {
+        const data = extractNfseData({}, invoice as PdfInvoiceView);
+        html = buildNfseHtml(data, autoPrint);
       } else {
         html = buildFallbackHtml(invoice as PdfInvoiceView, autoPrint);
       }

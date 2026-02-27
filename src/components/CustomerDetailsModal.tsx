@@ -7,7 +7,17 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import RowActions from '@/components/ui/RowActions';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
-import { formatCnpj, formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
+import {
+  formatDocument,
+  formatQuantity,
+  formatPrice,
+  normalizeDateOnly,
+  formatDueDate,
+  getDuplicateStatus,
+  formatInstallmentCode,
+  formatInstallmentDisplay,
+} from '@/lib/modal-helpers';
 
 interface CustomerRef {
   cnpj: string;
@@ -69,6 +79,7 @@ interface CustomerInvoice {
   totalValue: number;
   status: string;
   accessKey: string;
+  cfopTag: string;
 }
 
 interface CustomerDuplicate {
@@ -85,13 +96,117 @@ interface CustomerMeta {
   priceRowsLimited: boolean;
 }
 
+interface ContactFiscalData {
+  ie: string | null;
+  im: string | null;
+  crt: string | null;
+  crtLabel: string | null;
+  uf: string | null;
+}
+
 interface CustomerDetailsResponse {
   customer: CustomerDetails;
+  contactFiscal: ContactFiscalData | null;
   purchases: CustomerPurchases;
   priceTable: CustomerPriceRow[];
   invoices: CustomerInvoice[];
   duplicates: CustomerDuplicate[];
   meta: CustomerMeta;
+}
+
+interface CnpjData {
+  razaoSocial: string | null;
+  nomeFantasia: string | null;
+  situacaoCadastral: string | null;
+  cnaePrincipal: { codigo: string; descricao: string } | null;
+  porte: string | null;
+  naturezaJuridica: string | null;
+  capitalSocial: number | null;
+  simplesNacional: boolean | null;
+  mei: boolean | null;
+  telefone: string | null;
+  email: string | null;
+  endereco: {
+    logradouro: string | null;
+    numero: string | null;
+    bairro: string | null;
+    municipio: string | null;
+    uf: string | null;
+    cep: string | null;
+  } | null;
+}
+
+function parseCnpjResponse(data: any): CnpjData {
+  return {
+    razaoSocial: data.razaoSocial || null,
+    nomeFantasia: data.nomeFantasia || null,
+    situacaoCadastral: data.situacaoCadastral || data.descSituacao || null,
+    cnaePrincipal: data.cnaePrincipal || null,
+    porte: data.porte || null,
+    naturezaJuridica: data.naturezaJuridica || null,
+    capitalSocial: data.capitalSocial ?? null,
+    simplesNacional: data.simplesNacional ?? null,
+    mei: data.mei ?? null,
+    telefone: data.telefone || null,
+    email: data.email || null,
+    endereco: data.endereco || null,
+  };
+}
+
+interface AddressDivergence {
+  field: string;
+  label: string;
+  xmlValue: string;
+  apiValue: string;
+}
+
+function normalizeForCompare(value: string | null | undefined): string {
+  if (!value) return '';
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.,\-\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function compareAddressFields(
+  xmlAddr: { street: string | null; number: string | null; district: string | null; city: string | null; state: string | null; zipCode: string | null } | null,
+  apiAddr: { logradouro: string | null; numero: string | null; bairro: string | null; municipio: string | null; uf: string | null; cep: string | null } | null,
+): AddressDivergence[] {
+  if (!xmlAddr || !apiAddr) return [];
+  const result: AddressDivergence[] = [];
+  const pairs: Array<{ label: string; field: string; xml: string | null; api: string | null; isCep?: boolean }> = [
+    { label: 'Logradouro', field: 'street', xml: xmlAddr.street, api: apiAddr.logradouro },
+    { label: 'Numero', field: 'number', xml: xmlAddr.number, api: apiAddr.numero },
+    { label: 'Bairro', field: 'district', xml: xmlAddr.district, api: apiAddr.bairro },
+    { label: 'Municipio', field: 'city', xml: xmlAddr.city, api: apiAddr.municipio },
+    { label: 'UF', field: 'state', xml: xmlAddr.state, api: apiAddr.uf },
+    { label: 'CEP', field: 'zipCode', xml: xmlAddr.zipCode, api: apiAddr.cep, isCep: true },
+  ];
+  for (const p of pairs) {
+    if (!p.xml && !p.api) continue;
+    const match = p.isCep
+      ? (p.xml || '').replace(/\D/g, '') === (p.api || '').replace(/\D/g, '')
+      : normalizeForCompare(p.xml) === normalizeForCompare(p.api) || (normalizeForCompare(p.xml).includes(normalizeForCompare(p.api)) || normalizeForCompare(p.api).includes(normalizeForCompare(p.xml)));
+    if (!match) {
+      result.push({ field: p.field, label: p.label, xmlValue: p.xml || '(vazio)', apiValue: p.api || '(vazio)' });
+    }
+  }
+  return result;
+}
+
+function validateIEFormat(ie: string | null | undefined, uf: string | null | undefined): { valid: boolean; message?: string } {
+  if (!ie || !uf) return { valid: true };
+  const cleanIe = ie.replace(/[\.\-\/\s]/g, '').toUpperCase();
+  if (cleanIe === 'ISENTO' || cleanIe === 'ISENTA') return { valid: true };
+  const rules: Record<string, RegExp> = {
+    AC: /^01\d{11}$/, AL: /^24\d{7}$/, AM: /^\d{9}$/, AP: /^03\d{7}$/,
+    BA: /^\d{8,9}$/, CE: /^\d{9}$/, DF: /^07\d{11}$/, ES: /^\d{9}$/,
+    GO: /^(10|11|15|20|29)\d{7}$/, MA: /^12\d{7}$/, MG: /^\d{13}$/,
+    MS: /^28\d{7}$/, MT: /^\d{11}$/, PA: /^15\d{7}$/, PB: /^\d{9}$/,
+    PE: /^\d{9}$|^\d{14}$/, PI: /^\d{9}$/, PR: /^\d{10}$/, RJ: /^\d{8}$/,
+    RN: /^20\d{7,8}$/, RO: /^\d{14}$/, RR: /^24\d{6}$/, RS: /^\d{10}$/,
+    SC: /^\d{9}$/, SE: /^\d{9}$/, SP: /^\d{12}$|^P\d{12}$/, TO: /^\d{11}$/,
+  };
+  const regex = rules[uf.toUpperCase()];
+  if (!regex) return { valid: true };
+  return regex.test(cleanIe) ? { valid: true } : { valid: false, message: `Formato invalido para ${uf}` };
 }
 
 interface CustomerDetailsModalProps {
@@ -104,88 +219,46 @@ interface CustomerDetailsModalProps {
 type PriceSortKey = 'description' | 'code' | 'totalQuantity' | 'lastPrice' | 'lastIssueDate';
 type SortDirection = 'asc' | 'desc';
 
-function formatDocument(document: string) {
-  const digits = (document || '').replace(/\D/g, '');
-  if (digits.length === 14) return formatCnpj(digits);
-  if (digits.length === 11) {
-    return digits
-      .replace(/^(\d{3})(\d)/, '$1.$2')
-      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-      .replace(/\.(\d{3})(\d)/, '.$1-$2');
-  }
-  return document || '-';
-}
-
-function formatQuantity(value: number) {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
-}
-
-function formatPrice(value: number) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
-
-function normalizeDateOnly(value: string | null): Date | null {
-  if (!value) return null;
-
-  const onlyDate = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (onlyDate) {
-    const year = Number(onlyDate[1]);
-    const month = Number(onlyDate[2]);
-    const day = Number(onlyDate[3]);
-    return new Date(year, month - 1, day);
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-}
-
-function formatDueDate(value: string | null): string {
-  if (!value) return '-';
-  const parsed = normalizeDateOnly(value);
-  if (!parsed) return value;
-  return parsed.toLocaleDateString('pt-BR');
-}
-
-function getDuplicateStatus(value: string | null): { label: 'A vencer' | 'Vencido'; classes: string } {
-  const dueDate = normalizeDateOnly(value);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (dueDate && dueDate < today) {
-    return {
-      label: 'Vencido',
-      classes: 'bg-red-50 text-red-600 ring-1 ring-red-500/20 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-500/30',
-    };
-  }
-
-  return {
-    label: 'A vencer',
-    classes: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-500/30',
-  };
-}
-
-function formatInstallmentCode(value: string): string {
-  const digits = (value || '').replace(/\D/g, '');
-  if (!digits) return '001';
-  return digits.slice(-3).padStart(3, '0');
-}
-
-function formatInstallmentDisplay(installmentNumber: string, installmentTotal: number): string {
-  const current = formatInstallmentCode(installmentNumber);
-  if (installmentTotal > 1) {
-    return `${current} / ${String(installmentTotal).padStart(3, '0')}`;
-  }
-  return current;
-}
-
 function InfoField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
+      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words truncate">{value || '-'}</p>
     </div>
   );
+}
+
+function EditableField({ label, value, field, draft, onChange }: {
+  label: string;
+  value?: string | null;
+  field: string;
+  draft: Record<string, string>;
+  onChange: (field: string, val: string) => void;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
+      <input
+        type="text"
+        value={draft[field] ?? value ?? ''}
+        onChange={(e) => onChange(field, e.target.value)}
+        className="w-full px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+      />
+    </div>
+  );
+}
+
+interface ContactOverrideData {
+  phone: string | null;
+  email: string | null;
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  district: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  country: string | null;
 }
 
 interface SectionCardProps {
@@ -293,10 +366,13 @@ export default function CustomerDetailsModal({
   const [shortName, setShortName] = useState('');
   const [shortNameDraft, setShortNameDraft] = useState('');
   const [savingShortName, setSavingShortName] = useState(false);
+  const [cnpjData, setCnpjData] = useState<CnpjData | null>(null);
+  const [cnpjLoading, setCnpjLoading] = useState(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
-  const [isGeneralOpen, setIsGeneralOpen] = useState(true);
+  const [isGeneralOpen, setIsGeneralOpen] = useState(false);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
   const [isInvoicesOpen, setIsInvoicesOpen] = useState(false);
+  const [isMovimentacoesOpen, setIsMovimentacoesOpen] = useState(false);
   const [isDuplicatesOpen, setIsDuplicatesOpen] = useState(false);
   const [priceSearchTerm, setPriceSearchTerm] = useState('');
   const [priceSortKey, setPriceSortKey] = useState<PriceSortKey>('totalQuantity');
@@ -307,12 +383,18 @@ export default function CustomerDetailsModal({
   const [isNfeDetailsOpen, setIsNfeDetailsOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState<Record<string, string>>({});
+  const [savingOverride, setSavingOverride] = useState(false);
+  const [contactOverride, setContactOverride] = useState<ContactOverrideData | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setShortName('');
       setShortNameDraft('');
       setSavingShortName(false);
+      setCnpjData(null);
+      setCnpjLoading(false);
       setIsRegistrationOpen(false);
       setIsGeneralOpen(true);
       setIsPriceTableOpen(false);
@@ -327,6 +409,10 @@ export default function CustomerDetailsModal({
       setDetailsInvoiceId(null);
       setShowDeleteConfirm(false);
       setDeleteTargetId(null);
+      setIsEditing(false);
+      setEditDraft({});
+      setSavingOverride(false);
+      setContactOverride(null);
     }
   }, [isOpen]);
 
@@ -362,6 +448,30 @@ export default function CustomerDetailsModal({
             setShortNameDraft(nickData.shortName || '');
           }
         } catch { /* ignore */ }
+
+        // Fetch contact overrides
+        try {
+          const ovRes = await fetch(`/api/contacts/override?cnpj=${encodeURIComponent(customer.cnpj)}`);
+          if (!cancelled && ovRes.ok) {
+            const ovData = await ovRes.json();
+            setContactOverride(ovData.override || null);
+          }
+        } catch { /* ignore */ }
+
+        // Fetch CNPJ data from Receita Federal
+        const digits = customer.cnpj.replace(/\D/g, '');
+        if (digits.length === 14) {
+          setCnpjLoading(true);
+          try {
+            const cnpjRes = await fetch(`/api/cnpj/${digits}`);
+            if (!cancelled && cnpjRes.ok) {
+              const data = await cnpjRes.json();
+              setCnpjData(parseCnpjResponse(data));
+              // cards start collapsed
+            }
+          } catch { /* graceful — section won't appear */ }
+          if (!cancelled) setCnpjLoading(false);
+        }
       }
     };
 
@@ -452,6 +562,76 @@ export default function CustomerDetailsModal({
     }
   };
 
+  const handleEditField = (field: string, value: string) => {
+    setEditDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveOverride = async () => {
+    if (!customer?.cnpj || !details) return;
+    setSavingOverride(true);
+    try {
+      const d = details.customer;
+      const ov = contactOverride;
+      const payload = {
+        cnpj: customer.cnpj,
+        phone: editDraft.phone ?? ov?.phone ?? d.phone ?? '',
+        email: editDraft.email ?? ov?.email ?? d.email ?? '',
+        street: editDraft.street ?? ov?.street ?? d.address.street ?? '',
+        number: editDraft.number ?? ov?.number ?? d.address.number ?? '',
+        complement: editDraft.complement ?? ov?.complement ?? d.address.complement ?? '',
+        district: editDraft.district ?? ov?.district ?? d.address.district ?? '',
+        city: editDraft.city ?? ov?.city ?? d.address.city ?? '',
+        state: editDraft.state ?? ov?.state ?? d.address.state ?? '',
+        zipCode: editDraft.zipCode ?? ov?.zipCode ?? d.address.zipCode ?? '',
+        country: editDraft.country ?? ov?.country ?? d.address.country ?? '',
+      };
+      const res = await fetch('/api/contacts/override', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContactOverride(data.override || null);
+        setIsEditing(false);
+        setEditDraft({});
+        toast.success('Dados atualizados com sucesso');
+      } else {
+        toast.error('Erro ao salvar alterações');
+      }
+    } catch {
+      toast.error('Erro de rede ao salvar');
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
+  const handleSyncCnpj = async () => {
+    if (!customer?.cnpj) return;
+    const digits = customer.cnpj.replace(/\D/g, '');
+    if (digits.length !== 14) return;
+    setCnpjLoading(true);
+    try {
+      const res = await fetch(`/api/cnpj/${digits}?refresh=1`);
+      if (res.ok) {
+        const data = await res.json();
+        setCnpjData(parseCnpjResponse(data));
+        toast.success('Dados da Receita atualizados');
+      } else {
+        toast.error('Erro ao consultar Receita Federal');
+      }
+    } catch {
+      toast.error('Erro de rede');
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
+  const getField = (xmlValue: string | null, overrideField: keyof ContactOverrideData): string | null => {
+    if (contactOverride?.[overrideField]) return contactOverride[overrideField];
+    return xmlValue;
+  };
+
   const filteredAndSortedPriceTable = useMemo(() => {
     if (!details) return [];
 
@@ -521,6 +701,16 @@ export default function CustomerDetailsModal({
     return map;
   }, [details]);
 
+  const SALE_TAGS = new Set(['Venda', 'Bonificação']);
+  const saleInvoices = useMemo(() => {
+    if (!details) return [];
+    return details.invoices.filter((inv) => SALE_TAGS.has(inv.cfopTag));
+  }, [details]);
+  const movimentacaoInvoices = useMemo(() => {
+    if (!details) return [];
+    return details.invoices.filter((inv) => !SALE_TAGS.has(inv.cfopTag));
+  }, [details]);
+
   const SortableHeader = ({ label, sortKey, align = 'left' }: { label: string; sortKey: PriceSortKey; align?: 'left' | 'right' }) => (
     <th className={`${thCls} ${align === 'right' ? 'text-right' : ''}`}>
       <button
@@ -551,7 +741,7 @@ export default function CustomerDetailsModal({
       )}
 
       {!loading && details && (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {/* Dados de Cadastro */}
           <SectionCard
             title="Dados de Cadastro"
@@ -561,96 +751,301 @@ export default function CustomerDetailsModal({
             open={isRegistrationOpen}
             onToggle={() => setIsRegistrationOpen((prev) => !prev)}
           >
-            {/* Short Name */}
-            <div className="mb-4 p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-500/5 ring-1 ring-indigo-500/15 dark:ring-indigo-500/20">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span>
-                <p className="text-[10px] font-bold text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Nome Abreviado</p>
-              </div>
-              {shortName && (
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-2">{shortName}</p>
-              )}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={shortNameDraft}
-                  onChange={(e) => setShortNameDraft(e.target.value)}
-                  placeholder="Ex: Farmácia ABC, Hospital XYZ..."
-                  maxLength={60}
-                  className="flex-1 px-3 py-1.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
-                />
+            {/* Nome abreviado inline */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span>
+              <input
+                type="text"
+                value={shortNameDraft}
+                onChange={(e) => setShortNameDraft(e.target.value)}
+                placeholder="Nome abreviado (ex: Farmácia ABC)..."
+                maxLength={60}
+                className="flex-1 px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+              />
+              <button
+                onClick={handleSaveShortName}
+                disabled={savingShortName || shortNameDraft === shortName}
+                className="flex items-center gap-1 px-2.5 py-1 text-[12px] font-bold bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-40 shrink-0"
+              >
+                {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
+                {savingShortName ? '...' : 'Salvar'}
+              </button>
+            </div>
+
+            {/* Dados básicos - inline compacto */}
+            {(() => {
+              const d = details.customer;
+              const ie = d.stateRegistration;
+              const ieResult = ie ? validateIEFormat(ie, details.contactFiscal?.uf || d.address?.state) : null;
+              return (
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[12px]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{d.name}</span>
+                    {d.fantasyName && <span className="text-slate-400 dark:text-slate-500 text-[11px]">({d.fantasyName})</span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="font-mono">{formatDocument(d.cnpj)}</span>
+                    {ie && (
+                      <span>
+                        IE {ie}
+                        {ieResult && (
+                          ieResult.valid
+                            ? <span className="text-emerald-500 ml-1 text-[10px]">OK</span>
+                            : <span className="text-amber-600 ml-1 text-[10px]" title={ieResult.message}>Irregular</span>
+                        )}
+                      </span>
+                    )}
+                    {d.municipalRegistration && <span>IM {d.municipalRegistration}</span>}
+                    {details.contactFiscal?.crtLabel && <span>{details.contactFiscal.crtLabel}</span>}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Endereço + Contato */}
+            <div className="rounded-lg ring-1 ring-slate-200/60 dark:ring-slate-800/60 p-2.5 bg-slate-50/50 dark:bg-slate-900/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[13px] text-slate-400">location_on</span>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Endereço & Contato</p>
+                </div>
                 <button
-                  onClick={handleSaveShortName}
-                  disabled={savingShortName || shortNameDraft === shortName}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors disabled:opacity-40 shrink-0 shadow-sm shadow-indigo-500/25"
+                  onClick={() => {
+                    if (isEditing) {
+                      setIsEditing(false);
+                      setEditDraft({});
+                    } else {
+                      setIsEditing(true);
+                      const ov = contactOverride;
+                      const d = details.customer;
+                      setEditDraft({
+                        phone: ov?.phone ?? d.phone ?? '',
+                        email: ov?.email ?? d.email ?? '',
+                        street: ov?.street ?? d.address.street ?? '',
+                        number: ov?.number ?? d.address.number ?? '',
+                        complement: ov?.complement ?? d.address.complement ?? '',
+                        district: ov?.district ?? d.address.district ?? '',
+                        city: ov?.city ?? d.address.city ?? '',
+                        state: ov?.state ?? d.address.state ?? '',
+                        zipCode: ov?.zipCode ?? d.address.zipCode ?? '',
+                        country: ov?.country ?? d.address.country ?? '',
+                      });
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
                 >
-                  {savingShortName && <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>}
-                  {savingShortName ? 'Salvando...' : 'Salvar'}
+                  <span className="material-symbols-outlined text-[13px]">{isEditing ? 'close' : 'edit'}</span>
+                  {isEditing ? 'Cancelar' : 'Editar'}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1.5">Apelido exibido em destaque nas listas. Deixe em branco para usar a razão social.</p>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-2">
+                    <div className="col-span-2">
+                      <EditableField label="Logradouro" value={getField(details.customer.address.street, 'street')} field="street" draft={editDraft} onChange={handleEditField} />
+                    </div>
+                    <EditableField label="Nº" value={getField(details.customer.address.number, 'number')} field="number" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="Compl." value={getField(details.customer.address.complement, 'complement')} field="complement" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="Bairro" value={getField(details.customer.address.district, 'district')} field="district" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="Cidade" value={getField(details.customer.address.city, 'city')} field="city" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="UF" value={getField(details.customer.address.state, 'state')} field="state" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="CEP" value={getField(details.customer.address.zipCode, 'zipCode')} field="zipCode" draft={editDraft} onChange={handleEditField} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 pt-1 border-t border-slate-200/40 dark:border-slate-800/30">
+                    <EditableField label="Telefone" value={getField(details.customer.phone, 'phone')} field="phone" draft={editDraft} onChange={handleEditField} />
+                    <EditableField label="E-mail" value={getField(details.customer.email, 'email')} field="email" draft={editDraft} onChange={handleEditField} />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                  <span>
+                    <span className="material-symbols-outlined text-[12px] align-middle mr-0.5">location_on</span>
+                    {[
+                      getField(details.customer.address.street, 'street'),
+                      getField(details.customer.address.number, 'number') ? `nº ${getField(details.customer.address.number, 'number')}` : null,
+                      getField(details.customer.address.complement, 'complement'),
+                    ].filter(Boolean).join(', ') || '-'}
+                    {' — '}
+                    {[
+                      getField(details.customer.address.district, 'district'),
+                      getField(details.customer.address.city, 'city'),
+                      getField(details.customer.address.state, 'state'),
+                    ].filter(Boolean).join(', ')}
+                    {getField(details.customer.address.zipCode, 'zipCode') && (
+                      <span className="text-slate-400"> · CEP {getField(details.customer.address.zipCode, 'zipCode')}</span>
+                    )}
+                  </span>
+                  {getField(details.customer.phone, 'phone') && <span><span className="material-symbols-outlined text-[12px] align-middle mr-0.5">phone</span>{getField(details.customer.phone, 'phone')}</span>}
+                  {getField(details.customer.email, 'email') && <span><span className="material-symbols-outlined text-[12px] align-middle mr-0.5">mail</span>{getField(details.customer.email, 'email')}</span>}
+                </div>
+              )}
+              {(() => {
+                if (!cnpjData?.endereco) return null;
+                const divs = compareAddressFields(details.customer.address, cnpjData.endereco);
+                if (divs.length === 0) return null;
+                return (
+                  <details className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 p-2">
+                    <summary className="flex items-center gap-1.5 cursor-pointer text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+                      <span className="material-symbols-outlined text-[13px]">warning</span>
+                      Diverge da Receita ({divs.length})
+                    </summary>
+                    <div className="mt-1.5 space-y-1">
+                      {divs.map((d) => (
+                        <div key={d.field} className="grid grid-cols-3 gap-2 text-[10px]">
+                          <span className="font-bold text-slate-500">{d.label}</span>
+                          <span className="text-slate-600 dark:text-slate-400">{d.xmlValue}</span>
+                          <span className="text-amber-700 dark:text-amber-400">{d.apiValue}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })()}
+              {/* Save/Cancel inline no endereço */}
+              {isEditing && (
+                <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/40">
+                  <button
+                    onClick={() => { setIsEditing(false); setEditDraft({}); }}
+                    className="px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveOverride}
+                    disabled={savingOverride}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-40 shadow-sm"
+                  >
+                    {savingOverride && <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>}
+                    {savingOverride ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-              <InfoField label="Razão social" value={details.customer.name} />
-              <InfoField label="Nome fantasia" value={details.customer.fantasyName} />
-              <InfoField label="CNPJ/CPF" value={formatDocument(details.customer.cnpj)} />
-              <InfoField label="Inscrição estadual" value={details.customer.stateRegistration} />
-              <InfoField label="Inscrição municipal" value={details.customer.municipalRegistration} />
-              <InfoField label="Telefone" value={details.customer.phone} />
-              <InfoField label="E-mail" value={details.customer.email} />
-            </div>
-
-            <div className="mt-4 rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800/60 p-3 bg-slate-50/50 dark:bg-slate-900/20">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-[14px] text-slate-400">location_on</span>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Endereço</p>
+            {/* Dados da Receita Federal */}
+            {cnpjLoading && (
+              <div className="mt-3 rounded-lg ring-1 ring-blue-200/60 dark:ring-blue-800/40 p-2.5 bg-blue-50/30 dark:bg-blue-900/10">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[13px] text-blue-500 animate-spin">sync</span>
+                  <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Consultando Receita Federal...</p>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                <InfoField label="Logradouro" value={details.customer.address.street} />
-                <InfoField label="Número" value={details.customer.address.number} />
-                <InfoField label="Complemento" value={details.customer.address.complement} />
-                <InfoField label="Bairro" value={details.customer.address.district} />
-                <InfoField label="Cidade" value={details.customer.address.city} />
-                <InfoField label="UF" value={details.customer.address.state} />
-                <InfoField label="CEP" value={details.customer.address.zipCode} />
-                <InfoField label="País" value={details.customer.address.country} />
+            )}
+            {!cnpjLoading && cnpjData && (
+              <div className="mt-3 rounded-lg ring-1 ring-blue-200/60 dark:ring-blue-800/40 p-2.5 bg-blue-50/30 dark:bg-blue-900/10">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[13px] text-blue-500">account_balance</span>
+                    <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Receita Federal</p>
+                    {cnpjData.situacaoCadastral && (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        cnpjData.situacaoCadastral.toUpperCase().includes('ATIVA')
+                          ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : cnpjData.situacaoCadastral.toUpperCase().includes('SUSPENS')
+                            ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-500/20 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-red-50 text-red-600 ring-1 ring-red-500/20 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {cnpjData.situacaoCadastral}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSyncCnpj}
+                    disabled={cnpjLoading}
+                    className="flex items-center gap-1 text-[10px] font-medium text-blue-500 hover:text-blue-600 transition-colors disabled:opacity-40"
+                    title="Atualizar dados da Receita Federal"
+                  >
+                    <span className={`material-symbols-outlined text-[13px] ${cnpjLoading ? 'animate-spin' : ''}`}>sync</span>
+                    Sincronizar
+                  </button>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  {/* Razão Social e Nome Fantasia da Receita */}
+                  {cnpjData.razaoSocial && (
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{cnpjData.razaoSocial}</span>
+                      {cnpjData.nomeFantasia && <span className="text-slate-400 dark:text-slate-500 text-[10px]">({cnpjData.nomeFantasia})</span>}
+                    </div>
+                  )}
+                  {/* Linha de dados fiscais inline */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500 dark:text-slate-400">
+                    {cnpjData.cnaePrincipal && (
+                      <span title={cnpjData.cnaePrincipal.descricao}>
+                        CNAE <span className="font-mono text-blue-600 dark:text-blue-400">{cnpjData.cnaePrincipal.codigo}</span>
+                        <span className="text-[10px] ml-0.5">{cnpjData.cnaePrincipal.descricao.length > 40 ? cnpjData.cnaePrincipal.descricao.slice(0, 40) + '...' : cnpjData.cnaePrincipal.descricao}</span>
+                      </span>
+                    )}
+                    {cnpjData.naturezaJuridica && <span>{cnpjData.naturezaJuridica}</span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500 dark:text-slate-400">
+                    {cnpjData.porte && <span>{cnpjData.porte}</span>}
+                    {cnpjData.capitalSocial != null && <span>Capital {cnpjData.capitalSocial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+                    <span>Simples: {cnpjData.simplesNacional === true ? 'Sim' : cnpjData.simplesNacional === false ? 'Não' : '-'}</span>
+                    {cnpjData.mei != null && <span>MEI: {cnpjData.mei ? 'Sim' : 'Não'}</span>}
+                  </div>
+                  {/* Contato + endereço na mesma linha */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500 dark:text-slate-400 text-[10px]">
+                    {cnpjData.telefone && <span><span className="material-symbols-outlined text-[11px] align-middle mr-0.5">phone</span>{cnpjData.telefone}</span>}
+                    {cnpjData.email && <span><span className="material-symbols-outlined text-[11px] align-middle mr-0.5">mail</span>{cnpjData.email}</span>}
+                    {cnpjData.endereco && (
+                      <span>
+                        <span className="material-symbols-outlined text-[11px] align-middle mr-0.5">location_on</span>
+                        {[cnpjData.endereco.logradouro, cnpjData.endereco.numero ? `nº ${cnpjData.endereco.numero}` : null].filter(Boolean).join(', ')}
+                        {' — '}{[cnpjData.endereco.bairro, cnpjData.endereco.municipio, cnpjData.endereco.uf].filter(Boolean).join(', ')}
+                        {cnpjData.endereco.cep && <span> · CEP {cnpjData.endereco.cep}</span>}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+            {!cnpjLoading && !cnpjData && customer?.cnpj && customer.cnpj.replace(/\D/g, '').length === 14 && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  onClick={handleSyncCnpj}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-blue-500 hover:text-blue-600 ring-1 ring-blue-200 dark:ring-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px]">account_balance</span>
+                  Consultar Receita Federal
+                </button>
+              </div>
+            )}
           </SectionCard>
 
-          {/* Dados Gerais */}
-          <SectionCard
-            title="Dados Gerais"
-            subtitle="Resumo consolidado das vendas"
-            icon="analytics"
-            iconColor="text-emerald-500"
-            open={isGeneralOpen}
-            onToggle={() => setIsGeneralOpen((prev) => !prev)}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              <StatCard label="NF-e emitidas" value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color="primary" />
-              <StatCard label="Total vendido" value={formatCurrency(details.purchases.totalValue)} icon="payments" color="emerald" />
-              <StatCard
-                label="Itens vendidos"
-                value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
-                icon="shopping_cart"
-                color="indigo"
-              />
-              <StatCard
-                label="Produtos vendidos"
-                value={details.purchases.totalProductsPurchased.toLocaleString('pt-BR')}
-                icon="inventory_2"
-                color="amber"
-              />
-              <StatCard
-                label="Última venda"
-                value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'}
-                icon="event"
-                color="teal"
-              />
-            </div>
-          </SectionCard>
+          <div className="order-first">
+            {/* Dados Gerais */}
+            <SectionCard
+              title="Dados Gerais"
+              subtitle="Resumo consolidado das vendas"
+              icon="analytics"
+              iconColor="text-emerald-500"
+              open={isGeneralOpen}
+              onToggle={() => setIsGeneralOpen((prev) => !prev)}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                <StatCard label="NF-e emitidas" value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color="primary" />
+                <StatCard label="Total vendido" value={formatCurrency(details.purchases.totalValue)} icon="payments" color="emerald" />
+                <StatCard
+                  label="Itens vendidos"
+                  value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
+                  icon="shopping_cart"
+                  color="indigo"
+                />
+                <StatCard
+                  label="Produtos vendidos"
+                  value={details.purchases.totalProductsPurchased.toLocaleString('pt-BR')}
+                  icon="inventory_2"
+                  color="amber"
+                />
+                <StatCard
+                  label="Última venda"
+                  value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'}
+                  icon="event"
+                  color="teal"
+                />
+              </div>
+            </SectionCard>
+          </div>
 
           {/* Tabela de Preço */}
           <SectionCard
@@ -742,20 +1137,20 @@ export default function CustomerDetailsModal({
             )}
           </SectionCard>
 
-          {/* Notas Fiscais */}
+          {/* Notas Fiscais (Vendas e Bonificações) */}
           <SectionCard
             title="Notas Fiscais"
-            subtitle="Histórico de NF-e emitidas"
+            subtitle="Vendas e bonificações"
             icon="receipt_long"
             iconColor="text-primary"
             open={isInvoicesOpen}
             onToggle={() => setIsInvoicesOpen((prev) => !prev)}
-            badge={details.invoices.length || undefined}
+            badge={saleInvoices.length || undefined}
           >
-            {details.invoices.length === 0 ? (
+            {saleInvoices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">receipt</span>
-                <span className="text-[13px] text-slate-400">Nenhuma nota fiscal encontrada</span>
+                <span className="text-[13px] text-slate-400">Nenhuma nota de venda ou bonificação encontrada</span>
               </div>
             ) : (
               <div className="overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
@@ -771,7 +1166,7 @@ export default function CustomerDetailsModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {details.invoices.map((invoice) => {
+                    {saleInvoices.map((invoice) => {
                       const installmentSummary = invoiceInstallmentsMap.get(invoice.id);
                       const totalInstallments = installmentSummary?.totalInstallments || 0;
                       const firstDueDate = installmentSummary?.firstDueDate
@@ -802,6 +1197,62 @@ export default function CustomerDetailsModal({
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Movimentações (consignação, demonstração, comodato, etc.) */}
+          <SectionCard
+            title="Movimentações"
+            subtitle="Consignação, demonstração, remessa e outros"
+            icon="swap_horiz"
+            iconColor="text-amber-500"
+            open={isMovimentacoesOpen}
+            onToggle={() => setIsMovimentacoesOpen((prev) => !prev)}
+            badge={movimentacaoInvoices.length || undefined}
+          >
+            {movimentacaoInvoices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">swap_horiz</span>
+                <span className="text-[13px] text-slate-400">Nenhuma movimentação encontrada</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+                <table className="w-full text-left border-collapse min-w-[760px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
+                      <th className={thCls}>Número</th>
+                      <th className={thCls}>Emissão</th>
+                      <th className={thCls}>Tipo</th>
+                      <th className={`${thCls} text-right`}>Valor</th>
+                      <th className={`${thCls} text-center`}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {movimentacaoInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{invoice.number}</td>
+                        <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(invoice.issueDate)}</td>
+                        <td className={tdCls}>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            {invoice.cfopTag}
+                          </span>
+                        </td>
+                        <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>
+                          {formatCurrency(invoice.totalValue)}
+                        </td>
+                        <td className={`${tdCls} text-center`}>
+                          <RowActions
+                            invoiceId={invoice.id}
+                            onView={openInvoiceViewer}
+                            onDetails={openInvoiceDetails}
+                            onDelete={confirmDelete}
+                          />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

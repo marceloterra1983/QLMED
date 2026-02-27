@@ -45,6 +45,8 @@ export default function CustomersPage() {
   const [selectedPriceCustomer, setSelectedPriceCustomer] = useState<Customer | null>(null);
   const [isPriceTableOpen, setIsPriceTableOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [cnpjStatus, setCnpjStatus] = useState<Map<string, string>>(new Map());
+  const [cnpjChanges, setCnpjChanges] = useState(0);
 
   const toggleGroup = (group: string) => {
     setCollapsedGroups(prev => {
@@ -67,6 +69,13 @@ export default function CustomersPage() {
     loadCustomers();
   }, [page, limit, search, sortBy, sortOrder]);
 
+  useEffect(() => {
+    fetch('/api/contacts/cnpj-monitor')
+      .then((r) => r.json())
+      .then((data) => setCnpjChanges(data.changes?.length || 0))
+      .catch(() => {});
+  }, []);
+
   const loadCustomers = async () => {
     setLoading(true);
     try {
@@ -85,11 +94,29 @@ export default function CustomersPage() {
       }
 
       const data = await res.json();
-      setCustomers(data.customers || []);
+      const custs: Customer[] = data.customers || [];
+      setCustomers(custs);
       setTotalPages(data.pagination?.pages || 1);
       setTotal(data.pagination?.total || 0);
       if (data.pagination?.page && data.pagination.page !== page) {
         setPage(data.pagination.page);
+      }
+
+      // Fetch CNPJ status in background
+      const cnpjs = custs
+        .map((c) => c.cnpj?.replace(/\D/g, ''))
+        .filter((c) => c && c.length >= 11);
+      if (cnpjs.length > 0) {
+        fetch(`/api/contacts/cnpj-status?cnpjs=${cnpjs.join(',')}`)
+          .then((r) => r.json())
+          .then((statuses: Array<{ cnpj: string; status: string | null }>) => {
+            const map = new Map<string, string>();
+            for (const s of statuses) {
+              if (s.status) map.set(s.cnpj, s.status);
+            }
+            setCnpjStatus(map);
+          })
+          .catch(() => {});
       }
     } catch {
       toast.error('Erro ao carregar cadastro de clientes');
@@ -137,25 +164,68 @@ export default function CustomersPage() {
     setPage(1);
   };
 
-  const handleExport = () => {
-    if (customers.length === 0) return;
+  const [isExporting, setIsExporting] = useState(false);
 
-    const headers = ['Cliente', 'CNPJ/CPF', 'Última NF-e'];
-    const rows = customers.map((customer) => [
-      customer.name,
-      formatDocument(customer.cnpj),
-      customer.lastIssueDate ? formatDate(customer.lastIssueDate) : '-',
-    ]);
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('Exportando clientes...');
+    try {
+      const res = await fetch('/api/customers?exportAll=1&sort=name&order=asc');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const all: any[] = data.customers || [];
+      if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum cliente para exportar'); return; }
 
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `clientes-nfe-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success('Cadastro exportado com sucesso');
+      const esc = (v: string | null | undefined) => {
+        const s = v || '';
+        return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const fmtCur = (v: number | null | undefined) => v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+      const fmtAddr = (e: any) => {
+        if (!e) return '';
+        return [e.logradouro, e.numero, e.bairro, e.municipio, e.uf, e.cep].filter(Boolean).join(', ');
+      };
+
+      const headers = [
+        'Cliente', 'Nome Abreviado', 'CNPJ/CPF', 'Cidade',
+        'NF-e Emitidas', 'Total Vendido', 'Primeira NF-e', 'Última NF-e', 'Itens Tab. Preço',
+        'Razão Social (Receita)', 'Nome Fantasia', 'Situação Cadastral',
+        'CNAE Principal', 'Porte', 'Natureza Jurídica',
+        'Simples Nacional', 'MEI', 'Capital Social',
+        'Telefone (Receita)', 'Email (Receita)', 'Endereço (Receita)',
+        'Telefone (Editado)', 'Email (Editado)', 'Endereço (Editado)',
+      ];
+      const rows = all.map((c: any) => {
+        const r = c.receita || {};
+        const o = c.override || {};
+        const ovrAddr = [o.street, o.number, o.complement, o.district, o.city, o.state, o.zipCode].filter(Boolean).join(', ');
+        return [
+          esc(c.name), esc(c.shortName), formatDocument(c.cnpj), esc(c.city),
+          String(c.invoiceCount || 0), fmtCur(c.totalValue),
+          c.firstIssueDate ? formatDate(c.firstIssueDate) : '', c.lastIssueDate ? formatDate(c.lastIssueDate) : '',
+          c.priceItemCount != null ? String(c.priceItemCount) : '',
+          esc(r.razaoSocial), esc(r.nomeFantasia), esc(r.situacao),
+          esc(r.cnaePrincipal), esc(r.porte), esc(r.naturezaJuridica),
+          r.simplesNacional === true ? 'Sim' : r.simplesNacional === false ? 'Não' : '',
+          r.mei === true ? 'Sim' : r.mei === false ? 'Não' : '',
+          r.capitalSocial != null ? fmtCur(r.capitalSocial) : '',
+          esc(r.telefone), esc(r.email), esc(fmtAddr(r.endereco)),
+          esc(o.phone), esc(o.email), esc(ovrAddr),
+        ];
+      });
+
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `clientes-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${all.length.toLocaleString('pt-BR')} clientes exportados`, { id: toastId });
+    } catch {
+      toast.error('Erro ao exportar', { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const buildCustomerDetailsUrl = (customer: Customer) => {
@@ -180,8 +250,13 @@ export default function CustomersPage() {
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[28px] text-primary">group</span>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               Clientes
+              {cnpjChanges > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
+                  {cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ
+                </span>
+              )}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
               Captura automática dos clientes que receberam NF-e emitidas pela sua empresa
@@ -199,11 +274,11 @@ export default function CustomersPage() {
           </button>
           <button
             onClick={handleExport}
-            disabled={customers.length === 0}
+            disabled={customers.length === 0 || isExporting}
             className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
           >
-            <span className="material-symbols-outlined text-[20px]">download</span>
-            Exportar
+            <span className={`material-symbols-outlined text-[20px] ${isExporting ? 'animate-spin' : ''}`}>{isExporting ? 'progress_activity' : 'download'}</span>
+            {isExporting ? 'Exportando...' : 'Exportar'}
           </button>
         </div>
       </div>
@@ -341,7 +416,7 @@ export default function CustomersPage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => { setSelectedCustomer(customer); setIsDetailsOpen(true); }}>
                             <td className="px-4 py-2.5">
                               <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                                 {customer.lastIssueDate ? formatDate(customer.lastIssueDate) : '-'}
@@ -353,14 +428,28 @@ export default function CustomersPage() {
                                 const label = customer.shortName || (isCpf ? 'PARTICULAR' : null);
                                 return label ? (
                                   <>
-                                    <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{label}</div>
+                                    <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white hover:text-primary transition-colors">{label}</div>
                                     <div className="text-[10px] leading-tight text-slate-400 dark:text-slate-500">{customer.name}</div>
                                   </>
                                 ) : (
-                                  <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white">{customer.name}</div>
+                                  <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white hover:text-primary transition-colors">{customer.name}</div>
                                 );
                               })()}
-                              <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400">
+                              <div className="text-[11px] font-mono leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                {(() => {
+                                  const digits = (customer.cnpj || '').replace(/\D/g, '');
+                                  const st = cnpjStatus.get(digits);
+                                  if (!st) return null;
+                                  const upper = st.toUpperCase();
+                                  const color = upper === 'ATIVA'
+                                    ? 'bg-emerald-500'
+                                    : upper.includes('SUSPENS')
+                                      ? 'bg-amber-500'
+                                      : upper.includes('BAIXA') || upper.includes('INAPT')
+                                        ? 'bg-red-500'
+                                        : 'bg-slate-400';
+                                  return <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${color}`} title={st} />;
+                                })()}
                                 {formatDocument(customer.cnpj)}
                               </div>
                             </td>
@@ -369,7 +458,7 @@ export default function CustomersPage() {
                                 {customer.city || '-'}
                               </span>
                             </td>
-                            <td className="px-4 py-2.5">
+                            <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">
                                   {customer.priceItemCount != null ? customer.priceItemCount.toLocaleString('pt-BR') : '-'}
@@ -387,7 +476,7 @@ export default function CustomersPage() {
                                 </button>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5">
+                            <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   onClick={() => {

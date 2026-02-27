@@ -3,6 +3,9 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { getContactFiscal } from '@/lib/contact-fiscal-store';
+import { ensureProductRegistryTable } from '@/lib/product-registry-store';
+import { getCfopTagByCode } from '@/lib/cfop';
 
 const MAX_INVOICES = 500;
 const MAX_PRICE_ROWS = 300;
@@ -79,8 +82,11 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
     const dets = ensureArray<any>(infNFe?.det);
+    const cfops = new Set<string>();
     const products = dets.map((det) => {
       const prod = det?.prod || {};
+      const cfop = cleanString(prod?.CFOP);
+      if (cfop) cfops.add(cfop);
       const quantity = toNumber(prod?.qCom);
       const unitPrice = toNumber(prod?.vUnCom);
       const totalValue = toNumber(prod?.vProd);
@@ -104,9 +110,9 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
       }))
       .filter((dup) => dup.installmentNumber !== '-' || dup.dueDate || dup.installmentValue > 0);
 
-    return { products, duplicates };
+    return { products, duplicates, cfops: Array.from(cfops) };
   } catch {
-    return { products: [], duplicates: [] };
+    return { products: [], duplicates: [], cfops: [] as string[] };
   }
 }
 
@@ -195,6 +201,11 @@ export async function GET(req: Request) {
     const supplierName = extracted?.name || latestInvoice.senderName || 'Fornecedor não identificado';
     const supplierCnpj = extracted?.cnpj || normalizeDocument(latestInvoice.senderCnpj);
 
+    // Fetch persisted fiscal data (IE, IM, CRT)
+    const contactFiscal = supplierCnpj
+      ? await getContactFiscal(company.id, supplierCnpj)
+      : null;
+
     // Step 3: Compute stats from metadata (no XML needed)
     const totalInvoices = filteredInvoices.length;
     const totalValue = filteredInvoices.reduce((acc, invoice) => acc + (invoice.totalValue || 0), 0);
@@ -234,6 +245,8 @@ export async function GET(req: Request) {
       installmentTotal: number;
     }> = [];
 
+    const invoiceCfopTagMap = new Map<string, string>(); // invoiceId → cfopTag
+
     // Process in batches of XML_BATCH_SIZE
     for (let i = 0; i < filteredInvoices.length; i += XML_BATCH_SIZE) {
       const batchMeta = filteredInvoices.slice(i, i + XML_BATCH_SIZE);
@@ -259,7 +272,11 @@ export async function GET(req: Request) {
       for (const settled of batchSettled) {
         const result = settled.status === 'fulfilled' ? settled.value : null;
         if (!result) continue;
-        const { invoice, products, duplicates } = result;
+        const { invoice, products, duplicates, cfops } = result;
+        const primaryCfopTag = cfops.length > 0
+          ? (getCfopTagByCode(cfops[0]) || 'Outros')
+          : 'Outros';
+        invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
         const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
         const issueTime = issueDate?.getTime() || 0;
         const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
@@ -374,6 +391,7 @@ export async function GET(req: Request) {
       totalValue: invoice.totalValue,
       status: invoice.status,
       accessKey: invoice.accessKey,
+      cfopTag: invoiceCfopTagMap.get(invoice.id) || 'Outros',
     }));
     const duplicates = [...duplicatesList].sort((a, b) => {
       const aTime = a.dueDate ? new Date(a.dueDate).getTime() : 0;
@@ -387,13 +405,34 @@ export async function GET(req: Request) {
       return b.installmentNumber.localeCompare(a.installmentNumber, 'pt-BR', { sensitivity: 'base' });
     });
 
+    // Fetch distinct product types sold by this supplier
+    let supplierProductTypes: string[] = [];
+    try {
+      await ensureProductRegistryTable();
+      const typeRows = await prisma.$queryRawUnsafe<{ product_type: string }[]>(
+        `SELECT DISTINCT product_type FROM product_registry
+         WHERE company_id = $1 AND agg_last_supplier_cnpj = $2 AND product_type IS NOT NULL AND product_type != ''
+         LIMIT 20`,
+        company.id,
+        supplierCnpj,
+      );
+      supplierProductTypes = typeRows.map((r) => r.product_type);
+    } catch { /* non-critical */ }
+
+    // CRT label
+    const crtLabels: Record<string, string> = {
+      '1': 'Simples Nacional',
+      '2': 'Simples Nacional - Excesso',
+      '3': 'Regime Normal',
+    };
+
     return NextResponse.json({
       supplier: {
         name: supplierName,
         fantasyName: extracted?.fantasyName,
         cnpj: supplierCnpj,
-        stateRegistration: extracted?.stateRegistration,
-        municipalRegistration: extracted?.municipalRegistration,
+        stateRegistration: contactFiscal?.ie ?? extracted?.stateRegistration,
+        municipalRegistration: contactFiscal?.im ?? extracted?.municipalRegistration,
         phone: extracted?.phone,
         email: extracted?.email,
         address: extracted?.address || {
@@ -407,6 +446,14 @@ export async function GET(req: Request) {
           country: null,
         },
       },
+      contactFiscal: contactFiscal ? {
+        ie: contactFiscal.ie,
+        im: contactFiscal.im,
+        crt: contactFiscal.crt,
+        crtLabel: contactFiscal.crt ? crtLabels[contactFiscal.crt] || contactFiscal.crt : null,
+        uf: contactFiscal.uf,
+      } : null,
+      productTypes: supplierProductTypes,
       purchases: {
         totalInvoices,
         totalValue,

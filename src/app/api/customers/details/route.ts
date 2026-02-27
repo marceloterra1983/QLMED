@@ -3,6 +3,8 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { getContactFiscal } from '@/lib/contact-fiscal-store';
+import { getCfopTagByCode } from '@/lib/cfop';
 
 const MAX_INVOICES = 500;
 const MAX_PRICE_ROWS = 300;
@@ -79,8 +81,11 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
     const dets = ensureArray<any>(infNFe?.det);
+    const cfops = new Set<string>();
     const products = dets.map((det) => {
       const prod = det?.prod || {};
+      const cfop = cleanString(prod?.CFOP);
+      if (cfop) cfops.add(cfop);
       const quantity = toNumber(prod?.qCom);
       const unitPrice = toNumber(prod?.vUnCom);
       const totalValue = toNumber(prod?.vProd);
@@ -104,10 +109,17 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
       }))
       .filter((dup) => dup.installmentNumber !== '-' || dup.dueDate || dup.installmentValue > 0);
 
-    return { products, duplicates };
+    return { products, duplicates, cfops: Array.from(cfops) };
   } catch {
-    return { products: [], duplicates: [] };
+    return { products: [], duplicates: [], cfops: [] as string[] };
   }
+}
+
+function isSaleOrBonificationInvoice(cfops: string[]): boolean {
+  return cfops.some((cfop) => {
+    const tag = getCfopTagByCode(cfop);
+    return tag === 'Venda' || tag === 'Bonificação';
+  });
 }
 
 const XML_BATCH_SIZE = 50;
@@ -195,15 +207,21 @@ export async function GET(req: Request) {
     const customerName = extracted?.name || latestInvoice.recipientName || 'Cliente não identificado';
     const customerCnpj = extracted?.cnpj || normalizeDocument(latestInvoice.recipientCnpj);
 
+    // Fetch persisted fiscal data (IE, IM, CRT)
+    const contactFiscal = customerCnpj
+      ? await getContactFiscal(company.id, customerCnpj)
+      : null;
+
     // Step 3: Compute stats from metadata (no XML needed)
     const totalInvoices = filteredInvoices.length;
-    const totalValue = filteredInvoices.reduce((acc, invoice) => acc + (invoice.totalValue || 0), 0);
     const lastIssueDate = filteredInvoices[0]?.issueDate || null;
     const firstIssueDate = filteredInvoices[totalInvoices - 1]?.issueDate || null;
-    const averageTicket = totalInvoices > 0 ? totalValue / totalInvoices : 0;
     const confirmedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'confirmed').length;
     const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
     const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
+    let totalValue = 0;
+    let totalSaleOrBonificationInvoices = 0;
+    const invoiceCfopTagMap = new Map<string, string>(); // invoiceId → cfopTag
 
     const now = new Date();
     const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
@@ -260,11 +278,21 @@ export async function GET(req: Request) {
       for (const settled of batchSettled) {
         const result = settled.status === 'fulfilled' ? settled.value : null;
         if (!result) continue;
-        const { invoice, products, duplicates } = result;
+        const { invoice, products, duplicates, cfops } = result;
         const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
         const issueTime = issueDate?.getTime() || 0;
         const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
         const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
+        // Determine the primary CFOP tag for this invoice
+        const primaryCfopTag = cfops.length > 0
+          ? (getCfopTagByCode(cfops[0]) || 'Outros')
+          : 'Outros';
+        invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
+
+        if (isSaleOrBonificationInvoice(cfops)) {
+          totalValue += invoice.totalValue || 0;
+          totalSaleOrBonificationInvoices += 1;
+        }
 
         for (const product of products) {
           const key = `${(product.code || '').toUpperCase()}::${normalizeUnit(product.unit)}`;
@@ -370,6 +398,7 @@ export async function GET(req: Request) {
 
     const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
     const totalProductsPurchased = priceTable.length;
+    const averageTicket = totalSaleOrBonificationInvoices > 0 ? totalValue / totalSaleOrBonificationInvoices : 0;
 
     const invoicesList = filteredInvoices.map((invoice) => ({
       id: invoice.id,
@@ -379,6 +408,7 @@ export async function GET(req: Request) {
       totalValue: invoice.totalValue,
       status: invoice.status,
       accessKey: invoice.accessKey,
+      cfopTag: invoiceCfopTagMap.get(invoice.id) || 'Outros',
     }));
     const duplicates = [...duplicatesList].sort((a, b) => {
       const aTime = a.dueDate ? new Date(a.dueDate).getTime() : 0;
@@ -392,13 +422,20 @@ export async function GET(req: Request) {
       return b.installmentNumber.localeCompare(a.installmentNumber, 'pt-BR', { sensitivity: 'base' });
     });
 
+    // CRT label
+    const crtLabels: Record<string, string> = {
+      '1': 'Simples Nacional',
+      '2': 'Simples Nacional - Excesso',
+      '3': 'Regime Normal',
+    };
+
     return NextResponse.json({
       customer: {
         name: customerName,
         fantasyName: extracted?.fantasyName,
         cnpj: customerCnpj,
-        stateRegistration: extracted?.stateRegistration,
-        municipalRegistration: extracted?.municipalRegistration,
+        stateRegistration: contactFiscal?.ie ?? extracted?.stateRegistration,
+        municipalRegistration: contactFiscal?.im ?? extracted?.municipalRegistration,
         phone: extracted?.phone,
         email: extracted?.email,
         address: extracted?.address || {
@@ -412,6 +449,13 @@ export async function GET(req: Request) {
           country: null,
         },
       },
+      contactFiscal: contactFiscal ? {
+        ie: contactFiscal.ie,
+        im: contactFiscal.im,
+        crt: contactFiscal.crt,
+        crtLabel: contactFiscal.crt ? crtLabels[contactFiscal.crt] || contactFiscal.crt : null,
+        uf: contactFiscal.uf,
+      } : null,
       purchases: {
         totalInvoices,
         totalValue,

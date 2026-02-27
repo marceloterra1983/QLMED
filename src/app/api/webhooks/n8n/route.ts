@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 
-const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml'] as const;
+const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml', 'sync-ncm-bulk', 'backfill-tax-data', 'batch-cnpj-check'] as const;
 type Action = (typeof VALID_ACTIONS)[number];
 
 function validateApiKey(req: NextRequest): boolean {
@@ -73,6 +73,38 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 'x-api-key': process.env.QLMED_API_KEY! },
           body: formData,
+        });
+        const data = await res.json();
+        return NextResponse.json({ ok: true, action, result: data });
+      }
+
+      case 'sync-ncm-bulk': {
+        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
+        const res = await fetch(`${baseUrl}/api/ncm/bulk-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          body: JSON.stringify(payload || {}),
+        });
+        const data = await res.json();
+        return NextResponse.json({ ok: true, action, result: data });
+      }
+
+      case 'backfill-tax-data': {
+        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
+        const res = await fetch(`${baseUrl}/api/invoices/backfill-tax`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+        });
+        const data = await res.json();
+        return NextResponse.json({ ok: true, action, result: data });
+      }
+
+      case 'batch-cnpj-check': {
+        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
+        const res = await fetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          body: JSON.stringify(payload || {}),
         });
         const data = await res.json();
         return NextResponse.json({ ok: true, action, result: data });

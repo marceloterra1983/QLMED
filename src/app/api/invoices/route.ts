@@ -78,6 +78,51 @@ function extractCteRecebedorName(xmlContent: string | null | undefined): string 
   return decodedDest || null;
 }
 
+const MUNICIPALITY_CODE_TO_CITY: Record<string, string> = {
+  '3106200': 'Belo Horizonte',
+  '3518800': 'Guarulhos',
+  '3547304': 'Santana de Parnaiba',
+  '5002704': 'Campo Grande',
+  '5003702': 'Dourados',
+  '5103403': 'Cuiaba',
+};
+
+function normalizeCity(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const decoded = decodeXmlEntities(value).replace(/\s+/g, ' ').trim();
+  if (!decoded) return null;
+  return decoded;
+}
+
+function mapMunicipalityCodeToCity(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const digits = code.replace(/\D/g, '');
+  if (digits.length !== 7) return null;
+  return MUNICIPALITY_CODE_TO_CITY[digits] || null;
+}
+
+function extractNfseSenderCity(xmlContent: string | null | undefined): string | null {
+  if (!xmlContent) return null;
+
+  // Padrão nacional ADN costuma trazer cidade explícita em xLocEmi.
+  const cityFromLoc = normalizeCity(xmlContent.match(/<xLocEmi>([\s\S]*?)<\/xLocEmi>/i)?.[1]);
+  if (cityFromLoc) return cityFromLoc;
+
+  // Schemas municipais/ABRASF podem trazer xMun no bloco do prestador/emitente.
+  const emitBlock = xmlContent.match(/<emit\b[\s\S]*?<\/emit>/i)?.[0];
+  const cityFromEmitXmun = normalizeCity(emitBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]);
+  if (cityFromEmitXmun) return cityFromEmitXmun;
+
+  // Fallback via código do município (IBGE) quando houver mapeamento conhecido.
+  const cityCode =
+    emitBlock?.match(/<cMun>(\d{7})<\/cMun>/i)?.[1]
+    || xmlContent.match(/<cLocEmi>(\d{7})<\/cLocEmi>/i)?.[1]
+    || xmlContent.match(/<CodigoMunicipio>(\d{7})<\/CodigoMunicipio>/i)?.[1]
+    || null;
+
+  return mapMunicipalityCodeToCity(cityCode);
+}
+
 export async function GET(req: Request) {
   try {
     let userId: string;
@@ -157,7 +202,14 @@ export async function GET(req: Request) {
 
     const attachCfopForInvoices = async <T extends { id: string }>(
       baseInvoices: T[]
-    ): Promise<Array<T & { cfop: string | null; cteRemetenteName: string | null; cteRecebedorName: string | null; cteRemetenteCnpj: string | null; cteRecebedorCnpj: string | null }>> => {
+    ): Promise<Array<T & {
+      cfop: string | null;
+      cteRemetenteName: string | null;
+      cteRecebedorName: string | null;
+      cteRemetenteCnpj: string | null;
+      cteRecebedorCnpj: string | null;
+      senderCity: string | null;
+    }>> => {
       if (baseInvoices.length === 0) return [];
       const xmlById = await prisma.invoice.findMany({
         where: { companyId: company.id, id: { in: baseInvoices.map((invoice) => invoice.id) } },
@@ -188,6 +240,12 @@ export async function GET(req: Request) {
           entry.type === 'CTE' ? extractCteRecebedorCnpj(entry.xmlContent) : null,
         ])
       );
+      const senderCityById = new Map(
+        xmlById.map((entry) => [
+          entry.id,
+          entry.type === 'NFSE' ? extractNfseSenderCity(entry.xmlContent) : null,
+        ])
+      );
 
       return baseInvoices.map((invoice) => ({
         ...invoice,
@@ -196,6 +254,7 @@ export async function GET(req: Request) {
         cteRecebedorName: cteRecebedorById.get(invoice.id) || null,
         cteRemetenteCnpj: cteRemetenteCnpjById.get(invoice.id) || null,
         cteRecebedorCnpj: cteRecebedorCnpjById.get(invoice.id) || null,
+        senderCity: senderCityById.get(invoice.id) || null,
       }));
     };
 

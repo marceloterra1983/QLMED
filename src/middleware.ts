@@ -38,12 +38,20 @@ export async function middleware(req: NextRequest) {
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
     const expected = process.env.QLMED_API_KEY;
-    if (apiKey && expected && safeEqual(apiKey, expected)) {
-      const requestHeaders = new Headers(req.headers);
-      requestHeaders.set('x-api-key-validated', '1');
-      return NextResponse.next({
-        request: { headers: requestHeaders },
-      });
+    if (apiKey) {
+      // Edge runtime can miss some env vars depending on deployment/runtime mode.
+      // If expected is unavailable here, forward and let route-level auth validate.
+      if (!expected) {
+        return NextResponse.next();
+      }
+
+      if (safeEqual(apiKey, expected)) {
+        const requestHeaders = new Headers(req.headers);
+        requestHeaders.set('x-api-key-validated', '1');
+        return NextResponse.next({
+          request: { headers: requestHeaders },
+        });
+      }
     }
   }
 
@@ -84,6 +92,7 @@ export const config = {
     '/api/invoices/:path*',
     '/api/dashboard/:path*',
     '/api/nsdocs/:path*',
+    '/api/receita/:path*',
     '/api/certificate/:path*',
     '/api/onedrive/:path*',
     '/api/users/:path*',

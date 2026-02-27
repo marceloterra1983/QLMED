@@ -32,6 +32,18 @@ interface NsdocsConfig {
   lastSyncAt: string | null;
 }
 
+interface ReceitaNfseConfig {
+  id: string;
+  apiToken: string;
+  autoSync: boolean;
+  syncInterval: number;
+  environment: 'production' | 'production-restricted';
+  baseUrl: string | null;
+  cnpjConsulta: string | null;
+  lastNsu: string;
+  lastSyncAt: string | null;
+}
+
 interface OneDriveConnection {
   id: string;
   accountEmail: string;
@@ -93,6 +105,17 @@ export default function SettingsPage() {
   const [nsdocsConfig, setNsdocsConfig] = useState<NsdocsConfig | null>(null);
   const [nsdocsLoading, setNsdocsLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Receita NFS-e
+  const [receitaApiToken, setReceitaApiToken] = useState('');
+  const [receitaAutoSync, setReceitaAutoSync] = useState(true);
+  const [receitaSyncInterval, setReceitaSyncInterval] = useState(60);
+  const [receitaEnvironment, setReceitaEnvironment] = useState<'production' | 'production-restricted'>('production');
+  const [receitaBaseUrl, setReceitaBaseUrl] = useState('');
+  const [receitaCnpjConsulta, setReceitaCnpjConsulta] = useState('');
+  const [receitaConfig, setReceitaConfig] = useState<ReceitaNfseConfig | null>(null);
+  const [receitaLoading, setReceitaLoading] = useState(false);
+  const [receitaTestResult, setReceitaTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // OneDrive
   const [oneDriveLoginHint, setOneDriveLoginHint] = useState('faturamento@qlmed.com.br');
@@ -224,6 +247,25 @@ export default function SettingsPage() {
       .catch(() => toast.error('Erro ao carregar configuração NSDocs'));
   }, []);
 
+  useEffect(() => {
+    fetch('/api/receita/nfse/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.config) {
+          setReceitaConfig(data.config);
+          setReceitaApiToken(data.config.apiToken || '');
+          setReceitaAutoSync(Boolean(data.config.autoSync));
+          setReceitaSyncInterval(Number(data.config.syncInterval || 60));
+          setReceitaEnvironment(data.config.environment === 'production-restricted' ? 'production-restricted' : 'production');
+          setReceitaBaseUrl(data.config.baseUrl || '');
+          setReceitaCnpjConsulta(data.config.cnpjConsulta || '');
+        } else if (company?.cnpj) {
+          setReceitaCnpjConsulta(company.cnpj);
+        }
+      })
+      .catch(() => toast.error('Erro ao carregar configuração Receita NFS-e'));
+  }, [company?.cnpj]);
+
   const handleTestConnection = async () => {
     setNsdocsLoading(true);
     setTestResult(null);
@@ -270,6 +312,71 @@ export default function SettingsPage() {
       toast.error('Erro de rede ao salvar');
     } finally {
       setNsdocsLoading(false);
+    }
+  };
+
+  const handleReceitaTestConnection = async () => {
+    setReceitaLoading(true);
+    setReceitaTestResult(null);
+
+    try {
+      const res = await fetch('/api/receita/nfse/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiToken: receitaApiToken,
+          environment: receitaEnvironment,
+          baseUrl: receitaBaseUrl,
+          cnpjConsulta: receitaCnpjConsulta || company?.cnpj || '',
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReceitaTestResult({ ok: true, message: data.message || 'Conexão Receita NFS-e OK!' });
+      } else {
+        setReceitaTestResult({ ok: false, message: data.error || 'Falha ao testar conexão Receita NFS-e' });
+      }
+    } catch {
+      setReceitaTestResult({ ok: false, message: 'Erro de rede ao testar conexão Receita NFS-e' });
+    } finally {
+      setReceitaLoading(false);
+    }
+  };
+
+  const handleReceitaSave = async () => {
+    setReceitaLoading(true);
+
+    try {
+      const res = await fetch('/api/receita/nfse/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiToken: receitaApiToken,
+          autoSync: receitaAutoSync,
+          syncInterval: receitaSyncInterval,
+          environment: receitaEnvironment,
+          baseUrl: receitaBaseUrl || null,
+          cnpjConsulta: receitaCnpjConsulta || company?.cnpj || null,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.config) {
+        setReceitaConfig(data.config);
+        setReceitaApiToken(data.config.apiToken || '');
+        setReceitaAutoSync(Boolean(data.config.autoSync));
+        setReceitaSyncInterval(Number(data.config.syncInterval || 60));
+        setReceitaEnvironment(data.config.environment === 'production-restricted' ? 'production-restricted' : 'production');
+        setReceitaBaseUrl(data.config.baseUrl || '');
+        setReceitaCnpjConsulta(data.config.cnpjConsulta || '');
+        toast.success('Configuração Receita NFS-e salva com sucesso!');
+      } else {
+        toast.error(data.error || 'Erro ao salvar configuração Receita NFS-e');
+      }
+    } catch {
+      toast.error('Erro de rede ao salvar configuração Receita NFS-e');
+    } finally {
+      setReceitaLoading(false);
     }
   };
 
@@ -405,6 +512,10 @@ export default function SettingsPage() {
     : { label: 'Não instalado', color: 'yellow' as const };
 
   const nsdocsBadge = nsdocsConfig
+    ? { label: 'Conectado', color: 'green' as const }
+    : { label: 'Não configurado', color: 'yellow' as const };
+
+  const receitaBadge = receitaConfig
     ? { label: 'Conectado', color: 'green' as const }
     : { label: 'Não configurado', color: 'yellow' as const };
 
@@ -634,7 +745,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
             <div>
               <p className="font-semibold text-slate-900 dark:text-white text-sm">Sincronização Automática</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Buscar novas notas na SEFAZ periodicamente</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Buscar documentos via NSDocs automaticamente (SEFAZ é manual)</p>
             </div>
             <button
               onClick={() => setAutoSync(!autoSync)}
@@ -694,7 +805,159 @@ export default function SettingsPage() {
         </div>
       </CollapsibleCard>
 
-      {/* 3. Integração OneDrive */}
+      {/* 3. Integração Receita NFS-e */}
+      <CollapsibleCard icon="account_balance" title="Integração Receita NFS-e (ADN)" defaultOpen badge={receitaBadge}>
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px] mt-0.5">info</span>
+              <div>
+                <h4 className="font-bold text-orange-900 dark:text-orange-300 text-xs">Observações da integração</h4>
+                <p className="text-xs text-orange-800 dark:text-orange-400 mt-1">
+                  A integração Receita NFS-e usa o certificado digital A1 da empresa. Se o ambiente exigir token adicional, informe abaixo.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Token da API Receita NFS-e (opcional)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={receitaApiToken}
+                onChange={(e) => setReceitaApiToken(e.target.value)}
+                disabled={!canManageSettings}
+                placeholder="Bearer token, se exigido no seu ambiente"
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <button
+                onClick={handleReceitaTestConnection}
+                disabled={receitaLoading || !canManageSettings}
+                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">wifi_tethering</span>
+                Testar
+              </button>
+            </div>
+
+            {receitaTestResult && (
+              <div className={`mt-2 p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
+                receitaTestResult.ok
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+              }`}>
+                <span className="material-symbols-outlined text-[18px]">
+                  {receitaTestResult.ok ? 'check_circle' : 'error'}
+                </span>
+                {receitaTestResult.message}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Ambiente</label>
+              <select
+                value={receitaEnvironment}
+                onChange={(e) => setReceitaEnvironment(e.target.value === 'production-restricted' ? 'production-restricted' : 'production')}
+                disabled={!canManageSettings}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+              >
+                <option value="production">Produção</option>
+                <option value="production-restricted">Produção Restrita</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">CNPJ de Consulta</label>
+              <input
+                value={receitaCnpjConsulta}
+                onChange={(e) => setReceitaCnpjConsulta(e.target.value)}
+                disabled={!canManageSettings}
+                placeholder={company?.cnpj || 'Somente números'}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Base URL personalizada (opcional)
+            </label>
+            <input
+              value={receitaBaseUrl}
+              onChange={(e) => setReceitaBaseUrl(e.target.value)}
+              disabled={!canManageSettings}
+              placeholder="Ex.: https://adn.nfse.gov.br/contribuintes"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm font-mono disabled:opacity-50"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white text-sm">Sincronização Automática</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Buscar NFS-e recebidas automaticamente</p>
+            </div>
+            <button
+              onClick={() => setReceitaAutoSync(!receitaAutoSync)}
+              disabled={!canManageSettings}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                receitaAutoSync ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
+              } disabled:opacity-50`}
+              role="switch"
+              aria-checked={receitaAutoSync}
+              aria-label="Sincronização Automática Receita NFS-e"
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                receitaAutoSync ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {receitaAutoSync && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Intervalo de Sincronização</label>
+              <select
+                value={receitaSyncInterval}
+                onChange={(e) => setReceitaSyncInterval(Number(e.target.value))}
+                disabled={!canManageSettings}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+              >
+                <option value={30}>A cada 30 minutos</option>
+                <option value={60}>A cada 1 hora</option>
+                <option value={120}>A cada 2 horas</option>
+                <option value={360}>A cada 6 horas</option>
+                <option value={720}>A cada 12 horas</option>
+                <option value={1440}>A cada 24 horas</option>
+              </select>
+            </div>
+          )}
+
+          {receitaConfig && (
+            <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <p>Último NSU: <span className="font-mono">{receitaConfig.lastNsu}</span></p>
+              {receitaConfig.lastSyncAt && (
+                <p>Última sincronização: {new Date(receitaConfig.lastSyncAt).toLocaleString('pt-BR')}</p>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleReceitaSave}
+              disabled={receitaLoading || !canManageSettings}
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-orange-600/30 hover:shadow-lg hover:shadow-orange-600/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Salvar Configuração
+            </button>
+          </div>
+        </div>
+      </CollapsibleCard>
+
+      {/* 4. Integração OneDrive */}
       <CollapsibleCard icon="cloud_sync" title="Integração OneDrive" defaultOpen badge={oneDriveBadge}>
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">

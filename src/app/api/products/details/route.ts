@@ -27,6 +27,7 @@ export async function GET(req: Request) {
       `
       SELECT
         pr.product_key,
+        pr.codigo,
         pr.code,
         pr.description,
         pr.ncm,
@@ -88,6 +89,7 @@ export async function GET(req: Request) {
     const row = rows[0];
     return NextResponse.json({
       key: row.product_key,
+      codigo: row.codigo || null,
       code: row.code || '-',
       description: row.description || '',
       ncm: row.ncm || null,

@@ -7,25 +7,13 @@ import { resolveAnvisaByCodeAndName } from '@/lib/anvisa-open-data';
 import { getProductRegistryByKeys } from '@/lib/product-registry-store';
 import { normalizeForSearch } from '@/lib/utils';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
+import { isResaleCustomer } from '@/lib/resale-customers';
 
 const MAX_INVOICES = 3000;
 const MAX_ISSUED_INVOICES = 3000;
 const MAX_IMPORT_INVOICES = 500;
 const XML_BATCH_SIZE = 50;
 const MAX_LIMIT = 200;
-
-/* ── Resale customers (Navix/Prime) ──
- * Sales to these customers are direct resales — their quantities must be
- * subtracted from product entry totals, and they are excluded from
- * lastSaleDate / lastSalePrice and ANVISA issued-NFe lookups.
- */
-const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
-
-function isResaleCustomer(recipientName: string | null | undefined): boolean {
-  if (!recipientName) return false;
-  const upper = recipientName.toUpperCase();
-  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
-}
 
 interface ProductFromXml {
   code: string;
@@ -856,6 +844,7 @@ export async function GET(req: Request) {
 
     let products = Array.from(productMap.values()).map((item) => ({
       key: item.key,
+      codigo: null as string | null,
       code: item.code,
       description: item.description,
       ncm: item.ncm,
@@ -1285,6 +1274,7 @@ export async function GET(req: Request) {
           product.ean = registry.ean;
         }
 
+        if (registry.codigo) product.codigo = registry.codigo;
         if (registry.shortName) product.shortName = registry.shortName;
         if (registry.productType) product.productType = registry.productType;
         if (registry.productSubtype) product.productSubtype = registry.productSubtype;

@@ -3,14 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getCfopTagByCode, isImportEntryCfop } from '@/lib/cfop';
-
-const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
-
-function isResaleCustomer(recipientName: string | null | undefined): boolean {
-  if (!recipientName) return false;
-  const upper = recipientName.toUpperCase();
-  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
-}
+import { isResaleCustomer } from '@/lib/resale-customers';
 
 const UNIT_ALIASES: Record<string, string> = {
   UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
@@ -84,12 +77,13 @@ export async function GET(req: Request) {
          FROM "Invoice"
          WHERE "companyId" = $1
            AND type = 'NFE'
-           AND direction = '${dir}'
+           AND direction = $3::"InvoiceDirection"
            AND "xmlContent" LIKE $2
          ORDER BY "issueDate" DESC
          LIMIT 200`,
         company.id,
         pattern,
+        dir,
       );
     };
 

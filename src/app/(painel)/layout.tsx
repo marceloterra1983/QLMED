@@ -76,12 +76,14 @@ function SidebarContent({
       items: [
         { label: 'NF-e Recebidas', icon: 'receipt_long', href: '/fiscal/invoices' },
         { label: 'NF-e Emitidas', icon: 'output', href: '/fiscal/issued' },
+        { label: 'NFS-e', icon: 'description', href: '/fiscal/nfse-recebidas' },
         { label: 'CT-e', icon: 'local_shipping', href: '/fiscal/cte' },
       ],
     },
     {
       section: 'Financeiro',
       items: [
+        { label: 'Impostos', icon: 'monitoring', href: '/fiscal/dashboard' },
         { label: 'Contas a Pagar', icon: 'payments', href: '/financeiro/contas-pagar' },
         { label: 'Contas a Receber', icon: 'request_quote', href: '/financeiro/contas-receber' },
       ],

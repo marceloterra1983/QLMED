@@ -257,7 +257,7 @@ async function fetchDatasetEntries(dataset: { source: DatasetKind; url: string }
     const response = await fetch(dataset.url, {
       cache: 'no-store',
       signal: controller.signal,
-      headers: { Accept: 'text/csv,*/*;q=0.9' },
+      headers: { Accept: 'text/csv,*/*;q=0.9', 'User-Agent': 'Mozilla/5.0' },
     });
 
     if (!response.ok || !response.body) {

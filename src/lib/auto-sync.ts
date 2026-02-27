@@ -8,12 +8,15 @@ import { getNsdocsSyncWindow } from './nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from './source-status';
 import { resolveInvoiceDirection } from './invoice-direction';
 import { updateProductAggregatesForInvoice, scheduleNightlyRebuild } from './product-aggregate-updater';
+import { syncReceitaNfseByNsu } from './receita-nfse-sync';
 
 // Instância própria de Prisma para evitar import circular com prisma.ts
 const prisma = new PrismaClient();
 
 const CHECK_INTERVAL_MS = 60 * 1000; // Verifica a cada 60 segundos
 const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo';
+const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
+const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12', AL: '27', AP: '16', AM: '13', BA: '29', CE: '23', DF: '53', ES: '32',
@@ -63,6 +66,24 @@ function getHourSlotKey(date: Date, timeZone: string): string {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}`;
 }
 
+function normalizeMinuteSlot(rawValue: string | undefined, fallback: string): string {
+  const parsed = Number(rawValue ?? fallback);
+  if (!Number.isFinite(parsed)) return fallback;
+  const minute = Math.max(0, Math.min(59, Math.round(parsed)));
+  return String(minute).padStart(2, '0');
+}
+
+function normalizeSyncIntervalMinutes(rawInterval: unknown): number {
+  const parsed = Number(rawInterval);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 60;
+  return Math.max(5, Math.min(1440, Math.round(parsed)));
+}
+
+function hasElapsedInterval(lastCompletedAt: Date | null | undefined, now: Date, intervalMinutes: number): boolean {
+  if (!lastCompletedAt) return true;
+  return (now.getTime() - lastCompletedAt.getTime()) >= intervalMinutes * 60 * 1000;
+}
+
 export function startAutoSync() {
   if (started) return;
   started = true;
@@ -84,53 +105,122 @@ async function checkAndSync() {
     const now = new Date();
     const nowParts = getDatePartsInTimeZone(now, AUTO_SYNC_TIMEZONE);
     const currentHourSlotKey = `${nowParts.year}-${nowParts.month}-${nowParts.day} ${nowParts.hour}`;
+    const runNsdocsNow = nowParts.minute === NSDOCS_AUTO_SYNC_MINUTE;
+    const runReceitaNow = nowParts.minute === RECEITA_NFSE_AUTO_SYNC_MINUTE;
 
-    // Auto-sync apenas na virada da hora (ex.: 13:00, 14:00, 15:00).
-    if (nowParts.minute !== '00') {
-      return;
-    }
+    if (!runNsdocsNow && !runReceitaNow) return;
 
-    const configs = await prisma.nsdocsConfig.findMany({
-      where: { autoSync: true },
-      include: {
-        company: {
-          include: {
-            nsdocsConfig: true,
+    if (runNsdocsNow) {
+      const configs = await prisma.nsdocsConfig.findMany({
+        where: { autoSync: true },
+        include: {
+          company: {
+            include: {
+              nsdocsConfig: true,
+            },
           },
         },
-      },
-    });
-
-    for (const config of configs) {
-      const company = config.company;
-
-      // Não iniciar se já tem sync rodando
-      const running = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, status: 'running' },
       });
-      if (running) continue;
 
-      // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
-      const lastNsdocsCompleted = await prisma.syncLog.findFirst({
-        where: {
-          companyId: company.id,
-          syncMethod: 'nsdocs',
-          status: 'completed',
-        },
-        orderBy: { completedAt: 'desc' },
-        select: { completedAt: true },
-      });
-      if (
-        lastNsdocsCompleted?.completedAt &&
-        getHourSlotKey(lastNsdocsCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-      ) {
-        continue;
+      for (const config of configs) {
+        const company = config.company;
+
+        // Não iniciar se já tem sync rodando
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
+        });
+        if (running) continue;
+
+        // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
+        const lastNsdocsCompleted = await prisma.syncLog.findFirst({
+          where: {
+            companyId: company.id,
+            syncMethod: 'nsdocs',
+            status: 'completed',
+          },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        if (
+          lastNsdocsCompleted?.completedAt &&
+          getHourSlotKey(lastNsdocsCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+        ) {
+          continue;
+        }
+        if (
+          lastNsdocsCompleted?.completedAt &&
+          !hasElapsedInterval(lastNsdocsCompleted.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+        ) {
+          continue;
+        }
+
+        if (!company.nsdocsConfig) continue;
+
+        console.log(
+          `[AutoSync] Sincronizando NSDocs (slot ${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+          `${company.razaoSocial} (${company.cnpj})`
+        );
+        await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
       }
+    }
 
-      if (!company.nsdocsConfig) continue;
+    if (runReceitaNow) {
+      const receitaConfigs = await prisma.receitaNfseConfig.findMany({
+        where: { autoSync: true },
+        include: {
+          company: {
+            include: {
+              receitaNfseConfig: true,
+              certificateConfig: true,
+            },
+          },
+        },
+      });
 
-      console.log(`[AutoSync] Sincronizando NSDocs (slot ${currentHourSlotKey} ${AUTO_SYNC_TIMEZONE}): ${company.razaoSocial} (${company.cnpj})`);
-      await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
+      for (const config of receitaConfigs) {
+        const company = config.company;
+        if (!company.receitaNfseConfig || !company.certificateConfig) continue;
+
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
+        });
+        if (running) continue;
+
+        const lastReceitaCompleted = await prisma.syncLog.findFirst({
+          where: {
+            companyId: company.id,
+            syncMethod: 'receita_nfse',
+            status: 'completed',
+          },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        if (
+          lastReceitaCompleted?.completedAt &&
+          getHourSlotKey(lastReceitaCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+        ) {
+          continue;
+        }
+        if (
+          lastReceitaCompleted?.completedAt &&
+          !hasElapsedInterval(lastReceitaCompleted.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+        ) {
+          continue;
+        }
+
+        console.log(
+          `[AutoSync] Sincronizando Receita NFS-e (slot ${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+          `${company.razaoSocial} (${company.cnpj})`
+        );
+
+        await syncViaReceitaNfse(
+          company.id,
+          company.cnpj,
+          company.razaoSocial,
+          company.receitaNfseConfig,
+          company.certificateConfig,
+        );
+      }
     }
   } catch (error) {
     console.error('[AutoSync] Erro no check:', error);
@@ -394,6 +484,84 @@ async function syncViaNsdocs(
     console.log(`[AutoSync] NSDocs OK: ${razaoSocial} - ${totalNovos} novos, ${totalAtualizados} existentes`);
   } catch (err: any) {
     console.error(`[AutoSync] Erro NSDocs ${razaoSocial}:`, err.message);
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+    });
+  }
+}
+
+async function syncViaReceitaNfse(
+  companyId: string,
+  cnpj: string,
+  razaoSocial: string,
+  receitaConfig: {
+    id: string;
+    apiToken: string | null;
+    lastNsu: string;
+    cnpjConsulta: string | null;
+    environment: string;
+    baseUrl: string | null;
+  },
+  certificateConfig: {
+    pfxData: Buffer;
+    pfxPassword: string;
+  },
+) {
+  const syncLog = await prisma.syncLog.create({
+    data: { companyId, syncMethod: 'receita_nfse', status: 'running' },
+  });
+
+  try {
+    const result = await syncReceitaNfseByNsu({
+      prisma,
+      companyId,
+      companyCnpj: cnpj,
+      config: {
+        id: receitaConfig.id,
+        apiToken: receitaConfig.apiToken,
+        lastNsu: receitaConfig.lastNsu,
+        cnpjConsulta: receitaConfig.cnpjConsulta,
+        environment: receitaConfig.environment,
+        baseUrl: receitaConfig.baseUrl,
+      },
+      certificate: {
+        pfxData: certificateConfig.pfxData,
+        pfxPassword: certificateConfig.pfxPassword,
+      },
+    });
+
+    const rateLimitMessage = result.rateLimited
+      ? 'Receita NFS-e limitou a consulta (HTTP 429). Tente novamente em alguns minutos.'
+      : null;
+    const hasImportedDocs = result.importedXmlCount > 0;
+    const finalStatus = result.rateLimited && !hasImportedDocs ? 'error' : 'completed';
+
+    await prisma.receitaNfseConfig.update({
+      where: { id: receitaConfig.id },
+      data: {
+        lastNsu: result.lastNsu,
+        lastSyncAt: new Date(),
+      },
+    });
+
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: {
+        status: finalStatus,
+        newDocs: result.newDocs,
+        updatedDocs: result.updatedDocs,
+        errorMessage: rateLimitMessage,
+        completedAt: new Date(),
+      },
+    });
+
+    console.log(
+      `[AutoSync] Receita NFS-e OK: ${razaoSocial} - ` +
+      `${result.newDocs} novos, ${result.updatedDocs} atualizados, NSUs: ${result.scannedNsuCount}`
+    );
+  } catch (err: any) {
+    console.error(`[AutoSync] Erro Receita NFS-e ${razaoSocial}:`, err.message);
     await prisma.syncLog.update({
       where: { id: syncLog.id },
       data: { status: 'error', errorMessage: err.message, completedAt: new Date() },

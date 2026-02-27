@@ -11,6 +11,7 @@ import { getNsdocsSyncWindow } from '@/lib/nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
+import { syncReceitaNfseByNsu } from '@/lib/receita-nfse-sync';
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12',
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       where: { id: baseCompany.id },
       include: {
         nsdocsConfig: true,
+        receitaNfseConfig: true,
         certificateConfig: true
       }
     });
@@ -82,6 +84,12 @@ export async function POST(request: NextRequest) {
     }
     if (method === 'nsdocs' && !company.nsdocsConfig) {
       return NextResponse.json({ error: 'Integração NSDocs não configurada para esta empresa' }, { status: 400 });
+    }
+    if (method === 'receita_nfse' && !company.receitaNfseConfig) {
+      return NextResponse.json({ error: 'Integração Receita NFS-e não configurada para esta empresa' }, { status: 400 });
+    }
+    if (method === 'receita_nfse' && !company.certificateConfig) {
+      return NextResponse.json({ error: 'Certificado digital não configurado para integrar com Receita NFS-e' }, { status: 400 });
     }
 
     // SEFAZ: se method='sefaz' explícito OU fallback automático (sem method)
@@ -409,7 +417,93 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: 'Nenhuma configuração de integração encontrada (Certificado ou NSDocs)' }, { status: 400 });
+    // Receita NFS-e (ADN): apenas quando solicitado explicitamente.
+    if (method === 'receita_nfse' && company.receitaNfseConfig && company.certificateConfig) {
+      const syncLog = await prisma.syncLog.create({
+        data: {
+          companyId,
+          syncMethod: 'receita_nfse',
+          status: 'running'
+        }
+      });
+
+      const receitaConfig = {
+        ...company.receitaNfseConfig,
+      };
+      const certificateConfig = company.certificateConfig;
+      const companyCnpj = company.cnpj;
+      const companyRazao = company.razaoSocial;
+
+      (async () => {
+        try {
+          const result = await syncReceitaNfseByNsu({
+            prisma,
+            companyId,
+            companyCnpj,
+            config: {
+              id: receitaConfig.id,
+              apiToken: receitaConfig.apiToken,
+              lastNsu: receitaConfig.lastNsu,
+              cnpjConsulta: receitaConfig.cnpjConsulta,
+              environment: receitaConfig.environment,
+              baseUrl: receitaConfig.baseUrl,
+            },
+            certificate: {
+              pfxData: certificateConfig.pfxData,
+              pfxPassword: certificateConfig.pfxPassword,
+            },
+          });
+
+          const rateLimitMessage = result.rateLimited
+            ? 'Receita NFS-e limitou a consulta (HTTP 429). Tente novamente em alguns minutos.'
+            : null;
+          const hasImportedDocs = result.importedXmlCount > 0;
+          const finalStatus = result.rateLimited && !hasImportedDocs ? 'error' : 'completed';
+
+          await prisma.receitaNfseConfig.update({
+            where: { id: receitaConfig.id },
+            data: {
+              lastNsu: result.lastNsu,
+              lastSyncAt: new Date(),
+            },
+          });
+
+          await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: {
+              status: finalStatus,
+              newDocs: result.newDocs,
+              updatedDocs: result.updatedDocs,
+              errorMessage: rateLimitMessage,
+              completedAt: new Date(),
+            },
+          });
+
+          console.log(
+            `[Receita NFS-e Sync] Concluído: ${companyRazao} - ` +
+            `${result.newDocs} novos, ${result.updatedDocs} atualizados, NSUs lidos: ${result.scannedNsuCount}, último NSU: ${result.lastNsu}`
+          );
+        } catch (err: any) {
+          console.error('[Receita NFS-e Sync] Erro:', err);
+          await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: {
+              status: 'error',
+              errorMessage: err.message || 'Erro interno na sincronização Receita NFS-e',
+              completedAt: new Date(),
+            },
+          });
+        }
+      })();
+
+      return NextResponse.json({
+        message: 'Sincronização Receita NFS-e iniciada',
+        syncMethod: 'receita_nfse',
+        syncLogId: syncLog.id,
+      });
+    }
+
+    return NextResponse.json({ error: 'Nenhuma configuração de integração encontrada (SEFAZ, NSDocs ou Receita NFS-e)' }, { status: 400 });
 
   } catch (error) {
     console.error('Erro geral no sync:', error);
@@ -447,11 +541,28 @@ export async function GET(request: NextRequest) {
   }
 
   // Se não tem syncLogId, retornar histórico (logs)
-  const logs = await prisma.syncLog.findMany({
-    where: { companyId },
-    orderBy: { startedAt: 'desc' },
-    take: 20
-  });
+  // Trazemos fatias por método para evitar que um método "esconda" os demais.
+  const [nsdocsLogs, sefazLogs, receitaLogs] = await Promise.all([
+    prisma.syncLog.findMany({
+      where: { companyId, syncMethod: 'nsdocs' },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    }),
+    prisma.syncLog.findMany({
+      where: { companyId, syncMethod: 'sefaz' },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    }),
+    prisma.syncLog.findMany({
+      where: { companyId, syncMethod: 'receita_nfse' },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    }),
+  ]);
+
+  const logs = [...nsdocsLogs, ...sefazLogs, ...receitaLogs].sort(
+    (a, b) => b.startedAt.getTime() - a.startedAt.getTime()
+  );
 
   return NextResponse.json({ logs });
 }

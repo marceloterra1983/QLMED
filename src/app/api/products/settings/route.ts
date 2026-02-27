@@ -9,6 +9,8 @@ import {
   type ProductSettingsCatalogSection,
   type ProductSettingsCatalogEntry,
 } from '@/lib/product-settings-catalog';
+import { ensureNcmCacheTable } from '@/lib/ncm-lookup';
+import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
 
 type LineNode = {
@@ -37,6 +39,7 @@ type ManufacturerNode = {
 type FiscalItemNode = {
   value: string;
   count: number;
+  description?: string;
 };
 
 function sortByName<T extends { name: string }>(left: T, right: T) {
@@ -63,7 +66,7 @@ export async function GET() {
     }
 
     const company = await getOrCreateSingleCompany(auth.userId);
-    await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
+    await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable(), ensureNcmCacheTable()]);
 
     const [lineRows, manufacturerRows, ncmRows, sitRows, nomeRows, cestRows, origemRows, cfopEntradaRows, cfopSaidaRows, catalogEntries] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(
@@ -103,14 +106,16 @@ export async function GET() {
       prisma.$queryRawUnsafe<any[]>(
         `
           SELECT
-            TRIM(ncm) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND ncm IS NOT NULL
-            AND TRIM(ncm) <> ''
-          GROUP BY TRIM(ncm)
+            TRIM(pr.ncm) AS value,
+            COUNT(*)::int AS count,
+            MAX(nc.descricao) AS description
+          FROM product_registry pr
+          LEFT JOIN ncm_cache nc ON nc.code = REPLACE(REPLACE(TRIM(pr.ncm), '.', ''), ' ', '')
+          WHERE pr.company_id = $1
+            AND pr.product_key NOT LIKE '__%placeholder__%'
+            AND pr.ncm IS NOT NULL
+            AND TRIM(pr.ncm) <> ''
+          GROUP BY TRIM(pr.ncm)
         `,
         company.id,
       ),
@@ -243,7 +248,7 @@ export async function GET() {
       });
     }
 
-    const ncmMap = new Map<string, number>();
+    const ncmMap = new Map<string, { count: number; description: string }>();
     const sitMap = new Map<string, number>();
     const nomeMap = new Map<string, number>();
     const cestMap = new Map<string, number>();
@@ -254,7 +259,7 @@ export async function GET() {
     for (const row of ncmRows) {
       const value = clean(row.value);
       if (!value) continue;
-      ncmMap.set(value, Number(row.count) || 0);
+      ncmMap.set(value, { count: Number(row.count) || 0, description: clean(row.description) || '' });
     }
     for (const row of sitRows) {
       const value = clean(row.value);
@@ -347,7 +352,7 @@ export async function GET() {
       }
 
       if (entry.section === 'fiscal_ncm') {
-        if (!ncmMap.has(value)) ncmMap.set(value, 0);
+        if (!ncmMap.has(value)) ncmMap.set(value, { count: 0, description: '' });
         continue;
       }
 
@@ -407,8 +412,8 @@ export async function GET() {
     const manufacturers: ManufacturerNode[] = Array.from(manufacturerMap.values()).sort(sortByName);
 
     const fiscalNcm: FiscalItemNode[] = Array.from(ncmMap.entries())
-      .map(([value, count]) => ({ value, count }))
-      .sort(sortByValue);
+      .map(([value, data]) => ({ value, count: data.count, description: data.description || undefined }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
     const fiscalSitTributaria: FiscalItemNode[] = Array.from(sitMap.entries())
       .map(([value, count]) => ({ value, count }))
       .sort(sortByValue);
@@ -422,11 +427,11 @@ export async function GET() {
       .map(([value, count]) => ({ value, count }))
       .sort(sortByValue);
     const fiscalCfopEntrada: FiscalItemNode[] = Array.from(cfopEntradaMap.entries())
-      .map(([value, count]) => ({ value, count }))
-      .sort(sortByValue);
+      .map(([value, count]) => ({ value, count, description: getCfopDescription(value) || undefined }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
     const fiscalCfopSaida: FiscalItemNode[] = Array.from(cfopSaidaMap.entries())
-      .map(([value, count]) => ({ value, count }))
-      .sort(sortByValue);
+      .map(([value, count]) => ({ value, count, description: getCfopDescription(value) || undefined }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 
     return NextResponse.json({
       lines,
@@ -448,6 +453,8 @@ export async function GET() {
 }
 
 /* ─── Seed default fiscal catalog values ─── */
+
+const seededCompanies = new Set<string>();
 
 const DEFAULT_FISCAL_SEEDS: { section: ProductSettingsCatalogSection; values: string[] }[] = [
   {
@@ -483,10 +490,17 @@ const DEFAULT_FISCAL_SEEDS: { section: ProductSettingsCatalogSection; values: st
       '5102 – Venda de mercadoria adquirida',
       '5405 – Venda de mercadoria adquirida com ST',
       '5551 – Venda de bem do ativo imobilizado',
+      '5908 – Remessa em comodato',
+      '5910 – Remessa em bonificação',
+      '5911 – Remessa de amostra grátis',
       '5912 – Remessa em consignação',
       '5917 – Remessa de mercadoria em consignação',
+      '5949 – Outras saídas não especificadas',
       '6102 – Venda interestadual de mercadoria adquirida',
       '6108 – Venda interestadual de mercadoria a consumidor final',
+      '6202 – Devolução de compra interestadual',
+      '6912 – Remessa em demonstração interestadual',
+      '6949 – Outras saídas interestaduais',
     ],
   },
   {
@@ -494,10 +508,30 @@ const DEFAULT_FISCAL_SEEDS: { section: ProductSettingsCatalogSection; values: st
     values: [
       '1202 – Devolução de venda de mercadoria',
       '1908 – Retorno de remessa para conserto',
+      '1909 – Retorno de comodato',
+      '1918 – Devolução de consignação',
       '1949 – Outra entrada não especificada',
       '2202 – Devolução interestadual de venda',
+      '2909 – Retorno de comodato interestadual',
+      '2918 – Devolução de consignação interestadual',
       '2949 – Outra entrada interestadual não especificada',
       '3102 – Compra do exterior para comercialização',
+    ],
+  },
+  {
+    section: 'fiscal_cest',
+    values: [
+      '1300100 – Medicamentos de referência',
+      '1300200 – Medicamentos genéricos',
+      '1300300 – Medicamentos similares',
+      '1300400 – Outros medicamentos',
+      '1300500 – Preparações químicas contraceptivas',
+      '1300600 – Provitaminas e vitaminas',
+      '1300700 – Medicamentos à base de hormônios',
+      '1300800 – Soros e vacinas',
+      '1300900 – Algodão, gaze, atadura e artigos análogos',
+      '1301000 – Artigos de laboratório ou farmácia',
+      '1301100 – Luvas de borracha',
     ],
   },
 ];
@@ -506,6 +540,8 @@ async function seedDefaultFiscalCatalog(
   companyId: string,
   existingEntries: ProductSettingsCatalogEntry[],
 ) {
+  if (seededCompanies.has(companyId)) return;
+
   const existingSections = new Set(existingEntries.map((e) => e.section));
 
   for (const seed of DEFAULT_FISCAL_SEEDS) {
@@ -519,4 +555,6 @@ async function seedDefaultFiscalCatalog(
       });
     }
   }
+
+  seededCompanies.add(companyId);
 }

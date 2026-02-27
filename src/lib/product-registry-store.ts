@@ -5,6 +5,7 @@ export interface ProductRegistryRow {
   id: string;
   companyId: string;
   productKey: string;
+  codigo: string | null;
   code: string | null;
   description: string;
   ncm: string | null;
@@ -144,7 +145,8 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS agg_last_sale_price DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS agg_resale_quantity DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS agg_computed_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS agg_search_text TEXT
+          ADD COLUMN IF NOT EXISTS agg_search_text TEXT,
+          ADD COLUMN IF NOT EXISTS codigo TEXT
       `);
 
       await prisma.$executeRawUnsafe(`
@@ -173,6 +175,12 @@ export async function ensureProductRegistryTable() {
         CREATE INDEX IF NOT EXISTS product_registry_out_of_line_idx
         ON product_registry (company_id, out_of_line)
         WHERE agg_computed_at IS NOT NULL
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS product_registry_company_codigo_idx
+        ON product_registry (company_id, codigo)
+        WHERE codigo IS NOT NULL
       `);
 
       try {
@@ -228,6 +236,7 @@ function mapRegistryRow(row: any): ProductRegistryRow {
     id: String(row.id),
     companyId: String(row.company_id),
     productKey: String(row.product_key),
+    codigo: row.codigo ?? null,
     code: row.code ?? null,
     description: String(row.description || ''),
     ncm: row.ncm ?? null,
@@ -283,6 +292,7 @@ export async function getProductRegistryByKeys(
         id,
         company_id,
         product_key,
+        codigo,
         code,
         description,
         ncm,
@@ -342,6 +352,7 @@ export async function getProductRegistryWithAnvisa(
         id,
         company_id,
         product_key,
+        codigo,
         code,
         description,
         ncm,
@@ -446,6 +457,7 @@ export async function upsertProductRegistry(
         id,
         company_id,
         product_key,
+        codigo,
         code,
         description,
         ncm,

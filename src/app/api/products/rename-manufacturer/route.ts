@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireEditor, unauthorizedResponse } from '@/lib/auth';
+import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import {
@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
   let auth: { userId: string; role: string };
   try {
     auth = await requireEditor();
-  } catch {
+  } catch (error: any) {
+    if (error?.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 
