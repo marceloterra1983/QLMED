@@ -234,7 +234,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         aria-hidden="true"
       />
       <div
-        className="relative bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-5xl h-full sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
+        className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
         role="dialog"
         aria-modal="true"
       >

@@ -41,7 +41,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       ></div>
       <div
         ref={modalRef}
-        className={`relative bg-white dark:bg-card-dark sm:rounded-xl w-full ${width} h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:animate-in sm:fade-in sm:zoom-in-95 duration-200`}
+        className={`absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-card-dark sm:rounded-xl w-full ${width} sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:animate-in sm:fade-in sm:zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >
