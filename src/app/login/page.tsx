@@ -88,6 +88,9 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-5">
+            Sistema interno de gestão fiscal da QL MED. Acesso restrito a colaboradores autorizados.
+          </p>
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm font-medium">
@@ -97,13 +100,13 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Email</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Email corporativo</label>
               <input
                 type="email"
                 name="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="nome@qlmed.com.br"
                 autoComplete="username"
                 required
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
@@ -143,6 +146,13 @@ export default function LoginPage() {
             </button>
           </form>
 
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+          <p>QL MED Produtos Hospitalares LTDA &mdash; CNPJ 07.382.369/0001-30</p>
+          <p>Campo Grande, MS &mdash; Brasil</p>
+          <p>&copy; {new Date().getFullYear()} QL MED. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

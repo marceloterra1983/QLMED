@@ -1,7 +1,12 @@
 User-agent: *
 Disallow: /api/
-Disallow: /dashboard/
+Disallow: /visaogeral/
+Disallow: /cadastro/
+Disallow: /fiscal/
+Disallow: /financeiro/
+Disallow: /sistema/
 Allow: /login
+Allow: /sobre
 Allow: /
 
-Sitemap: https://qlmed.com.br/sitemap.xml
+Sitemap: https://app.qlmed.com.br/sitemap.xml
