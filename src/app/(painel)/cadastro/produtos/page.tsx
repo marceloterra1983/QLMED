@@ -683,10 +683,31 @@ export default function ProdutosPage() {
     }
     for (const p of allProducts) addEntry(p.productType, p.productSubtype, p.productSubgroup);
 
+    // Build grouped lists for dropdowns: { line, groups[] }[]
+    const sortedLines = Array.from(lineSet).sort(sort);
+    const groupsByLine: { line: string; groups: string[] }[] = sortedLines
+      .map((l) => ({ line: l, groups: Array.from(groupMap.get(l) || []).sort(sort) }))
+      .filter((e) => e.groups.length > 0);
+    // Groups that exist but have no line association (edge case)
+    const groupsWithLine = new Set(groupsByLine.flatMap((e) => e.groups));
+    const orphanGroups = Array.from(allGroupSet).filter((g) => !groupsWithLine.has(g)).sort(sort);
+
+    // Subgroups grouped by group name
+    const subgroupsByGroup: { group: string; subgroups: string[] }[] = Array.from(subgroupByGroup.entries())
+      .map(([g, sgs]) => ({ group: g, subgroups: Array.from(sgs).sort(sort) }))
+      .filter((e) => e.subgroups.length > 0)
+      .sort((a, b) => sort(a.group, b.group));
+    const subgroupsWithGroup = new Set(subgroupsByGroup.flatMap((e) => e.subgroups));
+    const orphanSubgroups = Array.from(allSubgroupSet).filter((s) => !subgroupsWithGroup.has(s)).sort(sort);
+
     return {
-      lines: Array.from(lineSet).sort(sort),
+      lines: sortedLines,
       allGroups: Array.from(allGroupSet).sort(sort),
       allSubgroups: Array.from(allSubgroupSet).sort(sort),
+      groupsByLine,
+      orphanGroups,
+      subgroupsByGroup,
+      orphanSubgroups,
       groupsFor: (line: string) => Array.from(groupMap.get(line) || []).sort(sort),
       subgroupsFor: (line: string, group: string) => Array.from(subgroupMap.get(`${line}:::${group}`) || []).sort(sort),
       subgroupsForGroup: (group: string) => Array.from(subgroupByGroup.get(group) || []).sort(sort),
@@ -1968,7 +1989,22 @@ export default function ProdutosPage() {
                 ) : (
                   <select value={bulkFields.productSubtype} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subtype: true })); setBulkFields((f) => ({ ...f, productSubtype: '' })); } else { setBulkFields((f) => ({ ...f, productSubtype: e.target.value })); } }} className={BULK_INPUT_CLS}>
                     <option value="">— Limpar —</option>
-                    {(bulkFields.productType ? hierOptions.groupsFor(bulkFields.productType) : hierOptions.allGroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                    {bulkFields.productType ? (
+                      hierOptions.groupsFor(bulkFields.productType).map((s) => <option key={s} value={s}>{s}</option>)
+                    ) : (
+                      <>
+                        {hierOptions.groupsByLine.map((entry) => (
+                          <optgroup key={entry.line} label={entry.line}>
+                            {entry.groups.map((g) => <option key={g} value={g}>{g}</option>)}
+                          </optgroup>
+                        ))}
+                        {hierOptions.orphanGroups.length > 0 && (
+                          <optgroup label="Outros">
+                            {hierOptions.orphanGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                          </optgroup>
+                        )}
+                      </>
+                    )}
                     <option value="__new__">+ Criar novo grupo...</option>
                   </select>
                 )}
@@ -1983,7 +2019,24 @@ export default function ProdutosPage() {
                 ) : (
                   <select value={bulkFields.productSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subgroup: true })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); } else { setBulkFields((f) => ({ ...f, productSubgroup: e.target.value })); } }} className={BULK_INPUT_CLS}>
                     <option value="">— Limpar —</option>
-                    {(bulkFields.productType && bulkFields.productSubtype ? hierOptions.subgroupsFor(bulkFields.productType, bulkFields.productSubtype) : bulkFields.productSubtype ? hierOptions.subgroupsForGroup(bulkFields.productSubtype) : hierOptions.allSubgroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                    {bulkFields.productType && bulkFields.productSubtype ? (
+                      hierOptions.subgroupsFor(bulkFields.productType, bulkFields.productSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                    ) : bulkFields.productSubtype ? (
+                      hierOptions.subgroupsForGroup(bulkFields.productSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                    ) : (
+                      <>
+                        {hierOptions.subgroupsByGroup.map((entry) => (
+                          <optgroup key={entry.group} label={entry.group}>
+                            {entry.subgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </optgroup>
+                        ))}
+                        {hierOptions.orphanSubgroups.length > 0 && (
+                          <optgroup label="Outros">
+                            {hierOptions.orphanSubgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </optgroup>
+                        )}
+                      </>
+                    )}
                     <option value="__new__">+ Criar novo subgrupo...</option>
                   </select>
                 )}
@@ -2155,7 +2208,22 @@ export default function ProdutosPage() {
                       ) : (
                         <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                           <option value="">— Nenhum —</option>
-                          {(detailType ? hierOptions.groupsFor(detailType) : hierOptions.allGroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                          {detailType ? (
+                            hierOptions.groupsFor(detailType).map((s) => <option key={s} value={s}>{s}</option>)
+                          ) : (
+                            <>
+                              {hierOptions.groupsByLine.map((entry) => (
+                                <optgroup key={entry.line} label={entry.line}>
+                                  {entry.groups.map((g) => <option key={g} value={g}>{g}</option>)}
+                                </optgroup>
+                              ))}
+                              {hierOptions.orphanGroups.length > 0 && (
+                                <optgroup label="Outros">
+                                  {hierOptions.orphanGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                                </optgroup>
+                              )}
+                            </>
+                          )}
                           <option value="__new__">+ Criar novo grupo...</option>
                         </select>
                       )}
@@ -2170,7 +2238,24 @@ export default function ProdutosPage() {
                       ) : (
                         <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                           <option value="">— Nenhum —</option>
-                          {(detailType && detailSubtype ? hierOptions.subgroupsFor(detailType, detailSubtype) : detailSubtype ? hierOptions.subgroupsForGroup(detailSubtype) : hierOptions.allSubgroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                          {detailType && detailSubtype ? (
+                            hierOptions.subgroupsFor(detailType, detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                          ) : detailSubtype ? (
+                            hierOptions.subgroupsForGroup(detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
+                          ) : (
+                            <>
+                              {hierOptions.subgroupsByGroup.map((entry) => (
+                                <optgroup key={entry.group} label={entry.group}>
+                                  {entry.subgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </optgroup>
+                              ))}
+                              {hierOptions.orphanSubgroups.length > 0 && (
+                                <optgroup label="Outros">
+                                  {hierOptions.orphanSubgroups.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </optgroup>
+                              )}
+                            </>
+                          )}
                           <option value="__new__">+ Criar novo subgrupo...</option>
                         </select>
                       )}
