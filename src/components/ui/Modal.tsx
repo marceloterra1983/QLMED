@@ -33,7 +33,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center sm:p-4 bg-white dark:bg-card-dark sm:bg-slate-900/50 sm:dark:bg-slate-900/50 sm:backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-slate-900/50 sm:backdrop-blur-sm">
       <div
         className="absolute inset-0 hidden sm:block"
         onClick={onClose}
@@ -41,16 +41,15 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       ></div>
       <div
         ref={modalRef}
-        className={`relative bg-white dark:bg-card-dark sm:rounded-xl shadow-2xl w-full ${width} h-full sm:h-auto max-h-screen sm:max-h-[90vh] flex flex-col overflow-hidden sm:animate-in sm:fade-in sm:zoom-in-95 duration-200`}
+        className={`relative bg-white dark:bg-card-dark sm:rounded-xl w-full ${width} h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:animate-in sm:fade-in sm:zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+        {/* Header - 3D raised effect on mobile */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
             {title}
           </h3>
-          {/* Close button - desktop only */}
           <button
             onClick={onClose}
             aria-label="Fechar modal"
@@ -66,7 +65,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
         </div>
 
         {/* Footer - mobile only */}
-        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <button
             onClick={onClose}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"

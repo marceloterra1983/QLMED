@@ -472,15 +472,15 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4 bg-white dark:bg-[#1a1e2e] sm:bg-black/60 sm:dark:bg-black/60 sm:backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
       <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
       <div
-        className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
+        className="relative bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-5xl h-full sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-teal-500/5 dark:from-teal-500/30 dark:to-teal-500/10 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30 shrink-0 hidden sm:flex">
@@ -585,7 +585,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
         </div>
 
         {/* Footer - mobile only */}
-        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <button
             onClick={onClose}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
