@@ -126,13 +126,27 @@ function SidebarContent({
         {/* Logo row */}
         <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
           {collapsed ? (
-            <div className="relative w-[28px] h-[28px] flex-shrink-0">
-              <Image src="/logo.png" alt="QL MED" fill sizes="28px" className="object-contain" priority />
-            </div>
+            <button
+              onClick={() => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light');
+              }}
+              className="relative w-[28px] h-[28px] flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
+              title="Alternar tema claro/escuro"
+            >
+              <Image src="/logo.png" alt="QL MED" fill sizes="28px" className="object-contain dark:brightness-0 dark:invert" priority />
+            </button>
           ) : (
-            <div className="relative w-[110px] h-[34px] flex-shrink-0">
-              <Image src="/logo.png" alt="QL MED" fill sizes="110px" className="object-contain" priority />
-            </div>
+            <button
+              onClick={() => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light');
+              }}
+              className="relative w-[110px] h-[34px] flex-shrink-0 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+              title="Alternar tema claro/escuro"
+            >
+              <Image src="/logo.png" alt="QL MED" fill sizes="110px" className="object-contain dark:brightness-0 dark:invert" priority />
+            </button>
           )}
           {!collapsed && onToggleCollapse && (
             <button
@@ -420,9 +434,16 @@ export default function DashboardLayout({
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="relative w-[100px] h-[30px]">
-            <Image src="/logo.png" alt="QL MED" fill sizes="100px" className="object-contain" />
-          </div>
+          <button
+            onClick={() => {
+              const isDark = document.documentElement.classList.toggle('dark');
+              localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light');
+            }}
+            className="relative w-[100px] h-[30px] cursor-pointer transition-transform hover:scale-105 active:scale-95"
+            title="Alternar tema claro/escuro"
+          >
+            <Image src="/logo.png" alt="QL MED" fill sizes="100px" className="object-contain dark:brightness-0 dark:invert" />
+          </button>
         </header>
 
         {/* Page Content */}
