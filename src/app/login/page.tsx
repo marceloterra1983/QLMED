@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -147,6 +148,9 @@ export default function LoginPage() {
           </form>
 
         </div>
+
+        {/* PWA Install */}
+        <PWAInstallPrompt />
 
         {/* Footer */}
         <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
