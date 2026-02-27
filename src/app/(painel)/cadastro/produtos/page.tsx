@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { formatValue } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
@@ -1508,8 +1509,8 @@ export default function ProdutosPage() {
 
 
       {/* Search + filters */}
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-        <div className="flex gap-3 items-end">
+      <MobileFilterWrapper activeFilterCount={[search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter !== 'all' ? lineStatusFilter : ''].filter(Boolean).length} title="Filtros" icon="inventory_2">
+        <div className="flex flex-wrap gap-3 items-end">
           <div className="shrink-0">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
             <select
@@ -1668,7 +1669,7 @@ export default function ProdutosPage() {
             <span className="text-xs text-slate-400">{filtered.length.toLocaleString('pt-BR')} resultado{filtered.length !== 1 ? 's' : ''}</span>
           </div>
         )}
-      </div>
+      </MobileFilterWrapper>
 
       {meta?.invoicesLimited && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">

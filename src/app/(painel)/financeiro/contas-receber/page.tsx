@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import Modal from '@/components/ui/Modal';
+import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { formatCnpj, formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
@@ -605,7 +606,8 @@ export default function ContasReceberPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+      <div className="mb-4">
+      <MobileFilterWrapper activeFilterCount={[search, statusFilter !== 'upcoming' ? statusFilter : '', dateFrom, dateTo].filter(Boolean).length} title="Filtros" icon="request_quote">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
@@ -654,6 +656,7 @@ export default function ContasReceberPage() {
             </button>
           )}
         </div>
+      </MobileFilterWrapper>
       </div>
 
       {/* Table */}

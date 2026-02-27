@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import RowActions from '@/components/ui/RowActions';
+import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
@@ -208,9 +209,9 @@ export default function NfseReceivedPage() {
         </div>
       ) : null}
 
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-3 md:p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
-          <div className="md:col-span-2">
+      <MobileFilterWrapper activeFilterCount={[search, dateFrom, dateTo].filter(Boolean).length}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+          <div className="sm:col-span-2 md:col-span-2">
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Busca</label>
             <input
               value={searchInput}
@@ -244,7 +245,7 @@ export default function NfseReceivedPage() {
             />
           </div>
         </div>
-      </div>
+      </MobileFilterWrapper>
 
       <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">

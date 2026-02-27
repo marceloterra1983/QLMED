@@ -6,6 +6,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import CustomerDetailsModal from '@/components/CustomerDetailsModal';
 import CustomerPriceTableModal from '@/components/CustomerPriceTableModal';
 import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
+import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 
 interface Customer {
   cnpj: string;
@@ -283,9 +284,9 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div className="md:col-span-3">
+      <MobileFilterWrapper activeFilterCount={[search, sortBy !== 'lastIssue' ? sortBy : ''].filter(Boolean).length}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
+          <div className="sm:col-span-2 md:col-span-3">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
               Buscar por CNPJ/CPF ou Nome do Cliente
             </label>
@@ -326,7 +327,7 @@ export default function CustomersPage() {
             Limpar
           </button>
         </div>
-      </div>
+      </MobileFilterWrapper>
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">

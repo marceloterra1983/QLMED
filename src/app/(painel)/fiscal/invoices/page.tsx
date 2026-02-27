@@ -11,6 +11,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatCurrency, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
+import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import { useRole } from '@/hooks/useRole';
@@ -302,7 +303,7 @@ export default function InvoicesPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+      <MobileFilterWrapper activeFilterCount={[search, tagFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Emitente</label>
@@ -361,7 +362,7 @@ export default function InvoicesPage() {
             </button>
           </div>
         </div>
-      </div>
+      </MobileFilterWrapper>
 
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
