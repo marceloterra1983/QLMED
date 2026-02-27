@@ -424,7 +424,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main id="main-content" className="flex-1 flex flex-col h-full relative overflow-hidden bg-background-light dark:bg-background-dark">
+      <main id="main-content" className="flex-1 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
         {/* Mobile-only header */}
         <header className="h-14 flex items-center gap-4 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20 lg:hidden">
           <button
@@ -447,7 +447,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-6">
           <div className="max-w-[1600px] mx-auto space-y-8">
             {children}
           </div>
