@@ -1588,9 +1588,6 @@ export default function ProdutosPage() {
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}>
                   <div className="flex items-center gap-1">Produto <SortIcon field="description" /></div>
                 </th>
-                <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('ncm')}>
-                  <div className="flex items-center gap-1">NCM <SortIcon field="ncm" /></div>
-                </th>
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('anvisa')}>
                   <div className="flex items-center gap-1">ANVISA <SortIcon field="anvisa" /></div>
                 </th>
@@ -1722,7 +1719,6 @@ export default function ProdutosPage() {
                     </td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
-                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
@@ -1770,7 +1766,6 @@ export default function ProdutosPage() {
                     </td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
-                    <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
@@ -2304,7 +2299,10 @@ export default function ProdutosPage() {
                     </DetailField>
 
                     <DetailField label="CEST">
-                      <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="Ex: 1300400" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="Ex: 1300400" disabled={!canWrite} list="detail-fiscal-cest-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <datalist id="detail-fiscal-cest-list">
+                        {Array.from(new Set(products.map((p) => p.fiscalCest).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                      </datalist>
                     </DetailField>
 
                     <DetailField label="Origem" colSpan2>
@@ -2380,10 +2378,16 @@ export default function ProdutosPage() {
                     </div>
 
                     <DetailField label="Entrada">
-                      <input type="text" value={detailCfopEntrada} onChange={(e) => setDetailCfopEntrada(e.target.value)} maxLength={4} placeholder="Ex: 5102" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <input type="text" value={detailCfopEntrada} onChange={(e) => setDetailCfopEntrada(e.target.value)} maxLength={4} placeholder="Ex: 5102" disabled={!canWrite} list="detail-fiscal-cfop-entrada-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <datalist id="detail-fiscal-cfop-entrada-list">
+                        {Array.from(new Set(products.map((p) => p.fiscalCfopEntrada).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                      </datalist>
                     </DetailField>
                     <DetailField label="Saída">
-                      <input type="text" value={detailCfopSaida} onChange={(e) => setDetailCfopSaida(e.target.value)} maxLength={4} placeholder="Ex: 6102" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <input type="text" value={detailCfopSaida} onChange={(e) => setDetailCfopSaida(e.target.value)} maxLength={4} placeholder="Ex: 6102" disabled={!canWrite} list="detail-fiscal-cfop-saida-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <datalist id="detail-fiscal-cfop-saida-list">
+                        {Array.from(new Set(products.map((p) => p.fiscalCfopSaida).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                      </datalist>
                     </DetailField>
 
                     <DetailField label="Obs. Fiscal" colSpan2>
@@ -3148,6 +3152,15 @@ function SettingsModal({ onClose, onUpdated }: {
     for (const item of settingsData?.fiscal.cfopSaida || []) result.cfopSaida.set(item.value, item.count || 0);
     return result;
   }, [settingsData]);
+
+  const sectionCounts = useMemo(() => {
+    const linesCount = settingsData?.lines?.length || 0;
+    const mfrCount = settingsData?.manufacturers?.length || 0;
+    let fiscalCount = 0;
+    for (const tab of Object.values(fiscalItemsMap)) fiscalCount += tab.size;
+    return { lines: linesCount, manufacturers: mfrCount, fiscal: fiscalCount } as Record<SettingsSection, number>;
+  }, [settingsData, fiscalItemsMap]);
+
   const currentFiscalItems = useMemo(() => {
     const items = Array.from(fiscalItemsMap[fiscalTab].entries()).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
     if (!fiscalSearch) return items;
@@ -3287,7 +3300,7 @@ function SettingsModal({ onClose, onUpdated }: {
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
         <div
-          className="bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[88vh] flex flex-col sm:flex-row overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
+          className="bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-5xl h-full sm:h-auto sm:max-h-[88vh] flex flex-col sm:flex-row overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -3312,6 +3325,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <button key={sec.key} onClick={() => setActiveSection(sec.key)} className={`flex items-center gap-2.5 px-5 py-3 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-slate-50 dark:bg-slate-800/40 border-b-2 sm:border-b-0 sm:border-r-2 border-violet-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
                     <span className={`material-symbols-outlined text-[18px] ${isActive ? sec.color : 'text-slate-400'}`}>{sec.icon}</span>
                     <span className={`text-[13px] font-semibold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{sec.label}</span>
+                    {!loadingSettings && <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[22px] text-center tabular-nums ${isActive ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{sectionCounts[sec.key]}</span>}
                   </button>
                 );
               })}
@@ -3574,7 +3588,7 @@ function SettingsModal({ onClose, onUpdated }: {
             {activeSection === 'fiscal' && (
               <div className="flex flex-col sm:flex-row h-full min-h-0">
                 {/* Fiscal vertical sidebar (sm+) / horizontal scroll (mobile) */}
-                <div className="shrink-0 sm:w-40 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/20">
+                <div className="shrink-0 sm:w-44 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/20">
                   <div className="flex sm:flex-col overflow-x-auto sm:overflow-x-visible sm:py-2 scrollbar-none">
                     {FISCAL_TABS.map((tab) => {
                       const isActive = fiscalTab === tab.key;
@@ -3623,8 +3637,21 @@ function SettingsModal({ onClose, onUpdated }: {
                         ) : (
                           <>
                             <div className="w-1 h-4 rounded-full bg-amber-400 dark:bg-amber-500 shrink-0" />
-                            <span className={`flex-1 text-[13px] font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>
-                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30 min-w-[28px] text-center tabular-nums">{count}</span>
+                            {(() => {
+                              const dashIdx = value.indexOf(' – ');
+                              if (dashIdx > 0) {
+                                const code = value.slice(0, dashIdx);
+                                const desc = value.slice(dashIdx + 3);
+                                return (
+                                  <span className="flex-1 text-[13px] min-w-0 break-words">
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{code}</span>
+                                    <span className="ml-1.5 text-slate-500 dark:text-slate-400">{desc}</span>
+                                  </span>
+                                );
+                              }
+                              return <span className={`flex-1 text-[13px] font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>;
+                            })()}
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold min-w-[28px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'bg-transparent text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
                             <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                             <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
