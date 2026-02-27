@@ -26,12 +26,18 @@ export default function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
     const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleEscape);
-    }
-    return () => { document.body.style.overflow = 'unset'; window.removeEventListener('keydown', handleEscape); };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -79,7 +85,6 @@ export default function ConfirmDialog({
           <button
             onClick={() => {
               onConfirm();
-              if (!loading) onClose();
             }}
             disabled={loading}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all disabled:opacity-50 ${confirmCls}`}

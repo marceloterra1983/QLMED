@@ -8,6 +8,7 @@ import { decrypt, encrypt } from './crypto';
 import { refreshOneDriveAccessToken } from './onedrive-client';
 import { parseInvoiceXml } from './parse-invoice-xml';
 import { resolveInvoiceDirection } from './invoice-direction';
+import { updateProductAggregatesForInvoice } from './product-aggregate-updater';
 
 const prisma = new PrismaClient();
 
@@ -518,7 +519,7 @@ async function importXmlFile(filePath: string): Promise<void> {
       parsed.accessKey,
     );
 
-    await prisma.invoice.create({
+    const savedInvoice = await prisma.invoice.create({
       data: {
         companyId: company.id,
         accessKey: parsed.accessKey,
@@ -535,6 +536,22 @@ async function importXmlFile(filePath: string): Promise<void> {
         xmlContent,
       },
     });
+
+    // Incremental aggregate update
+    if (parsed.type === 'NFE' && xmlContent) {
+      updateProductAggregatesForInvoice({
+        companyId: company.id,
+        invoiceId: savedInvoice.id,
+        xmlContent,
+        direction: normalizedDirection,
+        issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+        senderName: parsed.senderName,
+        senderCnpj: parsed.senderCnpj,
+        recipientName: parsed.recipientName,
+        recipientCnpj: parsed.recipientCnpj,
+        invoiceNumber: parsed.number,
+      }).catch(() => {});
+    }
 
     rememberFileFingerprint(absolutePath, fingerprint);
     parseFailureCooldown.delete(absolutePath);

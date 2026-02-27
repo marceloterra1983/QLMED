@@ -50,6 +50,14 @@ export function getCfopTagOptions(): string[] {
   return CFOP_TAG_OPTIONS;
 }
 
+/**
+ * CFOPs starting with 3 are international entries (importação).
+ * These invoices are issued by the company but represent product entries.
+ */
+export function isImportEntryCfop(cfop: string | null | undefined): boolean {
+  return !!cfop && cfop.startsWith('3');
+}
+
 export function extractFirstCfop(xmlContent?: string | null): string | null {
   if (!xmlContent) return null;
   const match = xmlContent.match(/<CFOP>\s*(\d{4})\s*<\/CFOP>/i);

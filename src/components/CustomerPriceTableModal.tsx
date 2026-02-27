@@ -242,7 +242,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                             onClick={() => toggleSort('code')}
                             className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap"
                           >
-                            Código
+                            Referência
                             {getSortIcon('code') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('code')}</span>
                             )}

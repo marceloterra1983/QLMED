@@ -7,6 +7,7 @@ import { parseInvoiceXml } from './parse-invoice-xml';
 import { getNsdocsSyncWindow } from './nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from './source-status';
 import { resolveInvoiceDirection } from './invoice-direction';
+import { updateProductAggregatesForInvoice, scheduleNightlyRebuild } from './product-aggregate-updater';
 
 // Instância própria de Prisma para evitar import circular com prisma.ts
 const prisma = new PrismaClient();
@@ -67,6 +68,9 @@ export function startAutoSync() {
   started = true;
 
   console.log('[AutoSync] Scheduler iniciado - verificando a cada 60s');
+
+  // Schedule nightly product aggregate rebuild at 3am
+  scheduleNightlyRebuild();
 
   // Primeira verificação após 30s (tempo para o servidor aquecer)
   setTimeout(() => {
@@ -234,6 +238,21 @@ async function syncViaSefaz(
           } else {
             totalAtualizados++;
           }
+          // Incremental aggregate update
+          if (parsed.type === 'NFE' && doc.xml) {
+            updateProductAggregatesForInvoice({
+              companyId,
+              invoiceId: result.id,
+              xmlContent: doc.xml,
+              direction,
+              issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+              senderName: parsed.senderName,
+              senderCnpj: parsed.senderCnpj,
+              recipientName: parsed.recipientName,
+              recipientCnpj: parsed.recipientCnpj,
+              invoiceNumber: parsed.number,
+            }).catch(() => {});
+          }
         } catch (docErr) {
           console.error(`[AutoSync] Erro ao processar doc ${doc.chave}:`, docErr);
         }
@@ -340,6 +359,22 @@ async function syncViaNsdocs(
           totalNovos++;
         } else {
           totalAtualizados++;
+        }
+        // Incremental aggregate update
+        if (parsed.type === 'NFE' && xmlContent) {
+          const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
+          updateProductAggregatesForInvoice({
+            companyId,
+            invoiceId: result.id,
+            xmlContent,
+            direction,
+            issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+            senderName: parsed.senderName,
+            senderCnpj: parsed.senderCnpj,
+            recipientName: parsed.recipientName,
+            recipientCnpj: parsed.recipientCnpj,
+            invoiceNumber: parsed.number,
+          }).catch(() => {});
         }
       } catch (docErr) {
         console.error(`[AutoSync] Erro no doc ${doc.id}:`, docErr);

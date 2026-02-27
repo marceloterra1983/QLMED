@@ -223,7 +223,7 @@ export default function SupplierPriceTableModal({ isOpen, onClose, supplier }: S
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                         <th rowSpan={2} className="px-3 py-2 align-middle">
                           <button type="button" onClick={() => toggleSort('code')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
-                            Código
+                            Referência
                             {getSortIcon('code') && (
                               <span className="material-symbols-outlined text-[14px]">{getSortIcon('code')}</span>
                             )}

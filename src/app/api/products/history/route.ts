@@ -2,7 +2,25 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { getCfopTagByCode } from '@/lib/cfop';
+import { getCfopTagByCode, isImportEntryCfop } from '@/lib/cfop';
+
+const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
+
+function isResaleCustomer(recipientName: string | null | undefined): boolean {
+  if (!recipientName) return false;
+  const upper = recipientName.toUpperCase();
+  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
+}
+
+const UNIT_ALIASES: Record<string, string> = {
+  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
+  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
+  CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
+};
+function normalizeUnit(raw: string | null | undefined): string {
+  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
+  return UNIT_ALIASES[upper] || upper || '-';
+}
 
 /**
  * GET /api/products/history?code=XXX&unit=YYY&direction=received|issued
@@ -51,7 +69,7 @@ export async function GET(req: Request) {
       likePatterns.push(`%<cProd>${escapedCode}</cProd>%`);
     }
 
-    const fetchInvoices = async (pattern: string) => {
+    const fetchInvoices = async (pattern: string, dir: string) => {
       return prisma.$queryRawUnsafe<Array<{
         id: string;
         number: string | null;
@@ -66,7 +84,7 @@ export async function GET(req: Request) {
          FROM "Invoice"
          WHERE "companyId" = $1
            AND type = 'NFE'
-           AND direction = '${direction}'
+           AND direction = '${dir}'
            AND "xmlContent" LIKE $2
          ORDER BY "issueDate" DESC
          LIMIT 200`,
@@ -76,7 +94,35 @@ export async function GET(req: Request) {
     };
 
     // First pass
-    let invoices = await fetchInvoices(likePatterns[0]);
+    let invoices = await fetchInvoices(likePatterns[0], direction);
+
+    // For issued direction, exclude resale customers (Navix/Prime)
+    if (direction === 'issued') {
+      invoices = invoices.filter((inv) => !isResaleCustomer(inv.recipientName));
+    }
+
+    // For received direction, also include issued invoices with import CFOPs (3xxx)
+    if (direction === 'received') {
+      const importInvoices = await fetchInvoices(likePatterns[0], 'issued');
+      const seenIds = new Set(invoices.map((i) => i.id));
+      for (const inv of importInvoices) {
+        if (seenIds.has(inv.id)) continue;
+        // Check CFOP — only include if it's an import entry
+        const cfopMatch = inv.xmlContent?.match(/<CFOP>\s*(\d{4})\s*<\/CFOP>/i);
+        if (cfopMatch && isImportEntryCfop(cfopMatch[1])) {
+          // Swap sender/recipient so supplier shows the import origin
+          seenIds.add(inv.id);
+          invoices.push({
+            ...inv,
+            senderName: inv.recipientName,
+            senderCnpj: inv.recipientCnpj,
+            recipientName: inv.senderName,
+            recipientCnpj: inv.senderCnpj,
+          });
+        }
+      }
+      invoices.sort((a, b) => (b.issueDate?.getTime() || 0) - (a.issueDate?.getTime() || 0));
+    }
 
     // For issued: discover internal cProd codes from first-pass results
     if (matchMode === 'issued') {
@@ -107,9 +153,9 @@ export async function GET(req: Request) {
         const seenIds = new Set(invoices.map(i => i.id));
         for (const ic of Array.from(internalCodes)) {
           const escapedIc = ic.replace(/[%_\\]/g, '\\$&');
-          const moreInvoices = await fetchInvoices(`%<cProd>${escapedIc}</cProd>%`);
+          const moreInvoices = await fetchInvoices(`%<cProd>${escapedIc}</cProd>%`, direction);
           for (const inv of moreInvoices) {
-            if (!seenIds.has(inv.id)) {
+            if (!seenIds.has(inv.id) && !isResaleCustomer(inv.recipientName)) {
               seenIds.add(inv.id);
               invoices.push(inv);
             }
@@ -173,15 +219,15 @@ export async function GET(req: Request) {
           if (tag && excludeTags.includes(tag)) continue;
         }
 
-        // For issued, exclude incoming CFOPs (start with 1 or 2)
+        // For issued, exclude incoming CFOPs (start with 1, 2, or 3 — imports are entries)
         if (matchMode === 'issued') {
-          if (cfop.startsWith('1') || cfop.startsWith('2')) continue;
+          if (cfop.startsWith('1') || cfop.startsWith('2') || isImportEntryCfop(cfop)) continue;
         }
 
-        // If unit filter provided, check it
+        // If unit filter provided, check it (normalized)
         if (unit) {
           const uCom = tagVal(det, 'uCom');
-          if (uCom.toUpperCase() !== unit.toUpperCase()) continue;
+          if (normalizeUnit(uCom) !== normalizeUnit(unit)) continue;
         }
 
         const qCom = parseFloat(tagVal(det, 'qCom')) || 0;

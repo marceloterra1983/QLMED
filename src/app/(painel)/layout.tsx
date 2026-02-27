@@ -87,6 +87,12 @@ function SidebarContent({
       ],
     },
     {
+      section: 'Relatórios',
+      items: [
+        { label: 'Válvulas Mecânicas Corcym', icon: 'bar_chart', href: '/relatorios/valvulas-importadas' },
+      ],
+    },
+    {
       section: 'Sistema',
       items: [
         { label: 'Sincronizar', icon: 'cloud_sync', href: '/sistema/sync' },

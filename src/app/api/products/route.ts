@@ -6,11 +6,26 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { resolveAnvisaByCodeAndName } from '@/lib/anvisa-open-data';
 import { getProductRegistryByKeys } from '@/lib/product-registry-store';
 import { normalizeForSearch } from '@/lib/utils';
+import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 
 const MAX_INVOICES = 3000;
 const MAX_ISSUED_INVOICES = 3000;
+const MAX_IMPORT_INVOICES = 500;
 const XML_BATCH_SIZE = 50;
 const MAX_LIMIT = 200;
+
+/* ── Resale customers (Navix/Prime) ──
+ * Sales to these customers are direct resales — their quantities must be
+ * subtracted from product entry totals, and they are excluded from
+ * lastSaleDate / lastSalePrice and ANVISA issued-NFe lookups.
+ */
+const RESALE_CUSTOMER_PATTERNS = ['NAVIX', 'PRIME'];
+
+function isResaleCustomer(recipientName: string | null | undefined): boolean {
+  if (!recipientName) return false;
+  const upper = recipientName.toUpperCase();
+  return RESALE_CUSTOMER_PATTERNS.some((p) => upper.includes(p));
+}
 
 interface ProductFromXml {
   code: string;
@@ -43,6 +58,7 @@ interface AggregatedProduct {
   invoiceIds: Set<string>;
   productType: string | null;
   productSubtype: string | null;
+  productSubgroup: string | null;
 }
 
 function toPositiveInt(value: string | null, fallback: number, max: number) {
@@ -123,9 +139,36 @@ function extractAnvisa(det: any, prod: any): string | null {
   return null;
 }
 
+/* ── Unit normalization ──
+ * NF-e XMLs use inconsistent unit abbreviations for the same thing.
+ * Normalize so products with the same code don't become duplicates.
+ */
+const UNIT_ALIASES: Record<string, string> = {
+  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
+  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN', PECAS: 'UN', 'PEÇAS': 'UN',
+  CAIXA: 'CX', CAIXAS: 'CX',
+  KT: 'KIT', KITS: 'KIT',
+  PR: 'PAR', PARES: 'PAR',
+  LT: 'L', LITRO: 'L', LITROS: 'L',
+  ML: 'ML', MILILITRO: 'ML', MILILITROS: 'ML',
+  KG: 'KG', QUILO: 'KG', QUILOS: 'KG', QUILOGRAMA: 'KG',
+  GR: 'G', GRAMA: 'G', GRAMAS: 'G',
+  MT: 'M', METRO: 'M', METROS: 'M',
+  RL: 'ROLO', ROLOS: 'ROLO',
+  CT: 'CJ', CONJUNTO: 'CJ', CONJUNTOS: 'CJ',
+  TB: 'TUBO', TUBOS: 'TUBO',
+  FL: 'FR', FRASCO: 'FR', FRASCOS: 'FR',
+  AMP: 'AMPOLA', AMPOLAS: 'AMPOLA',
+};
+
+function normalizeUnit(raw: string | null | undefined): string {
+  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
+  return UNIT_ALIASES[upper] || upper || '-';
+}
+
 function buildProductKey(product: ProductFromXml): string {
   const codeToken = normalizeToken(product.code);
-  const unitToken = normalizeToken(product.unit) || '-';
+  const unitToken = normalizeUnit(product.unit);
   if (codeToken && codeToken !== '-') {
     return `CODE:${codeToken}::UNIT:${unitToken}`;
   }
@@ -192,7 +235,7 @@ function buildLookupKeys(product: {
   anvisa?: string | null | undefined;
 }) {
   const keys = new Set<string>();
-  const unitToken = normalizeToken(product.unit) || '-';
+  const unitToken = normalizeUnit(product.unit);
   const codeToken = normalizeToken(product.code);
   const ncmToken = normalizeToken(product.ncm);
   const descToken = normalizeDescriptionToken(product.description);
@@ -230,7 +273,7 @@ function buildStrictSaleLookupKeys(product: {
 }) {
   const keys: string[] = [];
   const codeToken = normalizeToken(product.code);
-  const unitToken = normalizeToken(product.unit) || '-';
+  const unitToken = normalizeUnit(product.unit);
   const eanToken = normalizeToken(product.ean).replace(/\D/g, '');
 
   if (codeToken && codeToken !== '-') {
@@ -328,6 +371,7 @@ async function enrichLastSaleDateForProducts(
     select: {
       id: true,
       issueDate: true,
+      recipientName: true,
     },
   });
 
@@ -343,8 +387,13 @@ async function enrichLastSaleDateForProducts(
 
     const parsedBatch = await Promise.allSettled(
       batchMeta.map(async (invoice) => {
+        // Skip resale customers (Navix/Prime) — not real sales
+        if (isResaleCustomer(invoice.recipientName)) return null;
         const xmlContent = xmlMap.get(invoice.id);
         if (!xmlContent) return null;
+        // Skip import invoices — they are entries, not sales
+        const cfop = extractFirstCfop(xmlContent);
+        if (isImportEntryCfop(cfop)) return null;
         const products = await extractProductsFromXml(xmlContent);
         return { invoice, products };
       }),
@@ -453,30 +502,11 @@ export async function GET(req: Request) {
       },
     });
 
-    if (invoiceMetadata.length === 0) {
-      return NextResponse.json({
-        products: [],
-        summary: {
-          totalProducts: 0,
-          productsWithAnvisa: 0,
-          totalQuantity: 0,
-          invoicesProcessed: 0,
-        },
-        pagination: {
-          page: 1,
-          limit,
-          total: 0,
-          pages: 1,
-        },
-        meta: {
-          invoicesLimited: false,
-          maxInvoices: MAX_INVOICES,
-        },
-      });
-    }
-
     const productMap = new Map<string, AggregatedProduct>();
+    // Track which product keys came from import invoices (for default classification)
+    const importProductKeys = new Set<string>();
 
+    // ── Pass 1: received invoices (normal purchases) ──
     for (let i = 0; i < invoiceMetadata.length; i += XML_BATCH_SIZE) {
       const batchMeta = invoiceMetadata.slice(i, i + XML_BATCH_SIZE);
       const batchIds = batchMeta.map((invoice) => invoice.id);
@@ -527,6 +557,7 @@ export async function GET(req: Request) {
               invoiceIds: new Set([invoice.id]),
               productType: null,
               productSubtype: null,
+              productSubgroup: null,
             });
             continue;
           }
@@ -567,6 +598,262 @@ export async function GET(req: Request) {
       }
     }
 
+    // ── Pass 2: issued invoices with import CFOPs (3xxx) — these are product entries ──
+    {
+      const importWhere: any = {
+        companyId: company.id,
+        type: 'NFE',
+        direction: 'issued',
+      };
+      if (dateFilter.gte || dateFilter.lte) {
+        importWhere.issueDate = dateFilter;
+      }
+
+      const importInvoiceMeta = await prisma.invoice.findMany({
+        where: importWhere,
+        orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
+        take: MAX_IMPORT_INVOICES,
+        select: {
+          id: true,
+          number: true,
+          issueDate: true,
+          senderName: true,
+          senderCnpj: true,
+          recipientName: true,
+          recipientCnpj: true,
+          xmlContent: true,
+        },
+      });
+
+      for (let i = 0; i < importInvoiceMeta.length; i += XML_BATCH_SIZE) {
+        const batchMeta = importInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
+
+        const parsedBatch = await Promise.allSettled(
+          batchMeta.map(async (invoice) => {
+            if (!invoice.xmlContent) return null;
+            const cfop = extractFirstCfop(invoice.xmlContent);
+            if (!isImportEntryCfop(cfop)) return null;
+            const products = await extractProductsFromXml(invoice.xmlContent);
+            return { invoice, products };
+          }),
+        );
+
+        for (const settled of parsedBatch) {
+          const result = settled.status === 'fulfilled' ? settled.value : null;
+          if (!result) continue;
+
+          const { invoice, products } = result;
+          const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+          // For import invoices, the "supplier" is the recipient (e.g. Corcym)
+          const supplierName = invoice.recipientName || null;
+          const supplierCnpj = invoice.recipientCnpj || null;
+
+          for (const product of products) {
+            const key = buildProductKey(product);
+            importProductKeys.add(key);
+            const existing = productMap.get(key);
+
+            if (!existing) {
+              productMap.set(key, {
+                key,
+                code: product.code,
+                description: product.description,
+                ncm: product.ncm,
+                unit: product.unit,
+                anvisa: product.anvisa,
+                ean: product.ean,
+                totalQuantity: product.quantity,
+                totalValue: product.totalValue,
+                lastPrice: product.unitPrice,
+                lastIssueDate: issueDate,
+                lastSupplierName: supplierName,
+                lastSupplierCnpj: supplierCnpj,
+                lastInvoiceId: invoice.id,
+                lastInvoiceNumber: invoice.number || null,
+                invoiceIds: new Set([invoice.id]),
+                productType: 'LINHA CARDIACA',
+                productSubtype: 'VALVULAS IMPORTADAS',
+                productSubgroup: null,
+              });
+              continue;
+            }
+
+            existing.totalQuantity += product.quantity;
+            existing.totalValue += product.totalValue;
+            existing.invoiceIds.add(invoice.id);
+
+            if (!existing.anvisa && product.anvisa) {
+              existing.anvisa = product.anvisa;
+            }
+
+            if (!existing.ean && product.ean) {
+              existing.ean = product.ean;
+            }
+
+            if (
+              (!existing.code || existing.code === '-') &&
+              product.code &&
+              product.code !== '-'
+            ) {
+              existing.code = product.code;
+            }
+
+            if (!existing.ncm && product.ncm) {
+              existing.ncm = product.ncm;
+            }
+
+            // Set import classification if not already set from registry
+            if (!existing.productType) {
+              existing.productType = 'LINHA CARDIACA';
+              existing.productSubtype = 'VALVULAS IMPORTADAS';
+            }
+
+            if (issueDate && (!existing.lastIssueDate || issueDate > existing.lastIssueDate)) {
+              existing.lastIssueDate = issueDate;
+              existing.lastPrice = product.unitPrice;
+              existing.lastSupplierName = supplierName;
+              existing.lastSupplierCnpj = supplierCnpj;
+              existing.lastInvoiceId = invoice.id;
+              existing.lastInvoiceNumber = invoice.number || null;
+            }
+          }
+        }
+      }
+    }
+
+    // ── Pass 3: deduct resale quantities (Navix / Prime) ──
+    // Sales to resale customers are direct pass-throughs — subtract their
+    // quantities and values from the product entry totals.
+    if (productMap.size > 0) {
+      // Build a reverse index from productMap for matching issued-invoice items
+      const resaleIndex = new Map<string, string>(); // lookup key → productMap key
+      productMap.forEach((agg, mapKey) => {
+        const codeToken = normalizeToken(agg.code);
+        const unitToken = normalizeUnit(agg.unit);
+        const eanToken = normalizeToken(agg.ean).replace(/\D/g, '');
+        const descToken = normalizeDescriptionToken(agg.description);
+
+        if (codeToken && codeToken !== '-') {
+          resaleIndex.set(`R_CODE_UNIT:${codeToken}::${unitToken}`, mapKey);
+        }
+        if (eanToken && eanToken !== '0') {
+          resaleIndex.set(`R_EAN:${eanToken}`, mapKey);
+        }
+        if (descToken && unitToken) {
+          resaleIndex.set(`R_DESC_UNIT:${descToken}::${unitToken}`, mapKey);
+        }
+      });
+
+      const matchResaleProduct = (product: ProductFromXml): string | null => {
+        const unitToken = normalizeUnit(product.unit);
+        const codeToken = normalizeToken(product.code);
+
+        // 1. Direct code+unit match
+        if (codeToken && codeToken !== '-') {
+          const hit = resaleIndex.get(`R_CODE_UNIT:${codeToken}::${unitToken}`);
+          if (hit) return hit;
+        }
+
+        // 2. Try first token of xProd as supplier code (issued invoices often
+        //    prefix xProd with the supplier code: "NXG40013 VALVULA ...")
+        const firstToken = normalizeToken(product.description.split(/[\s\-]+/)[0]);
+        if (firstToken && firstToken !== codeToken) {
+          const hit = resaleIndex.get(`R_CODE_UNIT:${firstToken}::${unitToken}`);
+          if (hit) return hit;
+        }
+
+        // 3. EAN match
+        const eanToken = normalizeToken(product.ean).replace(/\D/g, '');
+        if (eanToken && eanToken !== '0') {
+          const hit = resaleIndex.get(`R_EAN:${eanToken}`);
+          if (hit) return hit;
+        }
+
+        // 4. Description + unit match
+        const descToken = normalizeDescriptionToken(product.description);
+        if (descToken && unitToken) {
+          const hit = resaleIndex.get(`R_DESC_UNIT:${descToken}::${unitToken}`);
+          if (hit) return hit;
+        }
+
+        return null;
+      };
+
+      const resaleWhere: any = {
+        companyId: company.id,
+        type: 'NFE',
+        direction: 'issued',
+      };
+      if (dateFilter.gte || dateFilter.lte) {
+        resaleWhere.issueDate = dateFilter;
+      }
+
+      const resaleInvoiceMeta = await prisma.invoice.findMany({
+        where: resaleWhere,
+        orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
+        take: MAX_ISSUED_INVOICES,
+        select: {
+          id: true,
+          recipientName: true,
+          xmlContent: true,
+        },
+      });
+
+      for (let i = 0; i < resaleInvoiceMeta.length; i += XML_BATCH_SIZE) {
+        const batch = resaleInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
+
+        const parsedBatch = await Promise.allSettled(
+          batch.map(async (invoice) => {
+            if (!invoice.xmlContent) return null;
+            if (!isResaleCustomer(invoice.recipientName)) return null;
+            // Skip import CFOPs — those are entries, already counted in Pass 2
+            const cfop = extractFirstCfop(invoice.xmlContent);
+            if (isImportEntryCfop(cfop)) return null;
+            const products = await extractProductsFromXml(invoice.xmlContent);
+            return { products };
+          }),
+        );
+
+        for (const settled of parsedBatch) {
+          const result = settled.status === 'fulfilled' ? settled.value : null;
+          if (!result) continue;
+
+          for (const product of result.products) {
+            const mapKey = matchResaleProduct(product);
+            if (!mapKey) continue;
+
+            const agg = productMap.get(mapKey);
+            if (!agg) continue;
+
+            agg.totalQuantity -= product.quantity;
+            agg.totalValue -= product.totalValue;
+          }
+        }
+      }
+    }
+
+    if (productMap.size === 0) {
+      return NextResponse.json({
+        products: [],
+        summary: {
+          totalProducts: 0,
+          productsWithAnvisa: 0,
+          totalQuantity: 0,
+          invoicesProcessed: 0,
+        },
+        pagination: {
+          page: 1,
+          limit,
+          total: 0,
+          pages: 1,
+        },
+        meta: {
+          invoicesLimited: false,
+          maxInvoices: MAX_INVOICES,
+        },
+      });
+    }
+
     let products = Array.from(productMap.values()).map((item) => ({
       key: item.key,
       code: item.code,
@@ -605,9 +892,22 @@ export async function GET(req: Request) {
       lastInvoiceId: item.lastInvoiceId,
       lastInvoiceNumber: item.lastInvoiceNumber,
       shortName: null as string | null,
-      productType: null as string | null,
-      productSubtype: null as string | null,
+      productType: item.productType as string | null,
+      productSubtype: item.productSubtype as string | null,
+      productSubgroup: item.productSubgroup as string | null,
       outOfLine: false,
+      fiscalSitTributaria: null as string | null,
+      fiscalNomeTributacao: null as string | null,
+      fiscalIcms: null as number | null,
+      fiscalPis: null as number | null,
+      fiscalCofins: null as number | null,
+      fiscalObs: null as string | null,
+      fiscalCest: null as string | null,
+      fiscalOrigem: null as string | null,
+      fiscalCfopEntrada: null as string | null,
+      fiscalCfopSaida: null as string | null,
+      fiscalIpi: null as number | null,
+      fiscalFcp: null as number | null,
     }));
 
     if (useIssuedNfeLookup) {
@@ -716,6 +1016,7 @@ export async function GET(req: Request) {
           select: {
             id: true,
             issueDate: true,
+            recipientName: true,
           },
         });
 
@@ -731,8 +1032,13 @@ export async function GET(req: Request) {
 
           const parsedBatch = await Promise.allSettled(
             batchMeta.map(async (invoice) => {
+              // Skip resale customers (Navix/Prime)
+              if (isResaleCustomer(invoice.recipientName)) return null;
               const xmlContent = xmlMap.get(invoice.id);
               if (!xmlContent) return null;
+              // Skip import invoices — they are entries, not sales
+              const cfop = extractFirstCfop(xmlContent);
+              if (isImportEntryCfop(cfop)) return null;
               const items = await extractProductsFromXml(xmlContent);
               return { invoice, items };
             }),
@@ -828,7 +1134,7 @@ export async function GET(req: Request) {
 
           const normalizedDesc = normalizeDescriptionToken(product.description);
           const normalizedNcm = normalizeToken(product.ncm);
-          const normalizedUnit = normalizeToken(product.unit);
+          const normalizedUnit = normalizeUnit(product.unit);
           const normalizedEan = normalizeToken(product.ean).replace(/\D/g, '');
 
           let best: { entry: IssuedAnvisaEntry; score: number } | null = null;
@@ -980,11 +1286,24 @@ export async function GET(req: Request) {
         }
 
         if (registry.shortName) product.shortName = registry.shortName;
-        if (registry.productType) {
-          product.productType = registry.productType;
-          product.productSubtype = registry.productSubtype;
-        }
+        if (registry.productType) product.productType = registry.productType;
+        if (registry.productSubtype) product.productSubtype = registry.productSubtype;
+        if (registry.productSubgroup) product.productSubgroup = registry.productSubgroup;
         if (registry.outOfLine) product.outOfLine = true;
+
+        // Fiscal data
+        if (registry.fiscalSitTributaria != null) product.fiscalSitTributaria = registry.fiscalSitTributaria;
+        if (registry.fiscalNomeTributacao != null) product.fiscalNomeTributacao = registry.fiscalNomeTributacao;
+        if (registry.fiscalIcms != null) product.fiscalIcms = registry.fiscalIcms;
+        if (registry.fiscalPis != null) product.fiscalPis = registry.fiscalPis;
+        if (registry.fiscalCofins != null) product.fiscalCofins = registry.fiscalCofins;
+        if (registry.fiscalObs != null) product.fiscalObs = registry.fiscalObs;
+        if (registry.fiscalCest != null) product.fiscalCest = registry.fiscalCest;
+        if (registry.fiscalOrigem != null) product.fiscalOrigem = registry.fiscalOrigem;
+        if (registry.fiscalCfopEntrada != null) product.fiscalCfopEntrada = registry.fiscalCfopEntrada;
+        if (registry.fiscalCfopSaida != null) product.fiscalCfopSaida = registry.fiscalCfopSaida;
+        if (registry.fiscalIpi != null) product.fiscalIpi = registry.fiscalIpi;
+        if (registry.fiscalFcp != null) product.fiscalFcp = registry.fiscalFcp;
 
         // Always apply open-data enrichment (expiration, risk class, holder, product name)
         // regardless of ANVISA source — these come from the ANVISA open data import

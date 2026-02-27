@@ -699,7 +699,7 @@ export default function SupplierDetailsModal({
                     <table className="w-full text-left border-collapse min-w-[760px]">
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
-                          <SortableHeader label="Código" sortKey="code" />
+                          <SortableHeader label="Referência" sortKey="code" />
                           <SortableHeader label="Produto" sortKey="description" />
                           <SortableHeader label="Qtd." sortKey="totalQuantity" align="right" />
                           <SortableHeader label="Último Preço" sortKey="lastPrice" align="right" />

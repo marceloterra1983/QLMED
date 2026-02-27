@@ -13,6 +13,16 @@ function cleanString(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+const UNIT_ALIASES: Record<string, string> = {
+  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
+  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
+  CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
+};
+function normalizeUnit(raw: string | null | undefined): string {
+  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
+  return UNIT_ALIASES[upper] || upper || '-';
+}
+
 function normalizeDocument(value: string | null | undefined): string {
   return (value || '').replace(/\D/g, '');
 }
@@ -257,7 +267,7 @@ export async function GET(req: Request) {
         const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
 
         for (const product of products) {
-          const key = `${product.code}::${product.description}::${product.unit}`;
+          const key = `${(product.code || '').toUpperCase()}::${normalizeUnit(product.unit)}`;
 
           if (metaOnly) {
             priceKeySet.add(key);

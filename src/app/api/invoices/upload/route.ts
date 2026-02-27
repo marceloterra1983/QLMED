@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
+import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 
 export async function POST(req: Request) {
   try {
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
         // Determinar direção: emitida ou recebida
         const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
 
-        await prisma.invoice.create({
+        const savedInvoice = await prisma.invoice.create({
           data: {
             accessKey: parsed.accessKey,
             type: parsed.type,
@@ -80,6 +81,21 @@ export async function POST(req: Request) {
             companyId,
           },
         });
+
+        if (parsed.type === 'NFE' && xmlContent) {
+          updateProductAggregatesForInvoice({
+            companyId,
+            invoiceId: savedInvoice.id,
+            xmlContent,
+            direction,
+            issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+            senderName: parsed.senderName,
+            senderCnpj: parsed.senderCnpj,
+            recipientName: parsed.recipientName,
+            recipientCnpj: parsed.recipientCnpj,
+            invoiceNumber: parsed.number,
+          }).catch(() => {});
+        }
 
         results.success.push(file.name);
       } catch (err: any) {

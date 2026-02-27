@@ -10,6 +10,7 @@ import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getNsdocsSyncWindow } from '@/lib/nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
+import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 
 const UF_TO_CODE: Record<string, string> = {
   AC: '12',
@@ -196,6 +197,20 @@ export async function POST(request: NextRequest) {
                 } else {
                   totalAtualizados++;
                 }
+                if (parsed.type === 'NFE' && doc.xml) {
+                  updateProductAggregatesForInvoice({
+                    companyId,
+                    invoiceId: result.id,
+                    xmlContent: doc.xml,
+                    direction,
+                    issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+                    senderName: parsed.senderName,
+                    senderCnpj: parsed.senderCnpj,
+                    recipientName: parsed.recipientName,
+                    recipientCnpj: parsed.recipientCnpj,
+                    invoiceNumber: parsed.number,
+                  }).catch(() => {});
+                }
               } catch (docErr: any) {
                 console.error(`[SEFAZ Sync] Erro ao processar documento:`, docErr);
               }
@@ -341,6 +356,20 @@ export async function POST(request: NextRequest) {
                 totalNovos++;
               } else {
                 totalAtualizados++;
+              }
+              if (parsed.type === 'NFE' && xmlContent) {
+                updateProductAggregatesForInvoice({
+                  companyId,
+                  invoiceId: result.id,
+                  xmlContent,
+                  direction,
+                  issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+                  senderName: parsed.senderName,
+                  senderCnpj: parsed.senderCnpj,
+                  recipientName: parsed.recipientName,
+                  recipientCnpj: parsed.recipientCnpj,
+                  invoiceNumber: parsed.number,
+                }).catch(() => {});
               }
             } catch (docErr) {
               console.error(`[NSDocs Sync] Erro no doc:`, docErr);

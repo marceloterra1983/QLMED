@@ -7,6 +7,7 @@ import { decrypt } from '@/lib/crypto';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
+import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 
 export const maxDuration = 60; // Start with 60s for Vercel/Next.js function
 
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        await prisma.invoice.create({
+        const savedInvoice = await prisma.invoice.create({
           data: {
              companyId,
              accessKey: parsed.accessKey,
@@ -138,6 +139,21 @@ export async function POST(request: NextRequest) {
              xmlContent,
           }
         });
+
+        if (parsed.type === 'NFE' && xmlContent) {
+          updateProductAggregatesForInvoice({
+            companyId,
+            invoiceId: savedInvoice.id,
+            xmlContent,
+            direction,
+            issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+            senderName: parsed.senderName,
+            senderCnpj: parsed.senderCnpj,
+            recipientName: parsed.recipientName,
+            recipientCnpj: parsed.recipientCnpj,
+            invoiceNumber: parsed.number,
+          }).catch(() => {});
+        }
 
         imported++;
       } catch (err: any) {

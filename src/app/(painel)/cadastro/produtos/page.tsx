@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { formatValue } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
@@ -38,7 +39,20 @@ interface ProductRow {
   manufacturerShortName?: string | null;
   productType?: string | null;
   productSubtype?: string | null;
+  productSubgroup?: string | null;
   outOfLine?: boolean;
+  fiscalSitTributaria?: string | null;
+  fiscalNomeTributacao?: string | null;
+  fiscalIcms?: number | null;
+  fiscalPis?: number | null;
+  fiscalCofins?: number | null;
+  fiscalObs?: string | null;
+  fiscalCest?: string | null;
+  fiscalOrigem?: string | null;
+  fiscalCfopEntrada?: string | null;
+  fiscalCfopSaida?: string | null;
+  fiscalIpi?: number | null;
+  fiscalFcp?: number | null;
 }
 
 interface ProductsSummary {
@@ -103,28 +117,132 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 }
 
 
+const iconBgMap: Record<string, string> = {
+  'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
+  'text-amber-500': 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
+  'text-orange-500': 'bg-orange-500/10 dark:bg-orange-500/20 ring-orange-500/20 dark:ring-orange-500/30',
+  'text-teal-500': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
+  'text-blue-500': 'bg-blue-500/10 dark:bg-blue-500/20 ring-blue-500/20 dark:ring-blue-500/30',
+  'text-emerald-500': 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30',
+  'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
+  'text-violet-500': 'bg-violet-500/10 dark:bg-violet-500/20 ring-violet-500/20 dark:ring-violet-500/30',
+};
+
+const DETAIL_INPUT_CLS = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed";
+
+function DetailSectionCard({ id, icon, iconColor, title, badge, isOpen, onToggle, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; isOpen: boolean; onToggle: (id: string) => void; children: React.ReactNode }) {
+  const ibg = iconBgMap[iconColor] || iconBgMap['text-primary'];
+  return (
+    <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+      <button
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+      >
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${ibg}`}>
+          <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
+        </div>
+        <h4 className="text-[13px] font-bold text-slate-900 dark:text-white flex-1 text-left">{title}</h4>
+        {badge}
+        <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailField({ label, children, colSpan2 }: { label: string; children: React.ReactNode; colSpan2?: boolean }) {
+  return (
+    <div className={`${colSpan2 ? 'col-span-2' : ''}`}>
+      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const BULK_INPUT_CLS = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow";
+
+const bulkFieldIconMap: Record<string, { bg: string; color: string }> = {
+  category: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30', color: 'text-indigo-500' },
+  folder: { bg: 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30', color: 'text-amber-500' },
+  folder_open: { bg: 'bg-orange-500/10 dark:bg-orange-500/20 ring-orange-500/20 dark:ring-orange-500/30', color: 'text-orange-500' },
+  tag: { bg: 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30', color: 'text-teal-500' },
+  verified: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30', color: 'text-emerald-500' },
+  toggle_on: { bg: 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30', color: 'text-rose-500' },
+};
+
+function BulkFieldRow({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) {
+  const fm = bulkFieldIconMap[icon] || { bg: 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30', color: 'text-primary' };
+  return (
+    <div className={`bg-white dark:bg-card-dark rounded-2xl ring-1 overflow-hidden transition-all ${checked ? 'ring-primary/30 dark:ring-primary/40 shadow-sm shadow-primary/5' : 'ring-slate-200/60 dark:ring-slate-800/50'}`}>
+      <label className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+        <div className="relative flex items-center">
+          <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary scale-105' : 'border-slate-300 dark:border-slate-600'}`}>
+            {checked && <span className="material-symbols-outlined text-[14px] text-white">check</span>}
+          </div>
+        </div>
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${fm.bg}`}>
+          <span className={`material-symbols-outlined text-[15px] ${fm.color}`}>{icon}</span>
+        </div>
+        <span className={`text-[13px] font-bold transition-colors ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
+      </label>
+      {checked && children && (
+        <div className="px-4 pb-3.5 pt-0">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProdutosPage() {
   const { canWrite } = useRole();
 
-  // --- raw data (loaded once) ---
-  const [allProducts, setAllProducts] = useState<ProductRow[]>([]);
+  // --- server-paginated data ---
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [summary, setSummary] = useState<ProductsSummary>({
     totalProducts: 0,
     productsWithAnvisa: 0,
     totalQuantity: 0,
     invoicesProcessed: 0,
   });
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [meta, setMeta] = useState<ProductsResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [settingsHierarchy, setSettingsHierarchy] = useState<{ lines: { name: string; groups: { name: string; subgroups: string[] }[] }[] }>({ lines: [] });
 
-  // --- client-side state ---
+  // --- filter/sort state (drives server-side queries) ---
   const [search, setSearch] = useState('');
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [subtypeFilter, setSubtypeFilter] = useState<string>('');
+  const [subgroupFilter, setSubgroupFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('active');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Debounced search for server queries
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, onlyMissing, typeFilter, subtypeFilter, subgroupFilter, sortBy, sortOrder, lineStatusFilter]);
+
+  // Backward-compat alias: many places reference `allProducts` / `filtered`
+  const allProducts = products;
+  const filtered = products;
 
   // --- action states ---
   const [isSyncingAnvisa, setIsSyncingAnvisa] = useState(false);
@@ -132,8 +250,7 @@ export default function ProdutosPage() {
   const [isImportingXls, setIsImportingXls] = useState(false);
   const [isImportingOpenData, setIsImportingOpenData] = useState(false);
   const [isImportingTypes, setIsImportingTypes] = useState(false);
-  const [manageTypesOpen, setManageTypesOpen] = useState(false);
-  const [manageManufacturersOpen, setManageManufacturersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingAnvisaKey, setEditingAnvisaKey] = useState<string | null>(null);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
@@ -153,7 +270,7 @@ export default function ProdutosPage() {
         const lineName = g.slice(5);
         for (const p of filtered) {
           if ((p.productType || 'Sem linha') === lineName) {
-            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}`);
+            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}|${p.productSubgroup || ''}`);
           }
         }
       }
@@ -184,32 +301,61 @@ export default function ProdutosPage() {
   const [bulkFields, setBulkFields] = useState({
     enableType: false, productType: '',
     enableSubtype: false, productSubtype: '',
+    enableSubgroup: false, productSubgroup: '',
     enableNcm: false, ncm: '',
     enableAnvisa: false, anvisa: '',
     enableOutOfLine: false, outOfLine: false,
   });
+  const [bulkNewMode, setBulkNewMode] = useState({ type: false, subtype: false, subgroup: false });
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const openBulkEdit = () => {
-    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '', enableOutOfLine: false, outOfLine: false });
+    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableSubgroup: false, productSubgroup: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '', enableOutOfLine: false, outOfLine: false });
+    setBulkNewMode({ type: false, subtype: false, subgroup: false });
     setBulkEditOpen(true);
   };
+
+  const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableSubgroup, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine].filter(Boolean).length;
 
   const handleBulkSave = async () => {
     const fields: Record<string, string | null> = {};
     if (bulkFields.enableType) fields.productType = bulkFields.productType || null;
     if (bulkFields.enableSubtype) fields.productSubtype = bulkFields.productSubtype || null;
+    if (bulkFields.enableSubgroup) fields.productSubgroup = bulkFields.productSubgroup || null;
     if (bulkFields.enableNcm) fields.ncm = bulkFields.ncm || null;
     if (bulkFields.enableAnvisa) fields.anvisa = bulkFields.anvisa || null;
     if (bulkFields.enableOutOfLine) (fields as any).outOfLine = bulkFields.outOfLine;
     if (Object.keys(fields).length === 0) { toast.error('Selecione pelo menos um campo para editar'); return; }
 
-    const selectedProducts = allProducts.filter((p) => selectedKeys.has(p.key));
+    const selectedProducts = products.filter((p) => selectedKeys.has(p.key));
     if (selectedProducts.length === 0) return;
 
     setIsBulkSaving(true);
     const toastId = toast.loading(`Atualizando ${selectedProducts.length} produto(s)...`);
     try {
+      // Register new line/group/subgroup in catalog if creating new ones
+      if (bulkNewMode.type && fields.productType) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addLine', name: fields.productType }),
+        });
+      }
+      if (bulkNewMode.subtype && fields.productSubtype) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addGroup', parentType: fields.productType || bulkFields.productType, subtypeName: fields.productSubtype }),
+        });
+      }
+      if (bulkNewMode.subgroup && fields.productSubgroup) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addSubgroup', parentType: fields.productType || bulkFields.productType, parentSubtype: fields.productSubtype || bulkFields.productSubtype, subgroupName: fields.productSubgroup }),
+        });
+      }
+
       const res = await fetch('/api/products/bulk-update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +383,21 @@ export default function ProdutosPage() {
   const [detailNcm, setDetailNcm] = useState('');
   const [detailType, setDetailType] = useState('');
   const [detailSubtype, setDetailSubtype] = useState('');
+  const [detailSubgroup, setDetailSubgroup] = useState('');
+  const [detailNewMode, setDetailNewMode] = useState({ type: false, subtype: false, subgroup: false });
   const [detailShortName, setDetailShortName] = useState('');
+  const [detailSitTributaria, setDetailSitTributaria] = useState('');
+  const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
+  const [detailIcms, setDetailIcms] = useState('');
+  const [detailPis, setDetailPis] = useState('');
+  const [detailCofins, setDetailCofins] = useState('');
+  const [detailFiscalObs, setDetailFiscalObs] = useState('');
+  const [detailCest, setDetailCest] = useState('');
+  const [detailOrigem, setDetailOrigem] = useState('');
+  const [detailCfopEntrada, setDetailCfopEntrada] = useState('');
+  const [detailCfopSaida, setDetailCfopSaida] = useState('');
+  const [detailIpi, setDetailIpi] = useState('');
+  const [detailFcp, setDetailFcp] = useState('');
   const [detailOpenSections, setDetailOpenSections] = useState<Set<string>>(new Set());
   const toggleDetailSection = (s: string) => setDetailOpenSections((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
   const [savingDetail, setSavingDetail] = useState(false);
@@ -270,8 +430,22 @@ export default function ProdutosPage() {
     setDetailNcm(product.ncm || '');
     setDetailType(product.productType || '');
     setDetailSubtype(product.productSubtype || '');
+    setDetailSubgroup(product.productSubgroup || '');
+    setDetailNewMode({ type: false, subtype: false, subgroup: false });
     setDetailShortName(product.shortName || '');
-    setDetailOpenSections(new Set(initialSections || ['cadastro']));
+    setDetailSitTributaria(product.fiscalSitTributaria || '');
+    setDetailNomeTributacao(product.fiscalNomeTributacao || '');
+    setDetailIcms(product.fiscalIcms != null ? String(product.fiscalIcms) : '');
+    setDetailPis(product.fiscalPis != null ? String(product.fiscalPis) : '');
+    setDetailCofins(product.fiscalCofins != null ? String(product.fiscalCofins) : '');
+    setDetailFiscalObs(product.fiscalObs || '');
+    setDetailCest(product.fiscalCest || '');
+    setDetailOrigem(product.fiscalOrigem || '');
+    setDetailCfopEntrada(product.fiscalCfopEntrada || '');
+    setDetailCfopSaida(product.fiscalCfopSaida || '');
+    setDetailIpi(product.fiscalIpi != null ? String(product.fiscalIpi) : '');
+    setDetailFcp(product.fiscalFcp != null ? String(product.fiscalFcp) : '');
+    setDetailOpenSections(new Set(initialSections || []));
   };
 
   const [historyProduct, setHistoryProduct] = useState<ProductRow | null>(null);
@@ -320,115 +494,184 @@ export default function ProdutosPage() {
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
     detailSubtype !== (detailProduct.productSubtype || '') ||
-    detailShortName !== (detailProduct.shortName || '')
+    detailSubgroup !== (detailProduct.productSubgroup || '') ||
+    detailShortName !== (detailProduct.shortName || '') ||
+    detailSitTributaria !== (detailProduct.fiscalSitTributaria || '') ||
+    detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '') ||
+    detailIcms !== (detailProduct.fiscalIcms != null ? String(detailProduct.fiscalIcms) : '') ||
+    detailPis !== (detailProduct.fiscalPis != null ? String(detailProduct.fiscalPis) : '') ||
+    detailCofins !== (detailProduct.fiscalCofins != null ? String(detailProduct.fiscalCofins) : '') ||
+    detailFiscalObs !== (detailProduct.fiscalObs || '') ||
+    detailCest !== (detailProduct.fiscalCest || '') ||
+    detailOrigem !== (detailProduct.fiscalOrigem || '') ||
+    detailCfopEntrada !== (detailProduct.fiscalCfopEntrada || '') ||
+    detailCfopSaida !== (detailProduct.fiscalCfopSaida || '') ||
+    detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '') ||
+    detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')
   );
 
-  // ---- load all products once ----
-  const loadProducts = async () => {
+  // ---- load settings hierarchy (lines → groups → subgroups) ----
+  const loadSettingsHierarchy = async () => {
+    try {
+      const res = await fetch('/api/products/settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      setSettingsHierarchy({
+        lines: (data.lines || []).map((l: any) => ({
+          name: l.name,
+          groups: (l.groups || []).map((g: any) => ({
+            name: g.name,
+            subgroups: (g.subgroups || []).map((s: any) => s.name),
+          })),
+        })),
+      });
+    } catch { /* silent */ }
+  };
+
+  // ---- server-side sort field mapping ----
+  const serverSortField = useMemo(() => {
+    const map: Record<string, string> = {
+      description: 'description',
+      code: 'code',
+      ncm: 'ncm',
+      anvisa: 'anvisa',
+      lastPrice: 'lastPrice',
+      lastIssueDate: 'lastIssueDate',
+      lastSaleDate: 'lastSaleDate',
+      supplier: 'supplier',
+      productType: 'productType',
+      totalQuantity: 'quantity',
+      invoiceCount: 'invoices',
+    };
+    return map[sortBy] || 'lastIssueDate';
+  }, [sortBy]);
+
+  // ---- load products from paginated API ----
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const rebuiltOnceRef = useRef(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
+
+  const loadProducts = useCallback(async () => {
+    // Abort any in-flight request
+    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
     setLoading(true);
     try {
-      const res = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: '50',
+        sort: serverSortField,
+        order: sortOrder,
+        lineStatus: lineStatusFilter,
+      });
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (typeFilter) params.set('productType', typeFilter);
+      if (subtypeFilter) params.set('productSubtype', subtypeFilter);
+      if (subgroupFilter) params.set('productSubgroup', subgroupFilter);
+      if (onlyMissing) params.set('onlyMissingAnvisa', '1');
+
+      const res = await fetch(`/api/products/list?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Falha ao carregar produtos');
-      const data = (await res.json()) as ProductsResponse;
-      setAllProducts(data.products || []);
+      const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
+
+      setProducts(data.products || []);
       setSummary(
         data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 },
       );
+      setPagination(data.pagination || { page: 1, limit: 50, total: 0, pages: 1 });
       setMeta(data.meta || null);
-    } catch {
+
+      // If aggregates are missing, trigger rebuild in background then reload
+      if (data.needsRebuild && !rebuiltOnceRef.current) {
+        rebuiltOnceRef.current = true;
+        setIsRebuilding(true);
+        fetch('/api/products/rebuild-aggregates', { method: 'POST' })
+          .then((r) => { if (r.ok) return r.json(); throw new Error(); })
+          .then(() => {
+            setIsRebuilding(false);
+            // Re-fetch to get the aggregated data
+            fetch(`/api/products/list?${params}`)
+              .then((r) => r.json())
+              .then((d: ProductsResponse) => {
+                setProducts(d.products || []);
+                setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
+                setPagination(d.pagination || { page: 1, limit: 50, total: 0, pages: 1 });
+                setMeta(d.meta || null);
+              })
+              .catch(() => {});
+          })
+          .catch(() => setIsRebuilding(false));
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       toast.error('Erro ao carregar produtos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+    loadSettingsHierarchy();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadProducts]);
 
-  // ---- client-side filter + sort ----
-  const filtered = useMemo(() => {
-    const norm = normalizeSearch(search);
-    const digits = search.replace(/\D/g, '');
+  // ---- merged hierarchy options (products + catalog) ----
+  const hierOptions = useMemo(() => {
+    const sort = (a: string, b: string) => a.localeCompare(b, 'pt-BR');
+    const lineSet = new Set<string>();
+    const allGroupSet = new Set<string>();
+    const allSubgroupSet = new Set<string>();
+    const groupMap = new Map<string, Set<string>>(); // line → groups
+    const subgroupMap = new Map<string, Set<string>>(); // line:::group → subgroups
+    const subgroupByGroup = new Map<string, Set<string>>(); // group → subgroups (cross-line)
 
-    let result = allProducts;
-
-    if (norm) {
-      result = result.filter((p) => {
-        if (normalizeSearch(p.description).includes(norm)) return true;
-        if (normalizeSearch(p.code || '').includes(norm)) return true;
-        if (normalizeSearch(p.ncm || '').includes(norm)) return true;
-        if (normalizeSearch(p.anvisa || '').includes(norm)) return true;
-        if (normalizeSearch(p.lastSupplierName || '').includes(norm)) return true;
-        if (digits) {
-          if ((p.code || '').replace(/\D/g, '').includes(digits)) return true;
-          if ((p.ncm || '').replace(/\D/g, '').includes(digits)) return true;
-          if ((p.anvisa || '').replace(/\D/g, '').includes(digits)) return true;
-        }
-        return false;
-      });
-    }
-
-    if (onlyMissing) {
-      result = result.filter((p) => !p.anvisa);
-    }
-
-    if (typeFilter) {
-      result = result.filter((p) => (p.productType || '') === typeFilter);
-    }
-    if (subtypeFilter) {
-      result = result.filter((p) => (p.productSubtype || '') === subtypeFilter);
-    }
-
-    if (lineStatusFilter === 'active') {
-      result = result.filter((p) => !p.outOfLine);
-    } else if (lineStatusFilter === 'outOfLine') {
-      result = result.filter((p) => !!p.outOfLine);
-    }
-
-    result = [...result].sort((a, b) => {
-      let cmp = 0;
-      switch (sortBy) {
-        case 'description':
-          cmp = (a.description || '').localeCompare(b.description || '', 'pt-BR');
-          break;
-        case 'code':
-          cmp = (a.code || '').localeCompare(b.code || '', 'pt-BR');
-          break;
-        case 'ncm':
-          cmp = (a.ncm || '').localeCompare(b.ncm || '', 'pt-BR');
-          break;
-        case 'anvisa':
-          cmp = (a.anvisa || '').localeCompare(b.anvisa || '', 'pt-BR');
-          break;
-        case 'lastPrice':
-          cmp = a.lastPrice - b.lastPrice;
-          break;
-        case 'lastIssueDate':
-          cmp = (a.lastIssueDate ? new Date(a.lastIssueDate).getTime() : 0)
-              - (b.lastIssueDate ? new Date(b.lastIssueDate).getTime() : 0);
-          break;
-        case 'lastSaleDate':
-          cmp = (a.lastSaleDate ? new Date(a.lastSaleDate).getTime() : 0)
-              - (b.lastSaleDate ? new Date(b.lastSaleDate).getTime() : 0);
-          break;
-        case 'supplier':
-          cmp = (a.lastSupplierName || '').localeCompare(b.lastSupplierName || '', 'pt-BR');
-          break;
-        case 'productType':
-          cmp = (a.productType || '').localeCompare(b.productType || '', 'pt-BR');
-          if (cmp === 0) cmp = (a.productSubtype || '').localeCompare(b.productSubtype || '', 'pt-BR');
-          if (cmp === 0) cmp = (a.lastSupplierName || '').localeCompare(b.lastSupplierName || '', 'pt-BR');
-          break;
+    const addEntry = (line?: string | null, group?: string | null, subgroup?: string | null) => {
+      if (line) {
+        lineSet.add(line);
+        if (!groupMap.has(line)) groupMap.set(line, new Set());
       }
-      if (cmp === 0) cmp = (a.description || '').localeCompare(b.description || '', 'pt-BR');
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
+      if (group) {
+        allGroupSet.add(group);
+        if (line) groupMap.get(line)!.add(group);
+        if (!subgroupByGroup.has(group)) subgroupByGroup.set(group, new Set());
+      }
+      if (subgroup) {
+        allSubgroupSet.add(subgroup);
+        if (group) subgroupByGroup.get(group)!.add(subgroup);
+        if (line && group) {
+          const sgKey = `${line}:::${group}`;
+          if (!subgroupMap.has(sgKey)) subgroupMap.set(sgKey, new Set());
+          subgroupMap.get(sgKey)!.add(subgroup);
+        }
+      }
+    };
 
-    return result;
-  }, [allProducts, search, onlyMissing, typeFilter, subtypeFilter, sortBy, sortOrder, lineStatusFilter]);
+    for (const line of settingsHierarchy.lines) {
+      for (const group of line.groups) {
+        for (const sg of group.subgroups) addEntry(line.name, group.name, sg);
+        if (group.subgroups.length === 0) addEntry(line.name, group.name);
+      }
+      if (line.groups.length === 0) addEntry(line.name);
+    }
+    for (const p of allProducts) addEntry(p.productType, p.productSubtype, p.productSubgroup);
+
+    return {
+      lines: Array.from(lineSet).sort(sort),
+      allGroups: Array.from(allGroupSet).sort(sort),
+      allSubgroups: Array.from(allSubgroupSet).sort(sort),
+      groupsFor: (line: string) => Array.from(groupMap.get(line) || []).sort(sort),
+      subgroupsFor: (line: string, group: string) => Array.from(subgroupMap.get(`${line}:::${group}`) || []).sort(sort),
+      subgroupsForGroup: (group: string) => Array.from(subgroupByGroup.get(group) || []).sort(sort),
+    };
+  }, [allProducts, settingsHierarchy]);
+
+  // Server handles filtering/sorting — `filtered` is aliased to `products` above.
 
   // Collapse all groups when no search; expand all when searching
+  const filteredLen = filtered.length;
   useEffect(() => {
     if (search) {
       // Expand everything when searching
@@ -436,7 +679,7 @@ export default function ProdutosPage() {
       return;
     }
     // Collapse by default (lines for productType sort, groups for others)
-    if (filtered.length > 0) {
+    if (filteredLen > 0) {
       const groups = new Set(filtered.map((p) => {
         switch (sortBy) {
           case 'supplier':    return p.lastSupplierName || 'Sem fabricante';
@@ -449,7 +692,7 @@ export default function ProdutosPage() {
       setCollapsedGroups(groups);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, search === '' ? '' : 'searching']);
+  }, [sortBy, filteredLen, search === '' ? '' : 'searching']);
 
   // show all filtered results (no pagination)
   const visible = filtered;
@@ -510,7 +753,7 @@ export default function ProdutosPage() {
         }),
       });
       if (!res.ok) throw new Error();
-      setAllProducts((prev) => prev.map((p) => p.key === product.key ? { ...p, outOfLine: newVal } : p));
+      setProducts((prev) => prev.map((p) => p.key === product.key ? { ...p, outOfLine: newVal } : p));
       toast.success(newVal ? 'Produto marcado como fora de linha' : 'Produto restaurado para em linha');
     } catch {
       toast.error('Erro ao atualizar produto');
@@ -537,39 +780,62 @@ export default function ProdutosPage() {
     );
   };
 
-  const handleExport = () => {
-    if (filtered.length === 0) return;
-    const headers = ['Codigo', 'Produto', 'NCM', 'ANVISA', 'Ultimo Preco', 'Ultimo Preco Venda', 'Data Ultima Compra', 'Data Ultima Venda'];
-    const rows = filtered.map((p) => [
-      p.code, p.description, p.ncm || '', p.anvisa || '',
-      formatValue(p.lastPrice), formatOptional(p.lastSalePrice),
-      formatDate(p.lastIssueDate), formatDate(p.lastSaleDate),
-    ]);
-    const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = `produtos-${new Date().toISOString().split('T')[0]}.csv`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${filtered.length.toLocaleString('pt-BR')} produtos exportados`);
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('Exportando produtos...');
+    try {
+      const res = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as ProductsResponse;
+      const all = data.products || [];
+      if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto para exportar'); return; }
+      const headers = ['Codigo', 'Produto', 'NCM', 'ANVISA', 'Ultimo Preco', 'Ultimo Preco Venda', 'Data Ultima Compra', 'Data Ultima Venda'];
+      const rows = all.map((p: any) => [
+        p.code, p.description, p.ncm || '', p.anvisa || '',
+        formatValue(p.lastPrice), formatOptional(p.lastSalePrice),
+        formatDate(p.lastIssueDate), formatDate(p.lastSaleDate),
+      ]);
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `produtos-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${all.length.toLocaleString('pt-BR')} produtos exportados`, { id: toastId });
+    } catch {
+      toast.error('Erro ao exportar', { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const handleExportMissingAnvisa = () => {
+  const handleExportMissingAnvisa = async () => {
     if (isExportingMissing) return;
-    const missing = allProducts.filter((p) => !p.anvisa);
-    if (missing.length === 0) { toast.info('Nenhum produto sem ANVISA'); return; }
     setIsExportingMissing(true);
-    const headers = ['Codigo', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
-    const rows = missing.map((p) => [
-      p.code, p.description, p.ncm || '', p.ean || '',
-      formatValue(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
-    ]);
-    const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = `produtos-sem-anvisa-${new Date().toISOString().split('T')[0]}.csv`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${missing.length.toLocaleString('pt-BR')} produtos exportados`);
-    setIsExportingMissing(false);
+    const toastId = toast.loading('Exportando produtos sem ANVISA...');
+    try {
+      const res = await fetch('/api/products?exportAll=1&onlyMissingAnvisa=1&sort=lastIssue&order=desc');
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as ProductsResponse;
+      const missing = data.products || [];
+      if (missing.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto sem ANVISA'); return; }
+      const headers = ['Codigo', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
+      const rows = missing.map((p: any) => [
+        p.code, p.description, p.ncm || '', p.ean || '',
+        formatValue(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
+      ]);
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `produtos-sem-anvisa-${new Date().toISOString().split('T')[0]}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${missing.length.toLocaleString('pt-BR')} produtos exportados`, { id: toastId });
+    } catch {
+      toast.error('Erro ao exportar', { id: toastId });
+    } finally {
+      setIsExportingMissing(false);
+    }
   };
 
   const handleSyncAnvisa = async () => {
@@ -605,7 +871,7 @@ export default function ProdutosPage() {
       const sh = wb.Sheets[wb.SheetNames[0]];
       const rows: unknown[][] = utils.sheet_to_json(sh, { header: 1, defval: '' });
 
-      // Find header row (Código, Reg. Anvisa)
+      // Find header row (Referência, Reg. Anvisa)
       let codigoCol = -1, anvisaCol = -1, fabricanteCol = -1;
       let dataStartRow = 0;
       for (let r = 0; r < Math.min(20, rows.length); r++) {
@@ -623,7 +889,7 @@ export default function ProdutosPage() {
       }
 
       if (codigoCol === -1 || anvisaCol === -1) {
-        toast.error('Não foi possível identificar as colunas "Código" e "Reg. Anvisa" na planilha.', { id: toastId });
+        toast.error('Não foi possível identificar as colunas "Referência" e "Reg. Anvisa" na planilha.', { id: toastId });
         return;
       }
 
@@ -700,7 +966,7 @@ export default function ProdutosPage() {
   const handleSaveDetail = async () => {
     if (!detailProduct) return;
     setSavingDetail(true);
-    const fields: Record<string, string | null> = {};
+    const fields: Record<string, string | number | null> = {};
 
     const anvisaDigits = detailAnvisa.replace(/\D/g, '');
     if (detailAnvisa !== (detailProduct.anvisa || '')) {
@@ -714,11 +980,47 @@ export default function ProdutosPage() {
     if (detailNcm !== (detailProduct.ncm || '')) fields.ncm = detailNcm.trim() || null;
     if (detailType !== (detailProduct.productType || '')) fields.productType = detailType.trim() || null;
     if (detailSubtype !== (detailProduct.productSubtype || '')) fields.productSubtype = detailSubtype.trim() || null;
+    if (detailSubgroup !== (detailProduct.productSubgroup || '')) fields.productSubgroup = detailSubgroup.trim() || null;
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
+    if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
+    if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
+    if (detailIcms !== (detailProduct.fiscalIcms != null ? String(detailProduct.fiscalIcms) : '')) fields.fiscalIcms = detailIcms.trim() ? Number(detailIcms) : null;
+    if (detailPis !== (detailProduct.fiscalPis != null ? String(detailProduct.fiscalPis) : '')) fields.fiscalPis = detailPis.trim() ? Number(detailPis) : null;
+    if (detailCofins !== (detailProduct.fiscalCofins != null ? String(detailProduct.fiscalCofins) : '')) fields.fiscalCofins = detailCofins.trim() ? Number(detailCofins) : null;
+    if (detailFiscalObs !== (detailProduct.fiscalObs || '')) fields.fiscalObs = detailFiscalObs.trim() || null;
+    if (detailCest !== (detailProduct.fiscalCest || '')) fields.fiscalCest = detailCest.trim() || null;
+    if (detailOrigem !== (detailProduct.fiscalOrigem || '')) fields.fiscalOrigem = detailOrigem.trim() || null;
+    if (detailCfopEntrada !== (detailProduct.fiscalCfopEntrada || '')) fields.fiscalCfopEntrada = detailCfopEntrada.trim() || null;
+    if (detailCfopSaida !== (detailProduct.fiscalCfopSaida || '')) fields.fiscalCfopSaida = detailCfopSaida.trim() || null;
+    if (detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '')) fields.fiscalIpi = detailIpi.trim() ? Number(detailIpi) : null;
+    if (detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')) fields.fiscalFcp = detailFcp.trim() ? Number(detailFcp) : null;
 
     if (Object.keys(fields).length === 0) { setSavingDetail(false); return; }
 
     try {
+      // Register new line/group/subgroup in catalog if creating new ones
+      if (detailNewMode.type && fields.productType) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addLine', name: fields.productType }),
+        });
+      }
+      if (detailNewMode.subtype && fields.productSubtype) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addGroup', parentType: fields.productType || detailType, subtypeName: fields.productSubtype }),
+        });
+      }
+      if (detailNewMode.subgroup && fields.productSubgroup) {
+        await fetch('/api/products/rename-type', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addSubgroup', parentType: fields.productType || detailType, parentSubtype: fields.productSubtype || detailSubtype, subgroupName: fields.productSubgroup }),
+        });
+      }
+
       const res = await fetch('/api/products/bulk-update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -828,9 +1130,17 @@ export default function ProdutosPage() {
 
       toast.loading(`Processando ${(allRows.length - 1).toLocaleString('pt-BR')} linhas...`, { id: toastId });
 
-      const ourCodes = new Set(
-        allProducts.map((p) => (p.anvisa || '').replace(/\D/g, '').padStart(11, '0')).filter((c) => c.length === 11),
-      );
+      // Fetch all product ANVISA codes to match against the open data file
+      let ourCodes = new Set<string>();
+      try {
+        const allRes = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
+        if (allRes.ok) {
+          const allData = await allRes.json();
+          ourCodes = new Set(
+            (allData.products || []).map((p: any) => (p.anvisa || '').replace(/\D/g, '').padStart(11, '0')).filter((c: string) => c.length === 11),
+          );
+        }
+      } catch { /* use empty set */ }
 
       const items: {
         registration: string; nomeProduto: string | null; nomeEmpresa: string | null;
@@ -976,7 +1286,7 @@ export default function ProdutosPage() {
     }
   };
 
-  const missingCount = meta?.anvisaStats?.missing ?? allProducts.filter((p) => !p.anvisa).length;
+  const missingCount = meta?.anvisaStats?.missing ?? (summary.totalProducts - summary.productsWithAnvisa);
 
   return (
     <>
@@ -1001,24 +1311,14 @@ export default function ProdutosPage() {
             Atualizar
           </button>
           {canWrite && (
-            <>
-              <button
-                onClick={() => setManageTypesOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
-                title="Gerenciar linhas e grupos de produto"
-              >
-                <span className="material-symbols-outlined text-[20px]">tune</span>
-                Gerenciar Linhas
-              </button>
-              <button
-                onClick={() => setManageManufacturersOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
-                title="Gerenciar fabricantes e nomes abreviados"
-              >
-                <span className="material-symbols-outlined text-[20px]">factory</span>
-                Gerenciar Fabricantes
-              </button>
-            </>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
+              title="Linhas, fabricantes, dados fiscais"
+            >
+              <span className="material-symbols-outlined text-[20px]">settings</span>
+              Ajustes
+            </button>
           )}
           <button
             onClick={handleExport}
@@ -1040,12 +1340,12 @@ export default function ProdutosPage() {
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
             <select
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); }}
+              onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); setSubgroupFilter(''); }}
               className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             >
               <option value="">Todos</option>
-              {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
-                <option key={t!} value={t!}>{t}</option>
+              {hierOptions.lines.map((t) => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
@@ -1054,16 +1354,34 @@ export default function ProdutosPage() {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Grupo</label>
               <select
                 value={subtypeFilter}
-                onChange={(e) => setSubtypeFilter(e.target.value)}
+                onChange={(e) => { setSubtypeFilter(e.target.value); setSubgroupFilter(''); }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               >
                 <option value="">Todos</option>
-                {Array.from(new Set(allProducts.filter((p) => p.productType === typeFilter).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => (
-                  <option key={s!} value={s!}>{s}</option>
+                {hierOptions.groupsFor(typeFilter).map((s) => (
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
           )}
+          {subtypeFilter && (() => {
+            const subgroups = hierOptions.subgroupsFor(typeFilter, subtypeFilter);
+            return subgroups.length > 0 ? (
+              <div className="shrink-0">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subgrupo</label>
+                <select
+                  value={subgroupFilter}
+                  onChange={(e) => setSubgroupFilter(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                >
+                  <option value="">Todos</option>
+                  {subgroups.map((s) => (
+                    <option key={s!} value={s!}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null;
+          })()}
           <div className="flex-1">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
               Buscar por código, descrição, NCM, ANVISA ou fornecedor
@@ -1129,7 +1447,7 @@ export default function ProdutosPage() {
             </div>
           </div>
           <button
-            onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
+            onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
@@ -1138,7 +1456,7 @@ export default function ProdutosPage() {
         </div>
 
         {/* Active filter indicators */}
-        {(search || typeFilter) && (
+        {(search || typeFilter || subtypeFilter || subgroupFilter) && (
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             <span className="text-xs text-slate-500">Filtros ativos:</span>
             {search && (
@@ -1152,7 +1470,23 @@ export default function ProdutosPage() {
             {typeFilter && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
                 {typeFilter}
-                <button onClick={() => setTypeFilter('')} className="hover:opacity-70">
+                <button onClick={() => { setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
+                  <span className="material-symbols-outlined text-[13px]">close</span>
+                </button>
+              </span>
+            )}
+            {subtypeFilter && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium dark:bg-amber-900/30 dark:text-amber-400">
+                {subtypeFilter}
+                <button onClick={() => { setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
+                  <span className="material-symbols-outlined text-[13px]">close</span>
+                </button>
+              </span>
+            )}
+            {subgroupFilter && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 text-xs font-medium dark:bg-teal-900/30 dark:text-teal-400">
+                {subgroupFilter}
+                <button onClick={() => setSubgroupFilter('')} className="hover:opacity-70">
                   <span className="material-symbols-outlined text-[13px]">close</span>
                 </button>
               </span>
@@ -1176,7 +1510,7 @@ export default function ProdutosPage() {
           const allKeys = [...allGroups, ...allLines];
           if (allGroups.length <= 1) return null;
           return (
-            <div className="flex justify-end gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
               <button onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? allLines : allGroups))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
               <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
             </div>
@@ -1197,7 +1531,7 @@ export default function ProdutosPage() {
                   />
                 </th>
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
-                  <div className="flex items-center gap-1">Código <SortIcon field="code" /></div>
+                  <div className="flex items-center gap-1">Referência <SortIcon field="code" /></div>
                 </th>
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}>
                   <div className="flex items-center gap-1">Produto <SortIcon field="description" /></div>
@@ -1221,7 +1555,17 @@ export default function ProdutosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {loading ? (
+              {isRebuilding ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Indexando produtos...</p>
+                      <p className="text-xs text-slate-400">Primeira carga — processando NF-e para montar a lista. Isso pode levar alguns segundos.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : loading ? (
                 Array.from({ length: 20 }).map((_, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
@@ -1243,7 +1587,7 @@ export default function ProdutosPage() {
                     <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
                     <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
                     <p className="text-xs mt-1">
-                      {allProducts.length > 0
+                      {summary.totalProducts > 0
                         ? 'Tente ajustar os filtros de busca.'
                         : 'A lista é montada automaticamente a partir das NF-e de entrada.'}
                     </p>
@@ -1263,22 +1607,22 @@ export default function ProdutosPage() {
                     }
                     let lastLine = '';
                     let lastGrp = '';
-                    let lastSupplier = '';
+                    let lastSubgroup = '';
                     return visible.map((product) => {
                       const lineKey = getLineLabel(product);
                       const grpKey = getGroupLabel(product);
                       const lineName = product.productType || 'Sem linha';
                       const grpName = product.productSubtype || 'Sem grupo';
+                      const subgroupName = product.productSubgroup || '';
+                      const subgroupKey = `${grpKey}|${subgroupName}`;
                       const showLine = lineKey !== lastLine;
                       const showGrp = grpKey !== lastGrp;
-                      if (showLine) { lastGrp = ''; lastSupplier = ''; }
-                      if (showGrp) lastSupplier = '';
+                      const showSubgroup = subgroupName && subgroupKey !== lastSubgroup;
+                      if (showLine) { lastGrp = ''; lastSubgroup = ''; }
+                      if (showGrp) lastSubgroup = '';
                       lastLine = lineKey;
                       lastGrp = grpKey;
-                      const supplier = product.lastSupplierName || '';
-                      const showSupplierDivider = !showGrp && supplier !== lastSupplier;
-                      const isFirstInGrp = showGrp;
-                      lastSupplier = supplier;
+                      if (subgroupName) lastSubgroup = subgroupKey;
                       const lineCollapsed = collapsedGroups.has(lineKey);
                       const grpCollapsed = collapsedGroups.has(grpKey);
                       return (
@@ -1309,12 +1653,12 @@ export default function ProdutosPage() {
                               </td>
                             </tr>
                           )}
-                          {!lineCollapsed && !grpCollapsed && (isFirstInGrp || showSupplierDivider) && (
+                          {!lineCollapsed && !grpCollapsed && showSubgroup && (
                             <tr>
                               <td colSpan={9} className="px-0 py-0">
-                                <div className="flex items-center gap-1.5 pl-14 pr-4 py-0.5 bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800/40">
-                                  <span className="material-symbols-outlined text-[12px] text-slate-300 dark:text-slate-600">local_shipping</span>
-                                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{supplier || 'Sem fornecedor'}</span>
+                                <div className="flex items-center gap-1.5 pl-14 pr-4 py-1 bg-gradient-to-r from-teal-50/60 to-transparent dark:from-teal-950/15 dark:to-transparent border-b border-teal-200/40 dark:border-teal-800/20">
+                                  <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
                                 </div>
                               </td>
                             </tr>
@@ -1325,7 +1669,7 @@ export default function ProdutosPage() {
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><span className={`text-[12px] font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
                     <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
@@ -1373,7 +1717,7 @@ export default function ProdutosPage() {
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
-                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><span className={`text-[12px] font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></td>
+                    <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['cadastro'])}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
                     <td className="px-3 py-1"><span className={`text-[12px] font-mono ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{search ? highlightMatch(product.ncm || '-', search) : (product.ncm || '-')}</span></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span></td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
@@ -1396,16 +1740,34 @@ export default function ProdutosPage() {
           </table>
         </div>
 
-        {!loading && filtered.length > 0 && (
-          <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+        {!loading && pagination.total > 0 && (
+          <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex items-center justify-between">
             <span className="text-sm text-slate-500">
-              {filtered.length.toLocaleString('pt-BR')} produto{filtered.length !== 1 ? 's' : ''}
-              {filtered.length !== allProducts.length && (
-                <span className="text-xs text-primary font-medium ml-2">
-                  (filtrado de {allProducts.length.toLocaleString('pt-BR')})
-                </span>
-              )}
+              {((pagination.page - 1) * pagination.limit + 1).toLocaleString('pt-BR')}-{Math.min(pagination.page * pagination.limit, pagination.total).toLocaleString('pt-BR')} de {pagination.total.toLocaleString('pt-BR')} produto{pagination.total !== 1 ? 's' : ''}
             </span>
+            {pagination.pages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={pagination.page <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px]">chevron_left</span>
+                  Anterior
+                </button>
+                <span className="text-xs text-slate-500 tabular-nums">
+                  Pág. {pagination.page} / {pagination.pages}
+                </span>
+                <button
+                  disabled={pagination.page >= pagination.pages}
+                  onClick={() => setCurrentPage((p) => Math.min(pagination.pages, p + 1))}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próximo
+                  <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1541,44 +1903,7 @@ export default function ProdutosPage() {
       )}
 
       {/* Bulk edit modal */}
-      {bulkEditOpen && (() => {
-        const bulkInputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow";
-        const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine].filter(Boolean).length;
-
-        const fieldIconMap: Record<string, { bg: string; color: string }> = {
-          category: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30', color: 'text-indigo-500' },
-          folder: { bg: 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30', color: 'text-amber-500' },
-          tag: { bg: 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30', color: 'text-teal-500' },
-          verified: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30', color: 'text-emerald-500' },
-          toggle_on: { bg: 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30', color: 'text-rose-500' },
-        };
-
-        const BulkFieldRow = ({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) => {
-          const fm = fieldIconMap[icon] || { bg: 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30', color: 'text-primary' };
-          return (
-          <div className={`bg-white dark:bg-card-dark rounded-2xl ring-1 overflow-hidden transition-all ${checked ? 'ring-primary/30 dark:ring-primary/40 shadow-sm shadow-primary/5' : 'ring-slate-200/60 dark:ring-slate-800/50'}`}>
-            <label className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-              <div className="relative flex items-center">
-                <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary scale-105' : 'border-slate-300 dark:border-slate-600'}`}>
-                  {checked && <span className="material-symbols-outlined text-[14px] text-white">check</span>}
-                </div>
-              </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${fm.bg}`}>
-                <span className={`material-symbols-outlined text-[15px] ${fm.color}`}>{icon}</span>
-              </div>
-              <span className={`text-[13px] font-bold transition-colors ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
-            </label>
-            {checked && children && (
-              <div className="px-4 pb-3.5 pt-0">
-                {children}
-              </div>
-            )}
-          </div>
-          );
-        };
-
-        return (
+      {bulkEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setBulkEditOpen(false)}>
           <div className="relative bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-md h-full sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
 
@@ -1610,29 +1935,58 @@ export default function ProdutosPage() {
               </div>
 
               <BulkFieldRow checked={bulkFields.enableType} onChange={(v) => setBulkFields((f) => ({ ...f, enableType: v }))} icon="category" label="Linha">
-                <input type="text" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Deixe em branco para limpar" list="bulk-types-list" className={bulkInputCls} />
-                <datalist id="bulk-types-list">
-                  {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => (
-                    <option key={t!} value={t!} />
-                  ))}
-                </datalist>
+                {bulkNewMode.type ? (
+                  <div className="flex gap-1.5">
+                    <input autoFocus type="text" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Nome da nova linha" className={BULK_INPUT_CLS} />
+                    <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, type: false })); setBulkFields((f) => ({ ...f, productType: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                  </div>
+                ) : (
+                  <select value={bulkFields.productType} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, type: true })); setBulkFields((f) => ({ ...f, productType: '' })); } else { setBulkFields((f) => ({ ...f, productType: e.target.value })); } }} className={BULK_INPUT_CLS}>
+                    <option value="">— Limpar —</option>
+                    {hierOptions.lines.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                    <option value="__new__">+ Criar nova linha...</option>
+                  </select>
+                )}
               </BulkFieldRow>
 
               <BulkFieldRow checked={bulkFields.enableSubtype} onChange={(v) => setBulkFields((f) => ({ ...f, enableSubtype: v }))} icon="folder" label="Grupo">
-                <input type="text" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Deixe em branco para limpar" list="bulk-subtypes-list" className={bulkInputCls} />
-                <datalist id="bulk-subtypes-list">
-                  {Array.from(new Set(
-                    allProducts.filter((p) => !bulkFields.productType || p.productType === bulkFields.productType).map((p) => p.productSubtype).filter(Boolean)
-                  )).sort().map((s) => <option key={s!} value={s!} />)}
-                </datalist>
+                {bulkNewMode.subtype ? (
+                  <div className="flex gap-1.5">
+                    <input autoFocus type="text" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Nome do novo grupo" className={BULK_INPUT_CLS} />
+                    <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subtype: false })); setBulkFields((f) => ({ ...f, productSubtype: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                  </div>
+                ) : (
+                  <select value={bulkFields.productSubtype} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subtype: true })); setBulkFields((f) => ({ ...f, productSubtype: '' })); } else { setBulkFields((f) => ({ ...f, productSubtype: e.target.value })); } }} className={BULK_INPUT_CLS}>
+                    <option value="">— Limpar —</option>
+                    {(bulkFields.productType ? hierOptions.groupsFor(bulkFields.productType) : hierOptions.allGroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                    <option value="__new__">+ Criar novo grupo...</option>
+                  </select>
+                )}
+              </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableSubgroup} onChange={(v) => setBulkFields((f) => ({ ...f, enableSubgroup: v }))} icon="folder_open" label="Subgrupo">
+                {bulkNewMode.subgroup ? (
+                  <div className="flex gap-1.5">
+                    <input autoFocus type="text" value={bulkFields.productSubgroup} onChange={(e) => setBulkFields((f) => ({ ...f, productSubgroup: e.target.value }))} placeholder="Nome do novo subgrupo" className={BULK_INPUT_CLS} />
+                    <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subgroup: false })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                  </div>
+                ) : (
+                  <select value={bulkFields.productSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subgroup: true })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); } else { setBulkFields((f) => ({ ...f, productSubgroup: e.target.value })); } }} className={BULK_INPUT_CLS}>
+                    <option value="">— Limpar —</option>
+                    {(bulkFields.productType && bulkFields.productSubtype ? hierOptions.subgroupsFor(bulkFields.productType, bulkFields.productSubtype) : bulkFields.productSubtype ? hierOptions.subgroupsForGroup(bulkFields.productSubtype) : hierOptions.allSubgroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                    <option value="__new__">+ Criar novo subgrupo...</option>
+                  </select>
+                )}
               </BulkFieldRow>
 
               <BulkFieldRow checked={bulkFields.enableNcm} onChange={(v) => setBulkFields((f) => ({ ...f, enableNcm: v }))} icon="tag" label="NCM">
-                <input type="text" value={bulkFields.ncm} onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))} placeholder="Ex: 90189099" maxLength={8} className={`${bulkInputCls} font-mono`} />
+                <input type="text" value={bulkFields.ncm} onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))} placeholder="Ex: 90189099" maxLength={8} className={`${BULK_INPUT_CLS} font-mono`} />
               </BulkFieldRow>
 
               <BulkFieldRow checked={bulkFields.enableAnvisa} onChange={(v) => setBulkFields((f) => ({ ...f, enableAnvisa: v }))} icon="verified" label="ANVISA">
-                <input type="text" value={bulkFields.anvisa} onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))} placeholder="11 dígitos — deixe em branco para limpar" maxLength={13} className={`${bulkInputCls} font-mono`} />
+                <input type="text" value={bulkFields.anvisa} onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))} placeholder="11 dígitos — deixe em branco para limpar" maxLength={13} className={`${BULK_INPUT_CLS} font-mono`} />
               </BulkFieldRow>
 
               <BulkFieldRow checked={bulkFields.enableOutOfLine} onChange={(v) => setBulkFields((f) => ({ ...f, enableOutOfLine: v }))} icon="toggle_on" label="Status">
@@ -1674,8 +2028,7 @@ export default function ProdutosPage() {
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Product detail modal */}
       {detailProduct && (() => {
@@ -1684,50 +2037,6 @@ export default function ProdutosPage() {
           : detailProduct.anvisaStatus?.toLowerCase().includes('vencid') || detailProduct.anvisaStatus?.toLowerCase().includes('cancel')
           ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
           : 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
-
-        const iconBgMap: Record<string, string> = {
-          'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
-          'text-teal-500': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
-          'text-teal-600 dark:text-teal-400': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
-          'text-amber-500': 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
-          'text-emerald-500': 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30',
-          'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
-          'text-violet-500': 'bg-violet-500/10 dark:bg-violet-500/20 ring-violet-500/20 dark:ring-violet-500/30',
-        };
-
-        const SectionCard = ({ id, icon, iconColor, title, badge, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; children: React.ReactNode }) => {
-          const isOpen = detailOpenSections.has(id);
-          const ibg = iconBgMap[iconColor] || iconBgMap['text-primary'];
-          return (
-            <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
-              <button
-                onClick={() => toggleDetailSection(id)}
-                className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
-              >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${ibg}`}>
-                  <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
-                </div>
-                <h4 className="text-[13px] font-bold text-slate-900 dark:text-white flex-1 text-left">{title}</h4>
-                {badge}
-                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
-              </button>
-              {isOpen && (
-                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                  {children}
-                </div>
-              )}
-            </div>
-          );
-        };
-
-        const DetailField = ({ label, children, colSpan2 }: { label: string; children: React.ReactNode; colSpan2?: boolean; mono?: boolean }) => (
-          <div className={`${colSpan2 ? 'col-span-2' : ''}`}>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{label}</label>
-            {children}
-          </div>
-        );
-
-        const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed";
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
@@ -1762,6 +2071,9 @@ export default function ProdutosPage() {
                       )}
                       {detailProduct.productSubtype && (
                         <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
+                      )}
+                      {detailProduct.productSubgroup && (
+                        <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-[10px] font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
                       )}
                       {detailProduct.ean && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400">
@@ -1805,28 +2117,55 @@ export default function ProdutosPage() {
               <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
 
                 {/* ── Card: Dados do Cadastro ── */}
-                <SectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro">
+                <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <DetailField label="Nome Abreviado" colSpan2>
-                      <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={inputCls} />
-                    </DetailField>
-
-                    <DetailField label="NCM">
-                      <input type="text" value={detailNcm} onChange={(e) => setDetailNcm(e.target.value)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} className={`${inputCls} font-mono`} />
+                      <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
                     </DetailField>
 
                     <DetailField label="Linha">
-                      <input type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="ex: Medicamento" disabled={!canWrite} list="detail-types-list" className={inputCls} />
-                      <datalist id="detail-types-list">
-                        {Array.from(new Set(allProducts.map((p) => p.productType).filter(Boolean))).sort().map((t) => <option key={t!} value={t!} />)}
-                      </datalist>
+                      {detailNewMode.type ? (
+                        <div className="flex gap-1.5">
+                          <input autoFocus type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="Nome da nova linha" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                        </div>
+                      ) : (
+                        <select value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhuma —</option>
+                          {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
+                          <option value="__new__">+ Criar nova linha...</option>
+                        </select>
+                      )}
                     </DetailField>
 
-                    <DetailField label="Grupo" colSpan2>
-                      <input type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="ex: Antibiótico" disabled={!canWrite} list="detail-subtypes-list" className={inputCls} />
-                      <datalist id="detail-subtypes-list">
-                        {Array.from(new Set(allProducts.filter((p) => !detailType || p.productType === detailType).map((p) => p.productSubtype).filter(Boolean))).sort().map((s) => <option key={s!} value={s!} />)}
-                      </datalist>
+                    <DetailField label="Grupo">
+                      {detailNewMode.subtype ? (
+                        <div className="flex gap-1.5">
+                          <input autoFocus type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="Nome do novo grupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                        </div>
+                      ) : (
+                        <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhum —</option>
+                          {(detailType ? hierOptions.groupsFor(detailType) : hierOptions.allGroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                          <option value="__new__">+ Criar novo grupo...</option>
+                        </select>
+                      )}
+                    </DetailField>
+
+                    <DetailField label="Subgrupo">
+                      {detailNewMode.subgroup ? (
+                        <div className="flex gap-1.5">
+                          <input autoFocus type="text" value={detailSubgroup} onChange={(e) => setDetailSubgroup(e.target.value)} placeholder="Nome do novo subgrupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                          <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                        </div>
+                      ) : (
+                        <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhum —</option>
+                          {(detailType && detailSubtype ? hierOptions.subgroupsFor(detailType, detailSubtype) : detailSubtype ? hierOptions.subgroupsForGroup(detailSubtype) : hierOptions.allSubgroups).map((s) => <option key={s} value={s}>{s}</option>)}
+                          <option value="__new__">+ Criar novo subgrupo...</option>
+                        </select>
+                      )}
                     </DetailField>
 
                     {detailProduct.lastSupplierName && (
@@ -1853,10 +2192,115 @@ export default function ProdutosPage() {
                       </label>
                     </div>
                   </div>
-                </SectionCard>
+                </DetailSectionCard>
+
+                {/* ── Card: Dados Fiscais ── */}
+                <DetailSectionCard id="fiscal" icon="receipt_long" iconColor="text-amber-500" title="Dados Fiscais" isOpen={detailOpenSections.has('fiscal')} onToggle={toggleDetailSection}>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    {/* ─── Classificação Fiscal ─── */}
+                    <div className="col-span-2 flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Classificação Fiscal</span>
+                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                    </div>
+
+                    <DetailField label="NCM">
+                      <input type="text" value={detailNcm} onChange={(e) => setDetailNcm(e.target.value)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} list="detail-fiscal-ncm-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      <datalist id="detail-fiscal-ncm-list">
+                        {Array.from(new Set(products.map((p) => p.ncm).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                      </datalist>
+                    </DetailField>
+
+                    <DetailField label="CEST">
+                      <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="Ex: 1300400" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                    </DetailField>
+
+                    <DetailField label="Origem" colSpan2>
+                      <select value={detailOrigem} onChange={(e) => setDetailOrigem(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                        <option value="">— Selecione —</option>
+                        <option value="0">0 – Nacional</option>
+                        <option value="1">1 – Estrangeira (importação direta)</option>
+                        <option value="2">2 – Estrangeira (mercado interno)</option>
+                        <option value="3">3 – Nacional, conteúdo importado &gt;40%</option>
+                        <option value="5">5 – Nacional, conteúdo importado ≤40%</option>
+                        <option value="8">8 – Nacional, conteúdo importado &gt;70%</option>
+                      </select>
+                    </DetailField>
+
+                    {/* ─── Tributação ─── */}
+                    <div className="col-span-2 flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tributação</span>
+                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                    </div>
+
+                    <DetailField label="CST ICMS">
+                      <select value={detailSitTributaria} onChange={(e) => setDetailSitTributaria(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                        <option value="">— Selecione —</option>
+                        <option value="00">00 – Tributada integralmente</option>
+                        <option value="10">10 – Tributada com ICMS por ST</option>
+                        <option value="20">20 – Com redução de BC</option>
+                        <option value="30">30 – Isenta/não tributada com ST</option>
+                        <option value="40">40 – Isenta</option>
+                        <option value="41">41 – Não tributada</option>
+                        <option value="50">50 – Suspensão</option>
+                        <option value="51">51 – Diferimento</option>
+                        <option value="60">60 – ICMS cobrado anteriormente por ST</option>
+                        <option value="70">70 – Redução BC + ST</option>
+                        <option value="90">90 – Outras</option>
+                      </select>
+                    </DetailField>
+
+                    <DetailField label="Nome da Tributação">
+                      <input type="text" value={detailNomeTributacao} onChange={(e) => setDetailNomeTributacao(e.target.value)} maxLength={200} placeholder="Ex: Tributação integral, Isento, etc." disabled={!canWrite} list="detail-fiscal-nome-list" className={DETAIL_INPUT_CLS} />
+                      <datalist id="detail-fiscal-nome-list">
+                        {Array.from(new Set(products.map((p) => p.fiscalNomeTributacao).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
+                      </datalist>
+                    </DetailField>
+
+                    {/* ─── Alíquotas (%) ─── */}
+                    <div className="col-span-2 flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Alíquotas (%)</span>
+                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                    </div>
+
+                    <div className="col-span-2 grid grid-cols-5 gap-3">
+                      <DetailField label="ICMS">
+                        <input type="number" step="0.01" min="0" max="100" value={detailIcms} onChange={(e) => setDetailIcms(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      </DetailField>
+                      <DetailField label="PIS">
+                        <input type="number" step="0.01" min="0" max="100" value={detailPis} onChange={(e) => setDetailPis(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      </DetailField>
+                      <DetailField label="COFINS">
+                        <input type="number" step="0.01" min="0" max="100" value={detailCofins} onChange={(e) => setDetailCofins(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      </DetailField>
+                      <DetailField label="IPI">
+                        <input type="number" step="0.01" min="0" max="100" value={detailIpi} onChange={(e) => setDetailIpi(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      </DetailField>
+                      <DetailField label="FCP">
+                        <input type="number" step="0.01" min="0" max="100" value={detailFcp} onChange={(e) => setDetailFcp(e.target.value)} placeholder="0,00" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                      </DetailField>
+                    </div>
+
+                    {/* ─── CFOP Padrão ─── */}
+                    <div className="col-span-2 flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CFOP Padrão</span>
+                      <div className="flex-1 border-t border-slate-200 dark:border-slate-700/50" />
+                    </div>
+
+                    <DetailField label="Entrada">
+                      <input type="text" value={detailCfopEntrada} onChange={(e) => setDetailCfopEntrada(e.target.value)} maxLength={4} placeholder="Ex: 5102" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                    </DetailField>
+                    <DetailField label="Saída">
+                      <input type="text" value={detailCfopSaida} onChange={(e) => setDetailCfopSaida(e.target.value)} maxLength={4} placeholder="Ex: 6102" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                    </DetailField>
+
+                    <DetailField label="Obs. Fiscal" colSpan2>
+                      <textarea value={detailFiscalObs} onChange={(e) => setDetailFiscalObs(e.target.value)} maxLength={500} rows={2} placeholder="Observações fiscais do produto" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} resize-none`} />
+                    </DetailField>
+                  </div>
+                </DetailSectionCard>
 
                 {/* ── Card: Dados da ANVISA ── */}
-                <SectionCard id="anvisa" icon="verified_user" iconColor="text-teal-500" title="Dados da ANVISA"
+                <DetailSectionCard id="anvisa" icon="verified_user" iconColor="text-teal-500" title="Dados da ANVISA" isOpen={detailOpenSections.has('anvisa')} onToggle={toggleDetailSection}
                   badge={detailProduct.anvisaStatus ? (
                     <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
                   ) : undefined}
@@ -1864,7 +2308,7 @@ export default function ProdutosPage() {
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <DetailField label="Código ANVISA" colSpan2>
                         <div className="flex gap-2">
-                          <input type="text" value={detailAnvisa} onChange={(e) => setDetailAnvisa(e.target.value)} maxLength={13} placeholder="11 dígitos numéricos" disabled={!canWrite} className={`flex-1 ${inputCls} font-mono`} />
+                          <input type="text" value={detailAnvisa} onChange={(e) => setDetailAnvisa(e.target.value)} maxLength={13} placeholder="11 dígitos numéricos" disabled={!canWrite} className={`flex-1 ${DETAIL_INPUT_CLS} font-mono`} />
                           {canWrite && detailAnvisa && (
                             <button onClick={() => setDetailAnvisa('')} className="px-3 border border-red-200 dark:border-red-800/60 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm transition-colors" title="Limpar código ANVISA">
                               <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -1945,7 +2389,7 @@ export default function ProdutosPage() {
                         </div>
                       )}
                     </div>
-                </SectionCard>
+                </DetailSectionCard>
 
               </div>
 
@@ -2007,6 +2451,9 @@ export default function ProdutosPage() {
                     )}
                     {historyProduct.productSubtype && (
                       <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{historyProduct.productSubtype}</span>
+                    )}
+                    {historyProduct.productSubgroup && (
+                      <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-[10px] font-bold text-teal-600 dark:text-teal-400">{historyProduct.productSubgroup}</span>
                     )}
                     {historyProduct.outOfLine && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-[10px] font-bold text-red-600 dark:text-red-400">
@@ -2159,7 +2606,7 @@ export default function ProdutosPage() {
                     <div className="space-y-2.5">
                       {groups.map(([name, rows], gi) => {
                         const gk = `${groupKey}-${name}`;
-                        const isOpen = expandedGroups.has(gk) || (gi === 0 && !expandedGroups.has(`${gk}-closed`));
+                        const isOpen = expandedGroups.has(gk);
                         const isRowsExpanded = expandedRows.has(gk);
                         const visibleRows = isRowsExpanded ? rows : rows.slice(0, 3);
                         const remaining = rows.length - 3;
@@ -2169,18 +2616,7 @@ export default function ProdutosPage() {
                           <div key={gk} className={`rounded-xl overflow-hidden transition-colors ring-1 ${isOpen ? 'ring-slate-200 dark:ring-slate-700 bg-white dark:bg-card-dark shadow-sm' : `ring-slate-200/50 dark:ring-slate-700/40 ${cm.groupHover}`}`}>
                             <button
                               className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${isOpen ? '' : 'bg-white/60 dark:bg-slate-800/30'}`}
-                              onClick={() => {
-                                if (gi === 0) {
-                                  const closedKey = `${gk}-closed`;
-                                  if (isOpen) {
-                                    setExpandedGroups(prev => { const n = new Set(prev); n.delete(gk); n.add(closedKey); return n; });
-                                  } else {
-                                    setExpandedGroups(prev => { const n = new Set(prev); n.add(gk); n.delete(closedKey); return n; });
-                                  }
-                                } else {
-                                  toggleGroup(gk);
-                                }
-                              }}
+                              onClick={() => toggleGroup(gk)}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${cm.icon}`}>chevron_right</span>
@@ -2354,553 +2790,785 @@ export default function ProdutosPage() {
         invoiceId={invoiceModalId}
       />
 
-      {/* Manage Types Modal */}
-      {manageTypesOpen && (
-        <ManageTypesModal
-          allProducts={allProducts}
-          onClose={() => setManageTypesOpen(false)}
-          onUpdated={loadProducts}
-        />
-      )}
-
-      {/* Manage Manufacturers Modal */}
-      {manageManufacturersOpen && (
-        <ManageManufacturersModal
-          allProducts={allProducts}
-          onClose={() => setManageManufacturersOpen(false)}
-          onUpdated={loadProducts}
+      {/* Settings Modal (Ajustes) */}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onUpdated={async () => {
+            await Promise.all([loadProducts(), loadSettingsHierarchy()]);
+          }}
         />
       )}
     </>
   );
 }
 
-/* ─── Manage Types Modal ─── */
+/* ─── Settings Modal (Ajustes) ─── */
 
-function ManageTypesModal({ allProducts, onClose, onUpdated }: {
-  allProducts: ProductRow[];
+type SettingsSection = 'lines' | 'manufacturers' | 'fiscal';
+type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida';
+type SettingsCountItem = { value: string; count: number };
+type SettingsSubgroupItem = { name: string; count: number };
+type SettingsGroupItem = { name: string; count: number; subgroups: SettingsSubgroupItem[] };
+type SettingsLineItem = { name: string; count: number; groups: SettingsGroupItem[] };
+type SettingsManufacturerItem = { name: string; count: number; shortName: string | null };
+type ProductSettingsResponse = {
+  lines: SettingsLineItem[];
+  manufacturers: SettingsManufacturerItem[];
+  fiscal: {
+    ncm: SettingsCountItem[];
+    fiscalSitTributaria: SettingsCountItem[];
+    fiscalNomeTributacao: SettingsCountItem[];
+    cest: SettingsCountItem[];
+    origem: SettingsCountItem[];
+    cfopEntrada: SettingsCountItem[];
+    cfopSaida: SettingsCountItem[];
+  };
+};
+type PendingDeleteState = {
+  title: string;
+  message: string;
+  onConfirm: () => Promise<void>;
+} | null;
+
+const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: string; color: string }[] = [
+  { key: 'lines', label: 'Linhas e Grupos', icon: 'account_tree', color: 'text-indigo-500' },
+  { key: 'manufacturers', label: 'Fabricantes', icon: 'factory', color: 'text-teal-500' },
+  { key: 'fiscal', label: 'Dados Fiscais', icon: 'receipt_long', color: 'text-amber-500' },
+];
+
+const FISCAL_TABS: { key: FiscalTab; label: string; icon: string; field: keyof ProductRow }[] = [
+  { key: 'ncm', label: 'NCM', icon: 'tag', field: 'ncm' },
+  { key: 'fiscalSitTributaria', label: 'Sit. Tributária', icon: 'gavel', field: 'fiscalSitTributaria' },
+  { key: 'fiscalNomeTributacao', label: 'Tributação', icon: 'description', field: 'fiscalNomeTributacao' },
+  { key: 'cest', label: 'CEST', icon: 'verified', field: 'fiscalCest' },
+  { key: 'origem', label: 'Origem', icon: 'public', field: 'fiscalOrigem' },
+  { key: 'cfopEntrada', label: 'CFOP Entrada', icon: 'login', field: 'fiscalCfopEntrada' },
+  { key: 'cfopSaida', label: 'CFOP Saída', icon: 'logout', field: 'fiscalCfopSaida' },
+];
+
+function buildSubtypeCountKey(type: string, subtype: string) {
+  return `${type}:::${subtype}`;
+}
+
+function buildSubgroupCountKey(type: string, subtype: string, subgroup: string) {
+  return `${type}:::${subtype}:::${subgroup}`;
+}
+
+function SettingsModal({ onClose, onUpdated }: {
   onClose: () => void;
   onUpdated: () => Promise<void>;
 }) {
-  const [expandedType, setExpandedType] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<{ field: 'productType' | 'productSubtype'; oldValue: string; parentType?: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [activeSection, setActiveSection] = useState<SettingsSection>('lines');
+  const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null);
+  const [settingsData, setSettingsData] = useState<ProductSettingsResponse | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pendingDelete) onClose();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose, pendingDelete]);
+
+  const loadSettings = async () => {
+    setLoadingSettings(true);
+    try {
+      const res = await fetch('/api/products/settings');
+      if (!res.ok) throw new Error('Falha ao carregar ajustes');
+      const data = (await res.json()) as ProductSettingsResponse;
+      setSettingsData(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar ajustes');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const refreshAfterMutation = async () => {
+    await Promise.all([onUpdated(), loadSettings()]);
+  };
+
+  useEffect(() => {
+    void loadSettings();
+  }, []);
+
+  // --- shared ---
   const [saving, setSaving] = useState(false);
+
+  // --- lines ---
+  const [linesSearch, setLinesSearch] = useState('');
+  const [expandedType, setExpandedType] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<{ field: 'productType' | 'productSubtype' | 'productSubgroup'; oldValue: string; parentType?: string; parentSubtype?: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
   const [newSubtypeFor, setNewSubtypeFor] = useState<string | null>(null);
   const [newSubtypeName, setNewSubtypeName] = useState('');
+  const [expandedSubtype, setExpandedSubtype] = useState<string | null>(null);
+  const [newSubgroupFor, setNewSubgroupFor] = useState<string | null>(null);
+  const [newSubgroupName, setNewSubgroupName] = useState('');
 
-  // Build type → subtypes map with counts
-  const typeMap = useMemo(() => {
-    const map = new Map<string, Map<string, number>>();
-    for (const p of allProducts) {
-      const t = p.productType || '';
-      if (!t) continue;
-      if (!map.has(t)) map.set(t, new Map());
-      const sub = p.productSubtype || '';
-      if (sub) {
-        const subs = map.get(t)!;
-        subs.set(sub, (subs.get(sub) || 0) + 1);
-      }
-    }
-    return map;
-  }, [allProducts]);
+  // reset child form states when parent changes
+  useEffect(() => {
+    setNewSubtypeFor(null); setNewSubtypeName('');
+    setNewSubgroupFor(null); setNewSubgroupName('');
+    setEditingItem(null); setEditValue('');
+  }, [expandedType]);
 
-  const typeCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of allProducts) {
-      if (p.productType) counts.set(p.productType, (counts.get(p.productType) || 0) + 1);
-    }
-    return counts;
-  }, [allProducts]);
+  useEffect(() => {
+    setNewSubgroupFor(null); setNewSubgroupName('');
+  }, [expandedSubtype]);
 
-  const sortedTypes = useMemo(() => Array.from(typeCounts.keys()).sort(), [typeCounts]);
-
-  const callApi = async (field: 'productType' | 'productSubtype', oldValue: string, newValue: string | null, parentType?: string) => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/products/rename-type', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field, oldValue, newValue, parentType }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
-      const result = await res.json();
-      toast.success(`${result.updated} produto(s) atualizado(s)`);
-      await onUpdated();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRename = async () => {
-    if (!editingItem || !editValue.trim()) return;
-    await callApi(editingItem.field, editingItem.oldValue, editValue.trim(), editingItem.parentType);
-    setEditingItem(null);
-    setEditValue('');
-  };
-
-  const handleDelete = async (field: 'productType' | 'productSubtype', oldValue: string, parentType?: string) => {
-    if (!confirm(`Remover "${oldValue}" de todos os produtos?`)) return;
-    await callApi(field, oldValue, null, parentType);
-  };
-
-  const startEdit = (field: 'productType' | 'productSubtype', oldValue: string, parentType?: string) => {
-    setEditingItem({ field, oldValue, parentType });
-    setEditValue(oldValue);
-  };
-
+  // --- shared UI ---
   const inlineInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow";
   const actionBtnCls = "p-1.5 rounded-lg transition-colors";
 
   const InlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
       <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}>
-        <span className="material-symbols-outlined text-[18px]">check</span>
-      </button>
-      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}>
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
+      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 dark:from-indigo-500/30 dark:to-indigo-500/10 flex items-center justify-center ring-1 ring-indigo-500/20 dark:ring-indigo-500/30">
-              <span className="material-symbols-outlined text-[24px] text-indigo-500">account_tree</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Gerenciar Linhas e Grupos</h2>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                <span className="font-semibold text-indigo-500">{sortedTypes.length}</span> linha{sortedTypes.length !== 1 ? 's' : ''} cadastrada{sortedTypes.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
-          {sortedTypes.length === 0 && (
-            <div className="flex flex-col items-center py-8">
-              <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-              <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhuma linha cadastrada.</p>
-            </div>
-          )}
-
-          {sortedTypes.map((type) => {
-            const count = typeCounts.get(type) || 0;
-            const subs = typeMap.get(type);
-            const isExpanded = expandedType === type;
-            const isEditing = editingItem?.field === 'productType' && editingItem.oldValue === type;
-
-            return (
-              <div key={type} className={`rounded-xl border overflow-hidden transition-colors ${isExpanded ? 'border-indigo-200/60 dark:border-indigo-800/30 shadow-sm' : 'border-slate-200 dark:border-slate-700'}`}>
-                {/* Line header */}
-                <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors ${isExpanded ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-950/30 dark:to-transparent' : 'bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
-                  <button onClick={() => setExpandedType(isExpanded ? null : type)} className="text-indigo-400 dark:text-indigo-500">
-                    <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
-                  </button>
-
-                  {isEditing ? (
-                    <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleRename} onCancel={() => setEditingItem(null)} disabled={saving} />
-                  ) : (
-                    <>
-                      <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
-                      <span className="flex-1 text-[13px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>
-                        {type}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
-                      <button onClick={() => startEdit('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear">
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </button>
-                      <button onClick={() => handleDelete('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}>
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Subtypes list */}
-                {isExpanded && (
-                  <div className="border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 px-4 py-2 space-y-0.5">
-                    {subs && subs.size > 0 ? (
-                      Array.from(subs.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([sub, subCount]) => {
-                        const isSubEditing = editingItem?.field === 'productSubtype' && editingItem.oldValue === sub && editingItem.parentType === type;
-                        return (
-                          <div key={sub} className="flex items-center gap-2 py-1.5 pl-7 group/sub rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/30 transition-colors">
-                            {isSubEditing ? (
-                              <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleRename} onCancel={() => setEditingItem(null)} disabled={saving} />
-                            ) : (
-                              <>
-                                <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
-                                <span className="flex-1 text-[13px] text-slate-600 dark:text-slate-300">{sub}</span>
-                                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
-                                <button onClick={() => startEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-0 group-hover/sub:opacity-100 transition-opacity`} title="Renomear">
-                                  <span className="material-symbols-outlined text-[15px]">edit</span>
-                                </button>
-                                <button onClick={() => handleDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}>
-                                  <span className="material-symbols-outlined text-[15px]">delete</span>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-[12px] text-slate-400 dark:text-slate-500 pl-7 py-1">Nenhum grupo</p>
-                    )}
-
-                    {/* Add subtype */}
-                    {newSubtypeFor === type ? (
-                      <div className="pl-7 py-1">
-                        <InlineForm
-                          value={newSubtypeName}
-                          onChange={setNewSubtypeName}
-                          onSubmit={async () => {
-                            if (!newSubtypeName.trim()) return;
-                            try {
-                              const res = await fetch('/api/products/rename-type', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'addGroup', parentType: type, subtypeName: newSubtypeName.trim() }),
-                              });
-                              if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
-                              toast.success(`Grupo "${newSubtypeName.trim()}" criado`);
-                              await onUpdated();
-                            } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); }
-                            setNewSubtypeName('');
-                            setNewSubtypeFor(null);
-                          }}
-                          onCancel={() => setNewSubtypeFor(null)}
-                          placeholder="Novo grupo..."
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setNewSubtypeFor(type); setNewSubtypeName(''); }}
-                        className="flex items-center gap-1.5 pl-7 py-1.5 text-[12px] font-medium text-slate-400 hover:text-amber-500 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">add_circle</span>
-                        Adicionar grupo
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Add new type */}
-          <div className="pt-2">
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!newTypeName.trim()) return;
-                try {
-                  const res = await fetch('/api/products/rename-type', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'addLine', name: newTypeName.trim() }),
-                  });
-                  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
-                  toast.success(`Linha "${newTypeName.trim()}" criada`);
-                  await onUpdated();
-                } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); }
-                setNewTypeName('');
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                placeholder="Nova linha..."
-                value={newTypeName}
-                onChange={(e) => setNewTypeName(e.target.value)}
-                className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow"
-              />
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Adicionar
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Manage Manufacturers Modal ─── */
-
-function ManageManufacturersModal({ allProducts, onClose, onUpdated }: {
-  allProducts: ProductRow[];
-  onClose: () => void;
-  onUpdated: () => Promise<void>;
-}) {
-  const [saving, setSaving] = useState(false);
+  // --- manufacturers ---
   const [editingMfr, setEditingMfr] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [mfrEditValue, setMfrEditValue] = useState('');
   const [editingShort, setEditingShort] = useState<string | null>(null);
   const [shortValue, setShortValue] = useState('');
-  const [searchFilter, setSearchFilter] = useState('');
+  const [mfrSearch, setMfrSearch] = useState('');
   const [newMfrName, setNewMfrName] = useState('');
   const [newMfrShort, setNewMfrShort] = useState('');
   const [addingNew, setAddingNew] = useState(false);
 
-  // Build manufacturer list with counts and current short names
-  const manufacturers = useMemo(() => {
-    const map = new Map<string, { count: number; shortName: string | null }>();
-    for (const p of allProducts) {
-      const mfr = p.anvisaManufacturer;
-      if (!mfr) continue;
-      const existing = map.get(mfr);
-      if (existing) {
-        existing.count++;
-        if (!existing.shortName && p.manufacturerShortName) existing.shortName = p.manufacturerShortName;
-      } else {
-        map.set(mfr, { count: 1, shortName: p.manufacturerShortName || null });
+  // --- fiscal ---
+  const [fiscalSearch, setFiscalSearch] = useState('');
+  const [fiscalTab, setFiscalTab] = useState<FiscalTab>('ncm');
+  const [fiscalEditItem, setFiscalEditItem] = useState<{ field: FiscalTab; oldValue: string } | null>(null);
+  const [fiscalEditValue, setFiscalEditValue] = useState('');
+  const [newFiscalName, setNewFiscalName] = useState('');
+
+  // ==== data: lines ====
+  const typeMap = useMemo(() => {
+    const map = new Map<string, Map<string, Map<string, number>>>();
+    for (const line of settingsData?.lines || []) {
+      const groups = new Map<string, Map<string, number>>();
+      for (const group of line.groups || []) {
+        const subgroups = new Map<string, number>();
+        for (const subgroup of group.subgroups || []) {
+          subgroups.set(subgroup.name, subgroup.count || 0);
+        }
+        groups.set(group.name, subgroups);
+      }
+      map.set(line.name, groups);
+    }
+    return map;
+  }, [settingsData]);
+
+  const typeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const line of settingsData?.lines || []) {
+      counts.set(line.name, line.count || 0);
+    }
+    return counts;
+  }, [settingsData]);
+  const sortedTypes = useMemo(() => Array.from(typeCounts.keys()).sort((a, b) => a.localeCompare(b, 'pt-BR')), [typeCounts]);
+  const filteredTypes = useMemo(() => {
+    if (!linesSearch) return sortedTypes;
+    const q = linesSearch.toLowerCase();
+    return sortedTypes.filter((type) => {
+      if (type.toLowerCase().includes(q)) return true;
+      const groups = typeMap.get(type);
+      if (!groups) return false;
+      for (const [groupName, subgroups] of Array.from(groups.entries())) {
+        if (groupName.toLowerCase().includes(q)) return true;
+        for (const [sgName] of Array.from(subgroups.entries())) {
+          if (sgName.toLowerCase().includes(q)) return true;
+        }
+      }
+      return false;
+    });
+  }, [sortedTypes, linesSearch, typeMap]);
+
+  const taxonomyCounts = useMemo(() => {
+    const subtypeByType = new Map<string, number>();
+    const subtypeTotal = new Map<string, number>();
+    const subgroupByParent = new Map<string, number>();
+    const subgroupTotal = new Map<string, number>();
+
+    for (const line of settingsData?.lines || []) {
+      for (const group of line.groups || []) {
+        const subtypeByTypeKey = buildSubtypeCountKey(line.name, group.name);
+        const groupCount = group.count || 0;
+        subtypeByType.set(subtypeByTypeKey, groupCount);
+        subtypeTotal.set(group.name, (subtypeTotal.get(group.name) || 0) + groupCount);
+
+        for (const subgroup of group.subgroups || []) {
+          const subgroupCount = subgroup.count || 0;
+          const subgroupByParentKey = buildSubgroupCountKey(line.name, group.name, subgroup.name);
+          subgroupByParent.set(subgroupByParentKey, subgroupCount);
+          subgroupTotal.set(subgroup.name, (subgroupTotal.get(subgroup.name) || 0) + subgroupCount);
+        }
       }
     }
-    return Array.from(map.entries())
-      .map(([name, info]) => ({ name, count: info.count, shortName: info.shortName }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allProducts]);
 
-  const filtered = useMemo(() => {
-    if (!searchFilter) return manufacturers;
-    const q = searchFilter.toLowerCase();
+    return {
+      subtypeByType,
+      subtypeTotal,
+      subgroupByParent,
+      subgroupTotal,
+    };
+  }, [settingsData]);
+
+  // ==== data: manufacturers ====
+  const manufacturers = useMemo(() => {
+    return (settingsData?.manufacturers || [])
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [settingsData]);
+  const filteredMfrs = useMemo(() => {
+    if (!mfrSearch) return manufacturers;
+    const q = mfrSearch.toLowerCase();
     return manufacturers.filter((m) => m.name.toLowerCase().includes(q) || (m.shortName && m.shortName.toLowerCase().includes(q)));
-  }, [manufacturers, searchFilter]);
+  }, [manufacturers, mfrSearch]);
 
-  const callApi = async (body: Record<string, unknown>) => {
+  // ==== data: fiscal ====
+  const fiscalItemsMap = useMemo(() => {
+    const result: Record<FiscalTab, Map<string, number>> = {
+      ncm: new Map(), fiscalSitTributaria: new Map(), fiscalNomeTributacao: new Map(),
+      cest: new Map(), origem: new Map(), cfopEntrada: new Map(), cfopSaida: new Map(),
+    };
+    for (const item of settingsData?.fiscal.ncm || []) result.ncm.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.fiscalSitTributaria || []) result.fiscalSitTributaria.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.fiscalNomeTributacao || []) result.fiscalNomeTributacao.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.cest || []) result.cest.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.origem || []) result.origem.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.cfopEntrada || []) result.cfopEntrada.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.cfopSaida || []) result.cfopSaida.set(item.value, item.count || 0);
+    return result;
+  }, [settingsData]);
+  const currentFiscalItems = useMemo(() => {
+    const items = Array.from(fiscalItemsMap[fiscalTab].entries()).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
+    if (!fiscalSearch) return items;
+    const q = fiscalSearch.toLowerCase();
+    return items.filter(([value]) => value.toLowerCase().includes(q));
+  }, [fiscalItemsMap, fiscalTab, fiscalSearch]);
+
+  // ==== API helpers ====
+  const callTypeApi = async (field: 'productType' | 'productSubtype' | 'productSubgroup', oldValue: string, newValue: string | null, parentType?: string, parentSubtype?: string) => {
     setSaving(true);
     try {
-      const res = await fetch('/api/products/rename-manufacturer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch('/api/products/rename-type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, oldValue, newValue, parentType, parentSubtype }) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
       const result = await res.json();
-      toast.success(`${result.updated} produto(s) atualizado(s)`);
-      await onUpdated();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro');
-    } finally {
-      setSaving(false);
-    }
+      const count = result.updated;
+      toast.success(count > 0 ? `${count} produto(s) atualizado(s)` : result.created ? 'Item adicionado ao catálogo' : 'Item removido do catálogo');
+      await refreshAfterMutation();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
+  };
+  const callMfrApi = async (body: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/products/rename-manufacturer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      const result = await res.json();
+      const count = result.updated;
+      toast.success(count > 0 ? `${count} produto(s) atualizado(s)` : result.created ? 'Item adicionado ao catálogo' : 'Item removido do catálogo');
+      await refreshAfterMutation();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
+  };
+  const callFiscalApi = async (field: FiscalTab, oldValue: string, newValue: string | null) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/products/rename-fiscal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, oldValue, newValue }) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      const result = await res.json();
+      const count = result.updated;
+      toast.success(count > 0 ? `${count} produto(s) atualizado(s)` : result.created ? 'Item adicionado ao catálogo' : 'Item removido do catálogo');
+      await refreshAfterMutation();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
   };
 
-  const handleRename = async (oldVal: string) => {
-    if (!editValue.trim() || editValue.trim() === oldVal) { setEditingMfr(null); return; }
-    await callApi({ action: 'rename', oldValue: oldVal, newValue: editValue.trim() });
-    setEditingMfr(null);
+  // ==== handlers ====
+  const openDeleteDialog = (
+    title: string,
+    count: number,
+    onConfirm: () => Promise<void>,
+  ) => {
+    const message = count > 0
+      ? `Este valor está associado a ${count.toLocaleString('pt-BR')} ${count === 1 ? 'produto' : 'produtos'}. A associação será removida.`
+      : 'Este item existe apenas no catálogo e será removido da lista.';
+
+    setPendingDelete({ title, message, onConfirm });
   };
 
-  const handleDelete = async (name: string) => {
-    if (!confirm(`Remover fabricante "${name}" de todos os produtos?`)) return;
-    await callApi({ action: 'delete', oldValue: name });
-  };
+  const handleTypeRename = async () => { if (!editingItem || !editValue.trim()) return; await callTypeApi(editingItem.field, editingItem.oldValue, editValue.trim(), editingItem.parentType, editingItem.parentSubtype); setEditingItem(null); setEditValue(''); };
+  const handleTypeDelete = (field: 'productType' | 'productSubtype' | 'productSubgroup', oldValue: string, parentType?: string, parentSubtype?: string) => {
+    const affected = field === 'productType'
+      ? (typeCounts.get(oldValue) || 0)
+      : field === 'productSubtype'
+        ? (parentType
+          ? (taxonomyCounts.subtypeByType.get(buildSubtypeCountKey(parentType, oldValue)) || 0)
+          : (taxonomyCounts.subtypeTotal.get(oldValue) || 0))
+        : (parentType && parentSubtype
+          ? (taxonomyCounts.subgroupByParent.get(buildSubgroupCountKey(parentType, parentSubtype, oldValue)) || 0)
+          : (taxonomyCounts.subgroupTotal.get(oldValue) || 0));
 
-  const handleAddNew = async () => {
+    openDeleteDialog(
+      `Remover "${oldValue}"?`,
+      affected,
+      async () => {
+        await callTypeApi(field, oldValue, null, parentType, parentSubtype);
+      },
+    );
+  };
+  const startTypeEdit = (field: 'productType' | 'productSubtype' | 'productSubgroup', oldValue: string, parentType?: string, parentSubtype?: string) => { setEditingItem({ field, oldValue, parentType, parentSubtype }); setEditValue(oldValue); };
+
+  const handleMfrRename = async (oldVal: string) => { if (!mfrEditValue.trim() || mfrEditValue.trim() === oldVal) { setEditingMfr(null); return; } await callMfrApi({ action: 'rename', oldValue: oldVal, newValue: mfrEditValue.trim() }); setEditingMfr(null); };
+  const handleMfrDelete = (name: string) => {
+    const affected = manufacturers.find((mfr) => mfr.name === name)?.count || 0;
+    openDeleteDialog(
+      `Remover fabricante "${name}"?`,
+      affected,
+      async () => {
+        await callMfrApi({ action: 'delete', oldValue: name });
+      },
+    );
+  };
+  const handleMfrShortName = async (manufacturer: string) => { await callMfrApi({ action: 'shortName', manufacturer, shortName: shortValue.trim() || null }); setEditingShort(null); };
+  const handleMfrAdd = async () => {
     if (!newMfrName.trim()) return;
     setAddingNew(true);
     try {
-      const res = await fetch('/api/products/rename-manufacturer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', name: newMfrName.trim(), shortName: newMfrShort.trim() || null }),
-      });
+      const res = await fetch('/api/products/rename-manufacturer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', name: newMfrName.trim(), shortName: newMfrShort.trim() || null }) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
       toast.success(`Fabricante "${newMfrName.trim()}" adicionado`);
       setNewMfrName('');
       setNewMfrShort('');
-      await onUpdated();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro');
-    } finally {
-      setAddingNew(false);
-    }
+      await refreshAfterMutation();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setAddingNew(false); }
   };
 
-  const handleShortName = async (manufacturer: string) => {
-    const val = shortValue.trim() || null;
-    await callApi({ action: 'shortName', manufacturer, shortName: val });
-    setEditingShort(null);
+  const handleFiscalRename = async () => { if (!fiscalEditItem || !fiscalEditValue.trim()) return; await callFiscalApi(fiscalEditItem.field, fiscalEditItem.oldValue, fiscalEditValue.trim()); setFiscalEditItem(null); setFiscalEditValue(''); };
+  const handleFiscalDelete = (field: FiscalTab, oldValue: string) => {
+    const affected = fiscalItemsMap[field].get(oldValue) || 0;
+    openDeleteDialog(
+      `Remover "${oldValue}"?`,
+      affected,
+      async () => {
+        await callFiscalApi(field, oldValue, null);
+      },
+    );
   };
-
-  const mfrInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow";
-  const mfrActionBtn = "p-1.5 rounded-lg transition-colors";
+  const handleFiscalAdd = async () => {
+    if (!newFiscalName.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/products/rename-fiscal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', field: fiscalTab, name: newFiscalName.trim() }) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+      toast.success(`"${newFiscalName.trim()}" cadastrado`);
+      await refreshAfterMutation();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); setNewFiscalName(''); }
+  };
 
   const MfrInlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
-      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={mfrInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${mfrActionBtn} text-primary hover:bg-primary/10`}>
-        <span className="material-symbols-outlined text-[18px]">check</span>
-      </button>
-      <button type="button" onClick={onCancel} className={`${mfrActionBtn} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}>
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
+      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
+      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
+  const activeTabMeta = FISCAL_TABS.find((t) => t.key === fiscalTab)!;
+
+  // ======================== RENDER ========================
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-slate-50 dark:bg-[#1a1e2e] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div
+          className="bg-slate-50 dark:bg-[#1a1e2e] rounded-none sm:rounded-2xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[88vh] flex flex-col sm:flex-row overflow-hidden ring-0 sm:ring-1 ring-black/5 dark:ring-white/5"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-modal-section-title"
+        >
 
-        {/* Header */}
-        <div className="relative px-6 py-5 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500/20 to-teal-500/5 dark:from-teal-500/30 dark:to-teal-500/10 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30">
-              <span className="material-symbols-outlined text-[24px] text-teal-500">factory</span>
+          {/* ── Sidebar ── */}
+          <div className="shrink-0 sm:w-56 bg-white dark:bg-card-dark border-b sm:border-b-0 sm:border-r border-slate-200 dark:border-slate-700 flex sm:flex-col">
+            {/* Title */}
+            <div className="hidden sm:flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-800/60">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 dark:from-violet-500/30 dark:to-violet-500/10 flex items-center justify-center ring-1 ring-violet-500/20 dark:ring-violet-500/30">
+                <span className="material-symbols-outlined text-[18px] text-violet-500">settings</span>
+              </div>
+              <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">Ajustes</h2>
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Gerenciar Fabricantes</h2>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                <span className="font-semibold text-teal-500">{filtered.length}</span> fabricante{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Search + Add */}
-        <div className="px-5 pt-4 pb-3 space-y-3 bg-white/50 dark:bg-card-dark/50 border-b border-slate-100 dark:border-slate-800/50">
-          <div className="relative">
-            <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-            <input
-              type="text"
-              placeholder="Buscar fabricante..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow"
-            />
+            {/* Nav items */}
+            <nav className="flex sm:flex-col flex-1 sm:py-2 overflow-x-auto sm:overflow-x-visible">
+              {SETTINGS_SECTIONS.map((sec) => {
+                const isActive = activeSection === sec.key;
+                return (
+                  <button key={sec.key} onClick={() => setActiveSection(sec.key)} className={`flex items-center gap-2.5 px-5 py-3 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-slate-50 dark:bg-slate-800/40 border-b-2 sm:border-b-0 sm:border-r-2 border-violet-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
+                    <span className={`material-symbols-outlined text-[18px] ${isActive ? sec.color : 'text-slate-400'}`}>{sec.icon}</span>
+                    <span className={`text-[13px] font-semibold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{sec.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Add new manufacturer */}
-          <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
-            <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
-            <div className="flex gap-2">
-              <input
-                placeholder="Nome completo"
-                value={newMfrName}
-                onChange={(e) => setNewMfrName(e.target.value)}
-                className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
-              />
-              <input
-                placeholder="Abreviado"
-                value={newMfrShort}
-                onChange={(e) => setNewMfrShort(e.target.value)}
-                className="w-36 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
-              />
-              <button
-                onClick={handleAddNew}
-                disabled={addingNew || !newMfrName.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Adicionar
+          {/* ── Content ── */}
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            {/* Close button (top-right) */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
+              <h3 id="settings-modal-section-title" className="text-[14px] font-bold text-slate-900 dark:text-white">{SETTINGS_SECTIONS.find((s) => s.key === activeSection)!.label}</h3>
+              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
-          {filtered.length === 0 && (
-            <div className="flex flex-col items-center py-8">
-              <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-              <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhum fabricante encontrado.</p>
-            </div>
-          )}
-
-          {filtered.map((mfr) => {
-            const isEditingName = editingMfr === mfr.name;
-            const isEditingShortName = editingShort === mfr.name;
-
-            return (
-              <div key={mfr.name} className="group/mfr rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600 transition-colors overflow-hidden">
-                {/* Manufacturer name row */}
-                <div className="flex items-center gap-2.5 px-4 py-2.5">
-                  {isEditingName ? (
-                    <MfrInlineForm value={editValue} onChange={setEditValue} onSubmit={() => handleRename(mfr.name)} onCancel={() => setEditingMfr(null)} disabled={saving} />
-                  ) : (
-                    <>
-                      <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-[16px] text-teal-500">factory</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate block" title={mfr.name}>{mfr.name}</span>
-                        {mfr.shortName && (
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">{mfr.shortName}</span>
-                        )}
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
-                      <button onClick={() => { setEditingMfr(mfr.name); setEditValue(mfr.name); }} className={`${mfrActionBtn} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear">
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </button>
-                      <button onClick={() => handleDelete(mfr.name)} className={`${mfrActionBtn} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}>
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    </>
-                  )}
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingSettings ? (
+                <div className="flex flex-col items-center justify-center py-16 px-5">
+                  <span className="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 animate-spin">progress_activity</span>
+                  <p className="mt-2 text-[13px] text-slate-400 dark:text-slate-500">Carregando ajustes...</p>
                 </div>
-
-                {/* Short name row */}
-                {!isEditingName && (
-                  <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold w-24 shrink-0">Abreviado</span>
-                    {isEditingShortName ? (
-                      <MfrInlineForm value={shortValue} onChange={setShortValue} onSubmit={() => handleShortName(mfr.name)} onCancel={() => setEditingShort(null)} placeholder="Ex: Medtronic" disabled={saving} />
-                    ) : (
-                      <>
-                        <span className={`flex-1 text-[13px] ${mfr.shortName ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500 italic'}`}>
-                          {mfr.shortName || 'não definido'}
-                        </span>
-                        <button
-                          onClick={() => { setEditingShort(mfr.name); setShortValue(mfr.shortName || ''); }}
-                          className={`${mfrActionBtn} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-0 group-hover/mfr:opacity-100 transition-opacity shrink-0`}
-                          title="Definir nome abreviado"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">edit</span>
-                        </button>
-                      </>
-                    )}
+              ) : (
+                <>
+            {/* ════════════ LINHAS E GRUPOS ════════════ */}
+            {activeSection === 'lines' && (
+              <div className="px-5 py-4 space-y-2">
+                <div className="relative">
+                  <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                  <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                </div>
+                {filteredTypes.length === 0 && (
+                  <div className="flex flex-col items-center py-8">
+                    <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+                    <p className="text-[13px] text-slate-400 dark:text-slate-500">{linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'}</p>
                   </div>
                 )}
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark">
-          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            Fechar
-          </button>
+                {filteredTypes.map((type) => {
+                  const count = typeCounts.get(type) || 0;
+                  const subs = typeMap.get(type);
+                  const isExpanded = expandedType === type;
+                  const isEditing = editingItem?.field === 'productType' && editingItem.oldValue === type;
+                  return (
+                    <div key={type} className={`rounded-xl border overflow-hidden transition-colors ${isExpanded ? 'border-indigo-200/60 dark:border-indigo-800/30 shadow-sm' : 'border-slate-200 dark:border-slate-700'}`}>
+                      <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors ${isExpanded ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-950/30 dark:to-transparent' : 'bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
+                        <button onClick={() => setExpandedType(isExpanded ? null : type)} className="text-indigo-400 dark:text-indigo-500">
+                          <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                        </button>
+                        {isEditing ? (
+                          <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleTypeRename} onCancel={() => setEditingItem(null)} disabled={saving} />
+                        ) : (
+                          <>
+                            <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+                            <span className="flex-1 text-[13px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>{type}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
+                            <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                          </>
+                        )}
+                      </div>
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 px-4 py-2 space-y-0.5">
+                          {subs && subs.size > 0 ? (
+                            Array.from(subs.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([sub, subgroupsMap]) => {
+                              const subCount = taxonomyCounts.subtypeByType.get(buildSubtypeCountKey(type, sub)) || 0;
+                              const isSubEditing = editingItem?.field === 'productSubtype' && editingItem.oldValue === sub && editingItem.parentType === type;
+                              const isSubExpanded = expandedSubtype === `${type}|${sub}`;
+                              return (
+                                <div key={sub}>
+                                  <div className="flex items-center gap-2 py-1.5 pl-7 group/sub rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/30 transition-colors">
+                                    {isSubEditing ? (
+                                      <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleTypeRename} onCancel={() => setEditingItem(null)} disabled={saving} />
+                                    ) : (
+                                      <>
+                                        <button onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)} className="text-amber-400 dark:text-amber-500">
+                                          <span className="material-symbols-outlined text-[16px] transition-transform duration-200" style={{ transform: isSubExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
+                                        </button>
+                                        <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
+                                        <span className="flex-1 text-[13px] text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)}>{sub}</span>
+                                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
+                                        <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                        <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                      </>
+                                    )}
+                                  </div>
+                                  {isSubExpanded && (
+                                    <div className="pl-14 py-1 space-y-0.5">
+                                      {subgroupsMap.size > 0 ? (
+                                        Array.from(subgroupsMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([sg, sgCount]) => {
+                                          const isSgEditing = editingItem?.field === 'productSubgroup' && editingItem.oldValue === sg && editingItem.parentType === type && editingItem.parentSubtype === sub;
+                                          return (
+                                            <div key={sg} className="flex items-center gap-2 py-1 group/sg rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/30 transition-colors">
+                                              {isSgEditing ? (
+                                                <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleTypeRename} onCancel={() => setEditingItem(null)} disabled={saving} />
+                                              ) : (
+                                                <>
+                                                  <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
+                                                  <span className="flex-1 text-[12px] text-slate-500 dark:text-slate-400">{sg}</span>
+                                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 min-w-[20px] text-center">{sgCount}</span>
+                                                  <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
+                                                  <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
+                                                </>
+                                              )}
+                                            </div>
+                                          );
+                                        })
+                                      ) : (
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 py-0.5">Nenhum subgrupo</p>
+                                      )}
+                                      {newSubgroupFor === `${type}|${sub}` ? (
+                                        <div className="py-1">
+                                          <InlineForm
+                                            value={newSubgroupName} onChange={setNewSubgroupName}
+                                            onSubmit={async () => {
+                                              if (!newSubgroupName.trim() || saving) return;
+                                              setSaving(true);
+                                              try {
+                                                const res = await fetch('/api/products/rename-type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'addSubgroup', parentType: type, parentSubtype: sub, subgroupName: newSubgroupName.trim() }) });
+                                                if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+                                                toast.success(`Subgrupo "${newSubgroupName.trim()}" criado`);
+                                                await refreshAfterMutation();
+                                              } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
+                                              setNewSubgroupName(''); setNewSubgroupFor(null);
+                                            }}
+                                            onCancel={() => setNewSubgroupFor(null)} placeholder="Novo subgrupo..."
+                                          />
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => { setNewSubgroupFor(`${type}|${sub}`); setNewSubgroupName(''); }} className="flex items-center gap-1.5 py-1 text-[11px] font-medium text-slate-400 hover:text-teal-500 transition-colors">
+                                          <span className="material-symbols-outlined text-[14px]">add_circle</span>Adicionar subgrupo
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-[12px] text-slate-400 dark:text-slate-500 pl-7 py-1">Nenhum grupo</p>
+                          )}
+                          {newSubtypeFor === type ? (
+                            <div className="pl-7 py-1">
+                              <InlineForm
+                                value={newSubtypeName} onChange={setNewSubtypeName}
+                                onSubmit={async () => {
+                                  if (!newSubtypeName.trim() || saving) return;
+                                  setSaving(true);
+                                  try {
+                                    const res = await fetch('/api/products/rename-type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'addGroup', parentType: type, subtypeName: newSubtypeName.trim() }) });
+                                    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+                                    toast.success(`Grupo "${newSubtypeName.trim()}" criado`);
+                                    await refreshAfterMutation();
+                                  } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
+                                  setNewSubtypeName(''); setNewSubtypeFor(null);
+                                }}
+                                onCancel={() => setNewSubtypeFor(null)} placeholder="Novo grupo..."
+                              />
+                            </div>
+                          ) : (
+                            <button onClick={() => { setNewSubtypeFor(type); setNewSubtypeName(''); }} className="flex items-center gap-1.5 pl-7 py-1.5 text-[12px] font-medium text-slate-400 hover:text-amber-500 transition-colors">
+                              <span className="material-symbols-outlined text-[15px]">add_circle</span>Adicionar grupo
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div className="pt-2">
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!newTypeName.trim() || saving) return;
+                    setSaving(true);
+                    try {
+                      const res = await fetch('/api/products/rename-type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'addLine', name: newTypeName.trim() }) });
+                      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
+                      toast.success(`Linha "${newTypeName.trim()}" criada`);
+                      await refreshAfterMutation();
+                    } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
+                    setNewTypeName('');
+                  }} className="flex items-center gap-2">
+                    <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                    <button type="submit" className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* ════════════ FABRICANTES ════════════ */}
+            {activeSection === 'manufacturers' && (
+              <div className="flex flex-col h-full">
+                <div className="px-5 pt-4 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-800/50">
+                  <div className="relative">
+                    <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                    <input type="text" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                  </div>
+                  <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
+                    <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
+                    <div className="flex gap-2">
+                      <input placeholder="Nome completo" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                      <input placeholder="Abreviado" value={newMfrShort} onChange={(e) => setNewMfrShort(e.target.value)} className="w-36 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                      <button onClick={handleMfrAdd} disabled={addingNew || !newMfrName.trim()} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+                  {filteredMfrs.length === 0 && (
+                    <div className="flex flex-col items-center py-8">
+                      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+                      <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhum fabricante encontrado.</p>
+                    </div>
+                  )}
+                  {filteredMfrs.map((mfr) => {
+                    const isEditingName = editingMfr === mfr.name;
+                    const isEditingShortName = editingShort === mfr.name;
+                    return (
+                      <div key={mfr.name} className="group/mfr rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600 transition-colors overflow-hidden">
+                        <div className="flex items-center gap-2.5 px-4 py-2.5">
+                          {isEditingName ? (
+                            <MfrInlineForm value={mfrEditValue} onChange={setMfrEditValue} onSubmit={() => handleMfrRename(mfr.name)} onCancel={() => setEditingMfr(null)} disabled={saving} />
+                          ) : (
+                            <>
+                              <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate block" title={mfr.name}>{mfr.name}</span>
+                                {mfr.shortName && <span className="text-[11px] text-slate-500 dark:text-slate-400">{mfr.shortName}</span>}
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
+                              <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                              <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            </>
+                          )}
+                        </div>
+                        {!isEditingName && (
+                          <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold w-24 shrink-0">Abreviado</span>
+                            {isEditingShortName ? (
+                              <MfrInlineForm value={shortValue} onChange={setShortValue} onSubmit={() => handleMfrShortName(mfr.name)} onCancel={() => setEditingShort(null)} placeholder="Ex: Medtronic" disabled={saving} />
+                            ) : (
+                              <>
+                                <span className={`flex-1 text-[13px] ${mfr.shortName ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500 italic'}`}>{mfr.shortName || 'não definido'}</span>
+                                <button onClick={() => { setEditingShort(mfr.name); setShortValue(mfr.shortName || ''); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Definir nome abreviado"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ════════════ DADOS FISCAIS ════════════ */}
+            {activeSection === 'fiscal' && (
+              <div className="flex flex-col h-full">
+                {/* Fiscal sub-tabs — scrollable chip row */}
+                <div className="px-5 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/50 shrink-0">
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                    {FISCAL_TABS.map((tab) => {
+                      const isActive = fiscalTab === tab.key;
+                      const itemCount = fiscalItemsMap[tab.key].size;
+                      return (
+                        <button key={tab.key} onClick={() => { setFiscalTab(tab.key); setFiscalEditItem(null); setNewFiscalName(''); setFiscalSearch(''); }}
+                          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${isActive ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-700/40 shadow-sm' : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                          <span className={`material-symbols-outlined text-[14px] ${isActive ? 'text-amber-500 dark:text-amber-400' : ''}`}>{tab.icon}</span>
+                          <span className="whitespace-nowrap">{tab.label}</span>
+                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{itemCount}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1.5">
+                  {/* Search + count header */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                      <input type="text" placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap tabular-nums">{currentFiscalItems.length} {currentFiscalItems.length === 1 ? 'item' : 'itens'}</span>
+                  </div>
+
+                  {currentFiscalItems.length === 0 && (
+                    <div className="flex flex-col items-center py-8">
+                      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
+                      <p className="text-[13px] text-slate-400 dark:text-slate-500">{fiscalSearch ? 'Nenhum resultado encontrado.' : 'Nenhum item cadastrado.'}</p>
+                    </div>
+                  )}
+
+                  {currentFiscalItems.map(([value, count]) => {
+                    const isEditing = fiscalEditItem?.field === fiscalTab && fiscalEditItem.oldValue === value;
+                    const useMonospace = fiscalTab === 'ncm' || fiscalTab === 'cest' || fiscalTab === 'cfopEntrada' || fiscalTab === 'cfopSaida';
+                    return (
+                      <div key={value} className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group/item">
+                        {isEditing ? (
+                          <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
+                            <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
+                            <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+                            <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+                          </form>
+                        ) : (
+                          <>
+                            <div className="w-1 h-4 rounded-full bg-amber-400 dark:bg-amber-500 shrink-0" />
+                            <span className={`flex-1 text-[13px] font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30 min-w-[28px] text-center tabular-nums">{count}</span>
+                            <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div className="pt-2">
+                    <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(); }} className="flex items-center gap-2">
+                      <input placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
+                      <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          await pendingDelete.onConfirm();
+          setPendingDelete(null);
+        }}
+        title={pendingDelete?.title || 'Confirmar exclusão'}
+        message={pendingDelete?.message || ''}
+        confirmLabel="Remover"
+        cancelLabel="Cancelar"
+        confirmVariant="danger"
+        loading={saving}
+      />
+    </>
   );
 }

@@ -15,6 +15,12 @@ function normalizeAnvisa(value: unknown): string | null {
   return digits.length === 11 ? digits : null;
 }
 
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 interface ProductItem {
   productKey: string;
   code?: string | null;
@@ -73,6 +79,7 @@ export async function PATCH(req: Request) {
       // Values that change based on what fields were requested
       const productType  = 'productType'    in fields ? cleanString(fields.productType)    : null;
       const productSubtype = 'productSubtype' in fields ? cleanString(fields.productSubtype) : null;
+      const productSubgroup = 'productSubgroup' in fields ? cleanString(fields.productSubgroup) : null;
       const ncm          = 'ncm'            in fields ? cleanString(fields.ncm)            : cleanString(p.ncm);
       const anvisaCode   = hasAnvisa ? anvisaVal : null;
       const anvisaSource = hasAnvisa && anvisaVal ? 'manual' : null;
@@ -81,6 +88,7 @@ export async function PATCH(req: Request) {
       const updates: string[] = ['updated_at = NOW()'];
       if ('productType'    in fields) updates.push('product_type = EXCLUDED.product_type');
       if ('productSubtype' in fields) updates.push('product_subtype = EXCLUDED.product_subtype');
+      if ('productSubgroup' in fields) updates.push('product_subgroup = EXCLUDED.product_subgroup');
       if ('ncm'            in fields) updates.push('ncm = EXCLUDED.ncm');
       if ('shortName'      in fields) updates.push('short_name = EXCLUDED.short_name');
       if ('outOfLine'      in fields) updates.push('out_of_line = EXCLUDED.out_of_line');
@@ -88,17 +96,33 @@ export async function PATCH(req: Request) {
         updates.push('anvisa_code = EXCLUDED.anvisa_code');
         if (anvisaVal) updates.push('anvisa_source = EXCLUDED.anvisa_source');
       }
+      if ('fiscalSitTributaria'  in fields) updates.push('fiscal_sit_tributaria = EXCLUDED.fiscal_sit_tributaria');
+      if ('fiscalNomeTributacao' in fields) updates.push('fiscal_nome_tributacao = EXCLUDED.fiscal_nome_tributacao');
+      if ('fiscalIcms'           in fields) updates.push('fiscal_icms = EXCLUDED.fiscal_icms');
+      if ('fiscalPis'            in fields) updates.push('fiscal_pis = EXCLUDED.fiscal_pis');
+      if ('fiscalCofins'         in fields) updates.push('fiscal_cofins = EXCLUDED.fiscal_cofins');
+      if ('fiscalObs'            in fields) updates.push('fiscal_obs = EXCLUDED.fiscal_obs');
+      if ('fiscalCest'           in fields) updates.push('fiscal_cest = EXCLUDED.fiscal_cest');
+      if ('fiscalOrigem'         in fields) updates.push('fiscal_origem = EXCLUDED.fiscal_origem');
+      if ('fiscalCfopEntrada'    in fields) updates.push('fiscal_cfop_entrada = EXCLUDED.fiscal_cfop_entrada');
+      if ('fiscalCfopSaida'      in fields) updates.push('fiscal_cfop_saida = EXCLUDED.fiscal_cfop_saida');
+      if ('fiscalIpi'            in fields) updates.push('fiscal_ipi = EXCLUDED.fiscal_ipi');
+      if ('fiscalFcp'            in fields) updates.push('fiscal_fcp = EXCLUDED.fiscal_fcp');
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO product_registry
            (id, company_id, product_key, code, description, ncm, unit, ean,
-            product_type, product_subtype, short_name, anvisa_code, anvisa_source,
+            product_type, product_subtype, product_subgroup, short_name, anvisa_code, anvisa_source,
             out_of_line,
+            fiscal_sit_tributaria, fiscal_nome_tributacao, fiscal_icms, fiscal_pis, fiscal_cofins, fiscal_obs,
+            fiscal_cest, fiscal_origem, fiscal_cfop_entrada, fiscal_cfop_saida, fiscal_ipi, fiscal_fcp,
             created_at, updated_at)
          VALUES
            (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
-            $8, $9, $10, $11, $12,
-            $13,
+            $8, $9, $10, $11, $12, $13,
+            $14,
+            $15, $16, $17, $18, $19, $20,
+            $21, $22, $23, $24, $25, $26,
             NOW(), NOW())
          ON CONFLICT (company_id, product_key) DO UPDATE SET
            ${updates.join(',\n           ')}`,
@@ -111,10 +135,23 @@ export async function PATCH(req: Request) {
         cleanString(p.ean),
         'productType'    in fields ? cleanString(fields.productType)    : null,
         'productSubtype' in fields ? cleanString(fields.productSubtype) : null,
+        'productSubgroup' in fields ? cleanString(fields.productSubgroup) : null,
         'shortName'      in fields ? cleanString(fields.shortName)      : null,
         hasAnvisa ? anvisaVal : null,
         hasAnvisa && anvisaVal ? 'manual' : null,
         'outOfLine' in fields ? (fields.outOfLine === true) : false,
+        'fiscalSitTributaria'  in fields ? cleanString(fields.fiscalSitTributaria)  : null,
+        'fiscalNomeTributacao' in fields ? cleanString(fields.fiscalNomeTributacao) : null,
+        'fiscalIcms'           in fields ? toNullableNumber(fields.fiscalIcms)      : null,
+        'fiscalPis'            in fields ? toNullableNumber(fields.fiscalPis)        : null,
+        'fiscalCofins'         in fields ? toNullableNumber(fields.fiscalCofins)     : null,
+        'fiscalObs'            in fields ? cleanString(fields.fiscalObs)             : null,
+        'fiscalCest'           in fields ? cleanString(fields.fiscalCest)            : null,
+        'fiscalOrigem'         in fields ? cleanString(fields.fiscalOrigem)          : null,
+        'fiscalCfopEntrada'    in fields ? cleanString(fields.fiscalCfopEntrada)     : null,
+        'fiscalCfopSaida'      in fields ? cleanString(fields.fiscalCfopSaida)       : null,
+        'fiscalIpi'            in fields ? toNullableNumber(fields.fiscalIpi)         : null,
+        'fiscalFcp'            in fields ? toNullableNumber(fields.fiscalFcp)         : null,
       );
 
       updated++;
