@@ -535,7 +535,7 @@ export default function ContasPagarPage() {
   const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-6">
         <div className="min-w-0">
@@ -817,8 +817,8 @@ export default function ContasPagarPage() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        {(() => { const n = getNick(dup.emitenteCnpj, dup.emitenteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
-                        <p className="text-xs text-slate-400">{formatCnpj(dup.emitenteCnpj)}</p>
+                        {(() => { const n = getNick(dup.emitenteCnpj, dup.emitenteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
+                        <p className="text-xs text-slate-400 truncate">{formatCnpj(dup.emitenteCnpj)}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes} ml-2 flex-shrink-0`}>
                         <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
@@ -1121,10 +1121,10 @@ export default function ContasPagarPage() {
                     ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
                     : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
                 }`}>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-                    <span>Valor da nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
-                    <span>Soma das parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
-                    <span>Desconto total: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
+                    <span>Nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
+                    <span>Parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
+                    <span>Desconto: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
                     <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
                   </div>
                   {hasInvalidEditingValue ? (

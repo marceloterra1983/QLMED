@@ -529,12 +529,12 @@ export default function ContasReceberPage() {
   const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-2 mb-6">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">Contas a Receber</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Duplicatas das NF-e emitidas
           </p>
         </div>
@@ -551,54 +551,54 @@ export default function ContasReceberPage() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] sm:text-[20px]">today</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Hoje</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Hoje</p>
                 <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
-                <p className="text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje}dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] sm:text-[20px]">calendar_month</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mes</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatCurrency(summary.esteMesValor)}</p>
-                <p className="text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.esteMes} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px] sm:text-[20px]">event_repeat</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Proximo Mes</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
-                <p className="text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[18px] sm:text-[20px]">request_quote</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
                 <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
-                <p className="text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} dup.</p>
               </div>
             </div>
           </div>
@@ -812,7 +812,7 @@ export default function ContasReceberPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{n.full}</p></>) : (<p className="text-xs font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
-                        <p className="text-[10px] text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{formatCnpj(dup.clienteCnpj)}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${cfg.classes} flex-shrink-0`}>
                         <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
@@ -1115,10 +1115,10 @@ export default function ContasReceberPage() {
                     ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
                     : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
                 }`}>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-                    <span>Valor da nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
-                    <span>Soma das parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
-                    <span>Desconto total: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
+                    <span>Nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
+                    <span>Parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
+                    <span>Desconto: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
                     <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
                   </div>
                   {hasInvalidEditingValue ? (
