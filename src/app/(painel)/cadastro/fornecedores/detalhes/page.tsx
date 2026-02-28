@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import SupplierDetailsClient from './supplier-details-client';
 
+export const metadata: Metadata = { title: 'Detalhes do Fornecedor | QLMED' };
 export const dynamic = 'force-dynamic';
 
 export default function SupplierDetailsPage() {

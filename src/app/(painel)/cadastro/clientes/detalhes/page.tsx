@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import CustomerDetailsClient from './customer-details-client';
 
+export const metadata: Metadata = { title: 'Detalhes do Cliente | QLMED' };
 export const dynamic = 'force-dynamic';
 
 export default function CustomerDetailsPage() {

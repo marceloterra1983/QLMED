@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import Skeleton from '@/components/ui/Skeleton';
@@ -315,6 +315,9 @@ interface SectionCardProps {
 }
 
 function SectionCard({ title, subtitle, icon, iconColor = 'text-primary', open, onToggle, badge, children }: SectionCardProps) {
+  const hasBeenOpened = useRef(open);
+  if (open && !hasBeenOpened.current) hasBeenOpened.current = true;
+
   const iconBgMap: Record<string, string> = {
     'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
     'text-indigo-500': 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30',
@@ -351,7 +354,7 @@ function SectionCard({ title, subtitle, icon, iconColor = 'text-primary', open, 
         </span>
       </button>
       <div className={`transition-all duration-200 ${open ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-        <div className="px-4 pb-4 pt-1">{children}</div>
+        <div className="px-4 pb-4 pt-1">{hasBeenOpened.current ? children : null}</div>
       </div>
     </div>
   );

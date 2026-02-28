@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
+
+const querySchema = z.object({
+  page: z.coerce.number().int().positive().max(10000).catch(1),
+  limit: z.coerce.number().int().positive().max(100).catch(50),
+  search: z.string().max(200).catch(''),
+  sort: z.enum(['name', 'cnpj', 'documents', 'documentsPrevYear', 'documentsCurrentYear', 'value', 'firstIssue', 'lastIssue']).catch('name'),
+  order: z.enum(['asc', 'desc']).catch('desc'),
+  exportAll: z.enum(['0', '1']).catch('0'),
+});
 
 interface AggregatedSupplier {
   cnpj: string;
@@ -13,12 +23,6 @@ interface AggregatedSupplier {
   totalValue: number;
   firstIssueDate: Date | null;
   lastIssueDate: Date | null;
-}
-
-function toPositiveInt(value: string | null, fallback: number, max: number) {
-  const parsed = parseInt(value || '', 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return fallback;
-  return Math.min(parsed, max);
 }
 
 function compareStrings(left: string, right: string) {
@@ -54,12 +58,16 @@ export async function GET(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
 
-    const page = toPositiveInt(searchParams.get('page'), 1, 100000);
-    const limit = toPositiveInt(searchParams.get('limit'), 50, 100);
-    const search = (searchParams.get('search') || '').trim();
-    const sort = searchParams.get('sort') || 'name';
-    const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
-    const exportAll = searchParams.get('exportAll') === '1';
+    const params = querySchema.parse({
+      page: searchParams.get('page') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+      search: (searchParams.get('search') || '').trim(),
+      sort: searchParams.get('sort') ?? undefined,
+      order: searchParams.get('order') ?? undefined,
+      exportAll: searchParams.get('exportAll') ?? undefined,
+    });
+    const { page, limit, search, sort, order } = params;
+    const exportAll = params.exportAll === '1';
 
     const where: any = {
       companyId: company.id,
@@ -136,12 +144,14 @@ export async function GET(req: Request) {
 
     let suppliers = Array.from(supplierMap.values());
 
-    // Fetch all nicknames for this company to include in search
-    const allNicknames = await prisma.contactNickname.findMany({
-      where: { companyId: company.id },
-      select: { cnpj: true, shortName: true },
-    });
-    const nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
+    let nicknameMap = new Map<string, string>();
+    if (search) {
+      const allNicknames = await prisma.contactNickname.findMany({
+        where: { companyId: company.id },
+        select: { cnpj: true, shortName: true },
+      });
+      nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
+    }
 
     if (search) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
@@ -220,7 +230,14 @@ export async function GET(req: Request) {
       }
     }
 
-    // nicknameMap already fetched above for search
+    // Load nicknames only for paginated results when not searching
+    if (!search && paginatedCnpjs.length > 0) {
+      const pageNicknames = await prisma.contactNickname.findMany({
+        where: { companyId: company.id, cnpj: { in: paginatedCnpjs } },
+        select: { cnpj: true, shortName: true },
+      });
+      nicknameMap = new Map(pageNicknames.map((n) => [n.cnpj, n.shortName]));
+    }
 
     const summary = suppliers.reduce((acc, supplier) => {
       acc.totalInvoices += supplier.invoiceCount;
