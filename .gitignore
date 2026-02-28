@@ -58,9 +58,13 @@ test-insert.js
 *.jpg
 *.png
 !public/icon-192.png
+!public/icon-192-v2.png
 !public/icon-512.png
+!public/icon-512-v2.png
 !public/icon-maskable-512.png
+!public/icon-maskable-512-v2.png
 !public/apple-touch-icon.png
+!public/apple-touch-icon-v2.png
 !public/logo.png
 =1
 tmp-*.xml

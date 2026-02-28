@@ -1,5 +1,5 @@
-// v2 - force icon refresh
-const CACHE_VERSION = 'v2';
+// v3 - force icon refresh
+const CACHE_VERSION = 'v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
