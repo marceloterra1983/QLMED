@@ -529,7 +529,7 @@ export default function ContasReceberPage() {
   const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
 
   return (
-    <div>
+    <div className="w-full min-w-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-6">
         <div className="min-w-0">
@@ -821,18 +821,18 @@ export default function ContasReceberPage() {
                         {cfg.label}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-                      <div>
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px] min-w-0">
+                      <div className="min-w-0">
                         <p className="text-[9px] text-slate-400">NF-e</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
+                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{dup.nfNumero}</p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-[9px] text-slate-400">Parcela</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300">{formatParcela(dup)}</p>
+                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{formatParcela(dup)}</p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-[9px] text-slate-400">Vencimento</p>
-                        <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                        <p className={`font-medium truncate ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
                           {formatVencimento(dup.dupVencimento)}
                         </p>
                       </div>
@@ -856,9 +856,9 @@ export default function ContasReceberPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
               <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                <span className="whitespace-nowrap">{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
+                <span>{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
                 <select
                   value={limit}
                   onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
@@ -869,18 +869,18 @@ export default function ContasReceberPage() {
                   <option value={100}>100</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">first_page</span>
                 </button>
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
@@ -890,14 +890,14 @@ export default function ContasReceberPage() {
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
                 <button
                   onClick={() => setPage(totalPages)}
                   disabled={page === totalPages}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">last_page</span>
                 </button>
