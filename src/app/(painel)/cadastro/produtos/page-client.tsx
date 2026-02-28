@@ -1425,13 +1425,6 @@ export default function ProdutosPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <button
-            onClick={loadProducts}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
-          >
-            <span className="material-symbols-outlined text-[20px]">sync</span>
-            Atualizar
-          </button>
           {canWrite && (
             <button
               onClick={() => setSettingsOpen(true)}

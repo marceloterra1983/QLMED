@@ -268,13 +268,6 @@ export default function CustomersPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={loadCustomers}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
-          >
-            <span className="material-symbols-outlined text-[20px]">sync</span>
-            Atualizar
-          </button>
-          <button
             onClick={handleExport}
             disabled={customers.length === 0 || isExporting}
             className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
