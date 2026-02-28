@@ -44,6 +44,7 @@ export default function NfseReceivedPage() {
 
   useEffect(() => {
     void loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, sortBy, sortOrder, dateFrom, dateTo]);
 
   useEffect(() => {

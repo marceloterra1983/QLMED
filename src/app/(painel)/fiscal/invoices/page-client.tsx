@@ -86,6 +86,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, tagFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {

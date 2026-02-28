@@ -710,10 +710,12 @@ export default function CustomerDetailsModal({
   const saleInvoices = useMemo(() => {
     if (!details) return [];
     return details.invoices.filter((inv) => SALE_TAGS.has(inv.cfopTag));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details]);
   const movimentacaoInvoices = useMemo(() => {
     if (!details) return [];
     return details.invoices.filter((inv) => !SALE_TAGS.has(inv.cfopTag));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details]);
 
   const SortableHeader = ({ label, sortKey, align = 'left' }: { label: string; sortKey: PriceSortKey; align?: 'left' | 'right' }) => (

@@ -68,6 +68,7 @@ export default function SuppliersPage() {
 
   useEffect(() => {
     loadSuppliers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, sortBy, sortOrder]);
 
   useEffect(() => {

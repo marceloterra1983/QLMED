@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
-import Modal from '@/components/ui/Modal';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
+import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCnpj, formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
@@ -197,6 +197,7 @@ export default function ContasPagarPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const loadData = async () => {
@@ -354,13 +355,23 @@ export default function ContasPagarPage() {
     }
   };
 
-  const closeDetails = () => {
+  const closeDetails = useCallback(() => {
     if (savingDetails) return;
     setIsDetailsOpen(false);
     setSelectedDuplicata(null);
     setInvoiceHeader(null);
     setEditingDuplicatas([]);
-  };
+  }, [savingDetails]);
+
+  useModalBackButton(isDetailsOpen, closeDetails);
+
+  useEffect(() => {
+    if (!isDetailsOpen) return;
+    document.body.style.overflow = 'hidden';
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDetails(); };
+    window.addEventListener('keydown', handleEscape);
+    return () => { document.body.style.overflow = 'unset'; window.removeEventListener('keydown', handleEscape); };
+  }, [isDetailsOpen, closeDetails]);
 
   const updateEditingDuplicata = (
     index: number,
@@ -915,254 +926,301 @@ export default function ContasPagarPage() {
         )}
       </div>
 
-      <Modal
-        isOpen={isDetailsOpen}
-        onClose={closeDetails}
-        title="Visualizar / Editar Duplicatas"
-        width="max-w-4xl"
-      >
-        {(selectedDuplicata || invoiceHeader) && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400">Número da NF-e</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {invoiceHeader?.number || selectedDuplicata?.nfNumero}
-                  </p>
-                  <button
-                    onClick={() => openInvoiceModal((invoiceHeader?.id || selectedDuplicata?.invoiceId || ''))}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-primary border border-primary/30 hover:bg-primary/10 transition-colors"
-                    disabled={!(invoiceHeader?.id || selectedDuplicata?.invoiceId)}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                    Ver NF-e
-                  </button>
+      {isDetailsOpen && (selectedDuplicata || invoiceHeader) && (
+        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
+          <div className="absolute inset-0 hidden sm:block" onClick={closeDetails} aria-hidden="true" />
+          <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-4xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" role="dialog" aria-modal="true">
+            {/* Fixed Header */}
+            <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
+                    <span className="material-symbols-outlined text-[22px] text-primary">receipt_long</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                      Duplicatas — NF-e {invoiceHeader?.number || selectedDuplicata?.nfNumero}
+                    </h3>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {(() => { const cnpj = invoiceHeader?.emitenteCnpj || selectedDuplicata?.emitenteCnpj; const nome = invoiceHeader?.emitenteNome || selectedDuplicata?.emitenteNome; const n = getNick(cnpj, nome); return n.display; })()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400">Emissão</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {formatDate(invoiceHeader?.issueDate || selectedDuplicata?.nfEmissao || '')}
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/60 dark:bg-slate-800/40">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400">Fornecedor</p>
-                {(() => { const cnpj = invoiceHeader?.emitenteCnpj || selectedDuplicata?.emitenteCnpj; const nome = invoiceHeader?.emitenteNome || selectedDuplicata?.emitenteNome; const n = getNick(cnpj, nome); return n.full ? (<><p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={n.full}>{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate" title={n.display}>{n.display}</p>); })()}
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {formatCnpj(invoiceHeader?.emitenteCnpj || selectedDuplicata?.emitenteCnpj || '')}
-                </p>
+                <button onClick={closeDetails} aria-label="Fechar" className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0" title="Fechar">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
               </div>
             </div>
 
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                  Parcelas da Nota
-                </h4>
-                {canWrite && (
-                  <button
-                    type="button"
-                    onClick={addInstallment}
-                    disabled={loadingDetails || savingDetails}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add</span>
-                    Adicionar parcela
-                  </button>
-                )}
-              </div>
-              {loadingDetails ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Skeleton key={idx} className="h-12 rounded-lg" />
-                  ))}
-                </div>
-              ) : editingDuplicatas.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Nenhuma parcela encontrada para esta nota.
-                </p>
-              ) : (
-                <>
-                {/* Mobile cards for parcelas */}
-                <div className="sm:hidden space-y-1.5">
-                  {editingDuplicatas.map((row, idx) => (
-                    <div key={row.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 space-y-1.5 bg-white dark:bg-slate-800/40">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
-                          Parcela {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
-                        </span>
-                        {canWrite && (
-                          <button
-                            type="button"
-                            onClick={() => removeInstallment(idx)}
-                            disabled={editingDuplicatas.length <= 1 || savingDetails}
-                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
-                            title="Remover parcela"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-wider text-slate-400">Vencimento</label>
-                        <input
-                          type="date"
-                          value={row.dupVencimento}
-                          onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
-                          readOnly={!canWrite}
-                          className={`w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-slate-400">Valor</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={row.dupValor}
-                            onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
-                            onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
-                            placeholder="R$ 0,00"
-                            readOnly={!canWrite}
-                            className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-slate-400">Desconto</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={row.dupDesconto}
-                            onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
-                            onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
-                            placeholder="R$ 0,00"
-                            readOnly={!canWrite}
-                            className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
-                          />
-                        </div>
-                      </div>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white/60 dark:bg-slate-800/40">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-400">Número da NF-e</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {invoiceHeader?.number || selectedDuplicata?.nfNumero}
+                      </p>
+                      <button
+                        onClick={() => openInvoiceModal((invoiceHeader?.id || selectedDuplicata?.invoiceId || ''))}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-primary border border-primary/30 hover:bg-primary/10 transition-colors"
+                        disabled={!(invoiceHeader?.id || selectedDuplicata?.invoiceId)}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                        Ver NF-e
+                      </button>
                     </div>
-                  ))}
+                  </div>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white/60 dark:bg-slate-800/40">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-400">Emissão</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      {formatDate(invoiceHeader?.issueDate || selectedDuplicata?.nfEmissao || '')}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white/60 dark:bg-slate-800/40">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-400">Fornecedor</p>
+                    {(() => { const cnpj = invoiceHeader?.emitenteCnpj || selectedDuplicata?.emitenteCnpj; const nome = invoiceHeader?.emitenteNome || selectedDuplicata?.emitenteNome; const n = getNick(cnpj, nome); return n.full ? (<><p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={n.full}>{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate" title={n.display}>{n.display}</p>); })()}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {formatCnpj(invoiceHeader?.emitenteCnpj || selectedDuplicata?.emitenteCnpj || '')}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Desktop table for parcelas */}
-                <div className="hidden sm:block overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Parcela</th>
-                        <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Vencimento</th>
-                        <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Valor</th>
-                        <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Desconto</th>
-                        {canWrite && <th className="text-center px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Ação</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      Parcelas da Nota
+                    </h4>
+                    {canWrite && (
+                      <button
+                        type="button"
+                        onClick={addInstallment}
+                        disabled={loadingDetails || savingDetails}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        Adicionar parcela
+                      </button>
+                    )}
+                  </div>
+                  {loadingDetails ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 4 }).map((_, idx) => (
+                        <Skeleton key={idx} className="h-12 rounded-lg" />
+                      ))}
+                    </div>
+                  ) : editingDuplicatas.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Nenhuma parcela encontrada para esta nota.
+                    </p>
+                  ) : (
+                    <>
+                    {/* Mobile cards for parcelas */}
+                    <div className="sm:hidden space-y-1.5">
                       {editingDuplicatas.map((row, idx) => (
-                        <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-                          <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
-                            {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
-                          </td>
-                          <td className="px-3 py-2">
+                        <div key={row.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 space-y-1.5 bg-white dark:bg-slate-800/40">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
+                              Parcela {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
+                            </span>
+                            {canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => removeInstallment(idx)}
+                                disabled={editingDuplicatas.length <= 1 || savingDetails}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
+                                title="Remover parcela"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            )}
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400">Vencimento</label>
                             <input
                               type="date"
                               value={row.dupVencimento}
                               onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
                               readOnly={!canWrite}
-                              className={`w-full px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                              className={`w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
                             />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={row.dupValor}
-                              onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
-                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
-                              placeholder="R$ 0,00"
-                              readOnly={!canWrite}
-                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={row.dupDesconto}
-                              onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
-                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
-                              placeholder="R$ 0,00"
-                              readOnly={!canWrite}
-                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
-                            />
-                          </td>
-                          {canWrite && (
-                          <td className="px-3 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeInstallment(idx)}
-                              disabled={editingDuplicatas.length <= 1 || savingDetails}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
-                              title="Remover parcela"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </td>
-                          )}
-                        </tr>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-slate-400">Valor</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={row.dupValor}
+                                onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
+                                onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
+                                placeholder="R$ 0,00"
+                                readOnly={!canWrite}
+                                className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wider text-slate-400">Desconto</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={row.dupDesconto}
+                                onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
+                                onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
+                                placeholder="R$ 0,00"
+                                readOnly={!canWrite}
+                                className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                </>
-              )}
-              {!loadingDetails && editingDuplicatas.length > 0 && (
-                <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
-                  totaisValidos
-                    ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
-                    : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
-                }`}>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
-                    <span>Nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
-                    <span>Parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
-                    <span>Desconto: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
-                    <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
-                  </div>
-                  {hasInvalidEditingValue ? (
-                    <p className="mt-1 text-xs">
-                      Preencha valores e descontos válidos (ex.: R$ 12.542,83) e mantenha desconto menor ou igual ao valor.
-                    </p>
-                  ) : !parcelasConferem && (
-                    <p className="mt-1 text-xs">
-                      A soma das parcelas deve ser igual ao valor total da nota para salvar.
-                    </p>
+                    </div>
+
+                    {/* Desktop table for parcelas */}
+                    <div className="hidden sm:block overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Parcela</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Vencimento</th>
+                            <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Valor</th>
+                            <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Desconto</th>
+                            {canWrite && <th className="text-center px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Ação</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editingDuplicatas.map((row, idx) => (
+                            <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                              <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
+                                {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="date"
+                                  value={row.dupVencimento}
+                                  onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
+                                  readOnly={!canWrite}
+                                  className={`w-full px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={row.dupValor}
+                                  onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
+                                  onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
+                                  placeholder="R$ 0,00"
+                                  readOnly={!canWrite}
+                                  className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={row.dupDesconto}
+                                  onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
+                                  onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
+                                  placeholder="R$ 0,00"
+                                  readOnly={!canWrite}
+                                  className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                                />
+                              </td>
+                              {canWrite && (
+                              <td className="px-3 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeInstallment(idx)}
+                                  disabled={editingDuplicatas.length <= 1 || savingDetails}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
+                                  title="Remover parcela"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    </>
+                  )}
+                  {!loadingDetails && editingDuplicatas.length > 0 && (
+                    <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                      totaisValidos
+                        ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
+                        : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+                    }`}>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
+                        <span>Nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
+                        <span>Parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
+                        <span>Desconto: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
+                        <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
+                      </div>
+                      {hasInvalidEditingValue ? (
+                        <p className="mt-1 text-xs">
+                          Preencha valores e descontos válidos (ex.: R$ 12.542,83) e mantenha desconto menor ou igual ao valor.
+                        </p>
+                      ) : !parcelasConferem && (
+                        <p className="mt-1 text-xs">
+                          A soma das parcelas deve ser igual ao valor total da nota para salvar.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-              <button
-                onClick={closeDetails}
-                disabled={savingDetails}
-                className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
-              >
-                {canWrite ? 'Cancelar' : 'Fechar'}
-              </button>
-              {canWrite && (
+            {/* Fixed Footer */}
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+              {/* Mobile */}
+              <div className="sm:hidden flex gap-2">
                 <button
-                  onClick={handleSaveDetails}
-                  disabled={!canSaveDetails}
-                  className="px-3 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={closeDetails}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
                 >
-                  {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
+                  <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                  Voltar
                 </button>
-              )}
+                {canWrite && (
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={!canSaveDetails}
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">save</span>
+                    {savingDetails ? 'Salvando...' : 'Salvar'}
+                  </button>
+                )}
+              </div>
+              {/* Desktop */}
+              <div className="hidden sm:flex items-center justify-end gap-2">
+                <button
+                  onClick={closeDetails}
+                  disabled={savingDetails}
+                  className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {canWrite ? 'Cancelar' : 'Fechar'}
+                </button>
+                {canWrite && (
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={!canSaveDetails}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
       <InvoiceDetailsModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}

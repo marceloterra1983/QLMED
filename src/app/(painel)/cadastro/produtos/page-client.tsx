@@ -1583,7 +1583,7 @@ export default function ProdutosPage() {
             <span className="text-xs text-slate-500">Filtros ativos:</span>
             {search && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                "{search}"
+                &ldquo;{search}&rdquo;
                 <button onClick={() => setSearch('')} className="hover:opacity-70">
                   <span className="material-symbols-outlined text-[13px]">close</span>
                 </button>

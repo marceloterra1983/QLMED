@@ -69,6 +69,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, sortBy, sortOrder]);
 
   useEffect(() => {

@@ -99,10 +99,13 @@ export default function SyncPage() {
 
   // Cleanup polling on unmount
   useEffect(() => {
+    const sefaz = sefazPollingRef.current;
+    const nsdocs = nsdocsPollingRef.current;
+    const receita = receitaPollingRef.current;
     return () => {
-      if (sefazPollingRef.current) clearInterval(sefazPollingRef.current);
-      if (nsdocsPollingRef.current) clearInterval(nsdocsPollingRef.current);
-      if (receitaPollingRef.current) clearInterval(receitaPollingRef.current);
+      if (sefaz) clearInterval(sefaz);
+      if (nsdocs) clearInterval(nsdocs);
+      if (receita) clearInterval(receita);
     };
   }, []);
 

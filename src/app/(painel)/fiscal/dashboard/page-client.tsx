@@ -97,10 +97,12 @@ export default function FiscalDashboardPage() {
 
   useEffect(() => {
     loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, year, month]);
 
   useEffect(() => {
     loadCfop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
   const loadDashboard = async () => {

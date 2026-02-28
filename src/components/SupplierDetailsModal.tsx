@@ -754,10 +754,12 @@ export default function SupplierDetailsModal({
   const purchaseInvoices = useMemo(() => {
     if (!details) return [];
     return details.invoices.filter((inv) => PURCHASE_TAGS.has(inv.cfopTag));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details]);
   const movimentacaoInvoices = useMemo(() => {
     if (!details) return [];
     return details.invoices.filter((inv) => !PURCHASE_TAGS.has(inv.cfopTag));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details]);
 
   const SortableHeader = ({ label, sortKey, align = 'left' }: { label: string; sortKey: PriceSortKey; align?: 'left' | 'right' }) => (

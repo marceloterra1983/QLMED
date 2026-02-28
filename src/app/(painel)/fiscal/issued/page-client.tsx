@@ -86,6 +86,7 @@ export default function IssuedInvoicesPage() {
 
   useEffect(() => {
     loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function IssuedInvoicesPage() {
     }, AUTO_REFRESH_MS);
 
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExport = () => {

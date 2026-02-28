@@ -94,6 +94,7 @@ export default function CtePage() {
 
   useEffect(() => {
     loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
 	  const handleExport = () => {
