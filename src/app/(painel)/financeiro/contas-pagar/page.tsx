@@ -535,7 +535,7 @@ export default function ContasPagarPage() {
   const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
 
   return (
-    <div className="overflow-x-hidden">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-6">
         <div className="min-w-0">
