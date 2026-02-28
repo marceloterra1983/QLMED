@@ -808,7 +808,8 @@ export default function ContasReceberPage() {
                 return (
                   <div
                     key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`p-2.5 space-y-1.5 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    className={`p-2.5 space-y-1.5 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    onClick={() => openDetails(dup)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -842,7 +843,7 @@ export default function ContasReceberPage() {
                         <span className="text-[10px] text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
                       )}
                       <button
-                        onClick={() => openDetails(dup)}
+                        onClick={(e) => { e.stopPropagation(); openDetails(dup); }}
                         className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                       >
                         <span className="material-symbols-outlined text-[14px]">visibility</span>
