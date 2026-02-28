@@ -825,17 +825,17 @@ export default function ContasPagarPage() {
                         {cfg.label}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-3 gap-1.5 text-[11px]">
                       <div>
-                        <p className="text-slate-400">NF-e</p>
+                        <p className="text-[10px] text-slate-400">NF-e</p>
                         <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400">Parcela</p>
+                        <p className="text-[10px] text-slate-400">Parcela</p>
                         <p className="font-mono text-slate-700 dark:text-slate-300">{formatParcela(dup)}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400">Vencimento</p>
+                        <p className="text-[10px] text-slate-400">Vencimento</p>
                         <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
                           {formatVencimento(dup.dupVencimento)}
                         </p>

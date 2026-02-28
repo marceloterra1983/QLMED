@@ -173,10 +173,10 @@ export default function FiscalDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Impostos</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Visao consolidada de impostos por periodo</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Visao consolidada de impostos por periodo</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select
@@ -215,7 +215,7 @@ export default function FiscalDashboardPage() {
 
       {/* Backfill Banner */}
       {!loading && needsBackfill && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center justify-between gap-4">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">sync</span>
             <div>
@@ -238,7 +238,7 @@ export default function FiscalDashboardPage() {
           <button
             onClick={runBackfill}
             disabled={backfilling}
-            className="px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {backfilling ? 'Processando...' : 'Extrair Dados Fiscais'}
           </button>
@@ -247,7 +247,7 @@ export default function FiscalDashboardPage() {
 
       {/* Stat Cards */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
               <Skeleton className="h-10 w-10 rounded-xl mb-2" />
@@ -414,10 +414,10 @@ export default function FiscalDashboardPage() {
                   </div>
                   <span className="text-xs font-mono text-slate-400 ml-2 shrink-0">{s.invoiceCount} NF-e</span>
                 </div>
-                <div className="grid grid-cols-3 gap-x-3 text-xs">
-                  <div><span className="text-slate-400 block">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
-                  <div><span className="text-slate-400 block">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
-                  <div><span className="text-slate-400 block">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
+                <div className="grid grid-cols-3 gap-x-2 text-xs">
+                  <div><span className="text-slate-400 block text-[10px]">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
+                  <div><span className="text-slate-400 block text-[10px]">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
+                  <div><span className="text-slate-400 block text-[10px]">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
                 </div>
               </div>
             ))}

@@ -224,7 +224,7 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="min-w-0">
       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words truncate">{value || '-'}</p>
+      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
     </div>
   );
 }
@@ -842,7 +842,7 @@ export default function CustomerDetailsModal({
               </div>
               {isEditing ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-2">
                     <div className="col-span-2">
                       <EditableField label="Logradouro" value={getField(details.customer.address.street, 'street')} field="street" draft={editDraft} onChange={handleEditField} />
                     </div>

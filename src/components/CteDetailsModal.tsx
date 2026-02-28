@@ -89,7 +89,7 @@ function TabCte({ data }: { data: any }) {
   return (
     <div className="space-y-4">
       <SectionBlock title="Dados do CT-e" icon="receipt_long" iconColor="text-teal-500">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={cte.modelo} />
           <Field label="Série" value={cte.serie} />
           <Field label="Número" value={cte.numero} />
@@ -102,7 +102,7 @@ function TabCte({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Transporte" icon="route" iconColor="text-primary">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modal" value={cte.modal} />
           <Field label="Tomador do Serviço" value={cte.tomador} />
           <Field label="Município Origem" value={cte.municipioOrigem} />
@@ -113,7 +113,7 @@ function TabCte({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Valores da Prestação" icon="payments" iconColor="text-emerald-500">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
           <Field label="Valor Total da Prestação" value={formatMoney(cte.valorPrestacao)} />
           <Field label="Valor a Receber" value={formatMoney(cte.valorReceber)} />
         </div>
@@ -152,7 +152,7 @@ function TabCte({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Protocolo de Autorização" icon="verified" iconColor="text-amber-500">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nº Protocolo" value={cte.protocolo} />
           <Field label="Data Autorização" value={formatDateBr(cte.dataAutorizacao)} />
         </div>
@@ -173,27 +173,27 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: any; party
   return (
     <SectionBlock title={title} icon={icon} iconColor={iconColor}>
       <div className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nome / Razão Social" value={entity.razaoSocial} />
           <Field label="Nome Fantasia" value={entity.fantasia} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ/CPF" value={formatCnpjDisplay(entity.cnpj)} />
           <Field label="Inscrição Estadual" value={entity.ie} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Endereço" value={entity.endereco} />
           <Field label="Bairro / Distrito" value={entity.bairro} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CEP" value={entity.cep} />
           <Field label="Município" value={entity.municipio} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="UF" value={entity.uf} />
           <Field label="País" value={entity.pais} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Telefone" value={entity.telefone} />
           <Field label="Email" value={entity.email} />
         </div>
@@ -214,7 +214,7 @@ function TabCarga({ data }: { data: any }) {
   return (
     <div className="space-y-4">
       <SectionBlock title="Informações da Carga" icon="package_2" iconColor="text-amber-500">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Valor Total da Carga" value={formatMoney(carga.valorCarga)} />
           <Field label="Produto Predominante" value={carga.produtoPredominante} />
           <Field label="Outras Características" value={carga.outrCaract} />
@@ -261,7 +261,7 @@ function TabCarga({ data }: { data: any }) {
 
       {data.seguro && (data.seguro.nomeSeguradora || data.seguro.apolice) && (
         <SectionBlock title="Seguro" icon="shield" iconColor="text-rose-500">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             <Field label="Responsável" value={data.seguro.responsavel} />
             <Field label="Seguradora" value={data.seguro.nomeSeguradora} />
             <Field label="Nº Apólice" value={data.seguro.apolice} />
@@ -424,7 +424,7 @@ function TabImpostos({ data }: { data: any }) {
     <div className="space-y-4">
       <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 ring-1 ring-blue-500/15 dark:from-blue-500/20 dark:to-blue-500/10 dark:ring-blue-500/25 p-4">
         <p className="text-[10px] font-bold uppercase tracking-wider mb-3 text-blue-600 dark:text-blue-400">ICMS</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CST" value={imp.icms?.cst} />
           <Field label="Base de Cálculo" value={formatMoney(imp.icms?.baseCalculo)} />
           <Field label="Alíquota" value={imp.icms?.aliquota ? `${imp.icms.aliquota}%` : '-'} />

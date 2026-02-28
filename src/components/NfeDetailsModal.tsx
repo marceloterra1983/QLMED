@@ -119,7 +119,7 @@ function TabNfe({ data }: { data: any }) {
   return (
     <div className="space-y-4">
       <SectionBlock title="Dados da NF-e" icon="receipt_long" iconColor="text-primary">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={nfe.modelo} />
           <Field label="Série" value={nfe.serie} />
           <Field label="Número" value={nfe.numero} />
@@ -130,7 +130,7 @@ function TabNfe({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Emitente" icon="storefront" iconColor="text-orange-500">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.emitente?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.emitente?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.emitente?.ie} />
@@ -139,7 +139,7 @@ function TabNfe({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Destinatário" icon="person" iconColor="text-indigo-500">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.destinatario?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.destinatario?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.destinatario?.ie} />
@@ -148,7 +148,7 @@ function TabNfe({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Destino da Operação" icon="swap_horiz" iconColor="text-teal-500">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Destino da Operação" value={nfe.destinoOperacao} />
           <Field label="Consumidor Final" value={nfe.consumidorFinal} />
           <Field label="Presença do Comprador" value={nfe.presencaComprador} />
@@ -156,7 +156,7 @@ function TabNfe({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Emissão" icon="settings" iconColor="text-amber-500">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Processo" value={nfe.processo} />
           <Field label="Versão do Processo" value={nfe.versaoProcesso} />
           <Field label="Tipo de Emissão" value={nfe.tipoEmissao} />
@@ -165,7 +165,7 @@ function TabNfe({ data }: { data: any }) {
       </SectionBlock>
 
       <SectionBlock title="Operação" icon="assignment" iconColor="text-violet-500">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Natureza da Operação" value={nfe.naturezaOperacao} />
           <Field label="Tipo da Operação" value={nfe.tipoOperacao} />
           <Field label="Digest Value da NF-e" value={nfe.digestValue} />
@@ -198,36 +198,36 @@ function TabEmitDest({ data, type }: { data: any; type: 'emitente' | 'destinatar
   return (
     <SectionBlock title={title} icon={icon} iconColor={iconColor}>
       <div className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nome / Razão Social" value={entity.razaoSocial} />
           <Field label="Nome Fantasia" value={entity.fantasia} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(entity.cnpj)} />
           <Field label="Endereço" value={entity.endereco} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Bairro / Distrito" value={entity.bairro} />
           <Field label="CEP" value={entity.cep} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Município" value={entity.municipio} />
           <Field label="Telefone" value={entity.telefone} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="UF" value={entity.uf} />
           <Field label="País" value={entity.pais} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Inscrição Estadual" value={entity.ie} />
           <Field label="IE Substituto Tributário" value={entity.ieSt} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Inscrição Municipal" value={entity.im} />
           <Field label="Município ICMS" value={entity.municipioIcms} />
         </div>
         {isEmit && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             <Field label="CNAE Fiscal" value={entity.cnae} />
             <Field label="Regime Tributário" value={crtMap[entity.crt] || entity.crt} />
           </div>
@@ -336,7 +336,7 @@ function TabProdutos({ data }: { data: any }) {
                 {expanded.has(idx) && (
                   <tr>
                     <td colSpan={6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3 mb-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
                         <Field label="Código" value={prod.codigo} />
                         <Field label="NCM" value={prod.ncm} />
                         <Field label="CFOP" value={prod.cfop} />
@@ -367,7 +367,7 @@ function TabTotais({ data }: { data: any }) {
   const t = data.totais || {};
   return (
     <SectionBlock title="Totais da NF-e" icon="calculate" iconColor="text-emerald-500">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
         <Field label="Base de Cálculo do ICMS" value={formatMoney(t.baseCalculoIcms)} />
         <Field label="Valor do ICMS" value={formatMoney(t.valorIcms)} />
         <Field label="Valor do ICMS Desonerado" value={formatMoney(t.icmsDesonerado)} />
@@ -414,11 +414,11 @@ function TabTransporte({ data }: { data: any }) {
       {transp.transportador?.cnpj && (
         <SectionBlock title="Transportador" icon="badge" iconColor="text-indigo-500">
           <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
               <Field label="CNPJ" value={formatCnpjDisplay(transp.transportador.cnpj)} />
               <Field label="Razão Social / Nome" value={transp.transportador.razaoSocial} />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
               <Field label="Inscrição Estadual" value={transp.transportador.ie} />
               <Field label="Endereço" value={transp.transportador.endereco} />
               <Field label="Município" value={transp.transportador.municipio} />
@@ -431,7 +431,7 @@ function TabTransporte({ data }: { data: any }) {
       {transp.volumes?.length > 0 && (
         <SectionBlock title="Volumes" icon="package_2" iconColor="text-amber-500">
           {transp.volumes.map((vol: any, i: number) => (
-            <div key={i} className={`grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 ${i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}`}>
+            <div key={i} className={`grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 ${i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}`}>
               <Field label="Quantidade" value={vol.quantidade} />
               <Field label="Espécie" value={vol.especie} />
               <Field label="Marca" value={vol.marca} />
@@ -465,13 +465,13 @@ function TabCobranca({ data }: { data: any }) {
         <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary">
           {cobr.formasPagamento.map((p: any, i: number) => (
             <div key={i} className={i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-3">
                 <Field label="Forma de Pagamento" value={p.forma} />
                 <Field label="Valor" value={formatMoney(p.valor)} />
                 <Field label="Tipo Integração" value={p.tipoIntegracao} />
                 <Field label="CNPJ Credenciadora" value={p.cnpjCredenciadora} />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
                 <Field label="Autorização" value={p.autorizacao} />
                 <Field label="Troco" value={formatMoney(p.troco)} />
                 <Field label="Bandeira" value={p.bandeira} />
@@ -483,7 +483,7 @@ function TabCobranca({ data }: { data: any }) {
 
       {cobr.fatura && (
         <SectionBlock title="Fatura" icon="receipt" iconColor="text-amber-500">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             <Field label="Número" value={cobr.fatura.numero} />
             <Field label="Valor Original" value={formatMoney(cobr.fatura.valorOriginal)} />
             <Field label="Valor Desconto" value={formatMoney(cobr.fatura.valorDesconto)} />
