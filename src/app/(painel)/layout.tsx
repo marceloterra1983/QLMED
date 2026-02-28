@@ -294,10 +294,22 @@ export default function DashboardLayout({
   const [isResizing, setIsResizing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Hide mobile header when any modal/dialog is open
+  useEffect(() => {
+    const checkModals = () => {
+      setModalOpen(document.querySelector('[role="dialog"]') !== null);
+    };
+    const observer = new MutationObserver(checkModals);
+    observer.observe(document.body, { childList: true, subtree: true });
+    checkModals();
+    return () => observer.disconnect();
   }, []);
 
   const handleToggleCollapse = useCallback(() => {
@@ -426,7 +438,7 @@ export default function DashboardLayout({
       {/* Main Content */}
       <main id="main-content" className="flex-1 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
         {/* Mobile-only header */}
-        <header className="h-14 flex items-center gap-4 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20 lg:hidden">
+        <header className={`h-14 flex items-center gap-4 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20 lg:hidden ${modalOpen ? 'hidden' : ''}`}>
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="Abrir menu de navegação"
