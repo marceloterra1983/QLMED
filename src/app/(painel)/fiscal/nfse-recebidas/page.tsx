@@ -247,7 +247,72 @@ export default function NfseReceivedPage() {
         </div>
       </MobileFilterWrapper>
 
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-44" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : invoices.length === 0 ? (
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+            <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
+            <p className="mt-2 text-sm font-medium">Nenhuma NFS-e encontrada</p>
+          </div>
+        ) : (
+          invoices.map((invoice) => {
+            const isRejected = invoice.status === 'rejected';
+            const isConfirmed = invoice.status === 'confirmed';
+            const isIssued = invoice.direction === 'issued';
+            return (
+              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number || '-'}</span>
+                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
+                  </div>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    isRejected
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : isIssued
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : isConfirmed
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{invoice.senderName || '-'}</p>
+                <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{invoice.senderCnpj || '-'}</p>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-slate-400">{invoice.senderCity || '-'}</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                  </div>
+                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openModal} />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Mobile Pagination */}
+      <div className="sm:hidden flex flex-wrap items-center justify-between gap-2 px-1">
+        <span className="text-xs text-slate-500 dark:text-slate-400">{invoices.length} de {total}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || loading} className="px-2.5 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs disabled:opacity-50">Anterior</button>
+          <span className="text-xs text-slate-500">{page}/{totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages || loading} className="px-2.5 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs disabled:opacity-50">Próxima</button>
+        </div>
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden sm:block bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px]">
             <thead className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800">

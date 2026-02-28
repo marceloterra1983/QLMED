@@ -225,7 +225,32 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                   Nenhum produto encontrado para o filtro informado.
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-[420px] rounded-xl border border-slate-200 dark:border-slate-800">
+                <>
+                {/* Mobile Cards */}
+                <div className="sm:hidden space-y-1.5 max-h-[420px] overflow-y-auto">
+                  {filteredAndSortedRows.map((row) => (
+                    <div key={`m-${row.code}-${row.description}-${row.unit}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-mono text-slate-400">{row.code}</span>
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{row.description}</p>
+                        </div>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatPrice(row.lastPrice)}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>Total: {formatQuantity(row.totalQuantity)}</span>
+                        <span>2025: {formatQuantity(row.quantity2025)}</span>
+                        <span>2026: {formatQuantity(row.quantity2026)}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden sm:block overflow-x-auto max-h-[420px] rounded-xl border border-slate-200 dark:border-slate-800">
                   <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
@@ -350,6 +375,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </>
           )}

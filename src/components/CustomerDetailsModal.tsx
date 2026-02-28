@@ -1090,7 +1090,25 @@ export default function CustomerDetailsModal({
                     <span className="text-[13px] text-slate-400">Nenhum produto encontrado</span>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto max-h-[320px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+                  <>
+                  <div className="sm:hidden space-y-1.5">
+                    {filteredAndSortedPriceTable.map((row) => (
+                      <div key={`m-${row.code}-${row.description}-${row.unit}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-mono text-slate-400">{row.code}</span>
+                            <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{row.description}</p>
+                          </div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatPrice(row.lastPrice)}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
+                          <span>Qtd: {formatQuantity(row.totalQuantity)}</span>
+                          <span>{row.lastInvoiceNumber || '-'} {row.lastIssueDate ? formatDate(row.lastIssueDate) : ''}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden sm:block overflow-x-auto max-h-[320px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
                     <table className="w-full text-left border-collapse min-w-[760px]">
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
@@ -1127,6 +1145,7 @@ export default function CustomerDetailsModal({
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </>
             )}
@@ -1155,7 +1174,30 @@ export default function CustomerDetailsModal({
                 <span className="text-[13px] text-slate-400">Nenhuma nota de venda ou bonificação encontrada</span>
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+              <>
+              <div className="sm:hidden space-y-1.5">
+                {saleInvoices.map((invoice) => {
+                  const installmentSummary = invoiceInstallmentsMap.get(invoice.id);
+                  const totalInstallments = installmentSummary?.totalInstallments || 0;
+                  const firstDueDate = installmentSummary?.firstDueDate ? installmentSummary.firstDueDate.toLocaleDateString('pt-BR') : '-';
+                  return (
+                    <div key={invoice.id} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                          <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{totalInstallments}x — Venc: {firstDueDate}</span>
+                        <RowActions invoiceId={invoice.id} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden sm:block overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
                 <table className="w-full text-left border-collapse min-w-[760px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
@@ -1202,6 +1244,7 @@ export default function CustomerDetailsModal({
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </SectionCard>
 
@@ -1221,7 +1264,25 @@ export default function CustomerDetailsModal({
                 <span className="text-[13px] text-slate-400">Nenhuma movimentação encontrada</span>
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+              <>
+              <div className="sm:hidden space-y-1.5">
+                {movimentacaoInvoices.map((invoice) => (
+                  <div key={invoice.id} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{invoice.cfopTag}</span>
+                      </div>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
+                      <RowActions invoiceId={invoice.id} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block overflow-x-auto max-h-[360px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
                 <table className="w-full text-left border-collapse min-w-[760px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
@@ -1258,6 +1319,7 @@ export default function CustomerDetailsModal({
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </SectionCard>
 
@@ -1277,7 +1339,28 @@ export default function CustomerDetailsModal({
                 <span className="text-[13px] text-slate-400">Nenhuma duplicata encontrada</span>
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[320px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+              <>
+              <div className="sm:hidden space-y-1.5">
+                {details.duplicates.map((duplicate, index) => {
+                  const status = getDuplicateStatus(duplicate.dueDate);
+                  return (
+                    <div key={`m-${duplicate.invoiceId}-${duplicate.invoiceNumber}-${duplicate.installmentNumber}-${duplicate.dueDate || 'sem-data'}-${index}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">{duplicate.invoiceNumber}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{formatInstallmentDisplay(duplicate.installmentNumber, duplicate.installmentTotal)}</span>
+                        </div>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ${status.classes}`}>{status.label}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500 dark:text-slate-400">Venc: {formatDueDate(duplicate.dueDate)}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(duplicate.installmentValue)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden sm:block overflow-x-auto max-h-[320px] rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
                 <table className="w-full text-left border-collapse min-w-[680px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800">
@@ -1313,6 +1396,7 @@ export default function CustomerDetailsModal({
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </SectionCard>
         </div>

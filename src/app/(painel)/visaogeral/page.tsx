@@ -643,7 +643,7 @@ export default function DashboardPage() {
         <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="p-4 space-y-3">
+              <div key={i} className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-5 w-16" />
@@ -673,11 +673,11 @@ export default function DashboardPage() {
               const status = getStatusDisplay(invoice.status);
               const dotClasses = statusDotClasses[status.color];
               return (
-                <div key={invoice.id} className="p-4">
+                <div key={invoice.id} className="p-3">
                   {/* Top row: sender name + type badge + value */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {invoice.senderName}
                       </span>
                       {getDirectionBadge(invoice)}
@@ -694,7 +694,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Secondary row: status + date */}
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-1.5">
                     <div className="flex items-center gap-1.5">
                       {invoice.status === 'confirmed' ? (
                         <span className="relative flex h-2 w-2 shrink-0">
@@ -708,18 +708,18 @@ export default function DashboardPage() {
                       ) : (
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dotClasses.dot}`}></span>
                       )}
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
                         {status.label}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 text-right">
                       {formatDateShort(invoice.issueDate)}{' '}
                       <span className="text-slate-400">{formatTime(invoice.issueDate)}</span>
                     </div>
                   </div>
 
                   {/* Access key row */}
-                  <div className="flex items-center gap-1 mt-2">
+                  <div className="flex items-center gap-1 mt-1.5">
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tracking-tight truncate">
                       {formatAccessKey(invoice.accessKey)}
                     </span>
@@ -737,7 +737,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-2 mt-2">
                     {invoice.status === 'received' && (
                       <button
                         onClick={() => toast.info('Manifestação ainda não implementada.')}

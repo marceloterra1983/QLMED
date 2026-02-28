@@ -397,10 +397,10 @@ export default function InvoicesPage() {
       )}
 
       {/* Mobile Cards */}
-      <div className="sm:hidden space-y-3">
+      <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-48" />
               <Skeleton className="h-3 w-24" />
@@ -419,15 +419,15 @@ export default function InvoicesPage() {
             return (
               <div
                 key={invoice.id}
-                className={`border rounded-xl p-4 ${
+                className={`border rounded-xl p-3 ${
                   highlightRow
                     ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60'
                     : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start justify-between mb-1">
                   <div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
                     {displayTag && (
                       <div className="mt-1">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>
@@ -437,10 +437,10 @@ export default function InvoicesPage() {
                     )}
                   </div>
                 </div>
-                {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><p className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
                   </div>
                   <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />

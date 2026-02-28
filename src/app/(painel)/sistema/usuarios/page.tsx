@@ -514,10 +514,10 @@ export default function UsuariosPage() {
             {/* Mobile card view */}
             <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
               {users.map((user) => (
-                <div key={user.id} className="p-4">
+                <div key={user.id} className="p-3">
                   {/* Name and badges */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{user.name}</p>
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white leading-snug">{user.name}</p>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
                         {ROLE_LABELS[user.role] || user.role}
@@ -529,7 +529,7 @@ export default function UsuariosPage() {
                   </div>
 
                   {/* Secondary fields */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] mb-1.5">
                     <div className="col-span-2">
                       <span className="text-slate-400 font-medium">Email</span>
                       <p className="text-slate-700 dark:text-slate-300 truncate">{user.email}</p>

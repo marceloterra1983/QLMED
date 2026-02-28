@@ -526,16 +526,16 @@ export default function SuppliersPage() {
                         </div>
                       )}
                       {!collapsedGroups.has(group) && (
-                        <div className="p-4 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}>
-                          <div className="flex items-start justify-between mb-1.5">
+                        <div className="p-3 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}>
+                          <div className="flex items-start justify-between mb-1">
                             <div className="flex-1 min-w-0">
                               {label ? (
                                 <>
-                                  <p className="font-bold text-slate-900 dark:text-white truncate text-[14px]">{label}</p>
+                                  <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{label}</p>
                                   <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{supplier.name}</p>
                                 </>
                               ) : (
-                                <p className="font-bold text-slate-900 dark:text-white truncate text-[14px]">{supplier.name}</p>
+                                <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{supplier.name}</p>
                               )}
                             </div>
                             {st && (() => {
@@ -550,8 +550,8 @@ export default function SuppliersPage() {
                               return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full border ${color}`}>{st}</span>;
                             })()}
                           </div>
-                          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-2">{formatDocument(supplier.cnpj)}</p>
-                          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">{formatDocument(supplier.cnpj)}</p>
+                          <div className="grid grid-cols-2 gap-2 text-[10px] mb-1.5">
                             <div>
                               <p className="text-slate-400">Última NF-e</p>
                               <p className="font-medium text-slate-700 dark:text-slate-300">{supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}</p>

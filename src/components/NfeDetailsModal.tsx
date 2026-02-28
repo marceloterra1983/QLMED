@@ -261,7 +261,47 @@ function TabProdutos({ data }: { data: any }) {
 
   return (
     <SectionBlock title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" iconColor="text-emerald-500">
-      <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-1.5">
+        {produtos.map((prod: any, idx: number) => (
+          <div key={`m-${idx}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+            <button
+              onClick={() => toggle(idx)}
+              className={`w-full text-left p-2.5 ${expanded.has(idx) ? 'bg-slate-50 dark:bg-slate-800/40' : ''}`}
+            >
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1">{prod.descricao}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                  <span>{prod.quantidade} {prod.unidade}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</span>
+                  <span className={`material-symbols-outlined text-[14px] text-slate-400 transition-transform ${expanded.has(idx) ? 'rotate-180' : ''}`}>expand_more</span>
+                </div>
+              </div>
+            </button>
+            {expanded.has(idx) && (
+              <div className="px-2.5 pb-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-2">
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Field label="Código" value={prod.codigo} />
+                  <Field label="NCM" value={prod.ncm} />
+                  <Field label="CFOP" value={prod.cfop} />
+                  <Field label="Valor Unitário" value={formatMoney(prod.valorUnitario)} />
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <TaxCard label="ICMS" color="blue" data={prod.icms} />
+                  <TaxCard label="IPI" color="emerald" data={prod.ipi} />
+                  <TaxCard label="PIS" color="amber" data={prod.pis} />
+                  <TaxCard label="COFINS" color="violet" data={prod.cofins} />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
@@ -454,7 +494,20 @@ function TabCobranca({ data }: { data: any }) {
 
       {cobr.duplicatas?.length > 0 && (
         <SectionBlock title="Duplicatas" icon="payments" iconColor="text-rose-500">
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+          {/* Mobile Cards */}
+          <div className="sm:hidden space-y-1.5">
+            {cobr.duplicatas.map((d: any, i: number) => (
+              <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{d.vencimento}</span>
+                </div>
+                <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(d.valor)}</span>
+              </div>
+            ))}
+          </div>
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">

@@ -416,14 +416,14 @@ export default function SyncPage() {
             {/* Mobile card view */}
             <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
               {methodLogs.map((log) => (
-                <div key={log.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                <div key={log.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="text-[10px] font-bold text-slate-900 dark:text-white">
                       {formatDate(log.startedAt)}
                     </p>
                     {formatFailedCell(log.status)}
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-1.5">
                     {getStatusBadge(log.status)}
                     {log.errorMessage && (
                       <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 break-words">

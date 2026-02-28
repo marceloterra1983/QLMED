@@ -504,10 +504,10 @@ export default function CtePage() {
       )}
 
       {/* Mobile Cards */}
-      <div className="sm:hidden space-y-3">
+      <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-48" />
               <Skeleton className="h-3 w-24" />
@@ -523,12 +523,12 @@ export default function CtePage() {
 	            const manifest = getCteManifestBadge(invoice.status);
               const flow = getFreightFlow(invoice);
 	            return (
-	              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-	                <div className="flex items-start justify-between mb-2">
+	              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+	                <div className="flex items-start justify-between mb-1">
                   <div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${manifest.classes}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${manifest.classes}`}>
 	                    {manifest.label}
 	                  </span>
 	                </div>
@@ -542,10 +542,10 @@ export default function CtePage() {
                   ) : (
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">{e.display}</p>
                   ); })()}
-	                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
-	                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+	                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
+	                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
 	                  <div>
-	                    <span className="text-xs text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+	                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
                   </div>
                   <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />

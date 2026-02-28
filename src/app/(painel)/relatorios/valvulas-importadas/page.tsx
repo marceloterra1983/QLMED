@@ -444,11 +444,11 @@ export default function ValvulasImportadasPage() {
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {data.customerYearlySales.customers.map((c, idx) => (
-                  <div key={idx} className="p-4">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate" title={c.customerName}>
+                  <div key={idx} className="p-3">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate" title={c.customerName}>
                       {c.shortName}
                     </p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
                       <div>
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Qtd</p>
                         <p className="text-sm font-mono font-bold text-slate-900 dark:text-white">
@@ -471,7 +471,7 @@ export default function ValvulasImportadasPage() {
                       )}
                     </div>
                     {data.customerYearlySales.years.length > 0 && (
-                      <div className="mt-2 grid grid-cols-3 gap-2">
+                      <div className="mt-1.5 grid grid-cols-3 gap-2">
                         {data.customerYearlySales.years.map((y) => {
                           const entry = c.byYear[String(y)];
                           return (
@@ -666,12 +666,12 @@ export default function ValvulasImportadasPage() {
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {sortedProducts.map((p) => (
-                <div key={p.key} className="p-4">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white" title={p.description}>
+                <div key={p.key} className="p-3">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white" title={p.description}>
                     {p.shortName || p.description}
                   </p>
                   <p className="text-[10px] font-mono text-slate-400 mt-0.5">{p.code}</p>
-                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2">
                     <div>
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Qt Comprada</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">

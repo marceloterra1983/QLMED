@@ -2019,15 +2019,15 @@ export default function ProdutosPage() {
                           </div>
                         )}
                         {!lineCollapsed && !grpCollapsed && (
-                          <div className={`p-4 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
-                            <div className="flex items-start gap-3 mb-1.5">
+                          <div className={`p-3 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                            <div className="flex items-start gap-3 mb-1">
                               <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                                   {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
                                   {product.code || '-'}
                                 </p>
-                                <p className="font-bold text-[14px] text-slate-900 dark:text-white truncate leading-tight">
+                                <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">
                                   {product.shortName || product.description}
                                 </p>
                                 {product.shortName && (
@@ -2035,7 +2035,7 @@ export default function ProdutosPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex flex-wrap gap-1 ml-7 mb-2">
+                            <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
                               {product.productType && (
                                 <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
                               )}
@@ -2046,7 +2046,7 @@ export default function ProdutosPage() {
                                 <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-xs ml-7 mb-2">
+                            <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
                               <div>
                                 <p className="text-slate-400">Últ. Compra</p>
                                 <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>
@@ -2091,15 +2091,15 @@ export default function ProdutosPage() {
                         </div>
                       )}
                       {!collapsedGroups.has(group) && (
-                        <div className={`p-4 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
-                          <div className="flex items-start gap-3 mb-1.5">
+                        <div className={`p-3 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                          <div className="flex items-start gap-3 mb-1">
                             <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                              <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                                 {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
                                 {product.code || '-'}
                               </p>
-                              <p className="font-bold text-[14px] text-slate-900 dark:text-white truncate leading-tight">
+                              <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">
                                 {product.shortName || product.description}
                               </p>
                               {product.shortName && (
@@ -2107,7 +2107,7 @@ export default function ProdutosPage() {
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-1 ml-7 mb-2">
+                          <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
                             {product.productType && (
                               <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
                             )}
@@ -2118,7 +2118,7 @@ export default function ProdutosPage() {
                               <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs ml-7 mb-2">
+                          <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
                             <div>
                               <p className="text-slate-400">Últ. Compra</p>
                               <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>

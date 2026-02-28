@@ -118,24 +118,36 @@ function TabCte({ data }: { data: any }) {
           <Field label="Valor a Receber" value={formatMoney(cte.valorReceber)} />
         </div>
         {data.componentes?.length > 0 && (
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
-                  <th className="px-3 py-2.5 text-left">Componente</th>
-                  <th className="px-3 py-2.5 text-right">Valor (R$)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {data.componentes.map((c: any, i: number) => (
-                  <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{c.nome}</td>
-                    <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(c.valor)}</td>
+          <>
+            {/* Mobile */}
+            <div className="sm:hidden space-y-1">
+              {data.componentes.map((c: any, i: number) => (
+                <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{c.nome}</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(c.valor)}</span>
+                </div>
+              ))}
+            </div>
+            {/* Desktop */}
+            <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                    <th className="px-3 py-2.5 text-left">Componente</th>
+                    <th className="px-3 py-2.5 text-right">Valor (R$)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {data.componentes.map((c: any, i: number) => (
+                    <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
+                      <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{c.nome}</td>
+                      <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(c.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </SectionBlock>
 
@@ -211,7 +223,20 @@ function TabCarga({ data }: { data: any }) {
 
       {carga.medidas?.length > 0 && (
         <SectionBlock title="Medidas" icon="straighten" iconColor="text-indigo-500">
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+          {/* Mobile */}
+          <div className="sm:hidden space-y-1">
+            {carga.medidas.map((m: any, i: number) => (
+              <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{m.tipoMedida || '-'}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{m.unidade}</span>
+                </div>
+                <span className="text-xs font-bold text-slate-900 dark:text-white">{m.quantidade}</span>
+              </div>
+            ))}
+          </div>
+          {/* Desktop */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
@@ -264,7 +289,17 @@ function TabDocumentos({ data }: { data: any }) {
     <div className="space-y-4">
       {docs.nfeRefs?.length > 0 && (
         <SectionBlock title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long" iconColor="text-primary">
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+          {/* Mobile */}
+          <div className="sm:hidden space-y-1">
+            {docs.nfeRefs.map((n: any, i: number) => (
+              <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                <span className="text-[10px] text-slate-400">#{i + 1}</span>
+                <p className="text-[10px] font-mono text-slate-800 dark:text-slate-200 break-all">{n.chave || '-'}</p>
+              </div>
+            ))}
+          </div>
+          {/* Desktop */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
@@ -289,7 +324,23 @@ function TabDocumentos({ data }: { data: any }) {
 
       {docs.nfRefs?.length > 0 && (
         <SectionBlock title={`NF Referenciadas (${docs.nfRefs.length})`} icon="article" iconColor="text-indigo-500">
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+          {/* Mobile */}
+          <div className="sm:hidden space-y-1">
+            {docs.nfRefs.map((n: any, i: number) => (
+              <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Nº {n.numero || '-'}</span>
+                    <span className="text-[10px] text-slate-400">Série {n.serie || '-'}</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(n.valorTotal)}</span>
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">{n.dataEmissao || '-'}</span>
+              </div>
+            ))}
+          </div>
+          {/* Desktop */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
@@ -316,7 +367,23 @@ function TabDocumentos({ data }: { data: any }) {
 
       {docs.outrosRefs?.length > 0 && (
         <SectionBlock title={`Outros Documentos (${docs.outrosRefs.length})`} icon="folder_open" iconColor="text-amber-500">
-          <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+          {/* Mobile */}
+          <div className="sm:hidden space-y-1">
+            {docs.outrosRefs.map((o: any, i: number) => (
+              <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{o.descricao || '-'}</span>
+                    <span className="text-[10px] text-slate-400">{o.tipo || '-'}</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(o.valor)}</span>
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">Nº {o.numero || '-'}</span>
+              </div>
+            ))}
+          </div>
+          {/* Desktop */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
