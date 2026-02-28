@@ -1414,9 +1414,9 @@ export default function ProdutosPage() {
     <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">inventory_2</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">inventory_2</span>
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Produtos</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
               Cadastro automático por produtos das NF-e de entrada, sem duplicar itens repetidos

@@ -276,9 +276,9 @@ export default function InvoicesPage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">receipt_long</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">receipt_long</span>
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">NF-e Recebidas</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Notas fiscais eletrônicas recebidas</p>
           </div>

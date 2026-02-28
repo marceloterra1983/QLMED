@@ -436,7 +436,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main id="main-content" className="flex-1 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
+      <main id="main-content" className="flex-1 min-w-0 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
         {/* Mobile-only header */}
         <header className={`h-14 flex items-center gap-4 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20 lg:hidden ${modalOpen ? 'hidden' : ''}`}>
           <button
@@ -460,7 +460,7 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-4 sm:px-6 sm:py-6">
-          <div className="max-w-[1600px] mx-auto space-y-8">
+          <div className="max-w-[1600px] min-w-0 mx-auto space-y-8">
             {children}
           </div>
         </div>

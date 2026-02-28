@@ -325,11 +325,11 @@ export default function UsuariosPage() {
     <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-xl bg-primary/10 flex-shrink-0">
             <span className="material-symbols-outlined text-primary text-[28px]">manage_accounts</span>
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Usuários</h1>
             <p className="text-sm text-slate-500">Gerenciar contas e permissões</p>
           </div>

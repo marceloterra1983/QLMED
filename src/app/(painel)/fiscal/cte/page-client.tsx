@@ -381,9 +381,9 @@ export default function CtePage() {
     <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">local_shipping</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">local_shipping</span>
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">CT-e</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Conhecimentos de transporte eletrônicos</p>
           </div>

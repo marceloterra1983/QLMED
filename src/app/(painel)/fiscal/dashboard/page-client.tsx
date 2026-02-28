@@ -174,11 +174,11 @@ export default function FiscalDashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Impostos</h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Visao consolidada de impostos por periodo</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Visão consolidada de impostos por período</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}

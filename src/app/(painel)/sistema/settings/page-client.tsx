@@ -544,9 +544,9 @@ export default function SettingsPage() {
 
       {/* Page Header */}
       <div className="mb-2">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">settings</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">settings</span>
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Configurações</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Preferências e integrações do sistema</p>
           </div>

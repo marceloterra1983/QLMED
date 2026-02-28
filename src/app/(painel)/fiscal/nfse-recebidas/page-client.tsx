@@ -180,19 +180,19 @@ export default function NfseReceivedPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">NFS-e</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Notas de serviço recebidas e emitidas pela QLMED</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
             {total} documento(s)
           </div>
           <button
             onClick={handleSyncReceitaNfse}
             disabled={syncing || !canWrite}
-            className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
             title={canWrite ? 'Sincronizar NFS-e via Receita' : 'Sem permissão para sincronizar'}
           >
             <span className="material-symbols-outlined text-[16px]">

@@ -596,9 +596,9 @@ export default function SyncPage() {
 
       {/* Page Header */}
       <div>
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[24px] text-primary">cloud_sync</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[24px] text-primary flex-shrink-0">cloud_sync</span>
+          <div className="min-w-0">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ, NSDocs ou Receita NFS-e (ADN)</p>
           </div>

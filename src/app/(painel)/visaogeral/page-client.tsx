@@ -143,9 +143,9 @@ export default function DashboardPage() {
     <>
       {/* Page Title + Period Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">monitoring</span>
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">monitoring</span>
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               Visão Geral
             </h2>
@@ -154,7 +154,7 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm">
+        <div className="flex items-center bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm overflow-x-auto">
           {periodButtons.map((btn) => (
             <button
               key={btn.value}
