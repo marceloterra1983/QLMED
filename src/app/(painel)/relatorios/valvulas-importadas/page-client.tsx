@@ -209,7 +209,7 @@ export default function ValvulasImportadasPage() {
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={() => window.open('/api/reports/valvulas-importadas/pdf?action=download', '_blank')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
               Exportar PDF
