@@ -440,8 +440,8 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Table — desktop */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
@@ -637,6 +637,141 @@ export default function DashboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards — mobile */}
+        <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-3 w-48" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            ))
+          ) : sortedInvoices.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-400">
+              <span className="material-symbols-outlined text-[48px] opacity-30">description</span>
+              <p className="mt-2 text-sm font-medium">Nenhum documento encontrado no período</p>
+              <p className="text-xs mt-1">Faça upload de XMLs para começar</p>
+              <Link
+                href="/sistema/upload"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-md shadow-primary/30"
+              >
+                <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                Importar XML
+              </Link>
+            </div>
+          ) : (
+            sortedInvoices.map((invoice) => {
+              const status = getStatusDisplay(invoice.status);
+              const dotClasses = statusDotClasses[status.color];
+              return (
+                <div key={invoice.id} className="p-4">
+                  {/* Top row: sender name + type badge + value */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {invoice.senderName}
+                      </span>
+                      {getDirectionBadge(invoice)}
+                    </div>
+                    <span
+                      className={`text-sm font-bold font-mono shrink-0 ${
+                        invoice.status === 'rejected'
+                          ? 'text-slate-500 line-through'
+                          : 'text-slate-900 dark:text-white'
+                      }`}
+                    >
+                      {formatCurrency(invoice.totalValue)}
+                    </span>
+                  </div>
+
+                  {/* Secondary row: status + date */}
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="flex items-center gap-1.5">
+                      {invoice.status === 'confirmed' ? (
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span
+                            className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotClasses.ping} opacity-75`}
+                          ></span>
+                          <span
+                            className={`relative inline-flex rounded-full h-2 w-2 ${dotClasses.dot}`}
+                          ></span>
+                        </span>
+                      ) : (
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${dotClasses.dot}`}></span>
+                      )}
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                        {status.label}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                      {formatDateShort(invoice.issueDate)}{' '}
+                      <span className="text-slate-400">{formatTime(invoice.issueDate)}</span>
+                    </div>
+                  </div>
+
+                  {/* Access key row */}
+                  <div className="flex items-center gap-1 mt-2">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tracking-tight truncate">
+                      {formatAccessKey(invoice.accessKey)}
+                    </span>
+                    <button
+                      aria-label="Copiar chave de acesso"
+                      className="text-slate-400 hover:text-primary transition-colors shrink-0"
+                      title="Copiar Chave"
+                      onClick={() => {
+                        navigator.clipboard.writeText(invoice.accessKey);
+                        toast.success('Chave copiada!');
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                    </button>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 mt-3">
+                    {invoice.status === 'received' && (
+                      <button
+                        onClick={() => toast.info('Manifestação ainda não implementada.')}
+                        className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/50 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors uppercase tracking-wide"
+                      >
+                        Manifestar
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedInvoiceId(invoice.id);
+                        setIsModalOpen(true);
+                      }}
+                      aria-label="Ver detalhes"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors text-xs font-medium"
+                      title="Ver Detalhes"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                      Detalhes
+                    </button>
+                    <a
+                      href={`/api/invoices/${invoice.id}/download`}
+                      aria-label="Baixar XML"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors text-xs font-medium"
+                      title="Download XML"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">download</span>
+                      XML
+                    </a>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Footer with "Ver Todas" */}

@@ -447,7 +447,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-4 sm:px-6 sm:py-6">
           <div className="max-w-[1600px] mx-auto space-y-8">
             {children}
           </div>

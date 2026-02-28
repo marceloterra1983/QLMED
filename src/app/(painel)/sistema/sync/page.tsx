@@ -369,47 +369,82 @@ export default function SyncPage() {
             Sem sincronizações registradas para este método.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                  <th className="px-3 py-2">Horário</th>
-                  <th className="px-3 py-2">Resultado</th>
-                  <th className="px-3 py-2 text-right">Novos</th>
-                  <th className="px-3 py-2 text-right">Atualizados</th>
-                  <th className="px-3 py-2 text-center">Falhou</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {methodLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                      {formatDate(log.startedAt)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col gap-1">
-                        <div>{getStatusBadge(log.status)}</div>
-                        {log.errorMessage && (
-                          <span className="text-[11px] text-red-500 dark:text-red-400 max-w-[14rem] truncate" title={log.errorMessage}>
-                            {log.errorMessage}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                      {log.newDocs}
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs font-semibold text-blue-700 dark:text-blue-400">
-                      {log.updatedDocs}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {formatFailedCell(log.status)}
-                    </td>
+          <>
+            {/* Desktop table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                    <th className="px-3 py-2">Horário</th>
+                    <th className="px-3 py-2">Resultado</th>
+                    <th className="px-3 py-2 text-right">Novos</th>
+                    <th className="px-3 py-2 text-right">Atualizados</th>
+                    <th className="px-3 py-2 text-center">Falhou</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {methodLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        {formatDate(log.startedAt)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col gap-1">
+                          <div>{getStatusBadge(log.status)}</div>
+                          {log.errorMessage && (
+                            <span className="text-[11px] text-red-500 dark:text-red-400 max-w-[14rem] truncate" title={log.errorMessage}>
+                              {log.errorMessage}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                        {log.newDocs}
+                      </td>
+                      <td className="px-3 py-2 text-right text-xs font-semibold text-blue-700 dark:text-blue-400">
+                        {log.updatedDocs}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {formatFailedCell(log.status)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card view */}
+            <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {methodLogs.map((log) => (
+                <div key={log.id} className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {formatDate(log.startedAt)}
+                    </p>
+                    {formatFailedCell(log.status)}
+                  </div>
+                  <div className="mb-2">
+                    {getStatusBadge(log.status)}
+                    {log.errorMessage && (
+                      <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 break-words">
+                        {log.errorMessage}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 border border-emerald-100 dark:border-emerald-800">
+                      <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">{log.newDocs}</p>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-500 font-medium">Novas notas</p>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 border border-blue-100 dark:border-blue-800">
+                      <p className="text-base font-bold text-blue-700 dark:text-blue-400">{log.updatedDocs}</p>
+                      <p className="text-[11px] text-blue-600 dark:text-blue-500 font-medium">Atualizados</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     );

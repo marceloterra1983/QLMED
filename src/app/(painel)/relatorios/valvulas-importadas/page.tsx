@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCurrency, formatCurrencyShort } from '@/lib/utils';
+import { useModalBackButton } from '@/hooks/useModalBackButton';
 
 interface SystemUser {
   id: string;
@@ -149,6 +150,8 @@ export default function ValvulasImportadasPage() {
     );
   };
 
+  useModalBackButton(emailModalOpen, () => setEmailModalOpen(false));
+
   const openEmailModal = useCallback(async () => {
     setEmailModalOpen(true);
     setSelectedEmail(null);
@@ -264,7 +267,25 @@ export default function ValvulasImportadasPage() {
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800">
+            {/* Mobile footer */}
+            <div className="sm:hidden border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-2">
+              <button
+                onClick={handleSendEmail}
+                disabled={!selectedEmail || sendingEmail}
+                className="flex items-center justify-center gap-1.5 w-full px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingEmail && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+                {sendingEmail ? 'Enviando...' : 'Enviar'}
+              </button>
+              <button
+                onClick={() => setEmailModalOpen(false)}
+                className="w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Voltar
+              </button>
+            </div>
+            {/* Desktop footer */}
+            <div className="hidden sm:flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setEmailModalOpen(false)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -322,99 +343,166 @@ export default function ValvulasImportadasPage() {
 
         {/* Customer Yearly Sales Table */}
         {!loading && data && (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-            <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Vendas por Cliente / Ano
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                    <th className="px-2 py-1.5">Cliente</th>
-                    {data.customerYearlySales.years.map((y) => (
-                      <th key={y} className="px-2 py-1.5 text-right">{y}</th>
+          <>
+            {/* Desktop table */}
+            <div className="hidden lg:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Vendas por Cliente / Ano
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                      <th className="px-2 py-1.5">Cliente</th>
+                      {data.customerYearlySales.years.map((y) => (
+                        <th key={y} className="px-2 py-1.5 text-right">{y}</th>
+                      ))}
+                      <th className="px-2 py-1.5 text-right">Total</th>
+                      <th className="px-2 py-1.5 text-right">Últ. Preço</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {data.customerYearlySales.customers.map((c, idx) => (
+                      <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-2 py-1.5 text-xs text-slate-900 dark:text-white truncate max-w-[180px]" title={c.customerName}>
+                          {c.shortName}
+                        </td>
+                        {data.customerYearlySales.years.map((y) => {
+                          const entry = c.byYear[String(y)];
+                          return (
+                            <td key={y} className="px-2 py-1.5 text-right">
+                              {entry && entry.qty > 0 ? (
+                                <div>
+                                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                                    {entry.qty.toLocaleString('pt-BR')}
+                                  </div>
+                                  <div className="text-[9px] font-mono text-slate-400 leading-tight">
+                                    {formatCurrency(entry.value)}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-1.5 text-right">
+                          <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
+                            {c.totalQty.toLocaleString('pt-BR')}
+                          </div>
+                          <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                            {formatCurrency(c.totalValue)}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-700 dark:text-slate-300">
+                          {c.lastUnitPrice != null ? formatCurrency(c.lastUnitPrice) : '—'}
+                        </td>
+                      </tr>
                     ))}
-                    <th className="px-2 py-1.5 text-right">Total</th>
-                    <th className="px-2 py-1.5 text-right">Últ. Preço</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {data.customerYearlySales.customers.map((c, idx) => (
-                    <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-2 py-1.5 text-xs text-slate-900 dark:text-white truncate max-w-[180px]" title={c.customerName}>
-                        {c.shortName}
-                      </td>
-                      {data.customerYearlySales.years.map((y) => {
-                        const entry = c.byYear[String(y)];
-                        return (
-                          <td key={y} className="px-2 py-1.5 text-right">
-                            {entry && entry.qty > 0 ? (
-                              <div>
-                                <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                                  {entry.qty.toLocaleString('pt-BR')}
-                                </div>
-                                <div className="text-[9px] font-mono text-slate-400 leading-tight">
-                                  {formatCurrency(entry.value)}
-                                </div>
+                    {data.customerYearlySales.customers.length > 0 && (
+                      <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-300 dark:border-slate-700 font-bold">
+                        <td className="px-2 py-2 text-xs text-slate-900 dark:text-white">TOTAL</td>
+                        {data.customerYearlySales.years.map((y) => {
+                          const yk = String(y);
+                          const yearQty = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.qty || 0), 0);
+                          const yearVal = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.value || 0), 0);
+                          return (
+                            <td key={y} className="px-2 py-2 text-right">
+                              <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                                {yearQty.toLocaleString('pt-BR')}
                               </div>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-2 py-1.5 text-right">
-                        <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                          {c.totalQty.toLocaleString('pt-BR')}
-                        </div>
-                        <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                          {formatCurrency(c.totalValue)}
-                        </div>
-                      </td>
-                      <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-700 dark:text-slate-300">
-                        {c.lastUnitPrice != null ? formatCurrency(c.lastUnitPrice) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  {data.customerYearlySales.customers.length > 0 && (
-                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-300 dark:border-slate-700 font-bold">
-                      <td className="px-2 py-2 text-xs text-slate-900 dark:text-white">TOTAL</td>
-                      {data.customerYearlySales.years.map((y) => {
-                        const yk = String(y);
-                        const yearQty = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.qty || 0), 0);
-                        const yearVal = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.value || 0), 0);
-                        return (
-                          <td key={y} className="px-2 py-2 text-right">
-                            <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                              {yearQty.toLocaleString('pt-BR')}
-                            </div>
-                            <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                              {formatCurrency(yearVal)}
-                            </div>
-                          </td>
-                        );
-                      })}
-                      <td className="px-2 py-2 text-right">
-                        <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                          {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
-                        </div>
-                        <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                          {formatCurrency(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2" />
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                              <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                                {formatCurrency(yearVal)}
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-2 text-right">
+                          <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
+                            {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
+                          </div>
+                          <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                            {formatCurrency(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2" />
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            {/* Mobile cards — Vendas por Cliente / Ano */}
+            <div className="lg:hidden bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Vendas por Cliente / Ano
+                </h3>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {data.customerYearlySales.customers.map((c, idx) => (
+                  <div key={idx} className="p-4">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate" title={c.customerName}>
+                      {c.shortName}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Qtd</p>
+                        <p className="text-sm font-mono font-bold text-slate-900 dark:text-white">
+                          {c.totalQty.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Valor</p>
+                        <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                          {formatCurrency(c.totalValue)}
+                        </p>
+                      </div>
+                      {c.lastUnitPrice != null && (
+                        <div className="col-span-2">
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Últ. Preço Unit.</p>
+                          <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                            {formatCurrency(c.lastUnitPrice)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {data.customerYearlySales.years.length > 0 && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {data.customerYearlySales.years.map((y) => {
+                          const entry = c.byYear[String(y)];
+                          return (
+                            <div key={y} className="bg-slate-50 dark:bg-slate-800/40 rounded-md px-2 py-1.5">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{y}</p>
+                              {entry && entry.qty > 0 ? (
+                                <>
+                                  <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                                    {entry.qty.toLocaleString('pt-BR')}
+                                  </p>
+                                  <p className="text-[9px] font-mono text-slate-400 leading-tight">
+                                    {formatCurrency(entry.value)}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-xs text-slate-300 dark:text-slate-600">—</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
-        {/* Detailed Table */}
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col overflow-hidden">
+        {/* Detailed Table — desktop */}
+        <div className="hidden lg:flex flex-col bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -543,6 +631,96 @@ export default function ValvulasImportadasPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Detailed Table — mobile cards */}
+        <div className="lg:hidden bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 bg-slate-50/30 dark:bg-slate-800/20">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              Detalhamento por Produto
+            </h3>
+            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+              {data?.products.length || 0}
+            </span>
+          </div>
+          {loading ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 flex flex-col gap-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <Skeleton className="h-8" />
+                    <Skeleton className="h-8" />
+                    <Skeleton className="h-8" />
+                    <Skeleton className="h-8" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sortedProducts.length === 0 ? (
+            <div className="px-4 py-8 text-center text-slate-400">
+              <span className="material-symbols-outlined text-[36px] opacity-30">search_off</span>
+              <p className="mt-1 text-xs font-medium">Nenhum produto encontrado</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {sortedProducts.map((p) => (
+                <div key={p.key} className="p-4">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white" title={p.description}>
+                    {p.shortName || p.description}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-400 mt-0.5">{p.code}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Qt Comprada</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {p.purchasedQty.toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Comprado</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {formatCurrency(p.purchasedValue)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Qt Vendida</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {p.soldQty.toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Vendido</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {formatCurrency(p.soldValue)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Saldo</p>
+                      <p className={`text-sm font-mono font-bold ${
+                        p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
+                      }`}>
+                        {p.netQty > 0 ? '+' : ''}{p.netQty.toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Compra</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {p.avgPurchasePrice != null ? formatCurrency(p.avgPurchasePrice) : '—'}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Venda</p>
+                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                        {p.avgSalePrice != null ? formatCurrency(p.avgSalePrice) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

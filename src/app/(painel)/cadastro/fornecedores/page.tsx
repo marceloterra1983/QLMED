@@ -326,8 +326,9 @@ export default function SuppliersPage() {
       </MobileFilterWrapper>
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[840px]">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th
@@ -482,6 +483,108 @@ export default function SuppliersPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="lg:hidden">
+          {loading ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : suppliers.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-400">
+              <span className="material-symbols-outlined text-[48px] opacity-30">storefront</span>
+              <p className="mt-2 text-sm font-medium">Nenhum fornecedor encontrado</p>
+              <p className="text-xs mt-1">Os fornecedores aparecem automaticamente quando houver NF-e recebidas.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(() => {
+                let lastGroup = '';
+                return suppliers.map((supplier) => {
+                  const group = supplier.lastIssueDate ? getDateGroupLabel(supplier.lastIssueDate) : 'Sem data';
+                  const showDivider = group !== lastGroup;
+                  lastGroup = group;
+                  const isCpf = (supplier.cnpj || '').replace(/\D/g, '').length === 11;
+                  const label = supplier.shortName || (isCpf ? 'PARTICULAR' : null);
+                  const digits = (supplier.cnpj || '').replace(/\D/g, '');
+                  const st = cnpjStatus.get(digits);
+                  return (
+                    <React.Fragment key={`m-${supplier.cnpj}-${supplier.name}`}>
+                      {showDivider && (
+                        <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                          </div>
+                        </div>
+                      )}
+                      {!collapsedGroups.has(group) && (
+                        <div className="p-4 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}>
+                          <div className="flex items-start justify-between mb-1.5">
+                            <div className="flex-1 min-w-0">
+                              {label ? (
+                                <>
+                                  <p className="font-bold text-slate-900 dark:text-white truncate text-[14px]">{label}</p>
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{supplier.name}</p>
+                                </>
+                              ) : (
+                                <p className="font-bold text-slate-900 dark:text-white truncate text-[14px]">{supplier.name}</p>
+                              )}
+                            </div>
+                            {st && (() => {
+                              const upper = st.toUpperCase();
+                              const color = upper === 'ATIVA'
+                                ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                                : upper.includes('SUSPENS')
+                                  ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                  : upper.includes('BAIXA') || upper.includes('INAPT')
+                                    ? 'text-red-600 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                                    : 'text-slate-500 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
+                              return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full border ${color}`}>{st}</span>;
+                            })()}
+                          </div>
+                          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-2">{formatDocument(supplier.cnpj)}</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                            <div>
+                              <p className="text-slate-400">Última NF-e</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{supplier.lastIssueDate ? formatDate(supplier.lastIssueDate) : '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Tabela de Preço</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{supplier.priceItemCount != null ? `${supplier.priceItemCount.toLocaleString('pt-BR')} itens` : '-'}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              Ver Detalhes
+                            </button>
+                            <button
+                              onClick={() => { setSelectedPriceSupplier(supplier); setIsPriceTableOpen(true); }}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">table_view</span>
+                              Tabela
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">

@@ -445,69 +445,128 @@ export default function UsuariosPage() {
             <p className="text-sm text-slate-500 mt-2">Nenhum usuário cadastrado</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Nome</th>
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Email</th>
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Telefone</th>
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Perfil</th>
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
-                  <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Criado em</th>
-                  <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-slate-900 dark:text-white">{user.name}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">{user.email}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">{user.phone || '—'}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
+          <>
+            {/* Desktop table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Nome</th>
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Email</th>
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Telefone</th>
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Perfil</th>
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Criado em</th>
+                    <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">{user.name}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-slate-600 dark:text-slate-300">{user.email}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-slate-600 dark:text-slate-300">{user.phone || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
+                          {ROLE_LABELS[user.role] || user.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[user.status] || ''}`}>
+                          {STATUS_LABELS[user.status] || user.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-slate-500">
+                          {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openEdit(user)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Editar"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button
+                            onClick={() => openPages(user)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                            title="Controle de páginas"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">tune</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card view */}
+            <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {users.map((user) => (
+                <div key={user.id} className="p-4">
+                  {/* Name and badges */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{user.name}</p>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
                         {ROLE_LABELS[user.role] || user.role}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[user.status] || ''}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[user.status] || ''}`}>
                         {STATUS_LABELS[user.status] || user.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-slate-500">
+                    </div>
+                  </div>
+
+                  {/* Secondary fields */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-3">
+                    <div className="col-span-2">
+                      <span className="text-slate-400 font-medium">Email</span>
+                      <p className="text-slate-700 dark:text-slate-300 truncate">{user.email}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Telefone</span>
+                      <p className="text-slate-700 dark:text-slate-300">{user.phone || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Criado em</span>
+                      <p className="text-slate-700 dark:text-slate-300">
                         {new Date(user.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(user)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Editar"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">edit</span>
-                        </button>
-                        <button
-                          onClick={() => openPages(user)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-                          title="Controle de páginas"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">tune</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(user)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => openPages(user)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-violet-600 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">tune</span>
+                      Páginas
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

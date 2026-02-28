@@ -7,6 +7,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { formatValue } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import { useModalBackButton } from '@/hooks/useModalBackButton';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 
 interface ProductRow {
@@ -639,6 +640,16 @@ export default function ProdutosPage() {
     detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '') ||
     detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')
   );
+
+  // ---- mobile back button for inline modals ----
+  const closeDetail = useCallback(() => setDetailProduct(null), []);
+  const closeHistory = useCallback(() => setHistoryProduct(null), []);
+  const closeAutoClassify = useCallback(() => setAutoClassifyPreview(null), []);
+  const closeBulkEdit = useCallback(() => setBulkEditOpen(false), []);
+  useModalBackButton(!!detailProduct, closeDetail);
+  useModalBackButton(!!historyProduct, closeHistory);
+  useModalBackButton(!!autoClassifyPreview, closeAutoClassify);
+  useModalBackButton(bulkEditOpen, closeBulkEdit);
 
   // ---- load settings hierarchy (lines → groups → subgroups) ----
   const loadSettingsHierarchy = async () => {
@@ -1698,8 +1709,9 @@ export default function ProdutosPage() {
             </div>
           );
         })()}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-3 py-1.5 w-8">
@@ -1917,6 +1929,221 @@ export default function ProdutosPage() {
           </table>
         </div>
 
+        {/* Mobile Cards */}
+        <div className="lg:hidden">
+          {isRebuilding ? (
+            <div className="px-6 py-16 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Indexando produtos...</p>
+              </div>
+            </div>
+          ) : loading ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-64" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              ))}
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-400">
+              <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
+              <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
+              <p className="text-xs mt-1">
+                {summary.totalProducts > 0 ? 'Tente ajustar os filtros de busca.' : 'A lista é montada automaticamente a partir das NF-e de entrada.'}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(() => {
+                if (sortBy === 'productType') {
+                  const lineCountMap = new Map<string, number>();
+                  const groupCountMap = new Map<string, number>();
+                  for (const p of visible) {
+                    const lk = getLineLabel(p);
+                    const gk = getGroupLabel(p);
+                    lineCountMap.set(lk, (lineCountMap.get(lk) || 0) + 1);
+                    groupCountMap.set(gk, (groupCountMap.get(gk) || 0) + 1);
+                  }
+                  let lastLine = '';
+                  let lastGrp = '';
+                  let lastSubgroup = '';
+                  return visible.map((product) => {
+                    const lineKey = getLineLabel(product);
+                    const grpKey = getGroupLabel(product);
+                    const lineName = product.productType || 'Sem linha';
+                    const grpName = product.productSubtype || 'Sem grupo';
+                    const subgroupName = product.productSubgroup || '';
+                    const subgroupKey = `${grpKey}|${subgroupName}`;
+                    const showLine = lineKey !== lastLine;
+                    const showGrp = grpKey !== lastGrp;
+                    const showSubgroup = subgroupName && subgroupKey !== lastSubgroup;
+                    if (showLine) { lastGrp = ''; lastSubgroup = ''; }
+                    if (showGrp) lastSubgroup = '';
+                    lastLine = lineKey;
+                    lastGrp = grpKey;
+                    if (subgroupName) lastSubgroup = subgroupKey;
+                    const lineCollapsed = collapsedGroups.has(lineKey);
+                    const grpCollapsed = collapsedGroups.has(grpKey);
+                    return (
+                      <React.Fragment key={`m-${product.key}`}>
+                        {showLine && (
+                          <div className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>
+                            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
+                              <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                              <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                              <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+                              <span className="text-[13px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
+                              <span className="text-[11px] font-bold text-indigo-500/80 dark:text-indigo-400/80 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full min-w-[28px] text-center">{lineCountMap.get(lineKey)}</span>
+                            </div>
+                          </div>
+                        )}
+                        {!lineCollapsed && showGrp && (
+                          <div className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>
+                            <div className="flex items-center gap-2 pl-6 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
+                              <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                              <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                              <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
+                              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
+                              <span className="text-[10px] font-bold text-amber-500/80 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(grpKey)}</span>
+                            </div>
+                          </div>
+                        )}
+                        {!lineCollapsed && !grpCollapsed && showSubgroup && (
+                          <div className="flex items-center gap-1.5 pl-10 pr-4 py-1 bg-gradient-to-r from-teal-50/60 to-transparent dark:from-teal-950/15 dark:to-transparent border-b border-teal-200/40 dark:border-teal-800/20">
+                            <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
+                          </div>
+                        )}
+                        {!lineCollapsed && !grpCollapsed && (
+                          <div className={`p-4 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                            <div className="flex items-start gap-3 mb-1.5">
+                              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                  {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                                  {product.code || '-'}
+                                </p>
+                                <p className="font-bold text-[14px] text-slate-900 dark:text-white truncate leading-tight">
+                                  {product.shortName || product.description}
+                                </p>
+                                {product.shortName && (
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1 ml-7 mb-2">
+                              {product.productType && (
+                                <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
+                              )}
+                              {product.productSubtype && (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>
+                              )}
+                              {product.outOfLine && (
+                                <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs ml-7 mb-2">
+                              <div>
+                                <p className="text-slate-400">Últ. Compra</p>
+                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400">Últ. Preço</p>
+                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatValue(product.lastPrice)}</p>
+                              </div>
+                            </div>
+                            <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
+                              <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                Detalhes
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                }
+
+                // Single-level grouping for other sort modes
+                const groupCountMap = new Map<string, number>();
+                for (const p of visible) { const g = getGroupLabel(p); groupCountMap.set(g, (groupCountMap.get(g) || 0) + 1); }
+                let lastGroup = '';
+                return visible.map((product) => {
+                  const group = getGroupLabel(product);
+                  const showDivider = group !== lastGroup;
+                  lastGroup = group;
+                  return (
+                    <React.Fragment key={`m-${product.key}`}>
+                      {showDivider && group && (
+                        <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                          <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
+                            <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                            <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(group)}</span>
+                          </div>
+                        </div>
+                      )}
+                      {!collapsedGroups.has(group) && (
+                        <div className={`p-4 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                          <div className="flex items-start gap-3 mb-1.5">
+                            <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                                {product.code || '-'}
+                              </p>
+                              <p className="font-bold text-[14px] text-slate-900 dark:text-white truncate leading-tight">
+                                {product.shortName || product.description}
+                              </p>
+                              {product.shortName && (
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1 ml-7 mb-2">
+                            {product.productType && (
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
+                            )}
+                            {product.productSubtype && (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>
+                            )}
+                            {product.outOfLine && (
+                              <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs ml-7 mb-2">
+                            <div>
+                              <p className="text-slate-400">Últ. Compra</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Últ. Preço</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatValue(product.lastPrice)}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              Detalhes
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+
         {!loading && filtered.length > 0 && (
           <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex items-center justify-between">
             <span className="text-sm text-slate-500">
@@ -1955,9 +2182,9 @@ export default function ProdutosPage() {
 
       {/* Auto-classify preview modal */}
       {autoClassifyPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setAutoClassifyPreview(null)}>
-          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={() => setAutoClassifyPreview(null)}>
+          <div className="absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-card-dark sm:rounded-2xl sm:shadow-2xl w-full sm:max-w-3xl sm:max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-[20px] text-amber-500">auto_fix_high</span>
@@ -2034,24 +2261,54 @@ export default function ProdutosPage() {
               )}
             </div>
 
-            {autoClassifyPreview.updatesFound > 0 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/30">
-                <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => handleAutoClassify(false)}
-                  disabled={isAutoClassifying}
-                  className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60"
-                >
-                  {isAutoClassifying ? (
-                    <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Aplicando...</>
-                  ) : (
-                    <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteração(ões)</>
-                  )}
+            {/* Footer */}
+            <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/30 shrink-0">
+              {/* Mobile footer */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                {autoClassifyPreview.updatesFound > 0 && (
+                  <button
+                    onClick={() => handleAutoClassify(false)}
+                    disabled={isAutoClassifying}
+                    className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60"
+                  >
+                    {isAutoClassifying ? (
+                      <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Aplicando...</>
+                    ) : (
+                      <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteração(ões)</>
+                    )}
+                  </button>
+                )}
+                <button onClick={() => setAutoClassifyPreview(null)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
                 </button>
               </div>
-            )}
+              {/* Desktop footer */}
+              {autoClassifyPreview.updatesFound > 0 && (
+                <div className="hidden sm:flex items-center justify-between">
+                  <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => handleAutoClassify(false)}
+                    disabled={isAutoClassifying}
+                    className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60"
+                  >
+                    {isAutoClassifying ? (
+                      <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Aplicando...</>
+                    ) : (
+                      <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteração(ões)</>
+                    )}
+                  </button>
+                </div>
+              )}
+              {autoClassifyPreview.updatesFound === 0 && (
+                <div className="hidden sm:block">
+                  <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
+                    Fechar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2196,21 +2453,41 @@ export default function ProdutosPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-              <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                Cancelar
-              </button>
-              <button
-                onClick={handleBulkSave}
-                disabled={isBulkSaving || enabledCount === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
-              >
-                {isBulkSaving ? (
-                  <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
-                ) : (
-                  <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
-                )}
-              </button>
+            <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+              {/* Mobile footer */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                <button
+                  onClick={handleBulkSave}
+                  disabled={isBulkSaving || enabledCount === 0}
+                  className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                >
+                  {isBulkSaving ? (
+                    <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
+                  )}
+                </button>
+                <button onClick={() => setBulkEditOpen(false)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
+                </button>
+              </div>
+              {/* Desktop footer */}
+              <div className="hidden sm:flex items-center justify-between">
+                <button onClick={() => setBulkEditOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleBulkSave}
+                  disabled={isBulkSaving || enabledCount === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                >
+                  {isBulkSaving ? (
+                    <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2680,24 +2957,14 @@ export default function ProdutosPage() {
               </div>
 
               {/* ── Footer ── */}
-              <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-                <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                  Fechar
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openHistory(detailProduct)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
-                    title="Ver histórico de compras e vendas"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
-                    <span className="hidden sm:inline">Histórico</span>
-                  </button>
+              <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+                {/* Mobile footer */}
+                <div className="flex flex-col gap-2 sm:hidden">
                   {canWrite && (
                     <button
                       onClick={handleSaveDetail}
                       disabled={savingDetail || !detailDirty}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                      className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
                     >
                       {savingDetail ? (
                         <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
@@ -2706,6 +2973,45 @@ export default function ProdutosPage() {
                       )}
                     </button>
                   )}
+                  <button
+                    onClick={() => openHistory(detailProduct)}
+                    className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
+                    Histórico
+                  </button>
+                  <button onClick={() => setDetailProduct(null)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+                    <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
+                  </button>
+                </div>
+                {/* Desktop footer */}
+                <div className="hidden sm:flex items-center justify-between">
+                  <button onClick={() => setDetailProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    Fechar
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openHistory(detailProduct)}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                      title="Ver histórico de compras e vendas"
+                    >
+                      <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
+                      Histórico
+                    </button>
+                    {canWrite && (
+                      <button
+                        onClick={handleSaveDetail}
+                        disabled={savingDetail || !detailDirty}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
+                      >
+                        {savingDetail ? (
+                          <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
+                        ) : (
+                          <><span className="material-symbols-outlined text-[16px]">save</span>Salvar</>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -3062,8 +3368,17 @@ export default function ProdutosPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-              <button onClick={() => setHistoryProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
+            <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+              {/* Mobile footer */}
+              <div className="sm:hidden">
+                <button onClick={() => setHistoryProduct(null)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
+                </button>
+              </div>
+              {/* Desktop footer */}
+              <div className="hidden sm:flex justify-end">
+                <button onClick={() => setHistoryProduct(null)} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button>
+              </div>
             </div>
           </div>
         </div>
