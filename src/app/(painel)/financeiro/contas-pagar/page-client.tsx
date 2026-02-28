@@ -557,54 +557,54 @@ export default function ContasPagarPage() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] sm:text-[20px]">today</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">today</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Hoje</p>
                 <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] sm:text-[20px]">calendar_month</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatCurrency(summary.esteMesValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.esteMes} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px] sm:text-[20px]">event_repeat</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">event_repeat</span>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próximo Mês</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[18px] sm:text-[20px]">payments</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">payments</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
                 <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} dup.</p>
               </div>
             </div>
           </div>
@@ -749,9 +749,10 @@ export default function ContasPagarPage() {
                           )}
                           {!collapsedGroups.has(group) && (
                             <tr
-                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${
+                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${
                                 dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''
                               }`}
+                              onClick={() => openDetails(dup)}
                             >
                               <td className="px-4 py-3">
                                 <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -787,7 +788,7 @@ export default function ContasPagarPage() {
                                   {cfg.label}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={() => openDetails(dup)}
                                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
@@ -813,7 +814,8 @@ export default function ContasPagarPage() {
                 return (
                   <div
                     key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`p-4 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    className={`p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    onClick={() => openDetails(dup)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
@@ -847,7 +849,7 @@ export default function ContasPagarPage() {
                         <span className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
                       )}
                     </div>
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => openDetails(dup)}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"

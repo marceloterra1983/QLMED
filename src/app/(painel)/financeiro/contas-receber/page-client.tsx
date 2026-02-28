@@ -551,23 +551,23 @@ export default function ContasReceberPage() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] sm:text-[20px]">today</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">today</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Hoje</p>
                 <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje}dup.</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje} dup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] sm:text-[20px]">calendar_month</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
@@ -577,10 +577,10 @@ export default function ContasReceberPage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px] sm:text-[20px]">event_repeat</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">event_repeat</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
@@ -590,10 +590,10 @@ export default function ContasReceberPage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[18px] sm:text-[20px]">request_quote</span>
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">request_quote</span>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
@@ -743,9 +743,10 @@ export default function ContasReceberPage() {
                           )}
                           {!collapsedGroups.has(group) && (
                             <tr
-                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${
+                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${
                                 dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''
                               }`}
+                              onClick={() => openDetails(dup)}
                             >
                               <td className="px-4 py-3">
                                 <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -781,7 +782,7 @@ export default function ContasReceberPage() {
                                   {cfg.label}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={() => openDetails(dup)}
                                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
