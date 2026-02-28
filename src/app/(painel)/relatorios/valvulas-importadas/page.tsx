@@ -309,7 +309,7 @@ export default function ValvulasImportadasPage() {
       <div className="flex flex-col gap-4">
 
         {/* KPI Cards — 3 cols × 3 rows ultra-compact */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
             { label: 'Qtd Comprada', value: loading ? null : (totals?.purchasedQty ?? 0).toLocaleString('pt-BR'), icon: 'call_received', color: 'emerald' },
             { label: 'Valor Comprado', value: loading ? null : formatCurrencyShort(totals?.purchasedValue ?? 0), icon: 'payments', color: 'blue' },
@@ -471,7 +471,7 @@ export default function ValvulasImportadasPage() {
                       )}
                     </div>
                     {data.customerYearlySales.years.length > 0 && (
-                      <div className="mt-1.5 grid grid-cols-3 gap-2">
+                      <div className="mt-1.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {data.customerYearlySales.years.map((y) => {
                           const entry = c.byYear[String(y)];
                           return (

@@ -178,7 +178,7 @@ export default function FiscalDashboardPage() {
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Impostos</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Visao consolidada de impostos por periodo</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
@@ -275,7 +275,26 @@ export default function FiscalDashboardPage() {
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Impostos por Mes</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Cards */}
+          <div className="sm:hidden p-3 space-y-1.5">
+            {monthly.map((row) => (
+              <div key={`m-${row.year}-${row.month}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{MONTH_NAMES[row.month - 1]} {row.year}</span>
+                  <span className="text-xs font-mono text-slate-400">{row.invoiceCount} NF-e</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                  <div className="flex justify-between"><span className="text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.ipi)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Frete</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.frete)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
@@ -312,7 +331,34 @@ export default function FiscalDashboardPage() {
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Por CFOP</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Cards */}
+          <div className="sm:hidden p-3 space-y-1.5">
+            {cfopData.map((row) => (
+              <div key={`c-${row.cfop}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm text-slate-700 dark:text-slate-300">{row.cfop}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                      row.direction === 'entrada'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    }`}>
+                      {row.direction === 'entrada' ? 'Entrada' : 'Saida'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-slate-400">{row.itemCount} itens</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                  <div className="flex justify-between"><span className="text-slate-400">Total</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.totalValue)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
@@ -357,7 +403,27 @@ export default function FiscalDashboardPage() {
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Top 10 Fornecedores por Imposto</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Cards */}
+          <div className="sm:hidden p-3 space-y-1.5">
+            {topSuppliers.map((s, i) => (
+              <div key={`s-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+                <div className="flex items-start justify-between mb-1.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{s.name || 'N/A'}</div>
+                    <div className="text-[10px] font-mono text-slate-400">{s.cnpj}</div>
+                  </div>
+                  <span className="text-xs font-mono text-slate-400 ml-2 shrink-0">{s.invoiceCount} NF-e</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-3 text-xs">
+                  <div><span className="text-slate-400 block">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
+                  <div><span className="text-slate-400 block">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
+                  <div><span className="text-slate-400 block">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>

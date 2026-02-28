@@ -531,9 +531,9 @@ export default function ContasReceberPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Contas a Receber</h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">Contas a Receber</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Duplicatas das NF-e emitidas
           </p>
@@ -550,54 +550,54 @@ export default function ContasReceberPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">today</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] sm:text-[20px]">today</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-slate-500 dark:text-slate-400">Hoje</p>
-                <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(summary.hojeValor)}</p>
+                <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
                 <p className="text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] sm:text-[20px]">calendar_month</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
-                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.esteMesValor)}</p>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mes</p>
+                <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatCurrency(summary.esteMesValor)}</p>
                 <p className="text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">event_repeat</span>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px] sm:text-[20px]">event_repeat</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Próximo Mês</p>
-                <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.proximoMesValor)}</p>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Proximo Mes</p>
+                <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
                 <p className="text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">request_quote</span>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[18px] sm:text-[20px]">request_quote</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalValor)}</p>
+                <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
                 <p className="text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
               </div>
             </div>
@@ -807,19 +807,19 @@ export default function ContasReceberPage() {
                 return (
                   <div
                     key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`p-4 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    className={`p-2.5 space-y-1.5 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
-                        <p className="text-xs text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
+                        {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{n.full}</p></>) : (<p className="text-xs font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
+                        <p className="text-[10px] text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
                       </div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes} ml-2 flex-shrink-0`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${cfg.classes} flex-shrink-0`}>
                         <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
                         {cfg.label}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-[10px]">
                       <div>
                         <p className="text-slate-400">NF-e</p>
                         <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
@@ -835,19 +835,17 @@ export default function ContasReceberPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
                       {dup.status === 'overdue' && (
-                        <span className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
+                        <span className="text-[10px] text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
                       )}
-                    </div>
-                    <div className="mt-3 flex justify-end">
                       <button
                         onClick={() => openDetails(dup)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                       >
-                        <span className="material-symbols-outlined text-[16px]">visibility</span>
-                        Ver / Editar
+                        <span className="material-symbols-outlined text-[14px]">visibility</span>
+                        Ver
                       </button>
                     </div>
                   </div>
@@ -856,13 +854,13 @@ export default function ContasReceberPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <span>Mostrando {((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                <span className="whitespace-nowrap">{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
                 <select
                   value={limit}
                   onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="ml-2 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  className="ml-1 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
                   <option value={25}>25</option>
                   <option value={50}>50</option>
@@ -884,7 +882,7 @@ export default function ContasReceberPage() {
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
-                <span className="px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
                   {page} / {totalPages}
                 </span>
                 <button
@@ -975,7 +973,9 @@ export default function ContasReceberPage() {
                   Nenhuma parcela encontrada para esta nota.
                 </p>
               ) : (
-                <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                <>
+                {/* Desktop table */}
+                <div className="hidden sm:block overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                       <tr>
@@ -983,7 +983,7 @@ export default function ContasReceberPage() {
                         <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Vencimento</th>
                         <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Valor</th>
                         <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Desconto</th>
-                        {canWrite && <th className="text-center px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Ação</th>}
+                        {canWrite && <th className="text-center px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Acao</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1043,9 +1043,74 @@ export default function ContasReceberPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-1.5">
+                  {editingDuplicatas.map((row, idx) => (
+                    <div key={row.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/40">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
+                          Parcela {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
+                        </span>
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => removeInstallment(idx)}
+                            disabled={editingDuplicatas.length <= 1 || savingDetails}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
+                            title="Remover parcela"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-slate-400">Vencimento</label>
+                          <input
+                            type="date"
+                            value={row.dupVencimento}
+                            onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
+                            readOnly={!canWrite}
+                            className={`w-full px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400">Valor</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.dupValor}
+                              onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
+                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
+                              placeholder="R$ 0,00"
+                              readOnly={!canWrite}
+                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400">Desconto</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.dupDesconto}
+                              onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
+                              onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
+                              placeholder="R$ 0,00"
+                              readOnly={!canWrite}
+                              className={`w-full px-2.5 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               )}
               {!loadingDetails && editingDuplicatas.length > 0 && (
-                <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                <div className={`mt-3 rounded-lg border px-3 py-2 text-xs sm:text-sm ${
                   totaisValidos
                     ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
                     : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
@@ -1069,7 +1134,7 @@ export default function ContasReceberPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
               <button
                 onClick={closeDetails}
                 disabled={savingDetails}

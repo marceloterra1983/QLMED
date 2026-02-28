@@ -537,17 +537,17 @@ export default function ContasPagarPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Contas a Pagar</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+      <div className="flex items-center justify-between gap-2 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">Contas a Pagar</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Duplicatas das NF-e recebidas
           </p>
         </div>
         <button
           onClick={handleExport}
           disabled={duplicatas.length === 0}
-          className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[18px]">download</span>
           Exportar CSV
@@ -556,55 +556,55 @@ export default function ContasPagarPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px]">today</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] sm:text-[20px]">today</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Hoje</p>
-                <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatCurrency(summary.hojeValor)}</p>
-                <p className="text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
-                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.esteMesValor)}</p>
-                <p className="text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Hoje</p>
+                <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje} duplicata{summary.hoje !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">event_repeat</span>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] sm:text-[20px]">calendar_month</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Próximo Mês</p>
-                <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.proximoMesValor)}</p>
-                <p className="text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
+                <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatCurrency(summary.esteMesValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.esteMes} duplicata{summary.esteMes !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">payments</span>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px] sm:text-[20px]">event_repeat</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalValor)}</p>
-                <p className="text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próximo Mês</p>
+                <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} duplicata{summary.proximoMes !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[18px] sm:text-[20px]">payments</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
+                <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} duplicata{summary.total !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
@@ -862,48 +862,48 @@ export default function ContasPagarPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <span>Mostrando {((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                <span>{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
                 <select
                   value={limit}
                   onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="ml-2 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  className="ml-1 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={100}>100</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">first_page</span>
                 </button>
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
-                <span className="px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
                   {page} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
                 <button
                   onClick={() => setPage(totalPages)}
                   disabled={page === totalPages}
-                  className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">last_page</span>
                 </button>
@@ -954,7 +954,7 @@ export default function ContasPagarPage() {
             </div>
 
             <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
-              <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   Parcelas da Nota
                 </h4>
@@ -981,7 +981,71 @@ export default function ContasPagarPage() {
                   Nenhuma parcela encontrada para esta nota.
                 </p>
               ) : (
-                <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                <>
+                {/* Mobile cards for parcelas */}
+                <div className="sm:hidden space-y-1.5">
+                  {editingDuplicatas.map((row, idx) => (
+                    <div key={row.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 space-y-1.5 bg-white dark:bg-slate-800/40">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-200">
+                          Parcela {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
+                        </span>
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => removeInstallment(idx)}
+                            disabled={editingDuplicatas.length <= 1 || savingDetails}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
+                            title="Remover parcela"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wider text-slate-400">Vencimento</label>
+                        <input
+                          type="date"
+                          value={row.dupVencimento}
+                          onChange={(e) => updateEditingDuplicata(idx, 'dupVencimento', e.target.value)}
+                          readOnly={!canWrite}
+                          className={`w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-slate-400">Valor</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={row.dupValor}
+                            onChange={(e) => updateEditingDuplicata(idx, 'dupValor', e.target.value)}
+                            onBlur={() => normalizeEditingCurrencyField(idx, 'dupValor')}
+                            placeholder="R$ 0,00"
+                            readOnly={!canWrite}
+                            className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-slate-400">Desconto</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={row.dupDesconto}
+                            onChange={(e) => updateEditingDuplicata(idx, 'dupDesconto', e.target.value)}
+                            onBlur={() => normalizeEditingCurrencyField(idx, 'dupDesconto')}
+                            placeholder="R$ 0,00"
+                            readOnly={!canWrite}
+                            className={`w-full px-2 py-1.5 text-sm text-right border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white${!canWrite ? ' opacity-60 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table for parcelas */}
+                <div className="hidden sm:block overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                       <tr>
@@ -1049,6 +1113,7 @@ export default function ContasPagarPage() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
               {!loadingDetails && editingDuplicatas.length > 0 && (
                 <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
@@ -1075,7 +1140,7 @@ export default function ContasPagarPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
               <button
                 onClick={closeDetails}
                 disabled={savingDetails}

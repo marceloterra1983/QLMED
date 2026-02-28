@@ -576,9 +576,9 @@ export default function CustomersPage() {
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="px-3 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">Mostrando {customers.length} de {total} resultados</span>
+            <span className="text-xs sm:text-sm text-slate-500">Mostrando {customers.length} de {total}</span>
             <select
               value={limit}
               onChange={(e) => {
@@ -624,7 +624,7 @@ export default function CustomersPage() {
                 <button
                   key={pageNumber}
                   onClick={() => setPage(pageNumber)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${
+                  className={`hidden sm:flex w-9 h-9 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
                     pageNumber === page
                       ? 'bg-primary text-white shadow-md shadow-primary/30'
                       : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -634,6 +634,7 @@ export default function CustomersPage() {
                 </button>
               ));
             })()}
+            <span className="text-xs text-slate-500 sm:hidden">{page}/{totalPages}</span>
 
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}

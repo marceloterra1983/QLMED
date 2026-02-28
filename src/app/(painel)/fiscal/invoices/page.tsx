@@ -366,29 +366,29 @@ export default function InvoicesPage() {
 
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-4 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
-          <span className="text-sm font-bold text-primary">{selected.size} selecionado(s)</span>
-          <div className="h-4 w-px bg-slate-300"></div>
-          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-[18px]">download</span>
-            Download XML
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+          <span className="text-xs sm:text-sm font-bold text-primary">{selected.size} selecionado(s)</span>
+          <div className="hidden sm:block h-4 w-px bg-slate-300"></div>
+          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">download</span>
+            XML
           </button>
-          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            Download PDF
+          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>
+            PDF
           </button>
           <button
             onClick={() => toast.info('Manifestação em lote ainda não implementada.')}
-            className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+            className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">fact_check</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">fact_check</span>
             Manifestar
           </button>
           {canWrite && (
             <>
-              <div className="h-4 w-px bg-slate-300"></div>
-              <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
-                <span className="material-symbols-outlined text-[18px]">delete</span>
+              <div className="hidden sm:block h-4 w-px bg-slate-300"></div>
+              <button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">delete</span>
                 Excluir
               </button>
             </>
