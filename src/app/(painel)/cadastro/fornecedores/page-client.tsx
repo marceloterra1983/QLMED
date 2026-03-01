@@ -533,11 +533,9 @@ export default function SuppliersPage() {
                                 <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{supplier.name}</p>
                               )}
                             </div>
-                            {st && (() => {
+                            {st && st.toUpperCase() !== 'ATIVA' && (() => {
                               const upper = st.toUpperCase();
-                              const color = upper === 'ATIVA'
-                                ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                                : upper.includes('SUSPENS')
+                              const color = upper.includes('SUSPENS')
                                   ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
                                   : upper.includes('BAIXA') || upper.includes('INAPT')
                                     ? 'text-red-600 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'

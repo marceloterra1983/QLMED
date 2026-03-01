@@ -446,16 +446,29 @@ export default function DashboardLayout({
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <button
-            onClick={() => {
-              const isDark = document.documentElement.classList.toggle('dark');
-              localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light');
-            }}
-            className="relative w-[100px] h-[30px] cursor-pointer transition-transform hover:scale-105 active:scale-95"
-            title="Alternar tema claro/escuro"
-          >
-            <Image src="/logo.png" alt="QL MED" fill sizes="100px" className="object-contain dark:brightness-0 dark:invert" />
-          </button>
+          {(() => {
+            const currentNav = allNavItems.flatMap(g => g.items).find(i => pathname === i.href);
+            if (currentNav) {
+              return (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-[20px] text-primary">{currentNav.icon}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentNav.label}</span>
+                </div>
+              );
+            }
+            return (
+              <button
+                onClick={() => {
+                  const isDark = document.documentElement.classList.toggle('dark');
+                  localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light');
+                }}
+                className="relative w-[100px] h-[30px] cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                title="Alternar tema claro/escuro"
+              >
+                <Image src="/logo.png" alt="QL MED" fill sizes="100px" className="object-contain dark:brightness-0 dark:invert" />
+              </button>
+            );
+          })()}
         </header>
 
         {/* Page Content */}

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
-import { formatValue } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
@@ -51,7 +51,7 @@ function getAnvisaExpirationBadge(expiration: string | null | undefined): { labe
 
 function formatOptional(value: number | null) {
   if (value == null) return '-';
-  return formatValue(value);
+  return formatCurrency(value);
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode {
@@ -918,7 +918,7 @@ export default function ProdutosPage() {
         fmtNum(p.fiscalIcms), fmtNum(p.fiscalPis), fmtNum(p.fiscalCofins), fmtNum(p.fiscalIpi), fmtNum(p.fiscalFcp), esc(p.fiscalObs),
         esc(p.anvisa), esc(p.anvisaStatus), formatDate(p.anvisaExpiration), esc(p.anvisaRiskClass), esc(p.anvisaProcess),
         esc(p.anvisaMatchedProductName), esc(p.anvisaHolder), esc(p.anvisaManufacturer), esc(p.anvisaManufacturerCountry),
-        formatValue(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
+        formatCurrency(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
         formatDate(p.lastIssueDate), formatDate(p.lastSaleDate), esc(p.lastSupplierName),
       ]);
       const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
@@ -947,7 +947,7 @@ export default function ProdutosPage() {
       const headers = ['Referencia', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
       const rows = missing.map((p: any) => [
         p.code, p.description, p.ncm || '', p.ean || '',
-        formatValue(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
+        formatCurrency(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
       ]);
       const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
@@ -1792,7 +1792,7 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatCurrency(product.lastPrice)}</span></td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-0.5">
                         <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
@@ -1841,7 +1841,7 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatValue(product.lastPrice)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatCurrency(product.lastPrice)}</span></td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-0.5">
                         <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
@@ -1960,9 +1960,6 @@ export default function ProdutosPage() {
                                 <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">
                                   {product.shortName || product.description}
                                 </p>
-                                {product.shortName && (
-                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>
-                                )}
                               </div>
                             </div>
                             {product.outOfLine && (
@@ -1977,7 +1974,7 @@ export default function ProdutosPage() {
                               </div>
                               <div>
                                 <p className="text-slate-400">Últ. Preço</p>
-                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatValue(product.lastPrice)}</p>
+                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(product.lastPrice)}</p>
                               </div>
                             </div>
                             <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
@@ -2043,7 +2040,7 @@ export default function ProdutosPage() {
                             </div>
                             <div>
                               <p className="text-slate-400">Últ. Preço</p>
-                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatValue(product.lastPrice)}</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(product.lastPrice)}</p>
                             </div>
                           </div>
                           <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
@@ -2482,7 +2479,7 @@ export default function ProdutosPage() {
                 <DetailSectionCard id="geral" icon="analytics" iconColor="text-emerald-500" title="Dados Gerais" isOpen={detailOpenSections.has('geral')} onToggle={toggleDetailSection}>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
                     {[
-                      { label: 'Último Preço', value: formatValue(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
+                      { label: 'Último Preço', value: formatCurrency(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
                       { label: 'Qtde Total', value: formatQuantity(detailProduct.totalQuantity), icon: 'inventory_2', color: 'text-blue-500 bg-blue-500/10 ring-blue-500/20' },
                       { label: 'Notas', value: String(detailProduct.invoiceCount), icon: 'receipt_long', color: 'text-amber-500 bg-amber-500/10 ring-amber-500/20' },
                       { label: 'Última Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_month', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
@@ -3088,11 +3085,11 @@ export default function ProdutosPage() {
                   return (
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
                     {[
-                      { label: 'Total', value: formatValue(stats.totalValue), icon: 'payments' },
+                      { label: 'Total', value: formatCurrency(stats.totalValue), icon: 'payments' },
                       { label: 'Qtde Total', value: formatQuantity(stats.totalQty), icon: 'inventory_2' },
                       { label: 'Notas', value: String(stats.invoiceCount), icon: 'receipt_long' },
-                      { label: 'Último Preço', value: formatValue(stats.lastPrice), icon: 'trending_up' },
-                      { label: 'Preço Médio', value: formatValue(stats.avgPrice), icon: 'monitoring' },
+                      { label: 'Último Preço', value: formatCurrency(stats.lastPrice), icon: 'trending_up' },
+                      { label: 'Preço Médio', value: formatCurrency(stats.avgPrice), icon: 'monitoring' },
                     ].map(c => (
                       <div key={c.label} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${cm.statBg} ${cm.statRing}`}>
                         <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${cm.statIconBg}`}>
@@ -3133,7 +3130,7 @@ export default function ProdutosPage() {
                                 <span className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${cm.badge}`}>{rows.length}</span>
                               </div>
-                              <span className={`text-[12px] font-bold tabular-nums ${cm.text}`}>{formatValue(grpTotal)}</span>
+                              <span className={`text-[12px] font-bold tabular-nums ${cm.text}`}>{formatCurrency(grpTotal)}</span>
                             </button>
                             {isOpen && (
                               <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800/60">
@@ -3162,8 +3159,8 @@ export default function ProdutosPage() {
                                           </button>
                                         </td>
                                         <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatQuantity(h.quantity)}</td>
-                                        <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatValue(h.unitPrice)}</td>
-                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatValue(h.totalValue)}</td>
+                                        <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatCurrency(h.unitPrice)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatCurrency(h.totalValue)}</td>
                                         <td className="px-3 py-2 text-slate-600 dark:text-slate-400 font-mono">
                                           <TruncatedCell text={h.batch || '-'} id={`${gk}-batch-${i}`} />
                                         </td>
@@ -3234,7 +3231,7 @@ export default function ProdutosPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           {!loading && count > 0 && (
-                            <span className={`text-[13px] font-bold tabular-nums ${cm.text}`}>{formatValue(totalValue)}</span>
+                            <span className={`text-[13px] font-bold tabular-nums ${cm.text}`}>{formatCurrency(totalValue)}</span>
                           )}
                           <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                         </div>
