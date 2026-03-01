@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
@@ -32,7 +32,17 @@ export default function NfseReceivedPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -264,41 +274,59 @@ export default function NfseReceivedPage() {
             <p className="mt-2 text-sm font-medium">Nenhuma NFS-e encontrada</p>
           </div>
         ) : (
-          invoices.map((invoice) => {
-            const isRejected = invoice.status === 'rejected';
-            const isConfirmed = invoice.status === 'confirmed';
-            const isIssued = invoice.direction === 'issued';
-            return (
-              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number || '-'}</span>
-                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
-                  </div>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    isRejected
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      : isIssued
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      : isConfirmed
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
-                  </span>
-                </div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{invoice.senderName || '-'}</p>
-                <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{invoice.senderCnpj || '-'}</p>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-slate-400">{invoice.senderCity || '-'}</span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                  </div>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openModal} />
-                </div>
-              </div>
-            );
-          })
+          (() => {
+            let lastGroup = '';
+            return invoices.map((invoice, idx) => {
+              const group = getDateGroupLabel(invoice.issueDate);
+              const showDivider = group !== lastGroup;
+              lastGroup = group;
+              const isRejected = invoice.status === 'rejected';
+              const isConfirmed = invoice.status === 'confirmed';
+              const isIssued = invoice.direction === 'issued';
+              return (
+                <React.Fragment key={`m-${invoice.id}-${idx}`}>
+                  {showDivider && group && (
+                    <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                      <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
+                        <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                      </div>
+                    </div>
+                  )}
+                  {!collapsedGroups.has(group) && (
+                    <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number || '-'}</span>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          isRejected
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : isIssued
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : isConfirmed
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        }`}>
+                          {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{invoice.senderName || '-'}</p>
+                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{invoice.senderCnpj || '-'}</p>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-slate-400">{invoice.senderCity || '-'}</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                        </div>
+                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openModal} />
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            });
+          })()
         )}
       </div>
 
@@ -319,13 +347,13 @@ export default function NfseReceivedPage() {
             <thead className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  <button onClick={() => handleSort('number')} className="group inline-flex items-center gap-1">
-                    Número {getSortIcon('number')}
+                  <button onClick={() => handleSort('emission')} className="group inline-flex items-center gap-1">
+                    Emissão {getSortIcon('emission')}
                   </button>
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  <button onClick={() => handleSort('emission')} className="group inline-flex items-center gap-1">
-                    Emissão {getSortIcon('emission')}
+                  <button onClick={() => handleSort('number')} className="group inline-flex items-center gap-1">
+                    Número {getSortIcon('number')}
                   </button>
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -371,55 +399,75 @@ export default function NfseReceivedPage() {
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => {
-                  const isRejected = invoice.status === 'rejected';
-                  const isConfirmed = invoice.status === 'confirmed';
-                  const isIssued = invoice.direction === 'issued';
-                  return (
-                    <tr key={invoice.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-900/20">
-                      <td className="px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100">
-                        {invoice.number || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
-                        {formatDate(invoice.issueDate)}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-800 dark:text-slate-100">
-                        {invoice.senderName || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400 font-mono">
-                        {invoice.senderCnpj || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
-                        {invoice.senderCity || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-right font-semibold text-slate-800 dark:text-slate-100">
-                        {formatCurrency(invoice.totalValue)}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          isRejected
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : isIssued
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                            : isConfirmed
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        }`}>
-                          {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex justify-center">
-                          <RowActions
-                            invoiceId={invoice.id}
-                            onView={openModal}
-                            onDetails={openModal}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                (() => {
+                  let lastGroup = '';
+                  return invoices.map((invoice) => {
+                    const group = getDateGroupLabel(invoice.issueDate);
+                    const showDivider = group !== lastGroup;
+                    lastGroup = group;
+                    const isRejected = invoice.status === 'rejected';
+                    const isConfirmed = invoice.status === 'confirmed';
+                    const isIssued = invoice.direction === 'issued';
+                    return (
+                      <React.Fragment key={invoice.id}>
+                        {showDivider && (
+                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                            <td colSpan={8} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {!collapsedGroups.has(group) && (
+                        <tr className="hover:bg-slate-50/70 dark:hover:bg-slate-900/20">
+                          <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
+                            {formatDate(invoice.issueDate)}
+                          </td>
+                          <td className="px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {invoice.number || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-800 dark:text-slate-100">
+                            {invoice.senderName || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                            {invoice.senderCnpj || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
+                            {invoice.senderCity || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-right font-semibold text-slate-800 dark:text-slate-100">
+                            {formatCurrency(invoice.totalValue)}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                              isRejected
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : isIssued
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : isConfirmed
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>
+                              {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex justify-center">
+                              <RowActions
+                                invoiceId={invoice.id}
+                                onView={openModal}
+                                onDetails={openModal}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                })()
               )}
             </tbody>
           </table>
