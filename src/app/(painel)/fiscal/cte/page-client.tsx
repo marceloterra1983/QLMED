@@ -519,13 +519,9 @@ export default function CtePage() {
               const flow = getFreightFlow(invoice);
 	            return (
 	              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
-	                <div className="flex items-start justify-between mb-1">
-                  <div>
+	                <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                  </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${manifest.classes}`}>
-	                    {manifest.label}
-	                  </span>
+                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
 	                </div>
                   <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
                     <span className="truncate">{flow.remetente}</span>
@@ -539,11 +535,8 @@ export default function CtePage() {
                   ); })()}
 	                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
 	                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-	                  <div>
-	                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
-                  </div>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                    <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
             );
