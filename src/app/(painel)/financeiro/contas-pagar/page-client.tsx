@@ -226,12 +226,14 @@ export default function ContasPagarPage() {
       setTotal(data.pagination.total);
       setTotalPages(data.pagination.pages);
       if (!collapsedInitialized && loaded.length > 0) {
-        const EXPANDED_GROUPS = new Set(['Hoje', 'Esta semana']);
-        const toCollapse = new Set<string>();
+        // Collect all groups in order, expand only the first one
+        const groupOrder: string[] = [];
         for (const d of loaded) {
           const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
-          if (g && !EXPANDED_GROUPS.has(g)) toCollapse.add(g);
+          if (g && !groupOrder.includes(g)) groupOrder.push(g);
         }
+        const firstGroup = groupOrder[0];
+        const toCollapse = new Set(groupOrder.filter((g) => g !== firstGroup));
         setCollapsedGroups(toCollapse);
         setCollapsedInitialized(true);
       }
