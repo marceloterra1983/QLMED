@@ -40,6 +40,7 @@ export default function IssuedInvoicesPage() {
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [detailsInitialTab, setDetailsInitialTab] = useState<string | undefined>(undefined);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
@@ -73,6 +74,13 @@ export default function IssuedInvoicesPage() {
 
   const openDetails = (id: string) => {
     setDetailsInvoiceId(id);
+    setDetailsInitialTab(undefined);
+    setIsDetailsOpen(true);
+  };
+
+  const openProducts = (id: string) => {
+    setDetailsInvoiceId(id);
+    setDetailsInitialTab('produtos');
     setIsDetailsOpen(true);
   };
 
@@ -465,7 +473,7 @@ export default function IssuedInvoicesPage() {
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                      <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                      <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
                     </div>
                   </div>
                 )}
@@ -553,8 +561,8 @@ export default function IssuedInvoicesPage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                        <tr className={`group transition-colors ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
-                          <td className="px-3 py-2">
+                        <tr className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
+                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <input
                               className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                               type="checkbox"
@@ -582,8 +590,8 @@ export default function IssuedInvoicesPage() {
                           <td className="px-3 py-2">
                             {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
                           </td>
-                          <td className="px-3 py-2">
-                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
                         )}
@@ -677,6 +685,7 @@ export default function IssuedInvoicesPage() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         invoiceId={detailsInvoiceId}
+        initialTab={detailsInitialTab}
       />
       <ConfirmDialog
         isOpen={showDeleteConfirm}
