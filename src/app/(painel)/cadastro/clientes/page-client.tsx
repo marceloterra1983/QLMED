@@ -538,7 +538,7 @@ export default function CustomersPage() {
                               className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                             >
                               <span className="material-symbols-outlined text-[16px]">visibility</span>
-                              Ver Detalhes
+                              Detalhes
                             </button>
                             <button
                               onClick={() => { setSelectedPriceCustomer(customer); setIsPriceTableOpen(true); }}
