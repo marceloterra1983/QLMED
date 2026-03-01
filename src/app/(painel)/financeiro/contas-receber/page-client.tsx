@@ -164,7 +164,8 @@ export default function ContasReceberPage() {
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['Este mês', 'Próximo mês']));
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const [selectedDuplicata, setSelectedDuplicata] = useState<Duplicata | null>(null);
   const [invoiceHeader, setInvoiceHeader] = useState<InvoiceHeader | null>(null);
@@ -220,6 +221,17 @@ export default function ContasReceberPage() {
       setSummary(data.summary);
       setTotal(data.pagination.total);
       setTotalPages(data.pagination.pages);
+      // Auto-collapse groups beyond "Hoje"/"Esta semana"/"Próxima semana" on first load
+      if (!collapsedInitialized && loaded.length > 0) {
+        const EXPANDED_GROUPS = new Set(['Hoje', 'Esta semana', 'Próxima semana']);
+        const toCollapse = new Set<string>();
+        for (const d of loaded) {
+          const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
+          if (g && !EXPANDED_GROUPS.has(g)) toCollapse.add(g);
+        }
+        setCollapsedGroups(toCollapse);
+        setCollapsedInitialized(true);
+      }
       const cnpjs = Array.from(new Set(loaded.map((d: any) => d.clienteCnpj).filter(Boolean)));
       if (cnpjs.length > 0) {
         const p = new URLSearchParams();
@@ -818,6 +830,12 @@ export default function ContasReceberPage() {
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-2 px-1">
               {(() => {
+                // Pre-compute group totals
+                const groupTotals = new Map<string, number>();
+                for (const d of duplicatas) {
+                  const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
+                  groupTotals.set(g, (groupTotals.get(g) || 0) + d.dupValor);
+                }
                 let lastGroup = '';
                 return duplicatas.map((dup, idx) => {
                   const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
@@ -834,6 +852,7 @@ export default function ContasReceberPage() {
                           <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
                             <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
                           </div>
                         </div>
                       )}
