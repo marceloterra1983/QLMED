@@ -846,15 +846,15 @@ export default function ContasReceberPage() {
                           onClick={() => openDetails(dup)}
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-slate-900 dark:text-white">
-                              Nº {dup.nfNumero}
-                              <span className="ml-1.5 text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
-                            </span>
-                            <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>{formatVencimento(dup.dupVencimento)}</span>
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {dup.nfNumero}</span>
+                            <span className={`text-xs font-bold ${isOverdue ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{formatVencimento(dup.dupVencimento)}</span>
                           </div>
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                              <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
+                            </div>
                             <div className="flex items-center gap-2">
                               {isOverdue && (
                                 <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
