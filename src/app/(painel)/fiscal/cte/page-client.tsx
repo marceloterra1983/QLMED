@@ -551,7 +551,10 @@ export default function CtePage() {
                   <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                      <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</p>
+                        <p className="text-[10px] text-slate-400">{formatTime(invoice.issueDate)}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
                       <span className="truncate">{flow.remetente}</span>

@@ -456,7 +456,10 @@ export default function InvoicesPage() {
                         {displayTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(displayTag, highlightRow)}`}>{displayTag}</span>}
                         Nº {invoice.number}
                       </span>
-                      <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</p>
+                        <p className="text-[10px] text-slate-400">{formatTime(invoice.issueDate)}</p>
+                      </div>
                     </div>
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
