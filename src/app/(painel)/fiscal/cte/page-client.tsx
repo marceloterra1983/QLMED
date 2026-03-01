@@ -38,6 +38,7 @@ export default function CtePage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
 
   const normalizeName = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
@@ -280,6 +281,16 @@ export default function CtePage() {
         setInvoices(loaded);
         setTotalPages(data.pagination?.pages || 1);
         setTotal(data.pagination?.total || 0);
+        if (!collapsedInitialized && loaded.length > 0) {
+          const groupOrder: string[] = [];
+          for (const inv of loaded) {
+            const g = getDateGroupLabel(inv.issueDate);
+            if (g && !groupOrder.includes(g)) groupOrder.push(g);
+          }
+          const firstGroup = groupOrder[0];
+          setCollapsedGroups(new Set(groupOrder.filter((g) => g !== firstGroup)));
+          setCollapsedInitialized(true);
+        }
 
         // Fetch nicknames for all CNPJs present in this page
         const cnpjSet = new Set<string>();
@@ -513,31 +524,52 @@ export default function CtePage() {
             <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
             <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
           </div>
-	        ) : (
-	          invoices.map((invoice) => {
-	            const manifest = getCteManifestBadge(invoice.status);
-              const flow = getFreightFlow(invoice);
-	            return (
-	              <div key={invoice.id} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
-	                <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-	                </div>
-                  <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
-                    <span className="truncate">{flow.remetente}</span>
-                    <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
-                    <span className="truncate">{flow.recebedor}</span>
+        ) : (() => {
+          const groupTotals = new Map<string, number>();
+          for (const inv of invoices) {
+            const g = getDateGroupLabel(inv.issueDate);
+            groupTotals.set(g, (groupTotals.get(g) || 0) + inv.totalValue);
+          }
+          let lastGroup = '';
+          return invoices.map((invoice) => {
+            const group = getDateGroupLabel(invoice.issueDate);
+            const showDivider = group !== lastGroup;
+            lastGroup = group;
+            const flow = getFreightFlow(invoice);
+            return (
+              <React.Fragment key={invoice.id}>
+                {showDivider && group && (
+                  <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                    <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
+                    </div>
                   </div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate mb-1">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
-	                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
-	                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                    <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
-                </div>
-              </div>
+                )}
+                {!collapsedGroups.has(group) && (
+                  <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                      <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
+                      <span className="truncate">{flow.remetente}</span>
+                      <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
+                      <span className="truncate">{flow.recebedor}</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate mb-1">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                      <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* Table (desktop) */}
@@ -624,8 +656,8 @@ export default function CtePage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                        <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="px-3 py-2">
+                        <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
+                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <input
                               className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                               type="checkbox"
@@ -673,7 +705,7 @@ export default function CtePage() {
                               • {manifest.label}
                             </span>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>

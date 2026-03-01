@@ -41,6 +41,7 @@ export default function IssuedInvoicesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
   const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
@@ -221,6 +222,16 @@ export default function IssuedInvoicesPage() {
         setInvoices(loaded);
         setTotalPages(data.pagination?.pages || 1);
         setTotal(data.pagination?.total || 0);
+        if (!collapsedInitialized && loaded.length > 0) {
+          const groupOrder: string[] = [];
+          for (const inv of loaded) {
+            const g = getDateGroupLabel(inv.issueDate);
+            if (g && !groupOrder.includes(g)) groupOrder.push(g);
+          }
+          const firstGroup = groupOrder[0];
+          setCollapsedGroups(new Set(groupOrder.filter((g) => g !== firstGroup)));
+          setCollapsedInitialized(true);
+        }
         const cnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter(Boolean)));
         if (cnpjs.length > 0) {
           const p = new URLSearchParams();
@@ -418,35 +429,50 @@ export default function IssuedInvoicesPage() {
             <span className="material-symbols-outlined text-[48px] opacity-30">output</span>
             <p className="mt-2 text-sm font-medium">Nenhuma NF-e emitida encontrada</p>
           </div>
-        ) : (
-          invoices.map((invoice) => {
+        ) : (() => {
+          const groupTotals = new Map<string, number>();
+          for (const inv of invoices) {
+            const g = getDateGroupLabel(inv.issueDate);
+            groupTotals.set(g, (groupTotals.get(g) || 0) + inv.totalValue);
+          }
+          let lastGroup = '';
+          return invoices.map((invoice) => {
+            const group = getDateGroupLabel(invoice.issueDate);
+            const showDivider = group !== lastGroup;
+            lastGroup = group;
             const cfopTag = getCfopTagByCode(invoice.cfop);
             const highlightRow = !isVendaTag(cfopTag);
             return (
-              <div
-                key={invoice.id}
-                className={`border rounded-xl p-3 ${
-                  highlightRow
-                    ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60'
-                    : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
-                    Nº {invoice.number}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-                </div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
-                </div>
-              </div>
+              <React.Fragment key={invoice.id}>
+                {showDivider && group && (
+                  <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                    <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
+                    </div>
+                  </div>
+                )}
+                {!collapsedGroups.has(group) && (
+                  <div className={`border rounded-xl p-3 ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
+                        Nº {invoice.number}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                      <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* Table (desktop) */}
