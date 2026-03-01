@@ -551,17 +551,17 @@ export default function CtePage() {
                   <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</p>
-                        <p className="text-[10px] text-slate-400">{formatTime(invoice.issueDate)}</p>
-                      </div>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
+                      <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
                       <span className="truncate">{flow.remetente}</span>
-                      <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
+                      <span className="material-symbols-outlined text-[12px] text-primary shrink-0">local_shipping</span>
                       <span className="truncate">{flow.recebedor}</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate mb-1">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
