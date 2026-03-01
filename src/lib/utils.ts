@@ -152,9 +152,6 @@ export function getDateGroupLabel(dateStr: string): string {
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   if (day >= startOfLastMonth && day < startOfMonth) return 'Mês passado';
 
-  const endOfNextMonthStart = new Date(now.getFullYear(), now.getMonth() + 2, 1);
-  if (day >= startOfNextMonth && day < endOfNextMonthStart) return 'Próximo mês';
-
   return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 

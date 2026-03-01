@@ -372,7 +372,7 @@ export async function GET(req: Request) {
 
     if (groupMode === 'date') {
       const FIRST_PAGE_GROUPS = new Set([
-        'Hoje', 'Esta semana', 'Próxima semana', 'Este mês', 'Próximo mês',
+        'Hoje', 'Esta semana', 'Próxima semana', 'Este mês',
         'Semana passada', 'Mês passado',
       ]);
 
