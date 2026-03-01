@@ -169,6 +169,7 @@ export default function ContasPagarPage() {
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const [selectedDuplicata, setSelectedDuplicata] = useState<Duplicata | null>(null);
   const [invoiceHeader, setInvoiceHeader] = useState<InvoiceHeader | null>(null);
@@ -210,6 +211,7 @@ export default function ContasPagarPage() {
         limit: String(limit),
         sort: sortBy,
         order: sortOrder,
+        groupMode: 'date',
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
@@ -224,6 +226,16 @@ export default function ContasPagarPage() {
       setSummary(data.summary);
       setTotal(data.pagination.total);
       setTotalPages(data.pagination.pages);
+      if (!collapsedInitialized && loaded.length > 0) {
+        const EXPANDED_GROUPS = new Set(['Hoje', 'Esta semana']);
+        const toCollapse = new Set<string>();
+        for (const d of loaded) {
+          const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
+          if (g && !EXPANDED_GROUPS.has(g)) toCollapse.add(g);
+        }
+        setCollapsedGroups(toCollapse);
+        setCollapsedInitialized(true);
+      }
       const cnpjs = Array.from(new Set(loaded.map((d: any) => d.emitenteCnpj).filter(Boolean)));
       if (cnpjs.length > 0) {
         const p = new URLSearchParams();
@@ -821,73 +833,75 @@ export default function ContasPagarPage() {
             </div>
 
             {/* Mobile Cards */}
-            <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {duplicatas.map((dup, idx) => {
-                const cfg = statusConfig[dup.status];
-                return (
-                  <div
-                    key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
-                    onClick={() => openDetails(dup)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 dark:text-white truncate">{getNick(dup.emitenteCnpj, dup.emitenteNome).display}</p>
-                      </div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes} ml-2 flex-shrink-0`}>
-                        <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5 text-[11px] min-w-0">
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-400">NF-e</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{dup.nfNumero}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-400">Parcela</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{formatParcela(dup)}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-400">Vencimento</p>
-                        <p className={`font-medium truncate ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {formatVencimento(dup.dupVencimento)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
-                      {dup.status === 'overdue' && (
-                        <span className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
+            <div className="lg:hidden space-y-2 px-1">
+              {(() => {
+                const groupTotals = new Map<string, number>();
+                for (const d of duplicatas) {
+                  const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
+                  groupTotals.set(g, (groupTotals.get(g) || 0) + d.dupValor);
+                }
+                let lastGroup = '';
+                return duplicatas.map((dup, idx) => {
+                  const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
+                  const showDivider = group !== lastGroup;
+                  lastGroup = group;
+                  const isOverdue = dup.status === 'overdue';
+                  const parcelaLabel = formatParcela(dup);
+                  return (
+                    <React.Fragment key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
+                      {showDivider && group && (
+                        <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                          <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                            <span className="text-xs font-bold text-red-500 dark:text-red-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => openDetails(dup)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">visibility</span>
-                        Ver / Editar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                      {!collapsedGroups.has(group) && (
+                        <div
+                          className={`border rounded-xl p-3 cursor-pointer ${
+                            isOverdue
+                              ? 'bg-red-50/70 border-red-200 dark:bg-red-950/25 dark:border-red-900/60'
+                              : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
+                          }`}
+                          onClick={() => openDetails(dup)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {dup.nfNumero}</span>
+                            <span className={`text-xs font-bold ${isOverdue ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{formatVencimento(dup.dupVencimento)}</span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.emitenteCnpj, dup.emitenteNome).display}</p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                              <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isOverdue && (
+                                <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openDetails(dup); }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                Ver
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </div>
 
             {/* Pagination */}
             <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
               <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                <span>{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
-                <select
-                  value={limit}
-                  onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="ml-1 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                <span>{duplicatas.length} de {total}</span>
               </div>
               <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
