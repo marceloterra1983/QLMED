@@ -887,7 +887,7 @@ export default function ContasPagarPage() {
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[14px]">visibility</span>
-                                Ver
+                                Detalhes
                               </button>
                             </div>
                           </div>
