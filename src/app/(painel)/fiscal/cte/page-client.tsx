@@ -548,9 +548,9 @@ export default function CtePage() {
                   </div>
                 )}
                 {!collapsedGroups.has(group) && (
-                  <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                  <div onClick={() => openDetails(invoice.id)} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 cursor-pointer">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
                     </div>
                     <div className="flex items-center justify-between mb-0.5">
@@ -563,9 +563,9 @@ export default function CtePage() {
                       <span className="truncate">{flow.recebedor}</span>
                     </div>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                      <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                      <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                     </div>
                   </div>
                 )}

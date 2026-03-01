@@ -390,6 +390,107 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
   };
 }
 
+function parseNfseParty(node: any, enderKey?: string) {
+  if (!node) return null;
+  const ender = node[enderKey || 'Endereco'] || node.endereco || {};
+  const idNode = node.IdentificacaoPrestador || node.IdentificacaoTomador || {};
+  const cnpjNode = idNode.CpfCnpj || idNode;
+  return {
+    cnpj: val(node, 'CNPJ', 'CPF') || val(cnpjNode, 'Cnpj', 'Cpf') || '',
+    razaoSocial: val(node, 'RazaoSocial', 'NomeFantasia', 'xNome') || '',
+    im: val(node, 'InscricaoMunicipal') || val(idNode, 'InscricaoMunicipal') || '',
+    email: val(node, 'Contato', 'email') || '',
+    telefone: val(node, 'fone') || '',
+    endereco: [val(ender, 'Logradouro', 'xLgr'), val(ender, 'Numero', 'nro'), val(ender, 'Complemento', 'xCpl')].filter(Boolean).join(', '),
+    bairro: val(ender, 'Bairro', 'xBairro') || '',
+    municipio: val(ender, 'Municipio', 'xMun') || '',
+    uf: val(ender, 'Uf', 'UF') || '',
+    cep: val(ender, 'Cep', 'CEP') || '',
+  };
+}
+
+function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
+  if (nacional) {
+    const dps = nacional.DPS?.infDPS || {};
+    const prest = dps.prest || nacional.emit || {};
+    const toma = dps.toma || {};
+    const serv = dps.serv || {};
+    const cServ = serv.cServ || {};
+    const locPrest = serv.locPrest || {};
+    const valores = dps.valores || {};
+    const vServPrest = valores.vServPrest || {};
+    const trib = valores.trib || {};
+    const issqn = trib.tribMun?.ISSQN || {};
+    const nfseProc = nacional.nfseProc || {};
+
+    const tpRetMap: Record<string, string> = { '1': 'Sim', '2': 'Não', '3': 'Imune', '4': 'Exigibilidade Suspensa' };
+
+    return {
+      docType: 'NFSE' as const,
+      accessKey: invoice.accessKey,
+      number: invoice.number,
+      nfse: {
+        numero: String(nacional.nNFSe || dps.nDPS || invoice.number || ''),
+        dataEmissao: val(dps, 'dhEmi') || val(nacional, 'dhProc') || '',
+        dataProcessamento: val(nfseProc, 'dhProc') || '',
+        codigoVerificacao: val(nacional, 'codVerif', 'CodigoVerificacao') || '',
+        locPrestacao: val(locPrest, 'xLocPrestacao', 'cLocPrestacao') || '',
+        valorLiquido: num(vServPrest, 'vLiq') || num(vServPrest, 'vServPrest') || '',
+        valorServico: num(vServPrest, 'vServ') || '',
+      },
+      prestador: parseNfseParty(prest) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
+      tomador: parseNfseParty(toma) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
+      servico: {
+        descricao: val(cServ, 'xDescServ') || '',
+        codigoNacional: val(cServ, 'cTribNac') || '',
+        codigoMunicipal: val(cServ, 'cTribMun') || '',
+        municipio: val(locPrest, 'xLocPrestacao') || '',
+        issRetido: tpRetMap[val(issqn, 'tpRetISSQN')] || val(issqn, 'tpRetISSQN') || '',
+        baseCalculo: num(issqn, 'vBC') || '',
+        aliquota: num(issqn, 'pAliq') || '',
+        valorIss: num(issqn, 'vISSQN') || '',
+        valorServico: num(vServPrest, 'vServ') || '',
+        valorLiquido: num(vServPrest, 'vLiq') || num(vServPrest, 'vServPrest') || '',
+      },
+    };
+  }
+
+  // ABRASF
+  const servico = abrasf.Servico || {};
+  const valores = servico.Valores || {};
+  const prestNode = abrasf.PrestadorServico || abrasf.Prestador || {};
+  const tomaNode = abrasf.TomadorServico || abrasf.Tomador || {};
+
+  return {
+    docType: 'NFSE' as const,
+    accessKey: invoice.accessKey,
+    number: invoice.number,
+    nfse: {
+      numero: String(abrasf.Numero || invoice.number || ''),
+      dataEmissao: val(abrasf, 'DataEmissao') || '',
+      dataProcessamento: val(abrasf, 'DataEmissaoRps') || '',
+      codigoVerificacao: val(abrasf, 'CodigoVerificacao') || '',
+      locPrestacao: val(servico, 'MunicipioPrestacaoServico') || '',
+      valorServico: num(valores, 'ValorServicos') || '',
+      valorLiquido: num(valores, 'ValorLiquidoNfse') || num(valores, 'ValorServicos') || '',
+    },
+    prestador: parseNfseParty(prestNode) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
+    tomador: parseNfseParty(tomaNode) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
+    servico: {
+      descricao: val(servico, 'Discriminacao') || '',
+      codigoNacional: '',
+      codigoMunicipal: val(servico, 'ItemListaServico', 'CodigoTributacaoMunicipio') || '',
+      municipio: val(servico, 'MunicipioPrestacaoServico') || '',
+      issRetido: val(valores, 'IssRetido') === '1' ? 'Sim' : val(valores, 'IssRetido') === '2' ? 'Não' : val(valores, 'IssRetido') || '',
+      baseCalculo: num(valores, 'BaseCalculo') || '',
+      aliquota: num(valores, 'Aliquota') || '',
+      valorIss: num(valores, 'ValorIss') || num(valores, 'ValorIssRetido') || '',
+      valorServico: num(valores, 'ValorServicos') || '',
+      valorLiquido: num(valores, 'ValorLiquidoNfse') || num(valores, 'ValorServicos') || '',
+    },
+  };
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -425,6 +526,14 @@ export async function GET(
 
     if (infCte) {
       return NextResponse.json(parseCteDetails(invoice, infCte, cteProc));
+    }
+
+    // Try NFS-e
+    const nfseNacional = result?.NFSe?.infNFSe || result?.infNFSe;
+    const compNfse = result.CompNfse || result.ConsultarNfseResposta?.ListaNfse?.CompNfse;
+    const nfseAbrasf = compNfse?.Nfse?.InfNfse || result.Nfse?.InfNfse || result.InfNfse;
+    if (nfseNacional || nfseAbrasf) {
+      return NextResponse.json(parseNfseDetails(invoice, nfseNacional, nfseAbrasf));
     }
 
     // Otherwise try NF-e

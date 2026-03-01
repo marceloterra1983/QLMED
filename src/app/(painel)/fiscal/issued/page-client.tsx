@@ -292,11 +292,11 @@ export default function IssuedInvoicesPage() {
     const cfopTag = getCfopTagByCode(invoice.cfop);
     const highlightRow = !isVendaTag(cfopTag);
     return (
-      <div key={invoice.id} className={`border rounded-xl p-3 ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
+      <div key={invoice.id} onClick={() => openProducts(invoice.id)} className={`border rounded-xl p-3 cursor-pointer ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
-            Nº {invoice.number}
+            {invoice.number}
           </span>
           <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
         </div>
@@ -304,7 +304,7 @@ export default function IssuedInvoicesPage() {
           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
           <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
         </div>
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
         </div>

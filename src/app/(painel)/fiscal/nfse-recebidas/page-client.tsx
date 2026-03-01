@@ -7,10 +7,11 @@ import Skeleton from '@/components/ui/Skeleton';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { formatCnpj, formatCurrency, formatDate, formatTime, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
+const NfseDetailsModal = dynamic(() => import('@/components/NfseDetailsModal'), { ssr: false });
 
 const LIMIT_OPTIONS = [25, 50, 100];
 
@@ -32,6 +33,8 @@ export default function NfseReceivedPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -108,6 +111,11 @@ export default function NfseReceivedPage() {
   function openModal(id: string) {
     setSelectedInvoiceId(id);
     setIsModalOpen(true);
+  }
+
+  function openDetails(id: string) {
+    setDetailsInvoiceId(id);
+    setIsDetailsOpen(true);
   }
 
   async function handleSyncReceitaNfse() {
@@ -280,9 +288,6 @@ export default function NfseReceivedPage() {
               const group = getDateGroupLabel(invoice.issueDate);
               const showDivider = group !== lastGroup;
               lastGroup = group;
-              const isRejected = invoice.status === 'rejected';
-              const isConfirmed = invoice.status === 'confirmed';
-              const isIssued = invoice.direction === 'issued';
               return (
                 <React.Fragment key={`m-${invoice.id}-${idx}`}>
                   {showDivider && group && (
@@ -294,32 +299,18 @@ export default function NfseReceivedPage() {
                     </div>
                   )}
                   {!collapsedGroups.has(group) && (
-                    <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number || '-'}</span>
-                        </div>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          isRejected
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : isIssued
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                            : isConfirmed
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        }`}>
-                          {isRejected ? 'Rejeitada' : isIssued ? 'Emitida' : isConfirmed ? 'Confirmada' : 'Recebida'}
-                        </span>
+                    <div onClick={() => openDetails(invoice.id)} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 cursor-pointer">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number || '-'}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
                       </div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{invoice.senderName || '-'}</p>
-                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{invoice.senderCnpj ? formatCnpj(invoice.senderCnpj.replace(/\D/g, '')) || invoice.senderCnpj : '-'}</p>
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400">{invoice.senderCity || '-'}</span>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                        </div>
-                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openModal} />
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{invoice.senderName || '-'}</p>
+                        <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                        <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} />
                       </div>
                     </div>
                   )}
@@ -458,7 +449,7 @@ export default function NfseReceivedPage() {
                               <RowActions
                                 invoiceId={invoice.id}
                                 onView={openModal}
-                                onDetails={openModal}
+                                onDetails={openDetails}
                               />
                             </div>
                           </td>
@@ -514,6 +505,13 @@ export default function NfseReceivedPage() {
           invoiceId={selectedInvoiceId}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      {detailsInvoiceId && (
+        <NfseDetailsModal
+          invoiceId={detailsInvoiceId}
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
         />
       )}
     </div>

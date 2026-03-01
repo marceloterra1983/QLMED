@@ -107,8 +107,8 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
         <button
           onClick={() => onViewProducts(invoiceId)}
           className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Ver produtos"
-          aria-label="Ver produtos"
+          title="Ver detalhes"
+          aria-label="Ver detalhes"
         >
           <span className="material-symbols-outlined text-[18px]">visibility</span>
         </button>
