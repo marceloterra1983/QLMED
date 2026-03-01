@@ -1443,7 +1443,7 @@ export default function ProdutosPage() {
       <MobileFilterWrapper activeFilterCount={[search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter !== 'all' ? lineStatusFilter : ''].filter(Boolean).length} title="Filtros" icon="inventory_2">
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
           {/* Search - full width on mobile, flex-1 on desktop */}
-          <div className="w-full md:flex-1 md:order-last">
+          <div className="w-full md:flex-1">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
               Buscar por código, descrição, NCM, ANVISA ou fornecedor
             </label>
@@ -1514,10 +1514,7 @@ export default function ProdutosPage() {
                 </div>
               ) : null;
             })()}
-          </div>
-          {/* Sort + Status + Clear - row on mobile */}
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="shrink-0">
+            <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
               <div className="flex gap-1">
                 <select
@@ -1544,7 +1541,7 @@ export default function ProdutosPage() {
                 </button>
               </div>
             </div>
-            <div className="shrink-0 flex flex-col justify-end">
+            <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
               <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                 {([['all', 'Todos'], ['active', 'Em Linha'], ['outOfLine', 'Fora de Linha']] as const).map(([val, label]) => (
@@ -1558,13 +1555,15 @@ export default function ProdutosPage() {
                 ))}
               </div>
             </div>
-            <button
-              onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
-              Limpar
-            </button>
+            <div className="flex items-end">
+              <button
+                onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+                Limpar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1966,17 +1965,11 @@ export default function ProdutosPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
-                              {product.productType && (
-                                <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
-                              )}
-                              {product.productSubtype && (
-                                <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>
-                              )}
-                              {product.outOfLine && (
+                            {product.outOfLine && (
+                              <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
                                 <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
-                              )}
-                            </div>
+                              </div>
+                            )}
                             <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
                               <div>
                                 <p className="text-slate-400">Últ. Compra</p>
@@ -2038,17 +2031,11 @@ export default function ProdutosPage() {
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
-                            {product.productType && (
-                              <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>
-                            )}
-                            {product.productSubtype && (
-                              <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>
-                            )}
-                            {product.outOfLine && (
+                          {product.outOfLine && (
+                            <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
                               <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
                             <div>
                               <p className="text-slate-400">Últ. Compra</p>
@@ -3168,7 +3155,7 @@ export default function ProdutosPage() {
                                         <td className="px-3 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
                                         <td className="px-3 py-2">
                                           <button
-                                            onClick={() => { setHistoryProduct(null); setInvoiceModalId(h.invoiceId); }}
+                                            onClick={() => { setInvoiceModalId(h.invoiceId); }}
                                             className="text-primary hover:text-primary-dark hover:underline font-mono font-medium transition-colors"
                                           >
                                             {h.invoiceNumber || '-'}
@@ -3302,8 +3289,8 @@ export default function ProdutosPage() {
             <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
               {/* Mobile footer */}
               <div className="sm:hidden">
-                <button onClick={() => setHistoryProduct(null)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
-                  <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
+                <button onClick={() => setHistoryProduct(null)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>Voltar
                 </button>
               </div>
               {/* Desktop footer */}

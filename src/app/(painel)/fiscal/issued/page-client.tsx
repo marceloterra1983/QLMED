@@ -433,14 +433,10 @@ export default function IssuedInvoicesPage() {
               >
                 <div className="flex items-start mb-1">
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    {cfopTag && (
-                      <div className="mt-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(cfopTag, highlightRow)}`}>
-                          {cfopTag}
-                        </span>
-                      </div>
-                    )}
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
+                      Nº {invoice.number}
+                    </span>
                   </div>
                 </div>
                 {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}

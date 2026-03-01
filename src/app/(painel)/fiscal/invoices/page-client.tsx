@@ -421,14 +421,10 @@ export default function InvoicesPage() {
               >
                 <div className="flex items-start justify-between mb-1">
                   <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
-                    {displayTag && (
-                      <div className="mt-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>
-                          {displayTag}
-                        </span>
-                      </div>
-                    )}
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      {displayTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(displayTag, highlightRow)}`}>{displayTag}</span>}
+                      Nº {invoice.number}
+                    </span>
                   </div>
                 </div>
                 {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
