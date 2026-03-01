@@ -117,6 +117,13 @@ export async function GET(req: Request) {
     const thisMonthKey = todayKey.slice(0, 7);
     const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     const nextMonthKey = `${nextMonthDate.getFullYear()}-${pad2(nextMonthDate.getMonth() + 1)}`;
+    const dayOfWeek = today.getDay();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const weekStartKey = `${weekStart.getFullYear()}-${pad2(weekStart.getMonth() + 1)}-${pad2(weekStart.getDate())}`;
+    const weekEndKey = `${weekEnd.getFullYear()}-${pad2(weekEnd.getMonth() + 1)}-${pad2(weekEnd.getDate())}`;
 
     const [receivedDuplicatas, issuedImportDuplicatas] = await Promise.all([
       getFinanceiroDuplicatas(company.id, 'received', { allowedTags: ['Compra', 'Venda', 'Compra Importação'] }),
@@ -213,6 +220,8 @@ export async function GET(req: Request) {
       totalValor: 0,
       hoje: 0,
       hojeValor: 0,
+      estaSemana: 0,
+      estaSemanaValor: 0,
       esteMes: 0,
       esteMesValor: 0,
       proximoMes: 0,
@@ -281,6 +290,10 @@ export async function GET(req: Request) {
       if (duplicata.dupVencimento === todayKey) {
         summary.hoje += 1;
         summary.hojeValor += duplicata.dupValor;
+      }
+      if (duplicata.dupVencimento >= weekStartKey && duplicata.dupVencimento <= weekEndKey) {
+        summary.estaSemana += 1;
+        summary.estaSemanaValor += duplicata.dupValor;
       }
       if (duplicata.dupVencimento.startsWith(thisMonthKey)) {
         summary.esteMes += 1;

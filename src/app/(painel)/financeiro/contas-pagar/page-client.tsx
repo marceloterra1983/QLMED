@@ -111,6 +111,8 @@ interface Summary {
   totalValor: number;
   hoje: number;
   hojeValor: number;
+  estaSemana: number;
+  estaSemanaValor: number;
   esteMes: number;
   esteMesValor: number;
   proximoMes: number;
@@ -583,6 +585,19 @@ export default function ContasPagarPage() {
 
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px]">date_range</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Esta Semana</p>
+                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatCurrency(summary.estaSemanaValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.estaSemana} dup.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
               </div>
@@ -603,19 +618,6 @@ export default function ContasPagarPage() {
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} dup.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">payments</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} dup.</p>
               </div>
             </div>
           </div>
