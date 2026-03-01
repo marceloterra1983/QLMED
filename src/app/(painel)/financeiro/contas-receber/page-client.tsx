@@ -813,52 +813,33 @@ export default function ContasReceberPage() {
             </div>
 
             {/* Mobile Cards */}
-            <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="lg:hidden space-y-2 px-1">
               {duplicatas.map((dup, idx) => {
                 const cfg = statusConfig[dup.status];
+                const isOverdue = dup.status === 'overdue';
                 return (
                   <div
                     key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`p-2.5 space-y-1.5 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
+                    className={`border rounded-xl p-3 cursor-pointer ${
+                      isOverdue
+                        ? 'bg-red-50/70 border-red-200 dark:bg-red-950/25 dark:border-red-900/60'
+                        : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
+                    }`}
                     onClick={() => openDetails(dup)}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
-                      </div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${cfg.classes} flex-shrink-0`}>
-                        <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
-                        {cfg.label}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${cfg.classes}`}>{cfg.label}</span>
+                        Nº {dup.nfNumero}{dup.dupNumero ? ` · ${formatParcela(dup)}` : ''}
                       </span>
+                      <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>{formatVencimento(dup.dupVencimento)}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5 text-[10px] min-w-0">
-                      <div className="min-w-0">
-                        <p className="text-[9px] text-slate-400">NF-e</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{dup.nfNumero}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] text-slate-400">Parcela</p>
-                        <p className="font-mono text-slate-700 dark:text-slate-300 truncate">{formatParcela(dup)}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] text-slate-400">Vencimento</p>
-                        <p className={`font-medium truncate ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {formatVencimento(dup.dupVencimento)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
-                      {dup.status === 'overdue' && (
-                        <span className="text-[10px] text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</span>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                      {isOverdue && (
+                        <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
                       )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openDetails(dup); }}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">visibility</span>
-                        Ver
-                      </button>
                     </div>
                   </div>
                 );

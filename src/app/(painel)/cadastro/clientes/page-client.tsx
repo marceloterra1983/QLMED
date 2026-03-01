@@ -522,9 +522,6 @@ export default function CustomersPage() {
                               return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full border ${color}`}>{st}</span>;
                             })()}
                           </div>
-                          {customer.city && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">{customer.city}</p>
-                          )}
                           <div className="grid grid-cols-2 gap-2 text-[10px] mb-1.5">
                             <div>
                               <p className="text-slate-400">Última NF-e</p>
