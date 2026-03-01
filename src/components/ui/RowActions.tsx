@@ -85,6 +85,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
   const menuItems = [
     { label: 'Detalhes', icon: 'visibility', action: handleDetails },
     ...(accessKey ? [{ label: 'Copiar Chave', icon: 'key', action: handleCopyKey }] : []),
+    { label: 'Imprimir', icon: 'print', action: () => { handlePrint(); setOpen(false); } },
     { label: 'Salvar XML', icon: 'code', action: handleSaveXml },
     { label: 'Salvar PDF', icon: 'picture_as_pdf', action: handleSavePdf },
     { label: 'Encaminhar', icon: 'forward_to_inbox', action: handleForward },
@@ -114,7 +115,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
       )}
       <button
         onClick={handlePrint}
-        className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+        className="hidden sm:flex p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
         title="Imprimir"
         aria-label="Imprimir PDF"
       >
