@@ -111,6 +111,8 @@ interface Summary {
   totalValor: number;
   hoje: number;
   hojeValor: number;
+  estaSemana: number;
+  estaSemanaValor: number;
   esteMes: number;
   esteMesValor: number;
   proximoMes: number;
@@ -577,6 +579,19 @@ export default function ContasReceberPage() {
 
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
             <div className="flex items-center gap-2 sm:gap-3">
+              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/30 items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px]">date_range</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Esta Semana</p>
+                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatCurrency(summary.estaSemanaValor)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.estaSemana} dup.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">calendar_month</span>
               </div>
@@ -597,19 +612,6 @@ export default function ContasReceberPage() {
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
                 <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} dup.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-[20px]">request_quote</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{formatCurrency(summary.totalValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.total} dup.</p>
               </div>
             </div>
           </div>
@@ -814,36 +816,64 @@ export default function ContasReceberPage() {
 
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-2 px-1">
-              {duplicatas.map((dup, idx) => {
-                const cfg = statusConfig[dup.status];
-                const isOverdue = dup.status === 'overdue';
-                return (
-                  <div
-                    key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}
-                    className={`border rounded-xl p-3 cursor-pointer ${
-                      isOverdue
-                        ? 'bg-red-50/70 border-red-200 dark:bg-red-950/25 dark:border-red-900/60'
-                        : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
-                    }`}
-                    onClick={() => openDetails(dup)}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${cfg.classes}`}>{cfg.label}</span>
-                        Nº {dup.nfNumero}{dup.dupNumero ? ` · ${formatParcela(dup)}` : ''}
-                      </span>
-                      <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>{formatVencimento(dup.dupVencimento)}</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
-                      {isOverdue && (
-                        <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
+              {(() => {
+                let lastGroup = '';
+                return duplicatas.map((dup, idx) => {
+                  const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
+                  const showDivider = group !== lastGroup;
+                  lastGroup = group;
+                  const isOverdue = dup.status === 'overdue';
+                  const parcelaNum = parseInt((dup.dupNumero || '').replace(/\D/g, ''), 10) || 1;
+                  const parcelaTotal = Math.max(1, dup.parcelaTotal || 1);
+                  const parcelaLabel = `${parcelaNum}/${parcelaTotal}`;
+                  return (
+                    <React.Fragment key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
+                      {showDivider && group && (
+                        <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
+                          <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </div>
-                );
-              })}
+                      {!collapsedGroups.has(group) && (
+                        <div
+                          className={`border rounded-xl p-3 cursor-pointer ${
+                            isOverdue
+                              ? 'bg-red-50/70 border-red-200 dark:bg-red-950/25 dark:border-red-900/60'
+                              : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
+                          }`}
+                          onClick={() => openDetails(dup)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                              Nº {dup.nfNumero}
+                              <span className="ml-1.5 text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
+                            </span>
+                            <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>{formatVencimento(dup.dupVencimento)}</span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                            <div className="flex items-center gap-2">
+                              {isOverdue && (
+                                <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openDetails(dup); }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                Ver
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </div>
 
             {/* Pagination */}
