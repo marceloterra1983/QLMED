@@ -2480,7 +2480,7 @@ export default function ProdutosPage() {
                       )}
                     </div>
                   </div>
-                  <button onClick={() => setDetailProduct(null)} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <button onClick={() => setDetailProduct(null)} className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <span className="material-symbols-outlined text-[20px]">close</span>
                   </button>
                 </div>
@@ -2888,29 +2888,29 @@ export default function ProdutosPage() {
               {/* ── Footer ── */}
               <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
                 {/* Mobile footer */}
-                <div className="flex flex-col gap-2 sm:hidden">
-                  {canWrite && (
-                    <button
-                      onClick={handleSaveDetail}
-                      disabled={savingDetail || !detailDirty}
-                      className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none"
-                    >
-                      {savingDetail ? (
-                        <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
-                      ) : (
-                        <><span className="material-symbols-outlined text-[16px]">save</span>Salvar</>
-                      )}
+                <div className="sm:hidden space-y-2">
+                  <div className="flex gap-2">
+                    <button onClick={() => setDetailProduct(null)} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
+                      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                      Voltar
                     </button>
-                  )}
+                    {canWrite && (
+                      <button
+                        onClick={handleSaveDetail}
+                        disabled={savingDetail || !detailDirty}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">{savingDetail ? 'progress_activity' : 'save'}</span>
+                        {savingDetail ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    )}
+                  </div>
                   <button
                     onClick={() => openHistory(detailProduct)}
                     className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
                   >
                     <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
                     Histórico
-                  </button>
-                  <button onClick={() => setDetailProduct(null)} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
-                    <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
                   </button>
                 </div>
                 {/* Desktop footer */}
