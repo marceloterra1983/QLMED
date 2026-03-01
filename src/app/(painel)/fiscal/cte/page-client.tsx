@@ -528,11 +528,7 @@ export default function CtePage() {
                     <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
                     <span className="truncate">{flow.recebedor}</span>
                   </div>
-                  {(() => { const e = getNick(invoice.senderCnpj, invoice.senderName); return e.full ? (
-                    <><p className="text-sm font-bold text-slate-800 dark:text-slate-200">{e.display}</p><p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">{e.full}</p></>
-                  ) : (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-1">{e.display}</p>
-                  ); })()}
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate mb-1">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
 	                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
 	                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>

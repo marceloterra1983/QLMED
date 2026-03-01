@@ -438,7 +438,7 @@ export default function IssuedInvoicesPage() {
                   </span>
                   <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                 </div>
-                {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
                   <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
