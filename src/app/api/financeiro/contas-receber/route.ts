@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
-import { normalizeForSearch, flexMatchAll, getDateGroupLabel } from '@/lib/utils';
+import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
 
 type DuplicataStatus = 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     const dateTo = searchParams.get('dateTo') || '';
     const sortBy = searchParams.get('sort') || 'vencimento';
     const sortOrder = searchParams.get('order') || 'asc';
-    const groupMode = searchParams.get('groupMode') || '';
+
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -363,57 +363,6 @@ export async function GET(req: Request) {
       }
       return sortOrder === 'desc' ? -cmp : cmp;
     });
-
-    if (groupMode === 'date') {
-      const FIRST_PAGE_GROUPS = new Set([
-        'Hoje', 'Esta semana', 'Próxima semana', 'Este mês',
-        'Semana passada', 'Mês passado',
-      ]);
-
-      const groupOrder: string[] = [];
-      const groupMap = new Map<string, ContasReceberDuplicata[]>();
-
-      for (const item of filtered) {
-        const group = getDateGroupLabel(item.dupVencimento + 'T00:00:00');
-        if (!groupMap.has(group)) {
-          groupOrder.push(group);
-          groupMap.set(group, []);
-        }
-        groupMap.get(group)!.push(item);
-      }
-
-      const firstPageGroups: string[] = [];
-      const laterGroups: string[] = [];
-
-      for (const group of groupOrder) {
-        if (FIRST_PAGE_GROUPS.has(group)) {
-          firstPageGroups.push(group);
-        } else {
-          laterGroups.push(group);
-        }
-      }
-
-      const totalGroupPages = laterGroups.length > 0 ? 2 : 1;
-      const selectedGroups = page === 1 ? firstPageGroups : laterGroups;
-      const paginated: ContasReceberDuplicata[] = [];
-
-      for (const group of selectedGroups) {
-        paginated.push(...(groupMap.get(group) || []));
-      }
-
-      const groups = groupOrder.map((g) => ({
-        name: g,
-        count: groupMap.get(g)!.length,
-        value: groupMap.get(g)!.reduce((s, i) => s + i.dupValor, 0),
-      }));
-
-      return NextResponse.json({
-        duplicatas: paginated,
-        summary,
-        groups,
-        pagination: { page, limit: paginated.length, total: filtered.length, pages: totalGroupPages },
-      });
-    }
 
     const total = filtered.length;
     const pages = Math.ceil(total / limit);

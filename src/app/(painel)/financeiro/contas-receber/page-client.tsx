@@ -203,10 +203,9 @@ export default function ContasReceberPage() {
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: String(limit),
+        limit: '2000',
         sort: sortBy,
         order: sortOrder,
-        groupMode: 'date',
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
@@ -872,7 +871,7 @@ export default function ContasReceberPage() {
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(dup.dupValor)}</span>
+                              <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(dup.dupValor)}</span>
                               <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -896,44 +895,9 @@ export default function ContasReceberPage() {
               })()}
             </div>
 
-            {/* Pagination */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                <span>{duplicatas.length} de {total}</span>
-              </div>
-              <div className="flex items-center gap-0.5 sm:gap-1">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={page === 1}
-                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">first_page</span>
-                </button>
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                </button>
-                <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages}
-                  className="p-1 sm:p-1.5 rounded text-slate-500 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">last_page</span>
-                </button>
-              </div>
+            {/* Total count */}
+            <div className="flex items-center justify-center px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+              <span className="text-xs text-slate-400">{total} registros</span>
             </div>
           </>
         )}
