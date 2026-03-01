@@ -15,7 +15,7 @@ interface SupplierRef {
 interface SupplierDetails {
   name: string;
   cnpj: string;
-  shortName?: string | null;
+  fantasyName?: string | null;
 }
 
 interface SupplierPriceRow {
@@ -136,7 +136,7 @@ export default function SupplierPriceTableModal({ isOpen, onClose, supplier }: S
   };
 
   const supplierDisplayName = details
-    ? (details.supplier.shortName || details.supplier.name)
+    ? (details.supplier.fantasyName || details.supplier.name)
     : null;
 
   return (

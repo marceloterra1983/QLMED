@@ -15,7 +15,7 @@ interface CustomerRef {
 interface CustomerDetails {
   name: string;
   cnpj: string;
-  shortName?: string | null;
+  fantasyName?: string | null;
 }
 
 interface CustomerPriceRow {
@@ -136,7 +136,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
   };
 
   const customerDisplayName = details
-    ? (details.customer.shortName || details.customer.name)
+    ? (details.customer.fantasyName || details.customer.name)
     : null;
 
   return (
