@@ -227,7 +227,7 @@ export default function ValvulasImportadasPage() {
 
       {/* Email Modal */}
       {emailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 print:hidden" onClick={() => setEmailModalOpen(false)}>
+        <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-black/50 print:hidden" onClick={() => setEmailModalOpen(false)}>
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Enviar Relatório por Email</h3>

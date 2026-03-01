@@ -33,7 +33,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-slate-900/50 sm:backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-slate-900/50 sm:backdrop-blur-sm">
       <div
         className="absolute inset-0 hidden sm:block"
         onClick={onClose}

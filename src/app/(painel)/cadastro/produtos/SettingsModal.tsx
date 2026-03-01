@@ -445,7 +445,7 @@ function SettingsModal({ onClose, onUpdated }: {
   // ======================== RENDER ========================
   return (
     <>
-      <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
+      <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
         <div
           className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-5xl sm:h-auto sm:max-h-[88vh] flex flex-col sm:flex-row overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
           onClick={(e) => e.stopPropagation()}

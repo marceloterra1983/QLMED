@@ -59,7 +59,7 @@ export default function ConfirmDialog({
     : 'bg-primary hover:bg-primary-dark text-white shadow-sm shadow-primary/25';
 
   return (
-    <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
       <div
         className="absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-[#1e2235] sm:rounded-2xl sm:shadow-2xl sm:max-w-sm sm:w-full overflow-hidden sm:ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in zoom-in-95 duration-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
