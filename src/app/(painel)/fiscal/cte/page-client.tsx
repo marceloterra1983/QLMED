@@ -532,7 +532,7 @@ export default function CtePage() {
 	                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
 	                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                    <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                    <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
             );
@@ -674,7 +674,7 @@ export default function CtePage() {
                             </span>
                           </td>
                           <td className="px-3 py-2">
-                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                            <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
                         )}

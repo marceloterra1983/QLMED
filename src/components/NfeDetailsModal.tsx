@@ -8,6 +8,7 @@ interface NfeDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceId: string | null;
+  initialTab?: string;
 }
 
 function Field({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
@@ -561,7 +562,7 @@ function TabInfAdicionais({ data }: { data: any }) {
 
 // --- Main Modal ---
 
-export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetailsModalProps) {
+export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab }: NfeDetailsModalProps) {
   useModalBackButton(isOpen, onClose);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -573,7 +574,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId }: NfeDetai
     if (!isOpen || !invoiceId) return;
     setLoading(true);
     setError(null);
-    setActiveTab('nfe');
+    setActiveTab(initialTab || 'nfe');
     setData(null);
 
     fetch(`/api/invoices/${invoiceId}/details`)

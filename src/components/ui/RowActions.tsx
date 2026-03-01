@@ -5,12 +5,14 @@ import { toast } from 'sonner';
 
 interface RowActionsProps {
   invoiceId: string;
+  accessKey?: string | null;
   onView: (id: string) => void;
   onDetails: (id: string) => void;
+  onViewProducts?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
 
-export default function RowActions({ invoiceId, onView, onDetails, onDelete }: RowActionsProps) {
+export default function RowActions({ invoiceId, accessKey, onView, onDetails, onViewProducts, onDelete }: RowActionsProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -56,8 +58,33 @@ export default function RowActions({ invoiceId, onView, onDetails, onDelete }: R
     setOpen(false);
   };
 
+  const handleCopyKey = () => {
+    if (accessKey) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(accessKey).then(() => {
+          toast.success('Chave copiada!');
+        }).catch(() => {
+          toast.error('Erro ao copiar chave');
+        });
+      } else {
+        const el = document.createElement('textarea');
+        el.value = accessKey;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(el);
+        if (ok) toast.success('Chave copiada!');
+        else toast.error('Erro ao copiar chave');
+      }
+    }
+    setOpen(false);
+  };
+
   const menuItems = [
-    { label: 'Detalhes', icon: 'search', action: handleDetails },
+    { label: 'Detalhes', icon: 'visibility', action: handleDetails },
+    ...(accessKey ? [{ label: 'Copiar Chave', icon: 'key', action: handleCopyKey }] : []),
     { label: 'Salvar XML', icon: 'code', action: handleSaveXml },
     { label: 'Salvar PDF', icon: 'picture_as_pdf', action: handleSavePdf },
     { label: 'Encaminhar', icon: 'forward_to_inbox', action: handleForward },
@@ -73,8 +100,18 @@ export default function RowActions({ invoiceId, onView, onDetails, onDelete }: R
         title="Visualizar documento"
         aria-label="Visualizar documento"
       >
-        <span className="material-symbols-outlined text-[18px]">visibility</span>
+        <span className="material-symbols-outlined text-[18px]">receipt_long</span>
       </button>
+      {onViewProducts && (
+        <button
+          onClick={() => onViewProducts(invoiceId)}
+          className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+          title="Ver produtos"
+          aria-label="Ver produtos"
+        >
+          <span className="material-symbols-outlined text-[18px]">visibility</span>
+        </button>
+      )}
       <button
         onClick={handlePrint}
         className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"

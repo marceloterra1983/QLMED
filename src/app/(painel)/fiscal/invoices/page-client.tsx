@@ -39,6 +39,7 @@ export default function InvoicesPage() {
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
+  const [detailsInitialTab, setDetailsInitialTab] = useState<string | undefined>(undefined);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const getReceivedTagLabel = (tag?: string | null) => (tag === 'Venda' ? 'Compra' : tag || '');
@@ -72,6 +73,13 @@ export default function InvoicesPage() {
 
   const openDetails = (id: string) => {
     setDetailsInvoiceId(id);
+    setDetailsInitialTab(undefined);
+    setIsDetailsOpen(true);
+  };
+
+  const openProducts = (id: string) => {
+    setDetailsInvoiceId(id);
+    setDetailsInitialTab('produtos');
     setIsDetailsOpen(true);
   };
 
@@ -429,7 +437,7 @@ export default function InvoicesPage() {
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
-                  <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                  <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
             );
@@ -546,7 +554,7 @@ export default function InvoicesPage() {
                             {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
                           </td>
                           <td className="px-3 py-2">
-                            <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
+                            <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
                         )}
@@ -640,6 +648,7 @@ export default function InvoicesPage() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         invoiceId={detailsInvoiceId}
+        initialTab={detailsInitialTab}
       />
       <ConfirmDialog
         isOpen={showDeleteConfirm}
