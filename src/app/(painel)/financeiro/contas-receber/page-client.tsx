@@ -164,7 +164,7 @@ export default function ContasReceberPage() {
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['Este mês', 'Próximo mês']));
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const [selectedDuplicata, setSelectedDuplicata] = useState<Duplicata | null>(null);
   const [invoiceHeader, setInvoiceHeader] = useState<InvoiceHeader | null>(null);
@@ -205,6 +205,7 @@ export default function ContasReceberPage() {
         limit: String(limit),
         sort: sortBy,
         order: sortOrder,
+        groupMode: 'date',
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
@@ -879,16 +880,7 @@ export default function ContasReceberPage() {
             {/* Pagination */}
             <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
               <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                <span>{((page - 1) * limit) + 1}-{Math.min(page * limit, total)} de {total}</span>
-                <select
-                  value={limit}
-                  onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="ml-1 px-2 py-1 text-xs border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                <span>{duplicatas.length} de {total}</span>
               </div>
               <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
