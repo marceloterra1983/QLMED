@@ -295,8 +295,8 @@ export default function IssuedInvoicesPage() {
       <div key={invoice.id} onClick={() => openProducts(invoice.id)} className={`border rounded-xl p-3 cursor-pointer ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold text-slate-900 dark:text-white">
-            {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
             {invoice.number}
+            {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag === 'Consignação' ? 'Consig.' : cfopTag}</span>}
           </span>
           <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
         </div>

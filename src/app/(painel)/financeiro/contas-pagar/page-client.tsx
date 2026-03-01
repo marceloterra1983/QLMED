@@ -160,8 +160,7 @@ export default function ContasPagarPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -201,7 +200,7 @@ export default function ContasPagarPage() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [page, limit, search, statusFilter, sortBy, sortOrder]);
 
   const loadData = async () => {
     setLoading(true);
@@ -214,8 +213,7 @@ export default function ContasPagarPage() {
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
+
 
       const res = await fetch(`/api/financeiro/contas-pagar?${params}`);
       if (!res.ok) throw new Error('Erro ao carregar dados');
@@ -639,7 +637,7 @@ export default function ContasPagarPage() {
 
       {/* Filters */}
       <div className="mb-4">
-      <MobileFilterWrapper activeFilterCount={[search, statusFilter, dateFrom, dateTo].filter(Boolean).length} title="Filtros" icon="payments">
+      <MobileFilterWrapper activeFilterCount={[search, statusFilter].filter(Boolean).length} title="Filtros" icon="payments">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
@@ -664,24 +662,9 @@ export default function ContasPagarPage() {
             <option value="upcoming">A Vencer</option>
           </select>
 
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-            title="Vencimento a partir de"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => { setDateTo(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-            title="Vencimento até"
-          />
-
-          {(search || statusFilter || dateFrom || dateTo) && (
+          {(search || statusFilter) && (
             <button
-              onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+              onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); setPage(1); }}
               className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
@@ -703,7 +686,7 @@ export default function ContasPagarPage() {
           <div className="p-12 text-center">
             <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">payments</span>
             <p className="mt-4 text-slate-500 dark:text-slate-400">
-              {search || statusFilter || dateFrom || dateTo
+              {search || statusFilter
                 ? 'Nenhuma duplicata encontrada com os filtros aplicados.'
                 : 'Nenhuma duplicata encontrada nas NF-e recebidas.'}
             </p>
@@ -869,7 +852,7 @@ export default function ContasPagarPage() {
                           onClick={() => openDetails(dup)}
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {dup.nfNumero}</span>
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">{dup.nfNumero}</span>
                             <span className={`text-xs font-bold ${isOverdue ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{formatVencimento(dup.dupVencimento)}</span>
                           </div>
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.emitenteCnpj, dup.emitenteNome).display}</p>

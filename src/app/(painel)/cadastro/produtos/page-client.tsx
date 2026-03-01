@@ -2867,9 +2867,12 @@ export default function ProdutosPage() {
                 {/* Mobile footer */}
                 <div className="sm:hidden space-y-2">
                   <div className="flex gap-2">
-                    <button onClick={() => setDetailProduct(null)} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
-                      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                      Voltar
+                    <button
+                      onClick={() => openHistory(detailProduct)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-blue-500">history</span>
+                      Histórico
                     </button>
                     {canWrite && (
                       <button
@@ -2882,12 +2885,9 @@ export default function ProdutosPage() {
                       </button>
                     )}
                   </div>
-                  <button
-                    onClick={() => openHistory(detailProduct)}
-                    className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
-                    Histórico
+                  <button onClick={() => setDetailProduct(null)} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                    Voltar
                   </button>
                 </div>
                 {/* Desktop footer */}
