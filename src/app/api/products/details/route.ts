@@ -18,10 +18,14 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const key = searchParams.get('key');
+    const code = searchParams.get('code');
 
-    if (!key) {
-      return NextResponse.json({ error: 'Parâmetro key obrigatório' }, { status: 400 });
+    if (!key && !code) {
+      return NextResponse.json({ error: 'Parâmetro key ou code obrigatório' }, { status: 400 });
     }
+
+    const whereClause = key ? 'pr.company_id = $1 AND pr.product_key = $2' : 'pr.company_id = $1 AND pr.code = $2';
+    const whereParam = key ?? code;
 
     const rows = await prisma.$queryRawUnsafe<any[]>(
       `
@@ -75,11 +79,11 @@ export async function GET(req: Request) {
         pr.agg_last_sale_price,
         pr.agg_resale_quantity
       FROM product_registry pr
-      WHERE pr.company_id = $1 AND pr.product_key = $2
+      WHERE ${whereClause}
       LIMIT 1
       `,
       company.id,
-      key,
+      whereParam,
     );
 
     if (rows.length === 0) {

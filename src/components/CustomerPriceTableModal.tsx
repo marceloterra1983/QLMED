@@ -47,6 +47,15 @@ interface CustomerPriceTableModalProps {
 type PriceSortKey = 'description' | 'code' | 'lastPrice' | 'lastIssueDate';
 type SortDirection = 'asc' | 'desc';
 
+interface ProductRegistryData {
+  lastPrice: number;
+  fiscalIcms: number | null;
+  fiscalPis: number | null;
+  fiscalCofins: number | null;
+  fiscalIpi: number | null;
+  fiscalFcp: number | null;
+}
+
 async function fetchCustomerDetails(targetCustomer: CustomerRef): Promise<CustomerDetailsResponse> {
   const params = new URLSearchParams();
   if (targetCustomer.cnpj) params.set('cnpj', targetCustomer.cnpj);
@@ -64,6 +73,8 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
   const [sortKey, setSortKey] = useState<PriceSortKey>('lastIssueDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [detailRow, setDetailRow] = useState<CustomerPriceRow | null>(null);
+  const [productRegistry, setProductRegistry] = useState<ProductRegistryData | null>(null);
+  const [loadingRegistry, setLoadingRegistry] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,8 +82,35 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
       setSortKey('lastIssueDate');
       setSortDirection('desc');
       setDetailRow(null);
+      setProductRegistry(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!detailRow) { setProductRegistry(null); return; }
+    let cancelled = false;
+    const fetch_ = async () => {
+      setLoadingRegistry(true);
+      setProductRegistry(null);
+      try {
+        const res = await fetch(`/api/products/details?code=${encodeURIComponent(detailRow.code)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setProductRegistry({
+          lastPrice: data.lastPrice ?? 0,
+          fiscalIcms: data.fiscalIcms,
+          fiscalPis: data.fiscalPis,
+          fiscalCofins: data.fiscalCofins,
+          fiscalIpi: data.fiscalIpi,
+          fiscalFcp: data.fiscalFcp,
+        });
+      } catch { /* silently skip */ } finally {
+        if (!cancelled) setLoadingRegistry(false);
+      }
+    };
+    fetch_();
+    return () => { cancelled = true; };
+  }, [detailRow]);
 
   useEffect(() => {
     if (!isOpen || !customer) return;
@@ -172,33 +210,113 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                 <span className="material-symbols-outlined text-[14px]">arrow_back</span>
                 Voltar para lista
               </button>
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
-                <div className="px-4 py-3">
-                  <p className="text-[10px] font-mono text-slate-400 mb-0.5">{detailRow.code}</p>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
-                    {detailRow.shortName || detailRow.description}
-                  </p>
-                  {detailRow.shortName && (
-                    <p className="text-xs text-slate-400 mt-0.5">{detailRow.description}</p>
-                  )}
-                </div>
-                <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Unidade</p>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{detailRow.unit || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Último Preço de Venda</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(detailRow.lastPrice)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Última Venda</p>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {detailRow.lastIssueDate ? formatDate(detailRow.lastIssueDate) : '-'}
-                    </p>
-                  </div>
-                </div>
+
+              {/* Product identity */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+                <p className="text-[10px] font-mono text-slate-400 mb-0.5">{detailRow.code} · {detailRow.unit}</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
+                  {detailRow.shortName || detailRow.description}
+                </p>
+                {detailRow.shortName && (
+                  <p className="text-xs text-slate-400 mt-0.5">{detailRow.description}</p>
+                )}
               </div>
+
+              {/* Profit analysis */}
+              {loadingRegistry ? (
+                <Skeleton className="h-40 w-full" />
+              ) : (() => {
+                const salePrice = detailRow.lastPrice;
+                const purchasePrice = productRegistry?.lastPrice ?? 0;
+                const hasPurchase = purchasePrice > 0;
+
+                const icms = (productRegistry?.fiscalIcms ?? 0);
+                const pis = (productRegistry?.fiscalPis ?? 0);
+                const cofins = (productRegistry?.fiscalCofins ?? 0);
+                const ipi = (productRegistry?.fiscalIpi ?? 0);
+                const fcp = (productRegistry?.fiscalFcp ?? 0);
+                const totalTaxPct = icms + pis + cofins + ipi + fcp;
+
+                const grossProfit = hasPurchase ? salePrice - purchasePrice : null;
+                const grossMarginPct = grossProfit != null && salePrice > 0 ? (grossProfit / salePrice) * 100 : null;
+                const taxOnSale = salePrice * (totalTaxPct / 100);
+                const netProfit = grossProfit != null ? grossProfit - taxOnSale : null;
+                const netMarginPct = netProfit != null && salePrice > 0 ? (netProfit / salePrice) * 100 : null;
+
+                const pctLabel = (v: number | null) =>
+                  v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '-';
+                const colorClass = (v: number | null) =>
+                  v == null ? 'text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
+
+                const taxParts: string[] = [];
+                if (icms) taxParts.push(`ICMS ${icms}%`);
+                if (pis) taxParts.push(`PIS ${pis}%`);
+                if (cofins) taxParts.push(`COFINS ${cofins}%`);
+                if (ipi) taxParts.push(`IPI ${ipi}%`);
+                if (fcp) taxParts.push(`FCP ${fcp}%`);
+
+                return (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                    {/* Sale price row */}
+                    <div className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Preço de Venda</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatPrice(salePrice)}</span>
+                    </div>
+                    {/* Purchase price row */}
+                    <div className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Valor de Compra</span>
+                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                        {hasPurchase ? formatPrice(purchasePrice) : <span className="text-slate-400 italic">não cadastrado</span>}
+                      </span>
+                    </div>
+                    {/* Gross profit */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Bruto</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-medium ${colorClass(grossMarginPct)}`}>{pctLabel(grossMarginPct)}</span>
+                        <span className={`text-xs font-bold ${colorClass(grossProfit)}`}>
+                          {grossProfit != null ? formatPrice(grossProfit) : '-'}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Taxes on sale */}
+                    <div className="flex items-start justify-between px-4 py-2.5">
+                      <div className="min-w-0">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Impostos na Venda</span>
+                        {taxParts.length > 0 && (
+                          <p className="text-[10px] text-slate-400 mt-0.5">{taxParts.join(' + ')}</p>
+                        )}
+                        {taxParts.length === 0 && productRegistry && (
+                          <p className="text-[10px] text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <span className="text-xs text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {totalTaxPct > 0 ? formatPrice(taxOnSale) : '-'}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Net profit */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20 rounded-b-xl">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Líquido</span>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-medium ${colorClass(netMarginPct)}`}>{pctLabel(netMarginPct)}</span>
+                        <span className={`text-xs font-bold ${colorClass(netProfit)}`}>
+                          {netProfit != null ? formatPrice(netProfit) : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Last sale info */}
+              <p className="text-[10px] text-slate-400 text-right">
+                Última venda: {detailRow.lastIssueDate ? formatDate(detailRow.lastIssueDate) : '-'}
+              </p>
             </div>
           ) : (
             <>
