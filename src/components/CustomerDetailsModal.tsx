@@ -1432,7 +1432,7 @@ export default function CustomerDetailsModal({
             aria-hidden="true"
           />
           <div
-            className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-6xl sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
+            className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-6xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
             role="dialog"
             aria-modal="true"
           >
@@ -1469,15 +1469,27 @@ export default function CustomerDetailsModal({
               {content}
             </div>
 
-            {/* Footer - mobile only */}
-            <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-              <button
-                onClick={onClose}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                Voltar
-              </button>
+            {/* Fixed Footer */}
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+              {/* Mobile */}
+              <div className="sm:hidden">
+                <button
+                  onClick={onClose}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                  Voltar
+                </button>
+              </div>
+              {/* Desktop */}
+              <div className="hidden sm:flex items-center justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>
