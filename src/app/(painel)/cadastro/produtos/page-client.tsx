@@ -1940,39 +1940,28 @@ export default function ProdutosPage() {
                           </div>
                         )}
                         {!lineCollapsed && !grpCollapsed && (
-                          <div className={`p-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
-                            <div className="flex items-start gap-3 mb-1">
-                              {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />}
+                          <div className={`py-2 px-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                            <div className="flex items-center gap-2.5">
+                              {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                               <div className="flex-1 min-w-0">
-                                <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                  {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
-                                  {product.code || '-'}
-                                </p>
+                                <div className="flex items-baseline gap-1.5 mb-0.5">
+                                  <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                                    {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                                    {product.code || '-'}
+                                  </p>
+                                  {product.outOfLine && <span className="px-1.5 py-0 rounded text-[9px] font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
+                                </div>
                                 <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">
                                   {product.shortName || product.description}
                                 </p>
+                                <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
+                                  <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatCurrency(product.lastPrice)}</span></span>
+                                  <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                    Detalhes
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                            {product.outOfLine && (
-                              <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
-                                <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
-                              <div>
-                                <p className="text-slate-400">Últ. Compra</p>
-                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>
-                              </div>
-                              <div>
-                                <p className="text-slate-400">Últ. Preço</p>
-                                <p className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(product.lastPrice)}</p>
-                              </div>
-                            </div>
-                            <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
-                                <span className="material-symbols-outlined text-[16px]">visibility</span>
-                                Detalhes
-                              </button>
                             </div>
                           </div>
                         )}
@@ -2003,42 +1992,31 @@ export default function ProdutosPage() {
                         </div>
                       )}
                       {!collapsedGroups.has(group) && (
-                        <div className={`p-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
-                          <div className="flex items-start gap-3 mb-1">
-                            {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />}
+                        <div className={`py-2 px-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                          <div className="flex items-center gap-2.5">
+                            {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                             <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
-                                {product.code || '-'}
-                              </p>
+                              <div className="flex items-baseline gap-1.5 mb-0.5">
+                                <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                                  {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                                  {product.code || '-'}
+                                </p>
+                                {product.outOfLine && <span className="px-1.5 py-0 rounded text-[9px] font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
+                              </div>
                               <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">
                                 {product.shortName || product.description}
                               </p>
                               {product.shortName && (
                                 <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>
                               )}
+                              <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatCurrency(product.lastPrice)}</span></span>
+                                <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                                  <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                  Detalhes
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                          {product.outOfLine && (
-                            <div className="flex flex-wrap gap-1 ml-7 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-[10px] font-bold text-red-600 dark:text-red-400">Fora de Linha</span>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-2 text-[10px] ml-7 mb-1.5">
-                            <div>
-                              <p className="text-slate-400">Últ. Compra</p>
-                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatDate(product.lastIssueDate)}</p>
-                            </div>
-                            <div>
-                              <p className="text-slate-400">Últ. Preço</p>
-                              <p className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(product.lastPrice)}</p>
-                            </div>
-                          </div>
-                          <div className="flex justify-end ml-7" onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
-                              <span className="material-symbols-outlined text-[16px]">visibility</span>
-                              Detalhes
-                            </button>
                           </div>
                         </div>
                       )}
