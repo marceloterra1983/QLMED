@@ -830,7 +830,7 @@ export default function ContasPagarPage() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        {(() => { const n = getNick(dup.emitenteCnpj, dup.emitenteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate">{n.display}</p>); })()}
+                        <p className="font-bold text-slate-900 dark:text-white truncate">{getNick(dup.emitenteCnpj, dup.emitenteNome).display}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes} ml-2 flex-shrink-0`}>
                         <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
