@@ -32,6 +32,26 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   viewer: 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400',
 };
 
+const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
+  '/visaogeral': { label: 'Visão Geral', icon: 'dashboard' },
+  '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
+  '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
+  '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
+  '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
+  '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },
+  '/fiscal/nfse-recebidas': { label: 'NFS-e', icon: 'description' },
+  '/fiscal/cte': { label: 'CT-e', icon: 'local_shipping' },
+  '/fiscal/dashboard': { label: 'Impostos', icon: 'monitoring' },
+  '/financeiro/contas-pagar': { label: 'Contas a Pagar', icon: 'payments' },
+  '/financeiro/contas-receber': { label: 'Contas a Receber', icon: 'request_quote' },
+  '/relatorios/valvulas-importadas': { label: 'Válvulas Mecânicas Corcym', icon: 'bar_chart' },
+  '/sistema/sync': { label: 'Sincronizar', icon: 'cloud_sync' },
+  '/sistema/errors': { label: 'Erros', icon: 'warning' },
+  '/sistema/upload': { label: 'Upload XML', icon: 'cloud_upload' },
+  '/sistema/settings': { label: 'Configurações', icon: 'settings' },
+  '/sistema/usuarios': { label: 'Usuários', icon: 'manage_accounts' },
+};
+
 const SIDEBAR_MIN = 64;
 const SIDEBAR_DEFAULT = 256;
 const SIDEBAR_MAX = 360;
@@ -447,12 +467,12 @@ export default function DashboardLayout({
             <span className="material-symbols-outlined">menu</span>
           </button>
           {(() => {
-            const currentNav = allNavItems.flatMap(g => g.items).find(i => pathname === i.href);
-            if (currentNav) {
+            const page = PAGE_LABELS[pathname];
+            if (page) {
               return (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="material-symbols-outlined text-[20px] text-primary">{currentNav.icon}</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentNav.label}</span>
+                  <span className="material-symbols-outlined text-[20px] text-primary">{page.icon}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{page.label}</span>
                 </div>
               );
             }
