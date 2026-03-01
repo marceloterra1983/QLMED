@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import { Providers } from './providers';
 import { PWARegister } from '@/components/PWARegister';
@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   description: 'Plataforma completa para gerenciamento de notas fiscais eletrônicas. Receba, consulte e gerencie XMLs de NF-e, CT-e e NFS-e.',
   keywords: ['notas fiscais', 'XML', 'NF-e', 'CT-e', 'NFS-e', 'gestão fiscal'],
   manifest: '/manifest.json',
-  themeColor: '#2952b8',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -35,6 +34,10 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/apple-touch-icon-v2.png', sizes: '180x180', type: 'image/png' }],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#2952b8',
 };
 
 export default function RootLayout({

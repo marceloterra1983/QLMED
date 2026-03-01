@@ -234,6 +234,7 @@ export default function ProdutosPage() {
   });
 
   // --- multi-select ---
+  const [selectionEnabled, setSelectionEnabled] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const toggleSelect = (key: string) => {
     setSelectedKeys((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
@@ -1425,16 +1426,6 @@ export default function ProdutosPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {canWrite && (
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors shadow-sm"
-              title="Linhas, fabricantes, dados fiscais"
-            >
-              <span className="material-symbols-outlined text-[20px]">settings</span>
-              Ajustes
-            </button>
-          )}
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
@@ -1629,12 +1620,17 @@ export default function ProdutosPage() {
         {(() => {
           const allGroups = Array.from(new Set(visible.map(getGroupLabel)));
           const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
-          const allKeys = [...allGroups, ...allLines];
-          if (allGroups.length <= 1) return null;
+          const hasMultipleGroups = allGroups.length > 1;
           return (
             <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-              <button onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? allLines : allGroups))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
-              <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
+              {hasMultipleGroups && (
+                <>
+                  <button onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? allLines : allGroups))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
+                  <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
+                </>
+              )}
+              <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(new Set()); return !v; }); }} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
+              {canWrite && <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Linhas, fabricantes, dados fiscais"><span className="material-symbols-outlined text-[14px]">settings</span>Parâmetros</button>}
             </div>
           );
         })()}
@@ -1643,6 +1639,7 @@ export default function ProdutosPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                {selectionEnabled && (
                 <th className="px-3 py-1.5 w-8">
                   <input
                     type="checkbox"
@@ -1653,6 +1650,7 @@ export default function ProdutosPage() {
                     title="Selecionar todos visíveis"
                   />
                 </th>
+                )}
                 <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
                   <div className="flex items-center gap-1">Referência <SortIcon field="code" /></div>
                 </th>
@@ -1751,7 +1749,7 @@ export default function ProdutosPage() {
                             <tr className="cursor-pointer select-none group/line" onClick={() => toggleGroup(lineKey)}>
                               <td colSpan={9} className="px-0 py-0">
                                 <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
-                                  <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                                  {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                                   <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                   <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
                                   <span className="text-[13px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
@@ -1764,7 +1762,7 @@ export default function ProdutosPage() {
                             <tr className="cursor-pointer select-none group/grp" onClick={() => toggleGroup(grpKey)}>
                               <td colSpan={9} className="px-0 py-0">
                                 <div className="flex items-center gap-2 pl-8 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
-                                  <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                                  {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                                   <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                   <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
                                   <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
@@ -1784,10 +1782,12 @@ export default function ProdutosPage() {
                             </tr>
                           )}
                           {!lineCollapsed && !grpCollapsed && (
-                    <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
+                    <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
+                    {selectionEnabled && (
                     <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
+                    )}
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
@@ -1821,7 +1821,7 @@ export default function ProdutosPage() {
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                             <td colSpan={9} className="px-0 py-0">
                               <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
-                                <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                                {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                                 <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
@@ -1831,10 +1831,12 @@ export default function ProdutosPage() {
                           </tr>
                         )}
                         {!collapsedGroups.has(group) && (
-                  <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
+                  <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
+                    {selectionEnabled && (
                     <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
                     </td>
+                    )}
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="flex items-center gap-1">{product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}<span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}{search ? highlightMatch(product.code || '-', search) : (product.code || '-')}</span></div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}><div className="hover:text-primary transition-colors">{product.shortName ? (<><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>) : (<span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>)}</div></td>
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
@@ -1922,7 +1924,7 @@ export default function ProdutosPage() {
                         {showLine && (
                           <div className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>
                             <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
-                              <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                              {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                               <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                               <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
                               <span className="text-[13px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
@@ -1933,7 +1935,7 @@ export default function ProdutosPage() {
                         {!lineCollapsed && showGrp && (
                           <div className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>
                             <div className="flex items-center gap-2 pl-6 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
-                              <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                              {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                               <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                               <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
                               <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
@@ -1948,9 +1950,9 @@ export default function ProdutosPage() {
                           </div>
                         )}
                         {!lineCollapsed && !grpCollapsed && (
-                          <div className={`p-3 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                          <div className={`p-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
                             <div className="flex items-start gap-3 mb-1">
-                              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
+                              {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />}
                               <div className="flex-1 min-w-0">
                                 <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                                   {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
@@ -2011,7 +2013,7 @@ export default function ProdutosPage() {
                       {showDivider && group && (
                         <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                           <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
-                            <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />
+                            {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
                             <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                             <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
@@ -2020,9 +2022,9 @@ export default function ProdutosPage() {
                         </div>
                       )}
                       {!collapsedGroups.has(group) && (
-                        <div className={`p-3 ${selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
+                        <div className={`p-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
                           <div className="flex items-start gap-3 mb-1">
-                            <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />
+                            {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0 mt-0.5" />}
                             <div className="flex-1 min-w-0">
                               <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                                 {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
