@@ -431,20 +431,16 @@ export default function IssuedInvoicesPage() {
                     : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <div className="flex items-start mb-1">
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
-                      Nº {invoice.number}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide mr-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
+                    Nº {invoice.number}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
                 </div>
                 {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><p className="text-xs font-bold text-slate-900 dark:text-white">{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{n.display}</p>); })()}
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div>
-                    <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)} {formatTime(invoice.issueDate)}</span>
-                    <span className="text-sm font-bold font-mono text-slate-900 dark:text-white ml-3">{formatCurrency(invoice.totalValue)}</span>
-                  </div>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
                   <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                 </div>
               </div>
