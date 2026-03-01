@@ -143,7 +143,7 @@ export default function UploadPage() {
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <span className="material-symbols-outlined text-[28px] text-primary">cloud_upload</span>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Upload XML</h2>

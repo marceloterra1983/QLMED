@@ -1,0 +1,2 @@
+[     199ms] [ERROR] WebSocket connection to 'ws://localhost:6001/app/55c3533a400a1d382c83a66fd6ce2e5389f07a144775eb8b71ec424800bcfd65?protocol=7&client=js&version=8.3.0&flash=false' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:8000/js/pusher.js:8
+[    2179ms] [ERROR] WebSocket connection to 'wss://localhost:6001/app/55c3533a400a1d382c83a66fd6ce2e5389f07a144775eb8b71ec424800bcfd65?protocol=7&client=js&version=8.3.0&flash=false' failed: Error in connection establishment: net::ERR_CONNECTION_RESET @ http://localhost:8000/js/pusher.js:8

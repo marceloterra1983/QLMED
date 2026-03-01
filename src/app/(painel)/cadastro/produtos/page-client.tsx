@@ -1415,7 +1415,7 @@ export default function ProdutosPage() {
     <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="hidden sm:flex items-center gap-3 min-w-0">
           <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">inventory_2</span>
           <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Produtos</h2>
@@ -1554,15 +1554,6 @@ export default function ProdutosPage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => { setSearch(''); setOnlyMissing(false); setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); setSortBy('productType'); setSortOrder('asc'); setLineStatusFilter('all'); }}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
-                Limpar
-              </button>
             </div>
           </div>
         </div>

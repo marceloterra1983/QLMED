@@ -194,7 +194,7 @@ export default function ValvulasImportadasPage() {
     <>
       {/* Page Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="hidden sm:flex items-center gap-3 min-w-0">
           <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">bar_chart</span>
           <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">

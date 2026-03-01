@@ -543,7 +543,7 @@ export default function ContasReceberPage() {
     <div className="w-full min-w-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-6">
-        <div className="min-w-0">
+        <div className="hidden sm:block min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">Contas a Receber</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Duplicatas das NF-e emitidas

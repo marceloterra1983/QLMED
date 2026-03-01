@@ -176,7 +176,7 @@ export default function FiscalDashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div className="hidden sm:block min-w-0">
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Impostos</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Visão consolidada de impostos por período</p>
         </div>

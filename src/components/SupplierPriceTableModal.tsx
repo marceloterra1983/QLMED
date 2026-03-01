@@ -20,6 +20,7 @@ interface SupplierDetails {
 interface SupplierPriceRow {
   code: string;
   description: string;
+  shortName?: string | null;
   unit: string;
   quantity2025: number;
   quantity2026: number;
@@ -112,7 +113,7 @@ export default function SupplierPriceTableModal({ isOpen, onClose, supplier }: S
     const searchValue = searchTerm.trim().toLowerCase();
     const filteredRows = searchValue
       ? details.priceTable.filter((row) =>
-        row.description.toLowerCase().includes(searchValue) || row.code.toLowerCase().includes(searchValue))
+        row.description.toLowerCase().includes(searchValue) || row.code.toLowerCase().includes(searchValue) || (row.shortName && row.shortName.toLowerCase().includes(searchValue)))
       : details.priceTable;
 
     return [...filteredRows].sort((a, b) => {
@@ -218,7 +219,8 @@ export default function SupplierPriceTableModal({ isOpen, onClose, supplier }: S
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0">
                           <span className="text-[10px] font-mono text-slate-400">{row.code}</span>
-                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{row.description}</p>
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{row.shortName || row.description}</p>
+                          {row.shortName && <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{row.description}</p>}
                         </div>
                         <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatPrice(row.lastPrice)}</span>
                       </div>
@@ -298,7 +300,8 @@ export default function SupplierPriceTableModal({ isOpen, onClose, supplier }: S
                         <tr key={`${row.code}-${row.description}-${row.unit}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="px-3 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300">{row.code}</td>
                           <td className="px-3 py-1.5">
-                            <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.description}</div>
+                            <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.shortName || row.description}</div>
+                            {row.shortName && <div className="text-[10px] text-slate-400 dark:text-slate-500">{row.description}</div>}
                           </td>
                           <td className="px-3 py-1.5 text-right text-xs font-medium text-slate-700 dark:text-slate-300">
                             {formatQuantity(row.quantity2025)}

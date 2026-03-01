@@ -599,7 +599,7 @@ export default function SyncPage() {
 
       {/* Page Header */}
       <div>
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="hidden sm:flex items-center gap-3 min-w-0">
           <span className="material-symbols-outlined text-[24px] text-primary flex-shrink-0">cloud_sync</span>
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>

@@ -43,7 +43,7 @@ export default function ErrorsPage() {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <span className="material-symbols-outlined text-[28px] text-primary">warning</span>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Erros</h2>

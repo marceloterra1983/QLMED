@@ -250,7 +250,7 @@ export default function CustomersPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="hidden sm:flex items-center gap-3 min-w-0">
           <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">group</span>
           <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
@@ -510,14 +510,7 @@ export default function CustomersPage() {
                         <div className="p-3 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelectedCustomer(customer); setIsDetailsOpen(true); }}>
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex-1 min-w-0">
-                              {label ? (
-                                <>
-                                  <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{label}</p>
-                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{customer.name}</p>
-                                </>
-                              ) : (
-                                <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{customer.name}</p>
-                              )}
+                              <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{label || customer.name}</p>
                             </div>
                             {st && st.toUpperCase() !== 'ATIVA' && (() => {
                               const upper = st.toUpperCase();

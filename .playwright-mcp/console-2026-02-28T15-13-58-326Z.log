@@ -1,0 +1,4 @@
+[     284ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ http://localhost:3001/login:0
+[   13036ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3001/api/auth/callback/credentials:0
+[   54341ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ http://localhost:3001/visaogeral:0
+[   59991ms] [WARNING] The resource http://localhost:3001/_next/image?url=%2Flogo.png&w=384&q=75 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/visaogeral:0

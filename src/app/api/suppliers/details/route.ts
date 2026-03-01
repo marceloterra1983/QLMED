@@ -342,12 +342,25 @@ export async function GET(req: Request) {
       }
     }
 
+    // Lookup short names from product_registry
+    let shortNameMap = new Map<string, string>();
+    if (!metaOnly && priceMap.size > 0) {
+      const productKeys = Array.from(priceMap.keys());
+      const shortNameRows = await prisma.$queryRawUnsafe<{ product_key: string; short_name: string }[]>(
+        `SELECT product_key, short_name FROM product_registry WHERE company_id = $1 AND product_key = ANY($2) AND short_name IS NOT NULL AND short_name != ''`,
+        company.id,
+        productKeys,
+      );
+      for (const row of shortNameRows) shortNameMap.set(row.product_key, row.short_name);
+    }
+
     const priceTable = metaOnly
       ? []
-      : Array.from(priceMap.values())
-        .map((item) => ({
+      : Array.from(priceMap.entries())
+        .map(([key, item]) => ({
           code: item.code,
           description: item.description,
+          shortName: shortNameMap.get(key) || null,
           unit: item.unit,
           invoiceCount: item.invoiceIds.size,
           totalQuantity: item.totalQuantity,

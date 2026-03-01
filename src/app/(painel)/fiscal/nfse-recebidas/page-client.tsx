@@ -182,7 +182,7 @@ export default function NfseReceivedPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div className="hidden sm:block min-w-0">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">NFS-e</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Notas de serviço recebidas e emitidas pela QLMED</p>
         </div>
