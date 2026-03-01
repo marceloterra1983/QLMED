@@ -584,8 +584,8 @@ export default function ContasReceberPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Esta Semana</p>
-                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatCurrency(summary.estaSemanaValor)}</p>
-                <p className="text-[10px] sm:text-xs text-slate-400">{summary.estaSemana} dup.</p>
+                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatCurrency(summary.estaSemanaValor ?? 0)}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">{summary.estaSemana ?? 0} dup.</p>
               </div>
             </div>
           </div>
