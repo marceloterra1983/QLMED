@@ -9,7 +9,7 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { formatDate, formatTime, formatCurrency } from '@/lib/utils';
-import { buildNfeGroups } from '@/lib/nfe-groups';
+import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
@@ -26,7 +26,7 @@ export default function IssuedInvoicesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => `${new Date().getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [total, setTotal] = useState(0);
@@ -41,7 +41,8 @@ export default function IssuedInvoicesPage() {
   const [detailsInitialTab, setDetailsInitialTab] = useState<string | undefined>(undefined);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [collapsedInitialized, setCollapsedInitialized] = useState(false);
-  const [showOlderYears, setShowOlderYears] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
@@ -59,6 +60,15 @@ export default function IssuedInvoicesPage() {
       else next.add(group);
       return next;
     });
+  };
+
+  const selectYear = (year: number | null) => {
+    const cy = new Date().getFullYear();
+    if (year === null) { setDateFrom(`${cy}-01-01`); setDateTo(''); }
+    else { setDateFrom(`${year}-01-01`); setDateTo(`${year}-12-31`); }
+    setSelectedYear(year);
+    setCollapsedInitialized(false);
+    setSelected(new Set());
   };
 
   const openModal = (id: string) => { setSelectedInvoiceId(id); setIsModalOpen(true); };
@@ -82,6 +92,16 @@ export default function IssuedInvoicesPage() {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
+
+  useEffect(() => {
+    const cy = new Date().getFullYear();
+    Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
+      fetch(`/api/invoices?limit=1&page=1&type=NFE&direction=issued&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
+        .catch(() => null)
+    )).then(res => setAvailableYears(res.filter((y): y is number => y !== null)));
+  }, []);
 
   const handleExport = () => {
     const headers = ['Numero', 'Chave', 'Destinatario', 'Data', 'Valor', 'Status'];
@@ -154,12 +174,16 @@ export default function IssuedInvoicesPage() {
         setInvoices(loaded);
         setTotal(data.pagination?.total || 0);
         if (!collapsedInitialized && loaded.length > 0) {
-          const groups = buildNfeGroups(loaded);
-          const toCollapse = new Set<string>();
-          if (groups.semanaPassada.length > 0) toCollapse.add('semana_passada');
-          for (const mg of groups.currentYearMonths) toCollapse.add(mg.key);
-          for (const yg of groups.previousYears) { toCollapse.add(yg.key); for (const mg of yg.months) toCollapse.add(mg.key); }
-          setCollapsedGroups(toCollapse);
+          if (selectedYear !== null) {
+            const months = buildYearMonths(loaded);
+            setCollapsedGroups(new Set(months.map(m => m.key)));
+          } else {
+            const groups = buildNfeGroups(loaded);
+            const toCollapse = new Set<string>();
+            if (groups.semanaPassada.length > 0) toCollapse.add('semana_passada');
+            for (const mg of groups.currentYearMonths) toCollapse.add(mg.key);
+            setCollapsedGroups(toCollapse);
+          }
           setCollapsedInitialized(true);
         }
         const cnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter(Boolean)));
@@ -195,7 +219,7 @@ export default function IssuedInvoicesPage() {
     else setSelected(new Set(invoices.map((inv) => inv.id)));
   };
 
-  const clearFilters = () => { setSearchInput(''); setSearch(''); setTagFilter(''); setDateFrom(''); setDateTo(''); };
+  const clearFilters = () => { setSearchInput(''); setSearch(''); setTagFilter(''); selectYear(null); };
 
   const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
     const full = (name || '').trim() || '-';
@@ -207,30 +231,16 @@ export default function IssuedInvoicesPage() {
   };
 
   const nfeGroups = useMemo(() => buildNfeGroups(invoices), [invoices]);
-  const visiblePreviousYears = showOlderYears ? nfeGroups.previousYears : nfeGroups.previousYears.slice(0, 2);
-  const hasOlderYears = nfeGroups.previousYears.length > 2;
+  const yearMonths = useMemo(() => selectedYear !== null ? buildYearMonths(invoices) : [], [invoices, selectedYear]);
 
-  const renderGroupDivider = (key: string, label: string, count: number, gtotal: number, indent = false) => (
+  const renderGroupDivider = (key: string, label: string, count: number, gtotal: number) => (
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={6} className={`px-4 py-2 border-y ${indent ? 'bg-slate-50/80 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/50' : 'bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'}`}>
-        <div className={`flex items-center gap-2 ${indent ? 'pl-6' : ''}`}>
+      <td colSpan={6} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
           <span className="text-xs text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(gtotal)}</span>
-        </div>
-      </td>
-    </tr>
-  );
-
-  const renderYearDivider = (key: string, label: string, count: number, ytotal: number) => (
-    <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={6} className="px-4 py-2.5 bg-slate-200/50 dark:bg-slate-700/40 border-y border-slate-300 dark:border-slate-600">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
-          <span className="text-xs text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(ytotal)}</span>
         </div>
       </td>
     </tr>
@@ -267,24 +277,13 @@ export default function IssuedInvoicesPage() {
     );
   };
 
-  const renderMobileDivider = (key: string, label: string, count: number, mtotal: number, indent = false) => (
+  const renderMobileDivider = (key: string, label: string, count: number, mtotal: number) => (
     <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <div className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${indent ? 'bg-slate-50 dark:bg-slate-800/40 ml-4' : 'bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent'}`}>
+      <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
         <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
         <span className="text-xs text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(mtotal)}</span>
-      </div>
-    </div>
-  );
-
-  const renderMobileYearDivider = (key: string, label: string, count: number, ytotal: number) => (
-    <div key={`myhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-200 via-slate-200/70 to-transparent dark:from-slate-700/80 dark:via-slate-700/40 dark:to-transparent rounded-lg">
-        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">{label}</span>
-        <span className="text-xs text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(ytotal)}</span>
       </div>
     </div>
   );
@@ -312,6 +311,12 @@ export default function IssuedInvoicesPage() {
       </div>
     );
   };
+
+  const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+      {y ?? new Date().getFullYear()}
+    </button>
+  ));
 
   return (
     <>
@@ -384,45 +389,47 @@ export default function IssuedInvoicesPage() {
             </div>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
-            <span className="material-symbols-outlined text-[48px] opacity-30">output</span>
-            <p className="mt-2 text-sm font-medium">Nenhuma NF-e emitida encontrada</p>
-          </div>
+          <>
+            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+              <span className="material-symbols-outlined text-[48px] opacity-30">output</span>
+              <p className="mt-2 text-sm font-medium">Nenhuma NF-e emitida encontrada</p>
+            </div>
+            <div className="flex items-center gap-1 pt-2">
+              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              {yearNavButtons}
+            </div>
+          </>
         ) : (
           <>
-            {renderMobileDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
-            {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderMobileCard)}
+            {selectedYear !== null ? (
+              yearMonths.map(mg => (
+                <React.Fragment key={mg.key}>
+                  {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
+                  {!collapsedGroups.has(mg.key) && mg.invoices.map(renderMobileCard)}
+                </React.Fragment>
+              ))
+            ) : (
+              <>
+                {renderMobileDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
+                {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderMobileCard)}
 
-            {nfeGroups.semanaPassada.length > 0 && (<>
-              {renderMobileDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
-              {!collapsedGroups.has('semana_passada') && nfeGroups.semanaPassada.map(renderMobileCard)}
-            </>)}
+                {nfeGroups.semanaPassada.length > 0 && (<>
+                  {renderMobileDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
+                  {!collapsedGroups.has('semana_passada') && nfeGroups.semanaPassada.map(renderMobileCard)}
+                </>)}
 
-            {nfeGroups.currentYearMonths.map(mg => (
-              <React.Fragment key={mg.key}>
-                {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-                {!collapsedGroups.has(mg.key) && mg.invoices.map(renderMobileCard)}
-              </React.Fragment>
-            ))}
-
-            {visiblePreviousYears.map(yg => (
-              <React.Fragment key={yg.key}>
-                {renderMobileYearDivider(yg.key, String(yg.year), yg.count, yg.total)}
-                {!collapsedGroups.has(yg.key) && yg.months.map(mg => (
+                {nfeGroups.currentYearMonths.map(mg => (
                   <React.Fragment key={mg.key}>
-                    {renderMobileDivider(mg.key, mg.label, mg.count, mg.total, true)}
+                    {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
                     {!collapsedGroups.has(mg.key) && mg.invoices.map(renderMobileCard)}
                   </React.Fragment>
                 ))}
-              </React.Fragment>
-            ))}
-
-            {hasOlderYears && !showOlderYears && (
-              <button onClick={() => setShowOlderYears(true)} className="w-full flex items-center justify-center gap-2 py-3 text-xs font-medium text-slate-400 hover:text-primary transition-colors">
-                <span className="text-base leading-none tracking-widest">•••</span>
-                <span>Mostrar anos anteriores ({nfeGroups.previousYears.slice(2).length} a mais)</span>
-              </button>
+              </>
             )}
+            <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
+              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              {yearNavButtons}
+            </div>
           </>
         )}
       </div>
@@ -467,6 +474,13 @@ export default function IssuedInvoicesPage() {
                     </Link>
                   </td>
                 </tr>
+              ) : selectedYear !== null ? (
+                yearMonths.map(mg => (
+                  <React.Fragment key={mg.key}>
+                    {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
+                    {!collapsedGroups.has(mg.key) && mg.invoices.map(renderInvoiceRow)}
+                  </React.Fragment>
+                ))
               ) : (
                 <>
                   {renderGroupDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
@@ -483,38 +497,19 @@ export default function IssuedInvoicesPage() {
                       {!collapsedGroups.has(mg.key) && mg.invoices.map(renderInvoiceRow)}
                     </React.Fragment>
                   ))}
-
-                  {visiblePreviousYears.map(yg => (
-                    <React.Fragment key={yg.key}>
-                      {renderYearDivider(yg.key, String(yg.year), yg.count, yg.total)}
-                      {!collapsedGroups.has(yg.key) && yg.months.map(mg => (
-                        <React.Fragment key={mg.key}>
-                          {renderGroupDivider(mg.key, mg.label, mg.count, mg.total, true)}
-                          {!collapsedGroups.has(mg.key) && mg.invoices.map(renderInvoiceRow)}
-                        </React.Fragment>
-                      ))}
-                    </React.Fragment>
-                  ))}
-
-                  {hasOlderYears && !showOlderYears && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-3 bg-slate-50/80 dark:bg-slate-800/20 border-t border-slate-200 dark:border-slate-700 text-center">
-                        <button onClick={() => setShowOlderYears(true)} className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-primary transition-colors">
-                          <span className="text-base leading-none tracking-widest">•••</span>
-                          <span>Mostrar anos anteriores ({nfeGroups.previousYears.slice(2).length} a mais)</span>
-                        </button>
-                      </td>
-                    </tr>
-                  )}
                 </>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center bg-slate-50/30 dark:bg-slate-800/20">
-          <span className="text-sm text-slate-500">{total} nota(s) fiscal(is) no total</span>
+        {/* Footer with year navigation */}
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            {yearNavButtons}
+          </div>
+          <span className="text-xs text-slate-500">{total} nota(s)</span>
         </div>
       </div>
 

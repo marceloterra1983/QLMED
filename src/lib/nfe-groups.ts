@@ -51,3 +51,17 @@ export function buildNfeGroups(invoices: Invoice[]): NfeHierarchy {
     currentYearMonths: cym, previousYears: py,
   };
 }
+
+export function buildYearMonths(invoices: Invoice[]): MonthGroup[] {
+  const mm = new Map<string, Invoice[]>();
+  for (const inv of invoices) {
+    const mo = (inv.issueDate || '').substring(0, 7);
+    if (!mm.has(mo)) mm.set(mo, []);
+    mm.get(mo)!.push(inv);
+  }
+  return Array.from(mm.keys()).sort((a, b) => b.localeCompare(a)).map(mo => {
+    const [y, m] = mo.split('-');
+    const invs = mm.get(mo)!;
+    return { key: `mes_${mo}`, label: `${MONTH_NAMES[parseInt(m) - 1]}/${y}`, invoices: invs, total: invs.reduce((s, i) => s + i.totalValue, 0), count: invs.length };
+  });
+}
