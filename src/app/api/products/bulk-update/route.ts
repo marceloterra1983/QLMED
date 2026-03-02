@@ -114,7 +114,8 @@ export async function PATCH(req: Request) {
       if ('fiscalCstCofins'      in fields) updates.push('fiscal_cst_cofins = EXCLUDED.fiscal_cst_cofins');
       if ('fiscalObsIcms'        in fields) updates.push('fiscal_obs_icms = EXCLUDED.fiscal_obs_icms');
       if ('fiscalObsPisCofins'   in fields) updates.push('fiscal_obs_pis_cofins = EXCLUDED.fiscal_obs_pis_cofins');
-      if ('productRefs'          in fields) updates.push('product_refs = EXCLUDED.product_refs');
+      if ('productRefs'            in fields) updates.push('product_refs = EXCLUDED.product_refs');
+      if ('manufacturerShortName' in fields) updates.push('manufacturer_short_name = EXCLUDED.manufacturer_short_name');
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO product_registry
@@ -126,6 +127,7 @@ export async function PATCH(req: Request) {
             fiscal_cst_ipi, fiscal_cst_pis, fiscal_cst_cofins,
             fiscal_obs_icms, fiscal_obs_pis_cofins,
             product_refs,
+            manufacturer_short_name,
             codigo,
             created_at, updated_at)
          VALUES
@@ -137,6 +139,7 @@ export async function PATCH(req: Request) {
             $27, $28, $29,
             $30, $31,
             $32::text[],
+            $33,
             (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $1),
             NOW(), NOW())
          ON CONFLICT (company_id, product_key) DO UPDATE SET
@@ -172,7 +175,8 @@ export async function PATCH(req: Request) {
         'fiscalCstCofins'      in fields ? cleanString(fields.fiscalCstCofins)        : null,
         'fiscalObsIcms'        in fields ? cleanString(fields.fiscalObsIcms)          : null,
         'fiscalObsPisCofins'   in fields ? cleanString(fields.fiscalObsPisCofins)     : null,
-        'productRefs'          in fields ? (Array.isArray(fields.productRefs) ? fields.productRefs : []) : [],
+        'productRefs'            in fields ? (Array.isArray(fields.productRefs) ? fields.productRefs : []) : [],
+        'manufacturerShortName'  in fields ? cleanString(fields.manufacturerShortName) : null,
       );
 
       updated++;

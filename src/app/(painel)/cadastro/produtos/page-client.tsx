@@ -173,6 +173,7 @@ export default function ProdutosPage() {
   const [nomeTributacaoOptions, setNomeTributacaoOptions] = useState<string[]>([]);
   const [obsIcmsOptions,        setObsIcmsOptions]        = useState<string[]>([]);
   const [obsPisCofinsOptions,   setObsPisCofinsOptions]   = useState<string[]>([]);
+  const [manufacturerOptions,   setManufacturerOptions]   = useState<string[]>([]);
 
   // --- filter/sort state (drives server-side queries) ---
   const [search, setSearch] = useState('');
@@ -355,6 +356,7 @@ export default function ProdutosPage() {
   const [detailNewMode, setDetailNewMode] = useState({ type: false, subtype: false, subgroup: false });
   const [detailRefs, setDetailRefs] = useState<string[]>([]);
   const [detailDescription, setDetailDescription] = useState('');
+  const [detailManufacturer, setDetailManufacturer] = useState('');
   const [detailShortName, setDetailShortName] = useState('');
   const [detailSitTributaria, setDetailSitTributaria] = useState('');
   const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
@@ -488,6 +490,7 @@ export default function ProdutosPage() {
     setDetailNewMode({ type: false, subtype: false, subgroup: false });
     setDetailRefs(product.productRefs || []);
     setDetailDescription(product.description || '');
+    setDetailManufacturer(product.manufacturerShortName || '');
     setDetailShortName(product.shortName || '');
     setDetailSitTributaria(product.fiscalSitTributaria || '');
     setDetailNomeTributacao(product.fiscalNomeTributacao || '');
@@ -522,6 +525,7 @@ export default function ProdutosPage() {
         setDetailSubgroup(full.productSubgroup || '');
         setDetailRefs(full.productRefs || []);
         setDetailDescription(full.description || '');
+        setDetailManufacturer(full.manufacturerShortName || '');
         setDetailShortName(full.shortName || '');
         setDetailSitTributaria(full.fiscalSitTributaria || '');
         setDetailNomeTributacao(full.fiscalNomeTributacao || '');
@@ -588,6 +592,7 @@ export default function ProdutosPage() {
   const detailDirty = detailProduct && (
     JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || []) ||
     detailDescription !== (detailProduct.description || '') ||
+    detailManufacturer !== (detailProduct.manufacturerShortName || '') ||
     detailAnvisa !== (detailProduct.anvisa || '') ||
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
@@ -639,6 +644,7 @@ export default function ProdutosPage() {
       setNomeTributacaoOptions((data.fiscal?.fiscalNomeTributacao || []).map((i: any) => i.value).filter(Boolean).sort());
       setObsIcmsOptions((data.fiscal?.obsIcms || []).map((i: any) => i.value).filter(Boolean).sort());
       setObsPisCofinsOptions((data.fiscal?.obsPisCofins || []).map((i: any) => i.value).filter(Boolean).sort());
+      setManufacturerOptions((data.manufacturers || []).map((m: any) => (m.shortName || m.name) as string).filter(Boolean).sort());
     } catch { /* silent */ }
   };
 
@@ -1143,6 +1149,7 @@ export default function ProdutosPage() {
     if (detailSubgroup !== (detailProduct.productSubgroup || '')) fields.productSubgroup = detailSubgroup.trim() || null;
     if (JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || [])) fields.productRefs = detailRefs.map(r => r.trim()).filter(Boolean);
     if (detailDescription !== (detailProduct.description || '') && detailDescription.trim()) fields.description = detailDescription.trim();
+    if (detailManufacturer !== (detailProduct.manufacturerShortName || '')) fields.manufacturerShortName = detailManufacturer.trim() || null;
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
     if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
     if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
@@ -2561,23 +2568,22 @@ export default function ProdutosPage() {
                 {/* ── Card: Dados do Cadastro ── */}
                 <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
                   <div className="space-y-2 mt-1">
-                    {/* Código Interno (small) + Ref 1 na mesma linha */}
+                    {/* Código Interno — read-only, auto-gerado */}
+                    <DetailField label="Código Interno">
+                      <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-28`} />
+                    </DetailField>
+
+                    {/* Referências: Ref 1 = NF-e cProd (read-only), Ref 2+ editáveis */}
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referências</p>
+                      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referência</p>
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="shrink-0">
-                            <p className="text-[10px] font-bold text-slate-400 mb-0.5">Cód. Int.</p>
-                            <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-20 text-center`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold text-slate-400 mb-0.5">Ref 1</p>
-                            <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-full`} placeholder="—" />
-                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref 1</span>
+                          <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono flex-1`} placeholder="—" />
                         </div>
                         {detailRefs.map((ref, idx) => (
                           <div key={idx} className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0 self-center">Ref {idx + 2}</span>
+                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref {idx + 2}</span>
                             <input
                               type="text"
                               value={ref}
@@ -2622,6 +2628,16 @@ export default function ProdutosPage() {
 
                     <DetailField label="Nome Abreviado" colSpan2>
                       <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                    </DetailField>
+
+                    <DetailField label="Fabricante" colSpan2>
+                      <select value={detailManufacturer} onChange={(e) => setDetailManufacturer(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                        <option value="">— Nenhum —</option>
+                        {manufacturerOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        {detailManufacturer && !manufacturerOptions.includes(detailManufacturer) && (
+                          <option value={detailManufacturer}>{detailManufacturer}</option>
+                        )}
+                      </select>
                     </DetailField>
 
                     <div className="grid grid-cols-3 gap-2">
