@@ -41,6 +41,12 @@ export interface ProductRegistryRow {
   fiscalCfopSaida: string | null;
   fiscalIpi: number | null;
   fiscalFcp: number | null;
+  fiscalCstIpi: string | null;
+  fiscalCstPis: string | null;
+  fiscalCstCofins: string | null;
+  fiscalObsIcms: string | null;
+  fiscalObsPisCofins: string | null;
+  productRefs: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +137,11 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS fiscal_cfop_saida TEXT,
           ADD COLUMN IF NOT EXISTS fiscal_ipi DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS fiscal_fcp DOUBLE PRECISION,
+          ADD COLUMN IF NOT EXISTS fiscal_cst_ipi TEXT,
+          ADD COLUMN IF NOT EXISTS fiscal_cst_pis TEXT,
+          ADD COLUMN IF NOT EXISTS fiscal_cst_cofins TEXT,
+          ADD COLUMN IF NOT EXISTS fiscal_obs_icms TEXT,
+          ADD COLUMN IF NOT EXISTS fiscal_obs_pis_cofins TEXT,
           ADD COLUMN IF NOT EXISTS product_subgroup TEXT,
           ADD COLUMN IF NOT EXISTS agg_total_quantity DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS agg_total_value DOUBLE PRECISION,
@@ -146,7 +157,8 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS agg_resale_quantity DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS agg_computed_at TIMESTAMPTZ,
           ADD COLUMN IF NOT EXISTS agg_search_text TEXT,
-          ADD COLUMN IF NOT EXISTS codigo TEXT
+          ADD COLUMN IF NOT EXISTS codigo TEXT,
+          ADD COLUMN IF NOT EXISTS product_refs TEXT[]
       `);
 
       await prisma.$executeRawUnsafe(`
@@ -274,6 +286,12 @@ function mapRegistryRow(row: any): ProductRegistryRow {
     fiscalCfopSaida: row.fiscal_cfop_saida ?? null,
     fiscalIpi: row.fiscal_ipi === null || row.fiscal_ipi === undefined ? null : Number(row.fiscal_ipi),
     fiscalFcp: row.fiscal_fcp === null || row.fiscal_fcp === undefined ? null : Number(row.fiscal_fcp),
+    fiscalCstIpi:       row.fiscal_cst_ipi       ?? null,
+    fiscalCstPis:       row.fiscal_cst_pis       ?? null,
+    fiscalCstCofins:    row.fiscal_cst_cofins    ?? null,
+    fiscalObsIcms:      row.fiscal_obs_icms      ?? null,
+    fiscalObsPisCofins: row.fiscal_obs_pis_cofins ?? null,
+    productRefs: Array.isArray(row.product_refs) ? row.product_refs : [],
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -328,6 +346,12 @@ export async function getProductRegistryByKeys(
         fiscal_cfop_saida,
         fiscal_ipi,
         fiscal_fcp,
+        fiscal_cst_ipi,
+        fiscal_cst_pis,
+        fiscal_cst_cofins,
+        fiscal_obs_icms,
+        fiscal_obs_pis_cofins,
+        product_refs,
         created_at,
         updated_at
       FROM product_registry

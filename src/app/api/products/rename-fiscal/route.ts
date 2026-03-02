@@ -9,7 +9,7 @@ import {
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 
-const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida'] as const;
+const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida', 'obsIcms', 'obsPisCofins'] as const;
 type FiscalField = (typeof VALID_FIELDS)[number];
 
 const DB_COLUMN: Record<FiscalField, string> = {
@@ -20,6 +20,8 @@ const DB_COLUMN: Record<FiscalField, string> = {
   origem: 'fiscal_origem',
   cfopEntrada: 'fiscal_cfop_entrada',
   cfopSaida: 'fiscal_cfop_saida',
+  obsIcms: 'fiscal_obs_icms',
+  obsPisCofins: 'fiscal_obs_pis_cofins',
 };
 
 const CATALOG_SECTION: Record<FiscalField, ProductSettingsCatalogSection> = {
@@ -30,6 +32,8 @@ const CATALOG_SECTION: Record<FiscalField, ProductSettingsCatalogSection> = {
   origem: 'fiscal_origem',
   cfopEntrada: 'fiscal_cfop_entrada',
   cfopSaida: 'fiscal_cfop_saida',
+  obsIcms: 'fiscal_obs_icms',
+  obsPisCofins: 'fiscal_obs_pis_cofins',
 };
 
 const LABEL: Record<FiscalField, string> = {
@@ -40,6 +44,8 @@ const LABEL: Record<FiscalField, string> = {
   origem: 'Origem',
   cfopEntrada: 'CFOP Entrada',
   cfopSaida: 'CFOP Saída',
+  obsIcms: 'Obs. ICMS',
+  obsPisCofins: 'Obs. PIS/COFINS',
 };
 
 function clean(value: string | null | undefined): string | null {

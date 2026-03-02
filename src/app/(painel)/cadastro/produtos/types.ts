@@ -42,6 +42,12 @@ export interface ProductRow {
   fiscalOrigem?: string | null;
   fiscalIpi?: number | null;
   fiscalFcp?: number | null;
+  fiscalCstIpi?: string | null;
+  fiscalCstPis?: string | null;
+  fiscalCstCofins?: string | null;
+  fiscalObsIcms?: string | null;
+  fiscalObsPisCofins?: string | null;
+  productRefs?: string[] | null;
 }
 
 export interface ProductsSummary {

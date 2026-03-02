@@ -68,7 +68,7 @@ export async function GET() {
     const company = await getOrCreateSingleCompany(auth.userId);
     await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable(), ensureNcmCacheTable()]);
 
-    const [lineRows, manufacturerRows, ncmRows, sitRows, nomeRows, cestRows, origemRows, cfopEntradaRows, cfopSaidaRows, catalogEntries] = await Promise.all([
+    const [lineRows, manufacturerRows, ncmRows, sitRows, nomeRows, cestRows, origemRows, cfopEntradaRows, cfopSaidaRows, obsIcmsRows, obsPisCofinsRows, catalogEntries] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(
         `
           SELECT
@@ -203,6 +203,34 @@ export async function GET() {
         `,
         company.id,
       ),
+      prisma.$queryRawUnsafe<any[]>(
+        `
+          SELECT
+            TRIM(fiscal_obs_icms) AS value,
+            COUNT(*)::int AS count
+          FROM product_registry
+          WHERE company_id = $1
+            AND product_key NOT LIKE '__%placeholder__%'
+            AND fiscal_obs_icms IS NOT NULL
+            AND TRIM(fiscal_obs_icms) <> ''
+          GROUP BY TRIM(fiscal_obs_icms)
+        `,
+        company.id,
+      ),
+      prisma.$queryRawUnsafe<any[]>(
+        `
+          SELECT
+            TRIM(fiscal_obs_pis_cofins) AS value,
+            COUNT(*)::int AS count
+          FROM product_registry
+          WHERE company_id = $1
+            AND product_key NOT LIKE '__%placeholder__%'
+            AND fiscal_obs_pis_cofins IS NOT NULL
+            AND TRIM(fiscal_obs_pis_cofins) <> ''
+          GROUP BY TRIM(fiscal_obs_pis_cofins)
+        `,
+        company.id,
+      ),
       listProductSettingsCatalogEntries(company.id),
     ]);
 
@@ -255,6 +283,8 @@ export async function GET() {
     const origemMap = new Map<string, number>();
     const cfopEntradaMap = new Map<string, number>();
     const cfopSaidaMap = new Map<string, number>();
+    const obsIcmsMap = new Map<string, number>();
+    const obsPisCofinsMap = new Map<string, number>();
 
     for (const row of ncmRows) {
       const value = clean(row.value);
@@ -290,6 +320,16 @@ export async function GET() {
       const value = clean(row.value);
       if (!value) continue;
       cfopSaidaMap.set(value, Number(row.count) || 0);
+    }
+    for (const row of obsIcmsRows) {
+      const value = clean(row.value);
+      if (!value) continue;
+      obsIcmsMap.set(value, Number(row.count) || 0);
+    }
+    for (const row of obsPisCofinsRows) {
+      const value = clean(row.value);
+      if (!value) continue;
+      obsPisCofinsMap.set(value, Number(row.count) || 0);
     }
 
     for (const entry of catalogEntries) {
@@ -383,6 +423,16 @@ export async function GET() {
 
       if (entry.section === 'fiscal_cfop_saida') {
         if (!cfopSaidaMap.has(value)) cfopSaidaMap.set(value, 0);
+        continue;
+      }
+
+      if (entry.section === 'fiscal_obs_icms') {
+        if (!obsIcmsMap.has(value)) obsIcmsMap.set(value, 0);
+        continue;
+      }
+
+      if (entry.section === 'fiscal_obs_pis_cofins') {
+        if (!obsPisCofinsMap.has(value)) obsPisCofinsMap.set(value, 0);
       }
     }
 
@@ -432,6 +482,12 @@ export async function GET() {
     const fiscalCfopSaida: FiscalItemNode[] = Array.from(cfopSaidaMap.entries())
       .map(([value, count]) => ({ value, count, description: getCfopDescription(value) || undefined }))
       .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+    const fiscalObsIcms: FiscalItemNode[] = Array.from(obsIcmsMap.entries())
+      .map(([value, count]) => ({ value, count }))
+      .sort(sortByValue);
+    const fiscalObsPisCofins: FiscalItemNode[] = Array.from(obsPisCofinsMap.entries())
+      .map(([value, count]) => ({ value, count }))
+      .sort(sortByValue);
 
     return NextResponse.json({
       lines,
@@ -444,6 +500,8 @@ export async function GET() {
         origem: fiscalOrigem,
         cfopEntrada: fiscalCfopEntrada,
         cfopSaida: fiscalCfopSaida,
+        obsIcms: fiscalObsIcms,
+        obsPisCofins: fiscalObsPisCofins,
       },
     });
   } catch (error) {

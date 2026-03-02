@@ -66,6 +66,12 @@ export async function GET(req: Request) {
         pr.fiscal_cfop_saida,
         pr.fiscal_ipi,
         pr.fiscal_fcp,
+        pr.fiscal_cst_ipi,
+        pr.fiscal_cst_pis,
+        pr.fiscal_cst_cofins,
+        pr.fiscal_obs_icms,
+        pr.fiscal_obs_pis_cofins,
+        pr.product_refs,
         pr.agg_total_quantity,
         pr.agg_total_value,
         pr.agg_invoice_count,
@@ -139,6 +145,12 @@ export async function GET(req: Request) {
       fiscalCfopSaida: row.fiscal_cfop_saida || null,
       fiscalIpi: row.fiscal_ipi != null ? Number(row.fiscal_ipi) : null,
       fiscalFcp: row.fiscal_fcp != null ? Number(row.fiscal_fcp) : null,
+      fiscalCstIpi:       row.fiscal_cst_ipi       || null,
+      fiscalCstPis:       row.fiscal_cst_pis       || null,
+      fiscalCstCofins:    row.fiscal_cst_cofins    || null,
+      fiscalObsIcms:      row.fiscal_obs_icms      || null,
+      fiscalObsPisCofins: row.fiscal_obs_pis_cofins || null,
+      productRefs: Array.isArray(row.product_refs) ? row.product_refs : [],
     });
   } catch (error) {
     console.error('[products/details] Error:', error);

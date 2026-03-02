@@ -170,6 +170,9 @@ export default function ProdutosPage() {
   const [meta, setMeta] = useState<ProductsResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [settingsHierarchy, setSettingsHierarchy] = useState<{ lines: { name: string; groups: { name: string; subgroups: string[] }[] }[] }>({ lines: [] });
+  const [nomeTributacaoOptions, setNomeTributacaoOptions] = useState<string[]>([]);
+  const [obsIcmsOptions,        setObsIcmsOptions]        = useState<string[]>([]);
+  const [obsPisCofinsOptions,   setObsPisCofinsOptions]   = useState<string[]>([]);
 
   // --- filter/sort state (drives server-side queries) ---
   const [search, setSearch] = useState('');
@@ -259,17 +262,20 @@ export default function ProdutosPage() {
     enableNcm: false, ncm: '',
     enableAnvisa: false, anvisa: '',
     enableOutOfLine: false, outOfLine: false,
+    enableCstIpi: false, cstIpi: '',
+    enableCstPis: false, cstPis: '',
+    enableCstCofins: false, cstCofins: '',
   });
   const [bulkNewMode, setBulkNewMode] = useState({ type: false, subtype: false, subgroup: false });
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const openBulkEdit = () => {
-    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableSubgroup: false, productSubgroup: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '', enableOutOfLine: false, outOfLine: false });
+    setBulkFields({ enableType: false, productType: '', enableSubtype: false, productSubtype: '', enableSubgroup: false, productSubgroup: '', enableNcm: false, ncm: '', enableAnvisa: false, anvisa: '', enableOutOfLine: false, outOfLine: false, enableCstIpi: false, cstIpi: '', enableCstPis: false, cstPis: '', enableCstCofins: false, cstCofins: '' });
     setBulkNewMode({ type: false, subtype: false, subgroup: false });
     setBulkEditOpen(true);
   };
 
-  const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableSubgroup, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine].filter(Boolean).length;
+  const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableSubgroup, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine, bulkFields.enableCstIpi, bulkFields.enableCstPis, bulkFields.enableCstCofins].filter(Boolean).length;
 
   const handleBulkSave = async () => {
     const fields: Record<string, string | null> = {};
@@ -279,6 +285,9 @@ export default function ProdutosPage() {
     if (bulkFields.enableNcm) fields.ncm = bulkFields.ncm || null;
     if (bulkFields.enableAnvisa) fields.anvisa = bulkFields.anvisa || null;
     if (bulkFields.enableOutOfLine) (fields as any).outOfLine = bulkFields.outOfLine;
+    if (bulkFields.enableCstIpi)    fields.fiscalCstIpi    = bulkFields.cstIpi    || null;
+    if (bulkFields.enableCstPis)    fields.fiscalCstPis    = bulkFields.cstPis    || null;
+    if (bulkFields.enableCstCofins) fields.fiscalCstCofins = bulkFields.cstCofins || null;
     if (Object.keys(fields).length === 0) { toast.error('Selecione pelo menos um campo para editar'); return; }
 
     const selectedProducts = products.filter((p) => selectedKeys.has(p.key));
@@ -344,7 +353,7 @@ export default function ProdutosPage() {
   const [detailSubtype, setDetailSubtype] = useState('');
   const [detailSubgroup, setDetailSubgroup] = useState('');
   const [detailNewMode, setDetailNewMode] = useState({ type: false, subtype: false, subgroup: false });
-  const [detailCodigo, setDetailCodigo] = useState('');
+  const [detailRefs, setDetailRefs] = useState<string[]>([]);
   const [detailShortName, setDetailShortName] = useState('');
   const [detailSitTributaria, setDetailSitTributaria] = useState('');
   const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
@@ -357,6 +366,11 @@ export default function ProdutosPage() {
 
   const [detailIpi, setDetailIpi] = useState('');
   const [detailFcp, setDetailFcp] = useState('');
+  const [detailCstIpi,       setDetailCstIpi]       = useState('');
+  const [detailCstPis,       setDetailCstPis]       = useState('');
+  const [detailCstCofins,    setDetailCstCofins]    = useState('');
+  const [detailObsIcms,      setDetailObsIcms]      = useState('');
+  const [detailObsPisCofins, setDetailObsPisCofins] = useState('');
   const [detailOpenSections, setDetailOpenSections] = useState<Set<string>>(new Set());
   const [detailScrollTo, setDetailScrollTo] = useState<string | null>(null);
   const toggleDetailSection = (s: string) => setDetailOpenSections((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
@@ -471,7 +485,7 @@ export default function ProdutosPage() {
     setDetailSubtype(product.productSubtype || '');
     setDetailSubgroup(product.productSubgroup || '');
     setDetailNewMode({ type: false, subtype: false, subgroup: false });
-    setDetailCodigo(product.codigo || '');
+    setDetailRefs(product.productRefs || []);
     setDetailShortName(product.shortName || '');
     setDetailSitTributaria(product.fiscalSitTributaria || '');
     setDetailNomeTributacao(product.fiscalNomeTributacao || '');
@@ -483,6 +497,11 @@ export default function ProdutosPage() {
     setDetailOrigem(product.fiscalOrigem || '');
     setDetailIpi(product.fiscalIpi != null ? String(product.fiscalIpi) : '');
     setDetailFcp(product.fiscalFcp != null ? String(product.fiscalFcp) : '');
+    setDetailCstIpi(product.fiscalCstIpi || '');
+    setDetailCstPis(product.fiscalCstPis || '');
+    setDetailCstCofins(product.fiscalCstCofins || '');
+    setDetailObsIcms(product.fiscalObsIcms || '');
+    setDetailObsPisCofins(product.fiscalObsPisCofins || '');
     const nextOpenSections = new Set(initialSections || []);
     nextOpenSections.add('geral');
     setDetailOpenSections(nextOpenSections);
@@ -499,7 +518,7 @@ export default function ProdutosPage() {
         setDetailType(full.productType || '');
         setDetailSubtype(full.productSubtype || '');
         setDetailSubgroup(full.productSubgroup || '');
-        setDetailCodigo(full.codigo || '');
+        setDetailRefs(full.productRefs || []);
         setDetailShortName(full.shortName || '');
         setDetailSitTributaria(full.fiscalSitTributaria || '');
         setDetailNomeTributacao(full.fiscalNomeTributacao || '');
@@ -511,6 +530,11 @@ export default function ProdutosPage() {
         setDetailOrigem(full.fiscalOrigem || '');
         setDetailIpi(full.fiscalIpi != null ? String(full.fiscalIpi) : '');
         setDetailFcp(full.fiscalFcp != null ? String(full.fiscalFcp) : '');
+        setDetailCstIpi(full.fiscalCstIpi || '');
+        setDetailCstPis(full.fiscalCstPis || '');
+        setDetailCstCofins(full.fiscalCstCofins || '');
+        setDetailObsIcms(full.fiscalObsIcms || '');
+        setDetailObsPisCofins(full.fiscalObsPisCofins || '');
       }
     } catch {
       // Modal still works with lightweight data
@@ -559,7 +583,7 @@ export default function ProdutosPage() {
   };
 
   const detailDirty = detailProduct && (
-    detailCodigo !== (detailProduct.codigo || '') ||
+    JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || []) ||
     detailAnvisa !== (detailProduct.anvisa || '') ||
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
@@ -575,7 +599,12 @@ export default function ProdutosPage() {
     detailCest !== (detailProduct.fiscalCest || '') ||
     detailOrigem !== (detailProduct.fiscalOrigem || '') ||
     detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '') ||
-    detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')
+    detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '') ||
+    detailCstIpi       !== (detailProduct.fiscalCstIpi       || '') ||
+    detailCstPis       !== (detailProduct.fiscalCstPis       || '') ||
+    detailCstCofins    !== (detailProduct.fiscalCstCofins    || '') ||
+    detailObsIcms      !== (detailProduct.fiscalObsIcms      || '') ||
+    detailObsPisCofins !== (detailProduct.fiscalObsPisCofins || '')
   );
 
   // ---- mobile back button for inline modals ----
@@ -603,6 +632,9 @@ export default function ProdutosPage() {
           })),
         })),
       });
+      setNomeTributacaoOptions((data.fiscal?.fiscalNomeTributacao || []).map((i: any) => i.value).filter(Boolean).sort());
+      setObsIcmsOptions((data.fiscal?.obsIcms || []).map((i: any) => i.value).filter(Boolean).sort());
+      setObsPisCofinsOptions((data.fiscal?.obsPisCofins || []).map((i: any) => i.value).filter(Boolean).sort());
     } catch { /* silent */ }
   };
 
@@ -1090,7 +1122,7 @@ export default function ProdutosPage() {
   const handleSaveDetail = async () => {
     if (!detailProduct) return;
     setSavingDetail(true);
-    const fields: Record<string, string | number | null> = {};
+    const fields: Record<string, string | number | string[] | null> = {};
 
     const anvisaDigits = detailAnvisa.replace(/\D/g, '');
     if (detailAnvisa !== (detailProduct.anvisa || '')) {
@@ -1105,7 +1137,7 @@ export default function ProdutosPage() {
     if (detailType !== (detailProduct.productType || '')) fields.productType = detailType.trim() || null;
     if (detailSubtype !== (detailProduct.productSubtype || '')) fields.productSubtype = detailSubtype.trim() || null;
     if (detailSubgroup !== (detailProduct.productSubgroup || '')) fields.productSubgroup = detailSubgroup.trim() || null;
-    if (detailCodigo !== (detailProduct.codigo || '')) fields.codigo = detailCodigo.trim() || null;
+    if (JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || [])) fields.productRefs = detailRefs.map(r => r.trim()).filter(Boolean);
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
     if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
     if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
@@ -1117,6 +1149,11 @@ export default function ProdutosPage() {
     if (detailOrigem !== (detailProduct.fiscalOrigem || '')) fields.fiscalOrigem = detailOrigem.trim() || null;
     if (detailIpi !== (detailProduct.fiscalIpi != null ? String(detailProduct.fiscalIpi) : '')) fields.fiscalIpi = detailIpi.trim() ? Number(detailIpi) : null;
     if (detailFcp !== (detailProduct.fiscalFcp != null ? String(detailProduct.fiscalFcp) : '')) fields.fiscalFcp = detailFcp.trim() ? Number(detailFcp) : null;
+    if (detailCstIpi       !== (detailProduct.fiscalCstIpi       || '')) fields.fiscalCstIpi       = detailCstIpi.trim()       || null;
+    if (detailCstPis       !== (detailProduct.fiscalCstPis       || '')) fields.fiscalCstPis       = detailCstPis.trim()       || null;
+    if (detailCstCofins    !== (detailProduct.fiscalCstCofins    || '')) fields.fiscalCstCofins    = detailCstCofins.trim()    || null;
+    if (detailObsIcms      !== (detailProduct.fiscalObsIcms      || '')) fields.fiscalObsIcms      = detailObsIcms.trim()      || null;
+    if (detailObsPisCofins !== (detailProduct.fiscalObsPisCofins || '')) fields.fiscalObsPisCofins = detailObsPisCofins.trim() || null;
 
     if (Object.keys(fields).length === 0) { setSavingDetail(false); return; }
 
@@ -2334,6 +2371,56 @@ export default function ProdutosPage() {
                   </button>
                 </div>
               </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableCstIpi} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstIpi: v }))} icon="receipt_long" label="CST IPI">
+                <select value={bulkFields.cstIpi} onChange={(e) => setBulkFields((f) => ({ ...f, cstIpi: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+                  <option value="">— Limpar —</option>
+                  <option value="00">00 – Entrada/Saída trib.</option>
+                  <option value="01">01 – Trib. alíq. zero</option>
+                  <option value="02">02 – Outras entradas/saídas</option>
+                  <option value="49">49 – Outras entradas</option>
+                  <option value="50">50 – Saída tributada</option>
+                  <option value="99">99 – Outras saídas</option>
+                </select>
+              </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableCstPis} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstPis: v }))} icon="receipt_long" label="CST PIS">
+                <select value={bulkFields.cstPis} onChange={(e) => setBulkFields((f) => ({ ...f, cstPis: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+                  <option value="">— Limpar —</option>
+                  <option value="01">01 – Op. trib. (BC = valor op.)</option>
+                  <option value="02">02 – Op. trib. (BC = prod. espec.)</option>
+                  <option value="03">03 – Op. trib. (BC = volume)</option>
+                  <option value="04">04 – Op. trib. (monoFásica)</option>
+                  <option value="05">05 – Op. trib. (ST)</option>
+                  <option value="06">06 – Op. trib. (alíq. zero)</option>
+                  <option value="07">07 – Op. isenta</option>
+                  <option value="08">08 – Op. sem incidência</option>
+                  <option value="09">09 – Op. com suspensão</option>
+                  <option value="49">49 – Outras saídas</option>
+                  <option value="50">50 – Crédito (BC = valor op.)</option>
+                  <option value="70">70 – Op. trib. — aq. com crédito</option>
+                  <option value="99">99 – Outras operações</option>
+                </select>
+              </BulkFieldRow>
+
+              <BulkFieldRow checked={bulkFields.enableCstCofins} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstCofins: v }))} icon="receipt_long" label="CST COFINS">
+                <select value={bulkFields.cstCofins} onChange={(e) => setBulkFields((f) => ({ ...f, cstCofins: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+                  <option value="">— Limpar —</option>
+                  <option value="01">01 – Op. trib. (BC = valor op.)</option>
+                  <option value="02">02 – Op. trib. (BC = prod. espec.)</option>
+                  <option value="03">03 – Op. trib. (BC = volume)</option>
+                  <option value="04">04 – Op. trib. (monoFásica)</option>
+                  <option value="05">05 – Op. trib. (ST)</option>
+                  <option value="06">06 – Op. trib. (alíq. zero)</option>
+                  <option value="07">07 – Op. isenta</option>
+                  <option value="08">08 – Op. sem incidência</option>
+                  <option value="09">09 – Op. com suspensão</option>
+                  <option value="49">49 – Outras saídas</option>
+                  <option value="50">50 – Crédito (BC = valor op.)</option>
+                  <option value="70">70 – Op. trib. — aq. com crédito</option>
+                  <option value="99">99 – Outras operações</option>
+                </select>
+              </BulkFieldRow>
             </div>
 
             {/* Footer */}
@@ -2470,8 +2557,57 @@ export default function ProdutosPage() {
                 <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
                   <div className="space-y-2 mt-1">
                     <DetailField label="Código Interno">
-                      <input type="text" value={detailCodigo} onChange={(e) => setDetailCodigo(e.target.value)} maxLength={50} placeholder="Código interno da empresa" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                      <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono`} placeholder="Gerado automaticamente" />
                     </DetailField>
+
+                    {/* References: Ref 1 = NF-e cProd (read-only), Ref 2+ = editable */}
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referências</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref 1</span>
+                          <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono flex-1`} placeholder="—" />
+                        </div>
+                        {detailRefs.map((ref, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref {idx + 2}</span>
+                            <input
+                              type="text"
+                              value={ref}
+                              onChange={(e) => {
+                                const next = [...detailRefs];
+                                next[idx] = e.target.value;
+                                setDetailRefs(next);
+                              }}
+                              maxLength={100}
+                              placeholder={`Referência ${idx + 2}`}
+                              disabled={!canWrite}
+                              className={`${DETAIL_INPUT_CLS} font-mono flex-1`}
+                            />
+                            {canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => setDetailRefs(detailRefs.filter((_, i) => i !== idx))}
+                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                title="Remover referência"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">close</span>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => setDetailRefs([...detailRefs, ''])}
+                            className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary/80 font-medium mt-1 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">add</span>
+                            Adicionar referência
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
                     <DetailField label="Nome Abreviado" colSpan2>
                       <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
@@ -2639,8 +2775,8 @@ export default function ProdutosPage() {
                       </DetailField>
                     </div>
 
-                    {/* ─── Origem + CST + Nome Tributação ─── */}
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* ─── Origem + Nome Tributação ─── */}
+                    <div className="grid grid-cols-2 gap-2">
                       <DetailField label="Origem">
                         <select value={detailOrigem} onChange={(e) => setDetailOrigem(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                           <option value="">—</option>
@@ -2652,28 +2788,85 @@ export default function ProdutosPage() {
                           <option value="8">8 – Nacional &gt;70% import.</option>
                         </select>
                       </DetailField>
-                      <DetailField label="CST ICMS">
-                        <select value={detailSitTributaria} onChange={(e) => setDetailSitTributaria(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
-                          <option value="">—</option>
-                          <option value="00">00 – Trib. integral</option>
-                          <option value="10">10 – ICMS por ST</option>
-                          <option value="20">20 – Redução BC</option>
-                          <option value="30">30 – Isenta c/ ST</option>
-                          <option value="40">40 – Isenta</option>
-                          <option value="41">41 – Não tributada</option>
-                          <option value="50">50 – Suspensão</option>
-                          <option value="51">51 – Diferimento</option>
-                          <option value="60">60 – ST anterior</option>
-                          <option value="70">70 – Red. BC + ST</option>
-                          <option value="90">90 – Outras</option>
+                      <DetailField label="Nome Tributação">
+                        <select value={detailNomeTributacao} onChange={(e) => setDetailNomeTributacao(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhuma —</option>
+                          {nomeTributacaoOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                       </DetailField>
-                      <DetailField label="Nome Tributação">
-                        <input type="text" value={detailNomeTributacao} onChange={(e) => setDetailNomeTributacao(e.target.value)} maxLength={200} placeholder="Ex: Isento" disabled={!canWrite} list="detail-fiscal-nome-list" className={DETAIL_INPUT_CLS} />
-                        <datalist id="detail-fiscal-nome-list">
-                          {Array.from(new Set(products.map((p) => p.fiscalNomeTributacao).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                        </datalist>
-                      </DetailField>
+                    </div>
+
+                    {/* ─── CST ─── */}
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/30 p-3 space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[13px]">receipt_long</span>
+                        Situação Tributária (CST)
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <DetailField label="CST ICMS">
+                          <select value={detailSitTributaria} onChange={(e) => setDetailSitTributaria(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                            <option value="">—</option>
+                            <option value="00">00 – Trib. integral</option>
+                            <option value="10">10 – ICMS por ST</option>
+                            <option value="20">20 – Redução BC</option>
+                            <option value="30">30 – Isenta c/ ST</option>
+                            <option value="40">40 – Isenta</option>
+                            <option value="41">41 – Não tributada</option>
+                            <option value="50">50 – Suspensão</option>
+                            <option value="51">51 – Diferimento</option>
+                            <option value="60">60 – ST anterior</option>
+                            <option value="70">70 – Red. BC + ST</option>
+                            <option value="90">90 – Outras</option>
+                          </select>
+                        </DetailField>
+                        <DetailField label="CST IPI">
+                          <select value={detailCstIpi} onChange={(e) => setDetailCstIpi(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                            <option value="">—</option>
+                            <option value="00">00 – Entrada/Saída trib.</option>
+                            <option value="01">01 – Trib. alíq. zero</option>
+                            <option value="02">02 – Outras entradas/saídas</option>
+                            <option value="49">49 – Outras entradas</option>
+                            <option value="50">50 – Saída tributada</option>
+                            <option value="99">99 – Outras saídas</option>
+                          </select>
+                        </DetailField>
+                        <DetailField label="CST PIS">
+                          <select value={detailCstPis} onChange={(e) => setDetailCstPis(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                            <option value="">—</option>
+                            <option value="01">01 – Op. trib. (BC = valor op.)</option>
+                            <option value="02">02 – Op. trib. (BC = prod. espec.)</option>
+                            <option value="03">03 – Op. trib. (BC = volume)</option>
+                            <option value="04">04 – Op. trib. (monoFásica)</option>
+                            <option value="05">05 – Op. trib. (ST)</option>
+                            <option value="06">06 – Op. trib. (alíq. zero)</option>
+                            <option value="07">07 – Op. isenta</option>
+                            <option value="08">08 – Op. sem incidência</option>
+                            <option value="09">09 – Op. com suspensão</option>
+                            <option value="49">49 – Outras saídas</option>
+                            <option value="50">50 – Crédito (BC = valor op.)</option>
+                            <option value="70">70 – Op. trib. — aq. com crédito</option>
+                            <option value="99">99 – Outras operações</option>
+                          </select>
+                        </DetailField>
+                        <DetailField label="CST COFINS">
+                          <select value={detailCstCofins} onChange={(e) => setDetailCstCofins(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                            <option value="">—</option>
+                            <option value="01">01 – Op. trib. (BC = valor op.)</option>
+                            <option value="02">02 – Op. trib. (BC = prod. espec.)</option>
+                            <option value="03">03 – Op. trib. (BC = volume)</option>
+                            <option value="04">04 – Op. trib. (monoFásica)</option>
+                            <option value="05">05 – Op. trib. (ST)</option>
+                            <option value="06">06 – Op. trib. (alíq. zero)</option>
+                            <option value="07">07 – Op. isenta</option>
+                            <option value="08">08 – Op. sem incidência</option>
+                            <option value="09">09 – Op. com suspensão</option>
+                            <option value="49">49 – Outras saídas</option>
+                            <option value="50">50 – Crédito (BC = valor op.)</option>
+                            <option value="70">70 – Op. trib. — aq. com crédito</option>
+                            <option value="99">99 – Outras operações</option>
+                          </select>
+                        </DetailField>
+                      </div>
                     </div>
 
                     {/* ─── Alíquotas (%) ─── */}
@@ -2695,9 +2888,28 @@ export default function ProdutosPage() {
                       </DetailField>
                     </div>
 
-                    <DetailField label="Obs. Fiscal" colSpan2>
-                      <textarea value={detailFiscalObs} onChange={(e) => setDetailFiscalObs(e.target.value)} maxLength={500} rows={2} placeholder="Observações fiscais do produto" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} resize-none`} />
-                    </DetailField>
+                    {/* ─── Observações ─── */}
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/30 p-3 space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[13px]">comment</span>
+                        Observações
+                      </p>
+                      <DetailField label="Obs. Geral">
+                        <textarea value={detailFiscalObs} onChange={(e) => setDetailFiscalObs(e.target.value)} maxLength={500} rows={2} placeholder="Observações fiscais gerais do produto" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} resize-none`} />
+                      </DetailField>
+                      <DetailField label="Obs. ICMS">
+                        <select value={detailObsIcms} onChange={(e) => setDetailObsIcms(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhuma —</option>
+                          {obsIcmsOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </DetailField>
+                      <DetailField label="Obs. PIS/COFINS">
+                        <select value={detailObsPisCofins} onChange={(e) => setDetailObsPisCofins(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhuma —</option>
+                          {obsPisCofinsOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </DetailField>
+                    </div>
                   </div>
                 </DetailSectionCard>
 

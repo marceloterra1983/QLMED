@@ -897,6 +897,12 @@ export async function GET(req: Request) {
       fiscalCfopSaida: null as string | null,
       fiscalIpi: null as number | null,
       fiscalFcp: null as number | null,
+      fiscalCstIpi: null as string | null,
+      fiscalCstPis: null as string | null,
+      fiscalCstCofins: null as string | null,
+      fiscalObsIcms: null as string | null,
+      fiscalObsPisCofins: null as string | null,
+      productRefs: [] as string[],
     }));
 
     if (useIssuedNfeLookup) {
@@ -1294,6 +1300,12 @@ export async function GET(req: Request) {
         if (registry.fiscalCfopSaida != null) product.fiscalCfopSaida = registry.fiscalCfopSaida;
         if (registry.fiscalIpi != null) product.fiscalIpi = registry.fiscalIpi;
         if (registry.fiscalFcp != null) product.fiscalFcp = registry.fiscalFcp;
+        if (registry.fiscalCstIpi != null) product.fiscalCstIpi = registry.fiscalCstIpi;
+        if (registry.fiscalCstPis != null) product.fiscalCstPis = registry.fiscalCstPis;
+        if (registry.fiscalCstCofins != null) product.fiscalCstCofins = registry.fiscalCstCofins;
+        if (registry.fiscalObsIcms != null) product.fiscalObsIcms = registry.fiscalObsIcms;
+        if (registry.fiscalObsPisCofins != null) product.fiscalObsPisCofins = registry.fiscalObsPisCofins;
+        if (registry.productRefs.length > 0) product.productRefs = registry.productRefs;
 
         // Always apply open-data enrichment (expiration, risk class, holder, product name)
         // regardless of ANVISA source — these come from the ANVISA open data import

@@ -12,7 +12,9 @@ export type ProductSettingsCatalogSection =
   | 'fiscal_cest'
   | 'fiscal_origem'
   | 'fiscal_cfop_entrada'
-  | 'fiscal_cfop_saida';
+  | 'fiscal_cfop_saida'
+  | 'fiscal_obs_icms'
+  | 'fiscal_obs_pis_cofins';
 
 export interface ProductSettingsCatalogEntry {
   id: string;

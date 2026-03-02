@@ -1,0 +1,24 @@
+[     288ms] [ERROR] Loading the script 'https://static.cloudflareinsights.com/beacon.min.js/v67327c56f0bb4ef8b305cae61679db8f1769101564043' violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ https://app.qlmed.com.br/financeiro/contas-receber:0
+[     312ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://app.qlmed.com.br/financeiro/contas-receber:0
+[     586ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at s (https://app.qlmed.com.br/_next/static/chunks/app/(painel)/financeiro/contas-receber/page-e868f39743f40223.js:1:46985)
+    at f (https://app.qlmed.com.br/_next/static/chunks/app/(painel)/financeiro/contas-receber/page-e868f39743f40223.js:1:14356)
+    at rE (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:40342)
+    at l$ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:59317)
+    at iZ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:117924)
+    at ia (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:95163)
+    at https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:94985
+    at il (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:94992)
+    at oJ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:92348)
+    at oZ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:91767) @ https://app.qlmed.com.br/_next/static/chunks/2117-7b263622a0af40a1.js:0
+[     591ms] [ERROR] [Dashboard Error] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at s (https://app.qlmed.com.br/_next/static/chunks/app/(painel)/financeiro/contas-receber/page-e868f39743f40223.js:1:46985)
+    at f (https://app.qlmed.com.br/_next/static/chunks/app/(painel)/financeiro/contas-receber/page-e868f39743f40223.js:1:14356)
+    at rE (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:40342)
+    at l$ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:59317)
+    at iZ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:117924)
+    at ia (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:95163)
+    at https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:94985
+    at il (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:94992)
+    at oJ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:92348)
+    at oZ (https://app.qlmed.com.br/_next/static/chunks/fd9d1056-31c800052104e9c4.js:1:91767) @ https://app.qlmed.com.br/_next/static/chunks/2117-7b263622a0af40a1.js:0

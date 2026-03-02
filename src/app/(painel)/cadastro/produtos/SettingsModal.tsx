@@ -8,7 +8,7 @@ import type { ProductRow } from './types';
 /* ─── Settings Modal (Ajustes) ─── */
 
 type SettingsSection = 'lines' | 'manufacturers' | 'fiscal';
-type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida';
+type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida' | 'obsIcms' | 'obsPisCofins';
 type SettingsCountItem = { value: string; count: number; description?: string };
 type SettingsSubgroupItem = { name: string; count: number };
 type SettingsGroupItem = { name: string; count: number; subgroups: SettingsSubgroupItem[] };
@@ -25,6 +25,8 @@ type ProductSettingsResponse = {
     origem: SettingsCountItem[];
     cfopEntrada: SettingsCountItem[];
     cfopSaida: SettingsCountItem[];
+    obsIcms: SettingsCountItem[];
+    obsPisCofins: SettingsCountItem[];
   };
 };
 type PendingDeleteState = {
@@ -41,10 +43,12 @@ const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: string; co
 
 const FISCAL_TABS: { key: FiscalTab; label: string; icon: string; field: keyof ProductRow }[] = [
   { key: 'ncm', label: 'NCM', icon: 'tag', field: 'ncm' },
-  { key: 'fiscalSitTributaria', label: 'Sit. Tributária', icon: 'gavel', field: 'fiscalSitTributaria' },
-  { key: 'fiscalNomeTributacao', label: 'Tributação', icon: 'description', field: 'fiscalNomeTributacao' },
-  { key: 'cest', label: 'CEST', icon: 'verified', field: 'fiscalCest' },
   { key: 'origem', label: 'Origem', icon: 'public', field: 'fiscalOrigem' },
+  { key: 'fiscalSitTributaria', label: 'CST', icon: 'gavel', field: 'fiscalSitTributaria' },
+  { key: 'fiscalNomeTributacao', label: 'Tributação', icon: 'description', field: 'fiscalNomeTributacao' },
+  { key: 'obsIcms', label: 'Obs. ICMS', icon: 'comment', field: 'fiscalObsIcms' as keyof ProductRow },
+  { key: 'obsPisCofins', label: 'Obs. PIS/COFINS', icon: 'comment', field: 'fiscalObsPisCofins' as keyof ProductRow },
+  { key: 'cest', label: 'CEST', icon: 'verified', field: 'fiscalCest' },
   { key: 'cfopEntrada', label: 'CFOP Entrada', icon: 'login', field: 'fiscalCfopEntrada' as keyof ProductRow },
   { key: 'cfopSaida', label: 'CFOP Saída', icon: 'logout', field: 'fiscalCfopSaida' as keyof ProductRow },
 ];
@@ -251,6 +255,7 @@ function SettingsModal({ onClose, onUpdated }: {
     const result: Record<FiscalTab, Map<string, number>> = {
       ncm: new Map(), fiscalSitTributaria: new Map(), fiscalNomeTributacao: new Map(),
       cest: new Map(), origem: new Map(), cfopEntrada: new Map(), cfopSaida: new Map(),
+      obsIcms: new Map(), obsPisCofins: new Map(),
     };
     for (const item of settingsData?.fiscal.ncm || []) result.ncm.set(item.value, item.count || 0);
     for (const item of settingsData?.fiscal.fiscalSitTributaria || []) result.fiscalSitTributaria.set(item.value, item.count || 0);
@@ -267,6 +272,8 @@ function SettingsModal({ onClose, onUpdated }: {
       if (item.description) descMap[item.value] = item.description;
     }
     if (Object.keys(descMap).length > 0) setCfopDescCache(prev => ({ ...prev, ...descMap }));
+    for (const item of settingsData?.fiscal.obsIcms || []) result.obsIcms.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.obsPisCofins || []) result.obsPisCofins.set(item.value, item.count || 0);
     return result;
   }, [settingsData]);
 
