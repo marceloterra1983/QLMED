@@ -74,7 +74,7 @@ export async function PATCH(req: Request) {
       if (!key) continue;
 
       // Build the upsert: INSERT with all fields, ON CONFLICT update only the requested fields
-      const description = cleanString(p.description) || cleanString(p.code) || key;
+      const description = ('description' in fields ? cleanString(fields.description) : null) || cleanString(p.description) || cleanString(p.code) || key;
 
       // Values that change based on what fields were requested
       const productType  = 'productType'    in fields ? cleanString(fields.productType)    : null;
@@ -86,6 +86,7 @@ export async function PATCH(req: Request) {
 
       // Update SET clause — only fields that were requested
       const updates: string[] = ['updated_at = NOW()'];
+      if ('description'    in fields) updates.push('description = EXCLUDED.description');
       if ('productType'    in fields) updates.push('product_type = EXCLUDED.product_type');
       if ('productSubtype' in fields) updates.push('product_subtype = EXCLUDED.product_subtype');
       if ('productSubgroup' in fields) updates.push('product_subgroup = EXCLUDED.product_subgroup');
@@ -136,7 +137,7 @@ export async function PATCH(req: Request) {
             $27, $28, $29,
             $30, $31,
             $32::text[],
-            (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 6, '0') FROM product_registry WHERE company_id = $1),
+            (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $1),
             NOW(), NOW())
          ON CONFLICT (company_id, product_key) DO UPDATE SET
            ${updates.join(',\n           ')}`,

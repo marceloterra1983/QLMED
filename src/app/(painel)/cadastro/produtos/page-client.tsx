@@ -354,6 +354,7 @@ export default function ProdutosPage() {
   const [detailSubgroup, setDetailSubgroup] = useState('');
   const [detailNewMode, setDetailNewMode] = useState({ type: false, subtype: false, subgroup: false });
   const [detailRefs, setDetailRefs] = useState<string[]>([]);
+  const [detailDescription, setDetailDescription] = useState('');
   const [detailShortName, setDetailShortName] = useState('');
   const [detailSitTributaria, setDetailSitTributaria] = useState('');
   const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
@@ -486,6 +487,7 @@ export default function ProdutosPage() {
     setDetailSubgroup(product.productSubgroup || '');
     setDetailNewMode({ type: false, subtype: false, subgroup: false });
     setDetailRefs(product.productRefs || []);
+    setDetailDescription(product.description || '');
     setDetailShortName(product.shortName || '');
     setDetailSitTributaria(product.fiscalSitTributaria || '');
     setDetailNomeTributacao(product.fiscalNomeTributacao || '');
@@ -519,6 +521,7 @@ export default function ProdutosPage() {
         setDetailSubtype(full.productSubtype || '');
         setDetailSubgroup(full.productSubgroup || '');
         setDetailRefs(full.productRefs || []);
+        setDetailDescription(full.description || '');
         setDetailShortName(full.shortName || '');
         setDetailSitTributaria(full.fiscalSitTributaria || '');
         setDetailNomeTributacao(full.fiscalNomeTributacao || '');
@@ -584,6 +587,7 @@ export default function ProdutosPage() {
 
   const detailDirty = detailProduct && (
     JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || []) ||
+    detailDescription !== (detailProduct.description || '') ||
     detailAnvisa !== (detailProduct.anvisa || '') ||
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
@@ -1138,6 +1142,7 @@ export default function ProdutosPage() {
     if (detailSubtype !== (detailProduct.productSubtype || '')) fields.productSubtype = detailSubtype.trim() || null;
     if (detailSubgroup !== (detailProduct.productSubgroup || '')) fields.productSubgroup = detailSubgroup.trim() || null;
     if (JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || [])) fields.productRefs = detailRefs.map(r => r.trim()).filter(Boolean);
+    if (detailDescription !== (detailProduct.description || '') && detailDescription.trim()) fields.description = detailDescription.trim();
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
     if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
     if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
@@ -2556,21 +2561,23 @@ export default function ProdutosPage() {
                 {/* ── Card: Dados do Cadastro ── */}
                 <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
                   <div className="space-y-2 mt-1">
-                    <DetailField label="Código Interno">
-                      <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono`} placeholder="Gerado automaticamente" />
-                    </DetailField>
-
-                    {/* References: Ref 1 = NF-e cProd (read-only), Ref 2+ = editable */}
+                    {/* Código Interno (small) + Ref 1 na mesma linha */}
                     <div>
                       <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referências</p>
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref 1</span>
-                          <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono flex-1`} placeholder="—" />
+                          <div className="shrink-0">
+                            <p className="text-[10px] font-bold text-slate-400 mb-0.5">Cód. Int.</p>
+                            <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-20 text-center`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-slate-400 mb-0.5">Ref 1</p>
+                            <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-full`} placeholder="—" />
+                          </div>
                         </div>
                         {detailRefs.map((ref, idx) => (
                           <div key={idx} className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref {idx + 2}</span>
+                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0 self-center">Ref {idx + 2}</span>
                             <input
                               type="text"
                               value={ref}
@@ -2608,6 +2615,10 @@ export default function ProdutosPage() {
                         )}
                       </div>
                     </div>
+
+                    <DetailField label="Nome do Produto" colSpan2>
+                      <input type="text" value={detailDescription} onChange={(e) => setDetailDescription(e.target.value)} maxLength={500} placeholder="Nome completo do produto" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                    </DetailField>
 
                     <DetailField label="Nome Abreviado" colSpan2>
                       <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
