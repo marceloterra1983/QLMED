@@ -907,6 +907,26 @@ export default function ProdutosPage() {
     }
   };
 
+  const handleToggleInstrumental = async (product: ProductRow) => {
+    const newVal = !product.instrumental;
+    try {
+      const res = await fetch('/api/products/bulk-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: [{ productKey: product.key, code: product.code, description: product.description, ncm: product.ncm, unit: product.unit, ean: product.ean }],
+          fields: { instrumental: newVal },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setProducts((prev) => prev.map((p) => p.key === product.key ? { ...p, instrumental: newVal } : p));
+      setDetailProduct((prev) => prev ? { ...prev, instrumental: newVal } : prev);
+      toast.success(newVal ? 'Produto marcado como instrumental' : 'Produto desmarcado como instrumental');
+    } catch {
+      toast.error('Erro ao atualizar produto');
+    }
+  };
+
   // ---- handlers ----
   const handleSort = (field: SortField) => {
     if (sortBy === field) {
@@ -2727,14 +2747,24 @@ export default function ProdutosPage() {
                       </div>
                     )}
 
-                    <label className={`flex items-center gap-2.5 cursor-pointer px-2.5 py-2 rounded-xl border transition-colors ${detailProduct.outOfLine ? 'border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
-                      <div className="relative">
-                        <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
-                        <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
-                        <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
-                      </div>
-                      <span className={`text-[12px] font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>Fora de Linha</span>
-                    </label>
+                    <div className="flex gap-2">
+                      <label className={`flex-1 flex items-center gap-2.5 cursor-pointer px-2.5 py-2 rounded-xl border transition-colors ${detailProduct.outOfLine ? 'border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
+                        <div className="relative">
+                          <input type="checkbox" checked={!!detailProduct.outOfLine} disabled={!canWrite} onChange={() => handleToggleOutOfLine(detailProduct)} className="sr-only peer" />
+                          <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
+                          <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
+                        </div>
+                        <span className={`text-[12px] font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>Fora de Linha</span>
+                      </label>
+                      <label className={`flex-1 flex items-center gap-2.5 cursor-pointer px-2.5 py-2 rounded-xl border transition-colors ${detailProduct.instrumental ? 'border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
+                        <div className="relative">
+                          <input type="checkbox" checked={!!detailProduct.instrumental} disabled={!canWrite} onChange={() => handleToggleInstrumental(detailProduct)} className="sr-only peer" />
+                          <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-violet-500 peer-disabled:opacity-50 transition-colors"></div>
+                          <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
+                        </div>
+                        <span className={`text-[12px] font-semibold ${detailProduct.instrumental ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>Instrumental</span>
+                      </label>
+                    </div>
                   </div>
                 </DetailSectionCard>
 

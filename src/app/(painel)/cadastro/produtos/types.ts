@@ -32,6 +32,7 @@ export interface ProductRow {
   productSubtype?: string | null;
   productSubgroup?: string | null;
   outOfLine?: boolean;
+  instrumental?: boolean;
   fiscalSitTributaria?: string | null;
   fiscalNomeTributacao?: string | null;
   fiscalIcms?: number | null;

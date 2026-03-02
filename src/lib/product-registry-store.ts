@@ -29,6 +29,7 @@ export interface ProductRegistryRow {
   productSubtype: string | null;
   productSubgroup: string | null;
   outOfLine: boolean;
+  instrumental: boolean;
   fiscalSitTributaria: string | null;
   fiscalNomeTributacao: string | null;
   fiscalIcms: number | null;
@@ -142,6 +143,7 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS fiscal_cst_cofins TEXT,
           ADD COLUMN IF NOT EXISTS fiscal_obs_icms TEXT,
           ADD COLUMN IF NOT EXISTS fiscal_obs_pis_cofins TEXT,
+          ADD COLUMN IF NOT EXISTS instrumental BOOLEAN DEFAULT FALSE,
           ADD COLUMN IF NOT EXISTS product_subgroup TEXT,
           ADD COLUMN IF NOT EXISTS agg_total_quantity DOUBLE PRECISION,
           ADD COLUMN IF NOT EXISTS agg_total_value DOUBLE PRECISION,
@@ -274,6 +276,7 @@ function mapRegistryRow(row: any): ProductRegistryRow {
     productSubtype: row.product_subtype ?? null,
     productSubgroup: row.product_subgroup ?? null,
     outOfLine: row.out_of_line === true || row.out_of_line === 't' || row.out_of_line === 1,
+    instrumental: row.instrumental === true || row.instrumental === 't' || row.instrumental === 1,
     fiscalSitTributaria: row.fiscal_sit_tributaria ?? null,
     fiscalNomeTributacao: row.fiscal_nome_tributacao ?? null,
     fiscalIcms: row.fiscal_icms === null || row.fiscal_icms === undefined ? null : Number(row.fiscal_icms),
@@ -334,6 +337,7 @@ export async function getProductRegistryByKeys(
         product_subtype,
         product_subgroup,
         out_of_line,
+        instrumental,
         fiscal_sit_tributaria,
         fiscal_nome_tributacao,
         fiscal_icms,

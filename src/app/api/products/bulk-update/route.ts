@@ -93,6 +93,7 @@ export async function PATCH(req: Request) {
       if ('ncm'            in fields) updates.push('ncm = EXCLUDED.ncm');
       if ('shortName'      in fields) updates.push('short_name = EXCLUDED.short_name');
       if ('outOfLine'      in fields) updates.push('out_of_line = EXCLUDED.out_of_line');
+      if ('instrumental'   in fields) updates.push('instrumental = EXCLUDED.instrumental');
       if (hasAnvisa) {
         updates.push('anvisa_code = EXCLUDED.anvisa_code');
         if (anvisaVal) updates.push('anvisa_source = EXCLUDED.anvisa_source');
@@ -121,7 +122,7 @@ export async function PATCH(req: Request) {
         `INSERT INTO product_registry
            (id, company_id, product_key, code, description, ncm, unit, ean,
             product_type, product_subtype, product_subgroup, short_name, anvisa_code, anvisa_source,
-            out_of_line,
+            out_of_line, instrumental,
             fiscal_sit_tributaria, fiscal_nome_tributacao, fiscal_icms, fiscal_pis, fiscal_cofins, fiscal_obs,
             fiscal_cest, fiscal_origem, fiscal_cfop_entrada, fiscal_cfop_saida, fiscal_ipi, fiscal_fcp,
             fiscal_cst_ipi, fiscal_cst_pis, fiscal_cst_cofins,
@@ -133,7 +134,7 @@ export async function PATCH(req: Request) {
          VALUES
            (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
             $8, $9, $10, $11, $12, $13,
-            $14,
+            $14, $34,
             $15, $16, $17, $18, $19, $20,
             $21, $22, $23, $24, $25, $26,
             $27, $28, $29,
@@ -177,6 +178,7 @@ export async function PATCH(req: Request) {
         'fiscalObsPisCofins'   in fields ? cleanString(fields.fiscalObsPisCofins)     : null,
         'productRefs'            in fields ? (Array.isArray(fields.productRefs) ? fields.productRefs : []) : [],
         'manufacturerShortName'  in fields ? cleanString(fields.manufacturerShortName) : null,
+        'instrumental'           in fields ? (fields.instrumental === true) : false,
       );
 
       updated++;

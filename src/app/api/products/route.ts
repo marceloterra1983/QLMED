@@ -885,6 +885,7 @@ export async function GET(req: Request) {
       productSubtype: item.productSubtype as string | null,
       productSubgroup: item.productSubgroup as string | null,
       outOfLine: false,
+      instrumental: false,
       fiscalSitTributaria: null as string | null,
       fiscalNomeTributacao: null as string | null,
       fiscalIcms: null as number | null,
@@ -1286,6 +1287,7 @@ export async function GET(req: Request) {
         if (registry.productSubtype) product.productSubtype = registry.productSubtype;
         if (registry.productSubgroup) product.productSubgroup = registry.productSubgroup;
         if (registry.outOfLine) product.outOfLine = true;
+        if (registry.instrumental) product.instrumental = true;
 
         // Fiscal data
         if (registry.fiscalSitTributaria != null) product.fiscalSitTributaria = registry.fiscalSitTributaria;
