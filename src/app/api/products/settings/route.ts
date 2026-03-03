@@ -91,15 +91,14 @@ export async function GET() {
       prisma.$queryRawUnsafe<any[]>(
         `
           SELECT
-            TRIM(anvisa_manufacturer) AS name,
-            NULLIF(MAX(NULLIF(TRIM(manufacturer_short_name), '')), '') AS short_name,
+            COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), TRIM(manufacturer_short_name)) AS name,
+            NULLIF(TRIM(manufacturer_short_name), '') AS short_name,
             COUNT(*)::int AS count
           FROM product_registry
           WHERE company_id = $1
             AND product_key NOT LIKE '__%placeholder__%'
-            AND anvisa_manufacturer IS NOT NULL
-            AND TRIM(anvisa_manufacturer) <> ''
-          GROUP BY TRIM(anvisa_manufacturer)
+            AND COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), NULLIF(TRIM(manufacturer_short_name), '')) IS NOT NULL
+          GROUP BY COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), TRIM(manufacturer_short_name))
         `,
         company.id,
       ),
@@ -285,6 +284,11 @@ export async function GET() {
     const cfopSaidaMap = new Map<string, number>();
     const obsIcmsMap = new Map<string, number>();
     const obsPisCofinsMap = new Map<string, number>();
+    const aliqIcmsMap = new Map<string, number>();
+    const aliqPisMap = new Map<string, number>();
+    const aliqCofinsMap = new Map<string, number>();
+    const aliqIpiMap = new Map<string, number>();
+    const aliqFcpMap = new Map<string, number>();
 
     for (const row of ncmRows) {
       const value = clean(row.value);
@@ -433,7 +437,14 @@ export async function GET() {
 
       if (entry.section === 'fiscal_obs_pis_cofins') {
         if (!obsPisCofinsMap.has(value)) obsPisCofinsMap.set(value, 0);
+        continue;
       }
+
+      if (entry.section === 'fiscal_aliq_icms')   { if (!aliqIcmsMap.has(value))   aliqIcmsMap.set(value, 0);   continue; }
+      if (entry.section === 'fiscal_aliq_pis')    { if (!aliqPisMap.has(value))    aliqPisMap.set(value, 0);    continue; }
+      if (entry.section === 'fiscal_aliq_cofins') { if (!aliqCofinsMap.has(value)) aliqCofinsMap.set(value, 0); continue; }
+      if (entry.section === 'fiscal_aliq_ipi')    { if (!aliqIpiMap.has(value))    aliqIpiMap.set(value, 0);    continue; }
+      if (entry.section === 'fiscal_aliq_fcp')    { if (!aliqFcpMap.has(value))    aliqFcpMap.set(value, 0);    continue; }
     }
 
     const lines: LineNode[] = Array.from(lineMap.entries())
@@ -488,6 +499,13 @@ export async function GET() {
     const fiscalObsPisCofins: FiscalItemNode[] = Array.from(obsPisCofinsMap.entries())
       .map(([value, count]) => ({ value, count }))
       .sort(sortByValue);
+    const sortByNumericValue = (a: FiscalItemNode, b: FiscalItemNode) =>
+      (parseFloat(a.value) || 0) - (parseFloat(b.value) || 0);
+    const fiscalAliqIcms:   FiscalItemNode[] = Array.from(aliqIcmsMap.entries()).map(([value, count]) => ({ value, count })).sort(sortByNumericValue);
+    const fiscalAliqPis:    FiscalItemNode[] = Array.from(aliqPisMap.entries()).map(([value, count]) => ({ value, count })).sort(sortByNumericValue);
+    const fiscalAliqCofins: FiscalItemNode[] = Array.from(aliqCofinsMap.entries()).map(([value, count]) => ({ value, count })).sort(sortByNumericValue);
+    const fiscalAliqIpi:    FiscalItemNode[] = Array.from(aliqIpiMap.entries()).map(([value, count]) => ({ value, count })).sort(sortByNumericValue);
+    const fiscalAliqFcp:    FiscalItemNode[] = Array.from(aliqFcpMap.entries()).map(([value, count]) => ({ value, count })).sort(sortByNumericValue);
 
     return NextResponse.json({
       lines,
@@ -502,6 +520,11 @@ export async function GET() {
         cfopSaida: fiscalCfopSaida,
         obsIcms: fiscalObsIcms,
         obsPisCofins: fiscalObsPisCofins,
+        aliqIcms: fiscalAliqIcms,
+        aliqPis: fiscalAliqPis,
+        aliqCofins: fiscalAliqCofins,
+        aliqIpi: fiscalAliqIpi,
+        aliqFcp: fiscalAliqFcp,
       },
     });
   } catch (error) {
@@ -591,6 +614,26 @@ const DEFAULT_FISCAL_SEEDS: { section: ProductSettingsCatalogSection; values: st
       '1301000 – Artigos de laboratório ou farmácia',
       '1301100 – Luvas de borracha',
     ],
+  },
+  {
+    section: 'fiscal_aliq_icms',
+    values: ['0', '4', '7', '12', '17', '18', '19', '20', '25'],
+  },
+  {
+    section: 'fiscal_aliq_pis',
+    values: ['0', '0.65', '1.65', '2.1', '3.02'],
+  },
+  {
+    section: 'fiscal_aliq_cofins',
+    values: ['0', '3', '7.6', '9.75', '15'],
+  },
+  {
+    section: 'fiscal_aliq_ipi',
+    values: ['0', '5', '10', '15', '20', '25', '50', '300'],
+  },
+  {
+    section: 'fiscal_aliq_fcp',
+    values: ['0', '1', '2', '4'],
   },
 ];
 
