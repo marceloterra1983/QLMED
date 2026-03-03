@@ -92,7 +92,7 @@ export async function GET() {
         `
           SELECT
             COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), TRIM(manufacturer_short_name)) AS name,
-            NULLIF(TRIM(manufacturer_short_name), '') AS short_name,
+            NULLIF(MAX(NULLIF(TRIM(manufacturer_short_name), '')), '') AS short_name,
             COUNT(*)::int AS count
           FROM product_registry
           WHERE company_id = $1
