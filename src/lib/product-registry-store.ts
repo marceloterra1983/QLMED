@@ -48,6 +48,7 @@ export interface ProductRegistryRow {
   fiscalObsIcms: string | null;
   fiscalObsPisCofins: string | null;
   productRefs: string[];
+  defaultSupplier: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -160,7 +161,8 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS agg_computed_at TIMESTAMPTZ,
           ADD COLUMN IF NOT EXISTS agg_search_text TEXT,
           ADD COLUMN IF NOT EXISTS codigo TEXT,
-          ADD COLUMN IF NOT EXISTS product_refs TEXT[]
+          ADD COLUMN IF NOT EXISTS product_refs TEXT[],
+          ADD COLUMN IF NOT EXISTS default_supplier TEXT
       `);
 
       await prisma.$executeRawUnsafe(`
@@ -295,6 +297,7 @@ function mapRegistryRow(row: any): ProductRegistryRow {
     fiscalObsIcms:      row.fiscal_obs_icms      ?? null,
     fiscalObsPisCofins: row.fiscal_obs_pis_cofins ?? null,
     productRefs: Array.isArray(row.product_refs) ? row.product_refs : [],
+    defaultSupplier: row.default_supplier ?? null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -356,6 +359,7 @@ export async function getProductRegistryByKeys(
         fiscal_obs_icms,
         fiscal_obs_pis_cofins,
         product_refs,
+        default_supplier,
         created_at,
         updated_at
       FROM product_registry
@@ -485,7 +489,6 @@ export async function upsertProductRegistry(
         id,
         company_id,
         product_key,
-        codigo,
         code,
         description,
         ncm,
@@ -501,10 +504,11 @@ export async function upsertProductRegistry(
         anvisa_expiration,
         anvisa_risk_class,
         anvisa_synced_at,
+        out_of_line,
         created_at,
         updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, TRUE, NOW(), NOW()
       )
       ON CONFLICT (company_id, product_key)
       DO UPDATE SET
