@@ -54,7 +54,7 @@ function formatDateBr(dateStr: string) {
   if (!dateStr) return '-';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch {
     return dateStr;
   }
@@ -215,7 +215,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
     <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
       <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
       <div
-        className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-3xl sm:h-[85vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
+        className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
         role="dialog"
         aria-modal="true"
       >

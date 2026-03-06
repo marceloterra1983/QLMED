@@ -9,7 +9,7 @@ const CteDetailsModal = dynamic(() => import('@/components/CteDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatCurrency, getDateGroupLabel } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount, getDateGroupLabel } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
@@ -22,13 +22,10 @@ export default function CtePage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => `${new Date().getFullYear()}-01-01`);
   const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -40,6 +37,9 @@ export default function CtePage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [collapsedInitialized, setCollapsedInitialized] = useState(false);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [hideValues, setHideValues] = useState(true);
 
   const normalizeName = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
 
@@ -84,11 +84,29 @@ export default function CtePage() {
     });
   };
 
+  const val = (amount: number) => hideValues
+    ? <span className="tracking-widest text-slate-300 dark:text-slate-600 select-none">••••</span>
+    : <>{formatAmount(amount)}</>;
+
+  const selectYear = (year: number | null) => {
+    const cy = new Date().getFullYear();
+    if (year === null) { setDateFrom(`${cy}-01-01`); setDateTo(''); }
+    else { setDateFrom(`${year}-01-01`); setDateTo(`${year}-12-31`); }
+    setSelectedYear(year);
+    setCollapsedInitialized(false);
+    setSelected(new Set());
+  };
+
+  const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+      {y ?? new Date().getFullYear()}
+    </button>
+  ));
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -96,7 +114,17 @@ export default function CtePage() {
   useEffect(() => {
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
+
+  useEffect(() => {
+    const cy = new Date().getFullYear();
+    Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
+      fetch(`/api/invoices?limit=1&page=1&type=CTE&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
+        .catch(() => null)
+    )).then(res => setAvailableYears(res.filter((y): y is number => y !== null)));
+  }, []);
 
 	  const handleExport = () => {
     const headers = ['Numero', 'Chave', 'Emitente', 'Tomador', 'Data', 'Valor', 'Status'];
@@ -264,7 +292,7 @@ export default function CtePage() {
   async function loadInvoices() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      const params = new URLSearchParams({ page: '1', limit: '2000' });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (dateFrom) params.set('dateFrom', dateFrom);
@@ -279,7 +307,6 @@ export default function CtePage() {
         const data = await res.json();
         const loaded: Invoice[] = data.invoices || [];
         setInvoices(loaded);
-        setTotalPages(data.pagination?.pages || 1);
         setTotal(data.pagination?.total || 0);
         if (!collapsedInitialized && loaded.length > 0) {
           const groupOrder: string[] = [];
@@ -379,9 +406,7 @@ export default function CtePage() {
     setSearchInput('');
     setSearch('');
     setStatusFilter('');
-    setDateFrom('');
-    setDateTo('');
-    setPage(1);
+    selectYear(null);
   };
 
   const manifestAction = resolveBulkManifestAction();
@@ -401,6 +426,13 @@ export default function CtePage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setHideValues(v => !v)}
+            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+          >
+            <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
+          </button>
           <button
             onClick={handleExport}
             disabled={invoices.length === 0}
@@ -430,7 +462,7 @@ export default function CtePage() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              onChange={(e) => setDateFrom(e.target.value)}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             />
           </div>
@@ -439,7 +471,7 @@ export default function CtePage() {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              onChange={(e) => setDateTo(e.target.value)}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             />
           </div>
@@ -447,7 +479,7 @@ export default function CtePage() {
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Manifestação</label>
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              onChange={(e) => setStatusFilter(e.target.value)}
               className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             >
               <option value="">Todos</option>
@@ -458,7 +490,7 @@ export default function CtePage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => { setPage(1); loadInvoices(); }}
+              onClick={() => loadInvoices()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
             >
               <span className="material-symbols-outlined text-[20px]">filter_alt</span>
@@ -525,11 +557,6 @@ export default function CtePage() {
             <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
           </div>
         ) : (() => {
-          const groupTotals = new Map<string, number>();
-          for (const inv of invoices) {
-            const g = getDateGroupLabel(inv.issueDate);
-            groupTotals.set(g, (groupTotals.get(g) || 0) + inv.totalValue);
-          }
           let lastGroup = '';
           return invoices.map((invoice) => {
             const group = getDateGroupLabel(invoice.issueDate);
@@ -543,7 +570,6 @@ export default function CtePage() {
                     <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
                       <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
                     </div>
                   </div>
                 )}
@@ -564,7 +590,7 @@ export default function CtePage() {
                     </div>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                      <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
                       <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                     </div>
                   </div>
@@ -573,6 +599,12 @@ export default function CtePage() {
             );
           });
         })()}
+        {invoices.length > 0 && (
+          <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
+            <span className="text-xs text-slate-400 mr-1">Ano:</span>
+            {yearNavButtons}
+          </div>
+        )}
       </div>
 
       {/* Table (desktop) */}
@@ -582,7 +614,7 @@ export default function CtePage() {
             <caption className="sr-only">Lista de conhecimentos de transporte eletrônicos</caption>
           <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-3 py-2.5 w-10">
+                <th className="px-2 py-2 w-px">
                   <input
                     className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                     type="checkbox"
@@ -590,37 +622,37 @@ export default function CtePage() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
+                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
                   <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
+                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
                   <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
                 </th>
-                <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
-                  <div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div>
+                <th className="px-2 py-2 w-px whitespace-nowrap text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
+                  <div className="flex items-center justify-end gap-1">Valor {getSortIcon('value')}</div>
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
+                <th className="px-2 py-2 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
                   <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
+                <th className="px-2 py-2 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
                   <div className="flex items-center gap-1">Tomador {getSortIcon('recipient')}</div>
                 </th>
-                <th className="px-3 py-2.5">Manifestação</th>
-                <th className="px-3 py-2.5 text-center">Ações</th>
+                <th className="px-2 py-2">Manifestação</th>
+                <th className="px-2 py-2 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
-                Array.from({ length: limit }).map((_, i) => (
+                Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-3 w-12 mt-1" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
-                    <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-5 w-24 rounded-full" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-16" /><Skeleton className="h-3 w-10 mt-1" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-12" /></td>
+                    <td className="px-2 py-1.5 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-5 w-24 rounded-full" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
@@ -660,7 +692,7 @@ export default function CtePage() {
                         )}
                         {!collapsedGroups.has(group) && (
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
-                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <input
                               className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                               type="checkbox"
@@ -668,17 +700,17 @@ export default function CtePage() {
                               onChange={() => toggleSelect(invoice.id)}
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-1.5 whitespace-nowrap">
                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
                             <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-1.5 whitespace-nowrap">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                           </td>
-	                          <td className="px-3 py-2 text-right">
-	                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+	                          <td className="px-2 py-1.5 text-right whitespace-nowrap">
+	                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
 	                          </td>
-	                          <td className="px-3 py-2">
+	                          <td className="px-2 py-1.5">
                               <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
                                 <span className="truncate">{flow.remetente}</span>
                                 <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
@@ -693,7 +725,7 @@ export default function CtePage() {
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{e.display}</span>
                               ); })()}
 	                          </td>
-	                          <td className="px-3 py-2">
+	                          <td className="px-2 py-1.5">
                               {(() => { const r = getNick(invoice.recipientCnpj, invoice.recipientName || '-'); return r.full ? (
                                 <>
                                   <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
@@ -703,12 +735,12 @@ export default function CtePage() {
                                 <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
                               ); })()}
 	                          </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-1.5">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
                               • {manifest.label}
                             </span>
                           </td>
-                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>
@@ -722,76 +754,13 @@ export default function CtePage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">Mostrando {invoices.length} de {total} resultados</span>
-            <select
-              value={limit}
-              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value={25}>25 / página</option>
-              <option value={50}>50 / página</option>
-              <option value={100}>100 / página</option>
-            </select>
-          </div>
+        {/* Footer with year navigation */}
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(1)}
-              disabled={page === 1}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
-              title="Primeira página"
-              aria-label="Primeira página"
-            >
-              <span className="material-symbols-outlined text-[20px]">first_page</span>
-            </button>
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
-              aria-label="Página anterior"
-            >
-              <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-            </button>
-            {(() => {
-              const pages: number[] = [];
-              let start = Math.max(1, page - 2);
-              let end = Math.min(totalPages, start + 4);
-              start = Math.max(1, end - 4);
-              for (let i = start; i <= end; i++) pages.push(i);
-              return pages.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${
-                    p === page
-                      ? 'bg-primary text-white shadow-md shadow-primary/30'
-                      : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {p}
-                </button>
-              ));
-            })()}
-            <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
-              aria-label="Próxima página"
-            >
-              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-            </button>
-            <button
-              onClick={() => setPage(totalPages)}
-              disabled={page === totalPages}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
-              title="Última página"
-              aria-label="Última página"
-            >
-              <span className="material-symbols-outlined text-[20px]">last_page</span>
-            </button>
+            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            {yearNavButtons}
           </div>
+          <span className="text-xs text-slate-500">{total} CT-e(s)</span>
         </div>
       </div>
       <InvoiceDetailsModal

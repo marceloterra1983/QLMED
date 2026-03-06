@@ -904,6 +904,7 @@ export async function GET(req: Request) {
       fiscalObsIcms: null as string | null,
       fiscalObsPisCofins: null as string | null,
       productRefs: [] as string[],
+      defaultSupplier: null as string | null,
     }));
 
     if (useIssuedNfeLookup) {
@@ -1320,6 +1321,7 @@ export async function GET(req: Request) {
         if (registry.anvisaManufacturer) product.anvisaManufacturer = registry.anvisaManufacturer;
         if (registry.anvisaManufacturerCountry) product.anvisaManufacturerCountry = registry.anvisaManufacturerCountry;
         if (registry.manufacturerShortName) product.manufacturerShortName = registry.manufacturerShortName;
+        if (registry.defaultSupplier) product.defaultSupplier = registry.defaultSupplier;
 
         const registryAnvisa = normalizeAnvisaRegistration(registry.anvisaCode);
         const registrySource = cleanString(registry.anvisaSource) as

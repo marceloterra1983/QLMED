@@ -8,7 +8,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import RowActions from '@/components/ui/RowActions';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatAmount } from '@/lib/utils';
 import {
   formatDocument,
   formatQuantity,
@@ -1031,7 +1031,7 @@ export default function CustomerDetailsModal({
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 <StatCard label="NF-e emitidas" value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color="primary" />
-                <StatCard label="Total vendido" value={formatCurrency(details.purchases.totalValue)} icon="payments" color="emerald" />
+                <StatCard label="Total vendido" value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
                 <StatCard
                   label="Itens vendidos"
                   value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
@@ -1184,7 +1184,7 @@ export default function CustomerDetailsModal({
                 {saleInvoices.map((invoice) => {
                   const installmentSummary = invoiceInstallmentsMap.get(invoice.id);
                   const totalInstallments = installmentSummary?.totalInstallments || 0;
-                  const firstDueDate = installmentSummary?.firstDueDate ? installmentSummary.firstDueDate.toLocaleDateString('pt-BR') : '-';
+                  const firstDueDate = installmentSummary?.firstDueDate ? installmentSummary.firstDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
                   return (
                     <div key={invoice.id} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
                       <div className="flex items-center justify-between mb-1">
@@ -1192,7 +1192,7 @@ export default function CustomerDetailsModal({
                           <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
                           <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
                         </div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{formatAmount(invoice.totalValue)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-slate-500 dark:text-slate-400">{totalInstallments}x — Venc: {firstDueDate}</span>
@@ -1219,7 +1219,7 @@ export default function CustomerDetailsModal({
                       const installmentSummary = invoiceInstallmentsMap.get(invoice.id);
                       const totalInstallments = installmentSummary?.totalInstallments || 0;
                       const firstDueDate = installmentSummary?.firstDueDate
-                        ? installmentSummary.firstDueDate.toLocaleDateString('pt-BR')
+                        ? installmentSummary.firstDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
                         : '-';
 
                       return (
@@ -1227,7 +1227,7 @@ export default function CustomerDetailsModal({
                           <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{invoice.number}</td>
                           <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(invoice.issueDate)}</td>
                           <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>
-                            {formatCurrency(invoice.totalValue)}
+                            {formatAmount(invoice.totalValue)}
                           </td>
                           <td className={`${tdCls} text-center text-xs font-semibold text-slate-600 dark:text-slate-300`}>
                             {totalInstallments.toLocaleString('pt-BR')}
@@ -1278,7 +1278,7 @@ export default function CustomerDetailsModal({
                         <span className="text-xs font-bold text-slate-900 dark:text-white">Nº {invoice.number}</span>
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{invoice.cfopTag}</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatAmount(invoice.totalValue)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-slate-400">{formatDate(invoice.issueDate)}</span>
@@ -1309,7 +1309,7 @@ export default function CustomerDetailsModal({
                           </span>
                         </td>
                         <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>
-                          {formatCurrency(invoice.totalValue)}
+                          {formatAmount(invoice.totalValue)}
                         </td>
                         <td className={`${tdCls} text-center`}>
                           <RowActions
@@ -1359,7 +1359,7 @@ export default function CustomerDetailsModal({
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="text-slate-500 dark:text-slate-400">Venc: {formatDueDate(duplicate.dueDate)}</span>
-                        <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(duplicate.installmentValue)}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{formatAmount(duplicate.installmentValue)}</span>
                       </div>
                     </div>
                   );
@@ -1388,7 +1388,7 @@ export default function CustomerDetailsModal({
                           </td>
                           <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDueDate(duplicate.dueDate)}</td>
                           <td className={`${tdCls} text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white`}>
-                            {formatCurrency(duplicate.installmentValue)}
+                            {formatAmount(duplicate.installmentValue)}
                           </td>
                           <td className={`${tdCls} text-center`}>
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${status.classes}`}>

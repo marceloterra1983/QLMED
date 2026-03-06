@@ -83,7 +83,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
   };
 
   const menuItems = [
-    { label: 'Detalhes', icon: 'visibility', action: handleDetails },
+    { label: 'Detalhes', icon: 'search', action: handleDetails },
     ...(accessKey ? [{ label: 'Copiar Chave', icon: 'key', action: handleCopyKey }] : []),
     { label: 'Imprimir', icon: 'print', action: () => { handlePrint(); setOpen(false); } },
     { label: 'Salvar XML', icon: 'code', action: handleSaveXml },
@@ -110,7 +110,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
           title="Ver detalhes"
           aria-label="Ver detalhes"
         >
-          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          <span className="material-symbols-outlined text-[18px]">search</span>
         </button>
       )}
       <button

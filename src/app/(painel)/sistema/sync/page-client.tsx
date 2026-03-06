@@ -592,7 +592,7 @@ export default function SyncPage() {
     <div className="space-y-5">
       {!canWrite && (
         <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
-          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          <span className="material-symbols-outlined text-[18px]">lock</span>
           Modo somente leitura — você não tem permissão para sincronizar.
         </div>
       )}

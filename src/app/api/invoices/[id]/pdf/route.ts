@@ -73,7 +73,7 @@ function fmtNfNum(n: string): string {
 
 function fmtDate(v: string): string {
   if (!v) return '';
-  try { return new Date(v).toLocaleDateString('pt-BR'); } catch { return v; }
+  try { return new Date(v).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return v; }
 }
 
 function fmtTime(v: string): string {

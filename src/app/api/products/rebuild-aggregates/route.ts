@@ -137,6 +137,7 @@ export async function POST() {
               agg_last_supplier_name, agg_last_supplier_cnpj, agg_last_invoice_number,
               agg_last_sale_date, agg_last_sale_price, agg_resale_quantity,
               agg_computed_at, agg_search_text,
+              codigo,
               created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8,
@@ -144,6 +145,7 @@ export async function POST() {
               $13, $14, $15, $16, $17, $18,
               $19, $20, $21, $22, $23, $24,
               NOW(), $25,
+              (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $2),
               NOW(), NOW()
             )
             ON CONFLICT (company_id, product_key) DO UPDATE SET

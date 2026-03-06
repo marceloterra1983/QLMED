@@ -37,6 +37,7 @@ const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
+  '/estoque/entrada-nfe': { label: 'Entrada NF-e', icon: 'inventory' },
   '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
   '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },
   '/fiscal/nfse-recebidas': { label: 'NFS-e', icon: 'description' },
@@ -89,6 +90,12 @@ function SidebarContent({
         { label: 'Produtos', icon: 'inventory_2', href: '/cadastro/produtos' },
         { label: 'Clientes', icon: 'group', href: '/cadastro/clientes' },
         { label: 'Fornecedores', icon: 'storefront', href: '/cadastro/fornecedores' },
+      ],
+    },
+    {
+      section: 'Estoque',
+      items: [
+        { label: 'Entrada NF-e', icon: 'inventory', href: '/estoque/entrada-nfe' },
       ],
     },
     {

@@ -9,10 +9,11 @@ import {
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 
-const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida', 'obsIcms', 'obsPisCofins'] as const;
+const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida', 'obsIcms', 'obsPisCofins', 'aliqIcms', 'aliqPis', 'aliqCofins', 'aliqIpi', 'aliqFcp'] as const;
 type FiscalField = (typeof VALID_FIELDS)[number];
 
-const DB_COLUMN: Record<FiscalField, string> = {
+// null means catalog-only (no corresponding TEXT column in product_registry)
+const DB_COLUMN: Record<FiscalField, string | null> = {
   ncm: 'ncm',
   fiscalSitTributaria: 'fiscal_sit_tributaria',
   fiscalNomeTributacao: 'fiscal_nome_tributacao',
@@ -22,6 +23,11 @@ const DB_COLUMN: Record<FiscalField, string> = {
   cfopSaida: 'fiscal_cfop_saida',
   obsIcms: 'fiscal_obs_icms',
   obsPisCofins: 'fiscal_obs_pis_cofins',
+  aliqIcms: null,
+  aliqPis: null,
+  aliqCofins: null,
+  aliqIpi: null,
+  aliqFcp: null,
 };
 
 const CATALOG_SECTION: Record<FiscalField, ProductSettingsCatalogSection> = {
@@ -34,6 +40,11 @@ const CATALOG_SECTION: Record<FiscalField, ProductSettingsCatalogSection> = {
   cfopSaida: 'fiscal_cfop_saida',
   obsIcms: 'fiscal_obs_icms',
   obsPisCofins: 'fiscal_obs_pis_cofins',
+  aliqIcms: 'fiscal_aliq_icms',
+  aliqPis: 'fiscal_aliq_pis',
+  aliqCofins: 'fiscal_aliq_cofins',
+  aliqIpi: 'fiscal_aliq_ipi',
+  aliqFcp: 'fiscal_aliq_fcp',
 };
 
 const LABEL: Record<FiscalField, string> = {
@@ -46,6 +57,11 @@ const LABEL: Record<FiscalField, string> = {
   cfopSaida: 'CFOP Saída',
   obsIcms: 'Obs. ICMS',
   obsPisCofins: 'Obs. PIS/COFINS',
+  aliqIcms: 'Alíq. ICMS',
+  aliqPis: 'Alíq. PIS',
+  aliqCofins: 'Alíq. COFINS',
+  aliqIpi: 'Alíq. IPI',
+  aliqFcp: 'Alíq. FCP',
 };
 
 function clean(value: string | null | undefined): string | null {
@@ -57,19 +73,21 @@ async function hasFiscalValue(companyId: string, field: FiscalField, value: stri
   const col = DB_COLUMN[field];
   const section = CATALOG_SECTION[field];
 
-  const real = await prisma.$queryRawUnsafe<any[]>(
-    `
-      SELECT 1
-      FROM product_registry
-      WHERE company_id = $1
-        AND product_key NOT LIKE '__%placeholder__%'
-        AND ${col} = $2
-      LIMIT 1
-    `,
-    companyId,
-    value,
-  );
-  if (real.length > 0) return true;
+  if (col) {
+    const real = await prisma.$queryRawUnsafe<any[]>(
+      `
+        SELECT 1
+        FROM product_registry
+        WHERE company_id = $1
+          AND product_key NOT LIKE '__%placeholder__%'
+          AND ${col} = $2
+        LIMIT 1
+      `,
+      companyId,
+      value,
+    );
+    if (real.length > 0) return true;
+  }
 
   const catalog = await prisma.$queryRawUnsafe<any[]>(
     `
@@ -147,12 +165,16 @@ export async function POST(req: NextRequest) {
   }
 
   const col = DB_COLUMN[f];
-  const updated: number = await prisma.$executeRawUnsafe(
-    `UPDATE product_registry SET ${col} = $1, updated_at = NOW() WHERE company_id = $2 AND ${col} = $3`,
-    trimmedNew,
-    company.id,
-    trimmedOld,
-  );
+  // catalog-only fields (numeric alíquotas) don't have a text column to update
+  let updated = 0;
+  if (col) {
+    updated = await prisma.$executeRawUnsafe(
+      `UPDATE product_registry SET ${col} = $1, updated_at = NOW() WHERE company_id = $2 AND ${col} = $3`,
+      trimmedNew,
+      company.id,
+      trimmedOld,
+    );
+  }
 
   if (trimmedNew) {
     await upsertProductSettingsCatalogEntry({

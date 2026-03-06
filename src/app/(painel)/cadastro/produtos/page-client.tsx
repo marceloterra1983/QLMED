@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatAmount } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
@@ -27,7 +27,7 @@ function formatQuantity(value: number) {
 function formatDate(value: string | null) {
   if (!value) return '-';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR');
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function getAnvisaExpirationBadge(expiration: string | null | undefined): { label: string; className: string } | null {
@@ -51,7 +51,7 @@ function getAnvisaExpirationBadge(expiration: string | null | undefined): { labe
 
 function formatOptional(value: number | null) {
   if (value == null) return '-';
-  return formatCurrency(value);
+  return formatAmount(value);
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode {
@@ -174,6 +174,13 @@ export default function ProdutosPage() {
   const [obsIcmsOptions,        setObsIcmsOptions]        = useState<string[]>([]);
   const [obsPisCofinsOptions,   setObsPisCofinsOptions]   = useState<string[]>([]);
   const [manufacturerOptions,   setManufacturerOptions]   = useState<string[]>([]);
+  const [ncmOptions,            setNcmOptions]            = useState<string[]>([]);
+  const [cestOptions,           setCestOptions]           = useState<string[]>([]);
+  const [aliqIcmsOptions,       setAliqIcmsOptions]       = useState<string[]>([]);
+  const [aliqPisOptions,        setAliqPisOptions]        = useState<string[]>([]);
+  const [aliqCofinsOptions,     setAliqCofinsOptions]     = useState<string[]>([]);
+  const [aliqIpiOptions,        setAliqIpiOptions]        = useState<string[]>([]);
+  const [aliqFcpOptions,        setAliqFcpOptions]        = useState<string[]>([]);
 
   // --- filter/sort state (drives server-side queries) ---
   const [search, setSearch] = useState('');
@@ -357,6 +364,7 @@ export default function ProdutosPage() {
   const [detailRefs, setDetailRefs] = useState<string[]>([]);
   const [detailDescription, setDetailDescription] = useState('');
   const [detailManufacturer, setDetailManufacturer] = useState('');
+  const [detailDefaultSupplier, setDetailDefaultSupplier] = useState('');
   const [detailShortName, setDetailShortName] = useState('');
   const [detailSitTributaria, setDetailSitTributaria] = useState('');
   const [detailNomeTributacao, setDetailNomeTributacao] = useState('');
@@ -491,6 +499,7 @@ export default function ProdutosPage() {
     setDetailRefs(product.productRefs || []);
     setDetailDescription(product.description || '');
     setDetailManufacturer(product.manufacturerShortName || '');
+    setDetailDefaultSupplier(product.defaultSupplier || '');
     setDetailShortName(product.shortName || '');
     setDetailSitTributaria(product.fiscalSitTributaria || '');
     setDetailNomeTributacao(product.fiscalNomeTributacao || '');
@@ -526,6 +535,7 @@ export default function ProdutosPage() {
         setDetailRefs(full.productRefs || []);
         setDetailDescription(full.description || '');
         setDetailManufacturer(full.manufacturerShortName || '');
+        setDetailDefaultSupplier(full.defaultSupplier || '');
         setDetailShortName(full.shortName || '');
         setDetailSitTributaria(full.fiscalSitTributaria || '');
         setDetailNomeTributacao(full.fiscalNomeTributacao || '');
@@ -593,6 +603,7 @@ export default function ProdutosPage() {
     JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || []) ||
     detailDescription !== (detailProduct.description || '') ||
     detailManufacturer !== (detailProduct.manufacturerShortName || '') ||
+    detailDefaultSupplier !== (detailProduct.defaultSupplier || '') ||
     detailAnvisa !== (detailProduct.anvisa || '') ||
     detailNcm !== (detailProduct.ncm || '') ||
     detailType !== (detailProduct.productType || '') ||
@@ -645,6 +656,14 @@ export default function ProdutosPage() {
       setObsIcmsOptions((data.fiscal?.obsIcms || []).map((i: any) => i.value).filter(Boolean).sort());
       setObsPisCofinsOptions((data.fiscal?.obsPisCofins || []).map((i: any) => i.value).filter(Boolean).sort());
       setManufacturerOptions((data.manufacturers || []).map((m: any) => (m.shortName || m.name) as string).filter(Boolean).sort());
+      setNcmOptions((data.fiscal?.ncm || []).map((i: any) => i.value).filter(Boolean).sort());
+      setCestOptions((data.fiscal?.cest || []).map((i: any) => i.value).filter(Boolean).sort());
+      const numSort = (a: string, b: string) => parseFloat(a) - parseFloat(b);
+      setAliqIcmsOptions((data.fiscal?.aliqIcms || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
+      setAliqPisOptions((data.fiscal?.aliqPis || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
+      setAliqCofinsOptions((data.fiscal?.aliqCofins || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
+      setAliqIpiOptions((data.fiscal?.aliqIpi || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
+      setAliqFcpOptions((data.fiscal?.aliqFcp || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
     } catch { /* silent */ }
   };
 
@@ -980,7 +999,7 @@ export default function ProdutosPage() {
         fmtNum(p.fiscalIcms), fmtNum(p.fiscalPis), fmtNum(p.fiscalCofins), fmtNum(p.fiscalIpi), fmtNum(p.fiscalFcp), esc(p.fiscalObs),
         esc(p.anvisa), esc(p.anvisaStatus), formatDate(p.anvisaExpiration), esc(p.anvisaRiskClass), esc(p.anvisaProcess),
         esc(p.anvisaMatchedProductName), esc(p.anvisaHolder), esc(p.anvisaManufacturer), esc(p.anvisaManufacturerCountry),
-        formatCurrency(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
+        formatAmount(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
         formatDate(p.lastIssueDate), formatDate(p.lastSaleDate), esc(p.lastSupplierName),
       ]);
       const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
@@ -1009,7 +1028,7 @@ export default function ProdutosPage() {
       const headers = ['Referencia', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
       const rows = missing.map((p: any) => [
         p.code, p.description, p.ncm || '', p.ean || '',
-        formatCurrency(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
+        formatAmount(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
       ]);
       const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
@@ -1170,6 +1189,7 @@ export default function ProdutosPage() {
     if (JSON.stringify(detailRefs) !== JSON.stringify(detailProduct.productRefs || [])) fields.productRefs = detailRefs.map(r => r.trim()).filter(Boolean);
     if (detailDescription !== (detailProduct.description || '') && detailDescription.trim()) fields.description = detailDescription.trim();
     if (detailManufacturer !== (detailProduct.manufacturerShortName || '')) fields.manufacturerShortName = detailManufacturer.trim() || null;
+    if (detailDefaultSupplier !== (detailProduct.defaultSupplier || '')) fields.defaultSupplier = detailDefaultSupplier.trim() || null;
     if (detailShortName !== (detailProduct.shortName || '')) fields.shortName = detailShortName.trim() || null;
     if (detailSitTributaria !== (detailProduct.fiscalSitTributaria || '')) fields.fiscalSitTributaria = detailSitTributaria.trim() || null;
     if (detailNomeTributacao !== (detailProduct.fiscalNomeTributacao || '')) fields.fiscalNomeTributacao = detailNomeTributacao.trim() || null;
@@ -1852,10 +1872,10 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatCurrency(product.lastPrice)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-0.5">
-                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
+                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">search</span></button>
                         <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Histórico de compras e vendas"><span className="material-symbols-outlined text-[18px]">history</span></button>
                       </div>
                     </td>
@@ -1901,10 +1921,10 @@ export default function ProdutosPage() {
                     <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}><span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '—', search) : (product.anvisa || '—')}</span>{(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}</td>
                     <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
                     <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatCurrency(product.lastPrice)}</span></td>
+                    <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-0.5">
-                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">visibility</span></button>
+                        <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes do produto"><span className="material-symbols-outlined text-[18px]">search</span></button>
                         <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Histórico de compras e vendas"><span className="material-symbols-outlined text-[18px]">history</span></button>
                       </div>
                     </td>
@@ -2024,9 +2044,9 @@ export default function ProdutosPage() {
                                   {product.shortName || product.description}
                                 </p>
                                 <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
-                                  <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatCurrency(product.lastPrice)}</span></span>
+                                  <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatAmount(product.lastPrice)}</span></span>
                                   <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
-                                    <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                    <span className="material-symbols-outlined text-[14px]">search</span>
                                     Detalhes
                                   </button>
                                 </div>
@@ -2079,9 +2099,9 @@ export default function ProdutosPage() {
                                 <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>
                               )}
                               <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
-                                <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatCurrency(product.lastPrice)}</span></span>
+                                <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} · <span className="font-medium text-slate-600 dark:text-slate-300">{formatAmount(product.lastPrice)}</span></span>
                                 <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
-                                  <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                  <span className="material-symbols-outlined text-[14px]">search</span>
                                   Detalhes
                                 </button>
                               </div>
@@ -2506,7 +2526,7 @@ export default function ProdutosPage() {
 
         return (
           <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={() => setDetailProduct(null)}>
-            <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-3xl sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-[#1a1e2e] sm:rounded-2xl w-full sm:max-w-6xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
 
               {/* ── Header ── */}
               <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
@@ -2567,7 +2587,7 @@ export default function ProdutosPage() {
                 <DetailSectionCard id="geral" icon="analytics" iconColor="text-emerald-500" title="Dados Gerais" isOpen={detailOpenSections.has('geral')} onToggle={toggleDetailSection}>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
                     {[
-                      { label: 'Último Preço', value: formatCurrency(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
+                      { label: 'Último Preço', value: formatAmount(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
                       { label: 'Qtde Total', value: formatQuantity(detailProduct.totalQuantity), icon: 'inventory_2', color: 'text-blue-500 bg-blue-500/10 ring-blue-500/20' },
                       { label: 'Notas', value: String(detailProduct.invoiceCount), icon: 'receipt_long', color: 'text-amber-500 bg-amber-500/10 ring-amber-500/20' },
                       { label: 'Última Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_month', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
@@ -2588,22 +2608,26 @@ export default function ProdutosPage() {
                 {/* ── Card: Dados do Cadastro ── */}
                 <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
                   <div className="space-y-2 mt-1">
-                    {/* Código Interno — read-only, auto-gerado */}
-                    <DetailField label="Código Interno">
-                      <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-28`} />
-                    </DetailField>
-
-                    {/* Referências: Ref 1 = NF-e cProd (read-only), Ref 2+ editáveis */}
+                    {/* Referências: Ref 1 = NF-e cProd (read-only), Ref 2+ editáveis — inline compacto */}
                     <div>
                       <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referência</p>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref 1</span>
-                          <input type="text" value={detailProduct.code || ''} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono flex-1`} placeholder="—" />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Ref 1 — NF-e cProd, read-only */}
+                        <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Ref 1</span>
+                          <input
+                            type="text"
+                            value={detailProduct.code || '—'}
+                            readOnly
+                            disabled
+                            size={Math.max(4, (detailProduct.code || '—').length)}
+                            className="font-mono text-[13px] text-slate-600 dark:text-slate-300 bg-transparent border-0 outline-none p-0 min-w-0"
+                          />
                         </div>
+                        {/* Ref 2+ editáveis */}
                         {detailRefs.map((ref, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 w-8 shrink-0">Ref {idx + 2}</span>
+                          <div key={idx} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-shadow">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Ref {idx + 2}</span>
                             <input
                               type="text"
                               value={ref}
@@ -2612,19 +2636,20 @@ export default function ProdutosPage() {
                                 next[idx] = e.target.value;
                                 setDetailRefs(next);
                               }}
+                              size={Math.max(6, ref.length + 1)}
                               maxLength={100}
-                              placeholder={`Referência ${idx + 2}`}
+                              placeholder="—"
                               disabled={!canWrite}
-                              className={`${DETAIL_INPUT_CLS} font-mono flex-1`}
+                              className="font-mono text-[13px] text-slate-800 dark:text-slate-200 bg-transparent border-0 outline-none p-0 min-w-0 disabled:cursor-not-allowed"
                             />
                             {canWrite && (
                               <button
                                 type="button"
                                 onClick={() => setDetailRefs(detailRefs.filter((_, i) => i !== idx))}
-                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                title="Remover referência"
+                                className="shrink-0 ml-0.5 text-slate-300 hover:text-red-500 transition-colors"
+                                title="Remover"
                               >
-                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                <span className="material-symbols-outlined text-[13px]">close</span>
                               </button>
                             )}
                           </div>
@@ -2633,12 +2658,24 @@ export default function ProdutosPage() {
                           <button
                             type="button"
                             onClick={() => setDetailRefs([...detailRefs, ''])}
-                            className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary/80 font-medium mt-1 transition-colors"
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors text-[11px] font-medium"
                           >
-                            <span className="material-symbols-outlined text-[15px]">add</span>
-                            Adicionar referência
+                            <span className="material-symbols-outlined text-[13px]">add</span>
+                            Adicionar
                           </button>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Código Interno + Nome Abreviado na mesma linha */}
+                    <div className="flex gap-2 items-start">
+                      <div className="shrink-0">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Código Interno</label>
+                        <input type="text" value={detailProduct.codigo || '—'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-28`} />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Nome Abreviado</label>
+                        <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
                       </div>
                     </div>
 
@@ -2646,19 +2683,20 @@ export default function ProdutosPage() {
                       <input type="text" value={detailDescription} onChange={(e) => setDetailDescription(e.target.value)} maxLength={500} placeholder="Nome completo do produto" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
                     </DetailField>
 
-                    <DetailField label="Nome Abreviado" colSpan2>
-                      <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificação rápida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                    </DetailField>
-
-                    <DetailField label="Fabricante" colSpan2>
-                      <select value={detailManufacturer} onChange={(e) => setDetailManufacturer(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
-                        <option value="">— Nenhum —</option>
-                        {manufacturerOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                        {detailManufacturer && !manufacturerOptions.includes(detailManufacturer) && (
-                          <option value={detailManufacturer}>{detailManufacturer}</option>
-                        )}
-                      </select>
-                    </DetailField>
+                    <div className="grid grid-cols-2 gap-2">
+                      <DetailField label="Fabricante">
+                        <select value={detailManufacturer} onChange={(e) => setDetailManufacturer(e.target.value)} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                          <option value="">— Nenhum —</option>
+                          {manufacturerOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                          {detailManufacturer && !manufacturerOptions.includes(detailManufacturer) && (
+                            <option value={detailManufacturer}>{detailManufacturer}</option>
+                          )}
+                        </select>
+                      </DetailField>
+                      <DetailField label="Fornecedor Padrão">
+                        <input type="text" value={detailDefaultSupplier} onChange={(e) => setDetailDefaultSupplier(e.target.value)} maxLength={200} placeholder="Nome do fornecedor" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
+                      </DetailField>
+                    </div>
 
                     <div className="grid grid-cols-3 gap-2">
                       <DetailField label="Linha">
@@ -2775,19 +2813,11 @@ export default function ProdutosPage() {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2">
                         <DetailField label="NCM">
-                          <div className="relative">
-                            <input ref={ncmInputRef} type="text" value={detailNcm} onChange={(e) => { setDetailNcm(e.target.value); setNcmSuggestionsOpen(true); }} onFocus={() => setNcmSuggestionsOpen(true)} onBlur={() => setTimeout(() => setNcmSuggestionsOpen(false), 200)} maxLength={8} placeholder="Ex: 90189099" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
-                            {ncmSuggestionsOpen && ncmSuggestions.length > 0 && (
-                              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                {ncmSuggestions.map((s) => (
-                                  <button key={s.codigo} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { const d = s.codigo.replace(/\D/g, ''); setDetailNcm(d); setNcmSuggestionsOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0">
-                                    <span className="font-mono text-[12px] font-bold text-amber-600 dark:text-amber-400">{s.codigo}</span>
-                                    <span className="ml-2 text-[12px] text-slate-600 dark:text-slate-400">{s.descricao}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          <select value={detailNcm} onChange={(e) => setDetailNcm(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                            <option value="">—</option>
+                            {detailNcm && !ncmOptions.includes(detailNcm) && <option value={detailNcm}>{detailNcm}</option>}
+                            {ncmOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                          </select>
                           {detailNcmInfo && detailNcmInfo.hierarchy.length > 0 && (() => {
                             const levels = detailNcmInfo.hierarchy;
                             const last = levels[levels.length - 1];
@@ -2825,10 +2855,11 @@ export default function ProdutosPage() {
                         </DetailField>
                       </div>
                       <DetailField label="CEST">
-                        <input type="text" value={detailCest} onChange={(e) => setDetailCest(e.target.value)} maxLength={9} placeholder="1300400" disabled={!canWrite} list="detail-fiscal-cest-list" className={`${DETAIL_INPUT_CLS} font-mono`} />
-                        <datalist id="detail-fiscal-cest-list">
-                          {Array.from(new Set(products.map((p) => p.fiscalCest).filter(Boolean))).sort().map((v) => <option key={v!} value={v!} />)}
-                        </datalist>
+                        <select value={detailCest} onChange={(e) => setDetailCest(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailCest && !cestOptions.includes(detailCest) && <option value={detailCest}>{detailCest}</option>}
+                          {cestOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                        </select>
                       </DetailField>
                     </div>
 
@@ -2929,19 +2960,39 @@ export default function ProdutosPage() {
                     {/* ─── Alíquotas (%) ─── */}
                     <div className="grid grid-cols-5 gap-2">
                       <DetailField label="ICMS %">
-                        <input type="number" step="0.01" min="0" max="100" value={detailIcms} onChange={(e) => setDetailIcms(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <select value={detailIcms} onChange={(e) => setDetailIcms(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailIcms && !aliqIcmsOptions.includes(detailIcms) && <option value={detailIcms}>{detailIcms}</option>}
+                          {aliqIcmsOptions.map((v) => <option key={v} value={v}>{v}%</option>)}
+                        </select>
                       </DetailField>
                       <DetailField label="PIS %">
-                        <input type="number" step="0.01" min="0" max="100" value={detailPis} onChange={(e) => setDetailPis(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <select value={detailPis} onChange={(e) => setDetailPis(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailPis && !aliqPisOptions.includes(detailPis) && <option value={detailPis}>{detailPis}</option>}
+                          {aliqPisOptions.map((v) => <option key={v} value={v}>{v}%</option>)}
+                        </select>
                       </DetailField>
                       <DetailField label="COFINS %">
-                        <input type="number" step="0.01" min="0" max="100" value={detailCofins} onChange={(e) => setDetailCofins(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <select value={detailCofins} onChange={(e) => setDetailCofins(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailCofins && !aliqCofinsOptions.includes(detailCofins) && <option value={detailCofins}>{detailCofins}</option>}
+                          {aliqCofinsOptions.map((v) => <option key={v} value={v}>{v}%</option>)}
+                        </select>
                       </DetailField>
                       <DetailField label="IPI %">
-                        <input type="number" step="0.01" min="0" max="100" value={detailIpi} onChange={(e) => setDetailIpi(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <select value={detailIpi} onChange={(e) => setDetailIpi(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailIpi && !aliqIpiOptions.includes(detailIpi) && <option value={detailIpi}>{detailIpi}</option>}
+                          {aliqIpiOptions.map((v) => <option key={v} value={v}>{v}%</option>)}
+                        </select>
                       </DetailField>
                       <DetailField label="FCP %">
-                        <input type="number" step="0.01" min="0" max="100" value={detailFcp} onChange={(e) => setDetailFcp(e.target.value)} placeholder="0" disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`} />
+                        <select value={detailFcp} onChange={(e) => setDetailFcp(e.target.value)} disabled={!canWrite} className={`${DETAIL_INPUT_CLS} font-mono`}>
+                          <option value="">—</option>
+                          {detailFcp && !aliqFcpOptions.includes(detailFcp) && <option value={detailFcp}>{detailFcp}</option>}
+                          {aliqFcpOptions.map((v) => <option key={v} value={v}>{v}%</option>)}
+                        </select>
                       </DetailField>
                     </div>
 
@@ -3323,11 +3374,11 @@ export default function ProdutosPage() {
                   return (
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
                     {[
-                      { label: 'Total', value: formatCurrency(stats.totalValue), icon: 'payments' },
+                      { label: 'Total', value: formatAmount(stats.totalValue), icon: 'payments' },
                       { label: 'Qtde Total', value: formatQuantity(stats.totalQty), icon: 'inventory_2' },
                       { label: 'Notas', value: String(stats.invoiceCount), icon: 'receipt_long' },
-                      { label: 'Último Preço', value: formatCurrency(stats.lastPrice), icon: 'trending_up' },
-                      { label: 'Preço Médio', value: formatCurrency(stats.avgPrice), icon: 'monitoring' },
+                      { label: 'Último Preço', value: formatAmount(stats.lastPrice), icon: 'trending_up' },
+                      { label: 'Preço Médio', value: formatAmount(stats.avgPrice), icon: 'monitoring' },
                     ].map(c => (
                       <div key={c.label} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${cm.statBg} ${cm.statRing}`}>
                         <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${cm.statIconBg}`}>
@@ -3368,7 +3419,7 @@ export default function ProdutosPage() {
                                 <span className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{name}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${cm.badge}`}>{rows.length}</span>
                               </div>
-                              <span className={`text-[12px] font-bold tabular-nums ${cm.text}`}>{formatCurrency(grpTotal)}</span>
+                              <span className={`text-[12px] font-bold tabular-nums ${cm.text}`}>{formatAmount(grpTotal)}</span>
                             </button>
                             {isOpen && (
                               <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800/60">
@@ -3397,8 +3448,8 @@ export default function ProdutosPage() {
                                           </button>
                                         </td>
                                         <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatQuantity(h.quantity)}</td>
-                                        <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatCurrency(h.unitPrice)}</td>
-                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatCurrency(h.totalValue)}</td>
+                                        <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatAmount(h.unitPrice)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatAmount(h.totalValue)}</td>
                                         <td className="px-3 py-2 text-slate-600 dark:text-slate-400 font-mono">
                                           <TruncatedCell text={h.batch || '-'} id={`${gk}-batch-${i}`} />
                                         </td>
@@ -3469,7 +3520,7 @@ export default function ProdutosPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           {!loading && count > 0 && (
-                            <span className={`text-[13px] font-bold tabular-nums ${cm.text}`}>{formatCurrency(totalValue)}</span>
+                            <span className={`text-[13px] font-bold tabular-nums ${cm.text}`}>{formatAmount(totalValue)}</span>
                           )}
                           <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                         </div>

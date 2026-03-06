@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import { formatCnpj, formatCurrency, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { formatCnpj, formatCurrency, formatAmount, formatDate, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
@@ -294,7 +294,7 @@ export default function ContasReceberPage() {
   );
 
   const formatVencimento = (dateStr: string) => {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
   };
 
   const openInvoiceModal = (invoiceId: string) => {
@@ -583,7 +583,7 @@ export default function ContasReceberPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Hoje</p>
-                <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(summary.hojeValor)}</p>
+                <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatAmount(summary.hojeValor)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.hoje} dup.</p>
               </div>
             </div>
@@ -596,7 +596,7 @@ export default function ContasReceberPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Esta Semana</p>
-                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatCurrency(summary.estaSemanaValor ?? 0)}</p>
+                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400 truncate">{formatAmount(summary.estaSemanaValor ?? 0)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.estaSemana ?? 0} dup.</p>
               </div>
             </div>
@@ -609,7 +609,7 @@ export default function ContasReceberPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Este Mês</p>
-                <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatCurrency(summary.esteMesValor)}</p>
+                <p className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate">{formatAmount(summary.esteMesValor)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.esteMes} dup.</p>
               </div>
             </div>
@@ -622,7 +622,7 @@ export default function ContasReceberPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Próx. Mês</p>
-                <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatCurrency(summary.proximoMesValor)}</p>
+                <p className="text-sm sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 truncate">{formatAmount(summary.proximoMesValor)}</p>
                 <p className="text-[10px] sm:text-xs text-slate-400">{summary.proximoMes} dup.</p>
               </div>
             </div>
@@ -692,43 +692,24 @@ export default function ContasReceberPage() {
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                    <th
-                      className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('vencimento')}
-                    >
-                      <div className="flex items-center">Vencimento <SortIcon col="vencimento" /></div>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                    <th className="px-3 py-2.5 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('vencimento')}>
+                      <div className="flex items-center gap-1">Data <SortIcon col="vencimento" /></div>
                     </th>
-                    <th
-                      className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('cliente')}
-                    >
-                      <div className="flex items-center">Cliente <SortIcon col="cliente" /></div>
+                    <th className="px-3 py-2.5 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('nfNumero')}>
+                      <div className="flex items-center gap-1">NF-e <SortIcon col="nfNumero" /></div>
                     </th>
-                    <th
-                      className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('nfNumero')}
-                    >
-                      <div className="flex items-center">NF-e <SortIcon col="nfNumero" /></div>
+                    <th className="px-3 py-2.5 w-px whitespace-nowrap text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('valor')}>
+                      <div className="flex items-center justify-end gap-1">Valor <SortIcon col="valor" /></div>
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500 dark:text-slate-400">
-                      Parcela
+                    <th className="px-3 py-2.5 w-px whitespace-nowrap">Parcela</th>
+                    <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('cliente')}>
+                      <div className="flex items-center gap-1">Cliente <SortIcon col="cliente" /></div>
                     </th>
-                    <th
-                      className="text-right px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('valor')}
-                    >
-                      <div className="flex items-center justify-end">Valor <SortIcon col="valor" /></div>
+                    <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('status')}>
+                      <div className="flex items-center gap-1">Status <SortIcon col="status" /></div>
                     </th>
-                    <th
-                      className="text-center px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-primary select-none"
-                      onClick={() => handleSort('status')}
-                    >
-                      <div className="flex items-center justify-center">Status <SortIcon col="status" /></div>
-                    </th>
-                    <th className="text-center px-4 py-3 font-semibold text-slate-500 dark:text-slate-400">
-                      Ações
-                    </th>
+                    <th className="px-3 py-2.5 text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -753,52 +734,35 @@ export default function ContasReceberPage() {
                           )}
                           {!collapsedGroups.has(group) && (
                             <tr
-                              className={`border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${
-                                dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''
-                              }`}
+                              className={`group transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
                               onClick={() => openDetails(dup)}
                             >
-                              <td className="px-4 py-3">
-                                <p className={`font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                                  {formatVencimento(dup.dupVencimento)}
-                                </p>
-                                {dup.status === 'overdue' && (
-                                  <p className="text-xs text-red-500">{dup.diasAtraso} dia{dup.diasAtraso !== 1 ? 's' : ''} em atraso</p>
-                                )}
-                                {dup.status === 'due_soon' && (
-                                  <p className="text-xs text-orange-500">em {dup.diasParaVencer} dia{dup.diasParaVencer !== 1 ? 's' : ''}</p>
-                                )}
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className={`text-sm font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatVencimento(dup.dupVencimento)}</div>
+                                {dup.status === 'overdue' && <div className="text-[11px] text-red-500">{dup.diasAtraso}d atraso</div>}
+                                {dup.status === 'due_soon' && <div className="text-[11px] text-orange-500">em {dup.diasParaVencer}d</div>}
                               </td>
-                              <td className="px-4 py-3">
-                                <div>
-                                  {(() => { const n = getNick(dup.clienteCnpj, dup.clienteNome); return n.full ? (<><p className="font-bold text-slate-900 dark:text-white truncate max-w-[250px]" title={n.full}>{n.display}</p><p className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</p></>) : (<p className="font-medium text-slate-900 dark:text-white truncate max-w-[250px]" title={n.display}>{n.display}</p>); })()}
-                                  <p className="text-xs text-slate-400">{formatCnpj(dup.clienteCnpj)}</p>
-                                </div>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</span>
                               </td>
-                              <td className="px-4 py-3">
-                                <p className="font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</p>
+                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                                <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatAmount(dup.dupValor)}</span>
                               </td>
-                              <td className="px-4 py-3">
-                                <span className="font-mono text-slate-600 dark:text-slate-400">{formatParcela(dup)}</span>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className="text-sm font-mono text-slate-600 dark:text-slate-400">{formatParcela(dup)}</span>
                               </td>
-                              <td className="px-4 py-3 text-right">
-                                <span className="font-bold text-slate-900 dark:text-white">
-                                  {formatCurrency(dup.dupValor)}
-                                </span>
+                              <td className="px-3 py-2">
+                                <span className="text-sm font-medium text-slate-900 dark:text-white truncate block max-w-[200px]" title={getNick(dup.clienteCnpj, dup.clienteNome).display}>{getNick(dup.clienteCnpj, dup.clienteNome).display}</span>
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-3 py-2">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border ${cfg.classes}`}>
                                   <span className="material-symbols-outlined text-[12px]">{cfg.icon}</span>
                                   {cfg.label}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => openDetails(dup)}
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-                                  title="Visualizar e editar"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">visibility</span>
+                              <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => openDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Visualizar e editar">
+                                  <span className="material-symbols-outlined text-[18px]">search</span>
                                 </button>
                               </td>
                             </tr>
@@ -836,7 +800,7 @@ export default function ContasReceberPage() {
                           <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
                             <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">{formatCurrency(groupTotals.get(group) || 0)}</span>
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">{formatAmount(groupTotals.get(group) || 0)}</span>
                           </div>
                         </div>
                       )}
@@ -856,7 +820,7 @@ export default function ContasReceberPage() {
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(dup.clienteCnpj, dup.clienteNome).display}</p>
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(dup.dupValor)}</span>
+                              <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatAmount(dup.dupValor)}</span>
                               <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -867,7 +831,7 @@ export default function ContasReceberPage() {
                                 onClick={(e) => { e.stopPropagation(); openDetails(dup); }}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                               >
-                                <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                <span className="material-symbols-outlined text-[14px]">search</span>
                                 Detalhes
                               </button>
                             </div>
@@ -1120,10 +1084,10 @@ export default function ContasReceberPage() {
                         : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
                     }`}>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
-                        <span>Nota: <strong>{formatCurrency(totalNotaEdicao)}</strong></span>
-                        <span>Parcelas: <strong>{formatCurrency(totalParcelasEdicao)}</strong></span>
-                        <span>Desconto: <strong>{formatCurrency(totalDescontoEdicao)}</strong></span>
-                        <span>Diferença: <strong>{formatCurrency(Math.abs(diferencaEdicao))}</strong></span>
+                        <span>Nota: <strong>{formatAmount(totalNotaEdicao)}</strong></span>
+                        <span>Parcelas: <strong>{formatAmount(totalParcelasEdicao)}</strong></span>
+                        <span>Desconto: <strong>{formatAmount(totalDescontoEdicao)}</strong></span>
+                        <span>Diferença: <strong>{formatAmount(Math.abs(diferencaEdicao))}</strong></span>
                       </div>
                       {hasInvalidEditingValue ? (
                         <p className="mt-1 text-xs">

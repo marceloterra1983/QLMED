@@ -8,7 +8,7 @@ const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsMod
 const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { formatDate, formatTime, formatCurrency } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -44,6 +44,7 @@ export default function IssuedInvoicesPage() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+  const [hideValues, setHideValues] = useState(true);
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
   const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
@@ -233,14 +234,17 @@ export default function IssuedInvoicesPage() {
   const nfeGroups = useMemo(() => buildNfeGroups(invoices), [invoices]);
   const yearMonths = useMemo(() => selectedYear !== null ? buildYearMonths(invoices) : [], [invoices, selectedYear]);
 
-  const renderGroupDivider = (key: string, label: string, count: number, gtotal: number) => (
+  const val = (amount: number) => hideValues
+    ? <span className="tracking-widest text-slate-300 dark:text-slate-600 select-none">••••</span>
+    : <>{formatAmount(amount)}</>;
+
+  const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <td colSpan={6} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
           <span className="text-xs text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(gtotal)}</span>
         </div>
       </td>
     </tr>
@@ -251,39 +255,38 @@ export default function IssuedInvoicesPage() {
     const highlightRow = !isVendaTag(cfopTag);
     return (
       <tr key={invoice.id} className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
-        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+        <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
           <input className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} />
         </td>
-        <td className="px-3 py-2">
+        <td className="px-2 py-1.5 whitespace-nowrap">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
           <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
         </td>
-        <td className="px-3 py-2">
+        <td className="px-2 py-1.5 whitespace-nowrap">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
             {cfopTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
           </div>
         </td>
-        <td className="px-3 py-2 text-right">
-          <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+        <td className="px-2 py-1.5 text-right whitespace-nowrap">
+          <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
         </td>
-        <td className="px-3 py-2">
+        <td className="px-2 py-1.5">
           {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
         </td>
-        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+        <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
         </td>
       </tr>
     );
   };
 
-  const renderMobileDivider = (key: string, label: string, count: number, mtotal: number) => (
+  const renderMobileDivider = (key: string, label: string, count: number, _mtotal: number) => (
     <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
         <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
         <span className="text-xs text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-auto">{formatCurrency(mtotal)}</span>
       </div>
     </div>
   );
@@ -305,7 +308,7 @@ export default function IssuedInvoicesPage() {
           <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
-          <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatCurrency(invoice.totalValue)}</span>
+          <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
         </div>
       </div>
@@ -330,6 +333,13 @@ export default function IssuedInvoicesPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setHideValues(v => !v)}
+            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+          >
+            <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
+          </button>
           <button onClick={handleExport} disabled={invoices.length === 0} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40">
             <span className="material-symbols-outlined text-[20px]">download</span>
             Exportar
@@ -441,26 +451,26 @@ export default function IssuedInvoicesPage() {
             <caption className="sr-only">Lista de notas fiscais eletrônicas emitidas</caption>
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-3 py-2.5 w-10">
+                <th className="px-2 py-2 w-px">
                   <input className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.size === invoices.length && invoices.length > 0} onChange={toggleSelectAll} />
                 </th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}><div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div></th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}><div className="flex items-center gap-1">Número {getSortIcon('number')}</div></th>
-                <th className="px-3 py-2.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}><div className="flex items-center justify-end gap-1">Valor (R$) {getSortIcon('value')}</div></th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}><div className="flex items-center gap-1">Destinatário {getSortIcon('recipient')}</div></th>
-                <th className="px-3 py-2.5 text-center">Ações</th>
+                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}><div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div></th>
+                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}><div className="flex items-center gap-1">Número {getSortIcon('number')}</div></th>
+                <th className="px-2 py-2 w-px whitespace-nowrap text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}><div className="flex items-center justify-end gap-1">Valor {getSortIcon('value')}</div></th>
+                <th className="px-2 py-2 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}><div className="flex items-center gap-1">Destinatário {getSortIcon('recipient')}</div></th>
+                <th className="px-2 py-2 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-4" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-3 w-12 mt-1" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>
-                    <td className="px-3 py-2 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-3 py-2"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-20" /><Skeleton className="h-3 w-12 mt-1" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-2 py-1.5 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (

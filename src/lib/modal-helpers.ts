@@ -44,7 +44,7 @@ export function formatDueDate(value: string | null): string {
   if (!value) return '-';
   const parsed = normalizeDateOnly(value);
   if (!parsed) return value;
-  return parsed.toLocaleDateString('pt-BR');
+  return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 export function getDuplicateStatus(value: string | null): { label: 'A vencer' | 'Vencido'; classes: string } {

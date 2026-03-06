@@ -49,6 +49,7 @@ export interface ProductRow {
   fiscalObsIcms?: string | null;
   fiscalObsPisCofins?: string | null;
   productRefs?: string[] | null;
+  defaultSupplier?: string | null;
 }
 
 export interface ProductsSummary {

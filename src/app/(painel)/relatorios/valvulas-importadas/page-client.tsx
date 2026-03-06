@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCurrency, formatCurrencyShort } from '@/lib/utils';
+import { formatAmount, formatCurrencyShort } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 
 interface SystemUser {
@@ -313,10 +313,10 @@ export default function ValvulasImportadasPage() {
           {[
             { label: 'Qtd Comprada', value: loading ? null : (totals?.purchasedQty ?? 0).toLocaleString('pt-BR'), icon: 'call_received', color: 'emerald' },
             { label: 'Valor Comprado', value: loading ? null : formatCurrencyShort(totals?.purchasedValue ?? 0), icon: 'payments', color: 'blue' },
-            { label: 'Preço Méd. Compra', value: loading ? null : formatCurrency(totals?.avgPurchasePrice ?? 0), icon: 'price_check', color: 'indigo' },
+            { label: 'Preço Méd. Compra', value: loading ? null : formatAmount(totals?.avgPurchasePrice ?? 0), icon: 'price_check', color: 'indigo' },
             { label: 'Qtd Vendida', value: loading ? null : (totals?.soldQty ?? 0).toLocaleString('pt-BR'), icon: 'call_made', color: 'purple' },
             { label: 'Valor Vendido', value: loading ? null : formatCurrencyShort(totals?.soldValue ?? 0), icon: 'request_quote', color: 'amber' },
-            { label: 'Preço Méd. Venda', value: loading ? null : formatCurrency(totals?.avgSalePrice ?? 0), icon: 'sell', color: 'orange' },
+            { label: 'Preço Méd. Venda', value: loading ? null : formatAmount(totals?.avgSalePrice ?? 0), icon: 'sell', color: 'orange' },
             { label: 'Saldo Estoque', value: loading ? null : (totals?.netQty ?? 0).toLocaleString('pt-BR'), icon: 'inventory', color: 'teal', highlight: (totals?.netQty ?? 0) > 0 ? 'emerald' : (totals?.netQty ?? 0) < 0 ? 'red' : null },
             { label: 'Valor Estoque', value: loading ? null : formatCurrencyShort(totals?.stockValue ?? 0), icon: 'account_balance', color: 'cyan' },
             { label: 'Lucro Bruto', value: loading ? null : formatCurrencyShort(totals?.grossProfit ?? 0), icon: 'trending_up', color: 'green', highlight: (totals?.grossProfit ?? 0) >= 0 ? 'green' : 'red' },
@@ -379,7 +379,7 @@ export default function ValvulasImportadasPage() {
                                     {entry.qty.toLocaleString('pt-BR')}
                                   </div>
                                   <div className="text-[9px] font-mono text-slate-400 leading-tight">
-                                    {formatCurrency(entry.value)}
+                                    {formatAmount(entry.value)}
                                   </div>
                                 </div>
                               ) : (
@@ -393,11 +393,11 @@ export default function ValvulasImportadasPage() {
                             {c.totalQty.toLocaleString('pt-BR')}
                           </div>
                           <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                            {formatCurrency(c.totalValue)}
+                            {formatAmount(c.totalValue)}
                           </div>
                         </td>
                         <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-700 dark:text-slate-300">
-                          {c.lastUnitPrice != null ? formatCurrency(c.lastUnitPrice) : '—'}
+                          {c.lastUnitPrice != null ? formatAmount(c.lastUnitPrice) : '—'}
                         </td>
                       </tr>
                     ))}
@@ -414,7 +414,7 @@ export default function ValvulasImportadasPage() {
                                 {yearQty.toLocaleString('pt-BR')}
                               </div>
                               <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                                {formatCurrency(yearVal)}
+                                {formatAmount(yearVal)}
                               </div>
                             </td>
                           );
@@ -424,7 +424,7 @@ export default function ValvulasImportadasPage() {
                             {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
                           </div>
                           <div className="text-[9px] font-mono text-slate-500 leading-tight">
-                            {formatCurrency(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
+                            {formatAmount(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
                           </div>
                         </td>
                         <td className="px-2 py-2" />
@@ -458,14 +458,14 @@ export default function ValvulasImportadasPage() {
                       <div>
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Valor</p>
                         <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                          {formatCurrency(c.totalValue)}
+                          {formatAmount(c.totalValue)}
                         </p>
                       </div>
                       {c.lastUnitPrice != null && (
                         <div className="col-span-2">
                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Últ. Preço Unit.</p>
                           <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                            {formatCurrency(c.lastUnitPrice)}
+                            {formatAmount(c.lastUnitPrice)}
                           </p>
                         </div>
                       )}
@@ -483,7 +483,7 @@ export default function ValvulasImportadasPage() {
                                     {entry.qty.toLocaleString('pt-BR')}
                                   </p>
                                   <p className="text-[9px] font-mono text-slate-400 leading-tight">
-                                    {formatCurrency(entry.value)}
+                                    {formatAmount(entry.value)}
                                   </p>
                                 </>
                               ) : (
@@ -577,13 +577,13 @@ export default function ValvulasImportadasPage() {
                           {p.purchasedQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
-                          {formatCurrency(p.purchasedValue)}
+                          {formatAmount(p.purchasedValue)}
                         </td>
                         <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
                           {p.soldQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
-                          {formatCurrency(p.soldValue)}
+                          {formatAmount(p.soldValue)}
                         </td>
                         <td className={`px-2 py-1.5 text-xs text-right font-mono font-bold ${
                           p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
@@ -591,10 +591,10 @@ export default function ValvulasImportadasPage() {
                           {p.netQty > 0 ? '+' : ''}{p.netQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
-                          {p.avgPurchasePrice != null ? formatCurrency(p.avgPurchasePrice) : '—'}
+                          {p.avgPurchasePrice != null ? formatAmount(p.avgPurchasePrice) : '—'}
                         </td>
                         <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
-                          {p.avgSalePrice != null ? formatCurrency(p.avgSalePrice) : '—'}
+                          {p.avgSalePrice != null ? formatAmount(p.avgSalePrice) : '—'}
                         </td>
                       </tr>
                     ))}
@@ -605,13 +605,13 @@ export default function ValvulasImportadasPage() {
                           {totals.purchasedQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
-                          {formatCurrency(totals.purchasedValue)}
+                          {formatAmount(totals.purchasedValue)}
                         </td>
                         <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
                           {totals.soldQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
-                          {formatCurrency(totals.soldValue)}
+                          {formatAmount(totals.soldValue)}
                         </td>
                         <td className={`px-2 py-2 text-xs text-right font-mono font-bold ${
                           totals.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : totals.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
@@ -619,10 +619,10 @@ export default function ValvulasImportadasPage() {
                           {totals.netQty > 0 ? '+' : ''}{totals.netQty.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
-                          {totals.purchasedQty > 0 ? formatCurrency(totals.purchasedValue / totals.purchasedQty) : '—'}
+                          {totals.purchasedQty > 0 ? formatAmount(totals.purchasedValue / totals.purchasedQty) : '—'}
                         </td>
                         <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
-                          {totals.soldQty > 0 ? formatCurrency(totals.soldValue / totals.soldQty) : '—'}
+                          {totals.soldQty > 0 ? formatAmount(totals.soldValue / totals.soldQty) : '—'}
                         </td>
                       </tr>
                     )}
@@ -681,7 +681,7 @@ export default function ValvulasImportadasPage() {
                     <div>
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Comprado</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {formatCurrency(p.purchasedValue)}
+                        {formatAmount(p.purchasedValue)}
                       </p>
                     </div>
                     <div>
@@ -693,7 +693,7 @@ export default function ValvulasImportadasPage() {
                     <div>
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Vendido</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {formatCurrency(p.soldValue)}
+                        {formatAmount(p.soldValue)}
                       </p>
                     </div>
                     <div>
@@ -707,13 +707,13 @@ export default function ValvulasImportadasPage() {
                     <div>
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Compra</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {p.avgPurchasePrice != null ? formatCurrency(p.avgPurchasePrice) : '—'}
+                        {p.avgPurchasePrice != null ? formatAmount(p.avgPurchasePrice) : '—'}
                       </p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Venda</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {p.avgSalePrice != null ? formatCurrency(p.avgSalePrice) : '—'}
+                        {p.avgSalePrice != null ? formatAmount(p.avgSalePrice) : '—'}
                       </p>
                     </div>
                   </div>

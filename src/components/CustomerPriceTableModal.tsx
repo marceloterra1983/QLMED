@@ -362,7 +362,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                                 onClick={() => setDetailRow(row)}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                               >
-                                <span className="material-symbols-outlined text-[13px]">visibility</span>
+                                <span className="material-symbols-outlined text-[13px]">search</span>
                                 Detalhes
                               </button>
                             </div>
@@ -414,7 +414,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                                     onClick={() => setDetailRow(row)}
                                     className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
                                   >
-                                    <span className="material-symbols-outlined text-[13px]">visibility</span>
+                                    <span className="material-symbols-outlined text-[13px]">search</span>
                                     Detalhes
                                   </button>
                                 </td>

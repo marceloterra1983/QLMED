@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
+import { formatAmount } from '@/lib/utils';
 
 type Period = 'month' | 'quarter' | 'year';
 
@@ -52,14 +53,10 @@ interface CfopRow {
   ipi: number;
 }
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(1)}k`;
-  return formatCurrency(value);
+  return `R$ ${formatAmount(value)}`;
 }
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -313,11 +310,11 @@ export default function FiscalDashboardPage() {
                 {monthly.map((row) => (
                   <tr key={`${row.year}-${row.month}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">{MONTH_NAMES[row.month - 1]} {row.year}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.pis)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.cofins)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.ipi)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.frete)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.ipi)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.frete)}</td>
                     <td className="px-4 py-2 text-right font-mono text-slate-500">{row.invoiceCount}</td>
                   </tr>
                 ))}
@@ -387,10 +384,10 @@ export default function FiscalDashboardPage() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-slate-500">{row.itemCount}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.totalValue)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.pis)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(row.cofins)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.totalValue)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -443,9 +440,9 @@ export default function FiscalDashboardPage() {
                       <div className="font-medium text-slate-700 dark:text-slate-300 text-[13px]">{s.name || 'N/A'}</div>
                       <div className="text-[10px] font-mono text-slate-400">{s.cnpj}</div>
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(s.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(s.pisCofins)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatCurrency(s.ipi)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.icms)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.pisCofins)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.ipi)}</td>
                     <td className="px-4 py-2 text-right font-mono text-slate-500">{s.invoiceCount}</td>
                   </tr>
                 ))}

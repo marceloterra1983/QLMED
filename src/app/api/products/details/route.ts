@@ -73,6 +73,7 @@ export async function GET(req: Request) {
         pr.fiscal_obs_icms,
         pr.fiscal_obs_pis_cofins,
         pr.product_refs,
+        pr.default_supplier,
         pr.agg_total_quantity,
         pr.agg_total_value,
         pr.agg_invoice_count,
@@ -153,6 +154,7 @@ export async function GET(req: Request) {
       fiscalObsIcms:      row.fiscal_obs_icms      || null,
       fiscalObsPisCofins: row.fiscal_obs_pis_cofins || null,
       productRefs: Array.isArray(row.product_refs) ? row.product_refs : [],
+      defaultSupplier: row.default_supplier || null,
     });
   } catch (error) {
     console.error('[products/details] Error:', error);

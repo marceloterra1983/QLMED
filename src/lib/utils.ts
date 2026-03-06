@@ -28,6 +28,10 @@ export function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+export function formatAmount(value: number): string {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export function formatCurrencyShort(value: number): string {
   if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `R$ ${(value / 1000).toFixed(0)}k`;
@@ -35,14 +39,18 @@ export function formatCurrencyShort(value: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR');
+  return new Date(dateStr).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  });
 }
 
 export function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
+    year: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -52,7 +60,7 @@ export function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric',
+    year: '2-digit',
   });
 }
 

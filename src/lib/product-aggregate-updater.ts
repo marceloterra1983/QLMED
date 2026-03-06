@@ -216,6 +216,7 @@ async function upsertProductAggregates(
           agg_last_price, agg_average_price, agg_last_issue_date,
           agg_last_supplier_name, agg_last_supplier_cnpj, agg_last_invoice_number,
           agg_computed_at, agg_search_text,
+          codigo,
           created_at, updated_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8,
@@ -224,6 +225,7 @@ async function upsertProductAggregates(
           $14, $15, $16,
           $17, $18, $19,
           NOW(), $20,
+          (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $2),
           NOW(), NOW()
         )
         ON CONFLICT (company_id, product_key) DO NOTHING

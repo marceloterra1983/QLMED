@@ -8,7 +8,7 @@ const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsMod
 import Skeleton from '@/components/ui/Skeleton';
 import type { DashboardStats, FinanceiroSummary, Invoice } from '@/types';
 import {
-  formatCurrency,
+  formatAmount,
   formatCurrencyShort,
   formatDateShort,
   formatTime,
@@ -337,7 +337,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(contasPagar.totalValor)}
+                  {formatAmount(contasPagar.totalValor)}
                 </span>
                 <span className="text-xs text-slate-400 font-medium">
                   {contasPagar.total} {contasPagar.total === 1 ? 'título' : 'títulos'}
@@ -346,12 +346,12 @@ export default function DashboardPage() {
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {contasPagar.vencidasValor > 0 && (
                   <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                    {formatCurrency(contasPagar.vencidasValor)} vencidas
+                    {formatAmount(contasPagar.vencidasValor)} vencidas
                   </span>
                 )}
                 {contasPagar.aVencerValor > 0 && (
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(contasPagar.aVencerValor)} a vencer
+                    {formatAmount(contasPagar.aVencerValor)} a vencer
                   </span>
                 )}
                 {contasPagar.totalValor === 0 && (
@@ -392,7 +392,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(contasReceber.totalValor)}
+                  {formatAmount(contasReceber.totalValor)}
                 </span>
                 <span className="text-xs text-slate-400 font-medium">
                   {contasReceber.total} {contasReceber.total === 1 ? 'título' : 'títulos'}
@@ -401,12 +401,12 @@ export default function DashboardPage() {
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {contasReceber.vencidasValor > 0 && (
                   <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                    {formatCurrency(contasReceber.vencidasValor)} vencidas
+                    {formatAmount(contasReceber.vencidasValor)} vencidas
                   </span>
                 )}
                 {contasReceber.aVencerValor > 0 && (
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(contasReceber.aVencerValor)} a receber
+                    {formatAmount(contasReceber.aVencerValor)} a receber
                   </span>
                 )}
                 {contasReceber.totalValor === 0 && (
@@ -475,7 +475,7 @@ export default function DashboardPage() {
                   onClick={() => handleSort('value')}
                 >
                   <div className="flex items-center justify-end gap-1">
-                    Valor (R$) {getSortIcon('value')}
+                    Valor {getSortIcon('value')}
                   </div>
                 </th>
                 <th className="px-6 py-4 text-center">Ações</th>
@@ -596,7 +596,7 @@ export default function DashboardPage() {
                               : 'text-slate-900 dark:text-white'
                           }`}
                         >
-                          {formatCurrency(invoice.totalValue)}
+                          {formatAmount(invoice.totalValue)}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -618,9 +618,7 @@ export default function DashboardPage() {
                             className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
                             title="Ver Detalhes"
                           >
-                            <span className="material-symbols-outlined text-[20px]">
-                              visibility
-                            </span>
+                            <span className="material-symbols-outlined text-[20px]">search</span>
                           </button>
                           <a
                             href={`/api/invoices/${invoice.id}/download`}
@@ -690,7 +688,7 @@ export default function DashboardPage() {
                           : 'text-slate-900 dark:text-white'
                       }`}
                     >
-                      {formatCurrency(invoice.totalValue)}
+                      {formatAmount(invoice.totalValue)}
                     </span>
                   </div>
 
@@ -756,7 +754,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors text-xs font-medium"
                       title="Ver Detalhes"
                     >
-                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                      <span className="material-symbols-outlined text-[16px]">search</span>
                       Detalhes
                     </button>
                     <a

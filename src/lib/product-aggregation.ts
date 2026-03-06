@@ -17,6 +17,14 @@ const MAX_ISSUED_INVOICES = 3000;
 const MAX_IMPORT_INVOICES = 500;
 const XML_BATCH_SIZE = 50;
 
+export interface ProductBatch {
+  lot: string;
+  serial: string | null;
+  quantity: number | null;
+  fabrication: string | null;
+  expiry: string | null;
+}
+
 export interface ProductFromXml {
   code: string;
   description: string;
@@ -27,6 +35,7 @@ export interface ProductFromXml {
   quantity: number;
   unitPrice: number;
   totalValue: number;
+  batches: ProductBatch[];
 }
 
 export interface AggregatedProduct {
@@ -105,6 +114,85 @@ function extractAnvisaFromFreeText(text: string | null | undefined): string | nu
   }
 
   return null;
+}
+
+function extractBatches(det: any, prod: any): ProductBatch[] {
+  const batches: ProductBatch[] = [];
+  const seenLots = new Set<string>();
+
+  // 1. <rastro> blocks (preferred, NF-e 4.0+)
+  for (const r of ensureArray<any>(prod?.rastro)) {
+    const lot = cleanString(r?.nLote);
+    if (!lot) continue;
+    seenLots.add(lot);
+    batches.push({
+      lot,
+      serial: null,
+      quantity: r?.qLote != null ? toNumber(r.qLote) : null,
+      fabrication: cleanString(r?.dFab),
+      expiry: cleanString(r?.dVal),
+    });
+  }
+
+  // 2. Fallback: <med> block (older format)
+  if (batches.length === 0) {
+    for (const m of ensureArray<any>(det?.med).concat(ensureArray<any>(prod?.med))) {
+      const lot = cleanString(m?.nLote) || cleanString(m?.nLot);
+      if (!lot || seenLots.has(lot)) continue;
+      seenLots.add(lot);
+      batches.push({
+        lot,
+        serial: null,
+        quantity: null,
+        fabrication: null,
+        expiry: cleanString(m?.dVal),
+      });
+    }
+  }
+
+  // 3. Fallback: regex on xProd / infAdProd
+  if (batches.length === 0) {
+    const texts = [cleanString(prod?.xProd), cleanString(det?.infAdProd)].filter(Boolean) as string[];
+    let lot: string | null = null;
+    let serial: string | null = null;
+    let expiry: string | null = null;
+    let fabrication: string | null = null;
+
+    for (const text of texts) {
+      if (!lot) {
+        const lotPatterns = [
+          /(?:Lotes?|LT)\s*[.:]\s*\(?([A-Za-z0-9]+)/i,
+          /(?:^|\s)(?:CS|ES)\s+LOTE\s*:\s*([A-Za-z0-9]+)/i,
+        ];
+        for (const pat of lotPatterns) {
+          const m = text.match(pat);
+          if (m) { lot = m[1].trim(); break; }
+        }
+      }
+      if (!serial) {
+        const serMatch = text.match(/Numero\s+Serie\s*:\s*([A-Za-z0-9]+)/i)
+          || text.match(/(?:N[°º.]?\s*)?S[eé]rie\s*[.:]\s*([A-Za-z0-9]+)/i)
+          || text.match(/(?:SN|S\/N)\s*[.:]\s*([A-Za-z0-9]+)/i);
+        if (serMatch) serial = serMatch[1].trim();
+      }
+      if (!expiry) {
+        const valMatch = text.match(/Val[.:]?\s*(\d{2}\/\d{2}\/\d{4})/i)
+          || text.match(/Val[.:]?\s*(\d{4}-\d{2}-\d{2})/i);
+        if (valMatch) expiry = valMatch[1];
+      }
+      if (!fabrication) {
+        const fabMatch = text.match(/Fab[.:]?\s*(\d{2}\/\d{2}\/\d{4})/i)
+          || text.match(/Fab[.:]?\s*(\d{4}-\d{2}-\d{2})/i);
+        if (fabMatch) fabrication = fabMatch[1];
+      }
+    }
+
+    if (lot || serial) {
+      batches.push({ lot: lot || serial!, serial: lot ? serial : null, quantity: null, fabrication, expiry });
+    }
+  }
+
+  return batches;
 }
 
 function extractAnvisa(det: any, prod: any): string | null {
@@ -200,6 +288,7 @@ export async function extractProductsFromXml(xmlContent: string): Promise<Produc
         quantity,
         unitPrice: safeUnitPrice,
         totalValue,
+        batches: extractBatches(det, prod),
       };
     });
   } catch {

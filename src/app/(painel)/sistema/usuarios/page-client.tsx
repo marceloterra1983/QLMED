@@ -484,7 +484,7 @@ export default function UsuariosPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-slate-500">
-                          {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                          {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -541,7 +541,7 @@ export default function UsuariosPage() {
                     <div>
                       <span className="text-slate-400 font-medium">Criado em</span>
                       <p className="text-slate-700 dark:text-slate-300">
-                        {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                       </p>
                     </div>
                   </div>

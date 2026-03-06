@@ -117,6 +117,7 @@ export async function PATCH(req: Request) {
       if ('fiscalObsPisCofins'   in fields) updates.push('fiscal_obs_pis_cofins = EXCLUDED.fiscal_obs_pis_cofins');
       if ('productRefs'            in fields) updates.push('product_refs = EXCLUDED.product_refs');
       if ('manufacturerShortName' in fields) updates.push('manufacturer_short_name = EXCLUDED.manufacturer_short_name');
+      if ('defaultSupplier'       in fields) updates.push('default_supplier = EXCLUDED.default_supplier');
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO product_registry
@@ -129,6 +130,7 @@ export async function PATCH(req: Request) {
             fiscal_obs_icms, fiscal_obs_pis_cofins,
             product_refs,
             manufacturer_short_name,
+            default_supplier,
             codigo,
             created_at, updated_at)
          VALUES
@@ -141,6 +143,7 @@ export async function PATCH(req: Request) {
             $30, $31,
             $32::text[],
             $33,
+            $35,
             (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $1),
             NOW(), NOW())
          ON CONFLICT (company_id, product_key) DO UPDATE SET
@@ -179,6 +182,7 @@ export async function PATCH(req: Request) {
         'productRefs'            in fields ? (Array.isArray(fields.productRefs) ? fields.productRefs : []) : [],
         'manufacturerShortName'  in fields ? cleanString(fields.manufacturerShortName) : null,
         'instrumental'           in fields ? (fields.instrumental === true) : false,
+        'defaultSupplier'        in fields ? cleanString(fields.defaultSupplier)        : null,
       );
 
       updated++;

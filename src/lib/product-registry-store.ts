@@ -505,10 +505,13 @@ export async function upsertProductRegistry(
         anvisa_risk_class,
         anvisa_synced_at,
         out_of_line,
+        codigo,
         created_at,
         updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, TRUE, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, TRUE,
+        (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $2),
+        NOW(), NOW()
       )
       ON CONFLICT (company_id, product_key)
       DO UPDATE SET

@@ -14,7 +14,12 @@ export type ProductSettingsCatalogSection =
   | 'fiscal_cfop_entrada'
   | 'fiscal_cfop_saida'
   | 'fiscal_obs_icms'
-  | 'fiscal_obs_pis_cofins';
+  | 'fiscal_obs_pis_cofins'
+  | 'fiscal_aliq_icms'
+  | 'fiscal_aliq_pis'
+  | 'fiscal_aliq_cofins'
+  | 'fiscal_aliq_ipi'
+  | 'fiscal_aliq_fcp';
 
 export interface ProductSettingsCatalogEntry {
   id: string;

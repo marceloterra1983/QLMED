@@ -84,7 +84,7 @@ function buildHtml(data: ReportData): string {
     { label: 'Lucro Bruto', value: fmtCurrencyShort(grossProfit), color: grossProfit >= 0 ? '#22c55e' : '#ef4444' },
   ];
 
-  const today = new Date().toLocaleDateString('pt-BR');
+  const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
   const years = data.customerYearlySales.years;
   const customers = data.customerYearlySales.customers;
 
@@ -249,7 +249,7 @@ async function sendEmail(to: string, pdfBuffer: Buffer): Promise<void> {
     },
   });
 
-  const today = new Date().toLocaleDateString('pt-BR');
+  const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
   await transporter.sendMail({
     from: `"QL MED" <${process.env.SMTP_USER || 'adm@qlmed.com.br'}>`,

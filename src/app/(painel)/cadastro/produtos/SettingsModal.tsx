@@ -8,7 +8,8 @@ import type { ProductRow } from './types';
 /* ─── Settings Modal (Ajustes) ─── */
 
 type SettingsSection = 'lines' | 'manufacturers' | 'fiscal';
-type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida' | 'obsIcms' | 'obsPisCofins';
+type AliqField = 'aliqIcms' | 'aliqPis' | 'aliqCofins' | 'aliqIpi' | 'aliqFcp';
+type FiscalTab = 'ncm' | 'fiscalSitTributaria' | 'fiscalNomeTributacao' | 'cest' | 'origem' | 'cfopEntrada' | 'cfopSaida' | 'obsIcms' | 'obsPisCofins' | 'aliquotas' | AliqField;
 type SettingsCountItem = { value: string; count: number; description?: string };
 type SettingsSubgroupItem = { name: string; count: number };
 type SettingsGroupItem = { name: string; count: number; subgroups: SettingsSubgroupItem[] };
@@ -27,6 +28,11 @@ type ProductSettingsResponse = {
     cfopSaida: SettingsCountItem[];
     obsIcms: SettingsCountItem[];
     obsPisCofins: SettingsCountItem[];
+    aliqIcms: SettingsCountItem[];
+    aliqPis: SettingsCountItem[];
+    aliqCofins: SettingsCountItem[];
+    aliqIpi: SettingsCountItem[];
+    aliqFcp: SettingsCountItem[];
   };
 };
 type PendingDeleteState = {
@@ -51,6 +57,7 @@ const FISCAL_TABS: { key: FiscalTab; label: string; icon: string; field: keyof P
   { key: 'cest', label: 'CEST', icon: 'verified', field: 'fiscalCest' },
   { key: 'cfopEntrada', label: 'CFOP Entrada', icon: 'login', field: 'fiscalCfopEntrada' as keyof ProductRow },
   { key: 'cfopSaida', label: 'CFOP Saída', icon: 'logout', field: 'fiscalCfopSaida' as keyof ProductRow },
+  { key: 'aliquotas', label: 'Alíquotas', icon: 'percent', field: 'fiscalIcms' as keyof ProductRow },
 ];
 
 function buildSubtypeCountKey(type: string, subtype: string) {
@@ -148,11 +155,8 @@ function SettingsModal({ onClose, onUpdated }: {
   // --- manufacturers ---
   const [editingMfr, setEditingMfr] = useState<string | null>(null);
   const [mfrEditValue, setMfrEditValue] = useState('');
-  const [editingShort, setEditingShort] = useState<string | null>(null);
-  const [shortValue, setShortValue] = useState('');
   const [mfrSearch, setMfrSearch] = useState('');
   const [newMfrName, setNewMfrName] = useState('');
-  const [newMfrShort, setNewMfrShort] = useState('');
   const [addingNew, setAddingNew] = useState(false);
 
   // --- fiscal ---
@@ -247,7 +251,7 @@ function SettingsModal({ onClose, onUpdated }: {
   const filteredMfrs = useMemo(() => {
     if (!mfrSearch) return manufacturers;
     const q = mfrSearch.toLowerCase();
-    return manufacturers.filter((m) => m.name.toLowerCase().includes(q) || (m.shortName && m.shortName.toLowerCase().includes(q)));
+    return manufacturers.filter((m) => m.name.toLowerCase().includes(q));
   }, [manufacturers, mfrSearch]);
 
   // ==== data: fiscal ====
@@ -255,7 +259,8 @@ function SettingsModal({ onClose, onUpdated }: {
     const result: Record<FiscalTab, Map<string, number>> = {
       ncm: new Map(), fiscalSitTributaria: new Map(), fiscalNomeTributacao: new Map(),
       cest: new Map(), origem: new Map(), cfopEntrada: new Map(), cfopSaida: new Map(),
-      obsIcms: new Map(), obsPisCofins: new Map(),
+      obsIcms: new Map(), obsPisCofins: new Map(), aliquotas: new Map(),
+      aliqIcms: new Map(), aliqPis: new Map(), aliqCofins: new Map(), aliqIpi: new Map(), aliqFcp: new Map(),
     };
     for (const item of settingsData?.fiscal.ncm || []) result.ncm.set(item.value, item.count || 0);
     for (const item of settingsData?.fiscal.fiscalSitTributaria || []) result.fiscalSitTributaria.set(item.value, item.count || 0);
@@ -274,6 +279,11 @@ function SettingsModal({ onClose, onUpdated }: {
     if (Object.keys(descMap).length > 0) setCfopDescCache(prev => ({ ...prev, ...descMap }));
     for (const item of settingsData?.fiscal.obsIcms || []) result.obsIcms.set(item.value, item.count || 0);
     for (const item of settingsData?.fiscal.obsPisCofins || []) result.obsPisCofins.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.aliqIcms || []) result.aliqIcms.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.aliqPis || []) result.aliqPis.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.aliqCofins || []) result.aliqCofins.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.aliqIpi || []) result.aliqIpi.set(item.value, item.count || 0);
+    for (const item of settingsData?.fiscal.aliqFcp || []) result.aliqFcp.set(item.value, item.count || 0);
     return result;
   }, [settingsData]);
 
@@ -403,16 +413,14 @@ function SettingsModal({ onClose, onUpdated }: {
       },
     );
   };
-  const handleMfrShortName = async (manufacturer: string) => { await callMfrApi({ action: 'shortName', manufacturer, shortName: shortValue.trim() || null }); setEditingShort(null); };
   const handleMfrAdd = async () => {
     if (!newMfrName.trim()) return;
     setAddingNew(true);
     try {
-      const res = await fetch('/api/products/rename-manufacturer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', name: newMfrName.trim(), shortName: newMfrShort.trim() || null }) });
+      const res = await fetch('/api/products/rename-manufacturer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', name: newMfrName.trim() }) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
       toast.success(`Fabricante "${newMfrName.trim()}" adicionado`);
       setNewMfrName('');
-      setNewMfrShort('');
       await refreshAfterMutation();
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setAddingNew(false); }
   };
@@ -428,11 +436,12 @@ function SettingsModal({ onClose, onUpdated }: {
       },
     );
   };
-  const handleFiscalAdd = async () => {
+  const handleFiscalAdd = async (field?: AliqField) => {
     if (!newFiscalName.trim()) return;
+    const targetField = field || fiscalTab;
     setSaving(true);
     try {
-      const res = await fetch('/api/products/rename-fiscal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', field: fiscalTab, name: newFiscalName.trim() }) });
+      const res = await fetch('/api/products/rename-fiscal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add', field: targetField, name: newFiscalName.trim() }) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || 'Falha'); }
       toast.success(`"${newFiscalName.trim()}" cadastrado`);
       await refreshAfterMutation();
@@ -683,8 +692,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
                     <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
                     <div className="flex gap-2">
-                      <input placeholder="Nome completo" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
-                      <input placeholder="Abreviado" value={newMfrShort} onChange={(e) => setNewMfrShort(e.target.value)} className="w-36 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                      <input placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
                       <button onClick={handleMfrAdd} disabled={addingNew || !newMfrName.trim()} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </div>
                   </div>
@@ -699,37 +707,18 @@ function SettingsModal({ onClose, onUpdated }: {
                   )}
                   {filteredMfrs.map((mfr) => {
                     const isEditingName = editingMfr === mfr.name;
-                    const isEditingShortName = editingShort === mfr.name;
                     return (
-                      <div key={mfr.name} className="group/mfr rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600 transition-colors overflow-hidden">
-                        <div className="flex items-center gap-2.5 px-4 py-2.5">
-                          {isEditingName ? (
-                            <MfrInlineForm value={mfrEditValue} onChange={setMfrEditValue} onSubmit={() => handleMfrRename(mfr.name)} onCancel={() => setEditingMfr(null)} disabled={saving} />
-                          ) : (
-                            <>
-                              <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate block" title={mfr.name}>{mfr.name}</span>
-                                {mfr.shortName && <span className="text-[11px] text-slate-500 dark:text-slate-400">{mfr.shortName}</span>}
-                              </div>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
-                              <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                              <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
-                            </>
-                          )}
-                        </div>
-                        {!isEditingName && (
-                          <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold w-24 shrink-0">Abreviado</span>
-                            {isEditingShortName ? (
-                              <MfrInlineForm value={shortValue} onChange={setShortValue} onSubmit={() => handleMfrShortName(mfr.name)} onCancel={() => setEditingShort(null)} placeholder="Ex: Medtronic" disabled={saving} />
-                            ) : (
-                              <>
-                                <span className={`flex-1 text-[13px] ${mfr.shortName ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-500 italic'}`}>{mfr.shortName || 'não definido'}</span>
-                                <button onClick={() => { setEditingShort(mfr.name); setShortValue(mfr.shortName || ''); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Definir nome abreviado"><span className="material-symbols-outlined text-[15px]">edit</span></button>
-                              </>
-                            )}
-                          </div>
+                      <div key={mfr.name} className="group/mfr flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                        {isEditingName ? (
+                          <MfrInlineForm value={mfrEditValue} onChange={setMfrEditValue} onSubmit={() => handleMfrRename(mfr.name)} onCancel={() => setEditingMfr(null)} disabled={saving} />
+                        ) : (
+                          <>
+                            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
+                            <span className="flex-1 text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate" title={mfr.name}>{mfr.name}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
+                            <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                          </>
                         )}
                       </div>
                     );
@@ -746,7 +735,9 @@ function SettingsModal({ onClose, onUpdated }: {
                   <div className="flex sm:flex-col overflow-x-auto sm:overflow-x-visible sm:py-2 scrollbar-none">
                     {FISCAL_TABS.map((tab) => {
                       const isActive = fiscalTab === tab.key;
-                      const itemCount = fiscalItemsMap[tab.key].size;
+                      const itemCount = tab.key === 'aliquotas'
+                        ? (['aliqIcms','aliqPis','aliqCofins','aliqIpi','aliqFcp'] as AliqField[]).reduce((s, k) => s + (fiscalItemsMap[k]?.size || 0), 0)
+                        : fiscalItemsMap[tab.key].size;
                       return (
                         <button key={tab.key} onClick={() => { setFiscalTab(tab.key); setFiscalEditItem(null); setNewFiscalName(''); setFiscalSearch(''); }}
                           className={`shrink-0 flex items-center gap-2 px-4 py-2.5 sm:py-2 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-amber-50/80 dark:bg-amber-900/15 border-b-2 sm:border-b-0 sm:border-r-2 border-amber-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
@@ -761,6 +752,67 @@ function SettingsModal({ onClose, onUpdated }: {
 
                 {/* Fiscal content area */}
                 <div className="flex-1 min-w-0 overflow-y-auto px-4 py-4 space-y-1.5">
+
+                  {/* ── Alíquotas combined view ── */}
+                  {fiscalTab === 'aliquotas' && (() => {
+                    const ALIQ_CARDS: { field: AliqField; label: string; color: string }[] = [
+                      { field: 'aliqIcms',   label: 'ICMS',   color: 'text-indigo-500' },
+                      { field: 'aliqPis',    label: 'PIS',    color: 'text-teal-500' },
+                      { field: 'aliqCofins', label: 'COFINS', color: 'text-teal-600' },
+                      { field: 'aliqIpi',    label: 'IPI',    color: 'text-amber-500' },
+                      { field: 'aliqFcp',    label: 'FCP',    color: 'text-rose-500' },
+                    ];
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {ALIQ_CARDS.map(({ field, label, color }) => {
+                          const items = Array.from(fiscalItemsMap[field].entries()).sort(([a], [b]) => parseFloat(a) - parseFloat(b));
+                          return (
+                            <div key={field} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 overflow-hidden">
+                              <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-2">
+                                <span className={`material-symbols-outlined text-[15px] ${color}`}>percent</span>
+                                <span className={`text-[12px] font-bold uppercase tracking-wide ${color}`}>{label} %</span>
+                                <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{items.length} valor{items.length !== 1 ? 'es' : ''}</span>
+                              </div>
+                              <div className="p-3 space-y-1">
+                                {items.length === 0 && (
+                                  <p className="text-[12px] text-slate-400 dark:text-slate-500 py-1 text-center">Nenhum valor</p>
+                                )}
+                                {items.map(([value, count]) => {
+                                  const isEditing = fiscalEditItem?.field === field && fiscalEditItem.oldValue === value;
+                                  return (
+                                    <div key={value} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 group/aliq transition-colors">
+                                      {isEditing ? (
+                                        <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
+                                          <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
+                                          <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[16px]">check</span></button>
+                                          <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
+                                        </form>
+                                      ) : (
+                                        <>
+                                          <span className="font-mono text-[13px] font-semibold text-slate-800 dark:text-slate-200 flex-1">{value}%</span>
+                                          <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[22px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                                          <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                          <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(field); }} className="flex items-center gap-1.5 pt-1">
+                                  <input placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow font-mono" disabled={saving} />
+                                  <button type="submit" disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
+                                </form>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── Standard item list (non-aliquotas tabs) ── */}
+                  {fiscalTab !== 'aliquotas' && (<>
+
                   {/* Search + count header */}
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
@@ -900,6 +952,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     </form>
                   </div>
                   )}
+                  </>)}
                 </div>
               </div>
             )}
