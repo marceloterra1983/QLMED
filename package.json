@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "deploy:server": "bash ./scripts/deploy-server.sh",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:migrate:dev": "prisma migrate dev",
