@@ -124,7 +124,7 @@ fi
 
 healthy=0
 for _ in $(seq 1 45); do
-  if curl -fsS "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
+  if curl -fsS "$DEPLOY_HEALTHCHECK_URL" >/dev/null 2>&1; then
     healthy=1
     break
   fi
@@ -150,5 +150,5 @@ echo "Deploy complete: $COMMIT_SHA"
 EOF
 
 echo "Verifying public health..."
-curl -fsS "https://app.qlmed.com.br/api/health" >/dev/null
+curl -fsS "https://app.qlmed.com.br/api/health" >/dev/null 2>&1
 echo "Deploy complete: ${COMMIT_SHA}"
