@@ -9,6 +9,7 @@ import { mapSourceStatusToInvoiceStatus } from './source-status';
 import { resolveInvoiceDirection } from './invoice-direction';
 import { updateProductAggregatesForInvoice, scheduleNightlyRebuild } from './product-aggregate-updater';
 import { syncReceitaNfseByNsu } from './receita-nfse-sync';
+import { saveXmlToFile } from './xml-file-store';
 
 // Instância própria de Prisma para evitar import circular com prisma.ts
 const prisma = new PrismaClient();
@@ -374,6 +375,7 @@ async function syncViaSefaz(
           });
           if (result.createdAt.getTime() === result.updatedAt.getTime()) {
             totalNovos++;
+            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch(() => {});
           } else {
             totalAtualizados++;
           }
@@ -496,6 +498,7 @@ async function syncViaNsdocs(
         });
         if (result.createdAt.getTime() === result.updatedAt.getTime()) {
           totalNovos++;
+          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch(() => {});
         } else {
           totalAtualizados++;
         }

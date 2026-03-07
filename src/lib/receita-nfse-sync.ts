@@ -3,6 +3,7 @@ import { decrypt } from '@/lib/crypto';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
+import { saveXmlToFile } from '@/lib/xml-file-store';
 
 const DEFAULT_MAX_STEPS = 200;
 const DEFAULT_EMPTY_LIMIT = 2;
@@ -193,6 +194,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
 
       if (result.createdAt.getTime() === result.updatedAt.getTime()) {
         newDocs++;
+        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch(() => {});
       } else {
         updatedDocs++;
       }
