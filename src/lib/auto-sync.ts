@@ -127,18 +127,18 @@ async function checkAndSync() {
         });
         if (running) continue;
 
-        const lastSefazCompleted = await prisma.syncLog.findFirst({
+        const lastSefazRun = await prisma.syncLog.findFirst({
           where: {
             companyId: company.id,
             syncMethod: 'sefaz',
-            status: 'completed',
+            status: { in: ['completed', 'error'] },
           },
           orderBy: { completedAt: 'desc' },
           select: { completedAt: true },
         });
         if (
-          lastSefazCompleted?.completedAt &&
-          getHourSlotKey(lastSefazCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          lastSefazRun?.completedAt &&
+          getHourSlotKey(lastSefazRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
         ) {
           continue;
         }
@@ -180,24 +180,24 @@ async function checkAndSync() {
         if (running) continue;
 
         // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
-        const lastNsdocsCompleted = await prisma.syncLog.findFirst({
+        const lastNsdocsRun = await prisma.syncLog.findFirst({
           where: {
             companyId: company.id,
             syncMethod: 'nsdocs',
-            status: 'completed',
+            status: { in: ['completed', 'error'] },
           },
           orderBy: { completedAt: 'desc' },
           select: { completedAt: true },
         });
         if (
-          lastNsdocsCompleted?.completedAt &&
-          getHourSlotKey(lastNsdocsCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          lastNsdocsRun?.completedAt &&
+          getHourSlotKey(lastNsdocsRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
         ) {
           continue;
         }
         if (
-          lastNsdocsCompleted?.completedAt &&
-          !hasElapsedInterval(lastNsdocsCompleted.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+          lastNsdocsRun?.completedAt &&
+          !hasElapsedInterval(lastNsdocsRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
         ) {
           continue;
         }
@@ -234,24 +234,24 @@ async function checkAndSync() {
         });
         if (running) continue;
 
-        const lastReceitaCompleted = await prisma.syncLog.findFirst({
+        const lastReceitaRun = await prisma.syncLog.findFirst({
           where: {
             companyId: company.id,
             syncMethod: 'receita_nfse',
-            status: 'completed',
+            status: { in: ['completed', 'error'] },
           },
           orderBy: { completedAt: 'desc' },
           select: { completedAt: true },
         });
         if (
-          lastReceitaCompleted?.completedAt &&
-          getHourSlotKey(lastReceitaCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          lastReceitaRun?.completedAt &&
+          getHourSlotKey(lastReceitaRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
         ) {
           continue;
         }
         if (
-          lastReceitaCompleted?.completedAt &&
-          !hasElapsedInterval(lastReceitaCompleted.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+          lastReceitaRun?.completedAt &&
+          !hasElapsedInterval(lastReceitaRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
         ) {
           continue;
         }
