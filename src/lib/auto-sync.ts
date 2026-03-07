@@ -15,6 +15,7 @@ const prisma = new PrismaClient();
 
 const CHECK_INTERVAL_MS = 60 * 1000; // Verifica a cada 60 segundos
 const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo';
+const SEFAZ_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.SEFAZ_AUTO_SYNC_MINUTE, '00');
 const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
 const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
 
@@ -105,10 +106,57 @@ async function checkAndSync() {
     const now = new Date();
     const nowParts = getDatePartsInTimeZone(now, AUTO_SYNC_TIMEZONE);
     const currentHourSlotKey = `${nowParts.year}-${nowParts.month}-${nowParts.day} ${nowParts.hour}`;
+    const runSefazNow = nowParts.minute === SEFAZ_AUTO_SYNC_MINUTE;
     const runNsdocsNow = nowParts.minute === NSDOCS_AUTO_SYNC_MINUTE;
     const runReceitaNow = nowParts.minute === RECEITA_NFSE_AUTO_SYNC_MINUTE;
 
-    if (!runNsdocsNow && !runReceitaNow) return;
+    if (!runSefazNow && !runNsdocsNow && !runReceitaNow) return;
+
+    if (runSefazNow) {
+      const certConfigs = await prisma.certificateConfig.findMany({
+        include: {
+          company: true,
+        },
+      });
+
+      for (const cert of certConfigs) {
+        const company = cert.company;
+
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
+        });
+        if (running) continue;
+
+        const lastSefazCompleted = await prisma.syncLog.findFirst({
+          where: {
+            companyId: company.id,
+            syncMethod: 'sefaz',
+            status: 'completed',
+          },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        if (
+          lastSefazCompleted?.completedAt &&
+          getHourSlotKey(lastSefazCompleted.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+        ) {
+          continue;
+        }
+
+        console.log(
+          `[AutoSync] Sincronizando SEFAZ (slot ${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+          `${company.razaoSocial} (${company.cnpj})`
+        );
+        await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
+          id: cert.id,
+          pfxData: cert.pfxData,
+          pfxPassword: cert.pfxPassword,
+          lastNsu: cert.lastNsu,
+          environment: cert.environment,
+          subject: cert.subject,
+        });
+      }
+    }
 
     if (runNsdocsNow) {
       const configs = await prisma.nsdocsConfig.findMany({
@@ -269,14 +317,15 @@ async function syncViaSefaz(
 
       const response = await sefaz.buscarNovosDocumentos(ultNSU);
 
+      // Always advance ultNSU even on error (SEFAZ returns valid ultNSU with 656)
+      if (response.ultNSU) ultNSU = response.ultNSU;
+
       if (response.status === 'error') {
         if (response.cStat === '656') {
           throw new Error('Bloqueio SEFAZ (656): Excesso de consultas. Aguarde 1h.');
         }
         throw new Error(`Erro SEFAZ: ${response.xMotivo} (cStat: ${response.cStat})`);
       }
-
-      ultNSU = response.ultNSU || ultNSU;
 
       if (response.status === 'empty') break;
       if (response.docs.length === 0 && ultNSU === nsuAntes) break;

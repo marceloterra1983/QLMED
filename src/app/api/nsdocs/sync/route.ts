@@ -134,15 +134,15 @@ export async function POST(request: NextRequest) {
             // Buscar na SEFAZ
             const response = await sefaz.buscarNovosDocumentos(ultNSU);
             
+            // Always advance ultNSU even on error (SEFAZ returns valid ultNSU with 656)
+            if (response.ultNSU) ultNSU = response.ultNSU;
+
             if (response.status === 'error') {
                if (response.cStat === '656') {
                   throw new Error(`Bloqueio SEFAZ (656): Excesso de consultas sem novos documentos. Aguarde 1 hora antes de tentar novamente.`);
                }
                throw new Error(`Erro SEFAZ: ${response.xMotivo} (cStat: ${response.cStat})`);
             }
-
-            // Atualizar ultimo NSU conhecido
-            ultNSU = response.ultNSU || ultNSU;
 
             // Quando a SEFAZ retorna "sem documentos" (cStat 137),
             // uma nova consulta imediata pode gerar bloqueio 656.
