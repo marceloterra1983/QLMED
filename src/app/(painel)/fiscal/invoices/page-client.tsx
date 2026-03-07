@@ -17,6 +17,7 @@ import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import { useRole } from '@/hooks/useRole';
 
+const AUTO_REFRESH_MS = 30_000;
 
 export default function InvoicesPage() {
   const { canWrite } = useRole();
@@ -87,6 +88,14 @@ export default function InvoicesPage() {
   }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      loadInvoices({ silent: true });
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
+
+  useEffect(() => {
     const cy = new Date().getFullYear();
     Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
       fetch(`/api/invoices?limit=1&page=1&type=NFE&direction=received&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
@@ -146,8 +155,9 @@ export default function InvoicesPage() {
     } catch { toast.error('Erro de rede ao excluir'); }
   };
 
-  async function loadInvoices() {
-    setLoading(true);
+  async function loadInvoices(options?: { silent?: boolean }) {
+    const silent = options?.silent ?? false;
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({ page: '1', limit: '2000' });
       if (search) params.set('search', search);
