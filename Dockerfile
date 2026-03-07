@@ -61,6 +61,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs --chmod=755 start.sh ./start.sh
 
+# Create writable directory for OneDrive XML sync
+RUN mkdir -p /app/xml_backup && chown nextjs:nodejs /app/xml_backup
+
 USER nextjs
 
 EXPOSE 3000
