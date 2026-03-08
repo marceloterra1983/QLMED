@@ -33,7 +33,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate production compose
-        run: docker compose --env-file production/.env.example -f production/docker-compose.yml config >/dev/null
+        run: |
+          mkdir -p production/env
+          : > production/env/app.env
+          : > production/env/n8n.env
+          docker compose --env-file production/.env.example -f production/docker-compose.yml config >/dev/null
 
       - name: Sync production manifests
         run: |
