@@ -16,7 +16,7 @@ services:
 
   qlmed-app:
     build:
-      context: ./app
+      context: ..
       args:
         QLMED_API_KEY: ${APP_QLMED_API_KEY}
     restart: unless-stopped
