@@ -1,0 +1,73 @@
+name: Deploy QLMED Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-production.yml"
+      - "production/**"
+      - "Dockerfile"
+      - "next.config.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "postcss.config.js"
+      - "prisma/**"
+      - "public/**"
+      - "reports/**"
+      - "scripts/**"
+      - "src/**"
+      - "start.sh"
+      - "tailwind.config.js"
+      - "tsconfig.json"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - qlmed-prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate production compose
+        run: docker compose --env-file production/.env.example -f production/docker-compose.yml config >/dev/null
+
+      - name: Sync production manifests
+        run: |
+          mkdir -p /home/marce/QLMED/production
+          cp production/docker-compose.yml /home/marce/QLMED/production/docker-compose.yml
+
+      - name: Sync application source
+        run: |
+          mkdir -p /home/marce/QLMED/production/app
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            --exclude '.next' \
+            --exclude 'node_modules' \
+            --exclude 'production' \
+            ./ /home/marce/QLMED/production/app/
+
+      - name: Deploy stack on server
+        run: |
+          docker compose \
+            --project-name qlmed \
+            --env-file /home/marce/QLMED/production/.env \
+            -f /home/marce/QLMED/production/docker-compose.yml \
+            up -d --build
+
+      - name: Verify local health
+        run: |
+          curl -fsS http://127.0.0.1:13000/api/health >/dev/null
+          curl -fsS http://127.0.0.1:5678 >/dev/null
+          curl -fsS http://127.0.0.1:8085 >/dev/null
+
+      - name: Verify public endpoints
+        run: |
+          curl -fsSI https://app.qlmed.com.br/ >/dev/null
+          curl -fsSI https://n8n.qlmed.com.br/ >/dev/null
+          curl -fsSI https://evolution.qlmed.com.br/ >/dev/null

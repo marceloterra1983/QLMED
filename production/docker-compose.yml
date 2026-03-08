@@ -1,0 +1,121 @@
+services:
+  qlmed-db:
+    image: postgres:18-alpine
+    container_name: qlmed-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qlmed-app:
+    build:
+      context: ./app
+      args:
+        QLMED_API_KEY: ${QLMED_API_KEY}
+    container_name: qlmed-app
+    restart: unless-stopped
+    ports:
+      - "13000:3000"
+    env_file:
+      - ./env/app.env
+    depends_on:
+      qlmed-db:
+        condition: service_healthy
+
+  qlmed-n8n:
+    image: n8nio/n8n:latest
+    container_name: qlmed-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - ./env/n8n.env
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - qlmed-app
+
+  qlmed-evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: qlmed-evolution-api
+    restart: unless-stopped
+    ports:
+      - "${EVOLUTION_PORT:-8085}:8080"
+    environment:
+      SERVER_URL: "${EVOLUTION_SERVER_URL}"
+      AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY}"
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+      DEL_INSTANCE: "false"
+      LANGUAGE: "pt-BR"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: "postgresql"
+      DATABASE_CONNECTION_URI: "postgresql://evolution:${EVOLUTION_POSTGRES_PASSWORD}@qlmed-evolution-db:5432/${EVOLUTION_POSTGRES_DB}"
+      DATABASE_CONNECTION_CLIENT_NAME: "qlmed_evolution_api"
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      DATABASE_SAVE_DATA_LABELS: "true"
+      DATABASE_SAVE_DATA_HISTORIC: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: "redis://qlmed-evolution-redis:6379/0"
+      CACHE_REDIS_PREFIX_KEY: "evolution"
+      CACHE_REDIS_SAVE_INSTANCES: "true"
+      CACHE_LOCAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_URL: ""
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      TZ: "America/Sao_Paulo"
+      LOG_LEVEL: "DEBUG,ERROR,WARN,INFO,LOG,VERBOSE,DARK,WEBHOOKS"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      qlmed-evolution-db:
+        condition: service_healthy
+      qlmed-evolution-redis:
+        condition: service_started
+
+  qlmed-evolution-db:
+    image: postgres:16-alpine
+    container_name: qlmed-evolution-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${EVOLUTION_POSTGRES_DB}
+    volumes:
+      - evolution_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qlmed-evolution-redis:
+    image: redis:7-alpine
+    container_name: qlmed-evolution-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - evolution_redis:/data
+
+volumes:
+  pgdata:
+    name: qlmed_pgdata
+  n8n_data:
+    name: qlmed_n8n_data
+  evolution_instances:
+    name: qlmed_evolution_instances
+  evolution_pgdata:
+    name: qlmed_evolution_pgdata
+  evolution_redis:
+    name: qlmed_evolution_redis
