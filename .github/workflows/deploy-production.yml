@@ -66,12 +66,38 @@ jobs:
 
       - name: Verify local health
         run: |
-          curl -fsS http://127.0.0.1:13000/api/health >/dev/null
-          curl -fsS http://127.0.0.1:5678 >/dev/null
-          curl -fsS http://127.0.0.1:8085 >/dev/null
+          for url in \
+            http://127.0.0.1:13000/api/health \
+            http://127.0.0.1:5678 \
+            http://127.0.0.1:8085
+          do
+            for attempt in $(seq 1 30); do
+              if curl -fsS "$url" >/dev/null; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Health check failed for $url" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
 
       - name: Verify public endpoints
         run: |
-          curl -fsSI https://app.qlmed.com.br/ >/dev/null
-          curl -fsSI https://n8n.qlmed.com.br/ >/dev/null
-          curl -fsSI https://evolution.qlmed.com.br/ >/dev/null
+          for url in \
+            https://app.qlmed.com.br/ \
+            https://n8n.qlmed.com.br/ \
+            https://evolution.qlmed.com.br/
+          do
+            for attempt in $(seq 1 30); do
+              if curl -fsSI "$url" >/dev/null; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Public check failed for $url" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
