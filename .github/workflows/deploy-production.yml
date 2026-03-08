@@ -1,25 +1,6 @@
 name: Deploy QLMED Production
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/deploy-production.yml"
-      - "production/**"
-      - "Dockerfile"
-      - "next.config.mjs"
-      - "package.json"
-      - "package-lock.json"
-      - "postcss.config.js"
-      - "prisma/**"
-      - "public/**"
-      - "reports/**"
-      - "scripts/**"
-      - "src/**"
-      - "start.sh"
-      - "tailwind.config.js"
-      - "tsconfig.json"
   workflow_dispatch:
 
 jobs:
