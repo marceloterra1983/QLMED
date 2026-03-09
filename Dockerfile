@@ -33,6 +33,7 @@ ENV NODE_OPTIONS="--max-old-space-size=512"
 # Install tini (lightweight init to reap zombie processes) + Chromium for Puppeteer
 RUN apk add --no-cache \
     tini \
+    su-exec \
     openssl \
     chromium \
     nss \
@@ -61,10 +62,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs --chmod=755 start.sh ./start.sh
 
-# Create writable directory for OneDrive XML sync
-RUN mkdir -p /app/xml_backup && chown nextjs:nodejs /app/xml_backup
-
-USER nextjs
+# Create writable directories used both with and without mounted volumes
+RUN mkdir -p /app/xml_backup /app/storage && chown -R nextjs:nodejs /app/xml_backup /app/storage
 
 EXPOSE 3000
 

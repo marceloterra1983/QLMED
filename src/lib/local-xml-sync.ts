@@ -12,8 +12,8 @@ import { updateProductAggregatesForInvoice } from './product-aggregate-updater';
 
 const prisma = new PrismaClient();
 
-const DEFAULT_WINDOWS_XML_DIR = 'C:\\Users\\marce\\OneDrive - QL MED\\BACKUP_QL MED\\NFE\\XML';
 const DEFAULT_SINGLE_COMPANY_CNPJ = '07832309000197';
+const DEFAULT_LOCAL_XML_DIR = path.join(process.cwd(), 'xml_backup');
 const WATCH_STABILITY_MS = Math.max(500, Number(process.env.LOCAL_XML_WATCH_STABILITY_MS || 1500));
 const RESCAN_INTERVAL_MS = Math.max(5_000, Number(process.env.LOCAL_XML_RESCAN_INTERVAL_MS || 10_000));
 const BOOTSTRAP_RETRY_INTERVAL_MS = Math.max(5_000, Number(process.env.LOCAL_XML_BOOTSTRAP_RETRY_MS || 10_000));
@@ -24,26 +24,34 @@ const FORCED_SYNC_MIN_INTERVAL_MS = Math.max(2_000, Number(process.env.LOCAL_XML
 const HALF_HOUR_MS = 30 * 60 * 1000;
 const FULL_RECONCILE_ENABLED = (process.env.LOCAL_XML_FULL_RECONCILE_ENABLED || 'true').toLowerCase() === 'true';
 const FULL_RECONCILE_MONTH_FOLDERS = Math.max(1, Number(process.env.LOCAL_XML_FULL_RECONCILE_MONTH_FOLDERS || 2));
-const COPY_FROM_SOURCE_ENABLED = (process.env.LOCAL_XML_COPY_ENABLED || 'false').toLowerCase() === 'true';
+const LOCAL_COPY_REQUESTED = (process.env.LOCAL_XML_COPY_ENABLED || 'false').toLowerCase() === 'true';
 const COPY_FROM_SOURCE_INTERVAL_MS = Math.max(15_000, Number(process.env.LOCAL_XML_COPY_INTERVAL_MS || 60_000));
 const COPY_FROM_SOURCE_MONTH_FOLDERS = Math.max(1, Number(process.env.LOCAL_XML_COPY_MONTH_FOLDERS || 2));
 const COPY_FROM_ONEDRIVE_ENABLED = (process.env.LOCAL_XML_COPY_ONEDRIVE_ENABLED || 'true').toLowerCase() === 'true';
 const ONEDRIVE_XML_ROOT_PATH = (process.env.LOCAL_XML_ONEDRIVE_XML_PATH || '/BACKUP_QL MED/NFE/XML').trim();
+const ONEDRIVE_PDF_ROOT_PATH = (process.env.LOCAL_XML_ONEDRIVE_PDF_PATH || '/BACKUP_QL MED/NFE/Danfes').trim();
 const ONEDRIVE_MONTH_FOLDERS = Math.max(
   1,
   Number(process.env.LOCAL_XML_ONEDRIVE_MONTH_FOLDERS || COPY_FROM_SOURCE_MONTH_FOLDERS),
 );
 const ONEDRIVE_TOKEN_REFRESH_WINDOW_MS = 2 * 60 * 1000;
 
-const rawRootDir = (process.env.LOCAL_XML_WATCH_DIR || DEFAULT_WINDOWS_XML_DIR).trim();
-const rawFallbackDir = (
-  process.env.LOCAL_XML_WATCH_FALLBACK_DIR ||
-  path.join(process.cwd(), 'xml_backup')
-).trim();
-const rawCopySourceDir = (process.env.LOCAL_XML_COPY_SOURCE_DIR || DEFAULT_WINDOWS_XML_DIR).trim();
+const rawRootDir = (process.env.LOCAL_XML_WATCH_DIR || DEFAULT_LOCAL_XML_DIR).trim();
+const rawFallbackDir = (process.env.LOCAL_XML_WATCH_FALLBACK_DIR || DEFAULT_LOCAL_XML_DIR).trim();
+const rawCopySourceDir = (process.env.LOCAL_XML_COPY_SOURCE_DIR || '').trim();
 const rawCopyTargetDir = (process.env.LOCAL_XML_COPY_TARGET_DIR || rawFallbackDir).trim();
+const rawPdfTargetDir = (
+  process.env.LOCAL_PDF_BACKUP_DIR || path.join(path.dirname(resolveConfiguredDir(rawCopyTargetDir)), 'pdf_backup')
+).trim();
 const localXmlWatchEnabled = (process.env.LOCAL_XML_WATCH_ENABLED || 'true').toLowerCase() === 'true';
 const targetCompanyCnpj = (process.env.SINGLE_COMPANY_CNPJ || DEFAULT_SINGLE_COMPANY_CNPJ).replace(/\D/g, '');
+const COPY_FROM_SOURCE_ENABLED = LOCAL_COPY_REQUESTED && rawCopySourceDir.length > 0;
+
+if (LOCAL_COPY_REQUESTED && !COPY_FROM_SOURCE_ENABLED) {
+  console.warn(
+    '[LocalXmlSync] LOCAL_XML_COPY_ENABLED=true, mas LOCAL_XML_COPY_SOURCE_DIR não foi configurado; ignorando cópia local.',
+  );
+}
 
 let started = false;
 let watchRootDir: string | null = null;
@@ -59,6 +67,7 @@ let warnedMissingRoot = false;
 let warnedMissingCopySource = false;
 let warnedMissingOneDriveConnection = false;
 let warnedMissingOneDrivePath = false;
+let warnedMissingOneDrivePdfPath = false;
 let drainingQueue = false;
 let copyingFromSource = false;
 let fullReconcileRunning = false;
@@ -92,11 +101,18 @@ function resolveConfiguredDir(input: string): string {
 const watchRootCandidates = Array.from(
   new Set([resolveConfiguredDir(rawRootDir), resolveConfiguredDir(rawFallbackDir)].filter(Boolean)),
 );
-const copySourceCandidates = Array.from(new Set([resolveConfiguredDir(rawCopySourceDir)].filter(Boolean)));
+const copySourceCandidates = rawCopySourceDir
+  ? Array.from(new Set([resolveConfiguredDir(rawCopySourceDir)].filter(Boolean)))
+  : [];
 const copyTargetDir = resolveConfiguredDir(rawCopyTargetDir);
+const pdfTargetDir = resolveConfiguredDir(rawPdfTargetDir);
 
 function isXmlFile(filePath: string): boolean {
   return filePath.toLowerCase().endsWith('.xml');
+}
+
+function isPdfFile(filePath: string): boolean {
+  return filePath.toLowerCase().endsWith('.pdf');
 }
 
 function shouldIgnoreByPath(targetPath: string, stats?: Stats): boolean {
@@ -432,13 +448,13 @@ async function copyXmlFileIfNeeded(sourceFilePath: string, targetFilePath: strin
   return true;
 }
 
-async function copyOneDriveXmlFileIfNeeded(
+async function copyOneDriveFileIfNeeded(
   accessToken: string,
   driveId: string,
   oneDriveItem: OneDriveItemEntry,
   targetFilePath: string,
 ): Promise<boolean> {
-  if (!oneDriveItem.file || !isXmlFile(oneDriveItem.name || '')) return false;
+  if (!oneDriveItem.file) return false;
 
   const remoteSize = typeof oneDriveItem.size === 'number' ? oneDriveItem.size : null;
   const remoteMtimeMs = oneDriveItem.lastModifiedDateTime
@@ -480,6 +496,26 @@ async function copyOneDriveXmlFileIfNeeded(
   }
 
   return true;
+}
+
+async function copyOneDriveXmlFileIfNeeded(
+  accessToken: string,
+  driveId: string,
+  oneDriveItem: OneDriveItemEntry,
+  targetFilePath: string,
+): Promise<boolean> {
+  if (!isXmlFile(oneDriveItem.name || '')) return false;
+  return copyOneDriveFileIfNeeded(accessToken, driveId, oneDriveItem, targetFilePath);
+}
+
+async function copyOneDrivePdfFileIfNeeded(
+  accessToken: string,
+  driveId: string,
+  oneDriveItem: OneDriveItemEntry,
+  targetFilePath: string,
+): Promise<boolean> {
+  if (!isPdfFile(oneDriveItem.name || '')) return false;
+  return copyOneDriveFileIfNeeded(accessToken, driveId, oneDriveItem, targetFilePath);
 }
 
 async function importXmlFile(filePath: string): Promise<void> {
@@ -666,17 +702,16 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
   if (!xmlRootItem.folder) return;
 
   await fs.mkdir(copyTargetDir, { recursive: true });
+  await fs.mkdir(pdfTargetDir, { recursive: true });
 
-  const rootChildren = await listOneDriveChildrenAll(accessToken, connection.driveId, xmlRootItem.id);
-  const monthFolders = rootChildren
+  const xmlRootChildren = await listOneDriveChildrenAll(accessToken, connection.driveId, xmlRootItem.id);
+  const xmlMonthFolders = xmlRootChildren
     .filter((entry) => entry.folder)
     .sort((a, b) => b.name.localeCompare(a.name, 'pt-BR', { numeric: true, sensitivity: 'base' }))
     .slice(0, ONEDRIVE_MONTH_FOLDERS);
 
-  if (monthFolders.length === 0) return;
-
-  let copiedCount = 0;
-  for (const monthFolder of monthFolders) {
+  let copiedXmlCount = 0;
+  for (const monthFolder of xmlMonthFolders) {
     const children = await listOneDriveChildrenAll(accessToken, connection.driveId, monthFolder.id);
     const xmlFiles = children.filter((entry) => entry.file && isXmlFile(entry.name || ''));
 
@@ -685,22 +720,61 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
       const copied = await copyOneDriveXmlFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
       if (!copied) continue;
 
-      copiedCount += 1;
+      copiedXmlCount += 1;
       enqueueImport(targetFilePath);
     }
   }
 
-  if (copiedCount > 0) {
+  let copiedPdfCount = 0;
+  try {
+    const pdfRootItem = await resolveOneDriveItemByPath(accessToken, connection.driveId, ONEDRIVE_PDF_ROOT_PATH);
+
+    if (pdfRootItem.folder) {
+      warnedMissingOneDrivePdfPath = false;
+      const pdfRootChildren = await listOneDriveChildrenAll(accessToken, connection.driveId, pdfRootItem.id);
+      const pdfMonthFolders = pdfRootChildren
+        .filter((entry) => entry.folder)
+        .sort((a, b) => b.name.localeCompare(a.name, 'pt-BR', { numeric: true, sensitivity: 'base' }))
+        .slice(0, ONEDRIVE_MONTH_FOLDERS);
+
+      for (const monthFolder of pdfMonthFolders) {
+        const children = await listOneDriveChildrenAll(accessToken, connection.driveId, monthFolder.id);
+        const pdfFiles = children.filter((entry) => entry.file && isPdfFile(entry.name || ''));
+
+        for (const oneDriveFile of pdfFiles) {
+          const targetFilePath = path.join(pdfTargetDir, monthFolder.name, oneDriveFile.name);
+          const copied = await copyOneDrivePdfFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
+          if (copied) {
+            copiedPdfCount += 1;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (!warnedMissingOneDrivePdfPath) {
+      warnedMissingOneDrivePdfPath = true;
+      console.warn(
+        `[LocalXmlSync] Pasta OneDrive de PDF não encontrada (${ONEDRIVE_PDF_ROOT_PATH}).`,
+      );
+    }
+  }
+
+  if (copiedXmlCount > 0 || copiedPdfCount > 0) {
     const triggerLabel = trigger === 'interval' ? 'periodica' : trigger === 'startup' ? 'inicial' : 'manual';
     console.log(
-      `[LocalXmlSync] Copia OneDrive ${triggerLabel}: ${copiedCount} XML(s) atualizado(s) para ${copyTargetDir}.`,
+      `[LocalXmlSync] Copia OneDrive ${triggerLabel}: ${copiedXmlCount} XML(s) em ${copyTargetDir} e ${copiedPdfCount} PDF(s) em ${pdfTargetDir}.`,
     );
-    await drainImportQueue();
+    if (copiedXmlCount > 0) {
+      await drainImportQueue();
+    }
   }
 }
 
 async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Promise<void> {
-  if (!COPY_FROM_SOURCE_ENABLED) return;
+  if (!COPY_FROM_SOURCE_ENABLED) {
+    await runCopyFromOneDrive(trigger);
+    return;
+  }
   if (copyingFromSource) return;
 
   copyingFromSource = true;
@@ -968,7 +1042,7 @@ export function startLocalXmlSync(): void {
     }, BOOTSTRAP_RETRY_INTERVAL_MS);
   }
 
-  if (COPY_FROM_SOURCE_ENABLED) {
+  if (COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED) {
     void runCopyFromSource('startup');
 
     if (!copyFromSourceTimer) {

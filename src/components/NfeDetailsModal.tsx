@@ -585,7 +585,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
       .then(setData)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [isOpen, invoiceId]);
+  }, [isOpen, invoiceId, initialTab]);
 
   if (!isOpen || !invoiceId) return null;
 

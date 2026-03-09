@@ -147,7 +147,7 @@ export async function exchangeOneDriveCode(code: string): Promise<OneDriveTokenR
 }
 
 export async function refreshOneDriveAccessToken(refreshToken: string): Promise<OneDriveTokenResponse> {
-  const { clientId, redirectUri } = requireOAuthConfig();
+  const { clientId } = requireOAuthConfig();
   const clientSecret = requireOAuthSecret();
 
   const params = new URLSearchParams({
@@ -155,7 +155,6 @@ export async function refreshOneDriveAccessToken(refreshToken: string): Promise<
     client_secret: clientSecret,
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
-    redirect_uri: redirectUri,
     scope: GRAPH_SCOPE,
   });
 

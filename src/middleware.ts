@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { timingSafeEqual } from 'crypto';
 
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
@@ -11,10 +10,25 @@ const AUTH_COOKIE_NAMES = [
   '__Host-next-auth.csrf-token',
 ];
 
-function safeEqual(a: string, b: string): boolean {
+async function safeEqual(a: string, b: string): Promise<boolean> {
   if (a.length !== b.length) return false;
+
   try {
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    const encoder = new TextEncoder();
+    const [left, right] = await Promise.all([
+      crypto.subtle.digest('SHA-256', encoder.encode(a)),
+      crypto.subtle.digest('SHA-256', encoder.encode(b)),
+    ]);
+
+    const leftBytes = new Uint8Array(left);
+    const rightBytes = new Uint8Array(right);
+    let diff = 0;
+
+    for (let i = 0; i < leftBytes.length; i += 1) {
+      diff |= leftBytes[i] ^ rightBytes[i];
+    }
+
+    return diff === 0;
   } catch {
     return false;
   }
@@ -45,7 +59,7 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next();
       }
 
-      if (safeEqual(apiKey, expected)) {
+      if (await safeEqual(apiKey, expected)) {
         const requestHeaders = new Headers(req.headers);
         requestHeaders.set('x-api-key-validated', '1');
         return NextResponse.next({

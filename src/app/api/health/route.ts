@@ -5,15 +5,44 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const start = Date.now();
+  const requireNonEmptyDb = (process.env.QLMED_REQUIRE_NONEMPTY_DB || 'false').toLowerCase() === 'true';
 
   try {
     await prisma.$queryRaw`SELECT 1`;
     const dbLatency = Date.now() - start;
+    const integrity = requireNonEmptyDb
+      ? await (async () => {
+          const [users, companies] = await Promise.all([
+            prisma.user.count(),
+            prisma.company.count(),
+          ]);
+
+          return {
+            users,
+            companies,
+            healthy: users > 0 && companies > 0,
+          };
+        })()
+      : null;
+
+    if (integrity && !integrity.healthy) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          db: { status: 'connected', latencyMs: dbLatency },
+          integrity,
+          error: 'Banco sem dados obrigatórios de produção',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({
       status: 'ok',
       uptime: process.uptime(),
       db: { status: 'connected', latencyMs: dbLatency },
+      integrity,
       memory: {
         rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
         heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),

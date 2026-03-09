@@ -1,4 +1,5 @@
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { getOriginalIssuedPdf } from '@/lib/original-issued-pdf';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
@@ -2178,6 +2179,31 @@ export async function GET(
     const url = new URL(req.url);
     const autoPrint = url.searchParams.get('print') === 'true';
     const download = url.searchParams.get('download') === 'true';
+
+    const originalIssuedPdf = await getOriginalIssuedPdf({
+      companyId: invoice.companyId,
+      type: invoice.type,
+      direction: invoice.direction,
+      number: invoice.number,
+      issueDate: invoice.issueDate,
+    });
+
+    if (originalIssuedPdf) {
+      const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);
+      const dispositionType = download ? 'attachment' : 'inline';
+
+      return new Response(new Uint8Array(originalIssuedPdf.buffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `${dispositionType}; filename="${originalIssuedPdf.filename}"; filename*=UTF-8''${encodedFilename}`,
+          'Cache-Control': autoPrint
+            ? 'no-store, no-cache, must-revalidate, max-age=0'
+            : 'private, max-age=300',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      });
+    }
 
     let html: string;
 

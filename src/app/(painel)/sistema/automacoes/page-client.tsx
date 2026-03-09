@@ -1,7 +1,11 @@
 'use client';
 
 export default function AutomacoesPage() {
-  const n8nUrl = process.env.NEXT_PUBLIC_N8N_URL || 'http://localhost:5678';
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const inferredN8nUrl = currentOrigin
+    ? `${window.location.protocol}//${window.location.host.replace(/^app\./, 'n8n.')}`
+    : 'https://n8n.qlmed.com.br';
+  const n8nUrl = process.env.NEXT_PUBLIC_N8N_URL || inferredN8nUrl;
 
   return (
     <div className="space-y-6">

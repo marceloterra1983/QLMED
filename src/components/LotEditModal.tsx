@@ -255,7 +255,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
     return { patches, creates, deletes: Array.from(deletedIds) };
   };
 
-  const changes = useMemo(() => getChanges(), [drafts, originals, deletedIds]);
+  const changes = getChanges();
   const totalChanges = changes.patches.length + changes.creates.length + changes.deletes.length;
 
   // Validation: for each item with at least one lot filled, sum of lot qtys must equal item qty

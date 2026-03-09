@@ -7,8 +7,11 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/18/docker
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18-alpine persists the cluster under /var/lib/postgresql/18/docker.
+      # Mount the parent directory so container recreation keeps the actual database files.
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -26,6 +29,8 @@ services:
       - "13000:3000"
     env_file:
       - ./env/app.env
+    volumes:
+      - app_storage:/app/storage
     depends_on:
       qlmed-db:
         condition: service_healthy
@@ -119,3 +124,5 @@ volumes:
     name: qlmed_evolution_pgdata
   evolution_redis:
     name: qlmed_evolution_redis
+  app_storage:
+    name: qlmed_app_storage

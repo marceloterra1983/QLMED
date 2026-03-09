@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 
 const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml', 'sync-ncm-bulk', 'backfill-tax-data', 'batch-cnpj-check'] as const;
 type Action = (typeof VALID_ACTIONS)[number];
+const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 
 function validateApiKey(req: NextRequest): boolean {
   const key = req.headers.get('x-api-key');
@@ -13,6 +14,14 @@ function validateApiKey(req: NextRequest): boolean {
   } catch {
     return false;
   }
+}
+
+function getInternalBaseUrl(): string {
+  return (
+    process.env.QLMED_INTERNAL_URL ||
+    process.env.QLMED_API_URL ||
+    DEFAULT_INTERNAL_BASE_URL
+  ).replace(/\/+$/, '');
 }
 
 export async function POST(req: NextRequest) {
@@ -37,9 +46,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const baseUrl = getInternalBaseUrl();
+
     switch (action as Action) {
       case 'sync-nfe': {
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
@@ -50,7 +60,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-cte': {
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const res = await fetch(`${baseUrl}/api/cte/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
@@ -65,7 +74,6 @@ export async function POST(req: NextRequest) {
         if (!payload?.xml) {
           return NextResponse.json({ error: 'payload.xml is required' }, { status: 400 });
         }
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const formData = new FormData();
         const buffer = Buffer.from(payload.xml as string, 'base64');
         formData.append('file', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
@@ -79,7 +87,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-ncm-bulk': {
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const res = await fetch(`${baseUrl}/api/ncm/bulk-sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
@@ -90,7 +97,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'backfill-tax-data': {
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const res = await fetch(`${baseUrl}/api/invoices/backfill-tax`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
@@ -100,7 +106,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'batch-cnpj-check': {
-        const baseUrl = process.env.QLMED_INTERNAL_URL || 'http://0.0.0.0:3000';
         const res = await fetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
