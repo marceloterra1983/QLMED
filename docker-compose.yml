@@ -9,7 +9,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:${QLMED_DB_PORT:-5433}:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U qlmed']
       interval: 10s
@@ -48,7 +48,7 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_HOST=${N8N_HOST:-0.0.0.0}
       - N8N_PORT=5678
       - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
       - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
@@ -57,6 +57,14 @@ services:
       - N8N_TRUST_PROXY=true
       - N8N_PROXY_HOPS=1
       - GENERIC_TIMEZONE=America/Sao_Paulo
+      - N8N_RUNNERS_MODE=internal
+      - N8N_RUNNERS_TASK_TIMEOUT=300
+      - N8N_LOG_LEVEL=warn
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - QLMED_DEV_MODE=${QLMED_DEV_MODE:-true}
+      - QLMED_ALLOW_REAL_EXECUTIONS=${QLMED_ALLOW_REAL_EXECUTIONS:-false}
+      - QLMED_EVOLUTION_BASE_URL=${QLMED_EVOLUTION_BASE_URL:-https://evolution.qlmed.com.br}
       - QLMED_API_URL=http://qlmed-app:3000
       - QLMED_API_KEY=${QLMED_API_KEY:-}
     volumes:

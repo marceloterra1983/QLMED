@@ -1021,8 +1021,21 @@ export function startLocalXmlSync(): void {
   if (started) return;
   started = true;
 
+  // OneDrive/source copy runs independently of local filesystem watching,
+  // so emitted invoices sync even when LOCAL_XML_WATCH_ENABLED=false (production).
+  if (COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED) {
+    console.log('[LocalXmlSync] Inicializando sync de XML via OneDrive/source copy.');
+    void runCopyFromSource('startup');
+
+    if (!copyFromSourceTimer) {
+      copyFromSourceTimer = setInterval(() => {
+        void runCopyFromSource('interval');
+      }, COPY_FROM_SOURCE_INTERVAL_MS);
+    }
+  }
+
   if (!localXmlWatchEnabled) {
-    console.log('[LocalXmlSync] Monitoramento local desativado via LOCAL_XML_WATCH_ENABLED.');
+    console.log('[LocalXmlSync] Monitoramento local de filesystem desativado via LOCAL_XML_WATCH_ENABLED.');
     return;
   }
 
@@ -1042,16 +1055,6 @@ export function startLocalXmlSync(): void {
     }, BOOTSTRAP_RETRY_INTERVAL_MS);
   }
 
-  if (COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED) {
-    void runCopyFromSource('startup');
-
-    if (!copyFromSourceTimer) {
-      copyFromSourceTimer = setInterval(() => {
-        void runCopyFromSource('interval');
-      }, COPY_FROM_SOURCE_INTERVAL_MS);
-    }
-  }
-
   if (FULL_RECONCILE_ENABLED) {
     scheduleHalfHourFullReconciliation();
     void runFullReconciliation('startup');
@@ -1059,7 +1062,8 @@ export function startLocalXmlSync(): void {
 }
 
 export async function ensureLocalXmlSyncNow(): Promise<void> {
-  if (!localXmlWatchEnabled) return;
+  const hasCopySource = COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED;
+  if (!localXmlWatchEnabled && !hasCopySource) return;
 
   const now = Date.now();
 
@@ -1074,8 +1078,12 @@ export async function ensureLocalXmlSyncNow(): Promise<void> {
 
   forcedSyncPromise = (async () => {
     try {
-      await runCopyFromSource('manual');
-      await startWatchers(true);
+      if (hasCopySource) {
+        await runCopyFromSource('manual');
+      }
+      if (localXmlWatchEnabled) {
+        await startWatchers(true);
+      }
       await drainImportQueue();
       lastForcedSyncAt = Date.now();
     } finally {
