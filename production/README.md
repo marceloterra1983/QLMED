@@ -25,7 +25,8 @@ Fonte de verdade dos manifests de producao do QLMED.
 
 ## Deploy
 
-- o workflow `.github/workflows/deploy-production.yml` roda em um runner self-hosted no proprio `server`
-- o workflow sincroniza `production/docker-compose.yml` e o codigo da aplicacao para `/home/marce/QLMED/production`
+- a producao publica do app e publicada por `git push origin main`; o Coolify detecta o novo commit e recria o servico publico
+- `npm run publish:server` e o caminho operacional padrao porque faz o push e espera o `https://app.qlmed.com.br/api/health` refletir o commit publicado
+- `scripts/deploy-server.sh` e `.github/workflows/deploy-production.yml` continuam apenas como trilha manual/legada para sincronizar `/home/marce/QLMED/production` em recuperacao operacional
 - os segredos continuam apenas no host remoto
-- `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` do release ativo para confirmar o deploy
+- `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` do release ativo; em ambiente Coolify o valor pode vir de `SOURCE_COMMIT`

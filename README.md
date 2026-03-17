@@ -19,13 +19,15 @@ Modelo operacional do projeto:
 - todo desenvolvimento do app deve acontecer em `QLMED`
 - os manifests de producao ficam em `QLMED/production`
 - `/home/marce/qlmed-server-deploy` e apenas um snapshot legado e nao deve receber novas mudancas
+- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` seguido do auto deploy do Coolify
 
 ## Publicacao
 
 - antes de publicar, validar o alinhamento com `npm run check:deploy`
-- para publicar o estado atual de `main`, usar `npm run publish:server`
-- para deploy manual sem `git push`, usar `npm run deploy:server`
-- para rollback do ultimo release valido, usar `npm run rollback:server latest`
+- para publicar o estado atual de `main`, usar `npm run publish:server`; o script faz `git push origin main` e espera o `https://app.qlmed.com.br/api/health` refletir o commit
+- `npm run deploy:server` e apenas um deploy manual/legado do compose em `/home/marce/QLMED/production`; nao e o caminho normal da producao publica
+- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada; para a producao publica o rollback correto continua sendo via Git + Coolify
+- depois de publicar, confirmar o `build.commitSha` em `https://app.qlmed.com.br/api/health`
 
 ## Regras
 

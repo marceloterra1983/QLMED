@@ -5,17 +5,45 @@ export const dynamic = 'force-dynamic';
 
 function normalizeBuildValue(value: string | undefined): string | null {
   const normalized = value?.trim();
-  return normalized ? normalized : null;
+
+  if (!normalized) {
+    return null;
+  }
+
+  return ['unknown', 'undefined', 'null', 'n/a'].includes(normalized.toLowerCase()) ? null : normalized;
+}
+
+function firstBuildValue(...values: Array<string | undefined>): string | null {
+  for (const value of values) {
+    const normalized = normalizeBuildValue(value);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
 }
 
 export async function GET() {
   const start = Date.now();
   const requireNonEmptyDb = (process.env.QLMED_REQUIRE_NONEMPTY_DB || 'false').toLowerCase() === 'true';
-  const commitSha = normalizeBuildValue(process.env.QLMED_BUILD_COMMIT_SHA);
-  const builtAt = normalizeBuildValue(process.env.QLMED_BUILD_DEPLOYED_AT);
+  const commitSha = firstBuildValue(
+    process.env.QLMED_BUILD_COMMIT_SHA,
+    process.env.APP_QLMED_BUILD_COMMIT_SHA,
+    process.env.SOURCE_COMMIT,
+    process.env.GITHUB_SHA
+  );
+  const builtAt = firstBuildValue(
+    process.env.QLMED_BUILD_DEPLOYED_AT,
+    process.env.APP_QLMED_BUILD_DEPLOYED_AT
+  );
   const source =
-    normalizeBuildValue(process.env.QLMED_BUILD_SOURCE) ||
-    (process.env.NODE_ENV === 'development' ? 'next-dev' : process.env.NODE_ENV || 'unknown');
+    firstBuildValue(
+      process.env.QLMED_BUILD_SOURCE,
+      process.env.APP_QLMED_BUILD_SOURCE,
+      process.env.SOURCE_COMMIT ? 'coolify' : undefined,
+      process.env.NODE_ENV === 'development' ? 'next-dev' : process.env.NODE_ENV
+    ) || 'unknown';
   const build = {
     commitSha,
     commitShort: commitSha ? commitSha.slice(0, 12) : null,

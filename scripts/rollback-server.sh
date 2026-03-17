@@ -4,9 +4,13 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/rollback-server.sh --list
-  scripts/rollback-server.sh latest
-  scripts/rollback-server.sh <release-name>
+  scripts/rollback-server.sh --legacy --list
+  scripts/rollback-server.sh --legacy latest
+  scripts/rollback-server.sh --legacy <release-name>
+
+Rolls back only the legacy/manual compose stack in /home/marce/QLMED/production.
+Public production at https://app.qlmed.com.br is normally rolled forward/back via
+git history and Coolify, not by this script.
 
 Defaults:
   DEPLOY_HOST=server
@@ -28,15 +32,40 @@ for cmd in ssh curl; do
   require_cmd "$cmd"
 done
 
+ALLOW_LEGACY=0
+target=""
+for arg in "$@"; do
+  case "$arg" in
+    --legacy)
+      ALLOW_LEGACY=1
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      if [[ -n "$target" ]]; then
+        usage >&2
+        exit 1
+      fi
+      target="$arg"
+      ;;
+  esac
+done
+
+if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
+  echo "This script only rolls back the legacy/manual compose stack on the server." >&2
+  echo "Use git history + Coolify for the public production rollback path." >&2
+  exit 1
+fi
+
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
 DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
-target="${1:-}"
-
-if [[ -z "$target" || "$target" == "--help" || "$target" == "-h" ]]; then
+if [[ -z "$target" ]]; then
   usage
   exit 0
 fi

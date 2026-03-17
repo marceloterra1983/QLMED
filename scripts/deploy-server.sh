@@ -3,9 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/deploy-server.sh
+Usage: scripts/deploy-server.sh --legacy
 
-Deploys the current Git HEAD to the production server.
+Deploys the current Git HEAD to the legacy/manual compose stack on the server.
+Public production at https://app.qlmed.com.br is normally published by
+scripts/publish-server.sh via git push + Coolify.
 
 Defaults:
   DEPLOY_HOST=server
@@ -16,13 +18,26 @@ Defaults:
 EOF
 }
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  usage
-  exit 0
-fi
+ALLOW_LEGACY=0
+for arg in "$@"; do
+  case "$arg" in
+    --legacy)
+      ALLOW_LEGACY=1
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
 
-if [[ $# -ne 0 ]]; then
-  usage >&2
+if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
+  echo "This script only deploys the legacy/manual compose stack on the server." >&2
+  echo "Use scripts/publish-server.sh for the public production release path." >&2
   exit 1
 fi
 
@@ -55,6 +70,17 @@ COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
 BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
 DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RELEASE_NAME="$(date -u +%Y%m%d%H%M%S)-${COMMIT_SHA}"
+
+commit_matches() {
+  local left="$1"
+  local right="$2"
+
+  if [[ -z "$left" || -z "$right" ]]; then
+    return 1
+  fi
+
+  [[ "$left" == "$right" || "$left" == "$right"* || "$right" == "$left"* ]]
+}
 
 read -r -d '' REMOTE_SCRIPT <<EOF || true
 set -euo pipefail
@@ -196,13 +222,13 @@ PUBLIC_COMMIT_SHA=""
 for _ in $(seq 1 30); do
   PUBLIC_HEALTH="$(curl -fsS "https://app.qlmed.com.br/api/health" || true)"
   PUBLIC_COMMIT_SHA="$(printf '%s' "$PUBLIC_HEALTH" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
-  if [[ "$PUBLIC_COMMIT_SHA" == "$COMMIT_SHA" ]]; then
+  if commit_matches "$PUBLIC_COMMIT_SHA" "$COMMIT_SHA"; then
     break
   fi
   sleep 2
 done
 
-if [[ "$PUBLIC_COMMIT_SHA" != "$COMMIT_SHA" ]]; then
+if ! commit_matches "$PUBLIC_COMMIT_SHA" "$COMMIT_SHA"; then
   echo "Public health revision mismatch: expected ${COMMIT_SHA}, got ${PUBLIC_COMMIT_SHA:-missing}" >&2
   exit 1
 fi

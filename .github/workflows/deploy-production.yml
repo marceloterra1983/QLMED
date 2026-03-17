@@ -1,4 +1,4 @@
-name: Deploy QLMED Production
+name: Legacy QLMED Server Sync
 
 on:
   workflow_dispatch:
@@ -10,6 +10,11 @@ jobs:
       - qlmed-prod
 
     steps:
+      - name: Notice legacy workflow
+        run: |
+          echo "Legacy/manual workflow for /home/marce/QLMED/production."
+          echo "Public production at https://app.qlmed.com.br is normally deployed by Coolify after pushing main."
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -85,7 +90,7 @@ jobs:
             for attempt in $(seq 1 30); do
               body="$(curl -fsS "$url" || true)"
               actual_sha="$(printf '%s' "$body" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
-              if [ "$actual_sha" = "$expected_sha" ]; then
+              if [ -n "$actual_sha" ] && [[ "$actual_sha" = "$expected_sha"* || "$expected_sha" = "$actual_sha"* ]]; then
                 break
               fi
               if [ "$attempt" -eq 30 ]; then
