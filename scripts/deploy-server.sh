@@ -11,6 +11,7 @@ Defaults:
   DEPLOY_HOST=server
   DEPLOY_DIR=/home/marce/QLMED/production
   DEPLOY_PROJECT_NAME=qlmed
+  DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
@@ -47,6 +48,7 @@ fi
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
+DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
@@ -59,6 +61,7 @@ set -euo pipefail
 
 DEPLOY_DIR=$(printf '%q' "$DEPLOY_DIR")
 DEPLOY_PROJECT_NAME=$(printf '%q' "$DEPLOY_PROJECT_NAME")
+DEPLOY_SERVICES=$(printf '%q' "$DEPLOY_SERVICES")
 DEPLOY_HEALTHCHECK_URL=$(printf '%q' "$DEPLOY_HEALTHCHECK_URL")
 RELEASE_NAME=$(printf '%q' "$RELEASE_NAME")
 COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")
@@ -121,6 +124,14 @@ sync_production_manifests() {
   fi
 }
 
+compose_up() {
+  local -a deploy_services
+  read -r -a deploy_services <<< "\$DEPLOY_SERVICES"
+
+  cd "\$DEPLOY_DIR"
+  docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build "\${deploy_services[@]}"
+}
+
 rm -rf "\$staging_dir" "\$previous_dir"
 mkdir -p "\$DEPLOY_DIR/releases" "\$DEPLOY_DIR/backups" "\$release_dir" "\$backup_dir" "\$staging_dir"
 
@@ -140,18 +151,12 @@ rollback() {
   if [[ -d "\$previous_dir" ]]; then
     mv "\$previous_dir" "\$app_dir"
     load_build_metadata "\$app_dir" rollback
-    (
-      cd "\$DEPLOY_DIR"
-      docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build
-    )
+    compose_up
   fi
 }
 
 load_build_metadata "\$app_dir" "\$BUILD_SOURCE"
-if ! (
-  cd "\$DEPLOY_DIR"
-  docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build
-); then
+if ! compose_up; then
   rollback
   exit 1
 fi

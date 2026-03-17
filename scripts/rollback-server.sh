@@ -12,6 +12,7 @@ Defaults:
   DEPLOY_HOST=server
   DEPLOY_DIR=/home/marce/QLMED/production
   DEPLOY_PROJECT_NAME=qlmed
+  DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
@@ -30,6 +31,7 @@ done
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
+DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 target="${1:-}"
@@ -57,6 +59,7 @@ echo "Rolling back production app to backup: $target"
 ssh "$DEPLOY_HOST" \
   "DEPLOY_DIR='$DEPLOY_DIR' \
    DEPLOY_PROJECT_NAME='$DEPLOY_PROJECT_NAME' \
+   DEPLOY_SERVICES='$DEPLOY_SERVICES' \
    DEPLOY_HEALTHCHECK_URL='$DEPLOY_HEALTHCHECK_URL' \
    TARGET_RELEASE='$target' \
    bash -s" <<'EOF'
@@ -83,6 +86,14 @@ load_build_metadata() {
   export QLMED_BUILD_SOURCE="$fallback_source"
 }
 
+compose_up() {
+  local -a deploy_services
+  read -r -a deploy_services <<< "$DEPLOY_SERVICES"
+
+  cd "$DEPLOY_DIR"
+  docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build "${deploy_services[@]}"
+}
+
 if [[ ! -d "$backup_app" ]]; then
   echo "Backup not found: $backup_app" >&2
   exit 1
@@ -101,17 +112,11 @@ rollback_restore() {
   if [[ -d "$current_backup" ]]; then
     mv "$current_backup" "$app_dir"
     load_build_metadata "$app_dir" rollback-restore
-    (
-      cd "$DEPLOY_DIR"
-      docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build
-    )
+    compose_up
   fi
 }
 
-if ! (
-  cd "$DEPLOY_DIR"
-  docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build
-); then
+if ! compose_up; then
   rollback_restore
   exit 1
 fi
