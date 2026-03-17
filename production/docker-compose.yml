@@ -129,3 +129,7 @@ volumes:
     name: qlmed_evolution_redis
   app_storage:
     name: qlmed_app_storage
+
+networks:
+  default:
+    name: qlmed_network

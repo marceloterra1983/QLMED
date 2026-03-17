@@ -11,7 +11,6 @@ Defaults:
   DEPLOY_HOST=server
   DEPLOY_DIR=/home/marce/QLMED/production
   DEPLOY_PROJECT_NAME=qlmed
-  DEPLOY_APP_SERVICE=qlmed-app
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
@@ -48,7 +47,6 @@ fi
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
-DEPLOY_APP_SERVICE="${DEPLOY_APP_SERVICE:-qlmed-app}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
@@ -61,7 +59,6 @@ set -euo pipefail
 
 DEPLOY_DIR=$(printf '%q' "$DEPLOY_DIR")
 DEPLOY_PROJECT_NAME=$(printf '%q' "$DEPLOY_PROJECT_NAME")
-DEPLOY_APP_SERVICE=$(printf '%q' "$DEPLOY_APP_SERVICE")
 DEPLOY_HEALTHCHECK_URL=$(printf '%q' "$DEPLOY_HEALTHCHECK_URL")
 RELEASE_NAME=$(printf '%q' "$RELEASE_NAME")
 COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")
@@ -108,12 +105,29 @@ load_build_metadata() {
   export QLMED_BUILD_SOURCE="\$fallback_source"
 }
 
+sync_production_manifests() {
+  cp "\$staging_dir/production/docker-compose.yml" "\$DEPLOY_DIR/docker-compose.yml"
+
+  if [[ -f "\$staging_dir/production/docker-compose.coolify.yml" ]]; then
+    cp "\$staging_dir/production/docker-compose.coolify.yml" "\$DEPLOY_DIR/docker-compose.coolify.yml"
+  fi
+
+  if [[ -f "\$staging_dir/production/README.md" ]]; then
+    cp "\$staging_dir/production/README.md" "\$DEPLOY_DIR/README.md"
+  fi
+
+  if [[ -f "\$staging_dir/production/.env.example" ]]; then
+    cp "\$staging_dir/production/.env.example" "\$DEPLOY_DIR/.env.example"
+  fi
+}
+
 rm -rf "\$staging_dir" "\$previous_dir"
 mkdir -p "\$DEPLOY_DIR/releases" "\$DEPLOY_DIR/backups" "\$release_dir" "\$backup_dir" "\$staging_dir"
 
 cat > "\$release_tarball"
 tar -xzf "\$release_tarball" -C "\$staging_dir"
 write_build_metadata "\$staging_dir"
+sync_production_manifests
 
 if [[ -d "\$app_dir" ]]; then
   mv "\$app_dir" "\$previous_dir"
@@ -128,7 +142,7 @@ rollback() {
     load_build_metadata "\$app_dir" rollback
     (
       cd "\$DEPLOY_DIR"
-      docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build "\$DEPLOY_APP_SERVICE"
+      docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build
     )
   fi
 }
@@ -136,7 +150,7 @@ rollback() {
 load_build_metadata "\$app_dir" "\$BUILD_SOURCE"
 if ! (
   cd "\$DEPLOY_DIR"
-  docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build "\$DEPLOY_APP_SERVICE"
+  docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build
 ); then
   rollback
   exit 1

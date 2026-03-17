@@ -146,3 +146,7 @@ volumes:
     name: qlmed_evolution_pgdata
   evolution_redis:
     name: qlmed_evolution_redis
+
+networks:
+  default:
+    name: qlmed_network

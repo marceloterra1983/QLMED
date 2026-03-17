@@ -12,7 +12,6 @@ Defaults:
   DEPLOY_HOST=server
   DEPLOY_DIR=/home/marce/QLMED/production
   DEPLOY_PROJECT_NAME=qlmed
-  DEPLOY_APP_SERVICE=qlmed-app
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
@@ -31,7 +30,6 @@ done
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
-DEPLOY_APP_SERVICE="${DEPLOY_APP_SERVICE:-qlmed-app}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 target="${1:-}"
@@ -59,7 +57,6 @@ echo "Rolling back production app to backup: $target"
 ssh "$DEPLOY_HOST" \
   "DEPLOY_DIR='$DEPLOY_DIR' \
    DEPLOY_PROJECT_NAME='$DEPLOY_PROJECT_NAME' \
-   DEPLOY_APP_SERVICE='$DEPLOY_APP_SERVICE' \
    DEPLOY_HEALTHCHECK_URL='$DEPLOY_HEALTHCHECK_URL' \
    TARGET_RELEASE='$target' \
    bash -s" <<'EOF'
@@ -106,14 +103,14 @@ rollback_restore() {
     load_build_metadata "$app_dir" rollback-restore
     (
       cd "$DEPLOY_DIR"
-      docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build "$DEPLOY_APP_SERVICE"
+      docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build
     )
   fi
 }
 
 if ! (
   cd "$DEPLOY_DIR"
-  docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build "$DEPLOY_APP_SERVICE"
+  docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build
 ); then
   rollback_restore
   exit 1
