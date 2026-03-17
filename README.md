@@ -10,8 +10,22 @@ Modelo operacional do projeto:
 ## Desenvolvimento
 
 - `n8n dev`: `http://100.123.233.116:5678/`
-- `app dev`: `http://100.123.233.116:3001/`
+- `app dev` via `npm run dev`: `http://100.123.233.116:3000/`
+- `app dev` via Docker: `http://100.123.233.116:3001/`
 - `Evolution usado pelo dev`: `https://evolution.qlmed.com.br`
+
+## Fonte de verdade
+
+- todo desenvolvimento do app deve acontecer em `QLMED`
+- os manifests de producao ficam em `QLMED/production`
+- `/home/marce/qlmed-server-deploy` e apenas um snapshot legado e nao deve receber novas mudancas
+
+## Publicacao
+
+- antes de publicar, validar o alinhamento com `npm run check:deploy`
+- para publicar o estado atual de `main`, usar `npm run publish:server`
+- para deploy manual sem `git push`, usar `npm run deploy:server`
+- para rollback do ultimo release valido, usar `npm run rollback:server latest`
 
 ## Regras
 

@@ -10,7 +10,7 @@ Usage:
 
 Defaults:
   DEPLOY_HOST=server
-  DEPLOY_DIR=/home/marce/qlmed-server-deploy
+  DEPLOY_DIR=/home/marce/QLMED/production
   DEPLOY_PROJECT_NAME=qlmed
   DEPLOY_APP_SERVICE=qlmed-app
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
@@ -29,7 +29,7 @@ for cmd in ssh curl; do
 done
 
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
-DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/qlmed-server-deploy}"
+DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
 DEPLOY_APP_SERVICE="${DEPLOY_APP_SERVICE:-qlmed-app}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
@@ -69,6 +69,23 @@ backup_app="$DEPLOY_DIR/backups/$TARGET_RELEASE/app"
 app_dir="$DEPLOY_DIR/app"
 current_backup="$DEPLOY_DIR/.rollback-current-$TARGET_RELEASE"
 
+load_build_metadata() {
+  local target_dir="$1"
+  local fallback_source="$2"
+
+  if [[ -f "$target_dir/.deploy-meta.env" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$target_dir/.deploy-meta.env"
+    set +a
+    return
+  fi
+
+  export QLMED_BUILD_COMMIT_SHA=unknown
+  export QLMED_BUILD_DEPLOYED_AT=
+  export QLMED_BUILD_SOURCE="$fallback_source"
+}
+
 if [[ ! -d "$backup_app" ]]; then
   echo "Backup not found: $backup_app" >&2
   exit 1
@@ -79,12 +96,14 @@ if [[ -d "$app_dir" ]]; then
   mv "$app_dir" "$current_backup"
 fi
 cp -a "$backup_app" "$app_dir"
+load_build_metadata "$app_dir" rollback
 
 rollback_restore() {
   echo "Rollback failed. Restoring previous app..." >&2
   rm -rf "$app_dir"
   if [[ -d "$current_backup" ]]; then
     mv "$current_backup" "$app_dir"
+    load_build_metadata "$app_dir" rollback-restore
     (
       cd "$DEPLOY_DIR"
       docker compose --project-name "$DEPLOY_PROJECT_NAME" up -d --build "$DEPLOY_APP_SERVICE"

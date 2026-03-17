@@ -51,7 +51,7 @@ DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
 DEPLOY_APP_SERVICE="${DEPLOY_APP_SERVICE:-qlmed-app}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
-COMMIT_SHA="$(git rev-parse --short HEAD)"
+COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
 BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
 DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RELEASE_NAME="$(date -u +%Y%m%d%H%M%S)-${COMMIT_SHA}"
@@ -67,6 +67,7 @@ RELEASE_NAME=$(printf '%q' "$RELEASE_NAME")
 COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")
 BRANCH_NAME=$(printf '%q' "$BRANCH_NAME")
 DEPLOYED_AT=$(printf '%q' "$DEPLOYED_AT")
+BUILD_SOURCE=ssh-deploy
 
 release_dir="\$DEPLOY_DIR/releases/\$RELEASE_NAME"
 backup_dir="\$DEPLOY_DIR/backups/\$RELEASE_NAME"
@@ -80,11 +81,39 @@ cleanup() {
 }
 trap cleanup EXIT
 
+write_build_metadata() {
+  local target_dir="\$1"
+
+  cat > "\$target_dir/.deploy-meta.env" <<META
+QLMED_BUILD_COMMIT_SHA=\$COMMIT_SHA
+QLMED_BUILD_DEPLOYED_AT=\$DEPLOYED_AT
+QLMED_BUILD_SOURCE=\$BUILD_SOURCE
+META
+}
+
+load_build_metadata() {
+  local target_dir="\$1"
+  local fallback_source="\$2"
+
+  if [[ -f "\$target_dir/.deploy-meta.env" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "\$target_dir/.deploy-meta.env"
+    set +a
+    return
+  fi
+
+  export QLMED_BUILD_COMMIT_SHA=unknown
+  export QLMED_BUILD_DEPLOYED_AT=
+  export QLMED_BUILD_SOURCE="\$fallback_source"
+}
+
 rm -rf "\$staging_dir" "\$previous_dir"
 mkdir -p "\$DEPLOY_DIR/releases" "\$DEPLOY_DIR/backups" "\$release_dir" "\$backup_dir" "\$staging_dir"
 
 cat > "\$release_tarball"
 tar -xzf "\$release_tarball" -C "\$staging_dir"
+write_build_metadata "\$staging_dir"
 
 if [[ -d "\$app_dir" ]]; then
   mv "\$app_dir" "\$previous_dir"
@@ -96,6 +125,7 @@ rollback() {
   rm -rf "\$app_dir"
   if [[ -d "\$previous_dir" ]]; then
     mv "\$previous_dir" "\$app_dir"
+    load_build_metadata "\$app_dir" rollback
     (
       cd "\$DEPLOY_DIR"
       docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build "\$DEPLOY_APP_SERVICE"
@@ -103,6 +133,7 @@ rollback() {
   fi
 }
 
+load_build_metadata "\$app_dir" "\$BUILD_SOURCE"
 if ! (
   cd "\$DEPLOY_DIR"
   docker compose --project-name "\$DEPLOY_PROJECT_NAME" up -d --build "\$DEPLOY_APP_SERVICE"
@@ -142,5 +173,18 @@ echo "Streaming ${BRANCH_NAME}@${COMMIT_SHA} to ${DEPLOY_HOST}..."
 git archive --format=tar.gz HEAD | ssh "$DEPLOY_HOST" "bash -lc $(printf '%q' "$REMOTE_SCRIPT")"
 
 echo "Verifying public health..."
-curl -fsS "https://app.qlmed.com.br/api/health" >/dev/null 2>&1
+PUBLIC_COMMIT_SHA=""
+for _ in $(seq 1 30); do
+  PUBLIC_HEALTH="$(curl -fsS "https://app.qlmed.com.br/api/health" || true)"
+  PUBLIC_COMMIT_SHA="$(printf '%s' "$PUBLIC_HEALTH" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
+  if [[ "$PUBLIC_COMMIT_SHA" == "$COMMIT_SHA" ]]; then
+    break
+  fi
+  sleep 2
+done
+
+if [[ "$PUBLIC_COMMIT_SHA" != "$COMMIT_SHA" ]]; then
+  echo "Public health revision mismatch: expected ${COMMIT_SHA}, got ${PUBLIC_COMMIT_SHA:-missing}" >&2
+  exit 1
+fi
 echo "Deploy complete: ${COMMIT_SHA}"

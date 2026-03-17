@@ -19,6 +19,9 @@ services:
       context: ..
       args:
         QLMED_API_KEY: ${APP_QLMED_API_KEY}
+        QLMED_BUILD_COMMIT_SHA: ${APP_QLMED_BUILD_COMMIT_SHA:-unknown}
+        QLMED_BUILD_DEPLOYED_AT: ${APP_QLMED_BUILD_DEPLOYED_AT:-}
+        QLMED_BUILD_SOURCE: ${APP_QLMED_BUILD_SOURCE:-coolify}
     restart: unless-stopped
     ports:
       - "13000:3000"

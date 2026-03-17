@@ -26,9 +26,16 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+ARG QLMED_BUILD_COMMIT_SHA="unknown"
+ARG QLMED_BUILD_DEPLOYED_AT=""
+ARG QLMED_BUILD_SOURCE="unknown"
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=512"
+ENV QLMED_BUILD_COMMIT_SHA=${QLMED_BUILD_COMMIT_SHA}
+ENV QLMED_BUILD_DEPLOYED_AT=${QLMED_BUILD_DEPLOYED_AT}
+ENV QLMED_BUILD_SOURCE=${QLMED_BUILD_SOURCE}
 
 # Install tini (lightweight init to reap zombie processes) + Chromium for Puppeteer
 RUN apk add --no-cache \
@@ -47,6 +54,10 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
+
+LABEL org.opencontainers.image.revision=${QLMED_BUILD_COMMIT_SHA}
+LABEL org.opencontainers.image.created=${QLMED_BUILD_DEPLOYED_AT}
+LABEL org.opencontainers.image.source=${QLMED_BUILD_SOURCE}
 
 # Copy standalone output (--chown avoids separate chown -R layer)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

@@ -37,8 +37,19 @@ jobs:
             --exclude 'production' \
             ./ /home/marce/QLMED/production/app/
 
+      - name: Stamp deploy metadata
+        run: |
+          cat > /home/marce/QLMED/production/app/.deploy-meta.env <<EOF
+          QLMED_BUILD_COMMIT_SHA=${GITHUB_SHA::12}
+          QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          QLMED_BUILD_SOURCE=github-actions
+          EOF
+
       - name: Deploy stack on server
         run: |
+          set -a
+          . /home/marce/QLMED/production/app/.deploy-meta.env
+          set +a
           docker compose \
             --project-name qlmed \
             --env-file /home/marce/QLMED/production/.env \
@@ -58,6 +69,27 @@ jobs:
               fi
               if [ "$attempt" -eq 30 ]; then
                 echo "Health check failed for $url" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Verify deployed revision
+        run: |
+          expected_sha="${GITHUB_SHA::12}"
+          for url in \
+            http://127.0.0.1:13000/api/health \
+            https://app.qlmed.com.br/api/health
+          do
+            for attempt in $(seq 1 30); do
+              body="$(curl -fsS "$url" || true)"
+              actual_sha="$(printf '%s' "$body" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
+              if [ "$actual_sha" = "$expected_sha" ]; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Revision check failed for $url: expected $expected_sha, got ${actual_sha:-missing}" >&2
                 exit 1
               fi
               sleep 2
