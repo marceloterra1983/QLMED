@@ -391,21 +391,23 @@ async function findFilesMissingInDatabase(filePaths: string[]): Promise<string[]
     }
   }
 
-  const existingKeys = new Set<string>();
+  const existingKeysWithXml = new Set<string>();
   const chunks = chunkArray(uniqueKeys, DB_LOOKUP_CHUNK_SIZE);
   for (const chunk of chunks) {
     const rows = await prisma.invoice.findMany({
       where: { accessKey: { in: chunk } },
-      select: { accessKey: true },
+      select: { accessKey: true, xmlContent: true },
     });
     for (const row of rows) {
-      existingKeys.add(row.accessKey);
+      if (row.xmlContent && row.xmlContent !== '') {
+        existingKeysWithXml.add(row.accessKey);
+      }
     }
   }
 
   return filePaths.filter((filePath) => {
     const accessKey = accessKeyByFile.get(filePath);
-    return !accessKey || !existingKeys.has(accessKey);
+    return !accessKey || !existingKeysWithXml.has(accessKey);
   });
 }
 
@@ -598,6 +600,38 @@ async function importXmlFile(filePath: string): Promise<void> {
     if (code === 'ENOENT') return;
     if (code === 'P2002') {
       try {
+        const xmlContent = await fs.readFile(absolutePath, 'utf-8');
+        const parsed = await parseInvoiceXml(xmlContent);
+        if (parsed?.accessKey) {
+          const existing = await prisma.invoice.findFirst({
+            where: { accessKey: parsed.accessKey },
+            select: { id: true, xmlContent: true, companyId: true },
+          });
+          if (existing && (!existing.xmlContent || existing.xmlContent === '')) {
+            await prisma.invoice.update({
+              where: { id: existing.id },
+              data: { xmlContent },
+            });
+            console.log(`[LocalXmlSync] XML preenchido para nota existente: ${path.basename(absolutePath)}`);
+
+            const company = await getTargetCompany();
+            if (company && parsed.type === 'NFE') {
+              const normalizedDirection = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
+              updateProductAggregatesForInvoice({
+                companyId: company.id,
+                invoiceId: existing.id,
+                xmlContent,
+                direction: normalizedDirection,
+                issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+                senderName: parsed.senderName,
+                senderCnpj: parsed.senderCnpj,
+                recipientName: parsed.recipientName,
+                recipientCnpj: parsed.recipientCnpj,
+                invoiceNumber: parsed.number,
+              }).catch(() => {});
+            }
+          }
+        }
         const stats = await fs.stat(absolutePath);
         const fingerprint = `${stats.size}:${Math.floor(stats.mtimeMs)}`;
         rememberFileFingerprint(absolutePath, fingerprint);
