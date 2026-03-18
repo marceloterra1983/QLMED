@@ -74,7 +74,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --chown=nextjs:nodejs --chmod=755 start.sh ./start.sh
 
 # Create writable directories used both with and without mounted volumes
-RUN mkdir -p /app/xml_backup /app/storage && chown -R nextjs:nodejs /app/xml_backup /app/storage
+RUN mkdir -p /app/xml_backup /app/storage /app/pdf_backup && chown -R nextjs:nodejs /app/xml_backup /app/storage /app/pdf_backup
 
 EXPOSE 3000
 
