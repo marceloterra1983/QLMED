@@ -10,7 +10,7 @@ import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 
 const invoiceQuerySchema = z.object({
   page: z.coerce.number().int().positive().max(10000).catch(1),
-  limit: z.coerce.number().int().positive().max(200).catch(50),
+  limit: z.coerce.number().int().positive().max(5000).catch(50),
   search: z.string().max(200).catch(''),
   type: z.enum(['NFE', 'CTE', 'NFSE', '']).catch(''),
   status: z.string().max(50).catch(''),
