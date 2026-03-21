@@ -287,3 +287,95 @@ model FinanceiroDuplicataManualInstallment {
   @@index([invoiceId])
   @@index([companyId, invoiceId])
 }
+
+// ── Shadow tables (managed by raw SQL, models for schema visibility only) ──
+
+// Managed by raw SQL in src/lib/invoice-tax-store.ts. Model exists for schema visibility only.
+model InvoiceTaxTotals {
+  invoiceId  String    @id @map("invoice_id")
+  companyId  String    @map("company_id")
+  vbc        Float?
+  vicms      Float?
+  vpis       Float?
+  vcofins    Float?
+  vipi       Float?
+  vfrete     Float?
+  vseg       Float?
+  vdesc      Float?
+  voutro     Float?
+  vtottrib   Float?
+  vfcp       Float?
+  vicmsSt    Float?    @map("vicms_st")
+  computedAt DateTime? @default(now()) @map("computed_at") @db.Timestamptz
+
+  @@index([companyId])
+  @@map("invoice_tax_totals")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/invoice-tax-store.ts. Model exists for schema visibility only.
+model InvoiceItemTax {
+  id                 String  @id
+  invoiceId          String  @map("invoice_id")
+  companyId          String  @map("company_id")
+  itemNumber         Int?    @map("item_number")
+  productCode        String? @map("product_code")
+  productDescription String? @map("product_description")
+  ncm                String?
+  cfop               String?
+  cest               String?
+  origem             String?
+  quantity           Float?
+  unitPrice          Float?  @map("unit_price")
+  totalValue         Float?  @map("total_value")
+  cstIcms            String? @map("cst_icms")
+  baseIcms           Float?  @map("base_icms")
+  aliqIcms           Float?  @map("aliq_icms")
+  valorIcms          Float?  @map("valor_icms")
+  cstPis             String? @map("cst_pis")
+  aliqPis            Float?  @map("aliq_pis")
+  valorPis           Float?  @map("valor_pis")
+  cstCofins          String? @map("cst_cofins")
+  aliqCofins         Float?  @map("aliq_cofins")
+  valorCofins        Float?  @map("valor_cofins")
+  aliqIpi            Float?  @map("aliq_ipi")
+  valorIpi           Float?  @map("valor_ipi")
+  valorFcp           Float?  @map("valor_fcp")
+
+  @@index([invoiceId])
+  @@index([companyId, cfop])
+  @@map("invoice_item_tax")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/contact-fiscal-store.ts. Model exists for schema visibility only.
+model ContactFiscal {
+  id              String    @id
+  companyId       String    @map("company_id")
+  cnpj            String
+  ie              String?
+  im              String?
+  crt             String?
+  uf              String?
+  sourceInvoiceId String?   @map("source_invoice_id")
+  extractedAt     DateTime? @default(now()) @map("extracted_at") @db.Timestamptz
+
+  @@unique([companyId, cnpj])
+  @@index([companyId])
+  @@map("contact_fiscal")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/ncm-lookup.ts. Model exists for schema visibility only.
+model NcmCache {
+  code            String    @id
+  descricao       String    @default("")
+  parentCode      String?   @map("parent_code")
+  fullDescription String    @default("") @map("full_description")
+  hierarchy       Json      @default("[]")
+  fetchedAt       DateTime  @default(now()) @map("fetched_at") @db.Timestamptz
+
+  @@index([parentCode])
+  @@map("ncm_cache")
+  @@ignore
+}

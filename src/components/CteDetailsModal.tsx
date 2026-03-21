@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import type { CteDetails, CteParty, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
 
 interface CteDetailsModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ const TABS = [
 
 // --- Tab Content Components ---
 
-function TabCte({ data }: { data: any }) {
+function TabCte({ data }: { data: CteDetails }) {
   const cte = data.cte;
   return (
     <div className="space-y-4">
@@ -86,7 +87,7 @@ function TabCte({ data }: { data: any }) {
           <>
             {/* Mobile */}
             <div className="sm:hidden space-y-1">
-              {data.componentes.map((c: any, i: number) => (
+              {data.componentes.map((c: CteComponente, i: number) => (
                 <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{c.nome}</span>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(c.valor)}</span>
@@ -103,7 +104,7 @@ function TabCte({ data }: { data: any }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                  {data.componentes.map((c: any, i: number) => (
+                  {data.componentes.map((c: CteComponente, i: number) => (
                     <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                       <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{c.nome}</td>
                       <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(c.valor)}</td>
@@ -126,7 +127,7 @@ function TabCte({ data }: { data: any }) {
   );
 }
 
-function TabParty({ data, partyKey, title, icon, iconColor }: { data: any; partyKey: string; title: string; icon: string; iconColor: string }) {
+function TabParty({ data, partyKey, title, icon, iconColor }: { data: CteDetails; partyKey: 'emitente' | 'remetente' | 'destinatario' | 'expedidor' | 'recebedor'; title: string; icon: string; iconColor: string }) {
   const entity = data[partyKey];
   if (!entity || !entity.cnpj) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -167,7 +168,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: any; party
   );
 }
 
-function TabCarga({ data }: { data: any }) {
+function TabCarga({ data }: { data: CteDetails }) {
   const carga = data.carga;
   if (!carga) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -190,7 +191,7 @@ function TabCarga({ data }: { data: any }) {
         <SectionBlock title="Medidas" icon="straighten" iconColor="text-indigo-500">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
-            {carga.medidas.map((m: any, i: number) => (
+            {carga.medidas.map((m: CargaMedida, i: number) => (
               <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{m.tipoMedida || '-'}</span>
@@ -211,7 +212,7 @@ function TabCarga({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {carga.medidas.map((m: any, i: number) => (
+                {carga.medidas.map((m: CargaMedida, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{m.tipoMedida || '-'}</td>
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{m.unidade}</td>
@@ -237,7 +238,7 @@ function TabCarga({ data }: { data: any }) {
   );
 }
 
-function TabDocumentos({ data }: { data: any }) {
+function TabDocumentos({ data }: { data: CteDetails }) {
   const docs = data.documentos;
   const hasContent = docs?.nfeRefs?.length || docs?.nfRefs?.length || docs?.outrosRefs?.length;
 
@@ -256,7 +257,7 @@ function TabDocumentos({ data }: { data: any }) {
         <SectionBlock title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long" iconColor="text-primary">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
-            {docs.nfeRefs.map((n: any, i: number) => (
+            {docs.nfeRefs.map((n: CteNfeRef, i: number) => (
               <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <span className="text-[10px] text-slate-400">#{i + 1}</span>
                 <p className="text-[10px] font-mono text-slate-800 dark:text-slate-200 break-all">{n.chave || '-'}</p>
@@ -273,7 +274,7 @@ function TabDocumentos({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {docs.nfeRefs.map((n: any, i: number) => (
+                {docs.nfeRefs.map((n: CteNfeRef, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs font-mono text-slate-500">{i + 1}</td>
                     <td className="px-3 py-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 tracking-wider">
@@ -291,7 +292,7 @@ function TabDocumentos({ data }: { data: any }) {
         <SectionBlock title={`NF Referenciadas (${docs.nfRefs.length})`} icon="article" iconColor="text-indigo-500">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
-            {docs.nfRefs.map((n: any, i: number) => (
+            {docs.nfRefs.map((n: CteNfRef, i: number) => (
               <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-2">
@@ -316,7 +317,7 @@ function TabDocumentos({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {docs.nfRefs.map((n: any, i: number) => (
+                {docs.nfRefs.map((n: CteNfRef, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{n.serie || '-'}</td>
                     <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{n.numero || '-'}</td>
@@ -334,7 +335,7 @@ function TabDocumentos({ data }: { data: any }) {
         <SectionBlock title={`Outros Documentos (${docs.outrosRefs.length})`} icon="folder_open" iconColor="text-amber-500">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
-            {docs.outrosRefs.map((o: any, i: number) => (
+            {docs.outrosRefs.map((o: CteOutroRef, i: number) => (
               <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-2">
@@ -359,7 +360,7 @@ function TabDocumentos({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {docs.outrosRefs.map((o: any, i: number) => (
+                {docs.outrosRefs.map((o: CteOutroRef, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{o.tipo || '-'}</td>
                     <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{o.descricao || '-'}</td>
@@ -376,7 +377,7 @@ function TabDocumentos({ data }: { data: any }) {
   );
 }
 
-function TabImpostos({ data }: { data: any }) {
+function TabImpostos({ data }: { data: CteDetails }) {
   const imp = data.impostos;
   if (!imp) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -408,7 +409,7 @@ function TabImpostos({ data }: { data: any }) {
   );
 }
 
-function TabInfAdicionais({ data }: { data: any }) {
+function TabInfAdicionais({ data }: { data: CteDetails }) {
   const inf = data.infAdicionais || {};
   const hasContent = inf.infAdFisco || inf.infCpl;
 
@@ -442,7 +443,7 @@ function TabInfAdicionais({ data }: { data: any }) {
 
 export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetailsModalProps) {
   useModalBackButton(isOpen, onClose);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<CteDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('cte');

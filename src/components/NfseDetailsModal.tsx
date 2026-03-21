@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import type { NfseDetails } from '@/types/invoice-details';
 
 interface NfseDetailsModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ const TABS = [
   { id: 'servico', label: 'Serviço', icon: 'handyman' },
 ];
 
-function TabNfse({ data }: { data: any }) {
+function TabNfse({ data }: { data: NfseDetails }) {
   const n = data.nfse;
   return (
     <div className="space-y-4">
@@ -62,7 +63,7 @@ function TabNfse({ data }: { data: any }) {
   );
 }
 
-function TabParty({ data, partyKey, title, icon, iconColor }: { data: any; partyKey: string; title: string; icon: string; iconColor: string }) {
+function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetails; partyKey: 'prestador' | 'tomador'; title: string; icon: string; iconColor: string }) {
   const party = data[partyKey];
   if (!party) return <p className="text-sm text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
@@ -92,7 +93,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: any; party
   );
 }
 
-function TabServico({ data }: { data: any }) {
+function TabServico({ data }: { data: NfseDetails }) {
   const s = data.servico;
   if (!s) return <p className="text-sm text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
@@ -122,7 +123,7 @@ function TabServico({ data }: { data: any }) {
 
 export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDetailsModalProps) {
   useModalBackButton(isOpen, onClose);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<NfseDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('nfse');

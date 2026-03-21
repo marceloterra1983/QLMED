@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import type { NfeDetails, NfeProduto, EmitDestParty, NfeTotais, NfeTransporte, NfeCobranca, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, IcmsTaxFields, TaxFields } from '@/types/invoice-details';
 
 interface NfeDetailsModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface NfeDetailsModalProps {
   initialTab?: string;
 }
 
-function TaxCard({ label, color, data }: { label: string; color: string; data: any }) {
+function TaxCard({ label, color, data }: { label: string; color: string; data: TaxFields | null }) {
   if (!data) return null;
   const colorMap: Record<string, string> = {
     blue: 'from-blue-500/10 to-blue-500/5 ring-blue-500/15 dark:from-blue-500/20 dark:to-blue-500/10 dark:ring-blue-500/25',
@@ -81,7 +82,7 @@ const TABS = [
 
 // --- Tab Content Components ---
 
-function TabNfe({ data }: { data: any }) {
+function TabNfe({ data }: { data: NfeDetails }) {
   const nfe = data.nfe;
   return (
     <div className="space-y-4">
@@ -142,7 +143,7 @@ function TabNfe({ data }: { data: any }) {
   );
 }
 
-function TabEmitDest({ data, type }: { data: any; type: 'emitente' | 'destinatario' }) {
+function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'destinatario' }) {
   const entity = data[type];
   if (!entity) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -204,7 +205,7 @@ function TabEmitDest({ data, type }: { data: any; type: 'emitente' | 'destinatar
   );
 }
 
-function TabProdutos({ data }: { data: any }) {
+function TabProdutos({ data }: { data: NfeDetails }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const produtos = data.produtos || [];
 
@@ -230,7 +231,7 @@ function TabProdutos({ data }: { data: any }) {
     <SectionBlock title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" iconColor="text-emerald-500">
       {/* Mobile Cards */}
       <div className="sm:hidden space-y-1.5">
-        {produtos.map((prod: any, idx: number) => (
+        {produtos.map((prod: NfeProduto, idx: number) => (
           <div key={`m-${idx}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <button
               onClick={() => toggle(idx)}
@@ -281,7 +282,7 @@ function TabProdutos({ data }: { data: any }) {
             </tr>
           </thead>
           <tbody>
-            {produtos.map((prod: any, idx: number) => (
+            {produtos.map((prod: NfeProduto, idx: number) => (
               <Fragment key={idx}>
                 <tr
                   onClick={() => toggle(idx)}
@@ -330,7 +331,7 @@ function TabProdutos({ data }: { data: any }) {
   );
 }
 
-function TabTotais({ data }: { data: any }) {
+function TabTotais({ data }: { data: NfeDetails }) {
   const t = data.totais || {};
   return (
     <SectionBlock title="Totais da NF-e" icon="calculate" iconColor="text-emerald-500">
@@ -363,7 +364,7 @@ function TabTotais({ data }: { data: any }) {
   );
 }
 
-function TabTransporte({ data }: { data: any }) {
+function TabTransporte({ data }: { data: NfeDetails }) {
   const transp = data.transporte;
   if (!transp) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -397,7 +398,7 @@ function TabTransporte({ data }: { data: any }) {
 
       {transp.volumes?.length > 0 && (
         <SectionBlock title="Volumes" icon="package_2" iconColor="text-amber-500">
-          {transp.volumes.map((vol: any, i: number) => (
+          {transp.volumes.map((vol: TransporteVolume, i: number) => (
             <div key={i} className={`grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 ${i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}`}>
               <Field label="Quantidade" value={vol.quantidade} />
               <Field label="Espécie" value={vol.especie} />
@@ -413,7 +414,7 @@ function TabTransporte({ data }: { data: any }) {
   );
 }
 
-function TabCobranca({ data }: { data: any }) {
+function TabCobranca({ data }: { data: NfeDetails }) {
   const cobr = data.cobranca || {};
 
   const hasContent = cobr.formasPagamento?.length || cobr.fatura || cobr.duplicatas?.length;
@@ -430,7 +431,7 @@ function TabCobranca({ data }: { data: any }) {
     <div className="space-y-4">
       {cobr.formasPagamento?.length > 0 && (
         <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary">
-          {cobr.formasPagamento.map((p: any, i: number) => (
+          {cobr.formasPagamento.map((p: FormaPagamento, i: number) => (
             <div key={i} className={i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-3">
                 <Field label="Forma de Pagamento" value={p.forma} />
@@ -463,7 +464,7 @@ function TabCobranca({ data }: { data: any }) {
         <SectionBlock title="Duplicatas" icon="payments" iconColor="text-rose-500">
           {/* Mobile Cards */}
           <div className="sm:hidden space-y-1.5">
-            {cobr.duplicatas.map((d: any, i: number) => (
+            {cobr.duplicatas.map((d: Duplicata, i: number) => (
               <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</span>
@@ -484,7 +485,7 @@ function TabCobranca({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {cobr.duplicatas.map((d: any, i: number) => (
+                {cobr.duplicatas.map((d: Duplicata, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</td>
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{d.vencimento}</td>
@@ -500,8 +501,8 @@ function TabCobranca({ data }: { data: any }) {
   );
 }
 
-function TabInfAdicionais({ data }: { data: any }) {
-  const inf = data.infAdicionais || {};
+function TabInfAdicionais({ data }: { data: NfeDetails }) {
+  const inf = data.infAdicionais || {} as NfeInfAdicionais;
   return (
     <div className="space-y-4">
       <SectionBlock title="Informações Adicionais" icon="info" iconColor="text-violet-500">
@@ -530,7 +531,7 @@ function TabInfAdicionais({ data }: { data: any }) {
 
 export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab }: NfeDetailsModalProps) {
   useModalBackButton(isOpen, onClose);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<NfeDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('nfe');
