@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
+import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 
 const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
@@ -80,6 +81,7 @@ export async function POST(req: Request) {
             recipientCnpj: parsed.recipientCnpj,
             recipientName: parsed.recipientName,
             totalValue: parsed.totalValue,
+            cfop: extractFirstCfop(xmlContent),
             xmlContent,
             companyId,
           },

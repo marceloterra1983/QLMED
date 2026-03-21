@@ -106,7 +106,7 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, override });
+    return NextResponse.json({ success: true, override: { ...override, dupValor: override.dupValor != null ? Number(override.dupValor) : null } });
   } catch (error) {
     console.error('Error saving contas pagar override:', error);
     return NextResponse.json({ error: 'Erro ao salvar alterações' }, { status: 500 });

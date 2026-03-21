@@ -290,7 +290,7 @@ export async function GET(req: Request) {
         invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
 
         if (isSaleOrBonificationInvoice(cfops)) {
-          totalValue += invoice.totalValue || 0;
+          totalValue += Number(invoice.totalValue) || 0;
           totalSaleOrBonificationInvoices += 1;
         }
 
@@ -418,7 +418,7 @@ export async function GET(req: Request) {
       number: invoice.number,
       series: invoice.series,
       issueDate: invoice.issueDate,
-      totalValue: invoice.totalValue,
+      totalValue: Number(invoice.totalValue),
       status: invoice.status,
       accessKey: invoice.accessKey,
       cfopTag: invoiceCfopTagMap.get(invoice.id) || 'Outros',

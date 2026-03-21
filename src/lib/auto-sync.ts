@@ -9,6 +9,7 @@ import { resolveInvoiceDirection } from './invoice-direction';
 import { updateProductAggregatesForInvoice, scheduleNightlyRebuild } from './product-aggregate-updater';
 import { syncReceitaNfseByNsu } from './receita-nfse-sync';
 import { saveXmlToFile } from './xml-file-store';
+import { extractFirstCfop } from './cfop';
 import { prisma } from './prisma';
 import { UF_TO_CODE } from './constants';
 
@@ -405,7 +406,7 @@ async function checkAndSync() {
   }
 }
 
-async function syncViaSefaz(
+export async function syncViaSefaz(
   companyId: string,
   cnpj: string,
   razaoSocial: string,
@@ -417,10 +418,13 @@ async function syncViaSefaz(
     environment: string;
     subject: string | null;
   },
+  existingSyncLogId?: string,
 ) {
-  const syncLog = await prisma.syncLog.create({
-    data: { companyId, syncMethod: 'sefaz', status: 'running' },
-  });
+  const syncLog = existingSyncLogId
+    ? { id: existingSyncLogId }
+    : await prisma.syncLog.create({
+        data: { companyId, syncMethod: 'sefaz', status: 'running' },
+      });
 
   let ultNSU = cert.lastNsu || '0';
 
@@ -469,6 +473,7 @@ async function syncViaSefaz(
 
           const accessKey = parsed.accessKey || doc.chave;
           const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, accessKey);
+          const cfop = extractFirstCfop(doc.xml);
 
           const result = await prisma.invoice.upsert({
             where: { accessKey },
@@ -483,6 +488,7 @@ async function syncViaSefaz(
               recipientCnpj: parsed.recipientCnpj,
               recipientName: parsed.recipientName,
               totalValue: parsed.totalValue,
+              cfop,
               xmlContent: doc.xml,
             },
             create: {
@@ -499,6 +505,7 @@ async function syncViaSefaz(
               recipientName: parsed.recipientName,
               totalValue: parsed.totalValue,
               status: 'received',
+              cfop,
               xmlContent: doc.xml,
             },
           });
@@ -562,15 +569,18 @@ async function syncViaSefaz(
   }
 }
 
-async function syncViaNsdocs(
+export async function syncViaNsdocs(
   companyId: string,
   cnpj: string,
   razaoSocial: string,
   nsdocsConfig: { id: string; apiToken: string; lastSyncAt: Date | null },
+  existingSyncLogId?: string,
 ) {
-  const syncLog = await prisma.syncLog.create({
-    data: { companyId, syncMethod: 'nsdocs', status: 'running' },
-  });
+  const syncLog = existingSyncLogId
+    ? { id: existingSyncLogId }
+    : await prisma.syncLog.create({
+        data: { companyId, syncMethod: 'nsdocs', status: 'running' },
+      });
 
   try {
     const client = new NsdocsClient(decrypt(nsdocsConfig.apiToken));
@@ -597,6 +607,7 @@ async function syncViaNsdocs(
 
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
+        const cfop = extractFirstCfop(xmlContent);
 
         const result = await prisma.invoice.upsert({
           where: { accessKey: parsed.accessKey },
@@ -612,6 +623,7 @@ async function syncViaNsdocs(
             recipientName: parsed.recipientName,
             totalValue: parsed.totalValue,
             status: mappedStatus,
+            cfop,
             xmlContent,
           },
           create: {
@@ -628,6 +640,7 @@ async function syncViaNsdocs(
             recipientName: parsed.recipientName,
             totalValue: parsed.totalValue,
             status: mappedStatus,
+            cfop,
             xmlContent,
           },
         });
@@ -682,7 +695,7 @@ async function syncViaNsdocs(
   }
 }
 
-async function syncViaReceitaNfse(
+export async function syncViaReceitaNfse(
   companyId: string,
   cnpj: string,
   razaoSocial: string,
@@ -698,10 +711,13 @@ async function syncViaReceitaNfse(
     pfxData: Buffer;
     pfxPassword: string;
   },
+  existingSyncLogId?: string,
 ) {
-  const syncLog = await prisma.syncLog.create({
-    data: { companyId, syncMethod: 'receita_nfse', status: 'running' },
-  });
+  const syncLog = existingSyncLogId
+    ? { id: existingSyncLogId }
+    : await prisma.syncLog.create({
+        data: { companyId, syncMethod: 'receita_nfse', status: 'running' },
+      });
 
   try {
     const result = await syncReceitaNfseByNsu({

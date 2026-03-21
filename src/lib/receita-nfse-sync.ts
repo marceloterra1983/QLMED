@@ -2,6 +2,7 @@ import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt } from '@/lib/crypto';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
+import { extractFirstCfop } from '@/lib/cfop';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 
@@ -157,6 +158,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
       if (!parsed || parsed.type !== 'NFSE' || !parsed.accessKey) continue;
 
       const direction = resolveInvoiceDirection(companyCnpj, parsed.senderCnpj, parsed.accessKey);
+      const cfop = extractFirstCfop(xmlContent);
 
       const result = await prisma.invoice.upsert({
         where: { accessKey: parsed.accessKey },
@@ -172,6 +174,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
           recipientName: parsed.recipientName,
           totalValue: parsed.totalValue,
           status: inferNfseStatus(xmlContent),
+          cfop,
           xmlContent,
         },
         create: {
@@ -188,6 +191,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
           recipientName: parsed.recipientName,
           totalValue: parsed.totalValue,
           status: inferNfseStatus(xmlContent),
+          cfop,
           xmlContent,
         },
       });

@@ -138,7 +138,7 @@ export async function PUT(
         0
       )
     );
-    const totalNota = roundMoney(invoice.totalValue || 0);
+    const totalNota = roundMoney(Number(invoice.totalValue) || 0);
     const diff = roundMoney(totalNota - totalParcelas);
     if (Math.abs(diff) > 0.01) {
       return NextResponse.json(

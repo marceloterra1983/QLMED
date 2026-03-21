@@ -151,6 +151,8 @@ model SyncLog {
   completedAt  DateTime?
 
   @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, syncMethod, status])
 }
 
 model OneDriveConnection {
@@ -187,8 +189,9 @@ model Invoice {
   senderName     String
   recipientCnpj  String?
   recipientName  String?
-  totalValue     Float
+  totalValue     Decimal
   status         InvoiceStatus    @default(received)
+  cfop           String?
   xmlContent     String
   companyId      String
   company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -204,6 +207,7 @@ model Invoice {
   @@index([companyId, type, direction, issueDate])
   @@index([companyId, type, direction, senderCnpj])
   @@index([companyId, status])
+  @@index([companyId, cfop])
   @@index([senderName])
 }
 
@@ -220,13 +224,14 @@ model FinanceiroDuplicataOverride {
   faturaNumero          String?
   dupNumero             String?
   dupVencimento         String?
-  dupValor              Float?
+  dupValor              Decimal?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   @@unique([companyId, invoiceId, dupNumeroOriginal, dupVencimentoOriginal], map: "company_invoice_dup_original")
   @@index([companyId])
   @@index([invoiceId])
+  @@index([companyId, invoiceId])
 }
 
 model ContactNickname {
@@ -272,12 +277,13 @@ model FinanceiroDuplicataManualInstallment {
   invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   dupNumero     String
   dupVencimento String
-  dupValor      Float
-  dupDesconto   Float    @default(0)
+  dupValor      Decimal
+  dupDesconto   Decimal  @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([companyId, invoiceId, dupNumero], map: "company_invoice_manual_dup_num")
   @@index([companyId])
   @@index([invoiceId])
+  @@index([companyId, invoiceId])
 }

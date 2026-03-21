@@ -133,15 +133,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       nfeReceived: {
         count: nfeReceived._count,
-        totalValue: nfeReceived._sum.totalValue || 0,
+        totalValue: Number(nfeReceived._sum.totalValue) || 0,
       },
       nfeIssued: {
         count: nfeIssued._count,
-        totalValue: nfeIssued._sum.totalValue || 0,
+        totalValue: Number(nfeIssued._sum.totalValue) || 0,
       },
       cte: {
         count: cte._count,
-        totalValue: cte._sum.totalValue || 0,
+        totalValue: Number(cte._sum.totalValue) || 0,
       },
       pendingManifest,
       errors,
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
         type: period,
         label: formatPeriodLabel(now, period),
       },
-      recentInvoices,
+      recentInvoices: recentInvoices.map((inv) => ({ ...inv, totalValue: Number(inv.totalValue) })),
     });
   } catch (error) {
     console.error('Dashboard error:', error);

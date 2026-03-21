@@ -123,7 +123,7 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
           supplierName: invoice.senderName,
           supplierCnpj: invoice.senderCnpj,
           issueDate: invoice.issueDate,
-          totalValue: invoice.totalValue,
+          totalValue: Number(invoice.totalValue),
         },
         items,
         summary: {
@@ -202,7 +202,7 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
         supplierName: invoice.senderName,
         supplierCnpj: invoice.senderCnpj,
         issueDate: invoice.issueDate,
-        totalValue: invoice.totalValue,
+        totalValue: Number(invoice.totalValue),
       },
       items,
       summary: {

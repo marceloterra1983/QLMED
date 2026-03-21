@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOriginalIssuedPdf } from '@/lib/original-issued-pdf';
 import prisma from '@/lib/prisma';
@@ -119,7 +120,7 @@ type PdfInvoiceView = {
   senderName: string;
   recipientCnpj: string;
   recipientName: string;
-  totalValue: number;
+  totalValue: number | Prisma.Decimal;
   status: string;
   accessKey: string;
   direction: string;
@@ -2132,7 +2133,7 @@ function buildFallbackHtml(invoice: PdfInvoiceView, autoPrint: boolean): string 
       </div>
       <div class="simple-total">
         <div class="label">Valor Total</div>
-        <div class="value">${fmtCurrency(invoice.totalValue)}</div>
+        <div class="value">${fmtCurrency(Number(invoice.totalValue))}</div>
       </div>
       <div class="simple-key">
         <h3>Chave de Acesso</h3>

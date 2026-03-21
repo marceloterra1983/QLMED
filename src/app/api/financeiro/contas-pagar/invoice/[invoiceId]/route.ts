@@ -134,8 +134,8 @@ export async function GET(
         ...seed,
         dupNumero: parcela.dupNumero,
         dupVencimento: parcela.dupVencimento,
-        dupValor: getNetInstallmentValue(parcela.dupValor, parcela.dupDesconto || 0),
-        dupDesconto: parcela.dupDesconto || 0,
+        dupValor: getNetInstallmentValue(Number(parcela.dupValor), Number(parcela.dupDesconto) || 0),
+        dupDesconto: Number(parcela.dupDesconto) || 0,
       }));
     })();
 
@@ -175,7 +175,7 @@ export async function GET(
       const faturaNumero = override?.faturaNumero?.trim() || item.faturaNumero;
       const dupNumero = override?.dupNumero?.trim() || item.dupNumero;
       const vencimento = override?.dupVencimento?.trim() || item.dupVencimento;
-      const dupValor = typeof override?.dupValor === 'number' ? override.dupValor : item.dupValor;
+      const dupValor = override?.dupValor != null ? Number(override.dupValor) : item.dupValor;
       const statusInfo = getStatusFromVencimento(vencimento, todayEpochDay);
 
       return {
@@ -222,7 +222,7 @@ export async function GET(
         id: invoice.id,
         number: invoice.number,
         issueDate: invoice.issueDate,
-        totalValue: invoice.totalValue,
+        totalValue: Number(invoice.totalValue),
         emitenteNome: headerEmitenteNome,
         emitenteCnpj: headerEmitenteCnpj,
       },

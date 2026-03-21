@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
-import { extractFirstCfop, getCfopTagByCode } from '@/lib/cfop';
+import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 
 const invoiceQuerySchema = z.object({
@@ -219,10 +219,11 @@ export async function GET(req: Request) {
       recipientName: true,
       totalValue: true,
       status: true,
+      cfop: true,
       createdAt: true,
     };
 
-    const attachCfopForInvoices = async <T extends { id: string }>(
+    const attachExtraFieldsForInvoices = async <T extends { id: string; cfop?: string | null; totalValue: any }>(
       baseInvoices: T[]
     ): Promise<Array<T & {
       cfop: string | null;
@@ -233,58 +234,52 @@ export async function GET(req: Request) {
       senderCity: string | null;
     }>> => {
       if (baseInvoices.length === 0) return [];
-      const xmlById = await prisma.invoice.findMany({
-        where: { companyId: company.id, id: { in: baseInvoices.map((invoice) => invoice.id) } },
-        select: { id: true, xmlContent: true, type: true },
-      });
-      const cfopById = new Map(xmlById.map((entry) => [entry.id, extractFirstCfop(entry.xmlContent)]));
-      const cteRemetenteById = new Map(
-        xmlById.map((entry) => [
-          entry.id,
-          entry.type === 'CTE' ? extractCteRemetenteName(entry.xmlContent) : null,
-        ])
-      );
-      const cteRecebedorById = new Map(
-        xmlById.map((entry) => [
-          entry.id,
-          entry.type === 'CTE' ? extractCteRecebedorName(entry.xmlContent) : null,
-        ])
-      );
-      const cteRemetenteCnpjById = new Map(
-        xmlById.map((entry) => [
-          entry.id,
-          entry.type === 'CTE' ? extractCteRemetenteCnpj(entry.xmlContent) : null,
-        ])
-      );
-      const cteRecebedorCnpjById = new Map(
-        xmlById.map((entry) => [
-          entry.id,
-          entry.type === 'CTE' ? extractCteRecebedorCnpj(entry.xmlContent) : null,
-        ])
-      );
-      const senderCityById = new Map(
-        xmlById.map((entry) => [
-          entry.id,
-          entry.type === 'NFSE' ? extractNfseSenderCity(entry.xmlContent) : null,
-        ])
-      );
 
-      return baseInvoices.map((invoice) => ({
-        ...invoice,
-        cfop: cfopById.get(invoice.id) || null,
-        cteRemetenteName: cteRemetenteById.get(invoice.id) || null,
-        cteRecebedorName: cteRecebedorById.get(invoice.id) || null,
-        cteRemetenteCnpj: cteRemetenteCnpjById.get(invoice.id) || null,
-        cteRecebedorCnpj: cteRecebedorCnpjById.get(invoice.id) || null,
-        senderCity: senderCityById.get(invoice.id) || null,
-      }));
+      // Only load XML for CTE (remetente/recebedor) and NFSE (senderCity) invoices
+      const needsXml = baseInvoices.filter((inv: any) => inv.type === 'CTE' || inv.type === 'NFSE');
+      let xmlById = new Map<string, { xmlContent: string; type: string }>();
+      if (needsXml.length > 0) {
+        const xmlRows = await prisma.invoice.findMany({
+          where: { companyId: company.id, id: { in: needsXml.map((invoice) => invoice.id) } },
+          select: { id: true, xmlContent: true, type: true },
+        });
+        xmlById = new Map(xmlRows.map((entry) => [entry.id, { xmlContent: entry.xmlContent, type: entry.type }]));
+      }
+
+      return baseInvoices.map((invoice) => {
+        const xml = xmlById.get(invoice.id);
+        return {
+          ...invoice,
+          totalValue: Number(invoice.totalValue),
+          cfop: invoice.cfop || null,
+          cteRemetenteName: xml?.type === 'CTE' ? extractCteRemetenteName(xml.xmlContent) : null,
+          cteRecebedorName: xml?.type === 'CTE' ? extractCteRecebedorName(xml.xmlContent) : null,
+          cteRemetenteCnpj: xml?.type === 'CTE' ? extractCteRemetenteCnpj(xml.xmlContent) : null,
+          cteRecebedorCnpj: xml?.type === 'CTE' ? extractCteRecebedorCnpj(xml.xmlContent) : null,
+          senderCity: xml?.type === 'NFSE' ? extractNfseSenderCity(xml.xmlContent) : null,
+        };
+      });
     };
 
     if (search) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
 
+      // Pre-filter by cfopTag at DB level when both search and cfopTag are active
+      const searchWhere = { ...where };
+      if (cfopTag) {
+        const cfopCodes = getCfopCodesByTag(cfopTag);
+        if (cfopCodes.length > 0) {
+          searchWhere.cfop = { in: cfopCodes };
+        } else {
+          return NextResponse.json({
+            invoices: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+          });
+        }
+      }
+
       const allInvoices = await prisma.invoice.findMany({
-        where,
+        where: searchWhere,
         select: selectFields,
         orderBy: { [orderByField]: orderByDir },
         take: 5000,
@@ -318,40 +313,28 @@ export async function GET(req: Request) {
         return flexMatchAll(fields, searchWords);
       });
 
-      const invoicesWithCfop = await attachCfopForInvoices(filtered);
-      const byCfopTag = cfopTag
-        ? invoicesWithCfop.filter((inv) => getCfopTagByCode(inv.cfop) === cfopTag)
-        : invoicesWithCfop;
-      const total = byCfopTag.length;
-      const paginated = byCfopTag.slice((page - 1) * limit, (page - 1) * limit + limit);
+      const total = filtered.length;
+      const paginated = filtered.slice((page - 1) * limit, (page - 1) * limit + limit);
+      const invoicesWithExtra = await attachExtraFieldsForInvoices(paginated);
 
       return NextResponse.json({
-        invoices: paginated,
+        invoices: invoicesWithExtra,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       });
     }
 
+    // When cfopTag is active (without search), filter at the database level using the cfop column
     if (cfopTag) {
-      const baseInvoices = await prisma.invoice.findMany({
-        where,
-        select: selectFields,
-        orderBy: { [orderByField]: orderByDir },
-        take: 5000,
-      });
-      const invoicesWithCfop = await attachCfopForInvoices(baseInvoices);
-      const filteredByTag = invoicesWithCfop.filter((inv) => getCfopTagByCode(inv.cfop) === cfopTag);
-      const total = filteredByTag.length;
-      const paginated = filteredByTag.slice((page - 1) * limit, (page - 1) * limit + limit);
-
-      return NextResponse.json({
-        invoices: paginated,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      });
+      const cfopCodes = getCfopCodesByTag(cfopTag);
+      if (cfopCodes.length > 0) {
+        where.cfop = { in: cfopCodes };
+      } else {
+        // Unknown tag — no results
+        return NextResponse.json({
+          invoices: [],
+          pagination: { page, limit, total: 0, pages: 0 },
+        });
+      }
     }
 
     const [invoices, total] = await Promise.all([
@@ -364,10 +347,10 @@ export async function GET(req: Request) {
       }),
       prisma.invoice.count({ where }),
     ]);
-    const invoicesWithCfop = await attachCfopForInvoices(invoices);
+    const invoicesWithExtra = await attachExtraFieldsForInvoices(invoices);
 
     return NextResponse.json({
-      invoices: invoicesWithCfop,
+      invoices: invoicesWithExtra,
       pagination: {
         page,
         limit,

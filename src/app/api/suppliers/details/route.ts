@@ -208,7 +208,7 @@ export async function GET(req: Request) {
 
     // Step 3: Compute stats from metadata (no XML needed)
     const totalInvoices = filteredInvoices.length;
-    const totalValue = filteredInvoices.reduce((acc, invoice) => acc + (invoice.totalValue || 0), 0);
+    const totalValue = filteredInvoices.reduce((acc, invoice) => acc + (Number(invoice.totalValue) || 0), 0);
     const lastIssueDate = filteredInvoices[0]?.issueDate || null;
     const firstIssueDate = filteredInvoices[totalInvoices - 1]?.issueDate || null;
     const averageTicket = totalInvoices > 0 ? totalValue / totalInvoices : 0;
@@ -401,7 +401,7 @@ export async function GET(req: Request) {
       number: invoice.number,
       series: invoice.series,
       issueDate: invoice.issueDate,
-      totalValue: invoice.totalValue,
+      totalValue: Number(invoice.totalValue),
       status: invoice.status,
       accessKey: invoice.accessKey,
       cfopTag: invoiceCfopTagMap.get(invoice.id) || 'Outros',

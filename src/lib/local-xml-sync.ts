@@ -8,6 +8,7 @@ import { decrypt, encrypt } from './crypto';
 import { refreshOneDriveAccessToken } from './onedrive-client';
 import { parseInvoiceXml } from './parse-invoice-xml';
 import { resolveInvoiceDirection } from './invoice-direction';
+import { extractFirstCfop } from './cfop';
 import { updateProductAggregatesForInvoice } from './product-aggregate-updater';
 import { prisma } from './prisma';
 
@@ -570,6 +571,7 @@ async function importXmlFile(filePath: string): Promise<void> {
         recipientCnpj: parsed.recipientCnpj,
         recipientName: parsed.recipientName,
         totalValue: parsed.totalValue,
+        cfop: extractFirstCfop(xmlContent),
         xmlContent,
       },
     });

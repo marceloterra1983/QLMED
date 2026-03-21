@@ -97,7 +97,7 @@ export async function GET(req: Request) {
         issueDate: inv.issueDate,
         supplierName: inv.senderName,
         supplierCnpj: inv.senderCnpj,
-        totalValue: inv.totalValue,
+        totalValue: Number(inv.totalValue),
         entryStatus: entry?.status ?? 'pending',
         totalItems: entry?.totalItems ?? null,
         matchedItems: entry?.matchedItems ?? null,

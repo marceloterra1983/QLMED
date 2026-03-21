@@ -48,7 +48,7 @@ interface InvoiceBatchRow {
   recipientCnpj: string | null;
   recipientName: string | null;
   issueDate: Date;
-  totalValue: number;
+  totalValue: number | Prisma.Decimal;
   xmlContent: string;
 }
 
@@ -284,7 +284,8 @@ async function buildDuplicatas(
         // Import purchase NF-e often has no <dup>. Create one payable/receivable entry
         // based on invoice total. Use a fallback due date in the future so it
         // can be tracked in contas a pagar until formal installments are present.
-        if (effectiveTag === 'Compra Importação' && invoice.totalValue > 0) {
+        const totalNum = Number(invoice.totalValue);
+        if (effectiveTag === 'Compra Importação' && totalNum > 0) {
           const fallbackDueDate = addDaysUtc(invoice.issueDate, IMPORT_NO_DUP_FALLBACK_DUE_DAYS);
           allDuplicatas.push({
             invoiceId: invoice.id,
@@ -293,13 +294,13 @@ async function buildDuplicatas(
             partyCnpj: party.cnpj,
             partyNome: party.nome,
             nfEmissao: invoice.issueDate,
-            nfValorTotal: invoice.totalValue,
+            nfValorTotal: totalNum,
             faturaNumero: '',
-            faturaValorOriginal: invoice.totalValue,
-            faturaValorLiquido: invoice.totalValue,
+            faturaValorOriginal: totalNum,
+            faturaValorLiquido: totalNum,
             dupNumero: 'IMP',
             dupVencimento: toDateKey(fallbackDueDate),
-            dupValor: invoice.totalValue,
+            dupValor: totalNum,
           });
         }
         continue;
@@ -313,7 +314,7 @@ async function buildDuplicatas(
           partyCnpj: party.cnpj,
           partyNome: party.nome,
           nfEmissao: invoice.issueDate,
-          nfValorTotal: invoice.totalValue,
+          nfValorTotal: Number(invoice.totalValue),
           faturaNumero: dup.faturaNumero,
           faturaValorOriginal: dup.faturaValorOriginal,
           faturaValorLiquido: dup.faturaValorLiquido,

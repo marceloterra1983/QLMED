@@ -7,6 +7,7 @@ import { decrypt } from '@/lib/crypto';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
+import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 
 export const maxDuration = 60; // Start with 60s for Vercel/Next.js function
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
 
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
+        const cfop = extractFirstCfop(xmlContent);
         const exists = await prisma.invoice.findUnique({
           where: { accessKey: parsed.accessKey },
           select: { id: true, status: true },
@@ -114,6 +116,7 @@ export async function POST(request: NextRequest) {
               recipientName: parsed.recipientName,
               totalValue: parsed.totalValue,
               status: mappedStatus,
+              cfop,
               xmlContent,
             },
           });
@@ -136,6 +139,7 @@ export async function POST(request: NextRequest) {
              recipientName: parsed.recipientName,
              totalValue: parsed.totalValue,
              status: mappedStatus,
+             cfop,
              xmlContent,
           }
         });

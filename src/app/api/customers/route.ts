@@ -111,7 +111,7 @@ export async function GET(req: Request) {
     for (const grouped of groupedInvoices) {
       const key = buildCustomerKey(grouped.recipientCnpj, grouped.recipientName);
       const invoiceCount = grouped._count._all || 0;
-      const totalValue = grouped._sum.totalValue || 0;
+      const totalValue = Number(grouped._sum.totalValue) || 0;
       const firstIssueDate = grouped._min.issueDate;
       const lastIssueDate = grouped._max.issueDate;
 

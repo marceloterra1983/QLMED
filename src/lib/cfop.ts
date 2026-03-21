@@ -66,6 +66,16 @@ export function getCfopTagOptions(): string[] {
 }
 
 /**
+ * Returns all CFOP codes that map to the given tag.
+ * E.g. getCfopCodesByTag('Venda') => ['5102', '5405', '5551', '6101', '6102', '6108']
+ */
+export function getCfopCodesByTag(tag: string): string[] {
+  return Object.entries(CFOP_TAG_BY_CODE)
+    .filter(([, t]) => t === tag)
+    .map(([code]) => code);
+}
+
+/**
  * CFOPs starting with 3 are international entries (importação).
  * These invoices are issued by the company but represent product entries.
  */

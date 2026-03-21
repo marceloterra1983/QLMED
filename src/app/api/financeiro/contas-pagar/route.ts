@@ -181,7 +181,7 @@ export async function GET(req: Request) {
           ...item,
           dupNumero: parcela.dupNumero,
           dupVencimento: parcela.dupVencimento,
-          dupValor: getNetInstallmentValue(parcela.dupValor, parcela.dupDesconto || 0),
+          dupValor: getNetInstallmentValue(Number(parcela.dupValor), Number(parcela.dupDesconto) || 0),
         });
       }
     }
@@ -242,7 +242,7 @@ export async function GET(req: Request) {
       const faturaNumero = override?.faturaNumero?.trim() || item.faturaNumero;
       const dupNumero = override?.dupNumero?.trim() || item.dupNumero;
       const vencimento = override?.dupVencimento?.trim() || item.dupVencimento;
-      const dupValor = typeof override?.dupValor === 'number' ? override.dupValor : item.dupValor;
+      const dupValor = override?.dupValor != null ? Number(override.dupValor) : item.dupValor;
 
       if (dateFrom && vencimento < dateFrom) continue;
       if (dateTo && vencimento > dateTo) continue;
