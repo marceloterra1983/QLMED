@@ -34,9 +34,9 @@ services:
       - ./env/app.env
     volumes:
       - app_storage:/app/storage
-    depends_on:
-      qlmed-db:
-        condition: service_healthy
+    networks:
+      - default
+      - coolify_net
 
   qlmed-n8n:
     image: n8nio/n8n:latest
@@ -133,3 +133,6 @@ volumes:
 networks:
   default:
     name: qlmed_network
+  coolify_net:
+    external: true
+    name: lkwc0s0ck8kcckocc4goc0kg
