@@ -59,7 +59,7 @@ jobs:
             --project-name qlmed \
             --env-file /home/marce/QLMED/production/.env \
             -f /home/marce/QLMED/production/docker-compose.yml \
-            up -d --build
+            up -d --build qlmed-app
 
       - name: Verify local health
         run: |
