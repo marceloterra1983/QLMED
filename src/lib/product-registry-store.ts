@@ -73,6 +73,74 @@ export interface UpsertProductRegistryInput {
   anvisaRiskClass?: string | null;
 }
 
+// ── DB row interface (snake_case, matching SQL columns) ──
+
+interface ProductRegistryDbRow {
+  id: string;
+  company_id: string;
+  product_key: string;
+  codigo: string | null;
+  code: string | null;
+  description: string;
+  ncm: string | null;
+  unit: string | null;
+  ean: string | null;
+  anvisa_code: string | null;
+  anvisa_source: string | null;
+  anvisa_confidence: number | null;
+  anvisa_matched_product_name: string | null;
+  anvisa_holder: string | null;
+  anvisa_process: string | null;
+  anvisa_status: string | null;
+  anvisa_expiration: string | null;
+  anvisa_risk_class: string | null;
+  anvisa_manufacturer: string | null;
+  anvisa_manufacturer_country: string | null;
+  manufacturer_short_name: string | null;
+  anvisa_synced_at: string | Date | null;
+  short_name: string | null;
+  product_type: string | null;
+  product_subtype: string | null;
+  product_subgroup: string | null;
+  out_of_line: boolean | string | number | null;
+  instrumental: boolean | string | number | null;
+  fiscal_sit_tributaria: string | null;
+  fiscal_nome_tributacao: string | null;
+  fiscal_icms: number | null;
+  fiscal_pis: number | null;
+  fiscal_cofins: number | null;
+  fiscal_obs: string | null;
+  fiscal_cest: string | null;
+  fiscal_origem: string | null;
+  fiscal_cfop_entrada: string | null;
+  fiscal_cfop_saida: string | null;
+  fiscal_ipi: number | null;
+  fiscal_fcp: number | null;
+  fiscal_cst_ipi: string | null;
+  fiscal_cst_pis: string | null;
+  fiscal_cst_cofins: string | null;
+  fiscal_obs_icms: string | null;
+  fiscal_obs_pis_cofins: string | null;
+  product_refs: string[] | null;
+  default_supplier: string | null;
+  agg_total_quantity: number | null;
+  agg_total_value: number | null;
+  agg_invoice_count: number | null;
+  agg_last_price: number | null;
+  agg_average_price: number | null;
+  agg_last_issue_date: string | Date | null;
+  agg_last_supplier_name: string | null;
+  agg_last_supplier_cnpj: string | null;
+  agg_last_invoice_number: string | null;
+  agg_last_sale_date: string | Date | null;
+  agg_last_sale_price: number | null;
+  agg_resale_quantity: number | null;
+  agg_computed_at: string | Date | null;
+  agg_search_text: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+}
+
 type RegistryInitState = {
   promise?: Promise<void>;
 };
@@ -247,7 +315,7 @@ export async function ensureProductRegistryTable() {
   return registryInitState.promise;
 }
 
-function mapRegistryRow(row: any): ProductRegistryRow {
+function mapRegistryRow(row: ProductRegistryDbRow): ProductRegistryRow {
   return {
     id: String(row.id),
     companyId: String(row.company_id),
@@ -310,7 +378,7 @@ export async function getProductRegistryByKeys(
   await ensureProductRegistryTable();
   if (productKeys.length === 0) return [];
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<ProductRegistryDbRow[]>(
     `
       SELECT
         id,
@@ -378,7 +446,7 @@ export async function getProductRegistryWithAnvisa(
 ): Promise<ProductRegistryRow[]> {
   await ensureProductRegistryTable();
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<ProductRegistryDbRow[]>(
     `
       SELECT
         id,

@@ -50,6 +50,59 @@ export interface InvoiceItemTax {
   valorFcp: number | null;
 }
 
+// ── DB row interfaces (snake_case, matching SQL columns) ──
+
+interface InvoiceTaxTotalsDbRow {
+  invoice_id: string;
+  company_id: string;
+  vbc: number | null;
+  vicms: number | null;
+  vpis: number | null;
+  vcofins: number | null;
+  vipi: number | null;
+  vfrete: number | null;
+  vseg: number | null;
+  vdesc: number | null;
+  voutro: number | null;
+  vtottrib: number | null;
+  vfcp: number | null;
+  vicms_st: number | null;
+  computed_at: string | Date;
+}
+
+interface InvoiceItemTaxDbRow {
+  id: string;
+  invoice_id: string;
+  company_id: string;
+  item_number: number | null;
+  product_code: string | null;
+  product_description: string | null;
+  ncm: string | null;
+  cfop: string | null;
+  cest: string | null;
+  origem: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+  total_value: number | null;
+  cst_icms: string | null;
+  base_icms: number | null;
+  aliq_icms: number | null;
+  valor_icms: number | null;
+  cst_pis: string | null;
+  aliq_pis: number | null;
+  valor_pis: number | null;
+  cst_cofins: string | null;
+  aliq_cofins: number | null;
+  valor_cofins: number | null;
+  aliq_ipi: number | null;
+  valor_ipi: number | null;
+  valor_fcp: number | null;
+}
+
+interface HasTaxDataRow {
+  '?column?': number;
+}
+
 // ── Table init ──
 
 type InitState = { promise?: Promise<void> };
@@ -214,7 +267,7 @@ export async function upsertItemTaxes(
 
 export async function getTaxTotals(invoiceId: string): Promise<InvoiceTaxTotals | null> {
   await ensureInvoiceTaxTables();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<InvoiceTaxTotalsDbRow[]>(
     `SELECT * FROM invoice_tax_totals WHERE invoice_id = $1`,
     invoiceId,
   );
@@ -232,11 +285,11 @@ export async function getTaxTotals(invoiceId: string): Promise<InvoiceTaxTotals 
 
 export async function getItemTaxes(invoiceId: string): Promise<InvoiceItemTax[]> {
   await ensureInvoiceTaxTables();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<InvoiceItemTaxDbRow[]>(
     `SELECT * FROM invoice_item_tax WHERE invoice_id = $1 ORDER BY item_number`,
     invoiceId,
   );
-  return rows.map((r) => ({
+  return rows.map((r: InvoiceItemTaxDbRow) => ({
     id: r.id,
     invoiceId: r.invoice_id,
     companyId: r.company_id,
@@ -254,7 +307,7 @@ export async function getItemTaxes(invoiceId: string): Promise<InvoiceItemTax[]>
 
 export async function hasInvoiceTaxData(invoiceId: string): Promise<boolean> {
   await ensureInvoiceTaxTables();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<HasTaxDataRow[]>(
     `SELECT 1 FROM invoice_tax_totals WHERE invoice_id = $1 LIMIT 1`,
     invoiceId,
   );

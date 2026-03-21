@@ -97,15 +97,6 @@ function extractCteRecebedorName(xmlContent: string | null | undefined): string 
   return decodedDest || null;
 }
 
-const MUNICIPALITY_CODE_TO_CITY: Record<string, string> = {
-  '3106200': 'Belo Horizonte',
-  '3518800': 'Guarulhos',
-  '3547304': 'Santana de Parnaiba',
-  '5002704': 'Campo Grande',
-  '5003702': 'Dourados',
-  '5103403': 'Cuiaba',
-};
-
 function normalizeCity(value: string | null | undefined): string | null {
   if (!value) return null;
   const decoded = decodeXmlEntities(value).replace(/\s+/g, ' ').trim();
@@ -113,11 +104,27 @@ function normalizeCity(value: string | null | undefined): string | null {
   return decoded;
 }
 
-function mapMunicipalityCodeToCity(code: string | null | undefined): string | null {
-  if (!code) return null;
-  const digits = code.replace(/\D/g, '');
-  if (digits.length !== 7) return null;
-  return MUNICIPALITY_CODE_TO_CITY[digits] || null;
+/**
+ * Find the city name (<xMun>) that appears near a given municipality code (<cMun>)
+ * in the raw XML. This works for any Brazilian municipality since it reads the name
+ * directly from the XML instead of relying on a hardcoded lookup table.
+ */
+function findCityNameNearCode(xmlContent: string, code: string): string | null {
+  // Look for <xMun> that appears close to the matching <cMun> code.
+  // In Brazilian fiscal XML, <cMun> and <xMun> are always siblings inside the same
+  // address block (enderEmit, enderDest, enderReme, etc.), so we search for both
+  // within a reasonable window.
+  const cMunPattern = new RegExp(`<cMun>\\s*${code}\\s*</cMun>`, 'i');
+  const cMunMatch = cMunPattern.exec(xmlContent);
+  if (!cMunMatch) return null;
+
+  // Search in a window around the <cMun> tag (500 chars each direction covers any address block)
+  const start = Math.max(0, cMunMatch.index - 500);
+  const end = Math.min(xmlContent.length, cMunMatch.index + cMunMatch[0].length + 500);
+  const window = xmlContent.substring(start, end);
+
+  const xMunMatch = window.match(/<xMun>([\s\S]*?)<\/xMun>/i);
+  return normalizeCity(xMunMatch?.[1]);
 }
 
 function extractNfseSenderCity(xmlContent: string | null | undefined): string | null {
@@ -132,14 +139,40 @@ function extractNfseSenderCity(xmlContent: string | null | undefined): string | 
   const cityFromEmitXmun = normalizeCity(emitBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]);
   if (cityFromEmitXmun) return cityFromEmitXmun;
 
-  // Fallback via código do município (IBGE) quando houver mapeamento conhecido.
+  // ABRASF: PrestadorServico > Endereco > Cidade
+  const prestBlock = xmlContent.match(/<PrestadorServico\b[\s\S]*?<\/PrestadorServico>/i)?.[0]
+    || xmlContent.match(/<Prestador\b[\s\S]*?<\/Prestador>/i)?.[0];
+  const cityFromPrest = normalizeCity(prestBlock?.match(/<Cidade>([\s\S]*?)<\/Cidade>/i)?.[1]);
+  if (cityFromPrest) return cityFromPrest;
+
+  // ABRASF: xMun inside PrestadorServico block
+  const cityFromPrestXmun = normalizeCity(prestBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]);
+  if (cityFromPrestXmun) return cityFromPrestXmun;
+
+  // ADN: endereco block inside prest (prestador)
+  const prestEnderBlock = xmlContent.match(/<prest\b[\s\S]*?<\/prest>/i)?.[0];
+  const cityFromPrestEnder = normalizeCity(prestEnderBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]);
+  if (cityFromPrestEnder) return cityFromPrestEnder;
+
+  // Fallback: find municipality code and resolve city name from nearby <xMun> in the XML itself.
   const cityCode =
     emitBlock?.match(/<cMun>(\d{7})<\/cMun>/i)?.[1]
     || xmlContent.match(/<cLocEmi>(\d{7})<\/cLocEmi>/i)?.[1]
     || xmlContent.match(/<CodigoMunicipio>(\d{7})<\/CodigoMunicipio>/i)?.[1]
+    || prestBlock?.match(/<cMun>(\d{7})<\/cMun>/i)?.[1]
     || null;
 
-  return mapMunicipalityCodeToCity(cityCode);
+  if (cityCode) {
+    // Try to find the city name from the XML itself, near the code occurrence
+    const cityFromXml = findCityNameNearCode(xmlContent, cityCode);
+    if (cityFromXml) return cityFromXml;
+  }
+
+  // Last resort: first <xMun> anywhere in the document (likely the emitter's city)
+  const firstXmun = normalizeCity(xmlContent.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]);
+  if (firstXmun) return firstXmun;
+
+  return null;
 }
 
 export async function GET(req: Request) {

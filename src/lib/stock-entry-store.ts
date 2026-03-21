@@ -33,6 +33,50 @@ export interface UpsertStockEntryInput {
   registeredBy?: string | null;
 }
 
+// ── DB row interfaces (snake_case, matching SQL columns) ──
+
+interface StockEntryDbRow {
+  id: string;
+  company_id: string;
+  invoice_id: string;
+  invoice_number: string | null;
+  supplier_name: string | null;
+  supplier_cnpj: string | null;
+  issue_date: string | Date | null;
+  total_value: number | null;
+  total_items: number;
+  matched_items: number;
+  status: string;
+  registered_at: string | Date | null;
+  registered_by: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+  emitter_city: string | null;
+  emitter_state: string | null;
+  access_key: string | null;
+  cfop: string | null;
+  tot_vprod: number | null;
+  tot_vdesc: number | null;
+  tot_vbc: number | null;
+  tot_vicms: number | null;
+  tot_vbc_st: number | null;
+  tot_vicms_st: number | null;
+  tot_vfrete: number | null;
+  tot_vseg: number | null;
+  tot_voutro: number | null;
+  tot_vipi: number | null;
+  tot_vpis: number | null;
+  tot_vcofins: number | null;
+  tot_vfcp: number | null;
+  tot_vnf: number | null;
+}
+
+interface PendencyCountsDbRow {
+  invoice_id: string;
+  unmatched_count: number | string;
+  missing_lot_count: number | string;
+}
+
 type StockEntryInitState = {
   promise?: Promise<void>;
 };
@@ -45,7 +89,7 @@ const stockEntryInitState: StockEntryInitState =
   globalStockEntryState.stockEntryInitState || {};
 globalStockEntryState.stockEntryInitState = stockEntryInitState;
 
-function mapStockEntryRow(row: any): StockEntryRow {
+function mapStockEntryRow(row: StockEntryDbRow): StockEntryRow {
   return {
     id: row.id,
     companyId: row.company_id,
@@ -219,7 +263,7 @@ export async function ensureStockEntryTable() {
 
 export async function getStockEntryByInvoiceId(companyId: string, invoiceId: string): Promise<StockEntryRow | null> {
   await ensureStockEntryTable();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<StockEntryDbRow[]>(
     `SELECT * FROM stock_entry WHERE company_id = $1 AND invoice_id = $2 LIMIT 1`,
     companyId, invoiceId
   );
@@ -230,7 +274,7 @@ export async function getStockEntriesByInvoiceIds(companyId: string, invoiceIds:
   await ensureStockEntryTable();
   if (invoiceIds.length === 0) return new Map();
   const placeholders = invoiceIds.map((_, i) => `$${i + 2}`).join(', ');
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<StockEntryDbRow[]>(
     `SELECT * FROM stock_entry WHERE company_id = $1 AND invoice_id IN (${placeholders})`,
     companyId, ...invoiceIds
   );
@@ -645,7 +689,7 @@ export async function getNfePendencyCounts(
   await ensureStockEntryTable();
   if (invoiceIds.length === 0) return new Map();
   const placeholders = invoiceIds.map((_, i) => `$${i + 2}`).join(', ');
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<PendencyCountsDbRow[]>(
     `SELECT invoice_id,
        COUNT(DISTINCT CASE WHEN registry_id IS NULL THEN item_number END) as unmatched_count,
        COUNT(DISTINCT CASE WHEN lot IS NULL THEN item_number END) as missing_lot_count

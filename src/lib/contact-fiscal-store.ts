@@ -13,6 +13,20 @@ export interface ContactFiscalRow {
   extractedAt: Date;
 }
 
+// ── DB row interface (snake_case, matching SQL columns) ──
+
+interface ContactFiscalDbRow {
+  id: string;
+  company_id: string;
+  cnpj: string;
+  ie: string | null;
+  im: string | null;
+  crt: string | null;
+  uf: string | null;
+  source_invoice_id: string | null;
+  extracted_at: string | Date;
+}
+
 // ── Table init ──
 
 type InitState = { promise?: Promise<void> };
@@ -79,7 +93,7 @@ export async function upsertContactFiscal(data: {
 
 // ── Queries ──
 
-function mapRow(r: any): ContactFiscalRow {
+function mapRow(r: ContactFiscalDbRow): ContactFiscalRow {
   return {
     id: r.id,
     companyId: r.company_id,
@@ -98,7 +112,7 @@ export async function getContactFiscal(
   cnpj: string,
 ): Promise<ContactFiscalRow | null> {
   await ensureContactFiscalTable();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<ContactFiscalDbRow[]>(
     `SELECT * FROM contact_fiscal WHERE company_id = $1 AND cnpj = $2`,
     companyId, cnpj,
   );
@@ -111,7 +125,7 @@ export async function getContactFiscalBatch(
 ): Promise<ContactFiscalRow[]> {
   if (cnpjs.length === 0) return [];
   await ensureContactFiscalTable();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<ContactFiscalDbRow[]>(
     `SELECT * FROM contact_fiscal WHERE company_id = $1 AND cnpj = ANY($2::text[])`,
     companyId, cnpjs,
   );

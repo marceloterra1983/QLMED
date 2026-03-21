@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
-import { extractFirstCfop, getCfopTagByCode } from '@/lib/cfop';
+import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
 
 export type FinanceiroDirection = 'received' | 'issued';
 interface FinanceiroDuplicatasOptions {
@@ -55,7 +55,7 @@ interface InvoiceBatchRow {
 const BATCH_SIZE = 500;
 const MAX_CACHE_ENTRIES = 16;
 const IMPORT_NO_DUP_FALLBACK_DUE_DAYS = 47;
-const FINANCEIRO_DUPLICATAS_CACHE_VERSION = 'v3';
+const FINANCEIRO_DUPLICATAS_CACHE_VERSION = 'v4';
 
 const globalForFinanceiro = globalThis as unknown as {
   financeiroDuplicatasCache?: Map<string, FinanceiroCacheEntry>;
@@ -231,6 +231,29 @@ function isFinanceiroTagAllowed(tag: string | null, allowedTags: string[]): bool
   return allowedTags.includes(tag);
 }
 
+/**
+ * Returns the set of raw CFOP tags (before direction mapping) that would
+ * produce an effective tag in `allowedTags` for the given direction.
+ * This lets us pre-filter invoices by the DB `cfop` column.
+ */
+function getMatchingCfopCodes(
+  allowedTags: string[],
+  direction: FinanceiroDirection
+): string[] {
+  const rawTags: string[] = [];
+  for (const tag of allowedTags) {
+    // Reverse the direction mapping: for received, 'Compra' effective tag
+    // comes from 'Venda' raw tag (getEffectiveTagByDirection maps Venda→Compra).
+    const raw = direction === 'received' && tag === 'Compra' ? 'Venda' : tag;
+    if (!rawTags.includes(raw)) rawTags.push(raw);
+  }
+  const codes: string[] = [];
+  for (const rawTag of rawTags) {
+    codes.push(...getCfopCodesByTag(rawTag));
+  }
+  return codes;
+}
+
 function pruneCache() {
   if (financeiroDuplicatasCache.size <= MAX_CACHE_ENTRIES) return;
   const entries = Array.from(financeiroDuplicatasCache.entries());
@@ -340,19 +363,26 @@ export async function getFinanceiroDuplicatas(
     ? Array.from(new Set(options.allowedTags))
     : ['Compra', 'Venda'];
 
-  const where: Prisma.InvoiceWhereInput = {
+  // Base filter: only NFE invoices for this company + direction.
+  const baseWhere: Prisma.InvoiceWhereInput = {
     companyId,
     type: 'NFE',
     direction,
   };
 
+  // Use _count + _max.createdAt + _sum.totalValue for cache versioning.
+  // Unlike updatedAt, createdAt only changes when new invoices are added (not on
+  // status-only updates during sync), so the cache survives sync cycles that don't
+  // add or modify NFE invoice data.  The totalValue sum detects XML replacements
+  // that could change duplicata content without altering the row count.
   const snapshot = await prisma.invoice.aggregate({
-    where,
+    where: baseWhere,
     _count: { _all: true },
-    _max: { updatedAt: true },
+    _max: { createdAt: true },
+    _sum: { totalValue: true },
   });
 
-  const version = `${FINANCEIRO_DUPLICATAS_CACHE_VERSION}:${snapshot._count._all}:${snapshot._max.updatedAt?.toISOString() || 'none'}`;
+  const version = `${FINANCEIRO_DUPLICATAS_CACHE_VERSION}:${snapshot._count._all}:${snapshot._max.createdAt?.toISOString() || 'none'}:${snapshot._sum.totalValue?.toString() || '0'}`;
   const cacheKey = makeCacheKey(companyId, direction, allowedTags);
   const cached = financeiroDuplicatasCache.get(cacheKey);
   if (cached && cached.version === version) {
@@ -365,8 +395,18 @@ export async function getFinanceiroDuplicatas(
     return inFlight;
   }
 
+  // Narrow query: pre-filter by CFOP codes that map to the requested tags.
+  // Invoices with cfop=null are included as fallback (CFOP extracted from XML).
+  const matchingCfops = getMatchingCfopCodes(allowedTags, direction);
+  const buildWhere: Prisma.InvoiceWhereInput = {
+    ...baseWhere,
+    ...(matchingCfops.length > 0
+      ? { OR: [{ cfop: { in: matchingCfops } }, { cfop: null }] }
+      : {}),
+  };
+
   const promise = (async () => {
-    const duplicatas = await buildDuplicatas(where, direction, allowedTags);
+    const duplicatas = await buildDuplicatas(buildWhere, direction, allowedTags);
     financeiroDuplicatasCache.set(cacheKey, {
       version,
       createdAt: Date.now(),
