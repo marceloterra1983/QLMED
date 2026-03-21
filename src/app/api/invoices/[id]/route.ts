@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
@@ -42,8 +42,10 @@ export async function DELETE(
   try {
     let userId: string;
     try {
-      userId = await requireAuth();
-    } catch {
+      const auth = await requireEditor();
+      userId = auth.userId;
+    } catch (e: any) {
+      if (e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);

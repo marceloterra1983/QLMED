@@ -5,7 +5,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { resolveAnvisaByCodeAndName } from '@/lib/anvisa-open-data';
 import { getProductRegistryByKeys } from '@/lib/product-registry-store';
-import { normalizeForSearch } from '@/lib/utils';
+import { normalizeForSearch, cleanString, ensureArray, toNumber } from '@/lib/utils';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 
@@ -53,24 +53,6 @@ function toPositiveInt(value: string | null, fallback: number, max: number) {
   const parsed = parseInt(value || '', 10);
   if (Number.isNaN(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, max);
-}
-
-function cleanString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  const normalized = String(value).trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
-function ensureArray<T>(value: T | T[] | null | undefined): T[] {
-  if (value === null || value === undefined) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function toNumber(value: unknown): number {
-  if (value === undefined || value === null) return 0;
-  const normalized = String(value).replace(',', '.');
-  const number = parseFloat(normalized);
-  return Number.isFinite(number) ? number : 0;
 }
 
 function compareStrings(left: string, right: string) {

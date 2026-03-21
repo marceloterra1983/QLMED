@@ -1,4 +1,4 @@
-import { PrismaClient, type OneDriveConnection } from '@prisma/client';
+import { type OneDriveConnection } from '@prisma/client';
 import chokidar, { FSWatcher } from 'chokidar';
 import { promises as fs } from 'fs';
 import type { Stats } from 'fs';
@@ -9,8 +9,7 @@ import { refreshOneDriveAccessToken } from './onedrive-client';
 import { parseInvoiceXml } from './parse-invoice-xml';
 import { resolveInvoiceDirection } from './invoice-direction';
 import { updateProductAggregatesForInvoice } from './product-aggregate-updater';
-
-const prisma = new PrismaClient();
+import { prisma } from './prisma';
 
 const DEFAULT_SINGLE_COMPANY_CNPJ = '07832309000197';
 const DEFAULT_LOCAL_XML_DIR = path.join(process.cwd(), 'xml_backup');
@@ -588,7 +587,7 @@ async function importXmlFile(filePath: string): Promise<void> {
         recipientName: parsed.recipientName,
         recipientCnpj: parsed.recipientCnpj,
         invoiceNumber: parsed.number,
-      }).catch(() => {});
+      }).catch((err) => { console.error('[LocalXmlSync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
     }
 
     rememberFileFingerprint(absolutePath, fingerprint);
@@ -628,7 +627,7 @@ async function importXmlFile(filePath: string): Promise<void> {
                 recipientName: parsed.recipientName,
                 recipientCnpj: parsed.recipientCnpj,
                 invoiceNumber: parsed.number,
-              }).catch(() => {});
+              }).catch((err) => { console.error('[LocalXmlSync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
             }
           }
         }
@@ -636,8 +635,8 @@ async function importXmlFile(filePath: string): Promise<void> {
         const fingerprint = `${stats.size}:${Math.floor(stats.mtimeMs)}`;
         rememberFileFingerprint(absolutePath, fingerprint);
         parseFailureCooldown.delete(absolutePath);
-      } catch {
-        // Arquivo pode ter sido removido logo apos a tentativa.
+      } catch (backfillErr) {
+        console.error('[LocalXmlSync] Failed to backfill xmlContent for existing invoice:', (backfillErr as Error).message);
       }
       return;
     }

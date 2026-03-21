@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { hash } from 'bcryptjs';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
+
+const updateUserSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(['admin', 'editor', 'viewer']).optional(),
+  status: z.enum(['pending', 'active', 'inactive', 'rejected']).optional(),
+  phone: z.string().nullable().optional(),
+  allowedPages: z.array(z.string()).optional(),
+  password: z.string().min(4).optional(),
+});
 
 export async function PATCH(
   req: Request,
@@ -19,7 +30,16 @@ export async function PATCH(
 
     const { id } = params;
     const body = await req.json();
-    const { name, email, role, status, phone, allowedPages, password } = body;
+
+    const parsed = updateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { name, email, role, status, phone, allowedPages, password } = parsed.data;
 
     // Self-protection: admin cannot demote or deactivate themselves
     if (id === admin.userId) {
@@ -40,16 +60,6 @@ export async function PATCH(
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    const validRoles = ['admin', 'editor', 'viewer'];
-    if (role && !validRoles.includes(role)) {
-      return NextResponse.json({ error: 'Perfil inválido' }, { status: 400 });
-    }
-
-    const validStatuses = ['pending', 'active', 'inactive', 'rejected'];
-    if (status && !validStatuses.includes(status)) {
-      return NextResponse.json({ error: 'Status inválido' }, { status: 400 });
     }
 
     // Check email uniqueness if changing

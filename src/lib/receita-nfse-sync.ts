@@ -194,7 +194,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
 
       if (result.createdAt.getTime() === result.updatedAt.getTime()) {
         newDocs++;
-        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch(() => {});
+        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { console.error('[ReceitaNfseSync] saveXmlToFile failed:', (err as Error).message); });
       } else {
         updatedDocs++;
       }

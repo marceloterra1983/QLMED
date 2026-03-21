@@ -173,3 +173,26 @@ export function getTypeBadge(type: string): string {
       return 'NF-e';
   }
 }
+
+// ── Shared XML / data-processing helpers ──
+
+/** Trim a value to a non-empty string or return null */
+export function cleanString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+/** Wrap a value in an array; nullish values become an empty array */
+export function ensureArray<T>(value: T | T[] | null | undefined): T[] {
+  if (value === null || value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/** Parse a numeric value (with comma support), returning 0 for non-finite results */
+export function toNumber(value: unknown): number {
+  if (value === undefined || value === null) return 0;
+  const normalized = String(value).replace(',', '.');
+  const number = parseFloat(normalized);
+  return Number.isFinite(number) ? number : 0;
+}

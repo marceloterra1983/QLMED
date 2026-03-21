@@ -179,33 +179,35 @@ export async function upsertItemTaxes(
 ): Promise<void> {
   await ensureInvoiceTaxTables();
 
-  // Delete existing items for this invoice
-  await prisma.$executeRawUnsafe(
-    `DELETE FROM invoice_item_tax WHERE invoice_id = $1`,
-    invoiceId,
-  );
-
-  for (const item of items) {
-    const id = randomUUID();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO invoice_item_tax (
-        id, invoice_id, company_id, item_number, product_code, product_description,
-        ncm, cfop, cest, origem, quantity, unit_price, total_value,
-        cst_icms, base_icms, aliq_icms, valor_icms,
-        cst_pis, aliq_pis, valor_pis,
-        cst_cofins, aliq_cofins, valor_cofins,
-        aliq_ipi, valor_ipi, valor_fcp
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
-      id, invoiceId, companyId,
-      item.itemNumber, item.productCode, item.productDescription,
-      item.ncm, item.cfop, item.cest, item.origem,
-      item.quantity, item.unitPrice, item.totalValue,
-      item.cstIcms, item.baseIcms, item.aliqIcms, item.valorIcms,
-      item.cstPis, item.aliqPis, item.valorPis,
-      item.cstCofins, item.aliqCofins, item.valorCofins,
-      item.aliqIpi, item.valorIpi, item.valorFcp,
+  // Delete existing items and re-insert atomically in a single transaction
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(
+      `DELETE FROM invoice_item_tax WHERE invoice_id = $1`,
+      invoiceId,
     );
-  }
+
+    for (const item of items) {
+      const id = randomUUID();
+      await tx.$executeRawUnsafe(
+        `INSERT INTO invoice_item_tax (
+          id, invoice_id, company_id, item_number, product_code, product_description,
+          ncm, cfop, cest, origem, quantity, unit_price, total_value,
+          cst_icms, base_icms, aliq_icms, valor_icms,
+          cst_pis, aliq_pis, valor_pis,
+          cst_cofins, aliq_cofins, valor_cofins,
+          aliq_ipi, valor_ipi, valor_fcp
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
+        id, invoiceId, companyId,
+        item.itemNumber, item.productCode, item.productDescription,
+        item.ncm, item.cfop, item.cest, item.origem,
+        item.quantity, item.unitPrice, item.totalValue,
+        item.cstIcms, item.baseIcms, item.aliqIcms, item.valorIcms,
+        item.cstPis, item.aliqPis, item.valorPis,
+        item.cstCofins, item.aliqCofins, item.valorCofins,
+        item.aliqIpi, item.valorIpi, item.valorFcp,
+      );
+    }
+  });
 }
 
 // ── Queries ──

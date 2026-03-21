@@ -8,8 +8,12 @@ const VALID_TYPES = new Set<string>(Object.values(InvoiceType));
 const VALID_DIRECTIONS = new Set<string>(Object.values(InvoiceDirection));
 
 export async function POST(request: NextRequest) {
-  const userId = await requireAuth();
-  if (!userId) return unauthorizedResponse();
+  let userId: string;
+  try {
+    userId = await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
 
   const body = await request.json().catch(() => ({}));
   const years = Math.min(Number(body.years) || 5, 10);

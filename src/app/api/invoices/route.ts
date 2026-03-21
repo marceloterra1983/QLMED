@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
@@ -6,6 +7,24 @@ import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { extractFirstCfop, getCfopTagByCode } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
+
+const invoiceQuerySchema = z.object({
+  page: z.coerce.number().int().positive().max(10000).catch(1),
+  limit: z.coerce.number().int().positive().max(200).catch(50),
+  search: z.string().max(200).catch(''),
+  type: z.enum(['NFE', 'CTE', 'NFSE', '']).catch(''),
+  status: z.string().max(50).catch(''),
+  direction: z.enum(['received', 'issued', '']).catch(''),
+  sort: z.enum(['import', 'emission', 'number', 'sender', 'recipient', 'value', 'status', '']).catch(''),
+  order: z.enum(['asc', 'desc']).catch('desc'),
+  cfopTag: z.string().max(50).catch(''),
+  dateFrom: z.string().max(10).catch(''),
+  dateTo: z.string().max(10).catch(''),
+});
+
+const deleteInvoicesSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
 
 function decodeXmlEntities(input: string): string {
   return input
@@ -135,20 +154,23 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
 
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const search = (searchParams.get('search') || '').trim();
-    const type = searchParams.get('type') || '';
-    const status = searchParams.get('status') || '';
-    const order = searchParams.get('order') || 'desc';
-    const cfopTag = (searchParams.get('cfopTag') || '').trim();
+    const params = invoiceQuerySchema.parse({
+      page: searchParams.get('page') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+      search: (searchParams.get('search') || '').trim(),
+      type: searchParams.get('type') ?? undefined,
+      status: (searchParams.get('status') || '').trim(),
+      direction: searchParams.get('direction') ?? undefined,
+      sort: (searchParams.get('sort') || '').trim(),
+      order: searchParams.get('order') ?? undefined,
+      cfopTag: (searchParams.get('cfopTag') || '').trim(),
+      dateFrom: searchParams.get('dateFrom') || '',
+      dateTo: searchParams.get('dateTo') || '',
+    });
 
-    const direction = searchParams.get('direction') || '';
-    const requestedSort = (searchParams.get('sort') || '').trim();
-    const defaultSort = 'emission';
-    const sort = requestedSort || defaultSort;
-    const dateFrom = searchParams.get('dateFrom') || '';
-    const dateTo = searchParams.get('dateTo') || '';
+    const { page, limit, search, type, status, direction, order, cfopTag } = params;
+    const sort = params.sort || 'emission';
+    const { dateFrom, dateTo } = params;
 
     if (direction === 'issued' && (type === '' || type === 'NFE')) {
       try {
@@ -372,11 +394,14 @@ export async function DELETE(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
 
     const body = await req.json();
-    const { ids } = body;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ error: 'IDs não fornecidos' }, { status: 400 });
+    const parsed = deleteInvoicesSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'IDs inválidos', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+    const { ids } = parsed.data;
 
     const invoicesToDelete = await prisma.invoice.findMany({
       where: { id: { in: ids }, companyId: company.id },

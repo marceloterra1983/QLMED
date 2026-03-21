@@ -12,36 +12,7 @@ import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 import { syncReceitaNfseByNsu } from '@/lib/receita-nfse-sync';
-
-const UF_TO_CODE: Record<string, string> = {
-  AC: '12',
-  AL: '27',
-  AP: '16',
-  AM: '13',
-  BA: '29',
-  CE: '23',
-  DF: '53',
-  ES: '32',
-  GO: '52',
-  MA: '21',
-  MT: '51',
-  MS: '50',
-  MG: '31',
-  PA: '15',
-  PB: '25',
-  PR: '41',
-  PE: '26',
-  PI: '22',
-  RJ: '33',
-  RN: '24',
-  RS: '43',
-  RO: '11',
-  RR: '14',
-  SC: '42',
-  SP: '35',
-  SE: '28',
-  TO: '17',
-};
+import { UF_TO_CODE } from '@/lib/constants';
 
 function getUfCodeFromCertificateSubject(subject?: string | null): string {
   if (!subject) return '50';
@@ -217,7 +188,7 @@ export async function POST(request: NextRequest) {
                     recipientName: parsed.recipientName,
                     recipientCnpj: parsed.recipientCnpj,
                     invoiceNumber: parsed.number,
-                  }).catch(() => {});
+                  }).catch((err) => { console.error('[SEFAZ Sync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
                 }
               } catch (docErr: any) {
                 console.error(`[SEFAZ Sync] Erro ao processar documento:`, docErr);
@@ -270,9 +241,9 @@ export async function POST(request: NextRequest) {
             }
           });
         }
-      })();
+      })().catch((err) => { console.error('[SEFAZ Sync] Unhandled error in fire-and-forget:', (err as Error).message); });
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Sincronização SEFAZ iniciada', 
         syncMethod: 'sefaz',
         syncLogId: syncLog.id 
@@ -377,7 +348,7 @@ export async function POST(request: NextRequest) {
                   recipientName: parsed.recipientName,
                   recipientCnpj: parsed.recipientCnpj,
                   invoiceNumber: parsed.number,
-                }).catch(() => {});
+                }).catch((err) => { console.error('[NSDocs Sync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
               }
             } catch (docErr) {
               console.error(`[NSDocs Sync] Erro no doc:`, docErr);
@@ -408,7 +379,7 @@ export async function POST(request: NextRequest) {
             data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
           });
         }
-      })();
+      })().catch((err) => { console.error('[NSDocs Sync] Unhandled error in fire-and-forget:', (err as Error).message); });
 
       return NextResponse.json({
         message: 'Sincronização NSDocs iniciada',
@@ -494,7 +465,7 @@ export async function POST(request: NextRequest) {
             },
           });
         }
-      })();
+      })().catch((err) => { console.error('[Receita NFS-e Sync] Unhandled error in fire-and-forget:', (err as Error).message); });
 
       return NextResponse.json({
         message: 'Sincronização Receita NFS-e iniciada',

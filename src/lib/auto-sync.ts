@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { SefazClient } from './sefaz-client';
 import { CertificateManager } from './certificate-manager';
 import { NsdocsClient } from './nsdocs-client';
@@ -10,22 +9,14 @@ import { resolveInvoiceDirection } from './invoice-direction';
 import { updateProductAggregatesForInvoice, scheduleNightlyRebuild } from './product-aggregate-updater';
 import { syncReceitaNfseByNsu } from './receita-nfse-sync';
 import { saveXmlToFile } from './xml-file-store';
-
-// Instância própria de Prisma para evitar import circular com prisma.ts
-const prisma = new PrismaClient();
+import { prisma } from './prisma';
+import { UF_TO_CODE } from './constants';
 
 const CHECK_INTERVAL_MS = 60 * 1000; // Verifica a cada 60 segundos
 const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo';
 const SEFAZ_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.SEFAZ_AUTO_SYNC_MINUTE, '00');
 const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
 const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
-
-const UF_TO_CODE: Record<string, string> = {
-  AC: '12', AL: '27', AP: '16', AM: '13', BA: '29', CE: '23', DF: '53', ES: '32',
-  GO: '52', MA: '21', MT: '51', MS: '50', MG: '31', PA: '15', PB: '25', PR: '41',
-  PE: '26', PI: '22', RJ: '33', RN: '24', RS: '43', RO: '11', RR: '14', SC: '42',
-  SP: '35', SE: '28', TO: '17',
-};
 
 function getUfCode(subject?: string | null): string {
   if (!subject) return '50';
@@ -105,107 +96,127 @@ export function startAutoSync() {
 async function runStartupSync() {
   console.log('[AutoSync] Sync de startup - verificando pendências...');
 
+  // SEFAZ
   try {
-    // SEFAZ
     const certConfigs = await prisma.certificateConfig.findMany({
       include: { company: true },
     });
     for (const cert of certConfigs) {
-      const company = cert.company;
-      const running = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, status: 'running' },
-      });
-      if (running) continue;
-
-      const lastSefaz = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, syncMethod: 'sefaz', status: 'completed' },
-        orderBy: { completedAt: 'desc' },
-        select: { completedAt: true },
-      });
-      const sefazAge = lastSefaz?.completedAt
-        ? Date.now() - lastSefaz.completedAt.getTime()
-        : Infinity;
-
-      // Roda se última sync completada foi há mais de 1h
-      if (sefazAge > 60 * 60 * 1000) {
-        console.log(`[AutoSync] Startup SEFAZ: última sync há ${Math.round(sefazAge / 60000)}min - ${company.razaoSocial}`);
-        await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
-          id: cert.id,
-          pfxData: cert.pfxData,
-          pfxPassword: cert.pfxPassword,
-          lastNsu: cert.lastNsu,
-          environment: cert.environment,
-          subject: cert.subject,
+      try {
+        const company = cert.company;
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
         });
+        if (running) continue;
+
+        const lastSefaz = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, syncMethod: 'sefaz', status: 'completed' },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        const sefazAge = lastSefaz?.completedAt
+          ? Date.now() - lastSefaz.completedAt.getTime()
+          : Infinity;
+
+        // Roda se última sync completada foi há mais de 1h
+        if (sefazAge > 60 * 60 * 1000) {
+          console.log(`[AutoSync] Startup SEFAZ: última sync há ${Math.round(sefazAge / 60000)}min - ${company.razaoSocial}`);
+          await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
+            id: cert.id,
+            pfxData: cert.pfxData,
+            pfxPassword: cert.pfxPassword,
+            lastNsu: cert.lastNsu,
+            environment: cert.environment,
+            subject: cert.subject,
+          });
+        }
+      } catch (error) {
+        console.error(`[AutoSync] Startup SEFAZ failed for ${cert.company?.razaoSocial}:`, error);
       }
     }
+  } catch (error) {
+    console.error('[AutoSync] Startup SEFAZ query failed:', error);
+  }
 
-    // NSDocs
+  // NSDocs
+  try {
     const nsdocsConfigs = await prisma.nsdocsConfig.findMany({
       where: { autoSync: true },
       include: { company: { include: { nsdocsConfig: true } } },
     });
     for (const config of nsdocsConfigs) {
-      const company = config.company;
-      const running = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, status: 'running' },
-      });
-      if (running) continue;
+      try {
+        const company = config.company;
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
+        });
+        if (running) continue;
 
-      const lastNsdocs = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, syncMethod: 'nsdocs', status: 'completed' },
-        orderBy: { completedAt: 'desc' },
-        select: { completedAt: true },
-      });
-      const nsdocsAge = lastNsdocs?.completedAt
-        ? Date.now() - lastNsdocs.completedAt.getTime()
-        : Infinity;
+        const lastNsdocs = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, syncMethod: 'nsdocs', status: 'completed' },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        const nsdocsAge = lastNsdocs?.completedAt
+          ? Date.now() - lastNsdocs.completedAt.getTime()
+          : Infinity;
 
-      if (nsdocsAge > 60 * 60 * 1000 && company.nsdocsConfig) {
-        console.log(`[AutoSync] Startup NSDocs: última sync há ${Math.round(nsdocsAge / 60000)}min - ${company.razaoSocial}`);
-        await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
+        if (nsdocsAge > 60 * 60 * 1000 && company.nsdocsConfig) {
+          console.log(`[AutoSync] Startup NSDocs: última sync há ${Math.round(nsdocsAge / 60000)}min - ${company.razaoSocial}`);
+          await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
+        }
+      } catch (error) {
+        console.error(`[AutoSync] Startup NSDocs failed for ${config.company?.razaoSocial}:`, error);
       }
     }
+  } catch (error) {
+    console.error('[AutoSync] Startup NSDocs query failed:', error);
+  }
 
-    // Receita NFS-e
+  // Receita NFS-e
+  try {
     const receitaConfigs = await prisma.receitaNfseConfig.findMany({
       where: { autoSync: true },
       include: { company: { include: { receitaNfseConfig: true, certificateConfig: true } } },
     });
     for (const config of receitaConfigs) {
-      const company = config.company;
-      if (!company.receitaNfseConfig || !company.certificateConfig) continue;
+      try {
+        const company = config.company;
+        if (!company.receitaNfseConfig || !company.certificateConfig) continue;
 
-      const running = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, status: 'running' },
-      });
-      if (running) continue;
+        const running = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, status: 'running' },
+        });
+        if (running) continue;
 
-      const lastReceita = await prisma.syncLog.findFirst({
-        where: { companyId: company.id, syncMethod: 'receita_nfse', status: 'completed' },
-        orderBy: { completedAt: 'desc' },
-        select: { completedAt: true },
-      });
-      const receitaAge = lastReceita?.completedAt
-        ? Date.now() - lastReceita.completedAt.getTime()
-        : Infinity;
+        const lastReceita = await prisma.syncLog.findFirst({
+          where: { companyId: company.id, syncMethod: 'receita_nfse', status: 'completed' },
+          orderBy: { completedAt: 'desc' },
+          select: { completedAt: true },
+        });
+        const receitaAge = lastReceita?.completedAt
+          ? Date.now() - lastReceita.completedAt.getTime()
+          : Infinity;
 
-      if (receitaAge > 60 * 60 * 1000) {
-        console.log(`[AutoSync] Startup Receita NFS-e: última sync há ${Math.round(receitaAge / 60000)}min - ${company.razaoSocial}`);
-        await syncViaReceitaNfse(
-          company.id,
-          company.cnpj,
-          company.razaoSocial,
-          company.receitaNfseConfig,
-          company.certificateConfig,
-        );
+        if (receitaAge > 60 * 60 * 1000) {
+          console.log(`[AutoSync] Startup Receita NFS-e: última sync há ${Math.round(receitaAge / 60000)}min - ${company.razaoSocial}`);
+          await syncViaReceitaNfse(
+            company.id,
+            company.cnpj,
+            company.razaoSocial,
+            company.receitaNfseConfig,
+            company.certificateConfig,
+          );
+        }
+      } catch (error) {
+        console.error(`[AutoSync] Startup Receita NFS-e failed for ${config.company?.razaoSocial}:`, error);
       }
     }
-
-    console.log('[AutoSync] Sync de startup concluído.');
   } catch (error) {
-    console.error('[AutoSync] Erro no sync de startup:', error);
+    console.error('[AutoSync] Startup Receita NFS-e query failed:', error);
   }
+
+  console.log('[AutoSync] Sync de startup concluído.');
 }
 
 async function checkAndSync() {
@@ -227,41 +238,45 @@ async function checkAndSync() {
       });
 
       for (const cert of certConfigs) {
-        const company = cert.company;
+        try {
+          const company = cert.company;
 
-        const running = await prisma.syncLog.findFirst({
-          where: { companyId: company.id, status: 'running' },
-        });
-        if (running) continue;
+          const running = await prisma.syncLog.findFirst({
+            where: { companyId: company.id, status: 'running' },
+          });
+          if (running) continue;
 
-        const lastSefazRun = await prisma.syncLog.findFirst({
-          where: {
-            companyId: company.id,
-            syncMethod: 'sefaz',
-            status: { in: ['completed', 'error'] },
-          },
-          orderBy: { completedAt: 'desc' },
-          select: { completedAt: true },
-        });
-        if (
-          lastSefazRun?.completedAt &&
-          getHourSlotKey(lastSefazRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-        ) {
-          continue;
+          const lastSefazRun = await prisma.syncLog.findFirst({
+            where: {
+              companyId: company.id,
+              syncMethod: 'sefaz',
+              status: { in: ['completed', 'error'] },
+            },
+            orderBy: { completedAt: 'desc' },
+            select: { completedAt: true },
+          });
+          if (
+            lastSefazRun?.completedAt &&
+            getHourSlotKey(lastSefazRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          ) {
+            continue;
+          }
+
+          console.log(
+            `[AutoSync] Sincronizando SEFAZ (slot ${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+            `${company.razaoSocial} (${company.cnpj})`
+          );
+          await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
+            id: cert.id,
+            pfxData: cert.pfxData,
+            pfxPassword: cert.pfxPassword,
+            lastNsu: cert.lastNsu,
+            environment: cert.environment,
+            subject: cert.subject,
+          });
+        } catch (error) {
+          console.error(`[AutoSync] Hourly SEFAZ failed for ${cert.company?.razaoSocial}:`, error);
         }
-
-        console.log(
-          `[AutoSync] Sincronizando SEFAZ (slot ${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-          `${company.razaoSocial} (${company.cnpj})`
-        );
-        await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
-          id: cert.id,
-          pfxData: cert.pfxData,
-          pfxPassword: cert.pfxPassword,
-          lastNsu: cert.lastNsu,
-          environment: cert.environment,
-          subject: cert.subject,
-        });
       }
     }
 
@@ -278,44 +293,48 @@ async function checkAndSync() {
       });
 
       for (const config of configs) {
-        const company = config.company;
+        try {
+          const company = config.company;
 
-        // Não iniciar se já tem sync rodando
-        const running = await prisma.syncLog.findFirst({
-          where: { companyId: company.id, status: 'running' },
-        });
-        if (running) continue;
+          // Não iniciar se já tem sync rodando
+          const running = await prisma.syncLog.findFirst({
+            where: { companyId: company.id, status: 'running' },
+          });
+          if (running) continue;
 
-        // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
-        const lastNsdocsRun = await prisma.syncLog.findFirst({
-          where: {
-            companyId: company.id,
-            syncMethod: 'nsdocs',
-            status: { in: ['completed', 'error'] },
-          },
-          orderBy: { completedAt: 'desc' },
-          select: { completedAt: true },
-        });
-        if (
-          lastNsdocsRun?.completedAt &&
-          getHourSlotKey(lastNsdocsRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-        ) {
-          continue;
+          // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
+          const lastNsdocsRun = await prisma.syncLog.findFirst({
+            where: {
+              companyId: company.id,
+              syncMethod: 'nsdocs',
+              status: { in: ['completed', 'error'] },
+            },
+            orderBy: { completedAt: 'desc' },
+            select: { completedAt: true },
+          });
+          if (
+            lastNsdocsRun?.completedAt &&
+            getHourSlotKey(lastNsdocsRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          ) {
+            continue;
+          }
+          if (
+            lastNsdocsRun?.completedAt &&
+            !hasElapsedInterval(lastNsdocsRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+          ) {
+            continue;
+          }
+
+          if (!company.nsdocsConfig) continue;
+
+          console.log(
+            `[AutoSync] Sincronizando NSDocs (slot ${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+            `${company.razaoSocial} (${company.cnpj})`
+          );
+          await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
+        } catch (error) {
+          console.error(`[AutoSync] Hourly NSDocs failed for ${config.company?.razaoSocial}:`, error);
         }
-        if (
-          lastNsdocsRun?.completedAt &&
-          !hasElapsedInterval(lastNsdocsRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
-        ) {
-          continue;
-        }
-
-        if (!company.nsdocsConfig) continue;
-
-        console.log(
-          `[AutoSync] Sincronizando NSDocs (slot ${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-          `${company.razaoSocial} (${company.cnpj})`
-        );
-        await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
       }
     }
 
@@ -333,48 +352,52 @@ async function checkAndSync() {
       });
 
       for (const config of receitaConfigs) {
-        const company = config.company;
-        if (!company.receitaNfseConfig || !company.certificateConfig) continue;
+        try {
+          const company = config.company;
+          if (!company.receitaNfseConfig || !company.certificateConfig) continue;
 
-        const running = await prisma.syncLog.findFirst({
-          where: { companyId: company.id, status: 'running' },
-        });
-        if (running) continue;
+          const running = await prisma.syncLog.findFirst({
+            where: { companyId: company.id, status: 'running' },
+          });
+          if (running) continue;
 
-        const lastReceitaRun = await prisma.syncLog.findFirst({
-          where: {
-            companyId: company.id,
-            syncMethod: 'receita_nfse',
-            status: { in: ['completed', 'error'] },
-          },
-          orderBy: { completedAt: 'desc' },
-          select: { completedAt: true },
-        });
-        if (
-          lastReceitaRun?.completedAt &&
-          getHourSlotKey(lastReceitaRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-        ) {
-          continue;
+          const lastReceitaRun = await prisma.syncLog.findFirst({
+            where: {
+              companyId: company.id,
+              syncMethod: 'receita_nfse',
+              status: { in: ['completed', 'error'] },
+            },
+            orderBy: { completedAt: 'desc' },
+            select: { completedAt: true },
+          });
+          if (
+            lastReceitaRun?.completedAt &&
+            getHourSlotKey(lastReceitaRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
+          ) {
+            continue;
+          }
+          if (
+            lastReceitaRun?.completedAt &&
+            !hasElapsedInterval(lastReceitaRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+          ) {
+            continue;
+          }
+
+          console.log(
+            `[AutoSync] Sincronizando Receita NFS-e (slot ${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
+            `${company.razaoSocial} (${company.cnpj})`
+          );
+
+          await syncViaReceitaNfse(
+            company.id,
+            company.cnpj,
+            company.razaoSocial,
+            company.receitaNfseConfig,
+            company.certificateConfig,
+          );
+        } catch (error) {
+          console.error(`[AutoSync] Hourly Receita NFS-e failed for ${config.company?.razaoSocial}:`, error);
         }
-        if (
-          lastReceitaRun?.completedAt &&
-          !hasElapsedInterval(lastReceitaRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
-        ) {
-          continue;
-        }
-
-        console.log(
-          `[AutoSync] Sincronizando Receita NFS-e (slot ${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-          `${company.razaoSocial} (${company.cnpj})`
-        );
-
-        await syncViaReceitaNfse(
-          company.id,
-          company.cnpj,
-          company.razaoSocial,
-          company.receitaNfseConfig,
-          company.certificateConfig,
-        );
       }
     }
   } catch (error) {
@@ -481,7 +504,7 @@ async function syncViaSefaz(
           });
           if (result.createdAt.getTime() === result.updatedAt.getTime()) {
             totalNovos++;
-            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch(() => {});
+            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { console.error('[AutoSync] saveXmlToFile failed for SEFAZ:', err.message); });
           } else {
             totalAtualizados++;
           }
@@ -498,7 +521,7 @@ async function syncViaSefaz(
               recipientName: parsed.recipientName,
               recipientCnpj: parsed.recipientCnpj,
               invoiceNumber: parsed.number,
-            }).catch(() => {});
+            }).catch((err) => { console.error('[AutoSync] updateProductAggregatesForInvoice failed for SEFAZ:', err.message); });
           }
         } catch (docErr) {
           console.error(`[AutoSync] Erro ao processar doc ${doc.chave}:`, docErr);
@@ -525,11 +548,17 @@ async function syncViaSefaz(
     console.error(`[AutoSync] Erro SEFAZ ${razaoSocial}:`, err.message);
     try {
       await prisma.certificateConfig.update({ where: { id: cert.id }, data: { lastNsu: ultNSU } });
-    } catch {}
-    await prisma.syncLog.update({
-      where: { id: syncLog.id },
-      data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
-    });
+    } catch (saveErr) {
+      console.error(`[AutoSync] CRITICAL: Failed to save NSU checkpoint:`, saveErr);
+    }
+    try {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+      });
+    } catch (logErr) {
+      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+    }
   }
 }
 
@@ -604,7 +633,7 @@ async function syncViaNsdocs(
         });
         if (result.createdAt.getTime() === result.updatedAt.getTime()) {
           totalNovos++;
-          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch(() => {});
+          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { console.error('[AutoSync] saveXmlToFile failed for NSDocs:', err.message); });
         } else {
           totalAtualizados++;
         }
@@ -622,7 +651,7 @@ async function syncViaNsdocs(
             recipientName: parsed.recipientName,
             recipientCnpj: parsed.recipientCnpj,
             invoiceNumber: parsed.number,
-          }).catch(() => {});
+          }).catch((err) => { console.error('[AutoSync] updateProductAggregatesForInvoice failed for NSDocs:', err.message); });
         }
       } catch (docErr) {
         console.error(`[AutoSync] Erro no doc ${doc.id}:`, docErr);
@@ -642,10 +671,14 @@ async function syncViaNsdocs(
     console.log(`[AutoSync] NSDocs OK: ${razaoSocial} - ${totalNovos} novos, ${totalAtualizados} existentes`);
   } catch (err: any) {
     console.error(`[AutoSync] Erro NSDocs ${razaoSocial}:`, err.message);
-    await prisma.syncLog.update({
-      where: { id: syncLog.id },
-      data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
-    });
+    try {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+      });
+    } catch (logErr) {
+      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+    }
   }
 }
 
@@ -720,9 +753,13 @@ async function syncViaReceitaNfse(
     );
   } catch (err: any) {
     console.error(`[AutoSync] Erro Receita NFS-e ${razaoSocial}:`, err.message);
-    await prisma.syncLog.update({
-      where: { id: syncLog.id },
-      data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
-    });
+    try {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+      });
+    } catch (logErr) {
+      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+    }
   }
 }

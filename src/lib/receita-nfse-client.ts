@@ -38,7 +38,8 @@ function decodeCandidatePayload(value: string): string | null {
 
     const text = buffer.toString('utf-8');
     return looksLikeXml(text) ? text : null;
-  } catch {
+  } catch (err) {
+    console.warn('[ReceitaNfse] Failed to decode candidate payload:', (err as Error).message);
     return null;
   }
 }
@@ -50,7 +51,8 @@ function normalizeObject(value: unknown): string {
 function parseJsonSafe(value: string): unknown | null {
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (err) {
+    console.warn('[ReceitaNfse] Failed to parse JSON:', (err as Error).message);
     return null;
   }
 }

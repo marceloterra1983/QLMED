@@ -128,7 +128,8 @@ export async function readIssuedPdfFromFile(
 
   try {
     return await fs.readFile(filePath);
-  } catch {
+  } catch (err) {
+    console.error('[XmlFileStore] Failed to read PDF file:', filePath, (err as Error).message);
     return null;
   }
 }

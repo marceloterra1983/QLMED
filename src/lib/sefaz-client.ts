@@ -160,8 +160,8 @@ export class SefazClient {
           tipo: 'evento',
         };
       }
-    } catch {
-      // Fallback para regex se xml2js falhar
+    } catch (err) {
+      console.warn('[SefazClient] XML parse failed, falling back to regex:', (err as Error).message);
     }
 
     // Fallback: tentar com regex simples

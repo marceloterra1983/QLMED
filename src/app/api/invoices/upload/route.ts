@@ -1,10 +1,26 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
+
+const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
+const MAX_FILES = 50;
+
+const uploadSchema = z.object({
+  files: z
+    .array(
+      z.object({
+        name: z.string().refine((n) => n.toLowerCase().endsWith('.xml'), { message: 'Arquivo não é XML' }),
+        size: z.number().max(MAX_XML_SIZE, { message: 'Arquivo excede limite de 5MB' }),
+      })
+    )
+    .min(1, { message: 'Nenhum arquivo enviado' })
+    .max(MAX_FILES, { message: `Máximo de ${MAX_FILES} arquivos por envio` }),
+});
 
 export async function POST(req: Request) {
   try {
@@ -22,24 +38,11 @@ export async function POST(req: Request) {
     const baseCompany = await getOrCreateSingleCompany(userId);
     const companyId = baseCompany.id;
 
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
-    }
-
-    // Validate files: type and size
-    const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
-    const MAX_FILES = 50;
-    if (files.length > MAX_FILES) {
-      return NextResponse.json({ error: `Máximo de ${MAX_FILES} arquivos por envio` }, { status: 400 });
-    }
-    for (const file of files) {
-      const name = file.name?.toLowerCase() || '';
-      if (!name.endsWith('.xml')) {
-        return NextResponse.json({ error: `Arquivo "${file.name}" não é XML` }, { status: 400 });
-      }
-      if (file.size > MAX_XML_SIZE) {
-        return NextResponse.json({ error: `Arquivo "${file.name}" excede limite de 5MB` }, { status: 400 });
-      }
+    const fileMeta = files.map((f) => ({ name: f.name || '', size: f.size }));
+    const validated = uploadSchema.safeParse({ files: fileMeta });
+    if (!validated.success) {
+      const firstError = validated.error.errors[0]?.message || 'Dados inválidos';
+      return NextResponse.json({ error: firstError }, { status: 400 });
     }
 
     const company = await prisma.company.findFirst({

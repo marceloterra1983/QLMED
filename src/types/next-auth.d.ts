@@ -5,15 +5,15 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string;
-      role: string;
-      status: string;
+      role: 'admin' | 'editor' | 'viewer';
+      status: 'pending' | 'active' | 'inactive' | 'rejected';
       allowedPages: string[];
     } & DefaultSession['user'];
   }
 
   interface User extends DefaultUser {
-    role: string;
-    status: string;
+    role: 'admin' | 'editor' | 'viewer';
+    status: 'pending' | 'active' | 'inactive' | 'rejected';
     allowedPages: string[];
   }
 }
@@ -21,8 +21,8 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT extends DefaultJWT {
     id: string;
-    role: string;
-    status: string;
+    role: 'admin' | 'editor' | 'viewer';
+    status: 'pending' | 'active' | 'inactive' | 'rejected';
     allowedPages: string[];
     dbRefreshedAt?: number;
   }

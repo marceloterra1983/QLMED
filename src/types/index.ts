@@ -4,7 +4,7 @@ export interface Invoice {
   id: string;
   accessKey: string;
   type: InvoiceType;
-  direction?: InvoiceDirection;
+  direction: InvoiceDirection;
   number: string;
   cfop?: string | null;
   cteRemetenteName?: string | null;
@@ -16,8 +16,8 @@ export interface Invoice {
   senderCnpj: string;
   senderName: string;
   senderCity?: string | null;
-  recipientCnpj: string;
-  recipientName: string;
+  recipientCnpj: string | null;
+  recipientName: string | null;
   totalValue: number;
   status: InvoiceStatus;
   createdAt?: string;

@@ -12,7 +12,7 @@ export interface StockEntryRow {
   totalValue: number | null;
   totalItems: number;
   matchedItems: number;
-  status: string; // pending | partial | registered
+  status: 'pending' | 'partial' | 'registered';
   registeredAt: Date | null;
   registeredBy: string | null;
   createdAt: Date;
@@ -57,7 +57,7 @@ function mapStockEntryRow(row: any): StockEntryRow {
     totalValue: row.total_value === null || row.total_value === undefined ? null : Number(row.total_value),
     totalItems: Number(row.total_items || 0),
     matchedItems: Number(row.matched_items || 0),
-    status: row.status || 'pending',
+    status: (row.status || 'pending') as StockEntryRow['status'],
     registeredAt: row.registered_at ? new Date(row.registered_at) : null,
     registeredBy: row.registered_by ?? null,
     createdAt: new Date(row.created_at),
@@ -209,7 +209,10 @@ export async function ensureStockEntryTable() {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE nfe_entry_item ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`
       );
-    })();
+    })().catch((error) => {
+      stockEntryInitState.promise = undefined;
+      throw error;
+    });
   }
   await stockEntryInitState.promise;
 }

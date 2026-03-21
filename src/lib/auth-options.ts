@@ -20,14 +20,8 @@ export const authOptions: AuthOptions = {
           where: { email: credentials.email },
         });
 
-        if (!user) {
-          throw new Error('Usuário não encontrado');
-        }
-
-        const isValid = await compare(credentials.password, user.passwordHash);
-
-        if (!isValid) {
-          throw new Error('Senha incorreta');
+        if (!user || !(await compare(credentials.password, user.passwordHash))) {
+          throw new Error('Email ou senha inválidos');
         }
 
         if (user.status === 'pending') {
@@ -86,7 +80,9 @@ export const authOptions: AuthOptions = {
             token.allowedPages = dbUser.allowedPages;
             token.dbRefreshedAt = Date.now();
           }
-        } catch { /* ignore DB errors in JWT callback */ }
+        } catch (err) {
+          console.error('[Auth] Failed to refresh user role from DB:', (err as Error).message);
+        }
       }
       return token;
     },

@@ -187,7 +187,7 @@ export default function IssuedInvoicesPage() {
           }
           setCollapsedInitialized(true);
         }
-        const cnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter(Boolean)));
+        const cnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter((c): c is string => Boolean(c))));
         if (cnpjs.length > 0) {
           const p = new URLSearchParams(); cnpjs.forEach((c) => p.append('cnpjs', c));
           const nr = await fetch(`/api/contacts/nickname/batch?${p}`);

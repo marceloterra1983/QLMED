@@ -206,8 +206,8 @@ export async function ensureProductRegistryTable() {
           ON product_registry USING gin (agg_search_text gin_trgm_ops)
           WHERE agg_computed_at IS NOT NULL
         `);
-      } catch {
-        // pg_trgm may not be available — trigram search will fall back to ILIKE
+      } catch (err) {
+        console.warn('[ProductRegistry] pg_trgm extension unavailable, falling back to ILIKE search:', (err as Error).message);
       }
 
       // Migrate product_key unit tokens to normalized form
