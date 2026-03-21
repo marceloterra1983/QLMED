@@ -25,6 +25,8 @@ function getUfCode(subject?: string | null): string {
   return (uf && UF_TO_CODE[uf]) ? UF_TO_CODE[uf] : '50';
 }
 
+const STUCK_SYNC_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 let started = false;
 
 function getDatePartsInTimeZone(date: Date, timeZone: string): {
@@ -94,8 +96,44 @@ export function startAutoSync() {
   }, 30_000);
 }
 
+async function recoverStuckSyncLogs() {
+  try {
+    const cutoff = new Date(Date.now() - STUCK_SYNC_TIMEOUT_MS);
+    const stuckLogs = await prisma.syncLog.findMany({
+      where: {
+        status: 'running',
+        startedAt: { lt: cutoff },
+      },
+      include: { company: { select: { razaoSocial: true } } },
+    });
+
+    if (stuckLogs.length > 0) {
+      for (const log of stuckLogs) {
+        console.warn(
+          `[AutoSync] Recovering stuck syncLog ${log.id} (${log.syncMethod}) for ${log.company.razaoSocial} - ` +
+          `started at ${log.startedAt.toISOString()}, running for ${Math.round((Date.now() - log.startedAt.getTime()) / 60000)}min`
+        );
+        await prisma.syncLog.update({
+          where: { id: log.id },
+          data: {
+            status: 'error',
+            errorMessage: 'Auto-recovered: sync timed out after 30 minutes',
+            completedAt: new Date(),
+          },
+        });
+      }
+      console.warn(`[AutoSync] Recovered ${stuckLogs.length} stuck syncLog(s)`);
+    }
+  } catch (error) {
+    console.error('[AutoSync] Failed to recover stuck syncLogs:', error);
+  }
+}
+
 async function runStartupSync() {
   console.log('[AutoSync] Sync de startup - verificando pendências...');
+
+  // Recover any syncLogs stuck in 'running' for over 30 minutes
+  await recoverStuckSyncLogs();
 
   // SEFAZ
   try {
@@ -222,6 +260,9 @@ async function runStartupSync() {
 
 async function checkAndSync() {
   try {
+    // Recover any syncLogs stuck in 'running' for over 30 minutes
+    await recoverStuckSyncLogs();
+
     const now = new Date();
     const nowParts = getDatePartsInTimeZone(now, AUTO_SYNC_TIMEZONE);
     const currentHourSlotKey = `${nowParts.year}-${nowParts.month}-${nowParts.day} ${nowParts.hour}`;
