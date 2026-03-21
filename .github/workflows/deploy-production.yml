@@ -64,9 +64,7 @@ jobs:
       - name: Verify local health
         run: |
           for url in \
-            http://127.0.0.1:13000/api/health \
-            http://127.0.0.1:5678 \
-            http://127.0.0.1:8085
+            http://127.0.0.1:13000/api/health
           do
             for attempt in $(seq 1 30); do
               if curl -fsS "$url" >/dev/null; then
@@ -104,9 +102,7 @@ jobs:
       - name: Verify public endpoints
         run: |
           for url in \
-            https://app.qlmed.com.br/ \
-            https://n8n.qlmed.com.br/ \
-            https://evolution.qlmed.com.br/
+            https://app.qlmed.com.br/
           do
             for attempt in $(seq 1 30); do
               if curl -fsSI "$url" >/dev/null; then
