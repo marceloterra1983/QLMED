@@ -7,6 +7,7 @@ const p2 = (n: number) => String(n).padStart(2, '0');
 export type MonthGroup = { key: string; label: string; invoices: Invoice[]; total: number; count: number };
 export type YearGroup = { year: number; key: string; months: MonthGroup[]; total: number; count: number };
 export type NfeHierarchy = {
+  hoje: Invoice[]; hojeTotal: number;
   estaSemana: Invoice[]; estaSemanaTotal: number;
   semanaPassada: Invoice[]; semanaPassadaTotal: number;
   currentYearMonths: MonthGroup[];
@@ -22,16 +23,18 @@ export function buildNfeGroups(invoices: Invoice[]): NfeHierarchy {
   const pwe = new Date(ws); pwe.setDate(ws.getDate() - 1);
   const pws = new Date(pwe); pws.setDate(pwe.getDate() - 6);
   const ts = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const todayS = ts(now);
   const [wsS, weS, pwsS, pweS] = [ts(ws), ts(we), ts(pws), ts(pwe)];
   const cy = now.getFullYear();
-  const es: Invoice[] = [], sp: Invoice[] = [];
+  const hj: Invoice[] = [], es: Invoice[] = [], sp: Invoice[] = [];
   const mm = new Map<string, Invoice[]>();
   const ym = new Map<number, Map<string, Invoice[]>>();
   for (const inv of invoices) {
     const d = (inv.issueDate || '').substring(0, 10);
     const yr = parseInt(d.substring(0, 4));
     const mo = d.substring(0, 7);
-    if (d >= wsS && d <= weS) es.push(inv);
+    if (d === todayS) hj.push(inv);
+    else if (d >= wsS && d <= weS) es.push(inv);
     else if (d >= pwsS && d <= pweS) sp.push(inv);
     else if (yr === cy) { if (!mm.has(mo)) mm.set(mo, []); mm.get(mo)!.push(inv); }
     else if (!isNaN(yr) && yr > 1900) { if (!ym.has(yr)) ym.set(yr, new Map()); const y2 = ym.get(yr)!; if (!y2.has(mo)) y2.set(mo, []); y2.get(mo)!.push(inv); }
@@ -46,6 +49,7 @@ export function buildNfeGroups(invoices: Invoice[]): NfeHierarchy {
     return { year: yr, key: `year_${yr}`, months: ms, total: ms.reduce((s, m) => s + m.total, 0), count: ms.reduce((s, m) => s + m.count, 0) };
   });
   return {
+    hoje: hj, hojeTotal: hj.reduce((s, i) => s + i.totalValue, 0),
     estaSemana: es, estaSemanaTotal: es.reduce((s, i) => s + i.totalValue, 0),
     semanaPassada: sp, semanaPassadaTotal: sp.reduce((s, i) => s + i.totalValue, 0),
     currentYearMonths: cym, previousYears: py,

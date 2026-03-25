@@ -420,6 +420,9 @@ export default function IssuedInvoicesPage() {
               ))
             ) : (
               <>
+                {renderMobileDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
+                {!collapsedGroups.has('hoje') && nfeGroups.hoje.map(renderMobileCard)}
+
                 {renderMobileDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
                 {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderMobileCard)}
 
@@ -493,6 +496,9 @@ export default function IssuedInvoicesPage() {
                 ))
               ) : (
                 <>
+                  {renderGroupDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
+                  {!collapsedGroups.has('hoje') && nfeGroups.hoje.map(renderInvoiceRow)}
+
                   {renderGroupDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
                   {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderInvoiceRow)}
 
