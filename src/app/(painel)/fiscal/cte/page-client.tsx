@@ -39,7 +39,7 @@ export default function CtePage() {
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [hideValues, setHideValues] = useState(true);
+  const [hideValues, setHideValues] = useState(false);
 
   const normalizeName = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
 

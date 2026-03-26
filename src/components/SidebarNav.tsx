@@ -5,7 +5,6 @@ import Image from 'next/image';
 import type { Session } from 'next-auth';
 
 export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
-  '/visaogeral': { label: 'Visão Geral', icon: 'dashboard' },
   '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
@@ -54,12 +53,6 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
   const hasPageAccess = (path: string) => isAdmin || allowedPages.length === 0 || allowedPages.includes(path);
 
   const allNavItems: NavGroup[] = [
-    {
-      section: null,
-      items: [
-        { label: 'Visão Geral', icon: 'dashboard', href: '/visaogeral' },
-      ],
-    },
     {
       section: 'Cadastros',
       items: [

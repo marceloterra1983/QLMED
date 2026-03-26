@@ -44,7 +44,7 @@ export default function IssuedInvoicesPage() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
-  const [hideValues, setHideValues] = useState(true);
+  const [hideValues, setHideValues] = useState(false);
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
   const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
@@ -174,7 +174,9 @@ export default function IssuedInvoicesPage() {
         const loaded: Invoice[] = data.invoices || [];
         setInvoices(loaded);
         setTotal(data.pagination?.total || 0);
-        if (!collapsedInitialized && loaded.length > 0) {
+        if (search) {
+          setCollapsedGroups(new Set());
+        } else if (!collapsedInitialized && loaded.length > 0) {
           if (selectedYear !== null) {
             const months = buildYearMonths(loaded);
             setCollapsedGroups(new Set(months.map(m => m.key)));
@@ -411,6 +413,22 @@ export default function IssuedInvoicesPage() {
           </>
         ) : (
           <>
+            {(() => {
+              const allKeys: string[] = [];
+              if (selectedYear !== null) {
+                yearMonths.forEach(mg => allKeys.push(mg.key));
+              } else {
+                allKeys.push('hoje', 'esta_semana');
+                if (nfeGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
+                nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
+              }
+              return allKeys.length > 1 ? (
+                <div className="flex justify-start gap-1.5 mb-2">
+                  <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
+                  <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
+                </div>
+              ) : null;
+            })()}
             {selectedYear !== null ? (
               yearMonths.map(mg => (
                 <React.Fragment key={mg.key}>
@@ -449,6 +467,22 @@ export default function IssuedInvoicesPage() {
 
       {/* Table (desktop) */}
       <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        {!loading && invoices.length > 0 && (() => {
+          const allKeys: string[] = [];
+          if (selectedYear !== null) {
+            yearMonths.forEach(mg => allKeys.push(mg.key));
+          } else {
+            allKeys.push('hoje', 'esta_semana');
+            if (nfeGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
+            nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
+          }
+          return allKeys.length > 1 ? (
+            <div className="flex justify-start gap-1.5 px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
+              <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
+            </div>
+          ) : null;
+        })()}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <caption className="sr-only">Lista de notas fiscais eletrônicas emitidas</caption>

@@ -49,6 +49,9 @@ export default function RootLayout({
     <html lang="pt-BR" className={manrope.variable} suppressHydrationWarning>
       <head />
       <body suppressHydrationWarning className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased">
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-400 w-full sticky top-0 z-[9999]" style={{ height: '15px' }} />
+        )}
         <PWARegister />
         <Providers>{children}</Providers>
       </body>

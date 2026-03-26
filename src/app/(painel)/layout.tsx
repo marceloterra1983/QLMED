@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/Sidebar';
 import { PAGE_LABELS } from '@/components/SidebarNav';
+import AccessLogTracker from '@/components/AccessLogTracker';
 import { useResizableSidebar } from '@/hooks/useResizableSidebar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <AccessLogTracker />
       <Sidebar
         pathname={pathname}
         session={session}

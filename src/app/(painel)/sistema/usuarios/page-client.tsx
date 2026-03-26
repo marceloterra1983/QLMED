@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { PAGE_GROUPS, ALL_PAGES } from '@/lib/navigation';
+import { PAGE_LABELS } from '@/components/SidebarNav';
 
 interface User {
   id: string;
@@ -79,6 +80,12 @@ export default function UsuariosPage() {
   const [allPagesChecked, setAllPagesChecked] = useState(true);
   const [pagesLoading, setPagesLoading] = useState(false);
 
+  // Access log modal state
+  const [logsUser, setLogsUser] = useState<User | null>(null);
+  const [accessLogs, setAccessLogs] = useState<{ id: string; action: string; path: string | null; createdAt: string }[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsTotal, setLogsTotal] = useState(0);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -87,7 +94,7 @@ export default function UsuariosPage() {
   useEffect(() => {
     if (!mounted || status !== 'authenticated') return;
     if (session?.user?.role !== 'admin') {
-      router.replace('/visaogeral');
+      router.replace('/fiscal/invoices');
     }
   }, [mounted, status, session, router]);
 
@@ -98,7 +105,7 @@ export default function UsuariosPage() {
       const res = await fetch('/api/users');
       if (!res.ok) {
         if (res.status === 403) {
-          router.replace('/visaogeral');
+          router.replace('/fiscal/invoices');
           return;
         }
         throw new Error('Erro ao carregar usuários');
@@ -220,6 +227,24 @@ export default function UsuariosPage() {
       setAllPagesChecked(false);
       setSelectedPages([...user.allowedPages]);
     }
+  };
+
+  const openLogs = async (user: User, offset = 0) => {
+    setLogsUser(user);
+    setLogsLoading(true);
+    try {
+      const res = await fetch(`/api/access-log?userId=${user.id}&limit=50&offset=${offset}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (offset === 0) {
+          setAccessLogs(data.logs);
+        } else {
+          setAccessLogs(prev => [...prev, ...data.logs]);
+        }
+        setLogsTotal(data.total);
+      }
+    } catch { toast.error('Erro ao carregar histórico'); }
+    finally { setLogsLoading(false); }
   };
 
   const handleToggleAllPages = () => {
@@ -503,6 +528,13 @@ export default function UsuariosPage() {
                           >
                             <span className="material-symbols-outlined text-[20px]">tune</span>
                           </button>
+                          <button
+                            onClick={() => openLogs(user)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                            title="Histórico de acesso"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">history</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -561,6 +593,13 @@ export default function UsuariosPage() {
                     >
                       <span className="material-symbols-outlined text-[16px]">tune</span>
                       Páginas
+                    </button>
+                    <button
+                      onClick={() => openLogs(user)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">history</span>
+                      Histórico
                     </button>
                   </div>
                 </div>
@@ -872,6 +911,60 @@ export default function UsuariosPage() {
               Salvar
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Access log modal */}
+      <Modal isOpen={!!logsUser} onClose={() => { setLogsUser(null); setAccessLogs([]); }} title={`Histórico — ${logsUser?.name || ''}`} width="max-w-lg">
+        <div className="space-y-3">
+          {logsLoading && accessLogs.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="material-symbols-outlined text-[24px] animate-spin text-slate-400">progress_activity</span>
+            </div>
+          ) : accessLogs.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">Nenhum registro de acesso</p>
+          ) : (
+            <>
+              <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                {accessLogs.map((log) => (
+                  <div key={log.id} className="flex items-center justify-between py-2 px-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {log.action === 'login' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <span className="material-symbols-outlined text-[12px]">login</span>
+                          Login
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 truncate max-w-[200px]">
+                          <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                          {PAGE_LABELS[log.path || '']?.label || log.path}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-400 flex-shrink-0 ml-2">
+                      {new Date(log.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}{' '}
+                      {new Date(log.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {accessLogs.length < logsTotal && (
+                <button
+                  onClick={() => logsUser && openLogs(logsUser, accessLogs.length)}
+                  disabled={logsLoading}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {logsLoading ? (
+                    <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                  )}
+                  Carregar mais ({logsTotal - accessLogs.length} restantes)
+                </button>
+              )}
+              <p className="text-[10px] text-slate-400 text-center">{logsTotal} registro(s) no total</p>
+            </>
+          )}
         </div>
       </Modal>
     </>

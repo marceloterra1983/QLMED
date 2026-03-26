@@ -28,7 +28,7 @@ export default function NfseReceivedPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [hideValues, setHideValues] = useState(true);
+  const [hideValues, setHideValues] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);

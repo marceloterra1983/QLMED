@@ -11,7 +11,6 @@ export default function LoginPage() {
   const { status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +38,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/visaogeral');
+      router.replace('/fiscal/invoices');
     }
   }, [status, router]);
 
@@ -50,7 +49,6 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
         password,
         redirect: false,
       });
@@ -63,10 +61,10 @@ export default function LoginPage() {
         } else if (result.error.includes('ACCOUNT_INACTIVE')) {
           setError('Sua conta está desativada. Entre em contato com o administrador.');
         } else {
-          setError('Email ou senha incorretos');
+          setError('Senha incorreta');
         }
       } else {
-        router.push('/visaogeral');
+        router.push('/fiscal/invoices');
       }
     } catch {
       setError('Erro ao fazer login');
@@ -111,9 +109,13 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-4">
             Sistema interno de gestão da QL MED. Acesso restrito a colaboradores autorizados.
           </p>
+          <div className="flex items-center gap-2 p-3 mb-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-sm font-semibold justify-center">
+            <span className="material-symbols-outlined text-[18px]">info</span>
+            Mesma senha do Joinner
+          </div>
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm font-medium">
@@ -123,21 +125,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Email corporativo</label>
-              <input
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="nome@qlmed.com.br"
-                autoComplete="username"
-                required
-                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Senha</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Senha de acesso</label>
               <input
                 type="password"
                 name="password"

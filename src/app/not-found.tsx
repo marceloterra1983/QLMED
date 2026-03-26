@@ -13,7 +13,7 @@ export default function NotFound() {
           O endereço que você acessou não existe ou foi movido.
         </p>
         <Link
-          href="/visaogeral"
+          href="/fiscal/invoices"
           className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg"
         >
           <span className="material-symbols-outlined text-[18px]">home</span>

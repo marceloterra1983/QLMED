@@ -4,5 +4,5 @@ import { authOptions } from '@/lib/auth-options';
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  redirect(session ? '/visaogeral' : '/login');
+  redirect(session ? '/fiscal/invoices' : '/login');
 }

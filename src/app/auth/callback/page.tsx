@@ -170,7 +170,7 @@ export default async function OneDriveCallbackPage({ searchParams }: CallbackPag
         <Link className="text-blue-700 underline" href="/sistema/settings">
           Voltar para Configurações
         </Link>
-        <Link className="text-blue-700 underline" href="/visaogeral">
+        <Link className="text-blue-700 underline" href="/fiscal/invoices">
           Ir para Dashboard
         </Link>
       </div>

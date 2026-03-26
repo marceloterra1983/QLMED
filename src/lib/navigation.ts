@@ -10,12 +10,6 @@ export interface PageGroup {
 
 export const PAGE_GROUPS: PageGroup[] = [
   {
-    section: 'Geral',
-    pages: [
-      { label: 'Visão Geral', path: '/visaogeral' },
-    ],
-  },
-  {
     section: 'Cadastros',
     pages: [
       { label: 'Produtos', path: '/cadastro/produtos' },

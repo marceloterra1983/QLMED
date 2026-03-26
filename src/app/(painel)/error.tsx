@@ -29,7 +29,7 @@ export default function DashboardError({
           Tentar novamente
         </button>
         <a
-          href="/visaogeral"
+          href="/fiscal/invoices"
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
         >
           <span className="material-symbols-outlined text-[18px]">dashboard</span>

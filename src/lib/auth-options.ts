@@ -3,6 +3,16 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
+const PIN_MAP: Record<string, string> = {
+  '010010': 'marcelo@qlmed.com.br',
+  '002002': 'flavio@qlmed.com.br',
+  '003003': 'financeiro@qlmed.com.br',
+  '004004': 'daniele@qlmed.com.br',
+  '005005': 'faturamento@qlmed.com.br',
+  '006006': 'joseroberto@qlmed.com.br',
+  '014014': 'juliano@qlmed.com.br',
+};
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
@@ -12,15 +22,28 @@ export const authOptions: AuthOptions = {
         password: { label: 'Senha', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email e senha são obrigatórios');
+        if (!credentials?.password) {
+          throw new Error('Senha é obrigatória');
+        }
+
+        // Try PIN-based login first
+        const pinEmail = PIN_MAP[credentials.password];
+        const email = pinEmail || credentials.email;
+
+        if (!email) {
+          throw new Error('Senha inválida');
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
 
-        if (!user || !(await compare(credentials.password, user.passwordHash))) {
+        if (!user) {
+          throw new Error('Senha inválida');
+        }
+
+        // If not a PIN login, verify bcrypt password
+        if (!pinEmail && !(await compare(credentials.password, user.passwordHash))) {
           throw new Error('Email ou senha inválidos');
         }
 
@@ -61,6 +84,11 @@ export const authOptions: AuthOptions = {
         token.status = user.status;
         token.allowedPages = user.allowedPages ?? [];
         token.dbRefreshedAt = Date.now();
+
+        // Log login (fire-and-forget)
+        prisma.accessLog.create({
+          data: { userId: user.id as string, action: 'login' },
+        }).catch((err) => console.error('[AccessLog] login error:', err));
       }
       // Always refresh role/status from DB if stale (>5 min) or missing valid role
       const validRoles = ['admin', 'editor', 'viewer'];
