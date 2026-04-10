@@ -643,27 +643,32 @@ export default function ProdutosPage() {
       const res = await fetch('/api/products/settings');
       if (!res.ok) return;
       const data = await res.json();
+      interface SettingsSubgroup { name: string }
+      interface SettingsGroup { name: string; subgroups?: SettingsSubgroup[] }
+      interface SettingsLine { name: string; groups?: SettingsGroup[] }
+      interface FiscalOption { value: string }
+      interface ManufacturerOption { name: string; shortName?: string }
       setSettingsHierarchy({
-        lines: (data.lines || []).map((l: any) => ({
+        lines: (data.lines || []).map((l: SettingsLine) => ({
           name: l.name,
-          groups: (l.groups || []).map((g: any) => ({
+          groups: (l.groups || []).map((g: SettingsGroup) => ({
             name: g.name,
-            subgroups: (g.subgroups || []).map((s: any) => s.name),
+            subgroups: (g.subgroups || []).map((s: SettingsSubgroup) => s.name),
           })),
         })),
       });
-      setNomeTributacaoOptions((data.fiscal?.fiscalNomeTributacao || []).map((i: any) => i.value).filter(Boolean).sort());
-      setObsIcmsOptions((data.fiscal?.obsIcms || []).map((i: any) => i.value).filter(Boolean).sort());
-      setObsPisCofinsOptions((data.fiscal?.obsPisCofins || []).map((i: any) => i.value).filter(Boolean).sort());
-      setManufacturerOptions((data.manufacturers || []).map((m: any) => (m.shortName || m.name) as string).filter(Boolean).sort());
-      setNcmOptions((data.fiscal?.ncm || []).map((i: any) => i.value).filter(Boolean).sort());
-      setCestOptions((data.fiscal?.cest || []).map((i: any) => i.value).filter(Boolean).sort());
+      setNomeTributacaoOptions((data.fiscal?.fiscalNomeTributacao || []).map((i: FiscalOption) => i.value).filter(Boolean).sort());
+      setObsIcmsOptions((data.fiscal?.obsIcms || []).map((i: FiscalOption) => i.value).filter(Boolean).sort());
+      setObsPisCofinsOptions((data.fiscal?.obsPisCofins || []).map((i: FiscalOption) => i.value).filter(Boolean).sort());
+      setManufacturerOptions((data.manufacturers || []).map((m: ManufacturerOption) => (m.shortName || m.name) as string).filter(Boolean).sort());
+      setNcmOptions((data.fiscal?.ncm || []).map((i: FiscalOption) => i.value).filter(Boolean).sort());
+      setCestOptions((data.fiscal?.cest || []).map((i: FiscalOption) => i.value).filter(Boolean).sort());
       const numSort = (a: string, b: string) => parseFloat(a) - parseFloat(b);
-      setAliqIcmsOptions((data.fiscal?.aliqIcms || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
-      setAliqPisOptions((data.fiscal?.aliqPis || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
-      setAliqCofinsOptions((data.fiscal?.aliqCofins || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
-      setAliqIpiOptions((data.fiscal?.aliqIpi || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
-      setAliqFcpOptions((data.fiscal?.aliqFcp || []).map((i: any) => i.value).filter(Boolean).sort(numSort));
+      setAliqIcmsOptions((data.fiscal?.aliqIcms || []).map((i: FiscalOption) => i.value).filter(Boolean).sort(numSort));
+      setAliqPisOptions((data.fiscal?.aliqPis || []).map((i: FiscalOption) => i.value).filter(Boolean).sort(numSort));
+      setAliqCofinsOptions((data.fiscal?.aliqCofins || []).map((i: FiscalOption) => i.value).filter(Boolean).sort(numSort));
+      setAliqIpiOptions((data.fiscal?.aliqIpi || []).map((i: FiscalOption) => i.value).filter(Boolean).sort(numSort));
+      setAliqFcpOptions((data.fiscal?.aliqFcp || []).map((i: FiscalOption) => i.value).filter(Boolean).sort(numSort));
     } catch { /* silent */ }
   };
 
@@ -741,8 +746,8 @@ export default function ProdutosPage() {
           })
           .catch(() => setIsRebuilding(false));
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       toast.error('Erro ao carregar produtos');
     } finally {
       setLoading(false);
@@ -993,17 +998,17 @@ export default function ProdutosPage() {
         'Ultimo Preco Compra', 'Ultimo Preco Venda', 'Qtde Total', 'Notas',
         'Data Ultima Compra', 'Data Ultima Venda', 'Ultimo Fornecedor',
       ];
-      const rows = all.map((p: any) => [
+      const rows = all.map((p: ProductRow) => [
         esc(p.codigo), esc(p.code), esc(p.description), esc(p.shortName), esc(p.unit), esc(p.ean),
         esc(p.productType), esc(p.productSubtype), esc(p.productSubgroup), p.outOfLine ? 'Sim' : 'Nao',
         esc(p.ncm), esc(p.fiscalCest), esc(p.fiscalOrigem), esc(p.fiscalSitTributaria), esc(p.fiscalNomeTributacao),
         fmtNum(p.fiscalIcms), fmtNum(p.fiscalPis), fmtNum(p.fiscalCofins), fmtNum(p.fiscalIpi), fmtNum(p.fiscalFcp), esc(p.fiscalObs),
-        esc(p.anvisa), esc(p.anvisaStatus), formatDate(p.anvisaExpiration), esc(p.anvisaRiskClass), esc(p.anvisaProcess),
+        esc(p.anvisa), esc(p.anvisaStatus), formatDate(p.anvisaExpiration ?? null), esc(p.anvisaRiskClass), esc(p.anvisaProcess),
         esc(p.anvisaMatchedProductName), esc(p.anvisaHolder), esc(p.anvisaManufacturer), esc(p.anvisaManufacturerCountry),
         formatAmount(p.lastPrice), formatOptional(p.lastSalePrice), formatQuantity(p.totalQuantity), String(p.invoiceCount),
         formatDate(p.lastIssueDate), formatDate(p.lastSaleDate), esc(p.lastSupplierName),
       ]);
-      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: string[]) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url; a.download = `produtos-${new Date().toISOString().split('T')[0]}.csv`; a.click();
@@ -1028,11 +1033,11 @@ export default function ProdutosPage() {
       const missing = data.products || [];
       if (missing.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto sem ANVISA'); return; }
       const headers = ['Referencia', 'Produto', 'NCM', 'EAN', 'Ultimo Preco', 'Data Ultima Compra', 'Fornecedor'];
-      const rows = missing.map((p: any) => [
+      const rows = missing.map((p: ProductRow) => [
         p.code, p.description, p.ncm || '', p.ean || '',
         formatAmount(p.lastPrice), formatDate(p.lastIssueDate), p.lastSupplierName || '',
       ]);
-      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: string[]) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url; a.download = `produtos-sem-anvisa-${new Date().toISOString().split('T')[0]}.csv`; a.click();
@@ -1362,7 +1367,7 @@ export default function ProdutosPage() {
         if (allRes.ok) {
           const allData = await allRes.json();
           ourCodes = new Set(
-            (allData.products || []).map((p: any) => (p.anvisa || '').replace(/\D/g, '').padStart(11, '0')).filter((c: string) => c.length === 11),
+            (allData.products || []).map((p: ProductRow) => (p.anvisa || '').replace(/\D/g, '').padStart(11, '0')).filter((c: string) => c.length === 11),
           );
         }
       } catch { /* use empty set */ }
@@ -2207,7 +2212,7 @@ export default function ProdutosPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(autoClassifyPreview.preview || []).map((item: any, i: number) => (
+                    {(autoClassifyPreview.preview || []).map((item: { description: string; code?: string; fields: Record<string, string | undefined>; reason: string }, i: number) => (
                       <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                         <td className="px-4 py-2 max-w-[200px]">
                           <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.description}</p>

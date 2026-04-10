@@ -183,7 +183,7 @@ export default function UsuariosPage() {
     if (!editingUser) return;
     setEditLoading(true);
     try {
-      const payload: any = {
+      const payload: Record<string, string> = {
         name: editName,
         email: editEmail,
         phone: editPhone,

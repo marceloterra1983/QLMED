@@ -38,7 +38,8 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
 
     if (persistedRows.length > 0) {
       // Group rows by item_number → 1 item with batches[]
-      const groupMap = new Map<number, { rows: any[] }>();
+      type EntryRow = typeof persistedRows[number];
+      const groupMap = new Map<number, { rows: EntryRow[] }>();
       for (const r of persistedRows) {
         const num = Number(r.item_number);
         if (!groupMap.has(num)) groupMap.set(num, { rows: [] });
@@ -50,8 +51,8 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
         .map(([itemNum, { rows }]) => {
           const r = rows[0]; // first row for item-level fields
           const batches = rows
-            .filter((row: any) => row.lot != null)
-            .map((row: any) => ({
+            .filter((row) => row.lot != null)
+            .map((row) => ({
               id: Number(row.id),
               lot: row.lot,
               serial: row.lot_serial || null,
@@ -62,7 +63,7 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
 
           return {
             id: Number(r.id),
-            batchIds: rows.map((row: any) => Number(row.id)),
+            batchIds: rows.map((row) => Number(row.id)),
             index: itemNum,
             code: r.supplier_code,
             description: r.supplier_description,

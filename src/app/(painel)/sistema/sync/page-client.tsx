@@ -272,8 +272,8 @@ export default function SyncPage() {
         } else {
           addLog(`\u274c Erro: ${data.error}`);
         }
-      } catch (err: any) {
-        addLog(`\u274c Falha de conexão: ${err.message}`);
+      } catch (err: unknown) {
+        addLog(`\u274c Falha de conexão: ${err instanceof Error ? err.message : String(err)}`);
       }
 
       processedMonths++;

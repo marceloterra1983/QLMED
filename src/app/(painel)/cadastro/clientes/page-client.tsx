@@ -177,7 +177,10 @@ export default function CustomersPage() {
       const res = await fetch('/api/customers?exportAll=1&sort=name&order=asc');
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const all: any[] = data.customers || [];
+      interface ReceitaData { razaoSocial?: string; nomeFantasia?: string; situacao?: string; cnaePrincipal?: string; porte?: string; naturezaJuridica?: string; simplesNacional?: boolean | null; mei?: boolean | null; capitalSocial?: number | null; telefone?: string; email?: string; endereco?: Record<string, string | null> | null }
+      interface OverrideData { phone?: string; email?: string; street?: string; number?: string; complement?: string; district?: string; city?: string; state?: string; zipCode?: string }
+      interface ExportCustomer { name: string; shortName?: string; cnpj: string; city?: string; invoiceCount: number; totalValue: number; firstIssueDate?: string; lastIssueDate?: string; priceItemCount?: number | null; receita?: ReceitaData; override?: OverrideData }
+      const all: ExportCustomer[] = data.customers || [];
       if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum cliente para exportar'); return; }
 
       const esc = (v: string | null | undefined) => {
@@ -185,7 +188,7 @@ export default function CustomersPage() {
         return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const fmtCur = (v: number | null | undefined) => v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-      const fmtAddr = (e: any) => {
+      const fmtAddr = (e: Record<string, string | null> | null | undefined) => {
         if (!e) return '';
         return [e.logradouro, e.numero, e.bairro, e.municipio, e.uf, e.cep].filter(Boolean).join(', ');
       };
@@ -199,7 +202,7 @@ export default function CustomersPage() {
         'Telefone (Receita)', 'Email (Receita)', 'Endereço (Receita)',
         'Telefone (Editado)', 'Email (Editado)', 'Endereço (Editado)',
       ];
-      const rows = all.map((c: any) => {
+      const rows = all.map((c: ExportCustomer) => {
         const r = c.receita || {};
         const o = c.override || {};
         const ovrAddr = [o.street, o.number, o.complement, o.district, o.city, o.state, o.zipCode].filter(Boolean).join(', ');
@@ -218,7 +221,7 @@ export default function CustomersPage() {
         ];
       });
 
-      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: string[]) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url; a.download = `clientes-${new Date().toISOString().split('T')[0]}.csv`; a.click();

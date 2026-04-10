@@ -409,7 +409,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       companyId: company.id,
       type: 'NFE',
       direction: 'received',
@@ -530,7 +530,7 @@ export async function GET(req: Request) {
 
     // ── Pass 2: issued invoices with import CFOPs (3xxx) — these are product entries ──
     {
-      const importWhere: any = {
+      const importWhere: Record<string, unknown> = {
         companyId: company.id,
         type: 'NFE',
         direction: 'issued',
@@ -709,7 +709,7 @@ export async function GET(req: Request) {
         return null;
       };
 
-      const resaleWhere: any = {
+      const resaleWhere: Record<string, unknown> = {
         companyId: company.id,
         type: 'NFE',
         direction: 'issued',

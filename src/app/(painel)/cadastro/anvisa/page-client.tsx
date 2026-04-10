@@ -58,11 +58,11 @@ export default function AnvisaPage() {
             reason: data?.reason || null,
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
           setEmbedStatus({
             canEmbed: false,
-            reason: error?.message || 'Falha ao validar o embed',
+            reason: error instanceof Error ? error.message : 'Falha ao validar o embed',
           });
         }
       } finally {

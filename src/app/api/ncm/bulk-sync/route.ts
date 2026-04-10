@@ -52,7 +52,8 @@ export async function POST() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    let rawItems: any[];
+    interface SiscomexItem { Codigo?: string; codigo?: string; Descricao?: string; descricao?: string }
+    let rawItems: SiscomexItem[];
     try {
       const res = await fetch(SISCOMEX_URL, {
         signal: controller.signal,
@@ -128,7 +129,7 @@ export async function POST() {
       const batch = items.slice(i, i + BATCH_SIZE);
 
       const values: string[] = [];
-      const params: any[] = [];
+      const params: (string | null)[] = [];
       let paramIdx = 1;
 
       for (const item of batch) {

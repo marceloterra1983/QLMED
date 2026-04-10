@@ -311,8 +311,8 @@ export default function EntradaNfePage() {
       } else {
         toast.error('Erro ao carregar itens da nota');
       }
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return;
       toast.error('Erro ao carregar itens da nota');
     } finally {
       if (expandedIdRef.current === invoiceId) setExpandedLoading(false);

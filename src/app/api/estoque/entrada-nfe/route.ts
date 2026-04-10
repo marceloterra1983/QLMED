@@ -33,16 +33,17 @@ export async function GET(req: Request) {
     const order = searchParams.get('order') || 'desc';
 
     // Query NF-e received invoices
-    const where: any = {
+    const where: Record<string, unknown> = {
       companyId: company.id,
       type: 'NFE',
       direction: 'received',
     };
 
     if (dateFrom || dateTo) {
-      where.issueDate = {};
-      if (dateFrom) where.issueDate.gte = new Date(dateFrom + 'T00:00:00.000Z');
-      if (dateTo) where.issueDate.lte = new Date(dateTo + 'T23:59:59.999Z');
+      const dateRange: Record<string, Date> = {};
+      if (dateFrom) dateRange.gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) dateRange.lte = new Date(dateTo + 'T23:59:59.999Z');
+      where.issueDate = dateRange;
     }
 
     const sortMapping: Record<string, string> = {

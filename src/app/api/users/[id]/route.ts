@@ -68,7 +68,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Email não pode ser vazio' }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, string | string[] | null> = {};
     if (name !== undefined) updateData.name = String(name).trim();
     if (email !== undefined) updateData.email = String(email).toLowerCase().trim();
     if (role !== undefined) updateData.role = role;

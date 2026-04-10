@@ -217,16 +217,16 @@ export async function GET(req: Request) {
       }
     }
 
-    const where: any = { companyId: company.id };
+    const where: Record<string, unknown> = { companyId: company.id };
 
     if (type) where.type = type;
     if (status) where.status = status;
     if (direction) where.direction = direction;
 
     if (dateFrom || dateTo) {
-      where.issueDate = {};
-      if (dateFrom) where.issueDate.gte = new Date(dateFrom + 'T00:00:00.000Z');
-      if (dateTo) where.issueDate.lte = new Date(dateTo + 'T23:59:59.999Z');
+      where.issueDate = {} as Record<string, Date>;
+      if (dateFrom) (where.issueDate as Record<string, Date>).gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) (where.issueDate as Record<string, Date>).lte = new Date(dateTo + 'T23:59:59.999Z');
     }
 
     const sortMapping: Record<string, string> = {
@@ -260,7 +260,7 @@ export async function GET(req: Request) {
       createdAt: true,
     };
 
-    const attachExtraFieldsForInvoices = async <T extends { id: string; cfop?: string | null; totalValue: any }>(
+    const attachExtraFieldsForInvoices = async <T extends { id: string; type?: string; cfop?: string | null; totalValue: unknown }>(
       baseInvoices: T[]
     ): Promise<Array<T & {
       cfop: string | null;
@@ -273,7 +273,7 @@ export async function GET(req: Request) {
       if (baseInvoices.length === 0) return [];
 
       // Only load XML for CTE (remetente/recebedor) and NFSE (senderCity) invoices
-      const needsXml = baseInvoices.filter((inv: any) => inv.type === 'CTE' || inv.type === 'NFSE');
+      const needsXml = baseInvoices.filter((inv) => inv.type === 'CTE' || inv.type === 'NFSE');
       let xmlById = new Map<string, { xmlContent: string; type: string }>();
       if (needsXml.length > 0) {
         const xmlRows = await prisma.invoice.findMany({

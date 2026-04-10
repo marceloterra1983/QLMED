@@ -161,10 +161,11 @@ export default function ValvulasImportadasPage() {
         const res = await fetch('/api/users');
         if (!res.ok) throw new Error();
         const json = await res.json();
+        interface UserRow { id: string; name: string; email: string | null; status: string }
         setUsers(
-          (json.users as any[])
-            .filter((u: any) => u.status === 'active' && u.email)
-            .map((u: any) => ({ id: u.id, name: u.name, email: u.email }))
+          (json.users as UserRow[])
+            .filter((u) => u.status === 'active' && u.email)
+            .map((u) => ({ id: u.id, name: u.name, email: u.email! }))
         );
       } catch {
         toast.error('Erro ao carregar lista de usuários');
@@ -183,8 +184,8 @@ export default function ValvulasImportadasPage() {
       if (!res.ok) throw new Error(json.error || 'Erro ao enviar');
       toast.success(`Email enviado para ${selectedEmail}`);
       setEmailModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao enviar email');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao enviar email');
     } finally {
       setSendingEmail(false);
     }

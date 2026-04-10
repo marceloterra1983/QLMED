@@ -174,7 +174,10 @@ export default function SuppliersPage() {
       const res = await fetch('/api/suppliers?exportAll=1&sort=name&order=asc');
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const all: any[] = data.suppliers || [];
+      interface ReceitaData { razaoSocial?: string; nomeFantasia?: string; situacao?: string; cnaePrincipal?: string; porte?: string; naturezaJuridica?: string; simplesNacional?: boolean | null; mei?: boolean | null; capitalSocial?: number | null; telefone?: string; email?: string; endereco?: Record<string, string | null> | null }
+      interface OverrideData { phone?: string; email?: string; street?: string; number?: string; complement?: string; district?: string; city?: string; state?: string; zipCode?: string }
+      interface ExportSupplier { name: string; shortName?: string; cnpj: string; invoiceCount: number; totalValue: number; firstIssueDate?: string; lastIssueDate?: string; priceItemCount?: number | null; receita?: ReceitaData; override?: OverrideData }
+      const all: ExportSupplier[] = data.suppliers || [];
       if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum fornecedor para exportar'); return; }
 
       const esc = (v: string | null | undefined) => {
@@ -182,7 +185,7 @@ export default function SuppliersPage() {
         return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const fmtCur = (v: number | null | undefined) => v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-      const fmtAddr = (e: any) => {
+      const fmtAddr = (e: Record<string, string | null> | null | undefined) => {
         if (!e) return '';
         return [e.logradouro, e.numero, e.bairro, e.municipio, e.uf, e.cep].filter(Boolean).join(', ');
       };
@@ -196,7 +199,7 @@ export default function SuppliersPage() {
         'Telefone (Receita)', 'Email (Receita)', 'Endereço (Receita)',
         'Telefone (Editado)', 'Email (Editado)', 'Endereço (Editado)',
       ];
-      const rows = all.map((s: any) => {
+      const rows = all.map((s: ExportSupplier) => {
         const r = s.receita || {};
         const o = s.override || {};
         const ovrAddr = [o.street, o.number, o.complement, o.district, o.city, o.state, o.zipCode].filter(Boolean).join(', ');
@@ -215,7 +218,7 @@ export default function SuppliersPage() {
         ];
       });
 
-      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: any) => r.join(';'))].join('\n');
+      const csv = '\uFEFF' + [headers.join(';'), ...rows.map((r: string[]) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url; a.download = `fornecedores-${new Date().toISOString().split('T')[0]}.csv`; a.click();

@@ -60,7 +60,7 @@ export async function GET(req: Request) {
     if (hasAggregates) {
       conditions.push('pr.agg_computed_at IS NOT NULL');
     }
-    const params: any[] = [company.id];
+    const params: (string | number)[] = [company.id];
     let paramIdx = 2;
 
     // Line status filter
@@ -122,7 +122,17 @@ export async function GET(req: Request) {
     orderClause += ', pr.description ASC';
 
     // Fetch ALL products — lightweight columns only (no ANVISA details, no fiscal)
-    const rows = await prisma.$queryRawUnsafe<any[]>(
+    interface ProductRegistryRow {
+      product_key: string; codigo: string | null; code: string; description: string;
+      ncm: string | null; unit: string; short_name: string | null; manufacturer_short_name: string | null;
+      anvisa_code: string | null; anvisa_manufacturer: string | null;
+      product_type: string | null; product_subtype: string | null; product_subgroup: string | null;
+      out_of_line: boolean | string | null;
+      agg_last_price: number | null; agg_average_price: number | null;
+      agg_last_issue_date: string | null; agg_last_supplier_name: string | null;
+      agg_invoice_count: number | null; agg_total_quantity: number | null;
+    }
+    const rows = await prisma.$queryRawUnsafe<ProductRegistryRow[]>(
       `
       SELECT
         pr.product_key,
@@ -153,7 +163,7 @@ export async function GET(req: Request) {
     );
 
     // Map to lightweight ProductRow — enough for table display
-    const products = rows.map((row: any) => ({
+    const products = rows.map((row) => ({
       key: row.product_key,
       codigo: row.codigo || null,
       code: row.code || '-',
@@ -177,7 +187,7 @@ export async function GET(req: Request) {
     }));
 
     // Summary counts
-    const summaryResult = await prisma.$queryRawUnsafe<any[]>(
+    const summaryResult = await prisma.$queryRawUnsafe<{ total_products: bigint; with_anvisa: bigint; total_quantity: number }[]>(
       `
       SELECT
         COUNT(*) as total_products,

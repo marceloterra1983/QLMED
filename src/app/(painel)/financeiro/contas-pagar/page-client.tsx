@@ -218,7 +218,7 @@ export default function ContasPagarPage() {
       const res = await fetch(`/api/financeiro/contas-pagar?${params}`);
       if (!res.ok) throw new Error('Erro ao carregar dados');
       const data = await res.json();
-      const loaded = data.duplicatas || [];
+      const loaded: Duplicata[] = data.duplicatas || [];
       setDuplicatas(loaded);
       setSummary(data.summary);
       setTotal(data.pagination.total);
@@ -235,10 +235,10 @@ export default function ContasPagarPage() {
         setCollapsedGroups(toCollapse);
         setCollapsedInitialized(true);
       }
-      const cnpjs = Array.from(new Set(loaded.map((d: any) => d.emitenteCnpj).filter(Boolean)));
+      const cnpjs = Array.from(new Set(loaded.map((d) => d.emitenteCnpj).filter(Boolean)));
       if (cnpjs.length > 0) {
         const p = new URLSearchParams();
-        cnpjs.forEach((c: any) => p.append('cnpjs', c));
+        cnpjs.forEach((c) => p.append('cnpjs', c));
         const nr = await fetch(`/api/contacts/nickname/batch?${p}`);
         if (nr.ok) { const nd = await nr.json(); setNicknames(new Map(Object.entries(nd.nicknames || {}))); }
       } else { setNicknames(new Map()); }

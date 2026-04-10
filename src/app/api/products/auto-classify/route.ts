@@ -130,7 +130,14 @@ export async function POST(req: Request) {
     // But since we're server-side, we'll build the product list from the DB.
 
     // Get all registry rows
-    const registryRows = await prisma.$queryRawUnsafe<any[]>(
+    interface RegistryRow {
+      id: string; product_key: string; code: string | null; description: string;
+      ncm: string | null; unit: string | null; ean: string | null;
+      anvisa_code: string | null; anvisa_source: string | null;
+      product_type: string | null; product_subtype: string | null;
+      anvisa_holder: string | null; anvisa_manufacturer: string | null;
+    }
+    const registryRows = await prisma.$queryRawUnsafe<RegistryRow[]>(
       `SELECT id, product_key, code, description, ncm, unit, ean,
               anvisa_code, anvisa_source, product_type, product_subtype,
               anvisa_holder, anvisa_manufacturer
@@ -163,7 +170,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const products: Product[] = registryRows.map((r: any) => {
+    const products: Product[] = registryRows.map((r) => {
       const code = r.code || null;
       const sup = code ? supplierByCode.get(code.trim().toUpperCase()) : undefined;
       return {
@@ -227,7 +234,7 @@ export async function POST(req: Request) {
     };
 
     const updates: Update[] = [];
-    const idMap = new Map(registryRows.map((r: any) => [r.product_key as string, r.id as string]));
+    const idMap = new Map(registryRows.map((r) => [r.product_key, r.id]));
 
     for (const p of products) {
       const pId = idMap.get(p.key);

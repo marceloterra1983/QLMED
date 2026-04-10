@@ -193,9 +193,10 @@ export async function POST(req: Request) {
       }
 
       // Find matching nfe_entry_item by supplier_code (referencia) or codigo_interno
-      let matchRows: any[] = [];
+      interface MatchRow { id: number; lot: string | null; quantity: number }
+      let matchRows: MatchRow[] = [];
       if (row.referencia) {
-        matchRows = await prisma.$queryRawUnsafe<any[]>(
+        matchRows = await prisma.$queryRawUnsafe<MatchRow[]>(
           `SELECT id, lot, quantity FROM nfe_entry_item
            WHERE company_id = $1 AND invoice_id = $2 AND supplier_code = $3
            ORDER BY id LIMIT 10`,
@@ -203,7 +204,7 @@ export async function POST(req: Request) {
         );
       }
       if (matchRows.length === 0 && row.codigoInterno) {
-        matchRows = await prisma.$queryRawUnsafe<any[]>(
+        matchRows = await prisma.$queryRawUnsafe<MatchRow[]>(
           `SELECT id, lot, quantity FROM nfe_entry_item
            WHERE company_id = $1 AND invoice_id = $2 AND codigo_interno = $3
            ORDER BY id LIMIT 10`,
@@ -217,7 +218,7 @@ export async function POST(req: Request) {
       }
 
       // Find a row with lot=NULL to update, or insert if all have different lots
-      const nullLotRow = matchRows.find((r: any) => r.lot == null);
+      const nullLotRow = matchRows.find((r) => r.lot == null);
       const itemQty = Number(matchRows[0].quantity || 0);
       if (nullLotRow) {
         const effQty = itemQty === 1 ? 1 : row.qtdeLote;
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
         );
         imported++;
       } else {
-        const existingLot = matchRows.find((r: any) => r.lot === row.lote);
+        const existingLot = matchRows.find((r) => r.lot === row.lote);
         if (existingLot) {
           skipped++;
         } else {

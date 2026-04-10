@@ -26,18 +26,18 @@ export default function UploadPage() {
   };
 
   // Recursively read all files from a directory entry
-  const readEntryRecursive = (entry: any): Promise<File[]> => {
+  const readEntryRecursive = (entry: FileSystemEntry): Promise<File[]> => {
     return new Promise((resolve) => {
       if (entry.isFile) {
-        entry.file((file: File) => {
+        (entry as FileSystemFileEntry).file((file: File) => {
           if (file.name.toLowerCase().endsWith('.xml')) resolve([file]);
           else resolve([]);
         });
       } else if (entry.isDirectory) {
-        const reader = entry.createReader();
-        const allEntries: any[] = [];
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const allEntries: FileSystemEntry[] = [];
         const readBatch = () => {
-          reader.readEntries((entries: any[]) => {
+          reader.readEntries((entries: FileSystemEntry[]) => {
             if (entries.length === 0) {
               Promise.all(allEntries.map(readEntryRecursive)).then((results) => {
                 resolve(results.flat());
