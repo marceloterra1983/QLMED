@@ -31,8 +31,8 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 
 ### Performance — XML Extraction
 
-- [ ] **PERF-01**: Cidade do destinatário extraída e persistida durante ingestão de invoice (não mais regex em runtime)
-- [ ] **PERF-02**: Dados de duplicata (nDup, dVenc, vDup) persistidos em tabela dedicada durante ingestão
+- [x] **PERF-01**: Cidade do destinatário extraída e persistida durante ingestão de invoice (não mais regex em runtime)
+- [x] **PERF-02**: Dados de duplicata (nDup, dVenc, vDup) persistidos em tabela dedicada durante ingestão
 - [x] **PERF-03**: Queries de customers/suppliers não carregam xmlContent para contagem de produtos
 - [x] **PERF-04**: /api/products rota legacy deprecada — /api/products/list (product_registry) como padrão
 - [x] **PERF-05**: backfill-tax usa batch-fetch em vez de 200+ queries sequenciais (N+1 eliminado)

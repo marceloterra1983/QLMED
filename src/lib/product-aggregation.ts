@@ -75,7 +75,7 @@ export function normalizeAnvisaRegistration(value: string | null | undefined): s
   return null;
 }
 
-function extractAnvisaFromFreeText(text: string | null | undefined): string | null {
+export function extractAnvisaFromFreeText(text: string | null | undefined): string | null {
   const value = text || '';
   if (!value) return null;
 
@@ -177,7 +177,7 @@ function extractBatches(det: any, prod: any): ProductBatch[] {
   return batches;
 }
 
-function extractAnvisa(det: any, prod: any): string | null {
+export function extractAnvisa(det: any, prod: any): string | null {
   const candidates: Array<string | null> = [
     cleanString(prod?.cProdANVISA),
     ...ensureArray<any>(det?.med).map((med) => cleanString(med?.cProdANVISA)),
