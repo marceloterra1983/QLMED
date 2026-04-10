@@ -75,7 +75,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 - [ ] **UPG-02**: React 18→19 (acoplado ao Next.js upgrade)
 - [ ] **UPG-03**: Prisma 5→7 (schema changes, raw queries testados)
 - [x] **UPG-04**: ESLint 8→9+ (flat config, eslint.config.mjs)
-- [ ] **UPG-05**: Minor upgrades — bcryptjs 2→3, zod 3→4, typescript 5→6
+- [x] **UPG-05**: Minor upgrades — bcryptjs 2→3, zod 3→4, typescript 5→6
 
 ## v2 Requirements
 
