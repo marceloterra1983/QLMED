@@ -221,7 +221,7 @@ export default function ProdutosPage() {
     }
   }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
 
-  useEffect(() => { loadProducts(); loadSettingsHierarchy(); }, [loadProducts]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadProducts(); loadSettingsHierarchy(); }, [loadProducts]);
 
   // ---- merged hierarchy options ----
   const hierOptions: HierOptions = useMemo(() => {
