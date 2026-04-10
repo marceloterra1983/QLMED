@@ -7,6 +7,9 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('contact-shared');
 import { getCityByCnpjs, backfillContactFiscalCity } from '@/lib/contact-fiscal-store';
 
 // ---------------------------------------------------------------------------
@@ -304,8 +307,8 @@ export async function handleContactList(
       for (const row of rows) {
         priceItemCountMap.set(row.cnpj, Number(row.cnt));
       }
-    } catch {
-      // invoice_item_tax table may not exist yet — fallback to 0 counts
+    } catch (err) {
+      log.warn({ err }, 'invoice_item_tax price count query failed — fallback to 0 counts');
     }
   }
 
