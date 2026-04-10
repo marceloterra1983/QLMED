@@ -161,6 +161,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
 
   const theme = (meta?.type ? DOC_THEME[meta.type] : null) || DEFAULT_THEME;
   const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
+  const iframeSrc = isMobile ? `${pdfUrl}?format=html` : pdfUrl;
 
   const handlePrint = () => {
     window.open(`${pdfUrl}?print=true`, '_blank');
@@ -360,38 +361,13 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         {/* Content */}
         <div className="flex-1 overflow-hidden">
           {view === 'danfe' ? (
-            isMobile ? (
-              <div className="w-full h-full bg-slate-200 dark:bg-slate-900 flex items-center justify-center p-6">
-                <div className="w-full max-w-sm flex flex-col items-center text-center gap-4 p-6 rounded-2xl bg-white dark:bg-card-dark ring-1 ring-slate-200 dark:ring-slate-700 shadow-lg">
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring}`}>
-                    <span className={`material-symbols-outlined text-[32px] ${theme.text}`}>picture_as_pdf</span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <h4 className="text-[15px] font-bold text-slate-900 dark:text-white">
-                      Visualização indisponível
-                    </h4>
-                    <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Seu navegador não exibe o {theme.pdfLabel} dentro do aplicativo. Toque no botão abaixo para abrir em uma nova aba.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => window.open(pdfUrl, '_blank')}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white font-bold text-[13px] shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 active:opacity-90 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                    Abrir {theme.pdfLabel}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-full bg-slate-200 dark:bg-slate-900">
-                <iframe
-                  src={pdfUrl}
-                  className="w-full h-full border-0"
-                  title="Preview do documento"
-                />
-              </div>
-            )
+            <div className="w-full h-full bg-slate-200 dark:bg-slate-900">
+              <iframe
+                src={iframeSrc}
+                className="w-full h-full border-0"
+                title="Preview do documento"
+              />
+            </div>
           ) : (
             <div className="w-full h-full bg-[#1e1e2e] overflow-auto relative">
               {loadingXml ? (
