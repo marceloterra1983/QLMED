@@ -227,6 +227,8 @@ model Invoice {
   @@index([companyId, status])
   @@index([companyId, cfop])
   @@index([senderName])
+  @@index([recipientCnpj])
+  @@index([companyId, recipientCnpj])
 }
 
 model FinanceiroDuplicataOverride {
@@ -395,5 +397,233 @@ model NcmCache {
 
   @@index([parentCode])
   @@map("ncm_cache")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/product-registry-store.ts. Model exists for schema visibility only.
+model ProductRegistry {
+  id                       String    @id
+  companyId                String    @map("company_id")
+  productKey               String    @map("product_key")
+  code                     String?
+  description              String
+  ncm                      String?
+  unit                     String?
+  ean                      String?
+  anvisaCode               String?   @map("anvisa_code")
+  anvisaSource             String?   @map("anvisa_source")
+  anvisaConfidence         Float?    @map("anvisa_confidence")
+  anvisaMatchedProductName String?   @map("anvisa_matched_product_name")
+  anvisaHolder             String?   @map("anvisa_holder")
+  anvisaProcess            String?   @map("anvisa_process")
+  anvisaStatus             String?   @map("anvisa_status")
+  anvisaExpiration          String?   @map("anvisa_expiration")
+  anvisaRiskClass          String?   @map("anvisa_risk_class")
+  anvisaManufacturer       String?   @map("anvisa_manufacturer")
+  anvisaManufacturerCountry String?  @map("anvisa_manufacturer_country")
+  manufacturerShortName    String?   @map("manufacturer_short_name")
+  anvisaSyncedAt           DateTime? @map("anvisa_synced_at") @db.Timestamptz
+  shortName                String?   @map("short_name")
+  productType              String?   @map("product_type")
+  productSubtype           String?   @map("product_subtype")
+  productSubgroup          String?   @map("product_subgroup")
+  outOfLine                Boolean?  @default(false) @map("out_of_line")
+  instrumental             Boolean?  @default(false)
+  codigo                   String?
+  fiscalSitTributaria      String?   @map("fiscal_sit_tributaria")
+  fiscalNomeTributacao     String?   @map("fiscal_nome_tributacao")
+  fiscalIcms               Float?    @map("fiscal_icms")
+  fiscalPis                Float?    @map("fiscal_pis")
+  fiscalCofins             Float?    @map("fiscal_cofins")
+  fiscalObs                String?   @map("fiscal_obs")
+  fiscalCest               String?   @map("fiscal_cest")
+  fiscalOrigem             String?   @map("fiscal_origem")
+  fiscalCfopEntrada        String?   @map("fiscal_cfop_entrada")
+  fiscalCfopSaida          String?   @map("fiscal_cfop_saida")
+  fiscalIpi                Float?    @map("fiscal_ipi")
+  fiscalFcp                Float?    @map("fiscal_fcp")
+  fiscalCstIpi             String?   @map("fiscal_cst_ipi")
+  fiscalCstPis             String?   @map("fiscal_cst_pis")
+  fiscalCstCofins          String?   @map("fiscal_cst_cofins")
+  fiscalObsIcms            String?   @map("fiscal_obs_icms")
+  fiscalObsPisCofins       String?   @map("fiscal_obs_pis_cofins")
+  productRefs              String[]  @map("product_refs")
+  defaultSupplier          String?   @map("default_supplier")
+  aggTotalQuantity         Float?    @map("agg_total_quantity")
+  aggTotalValue            Float?    @map("agg_total_value")
+  aggInvoiceCount          Int?      @map("agg_invoice_count")
+  aggLastPrice             Float?    @map("agg_last_price")
+  aggAveragePrice          Float?    @map("agg_average_price")
+  aggLastIssueDate         DateTime? @map("agg_last_issue_date") @db.Timestamptz
+  aggLastSupplierName      String?   @map("agg_last_supplier_name")
+  aggLastSupplierCnpj      String?   @map("agg_last_supplier_cnpj")
+  aggLastInvoiceNumber     String?   @map("agg_last_invoice_number")
+  aggLastSaleDate          DateTime? @map("agg_last_sale_date") @db.Timestamptz
+  aggLastSalePrice         Float?    @map("agg_last_sale_price")
+  aggResaleQuantity        Float?    @map("agg_resale_quantity")
+  aggComputedAt            DateTime? @map("agg_computed_at") @db.Timestamptz
+  aggSearchText            String?   @map("agg_search_text")
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([companyId, productKey])
+  @@index([companyId])
+  @@map("product_registry")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/stock-entry-store.ts. Model exists for schema visibility only.
+model StockEntry {
+  id             String    @id
+  companyId      String    @map("company_id")
+  invoiceId      String    @map("invoice_id")
+  invoiceNumber  String?   @map("invoice_number")
+  supplierName   String?   @map("supplier_name")
+  supplierCnpj   String?   @map("supplier_cnpj")
+  issueDate      DateTime? @map("issue_date") @db.Timestamptz
+  totalValue     Float?    @map("total_value")
+  totalItems     Int?      @default(0) @map("total_items")
+  matchedItems   Int?      @default(0) @map("matched_items")
+  status         String    @default("pending")
+  registeredAt   DateTime? @map("registered_at") @db.Timestamptz
+  registeredBy   String?   @map("registered_by")
+  emitterCity    String?   @map("emitter_city")
+  emitterState   String?   @map("emitter_state")
+  accessKey      String?   @map("access_key")
+  cfop           String?
+  totVprod       Float?    @map("tot_vprod")
+  totVdesc       Float?    @map("tot_vdesc")
+  totVbc         Float?    @map("tot_vbc")
+  totVicms       Float?    @map("tot_vicms")
+  totVbcSt       Float?    @map("tot_vbc_st")
+  totVicmsSt     Float?    @map("tot_vicms_st")
+  totVfrete      Float?    @map("tot_vfrete")
+  totVseg        Float?    @map("tot_vseg")
+  totVoutro      Float?    @map("tot_voutro")
+  totVipi        Float?    @map("tot_vipi")
+  totVpis        Float?    @map("tot_vpis")
+  totVcofins     Float?    @map("tot_vcofins")
+  totVfcp        Float?    @map("tot_vfcp")
+  totVnf         Float?    @map("tot_vnf")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([companyId, invoiceId])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("stock_entry")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/stock-entry-store.ts. Model exists for schema visibility only.
+model NfeEntryItem {
+  id                  Int       @id @default(autoincrement())
+  stockEntryId        String    @map("stock_entry_id")
+  companyId           String    @map("company_id")
+  invoiceId           String    @map("invoice_id")
+  itemNumber          Int       @map("item_number")
+  supplierCode        String?   @map("supplier_code")
+  supplierDescription String?   @map("supplier_description")
+  ncm                 String?
+  cfop                String?
+  cest                String?
+  ean                 String?
+  anvisa              String?
+  unit                String?
+  registryId          String?   @map("registry_id")
+  codigoInterno       String?   @map("codigo_interno")
+  productName         String?   @map("product_name")
+  manufacturer        String?
+  productType         String?   @map("product_type")
+  productSubtype      String?   @map("product_subtype")
+  quantity            Float?    @default(0)
+  unitPrice           Float?    @default(0) @map("unit_price")
+  totalValueGross     Float?    @default(0) @map("total_value_gross")
+  itemDiscount        Float?    @default(0) @map("item_discount")
+  totalValueNet       Float?    @default(0) @map("total_value_net")
+  origem              String?
+  cstIcms             String?   @map("cst_icms")
+  baseIcms            Float?    @map("base_icms")
+  aliqIcms            Float?    @map("aliq_icms")
+  valorIcms           Float?    @map("valor_icms")
+  baseIcmsSt          Float?    @map("base_icms_st")
+  valorIcmsSt         Float?    @map("valor_icms_st")
+  cstIpi              String?   @map("cst_ipi")
+  aliqIpi             Float?    @map("aliq_ipi")
+  baseIpi             Float?    @map("base_ipi")
+  valorIpi            Float?    @map("valor_ipi")
+  cstPis              String?   @map("cst_pis")
+  aliqPis             Float?    @map("aliq_pis")
+  basePis             Float?    @map("base_pis")
+  valorPis            Float?    @map("valor_pis")
+  cstCofins           String?   @map("cst_cofins")
+  aliqCofins          Float?    @map("aliq_cofins")
+  baseCofins          Float?    @map("base_cofins")
+  valorCofins         Float?    @map("valor_cofins")
+  valorFcp            Float?    @map("valor_fcp")
+  rateioFrete         Float?    @default(0) @map("rateio_frete")
+  rateioSeguro        Float?    @default(0) @map("rateio_seguro")
+  rateioOutrasDesp    Float?    @default(0) @map("rateio_outras_desp")
+  rateioDesconto      Float?    @default(0) @map("rateio_desconto")
+  lot                 String?
+  lotSerial           String?   @map("lot_serial")
+  lotQuantity         Float?    @map("lot_quantity")
+  lotFabrication      String?   @map("lot_fabrication")
+  lotExpiry           String?   @map("lot_expiry")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime? @map("updated_at") @db.Timestamptz
+
+  @@index([stockEntryId])
+  @@index([companyId, invoiceId])
+  @@index([companyId, codigoInterno])
+  @@map("nfe_entry_item")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/product-settings-catalog.ts. Model exists for schema visibility only.
+model ProductSettingsCatalog {
+  id                     String   @id
+  companyId              String   @map("company_id")
+  section                String
+  value                  String
+  parentValue            String?  @map("parent_value")
+  parentSecondaryValue   String?  @map("parent_secondary_value")
+  parentValueKey         String   @default("") @map("parent_value_key")
+  parentSecondaryValueKey String  @default("") @map("parent_secondary_value_key")
+  extraValue             String?  @map("extra_value")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([companyId, section, value, parentValueKey, parentSecondaryValueKey])
+  @@index([companyId])
+  @@map("product_settings_catalog")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/cnpj-lookup.ts. Model exists for schema visibility only.
+model CnpjCache {
+  cnpj      String   @id
+  data      Json
+  fetchedAt DateTime @default(now()) @map("fetched_at") @db.Timestamptz
+
+  @@map("cnpj_cache")
+  @@ignore
+}
+
+// Managed by raw SQL in src/lib/cnpj-monitor.ts. Model exists for schema visibility only.
+model CnpjMonitoring {
+  id             String    @id
+  companyId      String    @map("company_id")
+  cnpj           String
+  contactName    String?   @map("contact_name")
+  previousStatus String?   @map("previous_status")
+  currentStatus  String?   @map("current_status")
+  changedAt      DateTime? @map("changed_at") @db.Timestamptz
+  checkedAt      DateTime? @default(now()) @map("checked_at") @db.Timestamptz
+
+  @@unique([companyId, cnpj])
+  @@index([companyId])
+  @@index([companyId, changedAt])
+  @@map("cnpj_monitoring")
   @@ignore
 }
