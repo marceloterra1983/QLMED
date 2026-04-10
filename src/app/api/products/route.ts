@@ -420,6 +420,8 @@ export async function GET(req: Request) {
       return unauthorizedResponse();
     }
 
+    console.warn('[DEPRECATED] /api/products called — use /api/products/list instead');
+
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
 
@@ -803,7 +805,7 @@ export async function GET(req: Request) {
     }
 
     if (productMap.size === 0) {
-      return NextResponse.json({
+      const emptyResponse = NextResponse.json({
         products: [],
         summary: {
           totalProducts: 0,
@@ -822,6 +824,8 @@ export async function GET(req: Request) {
           maxInvoices: MAX_INVOICES,
         },
       });
+      emptyResponse.headers.set('X-Deprecated', 'Use /api/products/list instead');
+      return emptyResponse;
     }
 
     let products = Array.from(productMap.values()).map((item) => ({
@@ -1465,7 +1469,7 @@ export async function GET(req: Request) {
       { manual: 0, xml: 0, issuedNfe: 0, catalog: 0, missing: 0 },
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       products: paginatedProducts,
       summary,
       pagination: {
@@ -1480,8 +1484,12 @@ export async function GET(req: Request) {
         anvisaStats,
       },
     });
+    response.headers.set('X-Deprecated', 'Use /api/products/list instead');
+    return response;
   } catch (error) {
     console.error('Error fetching products:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    const errorResponse = NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    errorResponse.headers.set('X-Deprecated', 'Use /api/products/list instead');
+    return errorResponse;
   }
 }
