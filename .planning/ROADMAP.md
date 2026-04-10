@@ -151,7 +151,11 @@ Plans:
   2. products/list retorna paginas com LIMIT/OFFSET e total correto de paginas
   3. Responses de API incluem Cache-Control headers (dashboard 30s, listas 10s, lookups 3600s)
   4. Layout do painel usa server component wrapper — client code apenas nos islands interativos (sidebar, session)
-**Plans:** [To be planned]
+**Plans:** 3 plans
+Plans:
+- [ ] 09-01-PLAN.md — Replace invoices in-memory flexMatchAll search with DB-level WHERE ILIKE (PERF-06)
+- [ ] 09-02-PLAN.md — Add real LIMIT/OFFSET pagination to products/list (PERF-07)
+- [ ] 09-03-PLAN.md — Add Cache-Control headers to API routes + refactor layout to server/client split (PERF-08, PERF-09)
 **UI hint**: yes
 
 ### Phase 10: Major Upgrades
@@ -164,7 +168,12 @@ Plans:
   3. Prisma 7 funcional — todas as raw queries testadas, schema changes aplicados
   4. ESLint 9 com flat config (eslint.config.mjs) passando sem erros
   5. Build completo (npm run build) passa sem erros e app funciona end-to-end em dev
-**Plans:** [To be planned]
+**Plans:** 4 plans
+Plans:
+- [ ] 10-01-PLAN.md — Upgrade ESLint 8 to 9 with flat config migration (UPG-04)
+- [ ] 10-02-PLAN.md — Minor upgrades: bcryptjs 3, zod 4, typescript 6 (UPG-05)
+- [ ] 10-03-PLAN.md — Upgrade Prisma 5 to 7, verify 188 raw queries (UPG-03)
+- [ ] 10-04-PLAN.md — Upgrade Next.js 14 to 15 + React 18 to 19, migrate async APIs (UPG-01, UPG-02)
 
 ## Coverage
 
@@ -225,8 +234,8 @@ Plans:
 | 6. API Validation & Logging | 0/5 | Not started | - |
 | 7. Type Safety | 0/3 | Not started | - |
 | 8. File Splitting | 0/4 | Planned | - |
-| 9. Search & Pagination | 0/? | Not started | - |
-| 10. Major Upgrades | 0/? | Not started | - |
+| 9. Search & Pagination | 0/3 | Planned | - |
+| 10. Major Upgrades | 0/4 | Planned | - |
 
 ---
-*Last updated: 2026-04-10 after Phase 8 planning*
+*Last updated: 2026-04-10 after Phase 9 and 10 planning*

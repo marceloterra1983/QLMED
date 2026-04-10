@@ -2,7 +2,6 @@ import { parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import { gv } from '@/lib/xml-helpers';
 import type { PdfInvoiceView, Party } from './pdf-types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseXml(xml: string): Promise<any> {
   return parseXmlSafeNoMerge(xml);
 }
