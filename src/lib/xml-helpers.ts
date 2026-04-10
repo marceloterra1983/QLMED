@@ -8,23 +8,32 @@
 
 import type { XmlNode } from '@/types/xml-common';
 
+/**
+ * Accepted XML node type for val/gv/num helpers.
+ * Uses `object` to accept any interface (typed or with index sig) without requiring
+ * callers to add `[key: string]: unknown` to every interface.
+ */
+type XmlInput = object | null | undefined;
+
 /** Try each key on `obj`, return the first non-null value as string */
-export function val(obj: XmlNode | null | undefined, ...keys: string[]): string {
+export function val(obj: XmlInput, ...keys: string[]): string {
+  const o = obj as XmlNode | null | undefined;
   for (const k of keys) {
-    if (obj?.[k] != null) return String(obj[k]);
+    if (o?.[k] != null) return String(o[k]);
   }
   return '';
 }
 
 /** Parse a numeric value from `obj[key]` (comma → dot), returning 0 for missing/invalid */
-export function num(obj: XmlNode | null | undefined, key: string): number {
-  const value = obj?.[key];
+export function num(obj: XmlInput, key: string): number {
+  const o = obj as XmlNode | null | undefined;
+  const value = o?.[key];
   if (value == null || value === '') return 0;
   return parseFloat(String(value).replace(',', '.')) || 0;
 }
 
 /** Navigate a nested object path: obj[key1][key2]... with `._` wrapper support */
-export function gv(obj: XmlNode | null | undefined, ...keys: string[]): string {
+export function gv(obj: XmlInput, ...keys: string[]): string {
   let cur: unknown = obj;
   for (const k of keys) {
     if (cur == null) return '';

@@ -8,6 +8,9 @@ import puppeteer from 'puppeteer';
 import { gv } from '@/lib/xml-helpers';
 import { ensureArray } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
+import type { XmlNode } from '@/types/xml-common';
+import type { CTeInfCte } from '@/types/cte-xml';
+import type { NFeImposto } from '@/types/nfe-xml';
 
 const log = createLogger('invoices/:id/pdf');
 
@@ -315,7 +318,7 @@ function hasParty(party: Party): boolean {
   return Boolean((party.nome || '').trim() || (party.cnpj || '').trim());
 }
 
-function getParty(node: any): Party {
+function getParty(node: object): Party {
   return {
     nome: gv(node, 'xNome') || gv(node, 'xFant'),
     cnpj: gv(node, 'CNPJ') || gv(node, 'CPF'),
@@ -345,14 +348,14 @@ function getCteTpServLabel(tpServCode: string): string {
   return serviceMap[tpServCode] || tpServCode || '-';
 }
 
-function parseCteTomador(infCte: any): { party: Party; papel: string } {
+function parseCteTomador(infCte: CTeInfCte): { party: Party; papel: string } {
   const rem = getParty(infCte?.rem || {});
   const exped = getParty(infCte?.exped || {});
   const receb = getParty(infCte?.receb || {});
   const dest = getParty(infCte?.dest || {});
 
   const toma4 = infCte?.ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
-  const explicitTomador = getParty(toma4?.toma || toma4 || infCte?.ide?.toma || infCte?.toma || {});
+  const explicitTomador = getParty((toma4 as XmlNode)?.toma || toma4 || infCte?.ide?.toma || infCte?.toma || {});
   const ide = infCte?.ide || {};
   const toma3Raw = ide?.toma3;
   const toma03Raw = ide?.toma03;
@@ -401,7 +404,7 @@ function getGlobalizadoLabel(raw: string): string {
   return normalized || 'Não';
 }
 
-function normalizeCteParty(node: any, ender: any): CtePartyData {
+function normalizeCteParty(node: XmlNode, ender: XmlNode): CtePartyData {
   const doc = gv(node, 'CNPJ') || gv(node, 'CPF');
   const xLgr = gv(ender, 'xLgr');
   const nro = gv(ender, 'nro');
@@ -498,34 +501,34 @@ function formatCtePartyCity(party: CtePartyData): string {
   return city || '-';
 }
 
-function extractCteData(parsed: any, invoice: PdfInvoiceView): CteData {
-  const cteProc = parsed.cteProc || parsed;
-  const cteNode = cteProc?.CTe || parsed?.CTe || cteProc;
-  const infCte = cteNode?.infCte || cteNode || {};
-  const ide = infCte?.ide || {};
-  const emitNode = infCte?.emit || {};
-  const remNode = infCte?.rem || {};
-  const expedNode = infCte?.exped || {};
-  const recebNode = infCte?.receb || {};
-  const destNode = infCte?.dest || {};
-  const emit = normalizeCteParty(emitNode, emitNode?.enderEmit || {});
-  const rem = normalizeCteParty(remNode, remNode?.enderReme || {});
-  const exped = normalizeCteParty(expedNode, expedNode?.enderExped || {});
-  const receb = normalizeCteParty(recebNode, recebNode?.enderReceb || {});
-  const dest = normalizeCteParty(destNode, destNode?.enderDest || {});
+function extractCteData(parsed: XmlNode, invoice: PdfInvoiceView): CteData {
+  const cteProc = (parsed.cteProc || parsed) as XmlNode;
+  const cteNode = (cteProc?.CTe || parsed?.CTe || cteProc) as XmlNode;
+  const infCte = (cteNode?.infCte || cteNode || {}) as XmlNode;
+  const ide = (infCte?.ide || {}) as XmlNode;
+  const emitNode = (infCte?.emit || {}) as XmlNode;
+  const remNode = (infCte?.rem || {}) as XmlNode;
+  const expedNode = (infCte?.exped || {}) as XmlNode;
+  const recebNode = (infCte?.receb || {}) as XmlNode;
+  const destNode = (infCte?.dest || {}) as XmlNode;
+  const emit = normalizeCteParty(emitNode, (emitNode?.enderEmit || {}) as XmlNode);
+  const rem = normalizeCteParty(remNode, (remNode?.enderReme || {}) as XmlNode);
+  const exped = normalizeCteParty(expedNode, (expedNode?.enderExped || {}) as XmlNode);
+  const receb = normalizeCteParty(recebNode, (recebNode?.enderReceb || {}) as XmlNode);
+  const dest = normalizeCteParty(destNode, (destNode?.enderDest || {}) as XmlNode);
 
-  const vPrest = infCte?.vPrest || {};
-  const prot = cteProc?.protCTe?.infProt || {};
-  const compl = infCte?.compl || {};
-  const infCteNorm = infCte?.infCTeNorm || {};
-  const infCarga = infCteNorm?.infCarga || {};
-  const imp = infCte?.imp || {};
-  const icms = imp?.ICMS || {};
+  const vPrest = (infCte?.vPrest || {}) as XmlNode;
+  const prot = ((cteProc?.protCTe as XmlNode)?.infProt || {}) as XmlNode;
+  const compl = (infCte?.compl || {}) as XmlNode;
+  const infCteNorm = (infCte?.infCTeNorm || infCte?.infCteNorm || {}) as XmlNode;
+  const infCarga = (infCteNorm?.infCarga || {}) as XmlNode;
+  const imp = (infCte?.imp || {}) as XmlNode;
+  const icms = (imp?.ICMS || {}) as XmlNode;
 
   const icmsKey = Object.keys(icms).find((key) => key.startsWith('ICMS')) || '';
-  const icmsNode = icmsKey ? icms[icmsKey] : {};
+  const icmsNode = (icmsKey ? icms[icmsKey] : {}) as XmlNode;
 
-  const obsContArray = ensureArray(compl?.ObsCont).map((node: any) => ({
+  const obsContArray = ensureArray<XmlNode>(compl?.ObsCont as XmlNode | XmlNode[]).map((node) => ({
     campo: gv(node, '$', 'xCampo') || gv(node, 'xCampo'),
     texto: gv(node, 'xTexto') || gv(node, '_'),
   })).filter((item) => item.campo || item.texto);
@@ -536,37 +539,37 @@ function extractCteData(parsed: any, invoice: PdfInvoiceView): CteData {
 
   const idAttr = gv(infCte, '$', 'Id');
   const idKey = idAttr ? idAttr.replace(/^CTe/, '') : '';
-  const tomadorBase = parseCteTomador(infCte);
-  const toma4 = ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
-  const toma3Raw = ide?.toma3;
-  const toma03Raw = ide?.toma03;
-  const toma3Code = typeof toma3Raw === 'object' ? (toma3Raw?.toma ?? '') : toma3Raw;
-  const toma03Code = typeof toma03Raw === 'object' ? (toma03Raw?.toma ?? '') : toma03Raw;
+  const tomadorBase = parseCteTomador(infCte as unknown as CTeInfCte);
+  const toma4 = (ide?.toma4 || infCte?.toma4 || (infCte?.infCteNorm as XmlNode)?.toma4 || {}) as XmlNode;
+  const toma3Raw = ide?.toma3 as XmlNode | string | undefined;
+  const toma03Raw = ide?.toma03 as XmlNode | string | undefined;
+  const toma3Code = typeof toma3Raw === 'object' ? ((toma3Raw as XmlNode)?.toma ?? '') : toma3Raw;
+  const toma03Code = typeof toma03Raw === 'object' ? ((toma03Raw as XmlNode)?.toma ?? '') : toma03Raw;
   const tpTomRaw = String(gv(toma4, 'tpTom') || toma03Code || toma3Code || gv(ide, 'tpTom') || '').trim();
-  const toma4Node = toma4?.toma || {};
+  const toma4Node = (toma4?.toma || {}) as XmlNode;
 
-  let tomNode: any = {};
-  let tomEnder: any = {};
+  let tomNode: XmlNode = {};
+  let tomEnder: XmlNode = {};
   let tomPapel = tomadorBase.papel || 'Tomador';
   if (tpTomRaw === '0') {
     tomNode = remNode;
-    tomEnder = remNode?.enderReme || {};
+    tomEnder = (remNode?.enderReme || {}) as XmlNode;
     tomPapel = 'Remetente';
   } else if (tpTomRaw === '1') {
     tomNode = expedNode;
-    tomEnder = expedNode?.enderExped || {};
+    tomEnder = (expedNode?.enderExped || {}) as XmlNode;
     tomPapel = 'Expedidor';
   } else if (tpTomRaw === '2') {
     tomNode = recebNode;
-    tomEnder = recebNode?.enderReceb || {};
+    tomEnder = (recebNode?.enderReceb || {}) as XmlNode;
     tomPapel = 'Recebedor';
   } else if (tpTomRaw === '3') {
     tomNode = destNode;
-    tomEnder = destNode?.enderDest || {};
+    tomEnder = (destNode?.enderDest || {}) as XmlNode;
     tomPapel = 'Destinatário';
   } else if (tpTomRaw === '4') {
     tomNode = toma4Node;
-    tomEnder = toma4Node?.enderToma || toma4?.enderToma || {};
+    tomEnder = (toma4Node?.enderToma || toma4?.enderToma || {}) as XmlNode;
     tomPapel = 'Outros';
   }
 
@@ -576,19 +579,19 @@ function extractCteData(parsed: any, invoice: PdfInvoiceView): CteData {
   if (!tom.nome) tom.nome = invoice.recipientName || '-';
   if (!tom.doc) tom.doc = invoice.recipientCnpj || '';
 
-  const compArray = ensureArray(vPrest?.Comp).map((item: any) => ({
+  const compArray = ensureArray<XmlNode>(vPrest?.Comp as XmlNode | XmlNode[]).map((item) => ({
     nome: gv(item, 'xNome'),
     valor: gv(item, 'vComp'),
   })).filter((item) => item.nome || item.valor);
 
-  const medArray = ensureArray(infCarga?.infQ).map((item: any) => ({
+  const medArray = ensureArray<XmlNode>(infCarga?.infQ as XmlNode | XmlNode[]).map((item) => ({
     tipo: gv(item, 'tpMed'),
     quantidade: gv(item, 'qCarga'),
     unidade: gv(item, 'cUnid'),
   })).filter((item) => item.tipo || item.quantidade);
 
   const docRefs: CteDocRef[] = [];
-  const infNFeList = ensureArray(infCteNorm?.infDoc?.infNFe);
+  const infNFeList = ensureArray<XmlNode>((infCteNorm?.infDoc as XmlNode)?.infNFe as XmlNode | XmlNode[]);
   for (const item of infNFeList) {
     const key = gv(item, 'chave');
     if (!key) continue;
@@ -600,7 +603,7 @@ function extractCteData(parsed: any, invoice: PdfInvoiceView): CteData {
       chave: key,
     });
   }
-  const infCteList = ensureArray(infCteNorm?.infDoc?.infCTe);
+  const infCteList = ensureArray<XmlNode>((infCteNorm?.infDoc as XmlNode)?.infCTe as XmlNode | XmlNode[]);
   for (const item of infCteList) {
     const key = gv(item, 'chCTe');
     if (!key) continue;
@@ -714,40 +717,42 @@ function buildCteDataFromInvoice(invoice: PdfInvoiceView): CteData {
   };
 }
 
-function extractDanfeData(parsed: any): DanfeData {
-  const proc = parsed.nfeProc || parsed.NFe || parsed;
-  const nfe = proc.NFe || proc;
-  const inf = nfe.infNFe || nfe;
-  const ide = inf.ide || {};
-  const emit = inf.emit || {};
-  const dest = inf.dest || {};
-  const emitEnd = emit.enderEmit || {};
-  const destEnd = dest.enderDest || {};
-  const tot = inf.total?.ICMSTot || {};
-  const transp = inf.transp || {};
-  const transporta = transp.transporta || {};
-  const veic = transp.veicTransp || {};
-  const vol = transp.vol ? (Array.isArray(transp.vol) ? transp.vol[0] : transp.vol) : {};
-  const cobr = inf.cobr || {};
-  const fat = cobr.fat || {};
-  const infAdic = inf.infAdic || {};
+function extractDanfeData(parsed: XmlNode): DanfeData {
+  const proc = (parsed.nfeProc || parsed.NFe || parsed) as XmlNode;
+  const nfe = (proc.NFe || proc) as XmlNode;
+  const inf = (nfe.infNFe || nfe) as XmlNode;
+  const ide = (inf.ide || {}) as XmlNode;
+  const emit = (inf.emit || {}) as XmlNode;
+  const dest = (inf.dest || {}) as XmlNode;
+  const emitEnd = (emit.enderEmit || {}) as XmlNode;
+  const destEnd = (dest.enderDest || {}) as XmlNode;
+  const tot = ((inf.total as XmlNode)?.ICMSTot || {}) as XmlNode;
+  const transp = (inf.transp || {}) as XmlNode;
+  const transporta = (transp.transporta || {}) as XmlNode;
+  const veic = (transp.veicTransp || {}) as XmlNode;
+  const vol = transp.vol ? (Array.isArray(transp.vol) ? transp.vol[0] : transp.vol) as XmlNode : ({} as XmlNode);
+  const cobr = (inf.cobr || {}) as XmlNode;
+  const fat = (cobr.fat || {}) as XmlNode;
+  const infAdic = (inf.infAdic || {}) as XmlNode;
 
   let chNFe = '';
-  if (proc.protNFe?.infProt?.chNFe) chNFe = proc.protNFe.infProt.chNFe;
-  else if (inf.$?.Id) chNFe = inf.$.Id.replace('NFe', '');
+  const protNFe = (proc.protNFe as XmlNode);
+  const protInfProt = (protNFe?.infProt as XmlNode);
+  if (protInfProt?.chNFe) chNFe = String(protInfProt.chNFe);
+  else if ((inf.$ as XmlNode)?.Id) chNFe = String((inf.$ as XmlNode).Id).replace('NFe', '');
 
   let nProt = '';
   let dhRecbto = '';
-  if (proc.protNFe?.infProt) {
-    nProt = gv(proc.protNFe.infProt, 'nProt');
-    dhRecbto = gv(proc.protNFe.infProt, 'dhRecbto');
+  if (protInfProt) {
+    nProt = gv(protInfProt, 'nProt');
+    dhRecbto = gv(protInfProt, 'dhRecbto');
   }
 
   // Extract products
-  const dets = ensureArray(inf.det);
-  const products: DanfeProduct[] = dets.map((det: any) => {
-    const prod = det.prod || {};
-    const imp = det.imposto || {};
+  const dets = ensureArray<XmlNode>(inf.det as XmlNode | XmlNode[]);
+  const products: DanfeProduct[] = dets.map((det) => {
+    const prod = (det.prod || {}) as XmlNode;
+    const imp = (det.imposto || {}) as XmlNode;
     const icms = extractIcmsFromImposto(imp);
     const ipi = extractIpiFromImposto(imp);
     return {
@@ -771,8 +776,8 @@ function extractDanfeData(parsed: any): DanfeData {
   });
 
   // Extract parcelas
-  const dups = ensureArray(cobr.dup);
-  const parcelas: DanfeParcela[] = dups.map((d: any) => ({
+  const dups = ensureArray<XmlNode>(cobr.dup as XmlNode | XmlNode[]);
+  const parcelas: DanfeParcela[] = dups.map((d) => ({
     nDup: gv(d, 'nDup'),
     dVenc: gv(d, 'dVenc'),
     vDup: gv(d, 'vDup'),
@@ -859,11 +864,11 @@ function extractDanfeData(parsed: any): DanfeData {
   };
 }
 
-function extractIcmsFromImposto(imp: any): { orig: string; cst: string; vBC: string; vICMS: string; pICMS: string } {
-  const icms = imp?.ICMS;
+function extractIcmsFromImposto(imp: XmlNode): { orig: string; cst: string; vBC: string; vICMS: string; pICMS: string } {
+  const icms = imp?.ICMS as XmlNode | undefined;
   if (!icms) return { orig: '', cst: '', vBC: '0.00', vICMS: '0.00', pICMS: '0.00' };
   const key = Object.keys(icms).find(k => k.startsWith('ICMS'));
-  const g = key ? icms[key] : null;
+  const g = key ? icms[key] as XmlNode : null;
   if (!g) return { orig: '', cst: '', vBC: '0.00', vICMS: '0.00', pICMS: '0.00' };
   return {
     orig: gv(g, 'orig'),
@@ -874,10 +879,10 @@ function extractIcmsFromImposto(imp: any): { orig: string; cst: string; vBC: str
   };
 }
 
-function extractIpiFromImposto(imp: any): { vIPI: string; pIPI: string } {
-  const ipi = imp?.IPI;
+function extractIpiFromImposto(imp: XmlNode): { vIPI: string; pIPI: string } {
+  const ipi = imp?.IPI as XmlNode | undefined;
   if (!ipi) return { vIPI: '0.00', pIPI: '0.00' };
-  const g = ipi.IPITrib || ipi.IPINT;
+  const g = (ipi.IPITrib || ipi.IPINT) as XmlNode | undefined;
   if (!g) return { vIPI: '0.00', pIPI: '0.00' };
   return { vIPI: gv(g, 'vIPI') || '0.00', pIPI: gv(g, 'pIPI') || '0.00' };
 }
@@ -1714,7 +1719,7 @@ function emptyNfseParty(): NfsePartyData {
   return { nome: '', fantasia: '', doc: '', im: '', email: '', fone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' };
 }
 
-function normalizeNfseParty(node: any, enderNode: any): NfsePartyData {
+function normalizeNfseParty(node: XmlNode, enderNode: XmlNode): NfsePartyData {
   return {
     nome: gv(node, 'xNome') || gv(node, 'RazaoSocial') || '',
     fantasia: gv(node, 'xFant') || gv(node, 'NomeFantasia') || '',
@@ -1743,31 +1748,31 @@ function ibgeMunName(code: string): string {
   return map[code] || code;
 }
 
-function extractNfseData(parsed: any, invoice: PdfInvoiceView): NfseData {
+function extractNfseData(parsed: XmlNode, invoice: PdfInvoiceView): NfseData {
   // ADN / Padrão Nacional
-  const infNFSe = parsed?.NFSe?.infNFSe || parsed?.infNFSe;
+  const infNFSe = ((parsed?.NFSe as XmlNode)?.infNFSe || parsed?.infNFSe) as XmlNode | undefined;
   if (infNFSe) {
-    const dps = infNFSe.DPS?.infDPS || {};
-    const emitNode = infNFSe.emit || dps.prest || {};
-    const tomaNode = dps.toma || {};
-    const servNode = dps.serv || {};
-    const cServNode = servNode.cServ || {};
-    const valoresTop = infNFSe.valores || {};
-    const valoresDps = dps.valores || {};
-    const tribNode = valoresDps.trib || {};
-    const tribMun = tribNode.tribMun || {};
-    const vServPrest = valoresDps.vServPrest || {};
-    const vDedRed = valoresDps.vDedRed || {};
-    const regTrib = emitNode.regTrib || dps.prest?.regTrib || {};
+    const dps = ((infNFSe.DPS as XmlNode)?.infDPS || {}) as XmlNode;
+    const emitNode = (infNFSe.emit || dps.prest || {}) as XmlNode;
+    const tomaNode = (dps.toma || {}) as XmlNode;
+    const servNode = (dps.serv || {}) as XmlNode;
+    const cServNode = (servNode.cServ || {}) as XmlNode;
+    const valoresTop = (infNFSe.valores || {}) as XmlNode;
+    const valoresDps = (dps.valores || {}) as XmlNode;
+    const tribNode = (valoresDps.trib || {}) as XmlNode;
+    const tribMun = (tribNode.tribMun || {}) as XmlNode;
+    const vServPrest = (valoresDps.vServPrest || {}) as XmlNode;
+    const vDedRed = (valoresDps.vDedRed || {}) as XmlNode;
+    const regTrib = (emitNode.regTrib || (dps.prest as XmlNode)?.regTrib || {}) as XmlNode;
 
-    const emitEnder = emitNode.enderNac || {};
-    const tomaEnder = tomaNode.end?.endNac || tomaNode.end || {};
-    const tomaEnderFields = tomaNode.end || {};
+    const emitEnder = (emitNode.enderNac || {}) as XmlNode;
+    const tomaEnder = ((tomaNode.end as XmlNode)?.endNac || tomaNode.end || {}) as XmlNode;
+    const tomaEnderFields = (tomaNode.end || {}) as XmlNode;
 
     const emit = normalizeNfseParty(emitNode, emitEnder);
     if (!emit.municipio && gv(emitEnder, 'cMun')) emit.municipio = ibgeMunName(gv(emitEnder, 'cMun'));
 
-    const toma = normalizeNfseParty(tomaNode, { ...tomaEnder, ...tomaEnderFields });
+    const toma = normalizeNfseParty(tomaNode, { ...tomaEnder as XmlNode, ...tomaEnderFields as XmlNode } as XmlNode);
     if (!toma.municipio && gv(tomaEnder, 'cMun')) toma.municipio = ibgeMunName(gv(tomaEnder, 'cMun'));
     if (!toma.endereco) {
       toma.endereco = [gv(tomaEnderFields, 'xLgr'), gv(tomaEnderFields, 'nro')].filter(Boolean).join(', ');
@@ -1807,17 +1812,17 @@ function extractNfseData(parsed: any, invoice: PdfInvoiceView): NfseData {
   }
 
   // ABRASF / Municipal
-  const compNfse = parsed?.CompNfse || parsed?.ConsultarNfseResposta?.ListaNfse?.CompNfse;
-  const nfse = compNfse?.Nfse?.InfNfse || parsed?.Nfse?.InfNfse || parsed?.InfNfse;
+  const compNfse = (parsed?.CompNfse || ((parsed?.ConsultarNfseResposta as XmlNode)?.ListaNfse as XmlNode)?.CompNfse) as XmlNode | undefined;
+  const nfse = ((compNfse?.Nfse as XmlNode)?.InfNfse || (parsed?.Nfse as XmlNode)?.InfNfse || parsed?.InfNfse) as XmlNode | undefined;
   if (nfse) {
-    const servico = nfse.Servico || {};
-    const valores = servico.Valores || {};
-    const prestador = nfse.PrestadorServico || nfse.Prestador || {};
-    const tomador = nfse.TomadorServico || nfse.Tomador || {};
-    const idPrest = prestador.IdentificacaoPrestador || {};
-    const idToma = tomador.IdentificacaoTomador || {};
-    const enderPrest = prestador.Endereco || {};
-    const enderToma = tomador.Endereco || {};
+    const servico = (nfse.Servico || {}) as XmlNode;
+    const valores = (servico.Valores || {}) as XmlNode;
+    const prestador = (nfse.PrestadorServico || nfse.Prestador || {}) as XmlNode;
+    const tomador = (nfse.TomadorServico || nfse.Tomador || {}) as XmlNode;
+    const idPrest = (prestador.IdentificacaoPrestador || {}) as XmlNode;
+    const idToma = (tomador.IdentificacaoTomador || {}) as XmlNode;
+    const enderPrest = (prestador.Endereco || {}) as XmlNode;
+    const enderToma = (tomador.Endereco || {}) as XmlNode;
 
     const emit: NfsePartyData = {
       nome: gv(prestador, 'RazaoSocial') || gv(prestador, 'NomeFantasia') || invoice.senderName,

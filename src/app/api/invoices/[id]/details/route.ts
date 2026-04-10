@@ -6,12 +6,16 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val } from '@/lib/xml-helpers';
 import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
+import type { XmlNode } from '@/types/xml-common';
+import type { NFeInfNFe, NFeDet, NFeImposto, NFeTaxGroup } from '@/types/nfe-xml';
+import type { CTeInfCte, CTeProc, CTeInfQ, CTeInfNFe as CTeDocNFe, CTeComp } from '@/types/cte-xml';
+import type { NFSeNacionalInfNFSe, NFSeInfNfse } from '@/types/nfse-xml';
 
 const log = createLogger('invoices/:id/details');
 
-function parseEmitDest(node: any) {
+function parseEmitDest(node: XmlNode | null | undefined) {
   if (!node) return null;
-  const ender = node.enderEmit || node.enderDest || {};
+  const ender = (node.enderEmit || node.enderDest || {}) as XmlNode;
   return {
     cnpj: val(node, 'CNPJ', 'CPF'),
     razaoSocial: val(node, 'xNome'),
@@ -34,17 +38,17 @@ function parseEmitDest(node: any) {
   };
 }
 
-function parseProdutos(det: any) {
+function parseProdutos(det: NFeDet | NFeDet[] | undefined) {
   if (!det) return [];
-  const items = Array.isArray(det) ? det : [det];
-  return items.map((item: any, idx: number) => {
-    const prod = item.prod || {};
-    const imposto = item.imposto || {};
-    const icms = imposto.ICMS ? Object.values(imposto.ICMS)[0] as any : {};
+  const items: NFeDet[] = Array.isArray(det) ? det : [det];
+  return items.map((item, idx: number) => {
+    const prod = (item.prod || {}) as XmlNode;
+    const imposto = item.imposto || ({} as NFeImposto);
+    const icms = imposto.ICMS ? Object.values(imposto.ICMS)[0] as NFeTaxGroup : ({} as XmlNode);
     const ipi = imposto.IPI;
-    const ipiTrib = ipi?.IPITrib || ipi?.IPINT || {};
-    const pis = imposto.PIS ? Object.values(imposto.PIS)[0] as any : {};
-    const cofins = imposto.COFINS ? Object.values(imposto.COFINS)[0] as any : {};
+    const ipiTrib = (ipi?.IPITrib || ipi?.IPINT || {}) as XmlNode;
+    const pis = imposto.PIS ? Object.values(imposto.PIS)[0] as NFeTaxGroup : ({} as XmlNode);
+    const cofins = imposto.COFINS ? Object.values(imposto.COFINS)[0] as NFeTaxGroup : ({} as XmlNode);
 
     return {
       num: item.nItem || String(idx + 1),
@@ -91,7 +95,7 @@ function parseProdutos(det: any) {
   });
 }
 
-function parseTotais(total: any) {
+function parseTotais(total: XmlNode) {
   const t = total?.ICMSTot || {};
   return {
     baseCalculoIcms: val(t, 'vBC'),
@@ -121,11 +125,11 @@ function parseTotais(total: any) {
   };
 }
 
-function parseTransporte(transp: any) {
+function parseTransporte(transp: XmlNode | null | undefined) {
   if (!transp) return null;
-  const transporta = transp.transporta || {};
+  const transporta = (transp.transporta || {}) as XmlNode;
   const vol = transp.vol;
-  const volumes = vol ? (Array.isArray(vol) ? vol : [vol]) : [];
+  const volumes: XmlNode[] = vol ? (Array.isArray(vol) ? vol : [vol]) as XmlNode[] : [];
 
   const modFreteMap: Record<string, string> = {
     '0': '0 - Contratação do Frete por conta do Remetente (CIF)',
@@ -137,7 +141,7 @@ function parseTransporte(transp: any) {
   };
 
   return {
-    modalidadeFrete: modFreteMap[transp.modFrete] || transp.modFrete || '',
+    modalidadeFrete: modFreteMap[transp.modFrete as string] || (transp.modFrete as string) || '',
     transportador: {
       cnpj: val(transporta, 'CNPJ', 'CPF'),
       razaoSocial: val(transporta, 'xNome'),
@@ -146,7 +150,7 @@ function parseTransporte(transp: any) {
       municipio: val(transporta, 'xMun'),
       uf: val(transporta, 'UF'),
     },
-    volumes: volumes.map((v: any) => ({
+    volumes: volumes.map((v) => ({
       quantidade: val(v, 'qVol'),
       especie: val(v, 'esp'),
       marca: val(v, 'marca'),
@@ -157,9 +161,9 @@ function parseTransporte(transp: any) {
   };
 }
 
-function parseCobranca(cobr: any, pag: any) {
+function parseCobranca(cobr: XmlNode | null | undefined, pag: XmlNode | null | undefined) {
   const pagItems = pag?.detPag;
-  const pagList = pagItems ? (Array.isArray(pagItems) ? pagItems : [pagItems]) : [];
+  const pagList: XmlNode[] = pagItems ? (Array.isArray(pagItems) ? pagItems : [pagItems]) as XmlNode[] : [];
 
   const tPagMap: Record<string, string> = {
     '01': '01 - Dinheiro', '02': '02 - Cheque', '03': '03 - Cartão de Crédito',
@@ -171,7 +175,7 @@ function parseCobranca(cobr: any, pag: any) {
     '90': '90 - Sem Pagamento', '99': '99 - Outros',
   };
 
-  const formasPagamento = pagList.map((p: any) => ({
+  const formasPagamento = pagList.map((p) => ({
     forma: tPagMap[val(p, 'tPag')] || val(p, 'tPag'),
     valor: val(p, 'vPag'),
     tipoIntegracao: val(p, 'tpIntegra'),
@@ -190,8 +194,8 @@ function parseCobranca(cobr: any, pag: any) {
   } : null;
 
   const dupItems = cobr?.dup;
-  const dupList = dupItems ? (Array.isArray(dupItems) ? dupItems : [dupItems]) : [];
-  const duplicatas = dupList.map((d: any) => ({
+  const dupList: XmlNode[] = dupItems ? (Array.isArray(dupItems) ? dupItems : [dupItems]) as XmlNode[] : [];
+  const duplicatas = dupList.map((d) => ({
     numero: val(d, 'nDup'),
     vencimento: val(d, 'dVenc'),
     valor: val(d, 'vDup'),
@@ -200,7 +204,7 @@ function parseCobranca(cobr: any, pag: any) {
   return { formasPagamento, fatura, duplicatas };
 }
 
-function parseInfAdicionais(infAdFisco: any, infCpl: any, ide: any) {
+function parseInfAdicionais(infAdFisco: string | undefined, infCpl: string | undefined, ide: XmlNode) {
   const tpImpMap: Record<string, string> = {
     '1': '1 - DANFE normal, Retrato',
     '2': '2 - DANFE normal, Paisagem',
@@ -209,15 +213,15 @@ function parseInfAdicionais(infAdFisco: any, infCpl: any, ide: any) {
     '5': '5 - DANFE NFC-e em mensagem eletrônica',
   };
   return {
-    formatoImpressao: tpImpMap[ide?.tpImp] || ide?.tpImp || '',
+    formatoImpressao: tpImpMap[ide?.tpImp as string] || (ide?.tpImp as string) || '',
     infFisco: infAdFisco || '',
     infComplementar: infCpl || '',
   };
 }
 
-function parseCteParty(node: any) {
+function parseCteParty(node: XmlNode | null | undefined) {
   if (!node) return null;
-  const ender = node.enderReme || node.enderDest || node.enderExped || node.enderReceb || node.enderToma || {};
+  const ender = (node.enderReme || node.enderDest || node.enderExped || node.enderReceb || node.enderToma || {}) as XmlNode;
   return {
     cnpj: val(node, 'CNPJ', 'CPF'),
     razaoSocial: val(node, 'xNome'),
@@ -234,28 +238,32 @@ function parseCteParty(node: any) {
   };
 }
 
-function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
-  const ide = infCte.ide || {};
-  const emit = infCte.emit || {};
-  const rem = infCte.rem || {};
-  const dest = infCte.dest || {};
-  const exped = infCte.exped || {};
-  const receb = infCte.receb || {};
+function parseCteDetails(
+  invoice: { accessKey: string | null; number: string; series: string | null },
+  infCte: CTeInfCte,
+  cteProc: XmlNode,
+) {
+  const ide = (infCte.ide || {}) as XmlNode;
+  const emit = (infCte.emit || {}) as XmlNode;
+  const rem = (infCte.rem || {}) as XmlNode;
+  const dest = (infCte.dest || {}) as XmlNode;
+  const exped = (infCte.exped || {}) as XmlNode;
+  const receb = (infCte.receb || {}) as XmlNode;
   const vPrest = infCte.vPrest || {};
-  const infCteNorm = infCte.infCteNorm || {};
+  const infCteNorm = infCte.infCteNorm || infCte.infCTeNorm || {};
   const infCarga = infCteNorm.infCarga || {};
   const infDoc = infCteNorm.infDoc || {};
-  const seg = infCteNorm.seg || {};
-  const imp = infCte.imp || {};
-  const infAdic = infCte.infAdic || {};
+  const seg = (infCteNorm as XmlNode).seg as XmlNode | undefined ?? {};
+  const imp = (infCte.imp || {}) as XmlNode;
+  const infAdic = (infCte as XmlNode).infAdic as XmlNode | undefined ?? {};
 
-  const protCTe = cteProc?.protCTe?.infProt || {};
+  const protCTe = ((cteProc?.protCTe as XmlNode)?.infProt || {}) as XmlNode;
 
   // Tomador resolution
   const tomaMap: Record<string, string> = {
     '0': 'Remetente', '1': 'Expedidor', '2': 'Recebedor', '3': 'Destinatário', '4': 'Outros',
   };
-  const tomaCode = val(ide, 'toma3', 'toma4') ? val(ide.toma3 || ide.toma4 || {}, 'toma') : '';
+  const tomaCode = val(ide, 'toma3', 'toma4') ? val((ide.toma3 || ide.toma4 || {}) as XmlNode, 'toma') : '';
 
   // Modal
   const modalMap: Record<string, string> = {
@@ -275,23 +283,23 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
   };
 
   // ICMS do CT-e
-  const icmsNode = imp.ICMS ? Object.values(imp.ICMS)[0] as any : {};
+  const icmsNode = imp.ICMS ? Object.values(imp.ICMS as Record<string, unknown>)[0] as XmlNode : ({} as XmlNode);
 
   // NF-e referenciadas
   const infNFeItems = infDoc.infNFe;
-  const nfeRefs = infNFeItems ? (Array.isArray(infNFeItems) ? infNFeItems : [infNFeItems]) : [];
+  const nfeRefs: XmlNode[] = infNFeItems ? (Array.isArray(infNFeItems) ? infNFeItems : [infNFeItems]) as XmlNode[] : [];
   const infNFItems = infDoc.infNF;
-  const nfRefs = infNFItems ? (Array.isArray(infNFItems) ? infNFItems : [infNFItems]) : [];
+  const nfRefs: XmlNode[] = infNFItems ? (Array.isArray(infNFItems) ? infNFItems : [infNFItems]) as XmlNode[] : [];
   const infOutrosItems = infDoc.infOutros;
-  const outrosRefs = infOutrosItems ? (Array.isArray(infOutrosItems) ? infOutrosItems : [infOutrosItems]) : [];
+  const outrosRefs: XmlNode[] = infOutrosItems ? (Array.isArray(infOutrosItems) ? infOutrosItems : [infOutrosItems]) as XmlNode[] : [];
 
   // Componentes de valor
   const compItems = vPrest.Comp;
-  const componentes = compItems ? (Array.isArray(compItems) ? compItems : [compItems]) : [];
+  const componentes: XmlNode[] = compItems ? (Array.isArray(compItems) ? compItems : [compItems]) as XmlNode[] : [];
 
   // Medidas da carga
   const infQItems = infCarga.infQ;
-  const medidas = infQItems ? (Array.isArray(infQItems) ? infQItems : [infQItems]) : [];
+  const medidas: XmlNode[] = infQItems ? (Array.isArray(infQItems) ? infQItems : [infQItems]) as XmlNode[] : [];
 
   const cUnidMap: Record<string, string> = {
     '00': 'M3', '01': 'KG', '02': 'TON', '03': 'UN', '04': 'LT', '05': 'MMBTU',
@@ -309,9 +317,9 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
       dataEmissao: val(ide, 'dhEmi'),
       cfop: val(ide, 'CFOP'),
       natOp: val(ide, 'natOp'),
-      tipoCte: tpCTeMap[ide.tpCTe] || val(ide, 'tpCTe'),
-      tipoServico: tpServMap[ide.tpServ] || val(ide, 'tpServ'),
-      modal: modalMap[ide.modal] || val(ide, 'modal'),
+      tipoCte: tpCTeMap[ide.tpCTe as string] || val(ide, 'tpCTe'),
+      tipoServico: tpServMap[ide.tpServ as string] || val(ide, 'tpServ'),
+      modal: modalMap[ide.modal as string] || val(ide, 'modal'),
       tomador: tomaMap[tomaCode] || tomaCode,
       municipioOrigem: [val(ide, 'cMunIni'), val(ide, 'xMunIni')].filter(Boolean).join(' - '),
       ufOrigem: val(ide, 'UFIni'),
@@ -331,23 +339,23 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
       valorCarga: val(infCarga, 'vCarga'),
       produtoPredominante: val(infCarga, 'proPred'),
       outrCaract: val(infCarga, 'xOutCat'),
-      medidas: medidas.map((q: any) => ({
+      medidas: medidas.map((q) => ({
         unidade: cUnidMap[val(q, 'cUnid')] || val(q, 'cUnid'),
         tipoMedida: val(q, 'tpMed'),
         quantidade: val(q, 'qCarga'),
       })),
     },
     documentos: {
-      nfeRefs: nfeRefs.map((n: any) => ({
+      nfeRefs: nfeRefs.map((n) => ({
         chave: val(n, 'chave'),
       })),
-      nfRefs: nfRefs.map((n: any) => ({
+      nfRefs: nfRefs.map((n) => ({
         serie: val(n, 'serie'),
         numero: val(n, 'nDoc'),
         dataEmissao: val(n, 'dEmi'),
         valorTotal: val(n, 'vBC'),
       })),
-      outrosRefs: outrosRefs.map((o: any) => ({
+      outrosRefs: outrosRefs.map((o) => ({
         tipo: val(o, 'tpDoc'),
         descricao: val(o, 'descOutros'),
         numero: val(o, 'nDoc'),
@@ -355,7 +363,7 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
         valor: val(o, 'vDocFisc'),
       })),
     },
-    componentes: componentes.map((c: any) => ({
+    componentes: componentes.map((c) => ({
       nome: val(c, 'xNome'),
       valor: val(c, 'vComp'),
     })),
@@ -382,11 +390,11 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
   };
 }
 
-function parseNfseParty(node: any, enderKey?: string) {
+function parseNfseParty(node: XmlNode | null | undefined, enderKey?: string) {
   if (!node) return null;
-  const ender = node[enderKey || 'Endereco'] || node.endereco || {};
-  const idNode = node.IdentificacaoPrestador || node.IdentificacaoTomador || {};
-  const cnpjNode = idNode.CpfCnpj || idNode;
+  const ender = (node[enderKey || 'Endereco'] || node.endereco || {}) as XmlNode;
+  const idNode = (node.IdentificacaoPrestador || node.IdentificacaoTomador || {}) as XmlNode;
+  const cnpjNode = (idNode.CpfCnpj || idNode) as XmlNode;
   return {
     cnpj: val(node, 'CNPJ', 'CPF') || val(cnpjNode, 'Cnpj', 'Cpf') || '',
     razaoSocial: val(node, 'RazaoSocial', 'NomeFantasia', 'xNome') || '',
@@ -401,19 +409,23 @@ function parseNfseParty(node: any, enderKey?: string) {
   };
 }
 
-function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
+function parseNfseDetails(
+  invoice: { accessKey: string | null; number: string },
+  nacional: NFSeNacionalInfNFSe | undefined,
+  abrasf: NFSeInfNfse | undefined,
+) {
   if (nacional) {
-    const dps = nacional.DPS?.infDPS || {};
-    const prest = dps.prest || nacional.emit || {};
-    const toma = dps.toma || {};
-    const serv = dps.serv || {};
-    const cServ = serv.cServ || {};
-    const locPrest = serv.locPrest || {};
-    const valores = dps.valores || {};
-    const vServPrest = valores.vServPrest || {};
-    const trib = valores.trib || {};
-    const issqn = trib.tribMun?.ISSQN || {};
-    const nfseProc = nacional.nfseProc || {};
+    const dps = (nacional.DPS?.infDPS || {}) as XmlNode;
+    const prest = (dps.prest || nacional.emit || {}) as XmlNode;
+    const toma = (dps.toma || {}) as XmlNode;
+    const serv = (dps.serv || {}) as XmlNode;
+    const cServ = (serv.cServ || {}) as XmlNode;
+    const locPrest = (serv.locPrest || {}) as XmlNode;
+    const valores = (dps.valores || {}) as XmlNode;
+    const vServPrest = (valores.vServPrest || {}) as XmlNode;
+    const trib = (valores.trib || {}) as XmlNode;
+    const issqn = ((trib.tribMun as XmlNode)?.ISSQN || {}) as XmlNode;
+    const nfseProc = (nacional as XmlNode).nfseProc as XmlNode | undefined ?? ({} as XmlNode);
 
     const tpRetMap: Record<string, string> = { '1': 'Sim', '2': 'Não', '3': 'Imune', '4': 'Exigibilidade Suspensa' };
 
@@ -423,9 +435,9 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
       number: invoice.number,
       nfse: {
         numero: String(nacional.nNFSe || dps.nDPS || invoice.number || ''),
-        dataEmissao: val(dps, 'dhEmi') || val(nacional, 'dhProc') || '',
+        dataEmissao: val(dps, 'dhEmi') || val(nacional as XmlNode, 'dhProc') || '',
         dataProcessamento: val(nfseProc, 'dhProc') || '',
-        codigoVerificacao: val(nacional, 'codVerif', 'CodigoVerificacao') || '',
+        codigoVerificacao: val(nacional as XmlNode, 'codVerif', 'CodigoVerificacao') || '',
         locPrestacao: val(locPrest, 'xLocPrestacao', 'cLocPrestacao') || '',
         valorLiquido: val(vServPrest, 'vLiq') || val(vServPrest, 'vServPrest') || '',
         valorServico: val(vServPrest, 'vServ') || '',
@@ -447,21 +459,22 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
     };
   }
 
-  // ABRASF
-  const servico = abrasf.Servico || {};
-  const valores = servico.Valores || {};
-  const prestNode = abrasf.PrestadorServico || abrasf.Prestador || {};
-  const tomaNode = abrasf.TomadorServico || abrasf.Tomador || {};
+  // ABRASF — at this point abrasf is always defined (nacional was falsy)
+  const abrasfData = abrasf!;
+  const servico = (abrasfData.Servico || {}) as XmlNode;
+  const valores = ((abrasfData.Servico?.Valores) || {}) as XmlNode;
+  const prestNode = (abrasfData.PrestadorServico || abrasfData.Prestador || {}) as XmlNode;
+  const tomaNode = (abrasfData.TomadorServico || abrasfData.Tomador || {}) as XmlNode;
 
   return {
     docType: 'NFSE' as const,
     accessKey: invoice.accessKey,
     number: invoice.number,
     nfse: {
-      numero: String(abrasf.Numero || invoice.number || ''),
-      dataEmissao: val(abrasf, 'DataEmissao') || '',
-      dataProcessamento: val(abrasf, 'DataEmissaoRps') || '',
-      codigoVerificacao: val(abrasf, 'CodigoVerificacao') || '',
+      numero: String(abrasfData.Numero || invoice.number || ''),
+      dataEmissao: val(abrasfData as XmlNode, 'DataEmissao') || '',
+      dataProcessamento: val(abrasfData as XmlNode, 'DataEmissaoRps') || '',
+      codigoVerificacao: val(abrasfData as XmlNode, 'CodigoVerificacao') || '',
       locPrestacao: val(servico, 'MunicipioPrestacaoServico') || '',
       valorServico: val(valores, 'ValorServicos') || '',
       valorLiquido: val(valores, 'ValorLiquidoNfse') || val(valores, 'ValorServicos') || '',
