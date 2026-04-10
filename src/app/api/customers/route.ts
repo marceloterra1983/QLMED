@@ -251,29 +251,28 @@ export async function GET(req: Request) {
     const start = (normalizedPage - 1) * limit;
     const paginatedCustomers = exportAll ? customers : customers.slice(start, start + limit);
 
-    // Compute price item count (distinct cProd::xProd::uCom) for paginated customers
+    // Compute price item count (distinct product_code::product_name::product_unit) via invoice_item_tax
     const paginatedCnpjs = paginatedCustomers.map((c) => c.cnpj).filter(Boolean);
     const priceItemCountMap = new Map<string, number>();
     if (paginatedCnpjs.length > 0) {
-      const invoiceXmls = await prisma.invoice.findMany({
-        where: { companyId: company.id, type: 'NFE', direction: 'issued', recipientCnpj: { in: paginatedCnpjs } },
-        select: { recipientCnpj: true, xmlContent: true },
-      });
-      const productKeysByCnpj = new Map<string, Set<string>>();
-      for (const inv of invoiceXmls) {
-        if (!inv.recipientCnpj || !inv.xmlContent) continue;
-        let set = productKeysByCnpj.get(inv.recipientCnpj);
-        if (!set) { set = new Set(); productKeysByCnpj.set(inv.recipientCnpj, set); }
-        const detBlocks = inv.xmlContent.match(/<det\b[^>]*>[\s\S]*?<\/det>/gi) || [];
-        for (const det of detBlocks) {
-          const code = det.match(/<cProd>([\s\S]*?)<\/cProd>/i)?.[1]?.trim() || '';
-          const desc = det.match(/<xProd>([\s\S]*?)<\/xProd>/i)?.[1]?.trim() || '';
-          const unit = det.match(/<uCom>([\s\S]*?)<\/uCom>/i)?.[1]?.trim() || '';
-          if (code || desc) set.add(`${code}::${desc}::${unit}`);
+      try {
+        const rows = await prisma.$queryRawUnsafe<Array<{ cnpj: string; cnt: bigint }>>(
+          `SELECT i."recipientCnpj" as cnpj, COUNT(DISTINCT CONCAT(it.product_code, '::', it.product_name, '::', it.product_unit)) as cnt
+           FROM invoice_item_tax it
+           INNER JOIN "Invoice" i ON i.id = it.invoice_id
+           WHERE it.company_id = $1
+             AND i."type" = 'NFE'
+             AND i."direction" = 'issued'
+             AND i."recipientCnpj" = ANY($2)
+           GROUP BY i."recipientCnpj"`,
+          company.id,
+          paginatedCnpjs,
+        );
+        for (const row of rows) {
+          priceItemCountMap.set(row.cnpj, Number(row.cnt));
         }
-      }
-      for (const [cnpj, set] of Array.from(productKeysByCnpj.entries())) {
-        priceItemCountMap.set(cnpj, set.size);
+      } catch {
+        // invoice_item_tax table may not exist yet — fallback to 0 counts
       }
     }
 
