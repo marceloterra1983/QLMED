@@ -11,9 +11,10 @@ const log = createLogger('users/:id');
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let admin: { userId: string; role: string };
     try {
       admin = await requireAdmin();
@@ -21,8 +22,6 @@ export async function PATCH(
       if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
-
-    const { id } = params;
     const body = await req.json();
 
     const parsed = updateUserSchema.safeParse(body);

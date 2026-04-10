@@ -14,12 +14,12 @@ import {
 export const dynamic = 'force-dynamic';
 
 type CallbackPageProps = {
-  searchParams: {
+  searchParams: Promise<{
     code?: string;
     error?: string;
     error_description?: string;
     state?: string;
-  };
+  }>;
 };
 
 type CallbackState = {
@@ -40,9 +40,10 @@ function errorState(title: string, description: string, details?: string): Callb
 }
 
 export default async function OneDriveCallbackPage({ searchParams }: CallbackPageProps) {
-  const code = searchParams.code;
-  const oauthError = searchParams.error;
-  const oauthErrorDescription = searchParams.error_description;
+  const resolvedSearchParams = await searchParams;
+  const code = resolvedSearchParams.code;
+  const oauthError = resolvedSearchParams.error;
+  const oauthErrorDescription = resolvedSearchParams.error_description;
 
   let state: CallbackState;
 

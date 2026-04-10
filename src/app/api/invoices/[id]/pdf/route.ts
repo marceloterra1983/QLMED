@@ -14,9 +14,10 @@ const log = createLogger('invoices/:id/pdf');
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let userId: string;
     try {
       userId = await requireAuth();
@@ -26,7 +27,7 @@ export async function GET(
     const company = await getOrCreateSingleCompany(userId);
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id: params.id, companyId: company.id },
+      where: { id, companyId: company.id },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
     });
 

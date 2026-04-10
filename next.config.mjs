@@ -10,9 +10,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
-  },
+  serverExternalPackages: ['bcryptjs', 'node-forge', 'xml-crypto', 'xml2js'],
   async headers() {
     return [
       {

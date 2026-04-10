@@ -4,7 +4,8 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let userId: string;
   try {
     const auth = await requireAdmin();
@@ -19,7 +20,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
     const connection = await prisma.oneDriveConnection.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
       select: { id: true },

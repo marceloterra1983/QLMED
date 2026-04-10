@@ -130,7 +130,7 @@ export async function POST(req: Request) {
       // Reusa o gerador existente de PDF para manter a mesma renderização dos downloads individuais.
       const pdfResponse = await getInvoicePdfDownload(
         new Request(`http://internal/api/invoices/${invoice.id}/pdf?download=true`),
-        { params: { id: invoice.id } },
+        { params: Promise.resolve({ id: invoice.id }) },
       );
 
       if (!pdfResponse.ok) {

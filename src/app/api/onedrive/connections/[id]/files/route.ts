@@ -5,7 +5,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { listOneDriveChildren } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let userId: string;
   try {
     userId = await requireAuth();
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const connection = await prisma.oneDriveConnection.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
     });

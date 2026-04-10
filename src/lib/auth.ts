@@ -14,9 +14,9 @@ function safeEqual(a: string, b: string): boolean {
   }
 }
 
-function isValidApiKey(): boolean {
+async function isValidApiKey(): Promise<boolean> {
   try {
-    const h = headers();
+    const h = await headers();
     // Check direct api-key header or middleware-validated flag
     const validated = h.get('x-api-key-validated');
     if (validated === '1') return true;

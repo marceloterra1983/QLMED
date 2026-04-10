@@ -4,8 +4,9 @@ import { handleInvoiceGet } from '@/lib/financeiro-shared';
 
 export async function GET(
   req: Request,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
+  const { invoiceId } = await params;
   let userId: string;
   try {
     userId = await requireAuth();
@@ -14,5 +15,5 @@ export async function GET(
   }
 
   const company = await getOrCreateSingleCompany(userId);
-  return handleInvoiceGet(params.invoiceId, company, 'receber');
+  return handleInvoiceGet(invoiceId, company, 'receber');
 }

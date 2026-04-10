@@ -82,7 +82,6 @@ export async function middleware(req: NextRequest) {
     if (rateLimitConfig) {
       const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
         || req.headers.get('x-real-ip')
-        || req.ip
         || 'unknown';
       const key = `${clientIp}:${req.nextUrl.pathname}`;
       const result = checkRateLimit(key, rateLimitConfig);

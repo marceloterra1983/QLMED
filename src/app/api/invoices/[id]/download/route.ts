@@ -6,9 +6,10 @@ import { apiError } from '@/lib/api-error';
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let userId: string;
     try {
       userId = await requireAuth();
@@ -19,7 +20,7 @@ export async function GET(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
       select: { xmlContent: true, accessKey: true, type: true },

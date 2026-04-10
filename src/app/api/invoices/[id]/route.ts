@@ -12,9 +12,10 @@ const log = createLogger('invoices/:id');
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let userId: string;
     try {
       userId = await requireAuth();
@@ -25,7 +26,7 @@ export async function GET(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
       include: { company: { select: { razaoSocial: true, cnpj: true } } },
@@ -43,9 +44,10 @@ export async function GET(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let userId: string;
     try {
       const auth = await requireEditor();
@@ -58,7 +60,7 @@ export async function DELETE(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
     });
@@ -67,7 +69,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Nota não encontrada' }, { status: 404 });
     }
 
-    await prisma.invoice.delete({ where: { id: params.id } });
+    await prisma.invoice.delete({ where: { id } });
 
     let syncRecoveryMarked = false;
     try {
@@ -85,9 +87,10 @@ export async function DELETE(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     let userId: string;
     try {
       userId = await requireAuth();
@@ -102,7 +105,7 @@ export async function PATCH(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: company.id,
       },
     });
@@ -112,7 +115,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.invoice.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: parsed.data.status },
     });
 

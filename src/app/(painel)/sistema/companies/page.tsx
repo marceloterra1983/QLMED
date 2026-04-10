@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 const CompaniesPage = dynamic(() => import('./page-client'), { ssr: false });

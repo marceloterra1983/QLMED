@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 const SuppliersPage = dynamic(() => import('./page-client'), { ssr: false });

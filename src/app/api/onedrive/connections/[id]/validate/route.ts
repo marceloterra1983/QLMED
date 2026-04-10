@@ -14,7 +14,8 @@ import {
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { idParamSchema } from '@/lib/schemas/common';
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let userId: string;
   try {
     const auth = await requireAdmin();
@@ -25,7 +26,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
 
   try {
-    const paramsParsed = idParamSchema.safeParse(params);
+    const paramsParsed = idParamSchema.safeParse({ id });
     if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
 
     const company = await getOrCreateSingleCompany(userId);

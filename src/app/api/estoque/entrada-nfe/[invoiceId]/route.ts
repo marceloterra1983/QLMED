@@ -13,8 +13,9 @@ import { idParamSchema } from '@/lib/schemas/common';
 
 const log = createLogger('estoque/entrada-nfe/:invoiceId');
 
-export async function GET(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
   try {
+    const { invoiceId } = await params;
     let userId: string;
     try {
       userId = await requireAuth();
@@ -22,7 +23,6 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    const { invoiceId } = params;
 
     const invoice = await prisma.invoice.findFirst({
       where: { id: invoiceId, companyId: company.id },
@@ -224,8 +224,9 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
   try {
+    const { invoiceId } = await params;
     let userId: string;
     try {
       ({ userId } = await requireEditor());
@@ -234,7 +235,6 @@ export async function PATCH(req: Request, { params }: { params: { invoiceId: str
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    const { invoiceId } = params;
 
     const body = await req.json();
     const parsed = entradaNfeUpdateLotSchema.safeParse(body);
@@ -259,8 +259,9 @@ export async function PATCH(req: Request, { params }: { params: { invoiceId: str
 }
 
 /** POST: Add a new batch row (clone from existing item row with new lot data) */
-export async function POST(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
   try {
+    const { invoiceId } = await params;
     let userId: string;
     try {
       ({ userId } = await requireEditor());
@@ -269,7 +270,6 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    const { invoiceId } = params;
 
     const body = await req.json();
     const parsed = entradaNfeCloneBatchSchema.safeParse(body);
@@ -294,8 +294,9 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
 }
 
 /** DELETE: Remove a batch row (only if item has >1 rows) */
-export async function DELETE(req: Request, { params }: { params: { invoiceId: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
   try {
+    const { invoiceId } = await params;
     let userId: string;
     try {
       ({ userId } = await requireEditor());
@@ -304,7 +305,6 @@ export async function DELETE(req: Request, { params }: { params: { invoiceId: st
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    const { invoiceId } = params;
 
     const { searchParams } = new URL(req.url);
     const batchRowId = searchParams.get('batchRowId');

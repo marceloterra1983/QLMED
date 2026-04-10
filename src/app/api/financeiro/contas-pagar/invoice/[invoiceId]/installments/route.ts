@@ -7,8 +7,9 @@ import { idParamSchema } from '@/lib/schemas/common';
 
 export async function PUT(
   req: Request,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
+  const { invoiceId } = await params;
   let userId: string;
   try {
     const auth = await requireEditor();
@@ -18,7 +19,7 @@ export async function PUT(
       return unauthorizedResponse();
     }
 
-  const paramsParsed = idParamSchema.safeParse({ id: params.invoiceId });
+  const paramsParsed = idParamSchema.safeParse({ id: invoiceId });
   if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
 
   const company = await getOrCreateSingleCompany(userId);
@@ -26,5 +27,5 @@ export async function PUT(
   const parsed = installmentsSchema.safeParse(body);
   if (!parsed.success) return apiValidationError(parsed.error);
 
-  return handleInstallmentsPut(params.invoiceId, company, body);
+  return handleInstallmentsPut(invoiceId, company, body);
 }
