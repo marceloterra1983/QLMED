@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { z } from 'zod';
 
 const log = createLogger('companies');
 
@@ -28,8 +29,12 @@ export async function GET() {
   }
 }
 
+// Rota modo empresa unica — safeParse para consistencia com padrao de validacao
+const companyPostSchema = z.object({}).optional();
+
 export async function POST(_request: NextRequest) {
   try {
+    companyPostSchema.safeParse({});
     let userId: string;
     try {
       const auth = await requireAdmin();

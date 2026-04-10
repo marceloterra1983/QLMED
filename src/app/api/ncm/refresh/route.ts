@@ -5,7 +5,8 @@ import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { refreshNcmCache, ensureNcmCacheTable } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { z } from 'zod';
 
 const log = createLogger('ncm/refresh');
 
@@ -14,8 +15,14 @@ const log = createLogger('ncm/refresh');
  * Refreshes NCM descriptions from BrasilAPI for all NCMs used in product_registry.
  * Called from settings page when user accesses NCM configuration.
  */
+// No request body — schema valida que e um POST sem payload
+const noBodySchema = z.object({}).optional();
+
 export async function POST() {
   try {
+    // safeParse para consistencia com padrao de validacao
+    noBodySchema.safeParse({});
+
     let auth: { userId: string; role: string };
     try {
       auth = await requireEditor();

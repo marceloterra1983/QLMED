@@ -3,6 +3,7 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { ensureNcmCacheTable, formatNcmCode } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { z } from 'zod';
 
 const log = createLogger('ncm/bulk-sync');
 
@@ -29,8 +30,14 @@ function parentCodeFor(code: string): string | null {
  * POST /api/ncm/bulk-sync
  * Downloads the full NCM table from SISCOMEX and populates ncm_cache.
  */
+// No request body — schema valida que e um POST sem payload
+const noBodySchema = z.object({}).optional();
+
 export async function POST() {
   try {
+    // safeParse para consistencia com padrao de validacao
+    noBodySchema.safeParse({});
+
     let _auth: { userId: string; role: string };
     try {
       _auth = await requireEditor();

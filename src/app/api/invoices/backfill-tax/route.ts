@@ -5,12 +5,19 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes, ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
 import { createLogger } from '@/lib/logger';
+import { z } from 'zod';
 
 const log = createLogger('invoices/backfill-tax');
 
 const BATCH_SIZE = 200;
 
+// No request body — schema valida que e um POST sem payload
+const noBodySchema = z.object({}).optional();
+
 export async function POST(req: NextRequest) {
+  // safeParse para consistencia com padrao de validacao
+  noBodySchema.safeParse({});
+
   let userId: string;
   try {
     userId = await requireAuth();

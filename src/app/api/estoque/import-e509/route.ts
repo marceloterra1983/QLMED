@@ -5,8 +5,9 @@ import prisma from '@/lib/prisma';
 import { ensureStockEntryTable } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
 import ExcelJS from 'exceljs';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { z } from 'zod';
 
 const log = createLogger('estoque/import-e509');
 
@@ -57,11 +58,11 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    if (!file) {
-      return NextResponse.json({ error: 'Arquivo é obrigatório' }, { status: 400 });
-    }
+    const fileSchema = z.object({ file: z.instanceof(File, { message: 'Arquivo e obrigatorio' }) });
+    const fileParsed = fileSchema.safeParse({ file });
+    if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
-    const arrayBuf = await file.arrayBuffer();
+    const arrayBuf = await fileParsed.data.file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuf);
     const ws = workbook.worksheets[0];
