@@ -103,7 +103,13 @@ Plans:
   2. Nenhum erro interno vaza stack trace ou detalhes de implementacao para o cliente (apiError helper ativo)
   3. Logs de producao sao JSON estruturado (pino) com nivel configuravel via LOG_LEVEL env var
   4. Zero console.log/warn/error restantes no codebase (substituidos por logger)
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
+- [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 
 ### Phase 7: Type Safety
 **Goal**: XML parsed, funcoes de parsing e catch blocks sao tipados — any eliminado como padrao do codebase
@@ -113,7 +119,13 @@ Plans:
   1. Interfaces NFeXml, CTeXml, NFSeXml existem em @/types/ e sao usadas em todo parsing de XML
   2. parse-invoice-xml.ts, pdf route e product-aggregation retornam tipos concretos (nao any)
   3. tsc --noEmit passa sem erros e grep por ": any" retorna zero resultados no src/
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
+- [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 
 ### Phase 8: File Splitting
 **Goal**: Nenhum arquivo de componente/rota excede 500 linhas — arquivos grandes divididos em modulos coesos
@@ -124,7 +136,13 @@ Plans:
   2. PDF route dividida em modulos separados por tipo de documento (danfe, dacte, nfse generators + pdf-utils)
   3. SupplierDetailsModal e CustomerDetailsModal compartilham sub-componentes de tabs
   4. Nenhum arquivo em src/ excede 800 linhas (exceto schemas gerados)
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
+- [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 **UI hint**: yes
 
 ### Phase 9: Search & Pagination
@@ -136,7 +154,13 @@ Plans:
   2. products/list retorna paginas com LIMIT/OFFSET e total correto de paginas
   3. Responses de API incluem Cache-Control headers (dashboard 30s, listas 10s, lookups 3600s)
   4. Layout do painel usa server component wrapper — client code apenas nos islands interativos (sidebar, session)
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
+- [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 **UI hint**: yes
 
 ### Phase 10: Major Upgrades
@@ -149,7 +173,13 @@ Plans:
   3. Prisma 7 funcional — todas as raw queries testadas, schema changes aplicados
   4. ESLint 9 com flat config (eslint.config.mjs) passando sem erros
   5. Build completo (npm run build) passa sem erros e app funciona end-to-end em dev
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
+- [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 
 ## Coverage
 

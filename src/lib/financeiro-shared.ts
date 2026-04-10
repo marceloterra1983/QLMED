@@ -68,7 +68,7 @@ const DIRECTION_CONFIG = {
     partyFieldNome: 'emitenteNome' as const,
     partyFieldAbreviado: 'emitenteNomeAbreviado' as const,
     invoiceDirections: ['received'] as const,
-    allowedTags: ['Compra', 'Venda', 'Compra Importacao'] as string[],
+    allowedTags: ['Compra', 'Venda', 'Compra Importação'] as string[],
     includeIssuedImport: true,
     partySortField: 'emitente' as const,
     invoiceSelectExtra: {
@@ -197,10 +197,10 @@ async function fetchBaseDuplicatas(companyId: string, direction: FinanceiroDirec
   if (config.includeIssuedImport) {
     const [received, issuedImport] = await Promise.all([
       getFinanceiroDuplicatas(companyId, 'received', {
-        allowedTags: ['Compra', 'Venda', 'Compra Importacao'],
+        allowedTags: ['Compra', 'Venda', 'Compra Importação'],
       }),
       getFinanceiroDuplicatas(companyId, 'issued', {
-        allowedTags: ['Compra Importacao'],
+        allowedTags: ['Compra Importação'],
       }),
     ]);
     return [...received, ...issuedImport];
