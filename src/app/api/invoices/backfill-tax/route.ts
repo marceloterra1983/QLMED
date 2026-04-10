@@ -39,27 +39,32 @@ export async function POST(req: NextRequest) {
   let processed = 0;
   let errors = 0;
 
-  for (const inv of invoices) {
-    try {
-      const full = await prisma.invoice.findUnique({
-        where: { id: inv.id },
-        select: { id: true, xmlContent: true, companyId: true },
-      });
-      if (!full?.xmlContent) continue;
+  // Batch-fetch all invoices in a single query (eliminates N+1)
+  const ids = invoices.map(i => i.id);
+  const fullInvoices = await prisma.invoice.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, xmlContent: true, companyId: true },
+  });
 
-      const { totals, items } = await extractAllTaxData(full.xmlContent);
-
-      if (totals) {
-        await upsertTaxTotals({ invoiceId: full.id, companyId: full.companyId, ...totals });
-      }
-      if (items.length > 0) {
-        await upsertItemTaxes(full.id, full.companyId, items);
-      }
-
-      processed++;
-    } catch (err) {
-      console.error(`[backfill-tax] Error processing invoice ${inv.id}:`, err);
-      errors++;
+  // Process in parallel chunks of 10
+  const CHUNK_SIZE = 10;
+  for (let i = 0; i < fullInvoices.length; i += CHUNK_SIZE) {
+    const chunk = fullInvoices.slice(i, i + CHUNK_SIZE);
+    const results = await Promise.allSettled(
+      chunk.map(async (full) => {
+        if (!full.xmlContent) return;
+        const { totals, items } = await extractAllTaxData(full.xmlContent);
+        if (totals) {
+          await upsertTaxTotals({ invoiceId: full.id, companyId: full.companyId, ...totals });
+        }
+        if (items.length > 0) {
+          await upsertItemTaxes(full.id, full.companyId, items);
+        }
+      })
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled') processed++;
+      else { console.error('[backfill-tax] Error:', r.reason); errors++; }
     }
   }
 
