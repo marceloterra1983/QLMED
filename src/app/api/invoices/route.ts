@@ -4,10 +4,11 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
-import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
+import { normalizeForSearch } from '@/lib/utils';
 import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
+import { cacheHeaders } from '@/lib/cache-headers';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('invoices');
@@ -302,7 +303,7 @@ export async function GET(req: Request) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
 
       // Pre-filter by cfopTag at DB level when both search and cfopTag are active
-      const searchWhere = { ...where };
+      const searchWhere: Record<string, unknown> = { ...where };
       if (cfopTag) {
         const cfopCodes = getCfopCodesByTag(cfopTag);
         if (cfopCodes.length > 0) {
@@ -315,44 +316,57 @@ export async function GET(req: Request) {
         }
       }
 
-      const allInvoices = await prisma.invoice.findMany({
-        where: searchWhere,
-        select: selectFields,
-        orderBy: { [orderByField]: orderByDir },
-        take: 5000,
-      });
-
-      const cnpjsInPage = Array.from(new Set([
-        ...allInvoices.map((inv) => inv.senderCnpj),
-        ...allInvoices.map((inv) => inv.recipientCnpj),
-      ].filter(Boolean) as string[]));
-      const searchNicknames = cnpjsInPage.length > 0
+      // Look up nickname CNPJs that match any search word (DB-level nickname support)
+      const nicknameConditions = searchWords.map((word) => ({
+        shortName: { contains: word, mode: 'insensitive' as const },
+      }));
+      const matchingNicknames = nicknameConditions.length > 0
         ? await prisma.contactNickname.findMany({
-            where: { companyId: company.id, cnpj: { in: cnpjsInPage } },
-            select: { cnpj: true, shortName: true },
+            where: {
+              companyId: company.id,
+              OR: nicknameConditions,
+            },
+            select: { cnpj: true },
           })
         : [];
-      const searchNicknameMap = new Map(searchNicknames.map((n) => [n.cnpj, n.shortName]));
+      const nicknameCnpjs = matchingNicknames.map((n) => n.cnpj);
 
-      const filtered = allInvoices.filter((inv) => {
-        const fields = [
-          inv.senderName || '',
-          inv.recipientName || '',
-          inv.accessKey || '',
-          inv.number || '',
-          inv.senderCnpj || '',
-          inv.recipientCnpj || '',
-          (inv.senderCnpj || '').replace(/\D/g, ''),
-          (inv.recipientCnpj || '').replace(/\D/g, ''),
-          searchNicknameMap.get(inv.senderCnpj || '') || '',
-          searchNicknameMap.get(inv.recipientCnpj || '') || '',
+      // Build DB-level search: each word must match at least one field (AND logic across words)
+      const andConditions = searchWords.map((word) => {
+        const fieldConditions: Record<string, unknown>[] = [
+          { senderName: { contains: word, mode: 'insensitive' as const } },
+          { recipientName: { contains: word, mode: 'insensitive' as const } },
+          { accessKey: { contains: word, mode: 'insensitive' as const } },
+          { number: { contains: word, mode: 'insensitive' as const } },
+          { senderCnpj: { contains: word, mode: 'insensitive' as const } },
+          { recipientCnpj: { contains: word, mode: 'insensitive' as const } },
         ];
-        return flexMatchAll(fields, searchWords);
+
+        // Add nickname CNPJ matches to OR conditions
+        if (nicknameCnpjs.length > 0) {
+          fieldConditions.push(
+            { senderCnpj: { in: nicknameCnpjs } },
+            { recipientCnpj: { in: nicknameCnpjs } },
+          );
+        }
+
+        return { OR: fieldConditions };
       });
 
-      const total = filtered.length;
-      const paginated = filtered.slice((page - 1) * limit, (page - 1) * limit + limit);
-      const invoicesWithExtra = await attachExtraFieldsForInvoices(paginated);
+      searchWhere.AND = andConditions;
+
+      const [searchInvoices, total] = await Promise.all([
+        prisma.invoice.findMany({
+          where: searchWhere,
+          select: selectFields,
+          orderBy: { [orderByField]: orderByDir },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.invoice.count({ where: searchWhere }),
+      ]);
+
+      const invoicesWithExtra = await attachExtraFieldsForInvoices(searchInvoices);
 
       return NextResponse.json({
         invoices: invoicesWithExtra,
