@@ -111,6 +111,7 @@ _(none)_
 |---|-------------|------|--------|-----------|
 | 260410-rvi | Fix mobile DANFE viewing in InvoiceDetailsModal | 2026-04-10 | f7c95c9 | [260410-rvi-fix-mobile-danfe-viewing-in-invoicedetai](./quick/260410-rvi-fix-mobile-danfe-viewing-in-invoicedetai/) |
 | 260410-s81 | Implement option B: mobile DANFE via HTML fallback (reverts 260410-rvi placeholder) | 2026-04-10 | cb65357 | [260410-s81-implement-option-b-mobile-danfe-via-html](./quick/260410-s81-implement-option-b-mobile-danfe-via-html/) |
+| 260410-swk | Option D: PDF.js standalone viewer for mobile DANFE (reverts s81, drops PDF.js v4.8.69 into public/pdfjs/) | 2026-04-10 | 17554d9 | [260410-swk-option-d-pdf-js-standalone-viewer-for-mo](./quick/260410-swk-option-d-pdf-js-standalone-viewer-for-mo/) |
 
 ### Gotchas
 
