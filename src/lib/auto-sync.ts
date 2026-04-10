@@ -12,6 +12,9 @@ import { saveXmlToFile } from './xml-file-store';
 import { extractFirstCfop } from './cfop';
 import { prisma } from './prisma';
 import { UF_TO_CODE } from './constants';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('auto-sync');
 
 const CHECK_INTERVAL_MS = 60 * 1000; // Verifica a cada 60 segundos
 const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo';
@@ -84,7 +87,7 @@ export function startAutoSync() {
   if (started) return;
   started = true;
 
-  console.log('[AutoSync] Scheduler iniciado - verificando a cada 60s');
+  log.info('Scheduler iniciado - verificando a cada 60s');
 
   // Schedule nightly product aggregate rebuild at 3am
   scheduleNightlyRebuild();
@@ -108,13 +111,13 @@ async function recoverStuckSyncLogs() {
     });
 
     if (stuckLogs.length > 0) {
-      for (const log of stuckLogs) {
-        console.warn(
-          `[AutoSync] Recovering stuck syncLog ${log.id} (${log.syncMethod}) for ${log.company.razaoSocial} - ` +
-          `started at ${log.startedAt.toISOString()}, running for ${Math.round((Date.now() - log.startedAt.getTime()) / 60000)}min`
+      for (const stuckLog of stuckLogs) {
+        log.warn(
+          { syncLogId: stuckLog.id, syncMethod: stuckLog.syncMethod, company: stuckLog.company.razaoSocial, runningMinutes: Math.round((Date.now() - stuckLog.startedAt.getTime()) / 60000) },
+          'Recovering stuck syncLog'
         );
         await prisma.syncLog.update({
-          where: { id: log.id },
+          where: { id: stuckLog.id },
           data: {
             status: 'error',
             errorMessage: 'Auto-recovered: sync timed out after 30 minutes',
@@ -122,15 +125,15 @@ async function recoverStuckSyncLogs() {
           },
         });
       }
-      console.warn(`[AutoSync] Recovered ${stuckLogs.length} stuck syncLog(s)`);
+      log.warn({ count: stuckLogs.length }, 'Recovered stuck syncLog(s)');
     }
   } catch (error) {
-    console.error('[AutoSync] Failed to recover stuck syncLogs:', error);
+    log.error({ err: error }, 'Failed to recover stuck syncLogs');
   }
 }
 
 async function runStartupSync() {
-  console.log('[AutoSync] Sync de startup - verificando pendências...');
+  log.info('Sync de startup - verificando pendencias');
 
   // Recover any syncLogs stuck in 'running' for over 30 minutes
   await recoverStuckSyncLogs();
@@ -159,7 +162,7 @@ async function runStartupSync() {
 
         // Roda se última sync completada foi há mais de 1h
         if (sefazAge > 60 * 60 * 1000) {
-          console.log(`[AutoSync] Startup SEFAZ: última sync há ${Math.round(sefazAge / 60000)}min - ${company.razaoSocial}`);
+          log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(sefazAge / 60000) }, 'Startup SEFAZ sync');
           await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
             id: cert.id,
             pfxData: cert.pfxData,
@@ -170,11 +173,11 @@ async function runStartupSync() {
           });
         }
       } catch (error) {
-        console.error(`[AutoSync] Startup SEFAZ failed for ${cert.company?.razaoSocial}:`, error);
+        log.error({ err: error, company: cert.company?.razaoSocial }, 'Startup SEFAZ failed');
       }
     }
   } catch (error) {
-    console.error('[AutoSync] Startup SEFAZ query failed:', error);
+    log.error({ err: error }, 'Startup SEFAZ query failed');
   }
 
   // NSDocs
@@ -201,15 +204,15 @@ async function runStartupSync() {
           : Infinity;
 
         if (nsdocsAge > 60 * 60 * 1000 && company.nsdocsConfig) {
-          console.log(`[AutoSync] Startup NSDocs: última sync há ${Math.round(nsdocsAge / 60000)}min - ${company.razaoSocial}`);
+          log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(nsdocsAge / 60000) }, 'Startup NSDocs sync');
           await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
         }
       } catch (error) {
-        console.error(`[AutoSync] Startup NSDocs failed for ${config.company?.razaoSocial}:`, error);
+        log.error({ err: error, company: config.company?.razaoSocial }, 'Startup NSDocs failed');
       }
     }
   } catch (error) {
-    console.error('[AutoSync] Startup NSDocs query failed:', error);
+    log.error({ err: error }, 'Startup NSDocs query failed');
   }
 
   // Receita NFS-e
@@ -238,7 +241,7 @@ async function runStartupSync() {
           : Infinity;
 
         if (receitaAge > 60 * 60 * 1000) {
-          console.log(`[AutoSync] Startup Receita NFS-e: última sync há ${Math.round(receitaAge / 60000)}min - ${company.razaoSocial}`);
+          log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(receitaAge / 60000) }, 'Startup Receita NFS-e sync');
           await syncViaReceitaNfse(
             company.id,
             company.cnpj,
@@ -248,14 +251,14 @@ async function runStartupSync() {
           );
         }
       } catch (error) {
-        console.error(`[AutoSync] Startup Receita NFS-e failed for ${config.company?.razaoSocial}:`, error);
+        log.error({ err: error, company: config.company?.razaoSocial }, 'Startup Receita NFS-e failed');
       }
     }
   } catch (error) {
-    console.error('[AutoSync] Startup Receita NFS-e query failed:', error);
+    log.error({ err: error }, 'Startup Receita NFS-e query failed');
   }
 
-  console.log('[AutoSync] Sync de startup concluído.');
+  log.info('Sync de startup concluido');
 }
 
 async function checkAndSync() {
@@ -304,10 +307,7 @@ async function checkAndSync() {
             continue;
           }
 
-          console.log(
-            `[AutoSync] Sincronizando SEFAZ (slot ${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-            `${company.razaoSocial} (${company.cnpj})`
-          );
+          log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando SEFAZ');
           await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
             id: cert.id,
             pfxData: cert.pfxData,
@@ -317,7 +317,7 @@ async function checkAndSync() {
             subject: cert.subject,
           });
         } catch (error) {
-          console.error(`[AutoSync] Hourly SEFAZ failed for ${cert.company?.razaoSocial}:`, error);
+          log.error({ err: error, company: cert.company?.razaoSocial }, 'Hourly SEFAZ failed');
         }
       }
     }
@@ -369,13 +369,10 @@ async function checkAndSync() {
 
           if (!company.nsdocsConfig) continue;
 
-          console.log(
-            `[AutoSync] Sincronizando NSDocs (slot ${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-            `${company.razaoSocial} (${company.cnpj})`
-          );
+          log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando NSDocs');
           await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
         } catch (error) {
-          console.error(`[AutoSync] Hourly NSDocs failed for ${config.company?.razaoSocial}:`, error);
+          log.error({ err: error, company: config.company?.razaoSocial }, 'Hourly NSDocs failed');
         }
       }
     }
@@ -425,10 +422,7 @@ async function checkAndSync() {
             continue;
           }
 
-          console.log(
-            `[AutoSync] Sincronizando Receita NFS-e (slot ${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE} ${AUTO_SYNC_TIMEZONE}): ` +
-            `${company.razaoSocial} (${company.cnpj})`
-          );
+          log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando Receita NFS-e');
 
           await syncViaReceitaNfse(
             company.id,
@@ -438,12 +432,12 @@ async function checkAndSync() {
             company.certificateConfig,
           );
         } catch (error) {
-          console.error(`[AutoSync] Hourly Receita NFS-e failed for ${config.company?.razaoSocial}:`, error);
+          log.error({ err: error, company: config.company?.razaoSocial }, 'Hourly Receita NFS-e failed');
         }
       }
     }
   } catch (error) {
-    console.error('[AutoSync] Erro no check:', error);
+    log.error({ err: error }, 'Erro no check');
   }
 }
 
@@ -552,7 +546,7 @@ export async function syncViaSefaz(
           });
           if (result.createdAt.getTime() === result.updatedAt.getTime()) {
             totalNovos++;
-            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { console.error('[AutoSync] saveXmlToFile failed for SEFAZ:', err.message); });
+            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
           } else {
             totalAtualizados++;
           }
@@ -569,10 +563,10 @@ export async function syncViaSefaz(
               recipientName: parsed.recipientName,
               recipientCnpj: parsed.recipientCnpj,
               invoiceNumber: parsed.number,
-            }).catch((err) => { console.error('[AutoSync] updateProductAggregatesForInvoice failed for SEFAZ:', err.message); });
+            }).catch((err) => { log.error({ err, accessKey }, 'updateProductAggregatesForInvoice failed for SEFAZ'); });
           }
         } catch (docErr) {
-          console.error(`[AutoSync] Erro ao processar doc ${doc.chave}:`, docErr);
+          log.error({ err: docErr, chave: doc.chave }, 'Erro ao processar doc SEFAZ');
         }
       }
 
@@ -591,13 +585,13 @@ export async function syncViaSefaz(
       data: { status: 'completed', newDocs: totalNovos, updatedDocs: totalAtualizados, completedAt: new Date() },
     });
 
-    console.log(`[AutoSync] SEFAZ OK: ${razaoSocial} - ${totalNovos} novos, ${totalAtualizados} atualizados`);
+    log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'SEFAZ sync completed');
   } catch (err: any) {
-    console.error(`[AutoSync] Erro SEFAZ ${razaoSocial}:`, err.message);
+    log.error({ err, company: razaoSocial }, 'Erro SEFAZ');
     try {
       await prisma.certificateConfig.update({ where: { id: cert.id }, data: { lastNsu: ultNSU } });
     } catch (saveErr) {
-      console.error(`[AutoSync] CRITICAL: Failed to save NSU checkpoint:`, saveErr);
+      log.error({ err: saveErr }, 'CRITICAL: Failed to save NSU checkpoint');
     }
     try {
       await prisma.syncLog.update({
@@ -605,7 +599,7 @@ export async function syncViaSefaz(
         data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
       });
     } catch (logErr) {
-      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+      log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
   }
 }
@@ -687,7 +681,7 @@ export async function syncViaNsdocs(
         });
         if (result.createdAt.getTime() === result.updatedAt.getTime()) {
           totalNovos++;
-          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { console.error('[AutoSync] saveXmlToFile failed for NSDocs:', err.message); });
+          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
         } else {
           totalAtualizados++;
         }
@@ -705,10 +699,10 @@ export async function syncViaNsdocs(
             recipientName: parsed.recipientName,
             recipientCnpj: parsed.recipientCnpj,
             invoiceNumber: parsed.number,
-          }).catch((err) => { console.error('[AutoSync] updateProductAggregatesForInvoice failed for NSDocs:', err.message); });
+          }).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'updateProductAggregatesForInvoice failed for NSDocs'); });
         }
       } catch (docErr) {
-        console.error(`[AutoSync] Erro no doc ${doc.id}:`, docErr);
+        log.error({ err: docErr, docId: doc.id }, 'Erro no doc NSDocs');
       }
     }
 
@@ -722,16 +716,16 @@ export async function syncViaNsdocs(
       data: { status: 'completed', newDocs: totalNovos, updatedDocs: totalAtualizados, completedAt: new Date() },
     });
 
-    console.log(`[AutoSync] NSDocs OK: ${razaoSocial} - ${totalNovos} novos, ${totalAtualizados} existentes`);
+    log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'NSDocs sync completed');
   } catch (err: any) {
-    console.error(`[AutoSync] Erro NSDocs ${razaoSocial}:`, err.message);
+    log.error({ err, company: razaoSocial }, 'Erro NSDocs');
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
         data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
       });
     } catch (logErr) {
-      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+      log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
   }
 }
@@ -804,19 +798,16 @@ export async function syncViaReceitaNfse(
       },
     });
 
-    console.log(
-      `[AutoSync] Receita NFS-e OK: ${razaoSocial} - ` +
-      `${result.newDocs} novos, ${result.updatedDocs} atualizados, NSUs: ${result.scannedNsuCount}`
-    );
+    log.info({ company: razaoSocial, newDocs: result.newDocs, updatedDocs: result.updatedDocs, scannedNsus: result.scannedNsuCount }, 'Receita NFS-e sync completed');
   } catch (err: any) {
-    console.error(`[AutoSync] Erro Receita NFS-e ${razaoSocial}:`, err.message);
+    log.error({ err, company: razaoSocial }, 'Erro Receita NFS-e');
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
         data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
       });
     } catch (logErr) {
-      console.error(`[AutoSync] CRITICAL: Failed to update syncLog ${syncLog.id} to error:`, logErr);
+      log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
   }
 }

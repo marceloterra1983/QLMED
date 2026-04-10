@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-10T02:36:10.735Z"
+last_updated: "2026-04-10T02:40:37.665Z"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 19
-  completed_plans: 14
-  percent: 74
+  completed_plans: 15
+  percent: 79
 ---
 
 # State: QLMED Correcao e Hardening
@@ -17,20 +17,20 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 05 — code-deduplication
+**Current focus:** Phase 06 — api-validation-logging
 
 ## Current Position
 
 **Milestone:** Correcao e Hardening Completo
-**Phase:** 05 of 10 (code deduplication)
-**Plan:** Not started
-**Status:** Executing Phase 05
+**Phase:** 06 of 10 (api validation logging)
+**Plan:** 1 of 5 complete
+**Status:** Executing Phase 06
 
 **Progress:**
 
-[███████░░░] 74%
-Phase: 05 (code-deduplication) — EXECUTING
-Plan: 1 of 3
+[████████░░] 79%
+Phase: 06 (api-validation-logging) — EXECUTING
+Plan: 1 of 5
 Milestone: [████░░░░░░] 40%
 
 ```
@@ -61,6 +61,7 @@ Milestone: [████░░░░░░] 40%
 | Phase 05 P01 | 496 | 2 tasks | 16 files |
 | Phase 05 P02 | 368 | 2 tasks | 7 files |
 | Phase 05 P03 | 388 | 2 tasks | 6 files |
+| Phase 06 P01 | 145 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Milestone: [████░░░░░░] 40%
 | Remaining high vulns out of scope | 02-01 | next, glob, xlsx require major upgrades handled in UPG-01/DEP-04 |
 | legacy-peer-deps for nodemailer v8 | 02-01 | next-auth optional peer on nodemailer ^7 not used for email provider |
 | @@ignore stubs for schema visibility | 03-01 | Consistent with existing pattern (InvoiceTaxTotals, InvoiceItemTax, etc.) |
+| pino with browser disabled | 06-01 | Next.js server-only usage, avoids browser-side pino bundling issues |
 
 ### Discovered TODOs
 
@@ -97,13 +99,13 @@ _(none)_
 ### Last Session
 
 - **Date:** 2026-04-10
-- **What happened:** Executed Phase 3 Plan 1 (Database Schema Hardening) -- added Invoice indexes and 6 shadow table stubs
-- **Where stopped:** Completed 03-01-PLAN.md, Phase 3 complete
+- **What happened:** Executed Phase 06 Plan 01 (API Foundation Modules) -- pino logger, apiError helpers, Zod schemas
+- **Where stopped:** Completed 06-01-PLAN.md
 
 ### Next Session Should
 
-1. Plan and execute Phase 4 (XML Extraction Performance)
-2. Phase 4 has 5 requirements (PERF-01..PERF-05)
+1. Execute Phase 06 Plan 02 (next plan in api-validation-logging)
+2. Phase 06 has 5 plans total, 4 remaining
 
 ---
-*Last updated: 2026-04-10 after 02-01 completion*
+*Last updated: 2026-04-10 after 06-01 completion*

@@ -6,6 +6,9 @@
 
 import prisma from '@/lib/prisma';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('product-aggregate-updater');
 import {
   extractProductsFromXml,
   buildProductKey,
@@ -69,7 +72,7 @@ export async function updateProductAggregatesForInvoice(opts: {
     // Extract and persist fiscal data (IE, IM, CRT) for both parties
     await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
   } catch (err) {
-    console.error('[product-aggregate-updater] Error:', err);
+    log.error({ err }, 'Error updating product aggregates');
   }
 }
 
@@ -112,7 +115,7 @@ async function extractAndStoreTaxData(
       }
     }
   } catch (err) {
-    console.error('[product-aggregate-updater] Tax extraction error:', err);
+    log.error({ err }, 'Tax extraction error');
   }
 }
 
@@ -345,7 +348,7 @@ async function extractAndStoreContactFiscal(
       });
     }
   } catch (err) {
-    console.error('[product-aggregate-updater] Contact fiscal extraction error:', err);
+    log.error({ err }, 'Contact fiscal extraction error');
   }
 }
 
@@ -364,11 +367,11 @@ export function scheduleNightlyRebuild() {
     if (target <= now) target.setDate(target.getDate() + 1);
 
     const delay = target.getTime() - now.getTime();
-    console.log(`[product-aggregates] Next rebuild scheduled for ${target.toISOString()} (in ${Math.round(delay / 60000)}min)`);
+    log.info({ nextRebuild: target.toISOString(), delayMinutes: Math.round(delay / 60000) }, 'Next rebuild scheduled');
 
     setTimeout(async () => {
       try {
-        console.log('[product-aggregates] Starting nightly rebuild...');
+        log.info('Starting nightly rebuild');
         const { aggregateProductsFromInvoices, computeSearchText } = await import('@/lib/product-aggregation');
         const { getOrCreateSingleCompany } = await import('@/lib/single-company');
 
@@ -448,13 +451,13 @@ export function scheduleNightlyRebuild() {
               company.id,
             );
 
-            console.log(`[product-aggregates] Rebuilt ${entries.length} products for company ${company.id}`);
+            log.info({ companyId: company.id, productCount: entries.length }, 'Rebuilt products for company');
           } catch (err) {
-            console.error(`[product-aggregates] Rebuild failed for company ${company.id}:`, err);
+            log.error({ err, companyId: company.id }, 'Rebuild failed for company');
           }
         }
       } catch (err) {
-        console.error('[product-aggregates] Nightly rebuild error:', err);
+        log.error({ err }, 'Nightly rebuild error');
       }
 
       // Schedule next run

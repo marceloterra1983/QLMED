@@ -11,6 +11,9 @@ import { resolveInvoiceDirection } from './invoice-direction';
 import { extractFirstCfop } from './cfop';
 import { updateProductAggregatesForInvoice } from './product-aggregate-updater';
 import { prisma } from './prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('local-xml-sync');
 
 const DEFAULT_SINGLE_COMPANY_CNPJ = '07832309000197';
 const DEFAULT_LOCAL_XML_DIR = path.join(process.cwd(), 'xml_backup');
@@ -48,9 +51,7 @@ const targetCompanyCnpj = (process.env.SINGLE_COMPANY_CNPJ || DEFAULT_SINGLE_COM
 const COPY_FROM_SOURCE_ENABLED = LOCAL_COPY_REQUESTED && rawCopySourceDir.length > 0;
 
 if (LOCAL_COPY_REQUESTED && !COPY_FROM_SOURCE_ENABLED) {
-  console.warn(
-    '[LocalXmlSync] LOCAL_XML_COPY_ENABLED=true, mas LOCAL_XML_COPY_SOURCE_DIR não foi configurado; ignorando cópia local.',
-  );
+  log.warn('LOCAL_XML_COPY_ENABLED=true, mas LOCAL_XML_COPY_SOURCE_DIR nao foi configurado; ignorando copia local');
 }
 
 let started = false;
@@ -325,7 +326,7 @@ async function getTargetCompany(): Promise<TargetCompany | null> {
   if (!firstCompany) {
     if (!warnedMissingCompany) {
       warnedMissingCompany = true;
-      console.warn('[LocalXmlSync] Nenhuma empresa cadastrada ainda; importacao automatica pausada.');
+      log.warn('Nenhuma empresa cadastrada ainda; importacao automatica pausada');
     }
     cachedCompany = null;
     return null;
@@ -333,7 +334,7 @@ async function getTargetCompany(): Promise<TargetCompany | null> {
 
   warnedMissingCompany = false;
   cachedCompany = firstCompany;
-  console.warn(`[LocalXmlSync] Empresa ${targetCompanyCnpj} nao encontrada; usando empresa ${firstCompany.cnpj}.`);
+  log.warn({ expectedCnpj: targetCompanyCnpj, usedCnpj: firstCompany.cnpj }, 'Empresa nao encontrada; usando primeira empresa');
   return cachedCompany;
 }
 
@@ -547,7 +548,7 @@ async function importXmlFile(filePath: string): Promise<void> {
         fingerprint,
         retryAtMs: Date.now() + PARSE_RETRY_COOLDOWN_MS,
       });
-      console.warn(`[LocalXmlSync] XML ainda não parseável, novo retry em ${Math.round(PARSE_RETRY_COOLDOWN_MS / 1000)}s: ${path.basename(absolutePath)}`);
+      log.warn({ file: path.basename(absolutePath), retrySeconds: Math.round(PARSE_RETRY_COOLDOWN_MS / 1000) }, 'XML ainda nao parseavel, agendado retry');
       return;
     }
 
@@ -589,12 +590,12 @@ async function importXmlFile(filePath: string): Promise<void> {
         recipientName: parsed.recipientName,
         recipientCnpj: parsed.recipientCnpj,
         invoiceNumber: parsed.number,
-      }).catch((err) => { console.error('[LocalXmlSync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
+      }).catch((err) => { log.error({ err }, 'updateProductAggregatesForInvoice failed'); });
     }
 
     rememberFileFingerprint(absolutePath, fingerprint);
     parseFailureCooldown.delete(absolutePath);
-    console.log(`[LocalXmlSync] Nota importada: ${path.basename(absolutePath)} (${normalizedDirection}).`);
+    log.info({ file: path.basename(absolutePath), direction: normalizedDirection }, 'Nota importada');
   } catch (error) {
     const code = getErrorCode(error);
 
@@ -613,7 +614,7 @@ async function importXmlFile(filePath: string): Promise<void> {
               where: { id: existing.id },
               data: { xmlContent },
             });
-            console.log(`[LocalXmlSync] XML preenchido para nota existente: ${path.basename(absolutePath)}`);
+            log.info({ file: path.basename(absolutePath) }, 'XML preenchido para nota existente');
 
             const company = await getTargetCompany();
             if (company && parsed.type === 'NFE') {
@@ -629,7 +630,7 @@ async function importXmlFile(filePath: string): Promise<void> {
                 recipientName: parsed.recipientName,
                 recipientCnpj: parsed.recipientCnpj,
                 invoiceNumber: parsed.number,
-              }).catch((err) => { console.error('[LocalXmlSync] updateProductAggregatesForInvoice failed:', (err as Error).message); });
+              }).catch((err) => { log.error({ err }, 'updateProductAggregatesForInvoice failed'); });
             }
           }
         }
@@ -638,12 +639,12 @@ async function importXmlFile(filePath: string): Promise<void> {
         rememberFileFingerprint(absolutePath, fingerprint);
         parseFailureCooldown.delete(absolutePath);
       } catch (backfillErr) {
-        console.error('[LocalXmlSync] Failed to backfill xmlContent for existing invoice:', (backfillErr as Error).message);
+        log.error({ err: backfillErr }, 'Failed to backfill xmlContent for existing invoice');
       }
       return;
     }
 
-    console.error(`[LocalXmlSync] Falha ao importar ${absolutePath}:`, error);
+    log.error({ err: error, file: absolutePath }, 'Falha ao importar XML');
   }
 }
 
@@ -682,7 +683,7 @@ async function reconcileFolder(folderPath: string, logPrefix: string): Promise<n
   try {
     await collectAllXmlFiles(folderPath, xmlFiles);
   } catch (error) {
-    console.error(`[LocalXmlSync] Erro ao varrer pasta ${folderPath}:`, error);
+    log.error({ err: error, folder: folderPath }, 'Erro ao varrer pasta');
     return 0;
   }
 
@@ -691,7 +692,7 @@ async function reconcileFolder(folderPath: string, logPrefix: string): Promise<n
   const missingFiles = await findFilesMissingInDatabase(xmlFiles);
   if (missingFiles.length === 0) return 0;
 
-  console.log(`[LocalXmlSync] ${logPrefix}: ${missingFiles.length} XML(s) pendente(s) em ${folderPath}.`);
+  log.info({ prefix: logPrefix, pendingCount: missingFiles.length, folder: folderPath }, 'XMLs pendentes encontrados');
   for (const filePath of missingFiles) {
     enqueueImport(filePath);
   }
@@ -713,7 +714,7 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
   if (!connection) {
     if (!warnedMissingOneDriveConnection) {
       warnedMissingOneDriveConnection = true;
-      console.warn('[LocalXmlSync] OneDrive sem conexão ativa para sincronizar XML.');
+      log.warn('OneDrive sem conexao ativa para sincronizar XML');
     }
     return;
   }
@@ -726,9 +727,7 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
   } catch (error) {
     if (!warnedMissingOneDrivePath) {
       warnedMissingOneDrivePath = true;
-      console.warn(
-        `[LocalXmlSync] Pasta OneDrive de XML não encontrada (${ONEDRIVE_XML_ROOT_PATH}).`,
-      );
+      log.warn({ path: ONEDRIVE_XML_ROOT_PATH }, 'Pasta OneDrive de XML nao encontrada');
     }
     return;
   }
@@ -788,17 +787,13 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
   } catch (error) {
     if (!warnedMissingOneDrivePdfPath) {
       warnedMissingOneDrivePdfPath = true;
-      console.warn(
-        `[LocalXmlSync] Pasta OneDrive de PDF não encontrada (${ONEDRIVE_PDF_ROOT_PATH}).`,
-      );
+      log.warn({ path: ONEDRIVE_PDF_ROOT_PATH }, 'Pasta OneDrive de PDF nao encontrada');
     }
   }
 
   if (copiedXmlCount > 0 || copiedPdfCount > 0) {
     const triggerLabel = trigger === 'interval' ? 'periodica' : trigger === 'startup' ? 'inicial' : 'manual';
-    console.log(
-      `[LocalXmlSync] Copia OneDrive ${triggerLabel}: ${copiedXmlCount} XML(s) em ${copyTargetDir} e ${copiedPdfCount} PDF(s) em ${pdfTargetDir}.`,
-    );
+    log.info({ trigger: triggerLabel, copiedXml: copiedXmlCount, copiedPdf: copiedPdfCount, xmlDir: copyTargetDir, pdfDir: pdfTargetDir }, 'Copia OneDrive concluida');
     if (copiedXmlCount > 0) {
       await drainImportQueue();
     }
@@ -819,9 +814,7 @@ async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Pr
     if (!sourceRoot) {
       if (!warnedMissingCopySource) {
         warnedMissingCopySource = true;
-        console.warn(
-          `[LocalXmlSync] Copia automatica ativa, mas pasta de origem nao encontrada. Candidatas: ${copySourceCandidates.join(' | ')}`,
-        );
+        log.warn({ candidates: copySourceCandidates }, 'Copia automatica ativa, mas pasta de origem nao encontrada');
       }
       await runCopyFromOneDrive(trigger);
       return;
@@ -850,13 +843,11 @@ async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Pr
 
     if (copiedCount > 0) {
       const triggerLabel = trigger === 'interval' ? 'periodica' : trigger === 'startup' ? 'inicial' : 'manual';
-      console.log(
-        `[LocalXmlSync] Copia ${triggerLabel}: ${copiedCount} XML(s) atualizado(s) de ${sourceRoot} para ${copyTargetDir}.`,
-      );
+      log.info({ trigger: triggerLabel, copiedCount, source: sourceRoot, target: copyTargetDir }, 'Copia local concluida');
       await drainImportQueue();
     }
   } catch (error) {
-    console.error('[LocalXmlSync] Falha na copia automatica de XML:', error);
+    log.error({ err: error }, 'Falha na copia automatica de XML');
   } finally {
     copyingFromSource = false;
   }
@@ -884,11 +875,9 @@ async function runFullReconciliation(trigger: 'startup' | 'scheduled' | 'manual'
     await drainImportQueue();
 
     const tag = trigger === 'scheduled' ? 'agendada' : trigger === 'startup' ? 'inicial' : 'manual';
-    console.log(
-      `[LocalXmlSync] Reconciliação completa ${tag} concluída (pastas: ${foldersToReconcile.length}). Pendências tratadas: ${pendingCount}.`,
-    );
+    log.info({ trigger: tag, folderCount: foldersToReconcile.length, pendingCount }, 'Reconciliacao completa concluida');
   } catch (error) {
-    console.error('[LocalXmlSync] Falha na reconciliação completa:', error);
+    log.error({ err: error }, 'Falha na reconciliacao completa');
   } finally {
     fullReconcileRunning = false;
   }
@@ -911,9 +900,7 @@ function scheduleHalfHourFullReconciliation(): void {
   const delay = getDelayUntilNextHalfHourMs(now);
   const nextRunAt = new Date(now.getTime() + delay);
 
-  console.log(
-    `[LocalXmlSync] Reconciliação completa agendada para ${nextRunAt.toLocaleString('pt-BR', { hour12: false })} e repetirá a cada 30 minutos (hh:00/hh:30).`,
-  );
+  log.info({ nextRunAt: nextRunAt.toISOString(), intervalMinutes: 30 }, 'Reconciliacao completa agendada');
 
   fullReconcileKickoffTimer = setTimeout(() => {
     void runFullReconciliation('scheduled');
@@ -963,7 +950,7 @@ async function openLatestFolderWatcher(forceReconcile = false): Promise<void> {
   try {
     nextLatest = await getNewestMonthFolder(watchRootDir);
   } catch (error) {
-    console.error(`[LocalXmlSync] Nao foi possivel identificar pasta mais recente em ${watchRootDir}:`, error);
+    log.error({ err: error, rootDir: watchRootDir }, 'Nao foi possivel identificar pasta mais recente');
     return;
   }
 
@@ -993,10 +980,10 @@ async function openLatestFolderWatcher(forceReconcile = false): Promise<void> {
   latestWatcher.on('add', (targetPath) => enqueueImport(targetPath));
   latestWatcher.on('change', (targetPath) => enqueueImport(targetPath));
   latestWatcher.on('error', (error) => {
-    console.error('[LocalXmlSync] Erro no watcher da pasta atual:', error);
+    log.error({ err: error }, 'Erro no watcher da pasta atual');
   });
 
-  console.log(`[LocalXmlSync] Monitorando pasta ativa: ${nextLatest}`);
+  log.info({ folder: nextLatest }, 'Monitorando pasta ativa');
   await reconcileLatestFolder(nextLatest);
 }
 
@@ -1006,9 +993,7 @@ async function startWatchers(forceReconcile = true): Promise<void> {
   if (!selectedRoot) {
     if (!warnedMissingRoot) {
       warnedMissingRoot = true;
-      console.warn(
-        `[LocalXmlSync] Nenhuma pasta de XML encontrada. Candidatas: ${watchRootCandidates.join(' | ')}`,
-      );
+      log.warn({ candidates: watchRootCandidates }, 'Nenhuma pasta de XML encontrada');
     }
     watchRootDir = null;
     await closeActiveWatchers();
@@ -1021,7 +1006,7 @@ async function startWatchers(forceReconcile = true): Promise<void> {
   if (rootChanged) {
     watchRootDir = selectedRoot;
     await closeActiveWatchers();
-    console.log(`[LocalXmlSync] Pasta raiz ativa: ${watchRootDir}`);
+    log.info({ rootDir: watchRootDir }, 'Pasta raiz ativa');
   }
 
   if (!rootWatcher && watchRootDir) {
@@ -1038,10 +1023,10 @@ async function startWatchers(forceReconcile = true): Promise<void> {
       void openLatestFolderWatcher(true);
     });
     rootWatcher.on('error', (error) => {
-      console.error('[LocalXmlSync] Erro no watcher raiz:', error);
+      log.error({ err: error }, 'Erro no watcher raiz');
     });
 
-    console.log(`[LocalXmlSync] Watcher raiz iniciado em ${watchRootDir}`);
+    log.info({ rootDir: watchRootDir }, 'Watcher raiz iniciado');
   }
 
   await openLatestFolderWatcher(forceReconcile);
@@ -1059,7 +1044,7 @@ export function startLocalXmlSync(): void {
   // OneDrive/source copy runs independently of local filesystem watching,
   // so emitted invoices sync even when LOCAL_XML_WATCH_ENABLED=false (production).
   if (COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED) {
-    console.log('[LocalXmlSync] Inicializando sync de XML via OneDrive/source copy.');
+    log.info('Inicializando sync de XML via OneDrive/source copy');
     void runCopyFromSource('startup');
 
     if (!copyFromSourceTimer) {
@@ -1070,11 +1055,11 @@ export function startLocalXmlSync(): void {
   }
 
   if (!localXmlWatchEnabled) {
-    console.log('[LocalXmlSync] Monitoramento local de filesystem desativado via LOCAL_XML_WATCH_ENABLED.');
+    log.info('Monitoramento local de filesystem desativado via LOCAL_XML_WATCH_ENABLED');
     return;
   }
 
-  console.log('[LocalXmlSync] Inicializando monitoramento local de XML.');
+  log.info('Inicializando monitoramento local de XML');
 
   void startWatchers(true);
 

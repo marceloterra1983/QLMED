@@ -45,9 +45,9 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 
 ### API Validation & Logging
 
-- [ ] **API-01**: Zod schemas em todas as rotas que aceitam POST/PUT/PATCH (schemas reutilizáveis em @/lib/schemas/)
-- [ ] **API-02**: Error handling padronizado — catch (e: unknown) com apiError() helper que loga server-side e retorna msg genérica
-- [ ] **API-03**: Logger estruturado (pino) substituindo 189 console.log/warn/error com níveis configuráveis por env var
+- [x] **API-01**: Zod schemas em todas as rotas que aceitam POST/PUT/PATCH (schemas reutilizáveis em @/lib/schemas/)
+- [x] **API-02**: Error handling padronizado — catch (e: unknown) com apiError() helper que loga server-side e retorna msg genérica
+- [x] **API-03**: Logger estruturado (pino) substituindo 189 console.log/warn/error com níveis configuráveis por env var
 
 ### Type Safety
 

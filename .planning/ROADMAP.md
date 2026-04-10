@@ -105,7 +105,7 @@ Plans:
   4. Zero console.log/warn/error restantes no codebase (substituidos por logger)
 **Plans:** 5 plans
 Plans:
-- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [x] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
 - [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
 - [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
 - [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
