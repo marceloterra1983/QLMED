@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders, RateLimitConfig } from '@/lib/rate-limit';
 
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
@@ -44,9 +45,35 @@ function clearAuthCookies(response: NextResponse) {
   }
 }
 
+function getRateLimitConfig(pathname: string): RateLimitConfig | null {
+  if (pathname.startsWith('/api/auth/')) return RATE_LIMITS.login;
+  if (pathname.includes('/upload')) return RATE_LIMITS.upload;
+  if (pathname.startsWith('/api/webhooks/')) return RATE_LIMITS.webhook;
+  return null;
+}
+
 export async function middleware(req: NextRequest) {
   const isApiRoute = req.nextUrl.pathname.startsWith('/api/');
   const callbackUrl = req.nextUrl.pathname + req.nextUrl.search;
+
+  // Rate limiting — checked before auth to block brute-force attempts early
+  if (isApiRoute) {
+    const rateLimitConfig = getRateLimitConfig(req.nextUrl.pathname);
+    if (rateLimitConfig) {
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || req.ip
+        || 'unknown';
+      const key = `${clientIp}:${req.nextUrl.pathname}`;
+      const result = checkRateLimit(key, rateLimitConfig);
+      if (!result.allowed) {
+        return NextResponse.json(
+          { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+          { status: 429, headers: getRateLimitHeaders(result.remaining, result.resetAt) }
+        );
+      }
+    }
+  }
 
   // Allow API key authentication for n8n / external integrations
   if (isApiRoute) {
