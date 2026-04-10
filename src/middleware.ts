@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders, RateLimitConfig } from '@/lib/rate-limit';
 
+/**
+ * Public API routes that don't require authentication.
+ * All other /api/* routes require a valid session or API key.
+ */
+const PUBLIC_API_ROUTES = new Set([
+  '/api/auth',           // NextAuth endpoints (login, callback, etc.)
+  '/api/register',       // User registration
+  '/api/health',         // Basic health check (details require auth, handled in route)
+]);
+
+function isPublicApiRoute(pathname: string): boolean {
+  for (const route of PUBLIC_API_ROUTES) {
+    if (pathname === route || pathname.startsWith(route + '/')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
   '__Secure-next-auth.session-token',
@@ -75,6 +94,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Allow public API routes without authentication (after rate limiting)
+  if (isApiRoute && isPublicApiRoute(req.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   // Allow API key authentication for n8n / external integrations
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
@@ -124,23 +148,15 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // Protect all panel pages
     '/cadastro/:path*',
     '/fiscal/:path*',
     '/financeiro/:path*',
     '/sistema/:path*',
-    '/api/companies/:path*',
-    '/api/invoices/:path*',
-    '/api/dashboard/:path*',
-    '/api/nsdocs/:path*',
-    '/api/receita/:path*',
-    '/api/certificate/:path*',
-    '/api/onedrive/:path*',
-    '/api/users/:path*',
-    '/api/financeiro/:path*',
-    '/api/products/:path*',
-    '/api/customers/:path*',
-    '/api/suppliers/:path*',
-    '/api/anvisa/:path*',
-    '/api/webhooks/:path*',
+    '/estoque/:path*',
+    '/relatorios/:path*',
+    '/visaogeral/:path*',
+    // Protect ALL API routes — public ones are handled by allowlist inside middleware
+    '/api/:path*',
   ],
 };
