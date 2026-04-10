@@ -66,8 +66,8 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 
 - [x] **PERF-06**: Busca de invoices usa WHERE ILIKE no DB em vez de carregar 5000 records e filtrar em memória
 - [x] **PERF-07**: products/list tem paginação real com LIMIT/OFFSET
-- [ ] **PERF-08**: Cache headers em API routes (dashboard 30s, listas 10s, lookups 3600s)
-- [ ] **PERF-09**: Layout (painel) usa server component wrapper com client islands (sem MutationObserver no body)
+- [x] **PERF-08**: Cache headers em API routes (dashboard 30s, listas 10s, lookups 3600s)
+- [x] **PERF-09**: Layout (painel) usa server component wrapper com client islands (sem MutationObserver no body)
 
 ### Major Upgrades
 
