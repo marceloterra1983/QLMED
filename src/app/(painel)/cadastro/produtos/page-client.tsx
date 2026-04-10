@@ -972,6 +972,7 @@ export default function ProdutosPage() {
     setIsExporting(true);
     const toastId = toast.loading('Exportando produtos...');
     try {
+      // TODO: migrate to /api/products/list when it supports full export fields (ean, fiscal*, anvisa*, lastSalePrice, lastSaleDate)
       const res = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
       if (!res.ok) throw new Error();
       const data = (await res.json()) as ProductsResponse;
@@ -1020,6 +1021,7 @@ export default function ProdutosPage() {
     setIsExportingMissing(true);
     const toastId = toast.loading('Exportando produtos sem ANVISA...');
     try {
+      // TODO: migrate to /api/products/list when it includes ean field for ANVISA missing export
       const res = await fetch('/api/products?exportAll=1&onlyMissingAnvisa=1&sort=lastIssue&order=desc');
       if (!res.ok) throw new Error();
       const data = (await res.json()) as ProductsResponse;
@@ -1356,7 +1358,7 @@ export default function ProdutosPage() {
       // Fetch all product ANVISA codes to match against the open data file
       let ourCodes = new Set<string>();
       try {
-        const allRes = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
+        const allRes = await fetch('/api/products/list?sort=lastIssueDate&order=desc');
         if (allRes.ok) {
           const allData = await allRes.json();
           ourCodes = new Set(
