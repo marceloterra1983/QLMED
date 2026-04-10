@@ -136,7 +136,7 @@ Plans:
   4. Nenhum arquivo em src/ excede 800 linhas (exceto schemas gerados)
 **Plans:** 4 plans
 Plans:
-- [ ] 08-01-PLAN.md — Split produtos/page-client.tsx into 5+ components (SPLIT-01)
+- [x] 08-01-PLAN.md — Split produtos/page-client.tsx into 5+ components (SPLIT-01)
 - [x] 08-02-PLAN.md — Split PDF route into danfe/dacte/nfse generators + pdf-utils (SPLIT-02)
 - [x] 08-03-PLAN.md — Extract shared contact-details sub-components from modals (SPLIT-03)
 - [x] 08-04-PLAN.md — Split settings, financeiro pages, local-xml-sync into modules (SPLIT-04)
