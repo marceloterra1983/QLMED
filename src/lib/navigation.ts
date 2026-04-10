@@ -21,10 +21,17 @@ export const PAGE_GROUPS: PageGroup[] = [
   {
     section: 'Fiscal',
     pages: [
+      { label: 'Visão Geral', path: '/fiscal/dashboard' },
       { label: 'NF-e Recebidas', path: '/fiscal/invoices' },
       { label: 'NF-e Emitidas', path: '/fiscal/issued' },
       { label: 'NFS-e Recebidas', path: '/fiscal/nfse-recebidas' },
       { label: 'CT-e', path: '/fiscal/cte' },
+    ],
+  },
+  {
+    section: 'Estoque',
+    pages: [
+      { label: 'Entrada NF-e', path: '/estoque/entrada-nfe' },
     ],
   },
   {
@@ -35,6 +42,12 @@ export const PAGE_GROUPS: PageGroup[] = [
     ],
   },
   {
+    section: 'Relatórios',
+    pages: [
+      { label: 'Válvulas Mecânicas Corcym', path: '/relatorios/valvulas-importadas' },
+    ],
+  },
+  {
     section: 'Sistema',
     pages: [
       { label: 'Sincronizar', path: '/sistema/sync' },
@@ -42,6 +55,7 @@ export const PAGE_GROUPS: PageGroup[] = [
       { label: 'Upload XML', path: '/sistema/upload' },
       { label: 'Automações', path: '/sistema/automacoes' },
       { label: 'Configurações', path: '/sistema/settings' },
+      { label: 'Usuários', path: '/sistema/usuarios' },
     ],
   },
 ];
