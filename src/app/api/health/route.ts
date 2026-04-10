@@ -88,16 +88,16 @@ export async function GET() {
       return NextResponse.json(errorResponse, { status: 503 });
     }
 
-    // Public response: only status, db connectivity, timestamp
+    // Public response: status, db connectivity, build metadata, timestamp
     const publicResponse: Record<string, unknown> = {
       status: 'ok',
       db: { status: 'connected', latencyMs: dbLatency },
+      build,
       timestamp: new Date().toISOString(),
     };
 
     if (session) {
-      // Authenticated response: include build, uptime, memory, integrity
-      publicResponse.build = build;
+      // Authenticated response: add uptime, memory, integrity
       publicResponse.uptime = process.uptime();
       publicResponse.integrity = integrity;
       publicResponse.memory = {
