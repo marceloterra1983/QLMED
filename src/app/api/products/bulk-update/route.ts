@@ -3,12 +3,7 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
-
-function cleanString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  const s = String(value).trim();
-  return s.length > 0 ? s : null;
-}
+import { cleanString } from '@/lib/utils';
 
 function normalizeAnvisa(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');

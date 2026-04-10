@@ -2,18 +2,13 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry } from '@/lib/product-registry-store';
+import { cleanString } from '@/lib/utils';
 
 function normalizeAnvisaCode(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');
   if (!digits) return null;
   if (digits.length !== 11) return null;
   return digits;
-}
-
-function cleanString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  const normalized = String(value).trim();
-  return normalized.length > 0 ? normalized : null;
 }
 
 export async function PATCH(req: Request) {

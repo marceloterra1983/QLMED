@@ -1,4 +1,5 @@
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { ensureArray } from '@/lib/utils';
 
 function toNum(v: unknown): number | null {
   if (v === undefined || v === null || v === '') return null;
@@ -10,11 +11,6 @@ function str(v: unknown): string | null {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
   return s.length > 0 ? s : null;
-}
-
-function ensureArray<T>(v: T | T[] | null | undefined): T[] {
-  if (v === null || v === undefined) return [];
-  return Array.isArray(v) ? v : [v];
 }
 
 // ── Tax totals from ICMSTot ──

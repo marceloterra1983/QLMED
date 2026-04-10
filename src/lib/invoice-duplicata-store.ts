@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { val, num } from '@/lib/xml-helpers';
 
 // ── Types ──
 
@@ -83,19 +84,6 @@ function extractTagValue(xml: string, tag: string): string {
   // Extract inner text (between opening and closing tags)
   const inner = match[0].replace(/<[^>]+>/g, '').trim();
   return inner;
-}
-
-function val(obj: Record<string, unknown>, ...keys: string[]): string {
-  for (const key of keys) {
-    if (obj?.[key] != null) return String(obj[key]);
-  }
-  return '';
-}
-
-function num(obj: Record<string, unknown>, key: string): number {
-  const value = obj?.[key];
-  if (value == null || value === '') return 0;
-  return parseFloat(String(value).replace(',', '.')) || 0;
 }
 
 export function extractDuplicatasFast(xmlContent: string): { hasDupTag: boolean; duplicatas: ParsedXmlDuplicata[] } {

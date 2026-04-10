@@ -19,6 +19,8 @@ import {
   formatInstallmentCode,
   formatInstallmentDisplay,
 } from '@/lib/modal-helpers';
+import { validateIE } from '@/lib/ie-validation';
+import { parseCnpjResponse, type CnpjData } from '@/lib/cnpj-utils';
 
 interface CustomerRef {
   cnpj: string;
@@ -115,45 +117,6 @@ interface CustomerDetailsResponse {
   meta: CustomerMeta;
 }
 
-interface CnpjData {
-  razaoSocial: string | null;
-  nomeFantasia: string | null;
-  situacaoCadastral: string | null;
-  cnaePrincipal: { codigo: string; descricao: string } | null;
-  porte: string | null;
-  naturezaJuridica: string | null;
-  capitalSocial: number | null;
-  simplesNacional: boolean | null;
-  mei: boolean | null;
-  telefone: string | null;
-  email: string | null;
-  endereco: {
-    logradouro: string | null;
-    numero: string | null;
-    bairro: string | null;
-    municipio: string | null;
-    uf: string | null;
-    cep: string | null;
-  } | null;
-}
-
-function parseCnpjResponse(data: any): CnpjData {
-  return {
-    razaoSocial: data.razaoSocial || null,
-    nomeFantasia: data.nomeFantasia || null,
-    situacaoCadastral: data.situacaoCadastral || data.descSituacao || null,
-    cnaePrincipal: data.cnaePrincipal || null,
-    porte: data.porte || null,
-    naturezaJuridica: data.naturezaJuridica || null,
-    capitalSocial: data.capitalSocial ?? null,
-    simplesNacional: data.simplesNacional ?? null,
-    mei: data.mei ?? null,
-    telefone: data.telefone || null,
-    email: data.email || null,
-    endereco: data.endereco || null,
-  };
-}
-
 interface AddressDivergence {
   field: string;
   label: string;
@@ -190,24 +153,6 @@ function compareAddressFields(
     }
   }
   return result;
-}
-
-function validateIEFormat(ie: string | null | undefined, uf: string | null | undefined): { valid: boolean; message?: string } {
-  if (!ie || !uf) return { valid: true };
-  const cleanIe = ie.replace(/[\.\-\/\s]/g, '').toUpperCase();
-  if (cleanIe === 'ISENTO' || cleanIe === 'ISENTA') return { valid: true };
-  const rules: Record<string, RegExp> = {
-    AC: /^01\d{11}$/, AL: /^24\d{7}$/, AM: /^\d{9}$/, AP: /^03\d{7}$/,
-    BA: /^\d{8,9}$/, CE: /^\d{9}$/, DF: /^07\d{11}$/, ES: /^\d{9}$/,
-    GO: /^(10|11|15|20|29)\d{7}$/, MA: /^12\d{7}$/, MG: /^\d{13}$/,
-    MS: /^28\d{7}$/, MT: /^\d{11}$/, PA: /^15\d{7}$/, PB: /^\d{9}$/,
-    PE: /^\d{9}$|^\d{14}$/, PI: /^\d{9}$/, PR: /^\d{10}$/, RJ: /^\d{8}$/,
-    RN: /^20\d{7,8}$/, RO: /^\d{14}$/, RR: /^24\d{6}$/, RS: /^\d{10}$/,
-    SC: /^\d{9}$/, SE: /^\d{9}$/, SP: /^\d{12}$|^P\d{12}$/, TO: /^\d{11}$/,
-  };
-  const regex = rules[uf.toUpperCase()];
-  if (!regex) return { valid: true };
-  return regex.test(cleanIe) ? { valid: true } : { valid: false, message: `Formato invalido para ${uf}` };
 }
 
 interface CustomerDetailsModalProps {
@@ -783,7 +728,7 @@ export default function CustomerDetailsModal({
             {(() => {
               const d = details.customer;
               const ie = d.stateRegistration;
-              const ieResult = ie ? validateIEFormat(ie, details.contactFiscal?.uf || d.address?.state) : null;
+              const ieResult = ie ? validateIE(ie, details.contactFiscal?.uf || d.address?.state) : null;
               return (
                 <div className="space-y-1.5 mb-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[12px]">

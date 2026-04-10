@@ -5,6 +5,8 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import puppeteer from 'puppeteer';
+import { gv } from '@/lib/xml-helpers';
+import { ensureArray } from '@/lib/utils';
 
 // ==================== Helpers ====================
 
@@ -15,23 +17,6 @@ function parseXml(xml: string): Promise<any> {
 function esc(text: string | null | undefined): string {
   if (!text) return '';
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function gv(obj: any, ...keys: string[]): string {
-  let cur = obj;
-  for (const k of keys) {
-    if (cur == null) return '';
-    cur = cur[k];
-  }
-  if (cur == null) return '';
-  if (typeof cur === 'object' && cur._ != null) return String(cur._);
-  if (typeof cur === 'object') return '';
-  return String(cur);
-}
-
-function ensureArray(val: any): any[] {
-  if (val == null) return [];
-  return Array.isArray(val) ? val : [val];
 }
 
 function fmtCnpj(v: string): string {

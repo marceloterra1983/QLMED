@@ -6,6 +6,7 @@ import {
   type ProductRegistryRow,
   upsertProductRegistry,
 } from '@/lib/product-registry-store';
+import { cleanString } from '@/lib/utils';
 
 interface SyncProductItem {
   key: string;
@@ -21,12 +22,6 @@ interface SyncProductItem {
   anvisaHolder?: string | null;
   anvisaProcess?: string | null;
   anvisaStatus?: string | null;
-}
-
-function cleanString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  const normalized = String(value).trim();
-  return normalized.length > 0 ? normalized : null;
 }
 
 function normalizeAnvisaCode(value: unknown): string | null {

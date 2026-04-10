@@ -3,19 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
-
-function val(obj: any, ...keys: string[]): string {
-  for (const k of keys) {
-    if (obj?.[k] != null) return String(obj[k]);
-  }
-  return '';
-}
-
-function num(obj: any, key: string): string {
-  const v = obj?.[key];
-  if (v == null || v === '') return '';
-  return String(v);
-}
+import { val } from '@/lib/xml-helpers';
 
 function parseEmitDest(node: any) {
   if (!node) return null;
@@ -61,39 +49,39 @@ function parseProdutos(det: any) {
       ncm: val(prod, 'NCM'),
       cfop: val(prod, 'CFOP'),
       unidade: val(prod, 'uCom'),
-      quantidade: num(prod, 'qCom'),
-      valorUnitario: num(prod, 'vUnCom'),
-      valorTotal: num(prod, 'vProd'),
-      valorDesconto: num(prod, 'vDesc'),
+      quantidade: val(prod, 'qCom'),
+      valorUnitario: val(prod, 'vUnCom'),
+      valorTotal: val(prod, 'vProd'),
+      valorDesconto: val(prod, 'vDesc'),
       ean: val(prod, 'cEAN'),
       cest: val(prod, 'CEST'),
       icms: {
         orig: val(icms, 'orig'),
         cst: val(icms, 'CST', 'CSOSN'),
-        baseCalculo: num(icms, 'vBC'),
-        aliquota: num(icms, 'pICMS'),
-        valor: num(icms, 'vICMS'),
-        baseCalculoSt: num(icms, 'vBCST'),
-        aliquotaSt: num(icms, 'pICMSST'),
-        valorSt: num(icms, 'vICMSST'),
+        baseCalculo: val(icms, 'vBC'),
+        aliquota: val(icms, 'pICMS'),
+        valor: val(icms, 'vICMS'),
+        baseCalculoSt: val(icms, 'vBCST'),
+        aliquotaSt: val(icms, 'pICMSST'),
+        valorSt: val(icms, 'vICMSST'),
       },
       ipi: {
         cst: val(ipiTrib, 'CST'),
-        baseCalculo: num(ipiTrib, 'vBC'),
-        aliquota: num(ipiTrib, 'pIPI'),
-        valor: num(ipiTrib, 'vIPI'),
+        baseCalculo: val(ipiTrib, 'vBC'),
+        aliquota: val(ipiTrib, 'pIPI'),
+        valor: val(ipiTrib, 'vIPI'),
       },
       pis: {
         cst: val(pis, 'CST'),
-        baseCalculo: num(pis, 'vBC'),
-        aliquota: num(pis, 'pPIS'),
-        valor: num(pis, 'vPIS'),
+        baseCalculo: val(pis, 'vBC'),
+        aliquota: val(pis, 'pPIS'),
+        valor: val(pis, 'vPIS'),
       },
       cofins: {
         cst: val(cofins, 'CST'),
-        baseCalculo: num(cofins, 'vBC'),
-        aliquota: num(cofins, 'pCOFINS'),
-        valor: num(cofins, 'vCOFINS'),
+        baseCalculo: val(cofins, 'vBC'),
+        aliquota: val(cofins, 'pCOFINS'),
+        valor: val(cofins, 'vCOFINS'),
       },
     };
   });
@@ -102,30 +90,30 @@ function parseProdutos(det: any) {
 function parseTotais(total: any) {
   const t = total?.ICMSTot || {};
   return {
-    baseCalculoIcms: num(t, 'vBC'),
-    valorIcms: num(t, 'vICMS'),
-    icmsDesonerado: num(t, 'vICMSDeson'),
-    fcp: num(t, 'vFCPUFDest') || num(t, 'vFCP'),
-    fcpSt: num(t, 'vFCPST'),
-    icmsInterestadual: num(t, 'vICMSUFDest'),
-    icmsInterestadualRem: num(t, 'vICMSUFRemet'),
-    baseCalculoIcmsSt: num(t, 'vBCST'),
-    valorIcmsSt: num(t, 'vST'),
-    icmsSubstituicao: num(t, 'vICMSSub') || num(t, 'vST'),
-    fcpRetidoSt: num(t, 'vFCPSTRet'),
-    fcpRetidoAnteriormenteSt: num(t, 'vFCPSTRet'),
-    valorTotalProdutos: num(t, 'vProd'),
-    valorFrete: num(t, 'vFrete'),
-    valorSeguro: num(t, 'vSeg'),
-    valorDescontos: num(t, 'vDesc'),
-    valorII: num(t, 'vII'),
-    valorIpi: num(t, 'vIPI'),
-    valorIpiDevolvido: num(t, 'vIPIDevol'),
-    valorPis: num(t, 'vPIS'),
-    valorCofins: num(t, 'vCOFINS'),
-    outrasDespesas: num(t, 'vOutro'),
-    valorTotalNfe: num(t, 'vNF'),
-    valorAproximadoTributos: num(t, 'vTotTrib'),
+    baseCalculoIcms: val(t, 'vBC'),
+    valorIcms: val(t, 'vICMS'),
+    icmsDesonerado: val(t, 'vICMSDeson'),
+    fcp: val(t, 'vFCPUFDest') || val(t, 'vFCP'),
+    fcpSt: val(t, 'vFCPST'),
+    icmsInterestadual: val(t, 'vICMSUFDest'),
+    icmsInterestadualRem: val(t, 'vICMSUFRemet'),
+    baseCalculoIcmsSt: val(t, 'vBCST'),
+    valorIcmsSt: val(t, 'vST'),
+    icmsSubstituicao: val(t, 'vICMSSub') || val(t, 'vST'),
+    fcpRetidoSt: val(t, 'vFCPSTRet'),
+    fcpRetidoAnteriormenteSt: val(t, 'vFCPSTRet'),
+    valorTotalProdutos: val(t, 'vProd'),
+    valorFrete: val(t, 'vFrete'),
+    valorSeguro: val(t, 'vSeg'),
+    valorDescontos: val(t, 'vDesc'),
+    valorII: val(t, 'vII'),
+    valorIpi: val(t, 'vIPI'),
+    valorIpiDevolvido: val(t, 'vIPIDevol'),
+    valorPis: val(t, 'vPIS'),
+    valorCofins: val(t, 'vCOFINS'),
+    outrasDespesas: val(t, 'vOutro'),
+    valorTotalNfe: val(t, 'vNF'),
+    valorAproximadoTributos: val(t, 'vTotTrib'),
   };
 }
 
@@ -155,12 +143,12 @@ function parseTransporte(transp: any) {
       uf: val(transporta, 'UF'),
     },
     volumes: volumes.map((v: any) => ({
-      quantidade: num(v, 'qVol'),
+      quantidade: val(v, 'qVol'),
       especie: val(v, 'esp'),
       marca: val(v, 'marca'),
       numeracao: val(v, 'nVol'),
-      pesoLiquido: num(v, 'pesoL'),
-      pesoBruto: num(v, 'pesoB'),
+      pesoLiquido: val(v, 'pesoL'),
+      pesoBruto: val(v, 'pesoB'),
     })),
   };
 }
@@ -181,20 +169,20 @@ function parseCobranca(cobr: any, pag: any) {
 
   const formasPagamento = pagList.map((p: any) => ({
     forma: tPagMap[val(p, 'tPag')] || val(p, 'tPag'),
-    valor: num(p, 'vPag'),
+    valor: val(p, 'vPag'),
     tipoIntegracao: val(p, 'tpIntegra'),
     cnpjCredenciadora: val(p, 'CNPJ'),
     autorizacao: val(p, 'cAut'),
-    troco: num(pag, 'vTroco') || '0,00',
+    troco: val(pag, 'vTroco') || '0,00',
     bandeira: val(p, 'tBand'),
   }));
 
   const fat = cobr?.fat;
   const fatura = fat ? {
     numero: val(fat, 'nFat'),
-    valorOriginal: num(fat, 'vOrig'),
-    valorDesconto: num(fat, 'vDesc'),
-    valorLiquido: num(fat, 'vLiq'),
+    valorOriginal: val(fat, 'vOrig'),
+    valorDesconto: val(fat, 'vDesc'),
+    valorLiquido: val(fat, 'vLiq'),
   } : null;
 
   const dupItems = cobr?.dup;
@@ -202,7 +190,7 @@ function parseCobranca(cobr: any, pag: any) {
   const duplicatas = dupList.map((d: any) => ({
     numero: val(d, 'nDup'),
     vencimento: val(d, 'dVenc'),
-    valor: num(d, 'vDup'),
+    valor: val(d, 'vDup'),
   }));
 
   return { formasPagamento, fatura, duplicatas };
@@ -325,8 +313,8 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
       ufOrigem: val(ide, 'UFIni'),
       municipioDestino: [val(ide, 'cMunFim'), val(ide, 'xMunFim')].filter(Boolean).join(' - '),
       ufDestino: val(ide, 'UFFim'),
-      valorPrestacao: num(vPrest, 'vTPrest'),
-      valorReceber: num(vPrest, 'vRec'),
+      valorPrestacao: val(vPrest, 'vTPrest'),
+      valorReceber: val(vPrest, 'vRec'),
       protocolo: val(protCTe, 'nProt'),
       dataAutorizacao: val(protCTe, 'dhRecbto'),
     },
@@ -336,13 +324,13 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
     expedidor: parseCteParty(exped),
     recebedor: parseCteParty(receb),
     carga: {
-      valorCarga: num(infCarga, 'vCarga'),
+      valorCarga: val(infCarga, 'vCarga'),
       produtoPredominante: val(infCarga, 'proPred'),
       outrCaract: val(infCarga, 'xOutCat'),
       medidas: medidas.map((q: any) => ({
         unidade: cUnidMap[val(q, 'cUnid')] || val(q, 'cUnid'),
         tipoMedida: val(q, 'tpMed'),
-        quantidade: num(q, 'qCarga'),
+        quantidade: val(q, 'qCarga'),
       })),
     },
     documentos: {
@@ -353,30 +341,30 @@ function parseCteDetails(invoice: any, infCte: any, cteProc: any) {
         serie: val(n, 'serie'),
         numero: val(n, 'nDoc'),
         dataEmissao: val(n, 'dEmi'),
-        valorTotal: num(n, 'vBC'),
+        valorTotal: val(n, 'vBC'),
       })),
       outrosRefs: outrosRefs.map((o: any) => ({
         tipo: val(o, 'tpDoc'),
         descricao: val(o, 'descOutros'),
         numero: val(o, 'nDoc'),
         dataEmissao: val(o, 'dEmi'),
-        valor: num(o, 'vDocFisc'),
+        valor: val(o, 'vDocFisc'),
       })),
     },
     componentes: componentes.map((c: any) => ({
       nome: val(c, 'xNome'),
-      valor: num(c, 'vComp'),
+      valor: val(c, 'vComp'),
     })),
     impostos: {
       icms: {
         cst: val(icmsNode, 'CST'),
-        baseCalculo: num(icmsNode, 'vBC'),
-        aliquota: num(icmsNode, 'pICMS'),
-        valor: num(icmsNode, 'vICMS'),
-        reducaoBC: num(icmsNode, 'pRedBC'),
-        icmsOutraUF: num(icmsNode, 'vICMSOutraUF'),
+        baseCalculo: val(icmsNode, 'vBC'),
+        aliquota: val(icmsNode, 'pICMS'),
+        valor: val(icmsNode, 'vICMS'),
+        reducaoBC: val(icmsNode, 'pRedBC'),
+        icmsOutraUF: val(icmsNode, 'vICMSOutraUF'),
       },
-      valorTotalTributos: num(imp, 'vTotTrib') || num(infCte, 'vTotTrib'),
+      valorTotalTributos: val(imp, 'vTotTrib') || val(infCte, 'vTotTrib'),
     },
     seguro: {
       responsavel: val(seg, 'respSeg'),
@@ -435,8 +423,8 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
         dataProcessamento: val(nfseProc, 'dhProc') || '',
         codigoVerificacao: val(nacional, 'codVerif', 'CodigoVerificacao') || '',
         locPrestacao: val(locPrest, 'xLocPrestacao', 'cLocPrestacao') || '',
-        valorLiquido: num(vServPrest, 'vLiq') || num(vServPrest, 'vServPrest') || '',
-        valorServico: num(vServPrest, 'vServ') || '',
+        valorLiquido: val(vServPrest, 'vLiq') || val(vServPrest, 'vServPrest') || '',
+        valorServico: val(vServPrest, 'vServ') || '',
       },
       prestador: parseNfseParty(prest) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
       tomador: parseNfseParty(toma) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
@@ -446,11 +434,11 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
         codigoMunicipal: val(cServ, 'cTribMun') || '',
         municipio: val(locPrest, 'xLocPrestacao') || '',
         issRetido: tpRetMap[val(issqn, 'tpRetISSQN')] || val(issqn, 'tpRetISSQN') || '',
-        baseCalculo: num(issqn, 'vBC') || '',
-        aliquota: num(issqn, 'pAliq') || '',
-        valorIss: num(issqn, 'vISSQN') || '',
-        valorServico: num(vServPrest, 'vServ') || '',
-        valorLiquido: num(vServPrest, 'vLiq') || num(vServPrest, 'vServPrest') || '',
+        baseCalculo: val(issqn, 'vBC') || '',
+        aliquota: val(issqn, 'pAliq') || '',
+        valorIss: val(issqn, 'vISSQN') || '',
+        valorServico: val(vServPrest, 'vServ') || '',
+        valorLiquido: val(vServPrest, 'vLiq') || val(vServPrest, 'vServPrest') || '',
       },
     };
   }
@@ -471,8 +459,8 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
       dataProcessamento: val(abrasf, 'DataEmissaoRps') || '',
       codigoVerificacao: val(abrasf, 'CodigoVerificacao') || '',
       locPrestacao: val(servico, 'MunicipioPrestacaoServico') || '',
-      valorServico: num(valores, 'ValorServicos') || '',
-      valorLiquido: num(valores, 'ValorLiquidoNfse') || num(valores, 'ValorServicos') || '',
+      valorServico: val(valores, 'ValorServicos') || '',
+      valorLiquido: val(valores, 'ValorLiquidoNfse') || val(valores, 'ValorServicos') || '',
     },
     prestador: parseNfseParty(prestNode) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
     tomador: parseNfseParty(tomaNode) || { cnpj: '', razaoSocial: '', im: '', email: '', telefone: '', endereco: '', bairro: '', municipio: '', uf: '', cep: '' },
@@ -482,11 +470,11 @@ function parseNfseDetails(invoice: any, nacional: any, abrasf: any) {
       codigoMunicipal: val(servico, 'ItemListaServico', 'CodigoTributacaoMunicipio') || '',
       municipio: val(servico, 'MunicipioPrestacaoServico') || '',
       issRetido: val(valores, 'IssRetido') === '1' ? 'Sim' : val(valores, 'IssRetido') === '2' ? 'Não' : val(valores, 'IssRetido') || '',
-      baseCalculo: num(valores, 'BaseCalculo') || '',
-      aliquota: num(valores, 'Aliquota') || '',
-      valorIss: num(valores, 'ValorIss') || num(valores, 'ValorIssRetido') || '',
-      valorServico: num(valores, 'ValorServicos') || '',
-      valorLiquido: num(valores, 'ValorLiquidoNfse') || num(valores, 'ValorServicos') || '',
+      baseCalculo: val(valores, 'BaseCalculo') || '',
+      aliquota: val(valores, 'Aliquota') || '',
+      valorIss: val(valores, 'ValorIss') || val(valores, 'ValorIssRetido') || '',
+      valorServico: val(valores, 'ValorServicos') || '',
+      valorLiquido: val(valores, 'ValorLiquidoNfse') || val(valores, 'ValorServicos') || '',
     },
   };
 }
@@ -592,7 +580,7 @@ export async function GET(
         numero: val(ide, 'nNF'),
         dataEmissao: val(ide, 'dhEmi', 'dEmi'),
         dataSaidaEntrada: val(ide, 'dhSaiEnt', 'dSaiEnt'),
-        valorTotal: num(total.ICMSTot || {}, 'vNF'),
+        valorTotal: val(total.ICMSTot || {}, 'vNF'),
         emitente: {
           cnpj: val(emit, 'CNPJ', 'CPF'),
           razaoSocial: val(emit, 'xNome'),

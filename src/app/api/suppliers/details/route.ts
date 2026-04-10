@@ -6,15 +6,10 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { getContactFiscal } from '@/lib/contact-fiscal-store';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getCfopTagByCode } from '@/lib/cfop';
+import { cleanString, ensureArray, toNumber } from '@/lib/utils';
 
 const MAX_INVOICES = 500;
 const MAX_PRICE_ROWS = 300;
-
-function cleanString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  const normalized = String(value).trim();
-  return normalized.length > 0 ? normalized : null;
-}
 
 const UNIT_ALIASES: Record<string, string> = {
   UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
@@ -28,18 +23,6 @@ function normalizeUnit(raw: string | null | undefined): string {
 
 function normalizeDocument(value: string | null | undefined): string {
   return (value || '').replace(/\D/g, '');
-}
-
-function ensureArray<T>(value: T | T[] | null | undefined): T[] {
-  if (value === null || value === undefined) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function toNumber(value: unknown): number {
-  if (value === undefined || value === null) return 0;
-  const normalized = String(value).replace(',', '.');
-  const number = parseFloat(normalized);
-  return Number.isFinite(number) ? number : 0;
 }
 
 async function extractSupplierDataFromXml(xmlContent: string) {
