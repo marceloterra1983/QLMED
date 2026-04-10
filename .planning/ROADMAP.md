@@ -72,7 +72,13 @@ Plans:
   3. Contagem de produtos em customers/suppliers usa product_registry em vez de parsear XML
   4. Rota /api/products/list e o endpoint padrao; rota legacy /api/products esta deprecada
   5. backfill-tax processa 200 invoices em uma unica query batch (nao 200 queries sequenciais)
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 04-01-PLAN.md — Replace xmlContent product counting in customers/suppliers with invoice_item_tax queries (PERF-03)
+- [ ] 04-02-PLAN.md — Fix N+1 in backfill-tax with batch-fetch (PERF-05)
+- [ ] 04-03-PLAN.md — Deprecate legacy /api/products, migrate frontend exports to /api/products/list (PERF-04)
+- [ ] 04-04-PLAN.md — Add city to contact_fiscal, replace xmlContent city extraction in customers (PERF-01)
+- [ ] 04-05-PLAN.md — Create invoice_duplicata table, rewrite financeiro-duplicatas to use it (PERF-02)
 
 ### Phase 5: Code Deduplication
 **Goal**: Funcoes utilitarias existem em um unico lugar, modulos financeiro e contacts compartilham logica em vez de duplicar
@@ -195,7 +201,7 @@ Plans:
 | 1. Security Critical | 1/3 | In Progress|  |
 | 2. Dependency Fixes | 0/2 | Planned | - |
 | 3. Database Schema Hardening | 1/1 | Complete | 2026-04-10 |
-| 4. XML Extraction Performance | 0/? | Not started | - |
+| 4. XML Extraction Performance | 0/5 | Planned | - |
 | 5. Code Deduplication | 0/? | Not started | - |
 | 6. API Validation & Logging | 0/? | Not started | - |
 | 7. Type Safety | 0/? | Not started | - |
@@ -204,4 +210,4 @@ Plans:
 | 10. Major Upgrades | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-04-10 after Phase 2 planning*
+*Last updated: 2026-04-10 after Phase 4 planning*
