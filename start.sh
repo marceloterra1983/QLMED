@@ -28,8 +28,10 @@ if [ "${QLMED_REQUIRE_NONEMPTY_DB:-false}" = "true" ]; then
   echo "Running production database sanity check..."
   node <<'NODE'
 const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg(process.env.DATABASE_URL);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const [users, companies] = await Promise.all([
