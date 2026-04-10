@@ -8,12 +8,19 @@ import {
   computeSearchText,
 } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { z } from 'zod';
 
 const log = createLogger('products/rebuild-aggregates');
 
+// No request body — schema valida que e um POST sem payload
+const noBodySchema = z.object({}).optional();
+
 export async function POST() {
   try {
+    // safeParse para consistencia com padrao de validacao
+    noBodySchema.safeParse({});
+
     let userId: string;
     try {
       userId = await requireAuth();

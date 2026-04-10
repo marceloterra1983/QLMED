@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiValidationError } from '@/lib/api-error';
+import { overrideSchema } from '@/lib/schemas/contacts';
 
 export async function GET(req: Request) {
   try {
@@ -33,23 +35,22 @@ export async function PUT(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => ({}));
-    const cnpj = (body.cnpj || '').trim();
+    const parsed = overrideSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!cnpj) {
-      return NextResponse.json({ error: 'CNPJ obrigatório' }, { status: 400 });
-    }
+    const cnpj = parsed.data.cnpj.trim();
 
     const data = {
-      phone: body.phone?.trim() || null,
-      email: body.email?.trim() || null,
-      street: body.street?.trim() || null,
-      number: body.number?.trim() || null,
-      complement: body.complement?.trim() || null,
-      district: body.district?.trim() || null,
-      city: body.city?.trim() || null,
-      state: body.state?.trim() || null,
-      zipCode: body.zipCode?.trim() || null,
-      country: body.country?.trim() || null,
+      phone: parsed.data.phone?.trim() || null,
+      email: parsed.data.email?.trim() || null,
+      street: parsed.data.street?.trim() || null,
+      number: parsed.data.number?.trim() || null,
+      complement: parsed.data.complement?.trim() || null,
+      district: parsed.data.district?.trim() || null,
+      city: parsed.data.city?.trim() || null,
+      state: parsed.data.state?.trim() || null,
+      zipCode: parsed.data.zipCode?.trim() || null,
+      country: parsed.data.country?.trim() || null,
     };
 
     const hasAnyValue = Object.values(data).some((v) => v !== null);

@@ -5,8 +5,9 @@ import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { incrementNsu, ReceitaNfseClient } from '@/lib/receita-nfse-client';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { receitaNfseConfigSchema, receitaNfseTestSchema } from '@/lib/schemas/receita';
 
 const log = createLogger('receita/nfse/config');
 
@@ -77,12 +78,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const parsed = receitaNfseConfigSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+
     const company = await getOrCreateSingleCompany(userId);
     const existing = await prisma.receitaNfseConfig.findUnique({
       where: { companyId: company.id },
     });
 
-    const apiTokenInput = normalizeNullableString(body.apiToken);
+    const apiTokenInput = normalizeNullableString(parsed.data.apiToken);
     const isMaskedInput = Boolean(apiTokenInput && apiTokenInput.startsWith('••••'));
 
     let apiTokenToStore: string | null = existing?.apiToken ?? null;
@@ -90,16 +94,16 @@ export async function POST(request: NextRequest) {
       apiTokenToStore = apiTokenInput ? encrypt(apiTokenInput) : null;
     }
 
-    const cnpjConsultaRaw = normalizeNullableString(body.cnpjConsulta);
+    const cnpjConsultaRaw = normalizeNullableString(parsed.data.cnpjConsulta);
     const cnpjConsulta = cnpjConsultaRaw ? cnpjConsultaRaw.replace(/\D/g, '') : null;
     if (cnpjConsulta && cnpjConsulta.length !== 14) {
       return NextResponse.json({ error: 'CNPJ de consulta deve conter 14 dígitos' }, { status: 400 });
     }
 
-    const baseUrl = normalizeNullableString(body.baseUrl);
-    const environment = normalizeEnvironment(body.environment);
-    const autoSync = body.autoSync === undefined ? true : Boolean(body.autoSync);
-    const syncIntervalRaw = Number(body.syncInterval ?? 60);
+    const baseUrl = normalizeNullableString(parsed.data.baseUrl);
+    const environment = normalizeEnvironment(parsed.data.environment);
+    const autoSync = parsed.data.autoSync;
+    const syncIntervalRaw = parsed.data.syncInterval;
     const syncInterval = Number.isFinite(syncIntervalRaw) && syncIntervalRaw > 0
       ? Math.max(5, Math.min(1440, Math.round(syncIntervalRaw)))
       : 60;
@@ -152,6 +156,9 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const parsedPut = receitaNfseTestSchema.safeParse(body);
+    if (!parsedPut.success) return apiValidationError(parsedPut.error);
+
     const company = await getOrCreateSingleCompany(userId);
 
     const certConfig = await prisma.certificateConfig.findUnique({
@@ -165,15 +172,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Certificado digital não configurado para esta empresa' }, { status: 400 });
     }
 
-    const cnpjConsultaRaw = normalizeNullableString(body.cnpjConsulta);
+    const cnpjConsultaRaw = normalizeNullableString(parsedPut.data.cnpjConsulta);
     const cnpjConsulta = (cnpjConsultaRaw || company.cnpj).replace(/\D/g, '');
     if (!cnpjConsulta || cnpjConsulta.length !== 14) {
       return NextResponse.json({ ok: false, error: 'CNPJ de consulta inválido' }, { status: 400 });
     }
 
-    const environment = normalizeEnvironment(body.environment);
-    const baseUrl = getBaseUrl(environment, normalizeNullableString(body.baseUrl));
-    const apiTokenRaw = normalizeNullableString(body.apiToken);
+    const environment = normalizeEnvironment(parsedPut.data.environment);
+    const baseUrl = getBaseUrl(environment, normalizeNullableString(parsedPut.data.baseUrl));
+    const apiTokenRaw = normalizeNullableString(parsedPut.data.apiToken);
     const existingConfig = await prisma.receitaNfseConfig.findUnique({
       where: { companyId: company.id },
       select: { apiToken: true },

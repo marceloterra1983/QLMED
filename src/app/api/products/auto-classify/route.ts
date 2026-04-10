@@ -3,8 +3,9 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { autoClassifySchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/auto-classify');
 
@@ -114,7 +115,9 @@ export async function POST(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => ({}));
-    const dryRun = body?.dryRun === true;
+    const parsed = autoClassifySchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const dryRun = parsed.data.dryRun;
 
     await ensureProductRegistryTable();
 

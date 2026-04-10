@@ -9,8 +9,9 @@ import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { importPeriodSchema } from '@/lib/schemas/nsdocs';
 
 const log = createLogger('nsdocs/import-period');
 
@@ -28,11 +29,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { startDate, endDate } = body;
+    const parsed = importPeriodSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!startDate || !endDate) {
-       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
-    }
+    const { startDate, endDate } = parsed.data;
 
     const baseCompany = await getOrCreateSingleCompany(userId);
     const companyId = baseCompany.id;

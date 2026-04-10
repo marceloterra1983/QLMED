@@ -3,8 +3,9 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry } from '@/lib/product-registry-store';
 import { cleanString } from '@/lib/utils';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { anvisaPatchSchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/anvisa');
 
@@ -29,9 +30,12 @@ export async function PATCH(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => null);
 
-    const productKey = cleanString(body?.productKey);
-    const description = cleanString(body?.description);
-    const anvisaCode = normalizeAnvisaCode(body?.anvisa);
+    const parsed = anvisaPatchSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+
+    const productKey = cleanString(parsed.data.productKey);
+    const description = cleanString(parsed.data.description);
+    const anvisaCode = normalizeAnvisaCode(parsed.data.anvisa);
 
     if (!productKey || !description) {
       return NextResponse.json(
@@ -40,17 +44,17 @@ export async function PATCH(req: Request) {
       );
     }
 
-    if ((body?.anvisa ?? '') && !anvisaCode) {
+    if ((parsed.data.anvisa ?? '') && !anvisaCode) {
       return NextResponse.json(
         { error: 'Código ANVISA inválido. Informe exatamente 11 dígitos.' },
         { status: 400 },
       );
     }
 
-    const code = cleanString(body?.code);
-    const ncm = cleanString(body?.ncm);
-    const unit = cleanString(body?.unit);
-    const ean = cleanString(body?.ean);
+    const code = cleanString(parsed.data.code);
+    const ncm = cleanString(parsed.data.ncm);
+    const unit = cleanString(parsed.data.unit);
+    const ean = cleanString(parsed.data.ean);
 
     const payload = {
       code,

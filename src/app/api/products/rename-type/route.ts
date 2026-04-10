@@ -8,6 +8,8 @@ import {
   upsertProductSettingsCatalogEntry,
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
+import { apiValidationError } from '@/lib/api-error';
+import { renameTypeSchema } from '@/lib/schemas/product';
 
 function clean(value: string | null | undefined): string | null {
   const normalized = (value || '').trim();
@@ -346,6 +348,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
 
+  const parsed = renameTypeSchema.safeParse(body);
+  if (!parsed.success) return apiValidationError(parsed.error);
+
   const {
     action,
     field,
@@ -356,17 +361,7 @@ export async function POST(req: NextRequest) {
     name,
     subtypeName,
     subgroupName,
-  } = body as {
-    action?: string;
-    field?: string;
-    oldValue?: string;
-    newValue?: string | null;
-    parentType?: string;
-    parentSubtype?: string;
-    name?: string;
-    subtypeName?: string;
-    subgroupName?: string;
-  };
+  } = parsed.data;
 
   const company = await getOrCreateSingleCompany(auth.userId);
   await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);

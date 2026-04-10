@@ -4,7 +4,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { z } from 'zod';
 
 const log = createLogger('products/import-types');
 
@@ -18,9 +19,11 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    if (!file) return NextResponse.json({ error: 'Arquivo não enviado' }, { status: 400 });
+    const fileSchema = z.object({ file: z.instanceof(File, { message: 'Arquivo nao enviado' }) });
+    const fileParsed = fileSchema.safeParse({ file });
+    if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
-    const buf = await file.arrayBuffer();
+    const buf = await fileParsed.data.file.arrayBuffer();
     const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);

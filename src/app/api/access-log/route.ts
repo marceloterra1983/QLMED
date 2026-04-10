@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireAdmin } from '@/lib/auth';
+import { apiValidationError } from '@/lib/api-error';
+import { accessLogSchema } from '@/lib/schemas/receita';
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth();
-    const { action, path } = await req.json();
+    const body = await req.json();
+    const parsed = accessLogSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!action || !['login', 'navigation'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
+    const { action, path } = parsed.data;
 
     await prisma.accessLog.create({
       data: { userId, action, path: path || null },

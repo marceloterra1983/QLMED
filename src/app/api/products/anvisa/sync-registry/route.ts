@@ -9,6 +9,8 @@ import {
 } from '@/lib/product-registry-store';
 import { fetchAnvisaData, type AnvisaRegistryData } from '@/lib/anvisa-api';
 import prisma from '@/lib/prisma';
+import { apiValidationError } from '@/lib/api-error';
+import { anvisaSyncRegistrySchema } from '@/lib/schemas/product';
 
 const DELAY_MS = 300; // between requests to avoid rate-limiting
 
@@ -28,10 +30,11 @@ export async function POST(req: Request) {
   await ensureProductRegistryTable();
 
   const body = await req.json().catch(() => ({}));
-  // mode: 'all' | 'selected'
-  // productKeys?: string[]  — used when mode is 'selected'
-  const mode: string = body?.mode ?? 'all';
-  const requestedKeys: string[] = Array.isArray(body?.productKeys) ? body.productKeys : [];
+  const parsed = anvisaSyncRegistrySchema.safeParse(body);
+  if (!parsed.success) return apiValidationError(parsed.error);
+
+  const mode = parsed.data.mode;
+  const requestedKeys = parsed.data.productKeys;
 
   let rows = mode === 'selected' && requestedKeys.length > 0
     ? await getProductRegistryByKeys(company.id, requestedKeys)

@@ -4,7 +4,8 @@ import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { encrypt, decrypt } from '@/lib/crypto';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { nsdocsConfigSchema, nsdocsTestSchema } from '@/lib/schemas/nsdocs';
 
 function maskToken(token: string): string {
   if (token.length <= 8) return '••••••••';
@@ -57,11 +58,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { apiToken, autoSync, syncInterval } = body;
+    const parsed = nsdocsConfigSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!apiToken) {
-      return NextResponse.json({ error: 'apiToken é obrigatório' }, { status: 400 });
-    }
+    const { apiToken, autoSync, syncInterval } = parsed.data;
 
     const company = await getOrCreateSingleCompany(userId);
     const companyId = company.id;
@@ -115,11 +115,10 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { apiToken } = body;
+    const parsed = nsdocsTestSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!apiToken) {
-      return NextResponse.json({ error: 'apiToken é obrigatório' }, { status: 400 });
-    }
+    const { apiToken } = parsed.data;
 
     // The test token comes directly from the user input (not encrypted)
     const client = new NsdocsClient(apiToken);

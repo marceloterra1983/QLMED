@@ -8,6 +8,8 @@ import {
   type ProductSettingsCatalogSection,
 } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
+import { apiValidationError } from '@/lib/api-error';
+import { renameFiscalSchema } from '@/lib/schemas/product';
 
 const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida', 'obsIcms', 'obsPisCofins', 'aliqIcms', 'aliqPis', 'aliqCofins', 'aliqIpi', 'aliqFcp'] as const;
 type FiscalField = (typeof VALID_FIELDS)[number];
@@ -123,17 +125,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
 
-  const { action, field, oldValue, newValue, name } = body as {
-    action?: string;
-    field?: string;
-    oldValue?: string;
-    newValue?: string | null;
-    name?: string;
-  };
+  const parsed = renameFiscalSchema.safeParse(body);
+  if (!parsed.success) return apiValidationError(parsed.error);
 
-  if (!field || !VALID_FIELDS.includes(field as FiscalField)) {
-    return NextResponse.json({ error: `field deve ser: ${VALID_FIELDS.join(', ')}` }, { status: 400 });
-  }
+  const { action, field, oldValue, newValue, name } = parsed.data;
 
   const f = field as FiscalField;
   const company = await getOrCreateSingleCompany(auth.userId);

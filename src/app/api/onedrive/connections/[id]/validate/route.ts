@@ -11,7 +11,8 @@ import {
   ensureValidOneDriveAccessToken,
   mapOneDriveConnectionSummary,
 } from '@/lib/onedrive-connections';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   let userId: string;
@@ -24,11 +25,14 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
 
   try {
+    const paramsParsed = idParamSchema.safeParse(params);
+    if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
     const company = await getOrCreateSingleCompany(userId);
 
     const connection = await prisma.oneDriveConnection.findFirst({
       where: {
-        id: params.id,
+        id: paramsParsed.data.id,
         companyId: company.id,
       },
     });

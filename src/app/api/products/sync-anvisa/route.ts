@@ -7,8 +7,9 @@ import {
   upsertProductRegistry,
 } from '@/lib/product-registry-store';
 import { cleanString } from '@/lib/utils';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { syncAnvisaSchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/sync-anvisa');
 
@@ -47,7 +48,9 @@ export async function POST(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => ({}));
-    const mode = body?.mode === 'all' ? 'all' : 'missing';
+    const parsed = syncAnvisaSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const mode = parsed.data.mode;
 
     const origin = new URL(req.url).origin;
     const cookieHeader = req.headers.get('cookie') || '';

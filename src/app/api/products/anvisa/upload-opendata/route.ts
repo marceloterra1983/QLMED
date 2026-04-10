@@ -3,6 +3,8 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable, updateRegistryAnvisaData } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
+import { apiValidationError } from '@/lib/api-error';
+import { anvisaUploadOpendataSchema } from '@/lib/schemas/product';
 
 interface OpenDataItem {
   registration: string;
@@ -28,14 +30,10 @@ export async function POST(req: Request) {
   await ensureProductRegistryTable();
 
   const body = await req.json().catch(() => null);
-  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
-    return NextResponse.json({ error: 'Nenhum item recebido' }, { status: 400 });
-  }
+  const parsed = anvisaUploadOpendataSchema.safeParse(body);
+  if (!parsed.success) return apiValidationError(parsed.error);
 
-  const items: OpenDataItem[] = body.items;
-  if (items.length > 200000) {
-    return NextResponse.json({ error: 'Máximo de 200.000 itens por envio' }, { status: 400 });
-  }
+  const items: OpenDataItem[] = parsed.data.items as OpenDataItem[];
 
   // Build lookup map: registration code (padded to 11 digits) → data
   const byCode = new Map<string, OpenDataItem>();

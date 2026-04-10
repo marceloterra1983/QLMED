@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiValidationError } from '@/lib/api-error';
+import { nicknameSchema } from '@/lib/schemas/contacts';
 
 export async function GET(req: Request) {
   try {
@@ -34,12 +36,11 @@ export async function PUT(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => ({}));
-    const cnpj = (body.cnpj || '').trim();
-    const shortName = (body.shortName || '').trim();
+    const parsed = nicknameSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!cnpj) {
-      return NextResponse.json({ error: 'CNPJ obrigatório' }, { status: 400 });
-    }
+    const cnpj = parsed.data.cnpj.trim();
+    const shortName = parsed.data.shortName.trim();
 
     if (!shortName) {
       // Delete if empty

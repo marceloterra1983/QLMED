@@ -4,8 +4,9 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry, getProductRegistryByKeys } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { anvisaBulkImportSchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/anvisa/bulk-import');
 
@@ -50,14 +51,10 @@ export async function POST(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => null);
 
-    // Expect: { items: [{ codigo: string, anvisa: string, fabricante?: string }] }
-    const items: { codigo: string; anvisa: string; fabricante?: string }[] = body?.items ?? [];
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'items é obrigatório e deve ser array não-vazio' }, { status: 400 });
-    }
-    if (items.length > MAX_ITEMS) {
-      return NextResponse.json({ error: `Máximo ${MAX_ITEMS} itens por importação` }, { status: 400 });
-    }
+    const parsed = anvisaBulkImportSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+
+    const items = parsed.data.items;
 
     // Validate items
     const validItems = items.filter((item) => {

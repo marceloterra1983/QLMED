@@ -3,8 +3,9 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { syncViaSefaz, syncViaNsdocs, syncViaReceitaNfse } from '@/lib/auto-sync';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { nsdocsSyncSchema } from '@/lib/schemas/nsdocs';
 
 const log = createLogger('nsdocs/sync');
 
@@ -20,7 +21,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { method } = body;
+    const parsed = nsdocsSyncSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const { method } = parsed.data;
     const baseCompany = await getOrCreateSingleCompany(userId);
     const company = await prisma.company.findUnique({
       where: { id: baseCompany.id },

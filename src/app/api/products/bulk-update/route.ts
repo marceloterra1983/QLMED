@@ -4,8 +4,9 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { cleanString } from '@/lib/utils';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { bulkUpdateSchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/bulk-update');
 
@@ -48,12 +49,11 @@ export async function PATCH(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => null);
 
-    const products: ProductItem[] = Array.isArray(body?.products) ? body.products : [];
-    const fields: Record<string, unknown> = typeof body?.fields === 'object' && body.fields ? body.fields : {};
+    const validated = bulkUpdateSchema.safeParse(body);
+    if (!validated.success) return apiValidationError(validated.error);
 
-    if (products.length === 0) return NextResponse.json({ error: 'products é obrigatório' }, { status: 400 });
-    if (products.length > 500) return NextResponse.json({ error: 'Máximo de 500 produtos' }, { status: 400 });
-    if (Object.keys(fields).length === 0) return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
+    const products: ProductItem[] = validated.data.products;
+    const fields: Record<string, unknown> = validated.data.fields;
 
     const hasAnvisa = 'anvisa' in fields;
     const anvisaVal: string | null = hasAnvisa

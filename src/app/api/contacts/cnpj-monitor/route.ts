@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { runBatchCnpjCheck, getRecentCnpjChanges } from '@/lib/cnpj-monitor';
+import { cnpjMonitorSchema } from '@/lib/schemas/contacts';
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
   let batchSize = 10;
   try {
     const body = await req.json();
-    if (body.batchSize) batchSize = Math.min(Number(body.batchSize), 50);
+    const parsed = cnpjMonitorSchema.safeParse(body);
+    if (parsed.success) batchSize = parsed.data.batchSize;
   } catch { /* use defaults */ }
 
   const result = await runBatchCnpjCheck(company.id, batchSize);
