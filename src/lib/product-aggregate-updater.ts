@@ -334,14 +334,14 @@ async function extractAndStoreContactFiscal(
       await upsertContactFiscal({
         companyId, cnpj: emit.cnpj,
         ie: emit.ie, im: emit.im, crt: emit.crt, uf: emit.uf,
-        sourceInvoiceId: invoiceId,
+        city: emit.city, sourceInvoiceId: invoiceId,
       });
     }
     if (dest?.cnpj) {
       await upsertContactFiscal({
         companyId, cnpj: dest.cnpj,
         ie: dest.ie, im: dest.im, crt: dest.crt, uf: dest.uf,
-        sourceInvoiceId: invoiceId,
+        city: dest.city, sourceInvoiceId: invoiceId,
       });
     }
   } catch (err) {

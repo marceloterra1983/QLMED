@@ -219,7 +219,7 @@ function parseNFSe(result: any): ParsedInvoice | null {
   };
 }
 
-// ── Fiscal party data (IE, IM, CRT, UF) ──
+// ── Fiscal party data (IE, IM, CRT, UF, city) ──
 
 export interface PartyFiscalData {
   cnpj: string;
@@ -227,10 +227,11 @@ export interface PartyFiscalData {
   im: string | null;
   crt: string | null;
   uf: string | null;
+  city: string | null;
 }
 
 /**
- * Extract fiscal data (IE, IM, CRT, UF) from emitter or recipient in NF-e XML.
+ * Extract fiscal data (IE, IM, CRT, UF, city) from emitter or recipient in NF-e XML.
  */
 export async function extractPartyFiscalData(
   xmlContent: string,
@@ -251,12 +252,16 @@ export async function extractPartyFiscalData(
 
     const enderNode = node[party === 'emit' ? 'enderEmit' : 'enderDest'] || {};
 
+    const xMun = enderNode.xMun ? String(enderNode.xMun).trim() || null : null;
+    const uf = enderNode.UF ? String(enderNode.UF).trim() || null : null;
+
     return {
       cnpj,
       ie: node.IE ? String(node.IE).trim() || null : null,
       im: node.IM ? String(node.IM).trim() || null : null,
       crt: node.CRT ? String(node.CRT).trim() || null : null,
-      uf: enderNode.UF ? String(enderNode.UF).trim() || null : null,
+      uf,
+      city: xMun ? (uf ? `${xMun} - ${uf}` : xMun) : null,
     };
   } catch {
     return null;

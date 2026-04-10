@@ -4,6 +4,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
+import { getCityByCnpjs, backfillContactFiscalCity } from '@/lib/contact-fiscal-store';
 
 const querySchema = z.object({
   page: z.coerce.number().int().positive().max(10000).catch(1),
@@ -146,29 +147,17 @@ export async function GET(req: Request) {
 
     let customers = Array.from(customerMap.values());
 
-    // Fetch city (xMun/UF) from most recent invoice per customer using DISTINCT ON
+    // Fetch city from contact_fiscal table (pre-extracted during invoice ingestion)
     const allCnpjs = customers.map((c) => c.cnpj).filter(Boolean);
     if (allCnpjs.length > 0) {
-      const latestXmls = await prisma.$queryRaw<Array<{ recipientCnpj: string; xmlContent: string | null }>>`
-        SELECT DISTINCT ON ("recipientCnpj") "recipientCnpj", "xmlContent"
-        FROM "Invoice"
-        WHERE "companyId" = ${company.id}
-          AND "type" = 'NFE'
-          AND "direction" = 'issued'
-          AND "recipientCnpj" = ANY(${allCnpjs})
-          AND "xmlContent" IS NOT NULL
-        ORDER BY "recipientCnpj", "issueDate" DESC
-      `;
-      const cityByKey = new Map<string, string>();
-      for (const row of latestXmls) {
-        if (!row.xmlContent) continue;
-        const enderDestBlock = row.xmlContent.match(/<enderDest\b[^>]*>[\s\S]*?<\/enderDest>/i)?.[0];
-        const xMun = enderDestBlock?.match(/<xMun>([\s\S]*?)<\/xMun>/i)?.[1]?.trim();
-        const uf = enderDestBlock?.match(/<UF>([\s\S]*?)<\/UF>/i)?.[1]?.trim();
-        if (xMun) cityByKey.set(row.recipientCnpj, uf ? `${xMun} - ${uf}` : xMun);
-      }
+      const cityByKey = await getCityByCnpjs(company.id, allCnpjs);
       for (const c of customers) {
         c.city = cityByKey.get(c.cnpj) || null;
+      }
+      // Trigger lazy backfill if any customers have no city data
+      const hasMissingCities = customers.some((c) => c.cnpj && !c.city);
+      if (hasMissingCities) {
+        backfillContactFiscalCity(company.id).catch(() => {});
       }
     }
 
