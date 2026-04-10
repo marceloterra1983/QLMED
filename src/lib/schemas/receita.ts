@@ -30,7 +30,7 @@ export const receitaNfseTestSchema = z.object({
  */
 export const accessLogSchema = z.object({
   action: z.enum(['login', 'navigation'], {
-    errorMap: () => ({ message: 'action deve ser login ou navigation' }),
+    error: 'action deve ser login ou navigation',
   }),
   path: z.string().optional().nullable(),
 });

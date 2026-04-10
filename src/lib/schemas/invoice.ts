@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 export const invoiceUpdateStatusSchema = z.object({
   status: z.enum(['received', 'confirmed', 'rejected'], {
-    errorMap: () => ({ message: 'Status invalido. Valores aceitos: received, confirmed, rejected' }),
+    error: 'Status invalido. Valores aceitos: received, confirmed, rejected',
   }),
 });
 
@@ -17,7 +17,7 @@ export const invoiceUpdateStatusSchema = z.object({
 export const invoiceBulkDownloadSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um documento'),
   format: z.enum(['xml', 'pdf'], {
-    errorMap: () => ({ message: 'Formato invalido. Valores aceitos: xml, pdf' }),
+    error: 'Formato invalido. Valores aceitos: xml, pdf',
   }),
 });
 

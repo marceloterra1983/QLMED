@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     const fileMeta = files.map((f) => ({ name: f.name || '', size: f.size }));
     const validated = uploadSchema.safeParse({ files: fileMeta });
     if (!validated.success) {
-      const firstError = validated.error.errors[0]?.message || 'Dados inválidos';
+      const firstError = validated.error.issues[0]?.message || 'Dados inválidos';
       return NextResponse.json({ error: firstError }, { status: 400 });
     }
 

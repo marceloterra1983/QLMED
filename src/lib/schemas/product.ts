@@ -89,7 +89,7 @@ export const bulkUpdateSchema = z.object({
     )
     .min(1, 'products e obrigatorio')
     .max(500, 'Maximo de 500 produtos'),
-  fields: z.record(z.unknown()).refine((v) => Object.keys(v).length > 0, {
+  fields: z.record(z.string(), z.unknown()).refine((v) => Object.keys(v).length > 0, {
     message: 'Nenhum campo para atualizar',
   }),
 });
@@ -107,7 +107,7 @@ const VALID_FISCAL_FIELDS = [
 export const renameFiscalSchema = z.object({
   action: z.string().optional(),
   field: z.enum(VALID_FISCAL_FIELDS, {
-    errorMap: () => ({ message: `field deve ser: ${VALID_FISCAL_FIELDS.join(', ')}` }),
+    error: `field deve ser: ${VALID_FISCAL_FIELDS.join(', ')}`,
   }),
   oldValue: z.string().optional(),
   newValue: z.union([z.string(), z.null()]).optional(),
@@ -120,7 +120,7 @@ export const renameFiscalSchema = z.object({
  */
 export const renameManufacturerSchema = z.object({
   action: z.enum(['rename', 'delete', 'shortName', 'add'], {
-    errorMap: () => ({ message: 'action deve ser rename, delete, shortName ou add' }),
+    error: 'action deve ser rename, delete, shortName ou add',
   }),
   oldValue: z.string().optional(),
   newValue: z.string().optional(),

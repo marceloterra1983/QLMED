@@ -11,9 +11,9 @@ type Action = (typeof VALID_ACTIONS)[number];
 
 const n8nWebhookSchema = z.object({
   action: z.enum(VALID_ACTIONS, {
-    errorMap: () => ({ message: `Invalid action. Valid: ${VALID_ACTIONS.join(', ')}` }),
+    error: `Invalid action. Valid: ${VALID_ACTIONS.join(', ')}`,
   }),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 

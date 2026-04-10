@@ -18,7 +18,7 @@ export const entradaNfeSchema = z.object({
  * Atualiza lote de um item de entrada.
  */
 export const entradaNfeUpdateLotSchema = z.object({
-  itemId: z.coerce.number({ required_error: 'itemId e obrigatorio' }),
+  itemId: z.coerce.number({ error: 'itemId e obrigatorio' }),
   lot: z.string().nullable().optional(),
   lotExpiry: z.string().nullable().optional(),
   lotQuantity: z.coerce.number().nullable().optional(),
@@ -29,7 +29,7 @@ export const entradaNfeUpdateLotSchema = z.object({
  * Clona um item de entrada para adicionar novo lote.
  */
 export const entradaNfeCloneBatchSchema = z.object({
-  sourceItemId: z.coerce.number({ required_error: 'sourceItemId e obrigatorio' }),
+  sourceItemId: z.coerce.number({ error: 'sourceItemId e obrigatorio' }),
   lot: z.string().min(1, 'lot e obrigatorio'),
   lotExpiry: z.string().nullable().optional(),
   lotQuantity: z.coerce.number().nullable().optional(),

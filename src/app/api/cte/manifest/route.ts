@@ -11,7 +11,7 @@ const log = createLogger('cte/manifest');
 const cteManifestSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um CT-e'),
   targetStatus: z.enum(['rejected', 'confirmed'], {
-    errorMap: () => ({ message: 'Status de manifestacao invalido' }),
+    error: 'Status de manifestacao invalido',
   }),
 });
 
