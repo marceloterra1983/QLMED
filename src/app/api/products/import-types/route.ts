@@ -17,10 +17,19 @@ export async function POST(req: Request) {
     if (!file) return NextResponse.json({ error: 'Arquivo não enviado' }, { status: 400 });
 
     const buf = await file.arrayBuffer();
-    const { read, utils } = await import('xlsx');
-    const wb = read(buf, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const allRows: string[][] = utils.sheet_to_json(ws, { header: 1, defval: '' }) as string[][];
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(Buffer.from(buf) as any);
+    const worksheet = workbook.worksheets[0];
+
+    // Convert to row arrays (equivalent to sheet_to_json with header: 1)
+    const allRows: string[][] = [];
+    worksheet.eachRow({ includeEmpty: true }, (row) => {
+      const values = row.values as (string | number | null | undefined)[];
+      // row.values is 1-based (index 0 is undefined), slice from 1
+      allRows.push(values.slice(1).map(v => v != null ? String(v) : ''));
+    });
 
     // Find header row (has "Código" in first column)
     let dataStart = 0;

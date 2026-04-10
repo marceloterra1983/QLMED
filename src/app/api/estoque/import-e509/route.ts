@@ -4,7 +4,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { ensureStockEntryTable } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // E509 column indices (0-based)
 const COL_NF_NUMBER = 0;
@@ -26,15 +26,15 @@ interface E509Row {
   qtdeLote: number | null;
 }
 
-function cellStr(ws: XLSX.WorkSheet, r: number, c: number): string {
-  const cell = ws[XLSX.utils.encode_cell({ r, c })];
-  return cell ? String(cell.v).trim() : '';
+function cellStr(ws: ExcelJS.Worksheet, r: number, c: number): string {
+  const cell = ws.getCell(r + 1, c + 1);
+  return cell.value != null ? String(cell.value).trim() : '';
 }
 
-function cellNum(ws: XLSX.WorkSheet, r: number, c: number): number | null {
-  const cell = ws[XLSX.utils.encode_cell({ r, c })];
-  if (!cell) return null;
-  const n = Number(cell.v);
+function cellNum(ws: ExcelJS.Worksheet, r: number, c: number): number | null {
+  const cell = ws.getCell(r + 1, c + 1);
+  if (cell.value == null) return null;
+  const n = Number(cell.value);
   return isNaN(n) ? null : n;
 }
 
@@ -57,14 +57,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Arquivo é obrigatório' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const wb = XLSX.read(buffer, { type: 'buffer' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws || !ws['!ref']) {
+    const arrayBuf = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(Buffer.from(arrayBuf) as any);
+    const ws = workbook.worksheets[0];
+    if (!ws || ws.rowCount === 0) {
       return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
     }
 
-    const range = XLSX.utils.decode_range(ws['!ref']);
+    const lastRow = ws.rowCount - 1; // Convert to 0-based for existing loop
 
     // Validate headers
     const headerNF = cellStr(ws, HEADER_ROW, COL_NF_NUMBER);
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
 
     // Parse data rows
     const rows: E509Row[] = [];
-    for (let r = DATA_START_ROW; r <= range.e.r; r++) {
+    for (let r = DATA_START_ROW; r <= lastRow; r++) {
       const lote = cellStr(ws, r, COL_LOTE);
       if (!lote) continue;
 
