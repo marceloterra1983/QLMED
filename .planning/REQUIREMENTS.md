@@ -41,7 +41,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 
 - [x] **DUP-01**: Funções utilitárias centralizadas — ensureArray, cleanString, extractAnvisa, parseCnpjResponse, validateIEFormat, val/num/gv importadas de módulos compartilhados
 - [x] **DUP-02**: Financeiro contas-pagar/contas-receber unificados com módulo compartilhado parametrizado por direção
-- [ ] **DUP-03**: Suppliers/customers compartilham lógica via abstração ContactEntity
+- [x] **DUP-03**: Suppliers/customers compartilham lógica via abstração ContactEntity
 
 ### API Validation & Logging
 
