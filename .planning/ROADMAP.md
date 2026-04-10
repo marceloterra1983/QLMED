@@ -76,7 +76,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Replace xmlContent product counting in customers/suppliers with invoice_item_tax queries (PERF-03)
 - [x] 04-02-PLAN.md — Fix N+1 in backfill-tax with batch-fetch (PERF-05)
-- [ ] 04-03-PLAN.md — Deprecate legacy /api/products, migrate frontend exports to /api/products/list (PERF-04)
+- [x] 04-03-PLAN.md — Deprecate legacy /api/products, migrate frontend exports to /api/products/list (PERF-04)
 - [ ] 04-04-PLAN.md — Add city to contact_fiscal, replace xmlContent city extraction in customers (PERF-01)
 - [ ] 04-05-PLAN.md — Create invoice_duplicata table, rewrite financeiro-duplicatas to use it (PERF-02)
 

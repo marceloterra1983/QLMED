@@ -9,6 +9,7 @@ export interface ContactFiscalRow {
   im: string | null;
   crt: string | null;
   uf: string | null;
+  city: string | null;
   sourceInvoiceId: string | null;
   extractedAt: Date;
 }
@@ -23,6 +24,7 @@ interface ContactFiscalDbRow {
   im: string | null;
   crt: string | null;
   uf: string | null;
+  city: string | null;
   source_invoice_id: string | null;
   extracted_at: string | Date;
 }
@@ -52,6 +54,9 @@ export async function ensureContactFiscalTable(): Promise<void> {
         )
       `);
       await prisma.$executeRawUnsafe(`
+        ALTER TABLE contact_fiscal ADD COLUMN IF NOT EXISTS city TEXT
+      `);
+      await prisma.$executeRawUnsafe(`
         CREATE INDEX IF NOT EXISTS idx_contact_fiscal_company
         ON contact_fiscal(company_id)
       `);
@@ -72,22 +77,24 @@ export async function upsertContactFiscal(data: {
   im: string | null;
   crt: string | null;
   uf: string | null;
+  city?: string | null;
   sourceInvoiceId: string | null;
 }): Promise<void> {
   if (!data.cnpj) return;
   await ensureContactFiscalTable();
   await prisma.$executeRawUnsafe(
-    `INSERT INTO contact_fiscal (id, company_id, cnpj, ie, im, crt, uf, source_invoice_id, extracted_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    `INSERT INTO contact_fiscal (id, company_id, cnpj, ie, im, crt, uf, city, source_invoice_id, extracted_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
      ON CONFLICT (company_id, cnpj) DO UPDATE SET
        ie = COALESCE(EXCLUDED.ie, contact_fiscal.ie),
        im = COALESCE(EXCLUDED.im, contact_fiscal.im),
        crt = COALESCE(EXCLUDED.crt, contact_fiscal.crt),
        uf = COALESCE(EXCLUDED.uf, contact_fiscal.uf),
+       city = COALESCE(EXCLUDED.city, contact_fiscal.city),
        source_invoice_id = EXCLUDED.source_invoice_id,
        extracted_at = NOW()`,
     randomUUID(), data.companyId, data.cnpj,
-    data.ie, data.im, data.crt, data.uf, data.sourceInvoiceId,
+    data.ie, data.im, data.crt, data.uf, data.city ?? null, data.sourceInvoiceId,
   );
 }
 
@@ -102,6 +109,7 @@ function mapRow(r: ContactFiscalDbRow): ContactFiscalRow {
     im: r.im ?? null,
     crt: r.crt ?? null,
     uf: r.uf ?? null,
+    city: r.city ?? null,
     sourceInvoiceId: r.source_invoice_id ?? null,
     extractedAt: new Date(r.extracted_at),
   };
