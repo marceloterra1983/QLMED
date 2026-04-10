@@ -290,7 +290,7 @@ export async function handleContactList(
     try {
       const cnpjColumn = contactType === 'supplier' ? 'senderCnpj' : 'recipientCnpj';
       const rows = await prisma.$queryRawUnsafe<Array<{ cnpj: string; cnt: bigint }>>(
-        `SELECT i."${cnpjColumn}" as cnpj, COUNT(DISTINCT CONCAT(it.product_code, '::', it.product_name, '::', it.product_unit)) as cnt
+        `SELECT i."${cnpjColumn}" as cnpj, COUNT(DISTINCT CONCAT(it.product_code, '::', it.product_description)) as cnt
          FROM invoice_item_tax it
          INNER JOIN "Invoice" i ON i.id = it.invoice_id
          WHERE it.company_id = $1
