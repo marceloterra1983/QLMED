@@ -1,7 +1,6 @@
-import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { parseXmlSafe } from '@/lib/safe-xml-parser';
-import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
+import { getCfopCodesByTag } from '@/lib/cfop';
+import { ensureInvoiceDuplicataTable } from '@/lib/invoice-duplicata-store';
 
 export type FinanceiroDirection = 'received' | 'issued';
 interface FinanceiroDuplicatasOptions {
@@ -24,13 +23,35 @@ export interface FinanceiroDuplicataBase {
   dupValor: number;
 }
 
-interface ParsedXmlDuplicata {
-  faturaNumero: string;
-  faturaValorOriginal: number;
-  faturaValorLiquido: number;
-  dupNumero: string;
-  dupVencimento: string;
-  dupValor: number;
+interface DuplicataQueryRow {
+  invoice_id: string;
+  dup_numero: string | null;
+  dup_vencimento: string;
+  dup_valor: number;
+  fatura_numero: string | null;
+  fatura_valor_original: number | null;
+  fatura_valor_liquido: number | null;
+  accessKey: string;
+  number: string;
+  senderCnpj: string | null;
+  senderName: string | null;
+  recipientCnpj: string | null;
+  recipientName: string | null;
+  issueDate: Date;
+  totalValue: number;
+  cfop: string | null;
+}
+
+interface ImportFallbackRow {
+  id: string;
+  accessKey: string;
+  number: string;
+  senderCnpj: string | null;
+  senderName: string | null;
+  recipientCnpj: string | null;
+  recipientName: string | null;
+  issueDate: Date;
+  totalValue: number;
 }
 
 interface FinanceiroCacheEntry {
@@ -39,23 +60,9 @@ interface FinanceiroCacheEntry {
   duplicatas: FinanceiroDuplicataBase[];
 }
 
-interface InvoiceBatchRow {
-  id: string;
-  accessKey: string;
-  number: string;
-  senderCnpj: string;
-  senderName: string;
-  recipientCnpj: string | null;
-  recipientName: string | null;
-  issueDate: Date;
-  totalValue: number | Prisma.Decimal;
-  xmlContent: string;
-}
-
-const BATCH_SIZE = 500;
 const MAX_CACHE_ENTRIES = 16;
 const IMPORT_NO_DUP_FALLBACK_DUE_DAYS = 47;
-const FINANCEIRO_DUPLICATAS_CACHE_VERSION = 'v4';
+const FINANCEIRO_DUPLICATAS_CACHE_VERSION = 'v5';
 
 const globalForFinanceiro = globalThis as unknown as {
   financeiroDuplicatasCache?: Map<string, FinanceiroCacheEntry>;
@@ -72,19 +79,6 @@ if (process.env.NODE_ENV !== 'production') {
   globalForFinanceiro.financeiroDuplicatasInFlight = financeiroDuplicatasInFlight;
 }
 
-function val(obj: any, ...keys: string[]): string {
-  for (const key of keys) {
-    if (obj?.[key] != null) return String(obj[key]);
-  }
-  return '';
-}
-
-function num(obj: any, key: string): number {
-  const value = obj?.[key];
-  if (value == null || value === '') return 0;
-  return parseFloat(String(value).replace(',', '.')) || 0;
-}
-
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -97,119 +91,19 @@ function addDaysUtc(date: Date, days: number): Date {
   ));
 }
 
-function extractTagValue(xml: string, tag: string): string {
-  const re = new RegExp(`<(?:\\w+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:\\w+:)?${tag}>`, 'i');
-  const match = re.exec(xml);
-  return match ? match[1].trim() : '';
-}
-
-function extractDuplicatasFast(xmlContent: string): { hasDupTag: boolean; duplicatas: ParsedXmlDuplicata[] } {
-  const lower = xmlContent.toLowerCase();
-  if (!lower.includes('<dup') && !lower.includes(':dup')) {
-    return { hasDupTag: false, duplicatas: [] };
-  }
-
-  const cobrMatch = /<(?:\w+:)?cobr\b[\s\S]*?<\/(?:\w+:)?cobr>/i.exec(xmlContent);
-  if (!cobrMatch) {
-    return { hasDupTag: true, duplicatas: [] };
-  }
-
-  const cobrXml = cobrMatch[0];
-  const fatMatch = /<(?:\w+:)?fat\b[\s\S]*?<\/(?:\w+:)?fat>/i.exec(cobrXml);
-  const fatXml = fatMatch ? fatMatch[0] : '';
-
-  const faturaNumero = fatXml ? extractTagValue(fatXml, 'nFat') : '';
-  const faturaValorOriginal = fatXml
-    ? parseFloat((extractTagValue(fatXml, 'vOrig') || '0').replace(',', '.')) || 0
-    : 0;
-  const faturaValorLiquido = fatXml
-    ? parseFloat((extractTagValue(fatXml, 'vLiq') || '0').replace(',', '.')) || 0
-    : 0;
-
-  const duplicatas: ParsedXmlDuplicata[] = [];
-  const dupRegex = /<(?:\w+:)?dup\b[\s\S]*?<\/(?:\w+:)?dup>/gi;
-  let hasDupTag = false;
-  let dupMatch: RegExpExecArray | null;
-
-  while ((dupMatch = dupRegex.exec(cobrXml)) !== null) {
-    hasDupTag = true;
-    const dupXml = dupMatch[0];
-    const vencimento = extractTagValue(dupXml, 'dVenc');
-    const valor = parseFloat((extractTagValue(dupXml, 'vDup') || '0').replace(',', '.')) || 0;
-    if (!vencimento || valor === 0) continue;
-
-    duplicatas.push({
-      faturaNumero,
-      faturaValorOriginal,
-      faturaValorLiquido,
-      dupNumero: extractTagValue(dupXml, 'nDup'),
-      dupVencimento: vencimento,
-      dupValor: valor,
-    });
-  }
-
-  return { hasDupTag, duplicatas };
-}
-
-async function extractDuplicatasFallback(xmlContent: string): Promise<ParsedXmlDuplicata[]> {
-  const result = await parseXmlSafe(xmlContent);
-  const nfeProc = result.nfeProc;
-  const nfe = nfeProc ? nfeProc.NFe : result.NFe;
-  const infNFe = nfe?.infNFe;
-  if (!infNFe) return [];
-
-  const cobr = infNFe.cobr;
-  if (!cobr) return [];
-
-  const fat = cobr.fat;
-  const dupItems = cobr.dup;
-  if (!dupItems) return [];
-
-  const dupList = Array.isArray(dupItems) ? dupItems : [dupItems];
-  const parsed: ParsedXmlDuplicata[] = [];
-
-  for (const dup of dupList) {
-    const vencimento = val(dup, 'dVenc');
-    const valor = num(dup, 'vDup');
-    if (!vencimento || valor === 0) continue;
-
-    parsed.push({
-      faturaNumero: fat ? val(fat, 'nFat') : '',
-      faturaValorOriginal: fat ? num(fat, 'vOrig') : 0,
-      faturaValorLiquido: fat ? num(fat, 'vLiq') : 0,
-      dupNumero: val(dup, 'nDup'),
-      dupVencimento: vencimento,
-      dupValor: valor,
-    });
-  }
-
-  return parsed;
-}
-
-async function extractDuplicatasFromXml(xmlContent: string): Promise<ParsedXmlDuplicata[]> {
-  const fastResult = extractDuplicatasFast(xmlContent);
-  if (fastResult.duplicatas.length > 0 || !fastResult.hasDupTag) {
-    return fastResult.duplicatas;
-  }
-
-  try {
-    return await extractDuplicatasFallback(xmlContent);
-  } catch {
-    return [];
-  }
-}
-
-function getParty(invoice: InvoiceBatchRow, direction: FinanceiroDirection) {
+function getParty(
+  row: { senderCnpj: string | null; senderName: string | null; recipientCnpj: string | null; recipientName: string | null },
+  direction: FinanceiroDirection
+) {
   if (direction === 'received') {
     return {
-      cnpj: invoice.senderCnpj || '',
-      nome: invoice.senderName || '',
+      cnpj: row.senderCnpj || '',
+      nome: row.senderName || '',
     };
   }
-
   return {
-    cnpj: invoice.recipientCnpj || '',
-    nome: invoice.recipientName || '',
+    cnpj: row.recipientCnpj || '',
+    nome: row.recipientName || '',
   };
 }
 
@@ -226,11 +120,6 @@ function getEffectiveTagByDirection(
   return cfopTag;
 }
 
-function isFinanceiroTagAllowed(tag: string | null, allowedTags: string[]): boolean {
-  if (!tag) return false;
-  return allowedTags.includes(tag);
-}
-
 /**
  * Returns the set of raw CFOP tags (before direction mapping) that would
  * produce an effective tag in `allowedTags` for the given direction.
@@ -242,8 +131,6 @@ function getMatchingCfopCodes(
 ): string[] {
   const rawTags: string[] = [];
   for (const tag of allowedTags) {
-    // Reverse the direction mapping: for received, 'Compra' effective tag
-    // comes from 'Venda' raw tag (getEffectiveTagByDirection maps Venda→Compra).
     const raw = direction === 'received' && tag === 'Compra' ? 'Venda' : tag;
     if (!rawTags.includes(raw)) rawTags.push(raw);
   }
@@ -252,6 +139,14 @@ function getMatchingCfopCodes(
     codes.push(...getCfopCodesByTag(rawTag));
   }
   return codes;
+}
+
+/**
+ * Returns CFOP codes for import purchases specifically.
+ */
+function getImportCfopCodes(direction: FinanceiroDirection): string[] {
+  const importTag = direction === 'received' ? 'Venda Importação' : 'Compra Importação';
+  return getCfopCodesByTag(importTag);
 }
 
 function pruneCache() {
@@ -266,89 +161,122 @@ function pruneCache() {
 }
 
 async function buildDuplicatas(
-  where: Prisma.InvoiceWhereInput,
+  companyId: string,
   direction: FinanceiroDirection,
   allowedTags: string[]
 ): Promise<FinanceiroDuplicataBase[]> {
+  const matchingCfops = getMatchingCfopCodes(allowedTags, direction);
   const allDuplicatas: FinanceiroDuplicataBase[] = [];
-  let cursorId: string | undefined;
 
-  while (true) {
-    const batch = await prisma.invoice.findMany({
-      where,
-      take: BATCH_SIZE,
-      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
-      orderBy: { id: 'asc' },
-      select: {
-        id: true,
-        accessKey: true,
-        number: true,
-        senderCnpj: true,
-        senderName: true,
-        recipientCnpj: true,
-        recipientName: true,
-        issueDate: true,
-        totalValue: true,
-        xmlContent: true,
-      },
-    });
+  // Query 1: Read duplicatas from invoice_duplicata table (excludes sentinel rows)
+  if (matchingCfops.length > 0) {
+    const rows = await prisma.$queryRawUnsafe<DuplicataQueryRow[]>(
+      `SELECT
+        d.invoice_id,
+        d.dup_numero,
+        d.dup_vencimento,
+        d.dup_valor,
+        d.fatura_numero,
+        d.fatura_valor_original,
+        d.fatura_valor_liquido,
+        i."accessKey",
+        i."number",
+        i."senderCnpj",
+        i."senderName",
+        i."recipientCnpj",
+        i."recipientName",
+        i."issueDate",
+        i."totalValue"::double precision as "totalValue",
+        i."cfop"
+      FROM invoice_duplicata d
+      INNER JOIN "Invoice" i ON i.id = d.invoice_id
+      WHERE d.company_id = $1
+        AND i.type = 'NFE'
+        AND i.direction = $2
+        AND d.dup_numero != '__NONE__'
+        AND (i."cfop" = ANY($3::text[]) OR i."cfop" IS NULL)`,
+      companyId,
+      direction,
+      matchingCfops,
+    );
 
-    if (batch.length === 0) break;
+    for (const row of rows) {
+      // For cfop=null rows, we include them conservatively (same as old behavior
+      // where cfop=null invoices passed through the filter)
+      const party = getParty(row, direction);
+      allDuplicatas.push({
+        invoiceId: row.invoice_id,
+        accessKey: row.accessKey,
+        nfNumero: row.number,
+        partyCnpj: party.cnpj,
+        partyNome: party.nome,
+        nfEmissao: row.issueDate,
+        nfValorTotal: row.totalValue,
+        faturaNumero: row.fatura_numero || '',
+        faturaValorOriginal: row.fatura_valor_original || 0,
+        faturaValorLiquido: row.fatura_valor_liquido || 0,
+        dupNumero: row.dup_numero || '',
+        dupVencimento: row.dup_vencimento,
+        dupValor: row.dup_valor,
+      });
+    }
+  }
 
-    for (const invoice of batch) {
-      const cfop = extractFirstCfop(invoice.xmlContent);
-      const cfopTag = getCfopTagByCode(cfop);
-      const effectiveTag = getEffectiveTagByDirection(cfopTag, direction);
-      if (!isFinanceiroTagAllowed(effectiveTag, allowedTags)) continue;
+  // Query 2: Import purchase fallback — invoices with import CFOP that have
+  // no actual duplicatas (only sentinel or no rows at all).
+  // This preserves the "Compra Importacao" synthetic entry behavior.
+  const effectiveImportTag = getEffectiveTagByDirection(
+    direction === 'received' ? 'Venda Importação' : 'Compra Importação',
+    direction
+  );
+  if (effectiveImportTag && allowedTags.includes(effectiveImportTag)) {
+    const importCfops = getImportCfopCodes(direction);
+    if (importCfops.length > 0) {
+      const importRows = await prisma.$queryRawUnsafe<ImportFallbackRow[]>(
+        `SELECT
+          i.id,
+          i."accessKey",
+          i."number",
+          i."senderCnpj",
+          i."senderName",
+          i."recipientCnpj",
+          i."recipientName",
+          i."issueDate",
+          i."totalValue"::double precision as "totalValue"
+        FROM "Invoice" i
+        LEFT JOIN invoice_duplicata d ON d.invoice_id = i.id AND d.dup_numero != '__NONE__'
+        WHERE i."companyId" = $1
+          AND i.type = 'NFE'
+          AND i.direction = $2
+          AND i."cfop" = ANY($3::text[])
+          AND i."totalValue" > 0
+          AND d.invoice_id IS NULL`,
+        companyId,
+        direction,
+        importCfops,
+      );
 
-      const parsedDuplicatas = await extractDuplicatasFromXml(invoice.xmlContent);
-      const party = getParty(invoice, direction);
-      if (parsedDuplicatas.length === 0) {
-        // Import purchase NF-e often has no <dup>. Create one payable/receivable entry
-        // based on invoice total. Use a fallback due date in the future so it
-        // can be tracked in contas a pagar until formal installments are present.
-        const totalNum = Number(invoice.totalValue);
-        if (effectiveTag === 'Compra Importação' && totalNum > 0) {
-          const fallbackDueDate = addDaysUtc(invoice.issueDate, IMPORT_NO_DUP_FALLBACK_DUE_DAYS);
-          allDuplicatas.push({
-            invoiceId: invoice.id,
-            accessKey: invoice.accessKey,
-            nfNumero: invoice.number,
-            partyCnpj: party.cnpj,
-            partyNome: party.nome,
-            nfEmissao: invoice.issueDate,
-            nfValorTotal: totalNum,
-            faturaNumero: '',
-            faturaValorOriginal: totalNum,
-            faturaValorLiquido: totalNum,
-            dupNumero: 'IMP',
-            dupVencimento: toDateKey(fallbackDueDate),
-            dupValor: totalNum,
-          });
-        }
-        continue;
-      }
-
-      for (const dup of parsedDuplicatas) {
+      for (const row of importRows) {
+        const party = getParty(row, direction);
+        const totalNum = row.totalValue;
+        const fallbackDueDate = addDaysUtc(row.issueDate, IMPORT_NO_DUP_FALLBACK_DUE_DAYS);
         allDuplicatas.push({
-          invoiceId: invoice.id,
-          accessKey: invoice.accessKey,
-          nfNumero: invoice.number,
+          invoiceId: row.id,
+          accessKey: row.accessKey,
+          nfNumero: row.number,
           partyCnpj: party.cnpj,
           partyNome: party.nome,
-          nfEmissao: invoice.issueDate,
-          nfValorTotal: Number(invoice.totalValue),
-          faturaNumero: dup.faturaNumero,
-          faturaValorOriginal: dup.faturaValorOriginal,
-          faturaValorLiquido: dup.faturaValorLiquido,
-          dupNumero: dup.dupNumero,
-          dupVencimento: dup.dupVencimento,
-          dupValor: dup.dupValor,
+          nfEmissao: row.issueDate,
+          nfValorTotal: totalNum,
+          faturaNumero: '',
+          faturaValorOriginal: totalNum,
+          faturaValorLiquido: totalNum,
+          dupNumero: 'IMP',
+          dupVencimento: toDateKey(fallbackDueDate),
+          dupValor: totalNum,
         });
       }
     }
-
-    cursorId = batch[batch.length - 1].id;
   }
 
   return allDuplicatas;
@@ -359,22 +287,16 @@ export async function getFinanceiroDuplicatas(
   direction: FinanceiroDirection,
   options?: FinanceiroDuplicatasOptions
 ): Promise<FinanceiroDuplicataBase[]> {
+  await ensureInvoiceDuplicataTable();
+
   const allowedTags = options?.allowedTags?.length
     ? Array.from(new Set(options.allowedTags))
     : ['Compra', 'Venda'];
 
   // Base filter: only NFE invoices for this company + direction.
-  const baseWhere: Prisma.InvoiceWhereInput = {
-    companyId,
-    type: 'NFE',
-    direction,
-  };
+  const baseWhere = { companyId, type: 'NFE' as const, direction };
 
   // Use _count + _max.createdAt + _sum.totalValue for cache versioning.
-  // Unlike updatedAt, createdAt only changes when new invoices are added (not on
-  // status-only updates during sync), so the cache survives sync cycles that don't
-  // add or modify NFE invoice data.  The totalValue sum detects XML replacements
-  // that could change duplicata content without altering the row count.
   const snapshot = await prisma.invoice.aggregate({
     where: baseWhere,
     _count: { _all: true },
@@ -395,18 +317,8 @@ export async function getFinanceiroDuplicatas(
     return inFlight;
   }
 
-  // Narrow query: pre-filter by CFOP codes that map to the requested tags.
-  // Invoices with cfop=null are included as fallback (CFOP extracted from XML).
-  const matchingCfops = getMatchingCfopCodes(allowedTags, direction);
-  const buildWhere: Prisma.InvoiceWhereInput = {
-    ...baseWhere,
-    ...(matchingCfops.length > 0
-      ? { OR: [{ cfop: { in: matchingCfops } }, { cfop: null }] }
-      : {}),
-  };
-
   const promise = (async () => {
-    const duplicatas = await buildDuplicatas(buildWhere, direction, allowedTags);
+    const duplicatas = await buildDuplicatas(companyId, direction, allowedTags);
     financeiroDuplicatasCache.set(cacheKey, {
       version,
       createdAt: Date.now(),
