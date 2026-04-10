@@ -168,11 +168,11 @@ Plans:
   3. Prisma 7 funcional — todas as raw queries testadas, schema changes aplicados
   4. ESLint 9 com flat config (eslint.config.mjs) passando sem erros
   5. Build completo (npm run build) passa sem erros e app funciona end-to-end em dev
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
 - [x] 10-01-PLAN.md — Upgrade ESLint 8 to 9 with flat config migration (UPG-04)
 - [x] 10-02-PLAN.md — Minor upgrades: bcryptjs 3, zod 4, typescript 6 (UPG-05)
-- [ ] 10-03-PLAN.md — Upgrade Prisma 5 to 7, verify 188 raw queries (UPG-03)
+- [x] 10-03-PLAN.md — Upgrade Prisma 5 to 7, verify 188 raw queries (UPG-03)
 - [ ] 10-04-PLAN.md — Upgrade Next.js 14 to 15 + React 18 to 19, migrate async APIs (UPG-01, UPG-02)
 
 ## Coverage
@@ -235,7 +235,7 @@ Plans:
 | 7. Type Safety | 0/3 | Not started | - |
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
-| 10. Major Upgrades | 2/4 | In Progress|  |
+| 10. Major Upgrades | 3/4 | In Progress|  |
 
 ---
 *Last updated: 2026-04-10 after Phase 9 and 10 planning*
