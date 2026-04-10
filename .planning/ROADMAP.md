@@ -88,7 +88,11 @@ Plans:
   1. ensureArray, cleanString, extractAnvisa, parseCnpjResponse, validateIEFormat, val/num/gv — cada uma existe em exatamente 1 arquivo, importada de la em todos os usos
   2. Contas-pagar e contas-receber compartilham modulo parametrizado por direcao (sem codigo duplicado entre as rotas)
   3. SupplierDetailsModal e CustomerDetailsModal usam componentes de ContactEntity compartilhados
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [x] 05-01-PLAN.md — Centralize 7 duplicated utility functions into canonical modules (DUP-01)
+- [ ] 05-02-PLAN.md — Unify financeiro contas-pagar/contas-receber into shared parametrized module (DUP-02)
+- [ ] 05-03-PLAN.md — Unify suppliers/customers API routes and verify modal shared imports (DUP-03)
 
 ### Phase 6: API Validation & Logging
 **Goal**: Todas as rotas API validam input com schemas, erros sao tratados consistentemente, logs sao estruturados e configuraveis
@@ -202,7 +206,7 @@ Plans:
 | 2. Dependency Fixes | 0/2 | Planned | - |
 | 3. Database Schema Hardening | 1/1 | Complete | 2026-04-10 |
 | 4. XML Extraction Performance | 0/5 | Planned | - |
-| 5. Code Deduplication | 0/? | Not started | - |
+| 5. Code Deduplication | 0/3 | Planned | - |
 | 6. API Validation & Logging | 0/? | Not started | - |
 | 7. Type Safety | 0/? | Not started | - |
 | 8. File Splitting | 0/? | Not started | - |
@@ -210,4 +214,4 @@ Plans:
 | 10. Major Upgrades | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-04-10 after Phase 4 planning*
+*Last updated: 2026-04-10 after Phase 5 planning*
