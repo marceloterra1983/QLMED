@@ -12,7 +12,7 @@ const updateUserSchema = z.object({
   status: z.enum(['pending', 'active', 'inactive', 'rejected']).optional(),
   phone: z.string().nullable().optional(),
   allowedPages: z.array(z.string()).optional(),
-  password: z.string().min(4).optional(),
+  password: z.string().min(6).optional(),
 });
 
 export async function PATCH(

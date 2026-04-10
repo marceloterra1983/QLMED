@@ -19,7 +19,7 @@ let callCount = 0;
 
 function cleanup() {
   const now = Date.now();
-  for (const [key, entry] of store) {
+  for (const [key, entry] of Array.from(store.entries())) {
     if (now > entry.resetAt) {
       store.delete(key);
     }

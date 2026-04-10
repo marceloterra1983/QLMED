@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -69,42 +71,53 @@ export async function GET() {
         })()
       : null;
 
+    // Check if authenticated — details only available with valid session
+    const session = await getServerSession(authOptions);
+
     if (integrity && !integrity.healthy) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          build,
-          db: { status: 'connected', latencyMs: dbLatency },
-          integrity,
-          error: 'Banco sem dados obrigatórios de produção',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 503 }
-      );
+      const errorResponse: Record<string, unknown> = {
+        status: 'error',
+        db: { status: 'connected', latencyMs: dbLatency },
+        timestamp: new Date().toISOString(),
+      };
+      if (session) {
+        errorResponse.build = build;
+        errorResponse.integrity = integrity;
+        errorResponse.error = 'Banco sem dados obrigatórios de produção';
+      }
+      return NextResponse.json(errorResponse, { status: 503 });
     }
 
-    return NextResponse.json({
+    // Public response: only status, db connectivity, timestamp
+    const publicResponse: Record<string, unknown> = {
       status: 'ok',
-      build,
-      uptime: process.uptime(),
       db: { status: 'connected', latencyMs: dbLatency },
-      integrity,
-      memory: {
+      timestamp: new Date().toISOString(),
+    };
+
+    if (session) {
+      // Authenticated response: include build, uptime, memory, integrity
+      publicResponse.build = build;
+      publicResponse.uptime = process.uptime();
+      publicResponse.integrity = integrity;
+      publicResponse.memory = {
         rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
         heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      },
-      timestamp: new Date().toISOString(),
-    });
+      };
+    }
+
+    return NextResponse.json(publicResponse);
   } catch (error) {
-    return NextResponse.json(
-      {
-        status: 'error',
-        build,
-        db: { status: 'disconnected' },
-        error: error instanceof Error ? error.message : 'Unknown',
-        timestamp: new Date().toISOString(),
-      },
-      { status: 503 }
-    );
+    const session = await getServerSession(authOptions).catch(() => null);
+    const errorResponse: Record<string, unknown> = {
+      status: 'error',
+      db: { status: 'disconnected' },
+      timestamp: new Date().toISOString(),
+    };
+    if (session) {
+      errorResponse.build = build;
+      errorResponse.error = error instanceof Error ? error.message : 'Unknown';
+    }
+    return NextResponse.json(errorResponse, { status: 503 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAnvisaData } from '@/lib/anvisa-api';
+import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
 /**
@@ -8,6 +9,12 @@ import prisma from '@/lib/prisma';
  * Checks product_registry cache first (if synced within 7 days), otherwise queries ANVISA API.
  */
 export async function GET(req: NextRequest) {
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
+
   const code = (req.nextUrl.searchParams.get('code') || '').replace(/\D/g, '');
 
   if (!code || code.length < 7) {

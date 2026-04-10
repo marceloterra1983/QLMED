@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 
 type AnvisaSourceKey = 'produtos_saude' | 'medicamentos';
 
@@ -26,6 +27,12 @@ function isBlockedByHeaders(xFrameOptions: string, csp: string): { blocked: bool
 }
 
 export async function GET(req: Request) {
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const source = (searchParams.get('source') || 'produtos_saude') as AnvisaSourceKey;

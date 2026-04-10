@@ -6,14 +6,15 @@ import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders, RateLimitConfig } fro
  * Public API routes that don't require authentication.
  * All other /api/* routes require a valid session or API key.
  */
-const PUBLIC_API_ROUTES = new Set([
+const PUBLIC_API_ROUTES = [
   '/api/auth',           // NextAuth endpoints (login, callback, etc.)
   '/api/register',       // User registration
   '/api/health',         // Basic health check (details require auth, handled in route)
-]);
+];
 
 function isPublicApiRoute(pathname: string): boolean {
-  for (const route of PUBLIC_API_ROUTES) {
+  for (let i = 0; i < PUBLIC_API_ROUTES.length; i++) {
+    const route = PUBLIC_API_ROUTES[i];
     if (pathname === route || pathname.startsWith(route + '/')) {
       return true;
     }
