@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { handleContactList } from '@/lib/contact-shared';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('customers');
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +20,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     return handleContactList(company, 'customer', searchParams);
   } catch (error) {
-    console.error('Error fetching customers:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'customers');
   }
 }

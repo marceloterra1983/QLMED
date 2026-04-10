@@ -5,6 +5,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { ensureStockEntryTable, getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry, LotOverride } from '@/lib/register-entry';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('estoque/entrada-nfe');
 
 export async function GET(req: Request) {
   try {
@@ -126,8 +130,7 @@ export async function GET(req: Request) {
       stats: { pending: pendingCount, partial: partialCount, registered: registeredCount },
     });
   } catch (error) {
-    console.error('Error fetching stock entries:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe');
   }
 }
 
@@ -137,8 +140,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -178,7 +181,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ entry: { id: result.entryId }, totalItems: result.totalItems, matchedItems: result.matchedItems });
   } catch (error) {
-    console.error('Error registering stock entry:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe');
   }
 }

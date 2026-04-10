@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { handleContactDetails } from '@/lib/contact-details-shared';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('suppliers/details');
 
 export async function GET(req: Request) {
   try {
@@ -20,7 +24,6 @@ export async function GET(req: Request) {
 
     return handleContactDetails(company, cnpj, name, metaOnly, 'supplier');
   } catch (error) {
-    console.error('Error fetching supplier details:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'suppliers/details');
   }
 }

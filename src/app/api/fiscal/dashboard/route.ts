@@ -3,6 +3,10 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('fiscal/dashboard');
 
 export async function GET(req: Request) {
   let userId: string;
@@ -157,7 +161,6 @@ export async function GET(req: Request) {
       })),
     });
   } catch (error) {
-    console.error('Error fetching fiscal dashboard:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'fiscal/dashboard');
   }
 }

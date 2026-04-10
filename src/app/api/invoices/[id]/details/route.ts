@@ -4,6 +4,10 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val } from '@/lib/xml-helpers';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('invoices/:id/details');
 
 function parseEmitDest(node: any) {
   if (!node) return null;
@@ -617,7 +621,6 @@ export async function GET(
 
     return NextResponse.json(details);
   } catch (error) {
-    console.error('Error parsing invoice details:', error);
-    return NextResponse.json({ error: 'Erro ao processar detalhes' }, { status: 500 });
+    return apiError(error, 'invoices/:id/details');
   }
 }

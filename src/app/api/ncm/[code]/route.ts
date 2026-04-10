@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupNcm } from '@/lib/ncm-lookup';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('ncm/:code');
 
 export async function GET(
   _request: NextRequest,
@@ -21,7 +25,6 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[ncm/lookup] Error:', error);
-    return NextResponse.json({ error: 'Erro ao buscar NCM' }, { status: 500 });
+    return apiError(error, 'ncm/:code');
   }
 }

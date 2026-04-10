@@ -3,13 +3,17 @@ import { hash } from 'bcryptjs';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('users');
 
 export async function GET() {
   try {
     try {
       await requireAdmin();
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -29,8 +33,7 @@ export async function GET() {
 
     return NextResponse.json({ users });
   } catch (error) {
-    console.error('Error listing users:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'users');
   }
 }
 
@@ -38,8 +41,8 @@ export async function POST(req: Request) {
   try {
     try {
       await requireAdmin();
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -95,7 +98,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error('Error creating user:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'users');
   }
 }

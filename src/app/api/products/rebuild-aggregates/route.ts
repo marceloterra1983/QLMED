@@ -7,6 +7,10 @@ import {
   aggregateProductsFromInvoices,
   computeSearchText,
 } from '@/lib/product-aggregation';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('products/rebuild-aggregates');
 
 export async function POST() {
   try {
@@ -228,7 +232,6 @@ export async function POST() {
       totalTimeMs: totalTime,
     });
   } catch (error) {
-    console.error('[rebuild-aggregates] Error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/rebuild-aggregates');
   }
 }

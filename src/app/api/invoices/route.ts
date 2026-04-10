@@ -7,6 +7,10 @@ import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('invoices');
 
 const invoiceQuerySchema = z.object({
   page: z.coerce.number().int().positive().max(10000).catch(1),
@@ -209,7 +213,7 @@ export async function GET(req: Request) {
       try {
         await ensureLocalXmlSyncNow();
       } catch (syncError) {
-        console.error('[Invoices] Falha ao forçar sync local de XML:', syncError);
+        log.error({ err: syncError }, '[Invoices] Falha ao forçar sync local de XML');
       }
     }
 
@@ -392,8 +396,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices');
   }
 }
 
@@ -403,8 +406,8 @@ export async function DELETE(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -441,12 +444,11 @@ export async function DELETE(req: Request) {
       await markCompanyForSyncRecovery(company.id, earliestIssueDate);
       syncRecoveryMarked = true;
     } catch (syncRecoveryError) {
-      console.error('Error marking sync recovery after delete:', syncRecoveryError);
+      log.error({ err: syncRecoveryError }, 'Error marking sync recovery after delete');
     }
 
     return NextResponse.json({ deleted: result.count, syncRecoveryMarked });
   } catch (error) {
-    console.error('Error deleting invoices:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices');
   }
 }

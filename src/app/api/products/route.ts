@@ -9,6 +9,9 @@ import { normalizeForSearch, cleanString, ensureArray, toNumber } from '@/lib/ut
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { extractAnvisa, normalizeAnvisaRegistration } from '@/lib/product-aggregation';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products');
 
 const MAX_INVOICES = 3000;
 const MAX_ISSUED_INVOICES = 3000;
@@ -375,7 +378,7 @@ export async function GET(req: Request) {
       return unauthorizedResponse();
     }
 
-    console.warn('[DEPRECATED] /api/products called — use /api/products/list instead');
+    log.warn('[DEPRECATED] /api/products called — use /api/products/list instead');
 
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
@@ -1190,7 +1193,7 @@ export async function GET(req: Request) {
 
         const failedLookups = enriched.filter((item) => item.status === 'rejected').length;
         if (failedLookups > 0) {
-          console.warn(`ANVISA lookup failed for ${failedLookups} product(s)`);
+          log.warn({ failedLookups }, 'ANVISA lookup failed for {failedLookups} product(s)');
         }
       }
     }
@@ -1442,7 +1445,7 @@ export async function GET(req: Request) {
     response.headers.set('X-Deprecated', 'Use /api/products/list instead');
     return response;
   } catch (error) {
-    console.error('Error fetching products:', error);
+    log.error({ err: error }, 'Error fetching products');
     const errorResponse = NextResponse.json({ error: 'Erro interno' }, { status: 500 });
     errorResponse.headers.set('X-Deprecated', 'Use /api/products/list instead');
     return errorResponse;

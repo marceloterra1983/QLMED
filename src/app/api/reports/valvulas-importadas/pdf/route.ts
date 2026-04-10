@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import puppeteer from 'puppeteer';
 import nodemailer from 'nodemailer';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('reports/valvulas-importadas/pdf');
 
 /* ── Helpers ── */
 
@@ -313,8 +317,7 @@ export async function GET(req: NextRequest) {
         'Content-Disposition': `attachment; filename="valvulas-corcym-${new Date().toISOString().slice(0, 10)}.pdf"`,
       },
     });
-  } catch (err: any) {
-    console.error('[valvulas-importadas/pdf]', err);
-    return NextResponse.json({ error: err.message || 'Erro ao gerar PDF' }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'GET /api/reports/valvulas-importadas/pdf');
   }
 }

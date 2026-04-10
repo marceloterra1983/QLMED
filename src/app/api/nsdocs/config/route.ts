@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { encrypt, decrypt } from '@/lib/crypto';
+import { apiError } from '@/lib/api-error';
 
 function maskToken(token: string): string {
   if (token.length <= 8) return '••••••••';
@@ -39,7 +40,7 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao buscar configuração' }, { status: 500 });
+    return apiError(error, 'nsdocs/config');
   }
 }
 
@@ -49,10 +50,10 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       message: 'Configuração salva com sucesso',
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao salvar configuração' }, { status: 500 });
+    return apiError(error, 'nsdocs/config');
   }
 }
 
@@ -107,10 +108,10 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     await requireAdmin();
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();

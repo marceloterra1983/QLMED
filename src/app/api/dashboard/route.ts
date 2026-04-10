@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('dashboard');
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -152,7 +156,6 @@ export async function GET(request: NextRequest) {
       recentInvoices: recentInvoices.map((inv) => ({ ...inv, totalValue: Number(inv.totalValue) })),
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'dashboard');
   }
 }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('cte/manifest');
 
 type CteManifestTargetStatus = 'rejected' | 'confirmed';
 
@@ -14,8 +18,8 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireEditor();
     userId = auth.userId;
-  } catch (error: any) {
-    if (error.message === 'FORBIDDEN') return forbiddenResponse();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 
@@ -69,7 +73,6 @@ export async function POST(request: NextRequest) {
       providerNote: 'A API pública NSDocs v2 não expõe endpoint de escrita para manifestação de CT-e. A manifestação foi aplicada no sistema local.',
     });
   } catch (error) {
-    console.error('[CTE Manifest] Error:', error);
-    return NextResponse.json({ error: 'Erro interno ao manifestar CT-e.' }, { status: 500 });
+    return apiError(error, 'cte/manifest');
   }
 }

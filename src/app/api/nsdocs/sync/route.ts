@@ -3,16 +3,20 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { syncViaSefaz, syncViaNsdocs, syncViaReceitaNfse } from '@/lib/auto-sync';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('nsdocs/sync');
 
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
     const auth = await requireEditor();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
         environment: cert.environment,
         subject: cert.subject,
       }, syncLog.id).catch((err) => {
-        console.error('[SEFAZ Sync] Unhandled error in fire-and-forget:', (err as Error).message);
+        log.error({ err }, 'SEFAZ Sync unhandled error in fire-and-forget');
       });
 
       return NextResponse.json({
@@ -91,7 +95,7 @@ export async function POST(request: NextRequest) {
 
       // Fire-and-forget: delegate to shared sync function
       syncViaNsdocs(companyId, company.cnpj, company.razaoSocial, company.nsdocsConfig, syncLog.id).catch((err) => {
-        console.error('[NSDocs Sync] Unhandled error in fire-and-forget:', (err as Error).message);
+        log.error({ err }, 'NSDocs Sync unhandled error in fire-and-forget');
       });
 
       return NextResponse.json({
@@ -120,7 +124,7 @@ export async function POST(request: NextRequest) {
         company.certificateConfig,
         syncLog.id,
       ).catch((err) => {
-        console.error('[Receita NFS-e Sync] Unhandled error in fire-and-forget:', (err as Error).message);
+        log.error({ err }, 'Receita NFS-e Sync unhandled error in fire-and-forget');
       });
 
       return NextResponse.json({
@@ -133,8 +137,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nenhuma configuração de integração encontrada (SEFAZ, NSDocs ou Receita NFS-e)' }, { status: 400 });
 
   } catch (error) {
-    console.error('Erro geral no sync:', error);
-    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+    return apiError(error, 'nsdocs/sync');
   }
 }
 

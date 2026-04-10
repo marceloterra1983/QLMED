@@ -3,6 +3,10 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry } from '@/lib/product-registry-store';
 import { cleanString } from '@/lib/utils';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/anvisa');
 
 function normalizeAnvisaCode(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -17,8 +21,8 @@ export async function PATCH(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -78,7 +82,6 @@ export async function PATCH(req: Request) {
       updatedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error updating product ANVISA manually:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/anvisa');
   }
 }

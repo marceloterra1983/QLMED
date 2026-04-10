@@ -9,6 +9,10 @@ import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('nsdocs/import-period');
 
 export const maxDuration = 60; // Start with 60s for Vercel/Next.js function
 
@@ -17,10 +21,10 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireEditor();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();
@@ -54,11 +58,11 @@ export async function POST(request: NextRequest) {
 
     let documentos: NsdocsDocumento[] = [];
     try {
-      console.log(`[Import] Buscando documentos de ${startDate} a ${endDate}...`);
+      log.info({ startDate, endDate }, '[Import] Buscando documentos de {startDate} a {endDate}...');
       documentos = await client.listarDocumentos(filtros);
-      console.log(`[Import] Encontrados ${documentos?.length || 0} documentos.`);
-    } catch (err: any) {
-      console.error('Erro ao listar documentos NSDocs:', err);
+      log.info({ documentos: documentos?.length || 0 }, '[Import] Encontrados {documentos} documentos.');
+    } catch (err: unknown) {
+      log.error({ err: err }, 'Erro ao listar documentos NSDocs');
       return NextResponse.json({ error: 'Erro ao consultar API NSDocs' }, { status: 500 });
     }
 
@@ -70,7 +74,7 @@ export async function POST(request: NextRequest) {
     let skipped = 0;
     let errors = 0;
 
-    console.log(`[Import] Processando ${documentos.length} documentos...`);
+    log.info({ documentos: documentos.length }, '[Import] Processando {documentos} documentos...');
 
     for (let i = 0; i < documentos.length; i++) {
       const doc = documentos[i];
@@ -82,14 +86,14 @@ export async function POST(request: NextRequest) {
 
         const xmlContent = await client.recuperarXml(doc.id);
         if (!xmlContent || xmlContent.length < 50) {
-           console.error(`XML vazio ou inválido para doc ID ${doc.id}`);
+           log.error('XML vazio ou inválido para doc ID ${doc.id}');
            errors++;
            continue;
         }
 
         const parsed = await parseInvoiceXml(xmlContent);
         if (!parsed || !parsed.accessKey) {
-            console.error(`[Import] Documento sem chave de acesso (ID ${doc.id})`);
+            log.error('[Import] Documento sem chave de acesso (ID ${doc.id})');
             errors++;
             continue;
         }
@@ -160,13 +164,13 @@ export async function POST(request: NextRequest) {
         }
 
         imported++;
-      } catch (err: any) {
-        console.error(`[Import] Falha no documento ID ${doc.id}:`, err);
+      } catch (err: unknown) {
+        log.error({ err: err }, '[Import] Falha no documento ID ${doc.id}');
         errors++;
       }
     }
 
-    console.log(`[Import] Resultado: ${imported} importados, ${skipped} pulados, ${errors} erros (total: ${documentos.length})`);
+    log.info({ imported, skipped, errors, documentos: documentos.length }, '[Import] Resultado: {imported} importados, {skipped} pulados, {errors} erros (total: {documentos})');
 
     return NextResponse.json({ 
       imported, 
@@ -175,8 +179,7 @@ export async function POST(request: NextRequest) {
       totalProcessed: documentos.length 
     });
 
-  } catch (error: any) {
-    console.error('Erro geral na importação:', error);
-    return NextResponse.json({ error: 'Erro interno na importação' }, { status: 500 });
+  } catch (error: unknown) {
+    return apiError(error, 'POST /api/nsdocs/import-period');
   }
 }

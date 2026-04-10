@@ -3,6 +3,10 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('products/import-types');
 
 export async function POST(req: Request) {
   try {
@@ -112,7 +116,6 @@ export async function POST(req: Request) {
       total: registryRows.length,
     });
   } catch (error) {
-    console.error('Error importing product types:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/import-types');
   }
 }

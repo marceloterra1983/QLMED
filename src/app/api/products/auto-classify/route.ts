@@ -3,6 +3,10 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/auto-classify');
 
 /* ── helpers ── */
 
@@ -103,8 +107,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -531,7 +535,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(stats);
   } catch (e) {
-    console.error('auto-classify error', e);
+    log.error({ err: e }, 'auto-classify error');
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

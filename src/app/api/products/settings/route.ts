@@ -12,6 +12,10 @@ import {
 import { ensureNcmCacheTable } from '@/lib/ncm-lookup';
 import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('products/settings');
 
 type LineNode = {
   name: string;
@@ -60,8 +64,8 @@ export async function GET() {
     let auth: { userId: string; role: string };
     try {
       auth = await requireEditor();
-    } catch (error: any) {
-      if (error?.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -528,8 +532,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('Error fetching product settings:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/settings');
   }
 }
 

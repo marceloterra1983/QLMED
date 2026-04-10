@@ -7,6 +7,10 @@ import {
   upsertProductRegistry,
 } from '@/lib/product-registry-store';
 import { cleanString } from '@/lib/utils';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/sync-anvisa');
 
 interface SyncProductItem {
   key: string;
@@ -36,8 +40,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -206,8 +210,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Error syncing ANVISA for products:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/sync-anvisa');
   }
 }
 

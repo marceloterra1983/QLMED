@@ -4,6 +4,9 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getCfopTagByCode, isImportEntryCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/history');
 
 const UNIT_ALIASES: Record<string, string> = {
   UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
@@ -307,7 +310,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ history, total: history.length });
   } catch (e) {
-    console.error('products/history error', e);
+    log.error({ err: e }, 'products/history error');
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

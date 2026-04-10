@@ -3,6 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { mapOneDriveConnectionSummary } from '@/lib/onedrive-connections';
+import { apiError } from '@/lib/api-error';
 
 export async function GET() {
   let userId: string;
@@ -35,6 +36,6 @@ export async function GET() {
       connections: connections.map(mapOneDriveConnectionSummary),
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao carregar conexões OneDrive' }, { status: 500 });
+    return apiError(error, 'onedrive/connections');
   }
 }

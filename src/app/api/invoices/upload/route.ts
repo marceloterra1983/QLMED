@@ -7,6 +7,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('invoices/upload');
 
 const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
 const MAX_FILES = 50;
@@ -29,8 +33,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -103,12 +107,12 @@ export async function POST(req: Request) {
         }
 
         results.success.push(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // P2002 = unique constraint violation (duplicate accessKey)
-        if (err?.code === 'P2002') {
+        if (err != null && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002') {
           results.errors.push(`${file.name}: Chave de acesso já cadastrada`);
         } else {
-          console.error(`[Upload] Error processing ${file.name}:`, err);
+          log.error({ err, fileName: file.name }, 'Error processing upload file');
           results.errors.push(`${file.name}: XML inválido ou não suportado`);
         }
       }
@@ -119,7 +123,6 @@ export async function POST(req: Request) {
       results,
     });
   } catch (error) {
-    console.error('Error uploading invoices:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/upload');
   }
 }

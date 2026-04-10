@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiError } from '@/lib/api-error';
 
 export async function GET(
   req: Request,
@@ -37,6 +38,6 @@ export async function GET(
 
     return new Response(invoice.xmlContent, { headers });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/:id/download');
   }
 }

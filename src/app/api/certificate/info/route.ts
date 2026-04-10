@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiError } from '@/lib/api-error';
 
 export async function GET(_request: NextRequest) {
   let userId: string;
@@ -53,10 +54,10 @@ export async function DELETE(_request: NextRequest) {
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   const company = await getOrCreateSingleCompany(userId);
   const companyId = company.id;
@@ -67,6 +68,6 @@ export async function DELETE(_request: NextRequest) {
     });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to delete certificate' }, { status: 500 });
+    return apiError(error, 'certificate/info');
   }
 }

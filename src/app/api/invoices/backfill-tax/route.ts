@@ -4,6 +4,9 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes, ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('invoices/backfill-tax');
 
 const BATCH_SIZE = 200;
 
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
     );
     for (const r of results) {
       if (r.status === 'fulfilled') processed++;
-      else { console.error('[backfill-tax] Error:', r.reason); errors++; }
+      else { log.error({ err: r.reason }, 'backfill-tax error'); errors++; }
     }
   }
 

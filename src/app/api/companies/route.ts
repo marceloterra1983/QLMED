@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('companies');
 
 export async function GET() {
   try {
@@ -20,8 +24,7 @@ export async function GET() {
 
     return NextResponse.json({ companies: companyWithCount ? [companyWithCount] : [] });
   } catch (error) {
-    console.error('Companies error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'companies');
   }
 }
 
@@ -31,8 +34,8 @@ export async function POST(_request: NextRequest) {
     try {
       const auth = await requireAdmin();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -45,7 +48,6 @@ export async function POST(_request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Create company error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'companies');
   }
 }

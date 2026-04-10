@@ -4,6 +4,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { refreshNcmCache, ensureNcmCacheTable } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('ncm/refresh');
 
 /**
  * POST /api/ncm/refresh
@@ -15,8 +19,8 @@ export async function POST() {
     let auth: { userId: string; role: string };
     try {
       auth = await requireEditor();
-    } catch (error: any) {
-      if (error?.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -64,7 +68,6 @@ export async function POST() {
       alreadyCached: freshCodes.size,
     });
   } catch (error) {
-    console.error('[ncm/refresh] Error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'ncm/refresh');
   }
 }

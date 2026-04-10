@@ -4,6 +4,10 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { normalizeForSearch } from '@/lib/utils';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('products/list');
 
 const SORT_COLUMN_MAP: Record<string, string> = {
   description: 'pr.description',
@@ -205,7 +209,6 @@ export async function GET(req: Request) {
       needsRebuild: !hasAggregates,
     });
   } catch (error) {
-    console.error('[products/list] Error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/list');
   }
 }

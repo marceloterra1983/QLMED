@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { ensureNcmCacheTable, formatNcmCode } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('ncm/bulk-sync');
 
 const SISCOMEX_URL =
   'https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json';
@@ -31,8 +34,8 @@ export async function POST() {
     let _auth: { userId: string; role: string };
     try {
       _auth = await requireEditor();
-    } catch (error: any) {
-      if (error?.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -62,8 +65,8 @@ export async function POST() {
           { status: 502 },
         );
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         return NextResponse.json({ error: 'Timeout ao baixar tabela SISCOMEX' }, { status: 504 });
       }
       throw err;
@@ -155,7 +158,7 @@ export async function POST() {
       updated,
     });
   } catch (err) {
-    console.error('[ncm/bulk-sync] Error:', err);
+    log.error({ err: err }, '[ncm/bulk-sync] Error');
     return NextResponse.json({ error: 'Erro interno ao sincronizar NCM' }, { status: 500 });
   }
 }

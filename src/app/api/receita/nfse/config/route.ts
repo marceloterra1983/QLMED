@@ -5,6 +5,10 @@ import { CertificateManager } from '@/lib/certificate-manager';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { incrementNsu, ReceitaNfseClient } from '@/lib/receita-nfse-client';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('receita/nfse/config');
 
 function maskToken(token: string): string {
   if (token.length <= 8) return '••••••••';
@@ -57,8 +61,7 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[ReceitaNfseConfig][GET] Error:', error);
-    return NextResponse.json({ error: 'Erro ao buscar configuração Receita NFS-e' }, { status: 500 });
+    return apiError(error, 'receita/nfse/config');
   }
 }
 
@@ -67,10 +70,10 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();
@@ -133,8 +136,7 @@ export async function POST(request: NextRequest) {
       message: 'Configuração Receita NFS-e salva com sucesso',
     });
   } catch (error) {
-    console.error('[ReceitaNfseConfig][POST] Error:', error);
-    return NextResponse.json({ error: 'Erro ao salvar configuração Receita NFS-e' }, { status: 500 });
+    return apiError(error, 'receita/nfse/config');
   }
 }
 
@@ -143,10 +145,10 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const body = await request.json();
@@ -207,8 +209,8 @@ export async function PUT(request: NextRequest) {
       statusCode: response.statusCode,
       message: `Conexão válida com a Receita NFS-e (${environment === 'production' ? 'produção' : 'produção restrita'}).`,
     });
-  } catch (error: any) {
-    console.error('[ReceitaNfseConfig][PUT] Error:', error);
-    return NextResponse.json({ ok: false, error: error?.message || 'Falha ao testar conexão Receita NFS-e' }, { status: 500 });
+  } catch (error: unknown) {
+    log.error({ err: error }, '[ReceitaNfseConfig][PUT] Error');
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Falha ao testar conexão Receita NFS-e' }, { status: 500 });
   }
 }

@@ -65,10 +65,10 @@ export async function GET(req: Request) {
         contentSecurityPolicy: csp,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({
       canEmbed: false,
-      reason: error?.message || 'Falha ao verificar disponibilidade do embed',
+      reason: error instanceof Error ? error.message : 'Falha ao verificar disponibilidade do embed',
       status: null,
     });
   }

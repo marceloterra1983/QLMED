@@ -7,6 +7,9 @@ import { parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import puppeteer from 'puppeteer';
 import { gv } from '@/lib/xml-helpers';
 import { ensureArray } from '@/lib/utils';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('invoices/:id/pdf');
 
 // ==================== Helpers ====================
 
@@ -2216,7 +2219,7 @@ export async function GET(
         html = buildFallbackHtml(invoice as PdfInvoiceView, autoPrint);
       }
     } catch (parseErr) {
-      console.error('[PDF] XML parse error, using fallback:', parseErr);
+      log.error({ err: parseErr }, '[PDF] XML parse error, using fallback');
       if (invoice.type === 'CTE') {
         const data = buildCteDataFromInvoice(invoice as PdfInvoiceView);
         html = buildCteHtml(data, autoPrint);
@@ -2270,7 +2273,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[PDF] Internal error:', error);
+    log.error({ err: error }, '[PDF] Internal error');
     return new Response('Erro interno ao gerar documento.', { status: 500 });
   }
 }

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchAnvisaData } from '@/lib/anvisa-api';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('anvisa/validate');
 
 /**
  * GET /api/anvisa/validate?code=XXXXXXXXXXX
@@ -106,7 +109,7 @@ export async function GET(req: NextRequest) {
       cached: false,
     });
   } catch (err) {
-    console.error('[anvisa/validate] Error:', err);
+    log.error({ err: err }, '[anvisa/validate] Error');
     return NextResponse.json({ error: 'Erro ao validar registro ANVISA' }, { status: 500 });
   }
 }

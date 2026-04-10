@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiError } from '@/lib/api-error';
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   let userId: string;
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const company = await getOrCreateSingleCompany(userId);
@@ -34,6 +35,6 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
     return NextResponse.json({ message: 'Conexão removida com sucesso' });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao remover conexão OneDrive' }, { status: 500 });
+    return apiError(error, 'onedrive/connections/:id');
   }
 }

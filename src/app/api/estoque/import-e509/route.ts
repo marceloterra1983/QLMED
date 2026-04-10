@@ -5,6 +5,10 @@ import prisma from '@/lib/prisma';
 import { ensureStockEntryTable } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
 import ExcelJS from 'exceljs';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('estoque/import-e509');
 
 // E509 column indices (0-based)
 const COL_NF_NUMBER = 0;
@@ -44,8 +48,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -169,7 +173,7 @@ export async function POST(req: Request) {
         const result = await registerInvoiceEntry(company.id, invoiceId, userId);
         if (result) autoRegistered++;
       } catch (err) {
-        console.error(`Failed to auto-register invoice ${invoiceId}:`, err);
+        log.error({ err: err }, 'Failed to auto-register invoice ${invoiceId}');
       }
     }
 
@@ -272,7 +276,6 @@ export async function POST(req: Request) {
       totalRows: rows.length,
     });
   } catch (error) {
-    console.error('Error importing E509:', error);
-    return NextResponse.json({ error: 'Erro ao importar E509' }, { status: 500 });
+    return apiError(error, 'estoque/import-e509');
   }
 }

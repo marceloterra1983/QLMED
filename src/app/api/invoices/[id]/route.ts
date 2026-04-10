@@ -3,6 +3,10 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('invoices/:id');
 
 export async function GET(
   req: Request,
@@ -31,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(invoice);
   } catch (error) {
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/:id');
   }
 }
 
@@ -44,8 +48,8 @@ export async function DELETE(
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -68,12 +72,12 @@ export async function DELETE(
       await markCompanyForSyncRecovery(company.id, invoice.issueDate);
       syncRecoveryMarked = true;
     } catch (syncRecoveryError) {
-      console.error('Error marking sync recovery after delete:', syncRecoveryError);
+      log.error({ err: syncRecoveryError }, 'Error marking sync recovery after delete');
     }
 
     return NextResponse.json({ message: 'Nota excluída com sucesso', syncRecoveryMarked });
   } catch (error) {
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/:id');
   }
 }
 
@@ -118,6 +122,6 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error) {
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/:id');
   }
 }

@@ -4,6 +4,10 @@ import prisma from '@/lib/prisma';
 import { NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { decrypt } from '@/lib/crypto';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('nsdocs/documents');
 
 // GET - Lista documentos ou baixa XML/PDF de um documento específico
 export async function GET(request: NextRequest) {
@@ -61,7 +65,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documentos });
   } catch (error) {
-    console.error('[NSDocs Documents] Error:', error);
-    return NextResponse.json({ error: 'Erro ao buscar documentos' }, { status: 500 });
+    return apiError(error, 'nsdocs/documents');
   }
 }

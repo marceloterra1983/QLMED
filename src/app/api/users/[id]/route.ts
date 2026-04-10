@@ -4,6 +4,10 @@ import { hash } from 'bcryptjs';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('users/:id');
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
@@ -23,8 +27,8 @@ export async function PATCH(
     let admin: { userId: string; role: string };
     try {
       admin = await requireAdmin();
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -115,7 +119,6 @@ export async function PATCH(
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error('Error updating user:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'users/:id');
   }
 }

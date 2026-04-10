@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupCnpj } from '@/lib/cnpj-lookup';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('cnpj/:cnpj');
 
 export async function GET(
   _req: NextRequest,
@@ -23,7 +26,7 @@ export async function GET(
     }
     return NextResponse.json(result);
   } catch (err) {
-    console.error('[api/cnpj] Error:', err);
+    log.error({ err: err }, '[api/cnpj] Error');
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

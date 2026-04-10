@@ -11,16 +11,17 @@ import {
   ensureValidOneDriveAccessToken,
   mapOneDriveConnectionSummary,
 } from '@/lib/onedrive-connections';
+import { apiError } from '@/lib/api-error';
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   let userId: string;
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const company = await getOrCreateSingleCompany(userId);

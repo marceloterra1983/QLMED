@@ -4,6 +4,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry, getProductRegistryByKeys } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/anvisa/bulk-import');
 
 const MAX_INVOICES = 3000;
 const XML_BATCH_SIZE = 50;
@@ -38,8 +42,8 @@ export async function POST(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -205,7 +209,6 @@ export async function POST(req: Request) {
       totalItems: validItems.length,
     });
   } catch (error) {
-    console.error('Error in bulk-import ANVISA:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/anvisa/bulk-import');
   }
 }

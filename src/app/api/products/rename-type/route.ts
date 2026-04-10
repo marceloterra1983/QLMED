@@ -338,8 +338,8 @@ export async function POST(req: NextRequest) {
   let auth: { userId: string; role: string };
   try {
     auth = await requireEditor();
-  } catch (error: any) {
-    if (error?.message === 'FORBIDDEN') return forbiddenResponse();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

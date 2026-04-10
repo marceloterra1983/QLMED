@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('webhooks/n8n');
 
 const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml', 'sync-ncm-bulk', 'backfill-tax-data', 'batch-cnpj-check'] as const;
 type Action = (typeof VALID_ACTIONS)[number];
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest) {
 
       case 'notify': {
         // Log notification; extend with email/WhatsApp integration as needed
-        console.log('[n8n webhook] Notification:', payload);
+        log.info({ payload }, '[n8n webhook] Notification');
         return NextResponse.json({ ok: true, action, message: 'Notification received' });
       }
 
@@ -125,8 +128,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unhandled action' }, { status: 400 });
     }
   } catch (err) {
-    console.error('[n8n webhook] Error:', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return apiError(err, 'POST /api/webhooks/n8n');
   }
 }
 

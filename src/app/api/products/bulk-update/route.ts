@@ -4,6 +4,10 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { cleanString } from '@/lib/utils';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('products/bulk-update');
 
 function normalizeAnvisa(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -36,8 +40,8 @@ export async function PATCH(req: Request) {
     try {
       const auth = await requireEditor();
       userId = auth.userId;
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 
@@ -184,11 +188,10 @@ export async function PATCH(req: Request) {
     }
 
     return NextResponse.json({ updated });
-  } catch (e: any) {
-    if (e.message === 'ANVISA_INVALID') {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === 'ANVISA_INVALID') {
       return NextResponse.json({ error: 'Código ANVISA inválido. Informe exatamente 11 dígitos.' }, { status: 400 });
     }
-    console.error('bulk-update error', e);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(e, 'POST /api/products/bulk-update');
   }
 }

@@ -8,6 +8,9 @@ import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { cleanString, ensureArray, toNumber } from '@/lib/utils';
 import { extractAnvisa } from '@/lib/product-aggregation';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('reports/valvulas-importadas');
 
 /* ── Inline helpers (same pattern as products/route.ts) ── */
 
@@ -540,7 +543,7 @@ export async function GET(req: Request) {
       meta: { invoicesScanned, issuedInvoicesScanned },
     });
   } catch (e) {
-    console.error('reports/valvulas-importadas error', e);
+    log.error({ err: e }, 'reports/valvulas-importadas error');
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

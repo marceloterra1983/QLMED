@@ -4,16 +4,20 @@ import prisma from '@/lib/prisma'; // Assumindo que existe
 import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('certificate/upload');
 
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
     const auth = await requireAdmin();
     userId = auth.userId;
-  } catch (e: any) {
-    if (e.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
+  } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
   try {
     const formData = await request.formData();
@@ -54,8 +58,8 @@ export async function POST(request: NextRequest) {
     let certInfo;
     try {
       certInfo = CertificateManager.processPfx(buffer, password);
-    } catch (e: any) {
-      console.error('[Certificate] Processing error:', e);
+    } catch (e: unknown) {
+      log.error({ err: e }, '[Certificate] Processing error');
       return NextResponse.json({ error: 'Certificado inválido ou senha incorreta' }, { status: 400 });
     }
 
@@ -97,8 +101,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: any) {
-    console.error('Erro no upload de certificado:', error);
-    return NextResponse.json({ error: 'Erro interno ao processar upload' }, { status: 500 });
+  } catch (error: unknown) {
+    return apiError(error, 'POST /api/certificate/upload');
   }
 }

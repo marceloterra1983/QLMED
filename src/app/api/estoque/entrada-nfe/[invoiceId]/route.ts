@@ -6,6 +6,10 @@ import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
+import { apiError } from '@/lib/api-error';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('estoque/entrada-nfe/:invoiceId');
 
 export async function GET(req: Request, { params }: { params: { invoiceId: string } }) {
   try {
@@ -213,8 +217,7 @@ export async function GET(req: Request, { params }: { params: { invoiceId: strin
       source: 'xml',
     });
   } catch (error) {
-    console.error('Error fetching invoice items:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe/:invoiceId');
   }
 }
 
@@ -223,8 +226,8 @@ export async function PATCH(req: Request, { params }: { params: { invoiceId: str
     let userId: string;
     try {
       ({ userId } = await requireEditor());
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -249,8 +252,7 @@ export async function PATCH(req: Request, { params }: { params: { invoiceId: str
 
     return NextResponse.json({ item: updated });
   } catch (error) {
-    console.error('Error updating lot:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe/:invoiceId');
   }
 }
 
@@ -260,8 +262,8 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     let userId: string;
     try {
       ({ userId } = await requireEditor());
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -286,8 +288,7 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
 
     return NextResponse.json({ item: created }, { status: 201 });
   } catch (error) {
-    console.error('Error adding batch row:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe/:invoiceId');
   }
 }
 
@@ -297,8 +298,8 @@ export async function DELETE(req: Request, { params }: { params: { invoiceId: st
     let userId: string;
     try {
       ({ userId } = await requireEditor());
-    } catch (e: any) {
-      if (e.message === 'FORBIDDEN') return forbiddenResponse();
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
@@ -319,7 +320,6 @@ export async function DELETE(req: Request, { params }: { params: { invoiceId: st
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting batch row:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'estoque/entrada-nfe/:invoiceId');
   }
 }

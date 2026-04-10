@@ -5,6 +5,10 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { GET as getInvoicePdfDownload } from '@/app/api/invoices/[id]/pdf/route';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('invoices/bulk-download');
 
 const MAX_BULK_ITEMS = 200;
 
@@ -153,7 +157,6 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error('[BulkDownload] Erro ao gerar ZIP:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'invoices/bulk-download');
   }
 }

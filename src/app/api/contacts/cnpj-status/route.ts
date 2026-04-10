@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { ensureCnpjCacheTable } from '@/lib/cnpj-lookup';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('contacts/cnpj-status');
 
 /**
  * GET /api/contacts/cnpj-status?cnpjs=X,Y,Z
@@ -51,7 +55,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json(results);
   } catch (error) {
-    console.error('Error fetching CNPJ status:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'contacts/cnpj-status');
   }
 }

@@ -3,6 +3,10 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
+import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
+
+const log = createLogger('products/details');
 
 export async function GET(req: Request) {
   try {
@@ -157,7 +161,6 @@ export async function GET(req: Request) {
       defaultSupplier: row.default_supplier || null,
     });
   } catch (error) {
-    console.error('[products/details] Error:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return apiError(error, 'products/details');
   }
 }
