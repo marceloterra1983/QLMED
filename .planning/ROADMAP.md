@@ -123,7 +123,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — Create XML type interfaces (NFeXml, CTeXml, NFSeXml) + type xml-helpers.ts (TYPE-01)
 - [x] 07-02-PLAN.md — Apply XML types to core parsing functions: parse-invoice-xml, pdf/route, details/route, product-aggregation (TYPE-02)
-- [ ] 07-03-PLAN.md — Eliminate remaining ~99 any across 31 files: lib modules, page-clients, API routes (TYPE-03)
+- [x] 07-03-PLAN.md — Eliminate remaining ~99 any across 31 files: lib modules, page-clients, API routes (TYPE-03)
 
 ### Phase 8: File Splitting
 **Goal**: Nenhum arquivo de componente/rota excede 500 linhas — arquivos grandes divididos em modulos coesos

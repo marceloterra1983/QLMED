@@ -53,7 +53,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 
 - [x] **TYPE-01**: Interfaces tipadas para XML parsed — NFeXml, CTeXml, NFSeXml em @/types/
 - [x] **TYPE-02**: Funções de parsing tipadas (parse-invoice-xml, pdf route, product-aggregation)
-- [ ] **TYPE-03**: 200+ usos de `any` eliminados, incluindo 34 catch blocks usando `unknown`
+- [x] **TYPE-03**: 200+ usos de `any` eliminados, incluindo 34 catch blocks usando `unknown`
 
 ### File Splitting
 
