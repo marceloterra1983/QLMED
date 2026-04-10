@@ -91,8 +91,8 @@ Plans:
 **Plans:** 3 plans
 Plans:
 - [x] 05-01-PLAN.md — Centralize 7 duplicated utility functions into canonical modules (DUP-01)
-- [ ] 05-02-PLAN.md — Unify financeiro contas-pagar/contas-receber into shared parametrized module (DUP-02)
-- [ ] 05-03-PLAN.md — Unify suppliers/customers API routes and verify modal shared imports (DUP-03)
+- [x] 05-02-PLAN.md — Unify financeiro contas-pagar/contas-receber into shared parametrized module (DUP-02)
+- [x] 05-03-PLAN.md — Unify suppliers/customers API routes and verify modal shared imports (DUP-03)
 
 ### Phase 6: API Validation & Logging
 **Goal**: Todas as rotas API validam input com schemas, erros sao tratados consistentemente, logs sao estruturados e configuraveis
