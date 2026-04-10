@@ -25,7 +25,7 @@ export class CertificateManager {
     
     // Busca o certificado do usuário (e não a CA) nas "bags"
     const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
-    const certBag = bags[forge.pki.oids.certBag]?.find((bag: any) => {
+    const certBag = bags[forge.pki.oids.certBag]?.find((bag: forge.pkcs12.Bag) => {
       // Tenta encontrar o cert que tem CNPJ no subject (OID 2.16.76.1.3.3)
       // Ou pegar o primeiro se não encontrar específico
       return bag.cert;
@@ -40,10 +40,10 @@ export class CertificateManager {
     // Extrair dados básicos
     const serialNumber = cert.serialNumber;
     const issuer = cert.issuer.attributes
-      .map((attr: any) => `${attr.shortName || attr.name}=${attr.value}`)
+      .map((attr: forge.pki.CertificateField) => `${attr.shortName || attr.name}=${attr.value}`)
       .join(', ');
     const subject = cert.subject.attributes
-      .map((attr: any) => `${attr.shortName || attr.name}=${attr.value}`)
+      .map((attr: forge.pki.CertificateField) => `${attr.shortName || attr.name}=${attr.value}`)
       .join(', ');
     const validFrom = cert.validity.notBefore;
     const validTo = cert.validity.notAfter;

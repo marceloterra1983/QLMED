@@ -586,7 +586,8 @@ export async function syncViaSefaz(
     });
 
     log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'SEFAZ sync completed');
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     log.error({ err, company: razaoSocial }, 'Erro SEFAZ');
     try {
       await prisma.certificateConfig.update({ where: { id: cert.id }, data: { lastNsu: ultNSU } });
@@ -596,7 +597,7 @@ export async function syncViaSefaz(
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
-        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+        data: { status: 'error', errorMessage: message, completedAt: new Date() },
       });
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
@@ -717,12 +718,13 @@ export async function syncViaNsdocs(
     });
 
     log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'NSDocs sync completed');
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     log.error({ err, company: razaoSocial }, 'Erro NSDocs');
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
-        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+        data: { status: 'error', errorMessage: message, completedAt: new Date() },
       });
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
@@ -799,12 +801,13 @@ export async function syncViaReceitaNfse(
     });
 
     log.info({ company: razaoSocial, newDocs: result.newDocs, updatedDocs: result.updatedDocs, scannedNsus: result.scannedNsuCount }, 'Receita NFS-e sync completed');
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     log.error({ err, company: razaoSocial }, 'Erro Receita NFS-e');
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
-        data: { status: 'error', errorMessage: err.message, completedAt: new Date() },
+        data: { status: 'error', errorMessage: message, completedAt: new Date() },
       });
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');

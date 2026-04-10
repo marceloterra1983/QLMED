@@ -85,11 +85,11 @@ export async function runBatchCnpjCheck(
 
   // Check stale or unknown CNPJs first
   const staleThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const staleCnpjs = await prisma.$queryRawUnsafe<any[]>(
+  const staleCnpjs = await prisma.$queryRawUnsafe<{ cnpj: string }[]>(
     `SELECT cnpj FROM cnpj_cache WHERE fetched_at < $1::timestamptz`,
     staleThreshold,
   );
-  const staleSet = new Set(staleCnpjs.map((r: any) => r.cnpj));
+  const staleSet = new Set(staleCnpjs.map((r) => r.cnpj));
 
   // Prioritize stale + unknown
   const toCheck = contacts.filter((c) => staleSet.has(c.cnpj) || !knownStatus.has(c.cnpj));

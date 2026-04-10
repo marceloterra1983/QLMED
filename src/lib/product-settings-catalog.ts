@@ -58,7 +58,19 @@ function clean(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function mapCatalogRow(row: any): ProductSettingsCatalogEntry {
+interface ProductSettingsCatalogRow {
+  id: string;
+  company_id: string;
+  section: string;
+  value: string;
+  parent_value: string | null;
+  parent_secondary_value: string | null;
+  extra_value: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+}
+
+function mapCatalogRow(row: ProductSettingsCatalogRow): ProductSettingsCatalogEntry {
   return {
     id: String(row.id),
     companyId: String(row.company_id),

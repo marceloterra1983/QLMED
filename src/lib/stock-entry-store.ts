@@ -515,7 +515,7 @@ export async function insertNfeEntryItems(stockEntryId: string, items: NfeEntryI
   const BATCH = 50;
   for (let i = 0; i < items.length; i += BATCH) {
     const batch = items.slice(i, i + BATCH);
-    const values: any[] = [];
+    const values: (string | number | null)[] = [];
     const placeholders: string[] = [];
 
     for (let j = 0; j < batch.length; j++) {

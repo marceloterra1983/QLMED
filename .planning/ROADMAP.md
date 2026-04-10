@@ -134,7 +134,12 @@ Plans:
   2. PDF route dividida em modulos separados por tipo de documento (danfe, dacte, nfse generators + pdf-utils)
   3. SupplierDetailsModal e CustomerDetailsModal compartilham sub-componentes de tabs
   4. Nenhum arquivo em src/ excede 800 linhas (exceto schemas gerados)
-**Plans:** [To be planned]
+**Plans:** 4 plans
+Plans:
+- [ ] 08-01-PLAN.md — Split produtos/page-client.tsx into 5+ components (SPLIT-01)
+- [ ] 08-02-PLAN.md — Split PDF route into danfe/dacte/nfse generators + pdf-utils (SPLIT-02)
+- [ ] 08-03-PLAN.md — Extract shared contact-details sub-components from modals (SPLIT-03)
+- [ ] 08-04-PLAN.md — Split settings, financeiro pages, local-xml-sync into modules (SPLIT-04)
 **UI hint**: yes
 
 ### Phase 9: Search & Pagination
@@ -219,9 +224,9 @@ Plans:
 | 5. Code Deduplication | 0/3 | Planned | - |
 | 6. API Validation & Logging | 0/5 | Not started | - |
 | 7. Type Safety | 0/3 | Not started | - |
-| 8. File Splitting | 0/? | Not started | - |
+| 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/? | Not started | - |
 | 10. Major Upgrades | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-04-10 after Phase 7 planning*
+*Last updated: 2026-04-10 after Phase 8 planning*

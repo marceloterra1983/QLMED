@@ -64,7 +64,7 @@ interface ReceitaNfseConfigInput {
 
 interface ReceitaNfsePrisma {
   invoice: {
-    upsert: (args: any) => Promise<{ createdAt: Date; updatedAt: Date; id: string }>;
+    upsert: (args: Parameters<import('@prisma/client').PrismaClient['invoice']['upsert']>[0]) => Promise<{ createdAt: Date; updatedAt: Date; id: string }>;
   };
 }
 

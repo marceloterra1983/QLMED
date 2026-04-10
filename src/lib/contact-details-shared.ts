@@ -9,7 +9,20 @@ import { getContactFiscal } from '@/lib/contact-fiscal-store';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getCfopTagByCode } from '@/lib/cfop';
 import { cleanString, ensureArray, toNumber } from '@/lib/utils';
+import type { Prisma } from '@prisma/client';
 import type { ContactType } from '@/lib/contact-shared';
+
+/** Shape returned by the metadata-only invoice select (no xmlContent). */
+interface InvoiceMetaRow {
+  id: string;
+  accessKey: string | null;
+  number: string;
+  series: string | null;
+  issueDate: Date | null;
+  totalValue: Prisma.Decimal | null;
+  status: string;
+  [key: string]: unknown;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -110,10 +123,11 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
     const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
-    const dets = ensureArray<any>(infNFe?.det);
+    interface XmlDet { prod?: Record<string, string | undefined> }
+    const dets = ensureArray<XmlDet>(infNFe?.det);
     const cfops = new Set<string>();
     const products = dets.map((det) => {
-      const prod = det?.prod || {};
+      const prod = det?.prod || {} as Record<string, string | undefined>;
       const cfop = cleanString(prod?.CFOP);
       if (cfop) cfops.add(cfop);
       const quantity = toNumber(prod?.qCom);
@@ -130,7 +144,7 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
         totalValue,
       };
     });
-    const dups = ensureArray<any>(infNFe?.cobr?.dup);
+    const dups = ensureArray<Record<string, string | undefined>>(infNFe?.cobr?.dup);
     const duplicates = dups
       .map((dup) => ({
         installmentNumber: cleanString(dup?.nDup) || '-',
@@ -195,7 +209,7 @@ export async function handleContactDetails(
     status: true,
   };
 
-  let contactWhere: any = null;
+  let contactWhere: Prisma.InvoiceWhereInput = baseWhere;
   if (cnpj) {
     contactWhere = { ...baseWhere, [cfg.cnpjField]: { contains: cnpj } };
   } else if (name) {
@@ -208,7 +222,7 @@ export async function handleContactDetails(
     orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
     take: MAX_INVOICES,
     select: metadataSelect,
-  });
+  }) as unknown as InvoiceMetaRow[];
 
   if (invoices.length === 0 && cnpj && name) {
     contactWhere = { ...baseWhere, [cfg.nameField]: name };
@@ -217,18 +231,18 @@ export async function handleContactDetails(
       orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
       take: MAX_INVOICES,
       select: metadataSelect,
-    });
+    }) as unknown as InvoiceMetaRow[];
   }
 
-  const latestInvoice = invoices[0] as any;
+  const latestInvoice = invoices[0] as InvoiceMetaRow | undefined;
   if (!latestInvoice) {
     return NextResponse.json({ error: cfg.notFoundError }, { status: 404 });
   }
 
-  const normalizedLatestDocument = normalizeDocument(latestInvoice[cfg.cnpjField]);
+  const normalizedLatestDocument = normalizeDocument(latestInvoice[cfg.cnpjField] as string | null | undefined);
   const filteredInvoices = normalizedLatestDocument
-    ? invoices.filter((invoice: any) => normalizeDocument(invoice[cfg.cnpjField]) === normalizedLatestDocument)
-    : invoices.filter((invoice: any) => invoice[cfg.nameField] === latestInvoice[cfg.nameField]);
+    ? invoices.filter((invoice) => normalizeDocument(invoice[cfg.cnpjField] as string | null | undefined) === normalizedLatestDocument)
+    : invoices.filter((invoice) => invoice[cfg.nameField] === latestInvoice[cfg.nameField]);
 
   // Step 2: Load xmlContent ONLY for the latest invoice (contact info)
   const latestWithXml = await prisma.invoice.findUnique({
@@ -238,8 +252,8 @@ export async function handleContactDetails(
   const extracted = latestWithXml
     ? await extractContactDataFromXml(latestWithXml.xmlContent, cfg.xmlPartyPath, cfg.xmlAddressPrefix)
     : null;
-  const contactName = extracted?.name || latestInvoice[cfg.nameField] || cfg.unknownLabel;
-  const contactCnpj = extracted?.cnpj || normalizeDocument(latestInvoice[cfg.cnpjField]);
+  const contactName = extracted?.name || (latestInvoice[cfg.nameField] as string) || cfg.unknownLabel;
+  const contactCnpj = extracted?.cnpj || normalizeDocument(latestInvoice[cfg.cnpjField] as string | null | undefined);
 
   // Fetch persisted fiscal data (IE, IM, CRT)
   const contactFiscal = contactCnpj
@@ -248,18 +262,18 @@ export async function handleContactDetails(
 
   // Step 3: Compute stats from metadata (no XML needed)
   const totalInvoices = filteredInvoices.length;
-  const lastIssueDate = (filteredInvoices[0] as any)?.issueDate || null;
-  const firstIssueDate = (filteredInvoices[totalInvoices - 1] as any)?.issueDate || null;
-  const confirmedInvoices = filteredInvoices.filter((invoice: any) => invoice.status === 'confirmed').length;
-  const rejectedInvoices = filteredInvoices.filter((invoice: any) => invoice.status === 'rejected').length;
-  const pendingInvoices = filteredInvoices.filter((invoice: any) => invoice.status === 'received').length;
+  const lastIssueDate = filteredInvoices[0]?.issueDate || null;
+  const firstIssueDate = filteredInvoices[totalInvoices - 1]?.issueDate || null;
+  const confirmedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'confirmed').length;
+  const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
+  const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
 
   // For suppliers, totalValue is computed from metadata directly
   // For customers, totalValue is computed from XML (only sale/bonification invoices)
   let totalValue = 0;
   let totalSaleOrBonificationInvoices = 0;
   if (!cfg.hasSaleFilter) {
-    totalValue = filteredInvoices.reduce((acc, invoice: any) => acc + (Number(invoice.totalValue) || 0), 0);
+    totalValue = filteredInvoices.reduce((acc, invoice) => acc + (Number(invoice.totalValue) || 0), 0);
   }
 
   const now = new Date();
@@ -295,7 +309,7 @@ export async function handleContactDetails(
 
   for (let i = 0; i < filteredInvoices.length; i += XML_BATCH_SIZE) {
     const batchMeta = filteredInvoices.slice(i, i + XML_BATCH_SIZE);
-    const batchIds = batchMeta.map((inv: any) => inv.id);
+    const batchIds = batchMeta.map((inv) => inv.id);
 
     const batchWithXml = await prisma.invoice.findMany({
       where: { id: { in: batchIds } },
@@ -304,7 +318,7 @@ export async function handleContactDetails(
     const xmlMap = new Map(batchWithXml.map((inv) => [inv.id, inv.xmlContent]));
 
     const batchSettled = await Promise.allSettled(
-      batchMeta.map(async (invoice: any) => {
+      batchMeta.map(async (invoice) => {
         const xml = xmlMap.get(invoice.id);
         if (!xml) return null;
         const parsed = await extractInvoiceDataFromXml(xml);
@@ -370,7 +384,7 @@ export async function handleContactDetails(
         existing.maxPrice = Math.max(existing.maxPrice, product.unitPrice);
         existing.invoiceIds.add(invoice.id);
 
-        if (!existing.lastIssueDate || invoice.issueDate > existing.lastIssueDate) {
+        if (!existing.lastIssueDate || (invoice.issueDate && invoice.issueDate > existing.lastIssueDate)) {
           existing.lastIssueDate = invoice.issueDate;
           existing.lastPrice = product.unitPrice;
           existing.lastInvoiceNumber = invoice.number;
@@ -432,7 +446,7 @@ export async function handleContactDetails(
       });
 
   if (metaOnly) {
-    const metaResponse: any = {
+    const metaResponse: Record<string, unknown> = {
       [cfg.responseKey]: {
         name: contactName,
         cnpj: contactCnpj,
@@ -440,13 +454,14 @@ export async function handleContactDetails(
       meta: {
         totalPriceRows: priceKeySet.size,
         priceRowsLimited: priceKeySet.size > MAX_PRICE_ROWS,
-      },
+      } as Record<string, unknown>,
     };
     // Customer metaOnly includes extra fields
     if (cfg.hasSaleFilter) {
-      metaResponse.meta.totalQuantity = totalQuantityMeta;
-      metaResponse.meta.totalInvoices = totalInvoices;
-      metaResponse.meta.totalValue = totalValue;
+      const meta = metaResponse.meta as Record<string, unknown>;
+      meta.totalQuantity = totalQuantityMeta;
+      meta.totalInvoices = totalInvoices;
+      meta.totalValue = totalValue;
     }
     return NextResponse.json(metaResponse);
   }
@@ -457,7 +472,7 @@ export async function handleContactDetails(
     ? (totalSaleOrBonificationInvoices > 0 ? totalValue / totalSaleOrBonificationInvoices : 0)
     : (totalInvoices > 0 ? totalValue / totalInvoices : 0);
 
-  const invoicesList = filteredInvoices.map((invoice: any) => ({
+  const invoicesList = filteredInvoices.map((invoice) => ({
     id: invoice.id,
     number: invoice.number,
     series: invoice.series,
@@ -493,7 +508,7 @@ export async function handleContactDetails(
     } catch { /* non-critical */ }
   }
 
-  const response: any = {
+  const response: Record<string, unknown> = {
     [cfg.responseKey]: {
       name: contactName,
       fantasyName: extracted?.fantasyName,

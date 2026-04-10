@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { getCityByCnpjs, backfillContactFiscalCity } from '@/lib/contact-fiscal-store';
 
@@ -76,13 +77,13 @@ function buildContactKey(cnpj: string | null, name: string | null) {
 }
 
 function buildYearCountMap(
-  groupedInvoices: Array<{ _count: { _all: number }; [key: string]: any }>,
+  groupedInvoices: Array<Record<string, unknown> & { _count: { _all: number } }>,
   cnpjField: string,
   nameField: string,
 ) {
   const yearCountMap = new Map<string, number>();
   for (const grouped of groupedInvoices) {
-    const key = buildContactKey(grouped[cnpjField], grouped[nameField]);
+    const key = buildContactKey(grouped[cnpjField] as string | null, grouped[nameField] as string | null);
     const current = yearCountMap.get(key) || 0;
     yearCountMap.set(key, current + (grouped._count._all || 0));
   }
@@ -112,7 +113,7 @@ export async function handleContactList(
   const { page, limit, search, sort, order } = params;
   const exportAll = params.exportAll === '1';
 
-  const where: any = {
+  const where: Prisma.InvoiceWhereInput = {
     companyId: company.id,
     type: 'NFE',
     direction: cfg.invoiceDirection,
@@ -151,7 +152,7 @@ export async function handleContactList(
   const contactMap = new Map<string, AggregatedContact>();
 
   for (const grouped of groupedInvoices) {
-    const key = buildContactKey(grouped[cnpjField], grouped[nameField]);
+    const key = buildContactKey(grouped[cnpjField] as string | null, grouped[nameField] as string | null);
     const invoiceCount = grouped._count._all || 0;
     const totalValue = Number(grouped._sum.totalValue) || 0;
     const firstIssueDate = grouped._min.issueDate;
@@ -160,8 +161,8 @@ export async function handleContactList(
     const existing = contactMap.get(key);
     if (!existing) {
       contactMap.set(key, {
-        cnpj: grouped[cnpjField] || '',
-        name: grouped[nameField] || cfg.unknownLabel,
+        cnpj: (grouped[cnpjField] as string) || '',
+        name: (grouped[nameField] as string) || cfg.unknownLabel,
         city: null,
         invoiceCount,
         invoiceCountPrevYear: yearCountMapPrev.get(key) || 0,
@@ -182,7 +183,7 @@ export async function handleContactList(
 
     if (!existing.lastIssueDate || (lastIssueDate && lastIssueDate > existing.lastIssueDate)) {
       existing.lastIssueDate = lastIssueDate;
-      existing.name = grouped[nameField] || existing.name;
+      existing.name = (grouped[nameField] as string) || existing.name;
     }
   }
 
@@ -324,20 +325,46 @@ export async function handleContactList(
   }, { [cfg.summaryKey]: total, totalInvoices: 0, totalValue: 0 } as Record<string, number>);
 
   // Enrich with CNPJ cache + overrides for export
-  let cnpjCacheMap = new Map<string, any>();
-  let overrideMap = new Map<string, any>();
+  interface CnpjCacheData {
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    situacaoCadastral?: string;
+    descSituacao?: string;
+    cnaePrincipal?: { codigo?: string; descricao?: string } | null;
+    porte?: string;
+    naturezaJuridica?: string;
+    telefone?: string;
+    email?: string;
+    endereco?: string;
+    simplesNacional?: boolean | null;
+    mei?: boolean | null;
+    capitalSocial?: number | null;
+  }
+  interface ContactOverrideData {
+    phone?: string | null;
+    email?: string | null;
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    district?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+  }
+  let cnpjCacheMap = new Map<string, CnpjCacheData>();
+  let overrideMap = new Map<string, ContactOverrideData>();
   if (exportAll) {
     const exportCnpjs = paginatedContacts.map((c) => c.cnpj).filter((c) => c && c.replace(/\D/g, '').length === 14);
     if (exportCnpjs.length > 0) {
       const digits = exportCnpjs.map((c) => c.replace(/\D/g, ''));
       try {
-        const rows = await prisma.$queryRawUnsafe<any[]>(
+        const rows = await prisma.$queryRawUnsafe<{ cnpj: string; data: unknown }[]>(
           `SELECT cnpj, data FROM cnpj_cache WHERE cnpj = ANY($1)`,
           digits,
         );
         for (const r of rows) {
           const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
-          cnpjCacheMap.set(r.cnpj, d);
+          cnpjCacheMap.set(r.cnpj, d as CnpjCacheData);
         }
       } catch { /* table may not exist */ }
       const overrides = await prisma.contactOverride.findMany({
@@ -349,7 +376,7 @@ export async function handleContactList(
 
   return NextResponse.json({
     [cfg.responseKey]: paginatedContacts.map((c) => {
-      const base: any = { ...c, shortName: nicknameMap.get(c.cnpj) || null, priceItemCount: priceItemCountMap.get(c.cnpj) ?? null };
+      const base: Record<string, unknown> = { ...c, shortName: nicknameMap.get(c.cnpj) || null, priceItemCount: priceItemCountMap.get(c.cnpj) ?? null };
       if (exportAll) {
         const digits = (c.cnpj || '').replace(/\D/g, '');
         const cnpj = cnpjCacheMap.get(digits);

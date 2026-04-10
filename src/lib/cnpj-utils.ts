@@ -27,8 +27,25 @@ export interface CnpjData {
   } | null;
 }
 
+/** Raw shape from CNPJ API (BrasilAPI / ReceitaWS) before normalization. */
+interface CnpjApiResponse {
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  situacaoCadastral?: string;
+  descSituacao?: string;
+  cnaePrincipal?: { codigo: string; descricao: string } | null;
+  porte?: string;
+  naturezaJuridica?: string;
+  capitalSocial?: number | null;
+  simplesNacional?: boolean | null;
+  mei?: boolean | null;
+  telefone?: string;
+  email?: string;
+  endereco?: CnpjData['endereco'];
+}
+
 /** Map a CNPJ API response to a normalized CnpjData object */
-export function parseCnpjResponse(data: any): CnpjData {
+export function parseCnpjResponse(data: CnpjApiResponse): CnpjData {
   return {
     razaoSocial: data.razaoSocial || null,
     nomeFantasia: data.nomeFantasia || null,

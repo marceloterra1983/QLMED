@@ -11,6 +11,23 @@ export interface AnvisaRegistryData {
   dataset: 'saude' | 'medicamentos';
 }
 
+interface AnvisaApiItem {
+  numeroRegistro?: string;
+  nomeProduto?: string;
+  descricaoProduto?: string;
+  nomeEmpresa?: string;
+  empresa?: string;
+  processoRegistro?: string;
+  processo?: string;
+  situacaoRegistro?: string;
+  situacao?: string;
+  vencimentoRegistro?: string;
+  vencimento?: string;
+  classeRisco?: string;
+  classe?: string;
+  produto?: string;
+}
+
 export async function fetchAnvisaData(registration: string): Promise<AnvisaRegistryData | null> {
   const encoded = encodeURIComponent(registration);
 
@@ -29,9 +46,9 @@ export async function fetchAnvisaData(registration: string): Promise<AnvisaRegis
 
     if (res.ok) {
       const json = await res.json();
-      const items: any[] = json?.content ?? json?.data ?? (Array.isArray(json) ? json : []);
+      const items: AnvisaApiItem[] = json?.content ?? json?.data ?? (Array.isArray(json) ? json : []);
       const item = items.find(
-        (i: any) => String(i.numeroRegistro ?? '').replace(/\D/g, '') === registration,
+        (i) => String(i.numeroRegistro ?? '').replace(/\D/g, '') === registration,
       ) ?? items[0];
 
       if (item) {
@@ -65,9 +82,9 @@ export async function fetchAnvisaData(registration: string): Promise<AnvisaRegis
 
     if (res.ok) {
       const json = await res.json();
-      const items: any[] = json?.content ?? json?.data ?? (Array.isArray(json) ? json : []);
+      const items: AnvisaApiItem[] = json?.content ?? json?.data ?? (Array.isArray(json) ? json : []);
       const item = items.find(
-        (i: any) => String(i.numeroRegistro ?? '').replace(/\D/g, '') === registration,
+        (i) => String(i.numeroRegistro ?? '').replace(/\D/g, '') === registration,
       ) ?? items[0];
 
       if (item) {
