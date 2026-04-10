@@ -135,6 +135,7 @@ export interface CTeIde {
   toma3?: CTeToma3 | string;
   toma03?: CTeToma3 | string;
   toma4?: CTeToma4;
+  toma?: CTeToma;
   indGlobalizado?: string;
 }
 
@@ -244,7 +245,9 @@ export interface CTeInfCte {
   toma4?: CTeToma4;
   vPrest?: CTeVPrest;
   imp?: CTeImp;
+  /** fast-xml-parser preserves case: infCTeNorm or infCteNorm depending on source */
   infCTeNorm?: CTeInfCTeNorm;
+  infCteNorm?: CTeInfCTeNorm;
   Id?: string;
   $?: { Id?: string };
   versao?: string;

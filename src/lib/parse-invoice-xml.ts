@@ -1,4 +1,11 @@
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
+import type { XmlNode } from '@/types/xml-common';
+import type { NFeProc, NFeDoc, NFeInfNFe } from '@/types/nfe-xml';
+import type { CTeProc, CTeDoc, CTeInfCte, CTeToma4 } from '@/types/cte-xml';
+import type {
+  NFSeCompNfse, NFSeNfse, NFSeInfNfse, NFSeConsultarResposta,
+  NFSeNacionalInfNFSe,
+} from '@/types/nfse-xml';
 
 export interface ParsedInvoice {
   accessKey: string;
@@ -18,15 +25,26 @@ type PartyInfo = {
   name: string;
 };
 
-function extractAccessKey(proc: any, inf: any, prefix: string): string {
+/** Minimal party node shape accepted by getPartyInfo */
+interface PartyNode {
+  CNPJ?: string;
+  CPF?: string;
+  xNome?: string;
+  xFant?: string;
+  IE?: string;
+}
+
+function extractAccessKey(proc: XmlNode, inf: XmlNode, prefix: string): string {
   // 1. From protocoled response (most reliable)
   const protKey = prefix === 'NFe' ? 'protNFe' : 'protCTe';
   const chKey = prefix === 'NFe' ? 'chNFe' : 'chCTe';
-  const chave = proc?.[protKey]?.infProt?.[chKey];
+  const prot = proc?.[protKey] as XmlNode | undefined;
+  const infProt = prot?.infProt as XmlNode | undefined;
+  const chave = infProt?.[chKey] as string | undefined;
   if (chave && chave.length >= 44) return chave;
 
   // 2. From infNFe/infCte Id attribute
-  const id = inf?.Id || '';
+  const id = (inf?.Id as string) || '';
   if (id) {
     const clean = id.replace(/^(NFe|CTe)/, '');
     if (clean.length >= 44) return clean;
@@ -35,7 +53,7 @@ function extractAccessKey(proc: any, inf: any, prefix: string): string {
   return '';
 }
 
-function getPartyInfo(node: any): PartyInfo {
+function getPartyInfo(node: PartyNode): PartyInfo {
   return {
     cnpj: node?.CNPJ || node?.CPF || '',
     name: node?.xNome || node?.xFant || '',
@@ -46,18 +64,19 @@ function hasPartyInfo(party: PartyInfo): boolean {
   return Boolean((party.cnpj || '').trim() || (party.name || '').trim());
 }
 
-function extractCteTomador(infCte: any): PartyInfo {
+function extractCteTomador(infCte: CTeInfCte): PartyInfo {
   const ide = infCte?.ide || {};
-  const rem = getPartyInfo(infCte?.rem || {});
-  const exped = getPartyInfo(infCte?.exped || {});
-  const receb = getPartyInfo(infCte?.receb || {});
-  const dest = getPartyInfo(infCte?.dest || {});
+  const emptyParty: PartyNode = {};
+  const rem = getPartyInfo(infCte?.rem || emptyParty);
+  const exped = getPartyInfo(infCte?.exped || emptyParty);
+  const receb = getPartyInfo(infCte?.receb || emptyParty);
+  const dest = getPartyInfo(infCte?.dest || emptyParty);
 
-  const toma4 = ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || {};
-  const toma4Tom = getPartyInfo(toma4?.toma || {});
-  const toma4Direct = getPartyInfo(toma4 || {});
-  const ideToma = getPartyInfo(ide?.toma || {});
-  const infToma = getPartyInfo(infCte?.toma || {});
+  const toma4 = ide?.toma4 || infCte?.toma4 || infCte?.infCteNorm?.toma4 || ({} as CTeToma4);
+  const toma4Tom = getPartyInfo(toma4?.toma || emptyParty);
+  const toma4Direct = getPartyInfo(toma4 || emptyParty);
+  const ideToma = getPartyInfo(ide?.toma || emptyParty);
+  const infToma = getPartyInfo(infCte?.toma || emptyParty);
 
   const explicitTomador = hasPartyInfo(toma4Tom)
     ? toma4Tom
@@ -102,8 +121,8 @@ function extractCteTomador(infCte: any): PartyInfo {
   return { cnpj: '', name: '' };
 }
 
-function parseNFe(result: any): ParsedInvoice | null {
-  const nfeProc = result.nfeProc || result;
+function parseNFe(result: { nfeProc?: NFeProc; NFe?: NFeDoc; [key: string]: unknown }): ParsedInvoice | null {
+  const nfeProc = (result.nfeProc || result) as NFeProc;
   const nfe = nfeProc?.NFe || result.NFe;
   const infNFe = nfe?.infNFe;
   if (!infNFe) return null;
@@ -113,7 +132,7 @@ function parseNFe(result: any): ParsedInvoice | null {
   const dest = infNFe.dest || {};
   const total = infNFe.total;
 
-  const accessKey = extractAccessKey(nfeProc, infNFe, 'NFe');
+  const accessKey = extractAccessKey(nfeProc as unknown as XmlNode, infNFe as unknown as XmlNode, 'NFe');
   if (!accessKey) return null;
 
   return {
@@ -130,8 +149,8 @@ function parseNFe(result: any): ParsedInvoice | null {
   };
 }
 
-function parseCTe(result: any): ParsedInvoice | null {
-  const cteProc = result.cteProc || result;
+function parseCTe(result: { cteProc?: CTeProc; CTe?: CTeDoc; [key: string]: unknown }): ParsedInvoice | null {
+  const cteProc = (result.cteProc || result) as CTeProc;
   const cte = cteProc?.CTe || result.CTe;
   const infCte = cte?.infCte;
   if (!infCte) return null;
@@ -141,7 +160,7 @@ function parseCTe(result: any): ParsedInvoice | null {
   const vPrest = infCte.vPrest || {};
   const tomador = extractCteTomador(infCte);
 
-  const accessKey = extractAccessKey(cteProc, infCte, 'CTe');
+  const accessKey = extractAccessKey(cteProc as unknown as XmlNode, infCte as unknown as XmlNode, 'CTe');
   if (!accessKey) return null;
 
   return {
@@ -158,7 +177,15 @@ function parseCTe(result: any): ParsedInvoice | null {
   };
 }
 
-function parseNFSe(result: any): ParsedInvoice | null {
+function parseNFSe(result: {
+  NFSe?: { infNFSe?: NFSeNacionalInfNFSe };
+  infNFSe?: NFSeNacionalInfNFSe;
+  CompNfse?: NFSeCompNfse;
+  ConsultarNfseResposta?: NFSeConsultarResposta;
+  Nfse?: NFSeNfse;
+  InfNfse?: NFSeInfNfse;
+  [key: string]: unknown;
+}): ParsedInvoice | null {
   // NFS-e pode vir em diferentes schemas (ABRASF, Ginfes, padrão nacional ADN etc.)
   const nfseNacional = result?.NFSe?.infNFSe || result?.infNFSe;
   if (nfseNacional) {

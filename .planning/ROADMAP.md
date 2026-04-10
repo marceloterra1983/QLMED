@@ -121,7 +121,7 @@ Plans:
   3. tsc --noEmit passa sem erros e grep por ": any" retorna zero resultados no src/
 **Plans:** 3 plans
 Plans:
-- [ ] 07-01-PLAN.md — Create XML type interfaces (NFeXml, CTeXml, NFSeXml) + type xml-helpers.ts (TYPE-01)
+- [x] 07-01-PLAN.md — Create XML type interfaces (NFeXml, CTeXml, NFSeXml) + type xml-helpers.ts (TYPE-01)
 - [ ] 07-02-PLAN.md — Apply XML types to core parsing functions: parse-invoice-xml, pdf/route, details/route, product-aggregation (TYPE-02)
 - [ ] 07-03-PLAN.md — Eliminate remaining ~99 any across 31 files: lib modules, page-clients, API routes (TYPE-03)
 

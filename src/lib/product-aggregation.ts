@@ -7,6 +7,8 @@
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { normalizeForSearch, cleanString, ensureArray, toNumber } from '@/lib/utils';
+import type { NFeDet, NFeProd, NFeMed, NFeRastro } from '@/types/nfe-xml';
+import type { XmlNode } from '@/types/xml-common';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 
@@ -98,12 +100,12 @@ export function extractAnvisaFromFreeText(text: string | null | undefined): stri
   return null;
 }
 
-function extractBatches(det: any, prod: any): ProductBatch[] {
+function extractBatches(det: NFeDet, prod: NFeProd): ProductBatch[] {
   const batches: ProductBatch[] = [];
   const seenLots = new Set<string>();
 
   // 1. <rastro> blocks (preferred, NF-e 4.0+)
-  for (const r of ensureArray<any>(prod?.rastro)) {
+  for (const r of ensureArray<NFeRastro>(prod?.rastro)) {
     const lot = cleanString(r?.nLote);
     if (!lot) continue;
     seenLots.add(lot);
@@ -118,7 +120,7 @@ function extractBatches(det: any, prod: any): ProductBatch[] {
 
   // 2. Fallback: <med> block (older format)
   if (batches.length === 0) {
-    for (const m of ensureArray<any>(det?.med).concat(ensureArray<any>(prod?.med))) {
+    for (const m of ensureArray<NFeMed>(det?.med).concat(ensureArray<NFeMed>(prod?.med))) {
       const lot = cleanString(m?.nLote) || cleanString(m?.nLot);
       if (!lot || seenLots.has(lot)) continue;
       seenLots.add(lot);
@@ -177,11 +179,11 @@ function extractBatches(det: any, prod: any): ProductBatch[] {
   return batches;
 }
 
-export function extractAnvisa(det: any, prod: any): string | null {
+export function extractAnvisa(det: NFeDet, prod: NFeProd): string | null {
   const candidates: Array<string | null> = [
     cleanString(prod?.cProdANVISA),
-    ...ensureArray<any>(det?.med).map((med) => cleanString(med?.cProdANVISA)),
-    ...ensureArray<any>(prod?.med).map((med) => cleanString(med?.cProdANVISA)),
+    ...ensureArray<NFeMed>(det?.med).map((med) => cleanString(med?.cProdANVISA)),
+    ...ensureArray<NFeMed>(prod?.med).map((med) => cleanString(med?.cProdANVISA)),
     extractAnvisaFromFreeText(cleanString(det?.infAdProd)),
     extractAnvisaFromFreeText(cleanString(prod?.xProd)),
   ];
@@ -251,7 +253,7 @@ export async function extractProductsFromXml(xmlContent: string): Promise<Produc
     const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
     const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
     const infNFe = nfe?.infNFe || nfe;
-    const dets = ensureArray<any>(infNFe?.det);
+    const dets = ensureArray<NFeDet>(infNFe?.det);
 
     return dets.map((det) => {
       const prod = det?.prod || {};
