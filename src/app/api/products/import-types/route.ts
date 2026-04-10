@@ -19,8 +19,7 @@ export async function POST(req: Request) {
     const buf = await file.arrayBuffer();
     const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await workbook.xlsx.load(Buffer.from(buf) as any);
+    await workbook.xlsx.load(buf);
     const worksheet = workbook.worksheets[0];
 
     // Convert to row arrays (equivalent to sheet_to_json with header: 1)

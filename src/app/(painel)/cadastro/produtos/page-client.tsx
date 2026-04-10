@@ -1069,12 +1069,17 @@ export default function ProdutosPage() {
     setIsImportingXls(true);
     const toastId = toast.loading('Lendo planilha...');
     try {
-      // Read XLS client-side using SheetJS (xlsx)
-      const { read, utils } = await import('xlsx');
+      // Read XLS client-side using exceljs
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
       const buffer = await file.arrayBuffer();
-      const wb = read(buffer, { type: 'array' });
-      const sh = wb.Sheets[wb.SheetNames[0]];
-      const rows: unknown[][] = utils.sheet_to_json(sh, { header: 1, defval: '' });
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+      const rows: unknown[][] = [];
+      worksheet.eachRow({ includeEmpty: true }, (row) => {
+        const vals = (row.values as (unknown)[]).slice(1);
+        rows.push(vals.map(v => v != null ? v : ''));
+      });
 
       // Find header row (Referência, Reg. Anvisa)
       let codigoCol = -1, anvisaCol = -1, fabricanteCol = -1;
@@ -1303,10 +1308,16 @@ export default function ProdutosPage() {
           return cols;
         });
       } else {
-        const { read, utils } = await import('xlsx');
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
         const buf = await file.arrayBuffer();
-        const wb = read(buf, { type: 'array' });
-        allRows = utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }) as string[][];
+        await workbook.xlsx.load(buf);
+        const worksheet = workbook.worksheets[0];
+        allRows = [];
+        worksheet.eachRow({ includeEmpty: true }, (row) => {
+          const vals = (row.values as (string | number | null | undefined)[]).slice(1);
+          allRows.push(vals.map(v => v != null ? String(v) : ''));
+        });
       }
 
       if (allRows.length < 2) { toast.error('Arquivo vazio ou sem dados', { id: toastId }); return; }

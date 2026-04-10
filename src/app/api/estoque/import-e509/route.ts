@@ -59,8 +59,7 @@ export async function POST(req: Request) {
 
     const arrayBuf = await file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await workbook.xlsx.load(Buffer.from(arrayBuf) as any);
+    await workbook.xlsx.load(arrayBuf);
     const ws = workbook.worksheets[0];
     if (!ws || ws.rowCount === 0) {
       return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
