@@ -8,7 +8,7 @@ export interface CertificateInfo {
   validFrom: Date;
   validTo: Date;
   cnpj: string | null;
-  pfxData: Buffer;
+  pfxData: Buffer | Uint8Array;
   pfxPassword: string; // Em produção, isso deveria ser criptografado
 }
 
@@ -16,8 +16,9 @@ export class CertificateManager {
   /**
    * Processa um arquivo PFX (PKCS#12) e extrai informações críticas
    */
-  static processPfx(pfxBuffer: Buffer, password: string): CertificateInfo {
-    const pfxDer = pfxBuffer.toString('binary');
+  static processPfx(pfxBuffer: Buffer | Uint8Array, password: string): CertificateInfo {
+    const buf = Buffer.isBuffer(pfxBuffer) ? pfxBuffer : Buffer.from(pfxBuffer);
+    const pfxDer = buf.toString('binary');
     const p12Asn1 = forge.asn1.fromDer(pfxDer);
     
     // Decripta o PFX
@@ -80,7 +81,7 @@ export class CertificateManager {
   /**
    * Retorna um SecureContext (ou opções https) para mTLS
    */
-  static getHttpsOptions(pfxData: Buffer, passphrase: string) {
+  static getHttpsOptions(pfxData: Buffer | Uint8Array, passphrase: string) {
     return {
       pfx: pfxData,
       passphrase,
@@ -94,8 +95,9 @@ export class CertificateManager {
    * Extrai chave privada e certificado em formato PEM para uso com https.Agent
    * Útil quando o OpenSSL do Node.js não suporta o formato do PFX (ex: algoritmos legados ou muito novos)
    */
-  static extractPems(pfxBuffer: Buffer, password: string): { key: string; cert: string } {
-    const pfxDer = pfxBuffer.toString('binary');
+  static extractPems(pfxBuffer: Buffer | Uint8Array, password: string): { key: string; cert: string } {
+    const buf = Buffer.isBuffer(pfxBuffer) ? pfxBuffer : Buffer.from(pfxBuffer);
+    const pfxDer = buf.toString('binary');
     const p12Asn1 = forge.asn1.fromDer(pfxDer);
     const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
 

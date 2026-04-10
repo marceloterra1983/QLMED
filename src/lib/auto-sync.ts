@@ -447,7 +447,7 @@ export async function syncViaSefaz(
   razaoSocial: string,
   cert: {
     id: string;
-    pfxData: Buffer;
+    pfxData: Buffer | Uint8Array;
     pfxPassword: string;
     lastNsu: string;
     environment: string;
@@ -745,7 +745,7 @@ export async function syncViaReceitaNfse(
     baseUrl: string | null;
   },
   certificateConfig: {
-    pfxData: Buffer;
+    pfxData: Buffer | Uint8Array;
     pfxPassword: string;
   },
   existingSyncLogId?: string,

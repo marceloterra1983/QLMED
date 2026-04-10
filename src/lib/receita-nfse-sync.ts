@@ -49,7 +49,7 @@ function maxNsu(a: string, b: string): string {
 }
 
 interface ReceitaNfseCertificateInput {
-  pfxData: Buffer;
+  pfxData: Buffer | Uint8Array;
   pfxPassword: string;
 }
 
