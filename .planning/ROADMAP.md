@@ -153,7 +153,7 @@ Plans:
   4. Layout do painel usa server component wrapper — client code apenas nos islands interativos (sidebar, session)
 **Plans:** 3 plans
 Plans:
-- [ ] 09-01-PLAN.md — Replace invoices in-memory flexMatchAll search with DB-level WHERE ILIKE (PERF-06)
+- [x] 09-01-PLAN.md — Replace invoices in-memory flexMatchAll search with DB-level WHERE ILIKE (PERF-06)
 - [ ] 09-02-PLAN.md — Add real LIMIT/OFFSET pagination to products/list (PERF-07)
 - [ ] 09-03-PLAN.md — Add Cache-Control headers to API routes + refactor layout to server/client split (PERF-08, PERF-09)
 **UI hint**: yes

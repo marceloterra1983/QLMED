@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { ensureCnpjCacheTable } from '@/lib/cnpj-lookup';
 import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
+import { cacheHeaders } from '@/lib/cache-headers';
 
 const log = createLogger('contacts/cnpj-status');
 
@@ -53,7 +54,7 @@ export async function GET(req: Request) {
       }
     });
 
-    return NextResponse.json(results);
+    return NextResponse.json(results, { headers: cacheHeaders('lookup') });
   } catch (error) {
     return apiError(error, 'contacts/cnpj-status');
   }

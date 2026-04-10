@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
+import { cacheHeaders } from '@/lib/cache-headers';
 
 const log = createLogger('dashboard');
 
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest) {
         label: formatPeriodLabel(now, period),
       },
       recentInvoices: recentInvoices.map((inv) => ({ ...inv, totalValue: Number(inv.totalValue) })),
-    });
+    }, { headers: cacheHeaders('dashboard') });
   } catch (error) {
     return apiError(error, 'dashboard');
   }

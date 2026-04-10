@@ -371,7 +371,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         invoices: invoicesWithExtra,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      });
+      }, { headers: cacheHeaders('list') });
     }
 
     // When cfopTag is active (without search), filter at the database level using the cfop column
@@ -408,7 +408,7 @@ export async function GET(req: Request) {
         total,
         pages: Math.ceil(total / limit),
       },
-    });
+    }, { headers: cacheHeaders('list') });
   } catch (error) {
     return apiError(error, 'invoices');
   }
