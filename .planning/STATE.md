@@ -110,6 +110,7 @@ _(none)_
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260410-rvi | Fix mobile DANFE viewing in InvoiceDetailsModal | 2026-04-10 | f7c95c9 | [260410-rvi-fix-mobile-danfe-viewing-in-invoicedetai](./quick/260410-rvi-fix-mobile-danfe-viewing-in-invoicedetai/) |
+| 260410-s81 | Implement option B: mobile DANFE via HTML fallback (reverts 260410-rvi placeholder) | 2026-04-10 | cb65357 | [260410-s81-implement-option-b-mobile-danfe-via-html](./quick/260410-s81-implement-option-b-mobile-danfe-via-html/) |
 
 ### Gotchas
 
