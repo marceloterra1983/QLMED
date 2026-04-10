@@ -1,7 +1,9 @@
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { handleInstallmentsPut } from '@/lib/financeiro-shared';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { installmentsSchema } from '@/lib/schemas/financeiro';
+import { idParamSchema } from '@/lib/schemas/common';
 
 export async function PUT(
   req: Request,
@@ -16,7 +18,13 @@ export async function PUT(
       return unauthorizedResponse();
     }
 
+  const paramsParsed = idParamSchema.safeParse({ id: params.invoiceId });
+  if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
   const company = await getOrCreateSingleCompany(userId);
   const body = await req.json();
+  const parsed = installmentsSchema.safeParse(body);
+  if (!parsed.success) return apiValidationError(parsed.error);
+
   return handleInstallmentsPut(params.invoiceId, company, body);
 }

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { overrideSchema } from '@/lib/schemas/financeiro';
 
 const log = createLogger('financeiro/contas-pagar/override');
 
@@ -31,20 +32,12 @@ export async function PATCH(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json();
+    const parsed = overrideSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    const invoiceId = String(body?.invoiceId || '').trim();
-    const dupNumeroOriginal = String(body?.dupNumeroOriginal || '').trim();
-    const dupVencimentoOriginal = String(body?.dupVencimentoOriginal || '').trim();
-
-    if (!invoiceId || !dupNumeroOriginal || !dupVencimentoOriginal) {
-      return NextResponse.json(
-        { error: 'invoiceId, dupNumeroOriginal e dupVencimentoOriginal são obrigatórios' },
-        { status: 400 }
-      );
-    }
-    if (!isDateKey(dupVencimentoOriginal)) {
-      return NextResponse.json({ error: 'dupVencimentoOriginal inválido' }, { status: 400 });
-    }
+    const invoiceId = parsed.data.invoiceId.trim();
+    const dupNumeroOriginal = parsed.data.dupNumeroOriginal.trim();
+    const dupVencimentoOriginal = parsed.data.dupVencimentoOriginal.trim();
 
     const invoice = await prisma.invoice.findFirst({
       where: {

@@ -4,8 +4,9 @@ import prisma from '@/lib/prisma'; // Assumindo que existe
 import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { certificateUploadFieldsSchema } from '@/lib/schemas/certificate';
 
 const log = createLogger('certificate/upload');
 
@@ -22,13 +23,18 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const password = formData.get('password') as string;
     const baseCompany = await getOrCreateSingleCompany(userId);
     const companyId = baseCompany.id;
 
-    if (!file || !password) {
-      return NextResponse.json({ error: 'Arquivo e senha são obrigatórios' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'Arquivo e obrigatorio' }, { status: 400 });
     }
+
+    const fieldsParsed = certificateUploadFieldsSchema.safeParse({
+      password: formData.get('password'),
+    });
+    if (!fieldsParsed.success) return apiValidationError(fieldsParsed.error);
+    const password = fieldsParsed.data.password;
 
     // Validate file type
     const fileName = file.name?.toLowerCase() || '';

@@ -1,23 +1,13 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { hash } from 'bcryptjs';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { updateUserSchema } from '@/lib/schemas/user';
 
 const log = createLogger('users/:id');
-
-const updateUserSchema = z.object({
-  name: z.string().min(1).optional(),
-  email: z.string().email().optional(),
-  role: z.enum(['admin', 'editor', 'viewer']).optional(),
-  status: z.enum(['pending', 'active', 'inactive', 'rejected']).optional(),
-  phone: z.string().nullable().optional(),
-  allowedPages: z.array(z.string()).optional(),
-  password: z.string().min(6).optional(),
-});
 
 export async function PATCH(
   req: Request,
@@ -36,12 +26,7 @@ export async function PATCH(
     const body = await req.json();
 
     const parsed = updateUserSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Dados inválidos', details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
+    if (!parsed.success) return apiValidationError(parsed.error);
 
     const { name, email, role, status, phone, allowedPages, password } = parsed.data;
 

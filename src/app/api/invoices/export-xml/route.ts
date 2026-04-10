@@ -3,6 +3,7 @@ import { InvoiceType, InvoiceDirection } from '@prisma/client';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { saveXmlToFile } from '@/lib/xml-file-store';
+import { invoiceExportXmlSchema } from '@/lib/schemas/invoice';
 
 const VALID_TYPES = new Set<string>(Object.values(InvoiceType));
 const VALID_DIRECTIONS = new Set<string>(Object.values(InvoiceDirection));
@@ -16,10 +17,12 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const years = Math.min(Number(body.years) || 5, 10);
-  const types = (Array.isArray(body.types) ? body.types : ['NFE', 'CTE', 'NFSE'])
+  const parsedBody = invoiceExportXmlSchema.safeParse(body);
+  const validBody = parsedBody.success ? parsedBody.data : { years: 5 };
+  const years = validBody.years;
+  const types = (validBody.types ?? ['NFE', 'CTE', 'NFSE'])
     .filter((t: string) => VALID_TYPES.has(t)) as InvoiceType[];
-  const directions = (Array.isArray(body.directions) ? body.directions : ['received', 'issued'])
+  const directions = (validBody.directions ?? ['received', 'issued'])
     .filter((d: string) => VALID_DIRECTIONS.has(d)) as InvoiceDirection[];
   const batchSize = 200;
 

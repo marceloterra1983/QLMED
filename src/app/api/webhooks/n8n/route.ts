@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 
 const log = createLogger('webhooks/n8n');
 
 const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml', 'sync-ncm-bulk', 'backfill-tax-data', 'batch-cnpj-check'] as const;
 type Action = (typeof VALID_ACTIONS)[number];
+
+const n8nWebhookSchema = z.object({
+  action: z.enum(VALID_ACTIONS, {
+    errorMap: () => ({ message: `Invalid action. Valid: ${VALID_ACTIONS.join(', ')}` }),
+  }),
+  payload: z.record(z.unknown()).optional(),
+});
 const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 
 function validateApiKey(req: NextRequest): boolean {
@@ -33,26 +41,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { action?: string; payload?: Record<string, unknown> };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { action, payload } = body;
+  const parsed = n8nWebhookSchema.safeParse(rawBody);
+  if (!parsed.success) return apiValidationError(parsed.error);
 
-  if (!action || !VALID_ACTIONS.includes(action as Action)) {
-    return NextResponse.json(
-      { error: `Invalid action. Valid: ${VALID_ACTIONS.join(', ')}` },
-      { status: 400 },
-    );
-  }
+  const { action, payload } = parsed.data;
 
   try {
     const baseUrl = getInternalBaseUrl();
 
-    switch (action as Action) {
+    switch (action) {
       case 'sync-nfe': {
         const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',

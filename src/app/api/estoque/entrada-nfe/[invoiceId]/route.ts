@@ -6,8 +6,10 @@ import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { entradaNfeUpdateLotSchema, entradaNfeCloneBatchSchema } from '@/lib/schemas/estoque';
+import { idParamSchema } from '@/lib/schemas/common';
 
 const log = createLogger('estoque/entrada-nfe/:invoiceId');
 
@@ -234,11 +236,10 @@ export async function PATCH(req: Request, { params }: { params: { invoiceId: str
     const { invoiceId } = params;
 
     const body = await req.json();
-    const { itemId, lot, lotExpiry, lotQuantity } = body;
+    const parsed = entradaNfeUpdateLotSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!itemId) {
-      return NextResponse.json({ error: 'itemId é obrigatório' }, { status: 400 });
-    }
+    const { itemId, lot, lotExpiry, lotQuantity } = parsed.data;
 
     const updated = await updateNfeEntryItemLot(company.id, invoiceId, itemId, {
       lot: lot ?? null,
@@ -270,13 +271,12 @@ export async function POST(req: Request, { params }: { params: { invoiceId: stri
     const { invoiceId } = params;
 
     const body = await req.json();
-    const { sourceItemId, lot, lotExpiry, lotQuantity } = body;
+    const parsed = entradaNfeCloneBatchSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (!sourceItemId || !lot) {
-      return NextResponse.json({ error: 'sourceItemId e lot são obrigatórios' }, { status: 400 });
-    }
+    const { sourceItemId, lot, lotExpiry, lotQuantity } = parsed.data;
 
-    const created = await cloneNfeEntryItemBatch(company.id, invoiceId, Number(sourceItemId), {
+    const created = await cloneNfeEntryItemBatch(company.id, invoiceId, sourceItemId, {
       lot,
       lotExpiry: lotExpiry ?? null,
       lotQuantity: lotQuantity != null ? Number(lotQuantity) : null,

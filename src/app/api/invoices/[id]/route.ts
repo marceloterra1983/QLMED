@@ -3,8 +3,10 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { invoiceUpdateStatusSchema } from '@/lib/schemas/invoice';
+import { idParamSchema } from '@/lib/schemas/common';
 
 const log = createLogger('invoices/:id');
 
@@ -95,14 +97,8 @@ export async function PATCH(
     const company = await getOrCreateSingleCompany(userId);
 
     const body = await req.json();
-
-    const validStatuses = ['received', 'confirmed', 'rejected'];
-    if (!body.status || !validStatuses.includes(body.status)) {
-      return NextResponse.json(
-        { error: `Status inválido. Valores aceitos: ${validStatuses.join(', ')}` },
-        { status: 400 }
-      );
-    }
+    const parsed = invoiceUpdateStatusSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
     const invoice = await prisma.invoice.findFirst({
       where: {
@@ -117,7 +113,7 @@ export async function PATCH(
 
     const updated = await prisma.invoice.update({
       where: { id: params.id },
-      data: { status: body.status },
+      data: { status: parsed.data.status },
     });
 
     return NextResponse.json(updated);

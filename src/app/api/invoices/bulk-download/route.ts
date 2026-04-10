@@ -6,7 +6,8 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { GET as getInvoicePdfDownload } from '@/app/api/invoices/[id]/pdf/route';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { invoiceBulkDownloadSchema } from '@/lib/schemas/invoice';
 
 const log = createLogger('invoices/bulk-download');
 
@@ -82,9 +83,15 @@ export async function POST(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
 
     const rawBody = await req.json().catch(() => null);
-    const payload = parseRequestBody(rawBody);
-    if (!payload) {
-      return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
+    const validated = invoiceBulkDownloadSchema.safeParse(rawBody);
+    if (!validated.success) return apiValidationError(validated.error);
+
+    const payload = {
+      ids: Array.from(new Set(validated.data.ids.map((id) => id.trim()).filter(Boolean))),
+      format: validated.data.format,
+    };
+    if (payload.ids.length === 0) {
+      return NextResponse.json({ error: 'Payload invalido' }, { status: 400 });
     }
 
     const ids = payload.ids.slice(0, MAX_BULK_ITEMS);

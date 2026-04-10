@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
+import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 
 const log = createLogger('cte/manifest');
 
-type CteManifestTargetStatus = 'rejected' | 'confirmed';
-
-function isManifestTargetStatus(value: unknown): value is CteManifestTargetStatus {
-  return value === 'rejected' || value === 'confirmed';
-}
+const cteManifestSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um CT-e'),
+  targetStatus: z.enum(['rejected', 'confirmed'], {
+    errorMap: () => ({ message: 'Status de manifestacao invalido' }),
+  }),
+});
 
 export async function POST(request: NextRequest) {
   let userId: string;
@@ -25,18 +27,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const ids = Array.isArray(body?.ids)
-      ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
-      : [];
-    const targetStatus = body?.targetStatus;
+    const parsed = cteManifestSchema.safeParse(body);
+    if (!parsed.success) return apiValidationError(parsed.error);
 
-    if (ids.length === 0) {
-      return NextResponse.json({ error: 'Nenhum CT-e selecionado para manifestação.' }, { status: 400 });
-    }
-
-    if (!isManifestTargetStatus(targetStatus)) {
-      return NextResponse.json({ error: 'Status de manifestação inválido.' }, { status: 400 });
-    }
+    const { ids, targetStatus } = parsed.data;
 
     const company = await getOrCreateSingleCompany(userId);
 

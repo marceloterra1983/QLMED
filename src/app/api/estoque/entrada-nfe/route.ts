@@ -5,8 +5,9 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { ensureStockEntryTable, getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry, LotOverride } from '@/lib/register-entry';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { entradaNfeSchema } from '@/lib/schemas/estoque';
 
 const log = createLogger('estoque/entrada-nfe');
 
@@ -147,11 +148,10 @@ export async function POST(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
 
     const body = await req.json();
-    const { invoiceId, lotOverrides: lotOverridesRaw } = body;
+    const validated = entradaNfeSchema.safeParse(body);
+    if (!validated.success) return apiValidationError(validated.error);
 
-    if (!invoiceId) {
-      return NextResponse.json({ error: 'invoiceId é obrigatório' }, { status: 400 });
-    }
+    const { invoiceId, lotOverrides: lotOverridesRaw } = body;
 
     // Build lotOverrides Map from request body if provided
     // Expected format: { [itemNumber]: [{ lot, expiry, quantity }] }
