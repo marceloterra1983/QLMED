@@ -6,6 +6,7 @@ import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { normalizeForSearch } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
+import { cacheHeaders } from '@/lib/cache-headers';
 
 const log = createLogger('products/list');
 
@@ -39,6 +40,8 @@ export async function GET(req: Request) {
     await ensureProductRegistryTable();
 
     const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(200, Math.max(10, parseInt(searchParams.get('limit') || '50', 10)));
     const search = (searchParams.get('search') || '').trim();
     const sort = searchParams.get('sort') || 'lastIssueDate';
     const order = searchParams.get('order') === 'asc' ? 'ASC' : 'DESC';
@@ -121,7 +124,20 @@ export async function GET(req: Request) {
 
     orderClause += ', pr.description ASC';
 
-    // Fetch ALL products — lightweight columns only (no ANVISA details, no fiscal)
+    // COUNT query for pagination (same WHERE clause, no LIMIT)
+    const countResult = await prisma.$queryRawUnsafe<{ total: number }[]>(
+      `SELECT COUNT(*)::int as total FROM product_registry pr WHERE ${whereClause}`,
+      ...params,
+    );
+    const total = countResult[0]?.total || 0;
+
+    // Add LIMIT/OFFSET params for main query
+    const offset = (page - 1) * limit;
+    const limitParamIdx = paramIdx;
+    const offsetParamIdx = paramIdx + 1;
+    const paginationParams = [...params, limit, offset];
+
+    // Fetch products — lightweight columns only (no ANVISA details, no fiscal)
     interface ProductRegistryRow {
       product_key: string; codigo: string | null; code: string; description: string;
       ncm: string | null; unit: string; short_name: string | null; manufacturer_short_name: string | null;
@@ -158,8 +174,9 @@ export async function GET(req: Request) {
       FROM product_registry pr
       WHERE ${whereClause}
       ORDER BY ${orderClause}
+      LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
       `,
-      ...params,
+      ...paginationParams,
     );
 
     // Map to lightweight ProductRow — enough for table display
@@ -186,7 +203,7 @@ export async function GET(req: Request) {
       totalQuantity: Number(row.agg_total_quantity || 0),
     }));
 
-    // Summary counts
+    // Summary counts (full filtered set, no LIMIT — aggregate stats)
     const summaryResult = await prisma.$queryRawUnsafe<{ total_products: bigint; with_anvisa: bigint; total_quantity: number }[]>(
       `
       SELECT
@@ -211,13 +228,13 @@ export async function GET(req: Request) {
       products,
       summary,
       pagination: {
-        page: 1,
-        limit: products.length,
-        total: products.length,
-        pages: 1,
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
       },
       needsRebuild: !hasAggregates,
-    });
+    }, { headers: cacheHeaders('list') });
   } catch (error) {
     return apiError(error, 'products/list');
   }
