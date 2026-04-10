@@ -106,8 +106,8 @@ Plans:
 **Plans:** 5 plans
 Plans:
 - [x] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
-- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
-- [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
+- [x] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [x] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
 - [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
 - [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
 
@@ -121,8 +121,8 @@ Plans:
   3. tsc --noEmit passa sem erros e grep por ": any" retorna zero resultados no src/
 **Plans:** 5 plans
 Plans:
-- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
-- [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
+- [x] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [x] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
 - [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
 - [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
 - [ ] 06-05-PLAN.md — Zod validation batch 2: products, nsdocs, contacts, remaining routes + 100% audit (API-01)
@@ -138,7 +138,7 @@ Plans:
   4. Nenhum arquivo em src/ excede 800 linhas (exceto schemas gerados)
 **Plans:** 5 plans
 Plans:
-- [ ] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
+- [x] 06-01-PLAN.md — Foundations: install pino, create logger.ts, apiError helper, common Zod schemas (API-01, API-02, API-03)
 - [ ] 06-02-PLAN.md — Replace 102 console calls in src/lib/ with structured pino logger (API-03)
 - [ ] 06-03-PLAN.md — Fix 34 catch(e:any) blocks + replace 92 console calls in API routes (API-02, API-03)
 - [ ] 06-04-PLAN.md — Zod validation batch 1: invoices, financeiro, estoque, certificate, users, companies (API-01)
