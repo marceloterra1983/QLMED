@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getCfopCodesByTag } from '@/lib/cfop';
-import { ensureInvoiceDuplicataTable } from '@/lib/invoice-duplicata-store';
+import { ensureInvoiceDuplicataTable, backfillInvoiceDuplicatas } from '@/lib/invoice-duplicata-store';
 
 export type FinanceiroDirection = 'received' | 'issued';
 interface FinanceiroDuplicatasOptions {
@@ -318,6 +318,19 @@ export async function getFinanceiroDuplicatas(
   }
 
   const promise = (async () => {
+    // Lazy backfill: populate invoice_duplicata if empty
+    const countResult = await prisma.$queryRawUnsafe<{ cnt: bigint }[]>(
+      `SELECT COUNT(*)::bigint as cnt FROM invoice_duplicata WHERE company_id = $1 LIMIT 1`,
+      companyId,
+    );
+    if (Number(countResult[0]?.cnt ?? 0) === 0) {
+      // Run backfill in batches until done
+      let remaining = 1;
+      while (remaining > 0) {
+        const result = await backfillInvoiceDuplicatas(companyId);
+        remaining = result.remaining;
+      }
+    }
     const duplicatas = await buildDuplicatas(companyId, direction, allowedTags);
     financeiroDuplicatasCache.set(cacheKey, {
       version,

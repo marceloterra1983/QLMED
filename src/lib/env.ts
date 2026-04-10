@@ -33,6 +33,6 @@ export function validateEnv() {
 
   const missingOptional = optional.filter(k => !process.env[k]?.trim());
   if (missingOptional.length > 0) {
-    log.warn({ missing: missingOptional }, 'Variaveis opcionais nao configuradas — algumas integracoes podem nao funcionar');
+    log.debug({ missing: missingOptional }, 'Variaveis opcionais nao configuradas');
   }
 }
