@@ -11,21 +11,31 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    // During build (no DB available), return a client that will fail at query time, not import time
-    return new PrismaClient();
+    throw new Error('DATABASE_URL environment variable is required');
   }
   const adapter = new PrismaPg(connectionString);
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
+// Lazy initialization: defer client creation until first access.
+// This avoids build-time failures when DATABASE_URL is not set (Docker build stage).
+function getLazyPrisma(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return Reflect.get(getLazyPrisma(), prop);
+  },
+});
 
 // Kick off background services (auto-sync, local-xml-sync) once on the server.
 // The dynamic import avoids circular dependencies: bootstrap.ts imports prisma from
 // this module, but by the time it resolves the `prisma` export is already available.
-if (typeof window === 'undefined') {
+if (typeof window === 'undefined' && process.env.DATABASE_URL) {
   import('./bootstrap').catch((err) =>
     log.error({ err }, 'Falha ao iniciar servicos'),
   );
