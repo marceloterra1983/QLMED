@@ -130,7 +130,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
   } catch (error) {
-    console.warn('[Auth] Sessão inválida detectada no middleware; limpando cookies.', error);
+    console.warn('[Auth] Sessão inválida detectada no middleware; limpando cookies.', error); // console.warn intentional — Edge Runtime middleware, pino not available
   }
 
   if (isApiRoute) {

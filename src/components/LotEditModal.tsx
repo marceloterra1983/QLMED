@@ -313,7 +313,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
           }),
         });
         if (res.ok) saved++;
-        else { errors++; const err = await res.json().catch(() => ({})); console.error('Patch error:', err.error); }
+        else { errors++; const err = await res.json().catch(() => ({})); console.error('Patch error:', err.error); } // console.error intentional — client-side
       } catch { errors++; }
     }
 
@@ -331,7 +331,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
           }),
         });
         if (res.ok) saved++;
-        else { errors++; const err = await res.json().catch(() => ({})); console.error('Create error:', err.error); }
+        else { errors++; const err = await res.json().catch(() => ({})); console.error('Create error:', err.error); } // console.error intentional — client-side
       } catch { errors++; }
     }
 

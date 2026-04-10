@@ -10,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[App Error]', error);
+    console.error('[App Error]', error); // console.error intentional — client-side error boundary, pino not available
   }, [error]);
 
   return (

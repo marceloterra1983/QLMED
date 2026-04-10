@@ -10,7 +10,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[Global Error]', error);
+    console.error('[Global Error]', error); // console.error intentional — client-side error boundary, pino not available
   }, [error]);
 
   return (

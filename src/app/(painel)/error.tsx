@@ -10,7 +10,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[Dashboard Error]', error);
+    console.error('[Dashboard Error]', error); // console.error intentional — client-side error boundary, pino not available
   }, [error]);
 
   return (
