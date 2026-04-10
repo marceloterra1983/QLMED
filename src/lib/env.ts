@@ -1,3 +1,7 @@
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('env');
+
 const required = [
   'DATABASE_URL',
   'NEXTAUTH_SECRET',
@@ -23,18 +27,12 @@ export function validateEnv() {
   }
 
   if (missing.length > 0) {
-    console.error(
-      `\n[QLMED] Variáveis de ambiente obrigatórias não configuradas:\n` +
-      missing.map(k => `  - ${k}`).join('\n') +
-      `\n\nVerifique seu arquivo .env ou as variáveis de ambiente do container.\n`
-    );
+    log.error({ missing }, 'Variaveis de ambiente obrigatorias nao configuradas');
     process.exit(1);
   }
 
   const missingOptional = optional.filter(k => !process.env[k]?.trim());
   if (missingOptional.length > 0) {
-    console.warn(
-      `[QLMED] Variáveis opcionais não configuradas: ${missingOptional.join(', ')} — algumas integrações podem não funcionar.`
-    );
+    log.warn({ missing: missingOptional }, 'Variaveis opcionais nao configuradas — algumas integracoes podem nao funcionar');
   }
 }

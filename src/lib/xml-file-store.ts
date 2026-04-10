@@ -1,5 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('xml-file-store');
 
 const XML_BACKUP_DIR = process.env.LOCAL_XML_BACKUP_DIR
   || process.env.LOCAL_XML_COPY_TARGET_DIR
@@ -88,7 +91,7 @@ export async function saveXmlToFile(
     return filePath;
   } catch (error) {
     // Non-critical — log but don't throw
-    console.error(`[XmlFileStore] Erro ao salvar XML ${accessKey}:`, (error as Error).message);
+    log.error({ err: error, accessKey }, 'Erro ao salvar XML');
     return null;
   }
 }
@@ -104,7 +107,7 @@ export async function savePdfToMonthFolder(
     const filePath = path.join(PDF_BACKUP_DIR, monthFolder, fileName);
     return await writeBufferToFileIfNeeded(filePath, pdfContent);
   } catch (error) {
-    console.error(`[XmlFileStore] Erro ao salvar PDF ${fileName}:`, (error as Error).message);
+    log.error({ err: error, fileName }, 'Erro ao salvar PDF');
     return null;
   }
 }
@@ -129,7 +132,7 @@ export async function readIssuedPdfFromFile(
   try {
     return await fs.readFile(filePath);
   } catch (err) {
-    console.error('[XmlFileStore] Failed to read PDF file:', filePath, (err as Error).message);
+    log.error({ err, filePath }, 'Failed to read PDF file');
     return null;
   }
 }

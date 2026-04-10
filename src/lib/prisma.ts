@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('prisma');
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient;
@@ -13,7 +16,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 // this module, but by the time it resolves the `prisma` export is already available.
 if (typeof window === 'undefined') {
   import('./bootstrap').catch((err) =>
-    console.error('[Bootstrap] Falha ao iniciar serviços:', err),
+    log.error({ err }, 'Falha ao iniciar servicos'),
   );
 }
 

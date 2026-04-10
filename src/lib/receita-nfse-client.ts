@@ -1,5 +1,8 @@
 import https from 'https';
 import zlib from 'zlib';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('receita-nfse-client');
 
 type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -39,7 +42,7 @@ function decodeCandidatePayload(value: string): string | null {
     const text = buffer.toString('utf-8');
     return looksLikeXml(text) ? text : null;
   } catch (err) {
-    console.warn('[ReceitaNfse] Failed to decode candidate payload:', (err as Error).message);
+    log.warn({ err }, 'Failed to decode candidate payload');
     return null;
   }
 }
@@ -52,7 +55,7 @@ function parseJsonSafe(value: string): unknown | null {
   try {
     return JSON.parse(value);
   } catch (err) {
-    console.warn('[ReceitaNfse] Failed to parse JSON:', (err as Error).message);
+    log.warn({ err }, 'Failed to parse JSON');
     return null;
   }
 }

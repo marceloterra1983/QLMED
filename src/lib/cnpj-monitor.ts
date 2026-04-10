@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { lookupCnpj, ensureCnpjCacheTable } from '@/lib/cnpj-lookup';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('cnpj-monitor');
 
 // ── Table init ──
 
@@ -128,7 +131,7 @@ export async function runBatchCnpjCheck(
         await sleep(delayMs);
       }
     } catch (err) {
-      console.error(`[cnpj-monitor] Error checking ${contact.cnpj}:`, err);
+      log.error({ err, cnpj: contact.cnpj }, 'Error checking CNPJ');
       errors++;
     }
   }

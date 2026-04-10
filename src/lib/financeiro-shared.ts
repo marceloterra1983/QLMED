@@ -3,6 +3,9 @@
  * Eliminates duplication between contas-pagar and contas-receber routes.
  */
 import { NextResponse } from 'next/server';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('financeiro-shared');
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
@@ -591,7 +594,7 @@ export async function handleContasGet(
     });
   } catch (error) {
     const config = DIRECTION_CONFIG[direction];
-    console.error(`Error fetching ${config.errorLabel}:`, error);
+    log.error({ err: error, label: config.errorLabel }, 'Error fetching financeiro');
     return NextResponse.json(
       { error: `Erro ao buscar ${config.errorLabel}` },
       { status: 500 }
@@ -760,7 +763,7 @@ export async function handleInvoiceGet(
     });
   } catch (error) {
     const config = DIRECTION_CONFIG[direction];
-    console.error(`Error fetching ${config.errorLabelInvoice}:`, error);
+    log.error({ err: error, label: config.errorLabelInvoice }, 'Error fetching invoice financeiro');
     return NextResponse.json({ error: 'Erro ao buscar detalhes da nota' }, { status: 500 });
   }
 }
@@ -903,10 +906,10 @@ export async function handleInstallmentsPut(
       if (validationErrorRegex.test(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
-      console.error('Error saving invoice installments:', error);
+      log.error({ err: error }, 'Error saving invoice installments');
       return NextResponse.json({ error: 'Erro ao salvar parcelas.' }, { status: 500 });
     }
-    console.error('Unknown error saving invoice installments:', error);
+    log.error({ err: error }, 'Unknown error saving invoice installments');
     return NextResponse.json({ error: 'Erro ao salvar parcelas.' }, { status: 500 });
   }
 }

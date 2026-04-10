@@ -2,6 +2,9 @@ import { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('auth');
 
 function getPinMap(): Record<string, string> {
   const raw = process.env.PIN_MAP_JSON;
@@ -9,7 +12,7 @@ function getPinMap(): Record<string, string> {
   try {
     return JSON.parse(raw);
   } catch {
-    console.error('[Auth] PIN_MAP_JSON env var is not valid JSON');
+    log.error('PIN_MAP_JSON env var is not valid JSON');
     return {};
   }
 }
@@ -33,11 +36,7 @@ export const authOptions: AuthOptions = {
         const email = pinEmail || credentials.email;
 
         if (!email) {
-          console.warn('[Auth] Failed login attempt', {
-            type: 'pin',
-            email: 'none',
-            timestamp: new Date().toISOString(),
-          });
+          log.warn({ type: 'pin', email: 'none' }, 'Failed login attempt');
           throw new Error('Senha inválida');
         }
 
@@ -46,21 +45,13 @@ export const authOptions: AuthOptions = {
         });
 
         if (!user) {
-          console.warn('[Auth] Failed login attempt', {
-            type: pinEmail ? 'pin' : 'password',
-            email,
-            timestamp: new Date().toISOString(),
-          });
+          log.warn({ type: pinEmail ? 'pin' : 'password', email }, 'Failed login attempt');
           throw new Error('Senha inválida');
         }
 
         // If not a PIN login, verify bcrypt password
         if (!pinEmail && !(await compare(credentials.password, user.passwordHash))) {
-          console.warn('[Auth] Failed login attempt', {
-            type: 'password',
-            email,
-            timestamp: new Date().toISOString(),
-          });
+          log.warn({ type: 'password', email }, 'Failed login attempt');
           throw new Error('Email ou senha inválidos');
         }
 
@@ -105,7 +96,7 @@ export const authOptions: AuthOptions = {
         // Log login (fire-and-forget)
         prisma.accessLog.create({
           data: { userId: user.id as string, action: 'login' },
-        }).catch((err) => console.error('[AccessLog] login error:', err));
+        }).catch((err) => log.error({ err }, 'AccessLog login error'));
       }
       // Always refresh role/status from DB if stale (>5 min) or missing valid role
       const validRoles = ['admin', 'editor', 'viewer'];
@@ -126,7 +117,7 @@ export const authOptions: AuthOptions = {
             token.dbRefreshedAt = Date.now();
           }
         } catch (err) {
-          console.error('[Auth] Failed to refresh user role from DB:', (err as Error).message);
+          log.error({ err }, 'Failed to refresh user role from DB');
         }
       }
       return token;

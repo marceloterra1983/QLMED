@@ -9,6 +9,10 @@ export {};
  *   3. No circular dependency: prisma.ts ➜ (dynamic) bootstrap.ts ➜ auto-sync / local-xml-sync ➜ prisma.ts
  */
 
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('bootstrap');
+
 const globalForBootstrap = globalThis as unknown as {
   __autoSyncStarted?: boolean;
   __localXmlSyncStarted?: boolean;
@@ -19,7 +23,7 @@ if (!globalForBootstrap.__autoSyncStarted) {
   setTimeout(() => {
     import('./auto-sync')
       .then((m) => m.startAutoSync())
-      .catch((err) => console.error('[AutoSync] Falha ao iniciar:', err));
+      .catch((err) => log.error({ err }, 'AutoSync falha ao iniciar'));
   }, 10_000);
 }
 
@@ -28,6 +32,6 @@ if (!globalForBootstrap.__localXmlSyncStarted) {
   setTimeout(() => {
     import('./local-xml-sync')
       .then((m) => m.startLocalXmlSync())
-      .catch((err) => console.error('[LocalXmlSync] Falha ao iniciar:', err));
+      .catch((err) => log.error({ err }, 'LocalXmlSync falha ao iniciar'));
   }, 12_000);
 }

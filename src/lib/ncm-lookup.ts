@@ -1,4 +1,7 @@
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('ncm-lookup');
 
 export interface NcmHierarchyLevel {
   codigo: string;
@@ -180,7 +183,7 @@ async function saveToDb(code: string, descricao: string, parentCode: string | nu
       JSON.stringify(hierarchy),
     );
   } catch (err) {
-    console.error('[ncm-cache] Error saving to DB:', err);
+    log.error({ err }, 'Error saving to DB');
   }
 }
 

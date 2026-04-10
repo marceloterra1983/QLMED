@@ -1,4 +1,7 @@
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('cnpj-lookup');
 
 export interface CnpjResult {
   cnpj: string;
@@ -134,7 +137,7 @@ async function saveToDb(cnpj: string, data: CnpjResult): Promise<void> {
       JSON.stringify(data),
     );
   } catch (err) {
-    console.error('[cnpj-cache] Error saving to DB:', err);
+    log.error({ err }, 'Error saving to DB');
   }
 }
 

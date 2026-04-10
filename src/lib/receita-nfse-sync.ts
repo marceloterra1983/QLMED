@@ -5,6 +5,9 @@ import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { extractFirstCfop } from '@/lib/cfop';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
 import { saveXmlToFile } from '@/lib/xml-file-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('receita-nfse-sync');
 
 const DEFAULT_MAX_STEPS = 200;
 const DEFAULT_EMPTY_LIMIT = 2;
@@ -198,7 +201,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
 
       if (result.createdAt.getTime() === result.updatedAt.getTime()) {
         newDocs++;
-        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { console.error('[ReceitaNfseSync] saveXmlToFile failed:', (err as Error).message); });
+        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
       } else {
         updatedDocs++;
       }

@@ -3,6 +3,9 @@ import zlib from 'zlib';
 import { parseXmlSafe, parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import { promisify } from 'util';
 import { CertificateManager } from './certificate-manager';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('sefaz-client');
 
 const gunzip = promisify(zlib.gunzip);
 
@@ -99,7 +102,7 @@ export class SefazClient {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             resolve(data);
           } else {
-            console.error('SOAP Error Status:', res.statusCode);
+            log.error({ statusCode: res.statusCode }, 'SOAP Error Status');
             reject(new Error(`SEFAZ HTTP Error ${res.statusCode}: ${res.statusMessage}`));
           }
         });
@@ -161,7 +164,7 @@ export class SefazClient {
         };
       }
     } catch (err) {
-      console.warn('[SefazClient] XML parse failed, falling back to regex:', (err as Error).message);
+      log.warn({ err }, 'XML parse failed, falling back to regex');
     }
 
     // Fallback: tentar com regex simples
@@ -227,7 +230,7 @@ export class SefazClient {
           xml: xmlDecompressed,
         });
       } catch (err) {
-        console.error(`Erro ao processar doc NSU ${nsu}:`, err);
+        log.error({ err, nsu }, 'Erro ao processar doc NSU');
       }
     }
 

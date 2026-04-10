@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
 
 const log = createLogger('webhooks/n8n');
 

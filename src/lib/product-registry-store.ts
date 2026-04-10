@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('product-registry-store');
 
 export interface ProductRegistryRow {
   id: string;
@@ -275,7 +278,7 @@ export async function ensureProductRegistryTable() {
           WHERE agg_computed_at IS NOT NULL
         `);
       } catch (err) {
-        console.warn('[ProductRegistry] pg_trgm extension unavailable, falling back to ILIKE search:', (err as Error).message);
+        log.warn({ err }, 'pg_trgm extension unavailable, falling back to ILIKE search');
       }
 
       // Migrate product_key unit tokens to normalized form
