@@ -3,15 +3,16 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
-const PIN_MAP: Record<string, string> = {
-  '010010': 'marcelo@qlmed.com.br',
-  '002002': 'flavio@qlmed.com.br',
-  '003003': 'financeiro@qlmed.com.br',
-  '004004': 'daniele@qlmed.com.br',
-  '005005': 'faturamento@qlmed.com.br',
-  '006006': 'joseroberto@qlmed.com.br',
-  '014014': 'juliano@qlmed.com.br',
-};
+function getPinMap(): Record<string, string> {
+  const raw = process.env.PIN_MAP_JSON;
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.error('[Auth] PIN_MAP_JSON env var is not valid JSON');
+    return {};
+  }
+}
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -27,10 +28,16 @@ export const authOptions: AuthOptions = {
         }
 
         // Try PIN-based login first
-        const pinEmail = PIN_MAP[credentials.password];
+        const pinMap = getPinMap();
+        const pinEmail = pinMap[credentials.password];
         const email = pinEmail || credentials.email;
 
         if (!email) {
+          console.warn('[Auth] Failed login attempt', {
+            type: 'pin',
+            email: 'none',
+            timestamp: new Date().toISOString(),
+          });
           throw new Error('Senha inválida');
         }
 
@@ -39,11 +46,21 @@ export const authOptions: AuthOptions = {
         });
 
         if (!user) {
+          console.warn('[Auth] Failed login attempt', {
+            type: pinEmail ? 'pin' : 'password',
+            email,
+            timestamp: new Date().toISOString(),
+          });
           throw new Error('Senha inválida');
         }
 
         // If not a PIN login, verify bcrypt password
         if (!pinEmail && !(await compare(credentials.password, user.passwordHash))) {
+          console.warn('[Auth] Failed login attempt', {
+            type: 'password',
+            email,
+            timestamp: new Date().toISOString(),
+          });
           throw new Error('Email ou senha inválidos');
         }
 
