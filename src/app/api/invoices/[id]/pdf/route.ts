@@ -38,18 +38,14 @@ export async function GET(
     const url = new URL(req.url);
     const autoPrint = url.searchParams.get('print') === 'true';
     const download = url.searchParams.get('download') === 'true';
-    const format = url.searchParams.get('format');
-    const forceHtml = format === 'html' && !!invoice.xmlContent;
 
-    const originalIssuedPdf = forceHtml
-      ? null
-      : await getOriginalIssuedPdf({
-          companyId: invoice.companyId,
-          type: invoice.type,
-          direction: invoice.direction,
-          number: invoice.number,
-          issueDate: invoice.issueDate,
-        });
+    const originalIssuedPdf = await getOriginalIssuedPdf({
+      companyId: invoice.companyId,
+      type: invoice.type,
+      direction: invoice.direction,
+      number: invoice.number,
+      issueDate: invoice.issueDate,
+    });
 
     if (originalIssuedPdf) {
       const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);

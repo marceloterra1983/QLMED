@@ -161,7 +161,9 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
 
   const theme = (meta?.type ? DOC_THEME[meta.type] : null) || DEFAULT_THEME;
   const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
-  const iframeSrc = isMobile ? `${pdfUrl}?format=html` : pdfUrl;
+  const iframeSrc = isMobile
+    ? `/pdfjs/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`
+    : pdfUrl;
 
   const handlePrint = () => {
     window.open(`${pdfUrl}?print=true`, '_blank');
