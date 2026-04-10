@@ -139,7 +139,7 @@ Plans:
 - [ ] 08-01-PLAN.md — Split produtos/page-client.tsx into 5+ components (SPLIT-01)
 - [x] 08-02-PLAN.md — Split PDF route into danfe/dacte/nfse generators + pdf-utils (SPLIT-02)
 - [x] 08-03-PLAN.md — Extract shared contact-details sub-components from modals (SPLIT-03)
-- [ ] 08-04-PLAN.md — Split settings, financeiro pages, local-xml-sync into modules (SPLIT-04)
+- [x] 08-04-PLAN.md — Split settings, financeiro pages, local-xml-sync into modules (SPLIT-04)
 **UI hint**: yes
 
 ### Phase 9: Search & Pagination

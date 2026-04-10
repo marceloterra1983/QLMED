@@ -60,7 +60,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 - [ ] **SPLIT-01**: produtos/page-client.tsx (3609→~5 componentes) — ProductTable, ProductFilters, BulkEditModal, AutoClassifyPanel, ExportCSV
 - [x] **SPLIT-02**: invoices/[id]/pdf/route.ts (2291→~4 módulos) — danfe, dacte, nfse generators + pdf-utils
 - [x] **SPLIT-03**: SupplierDetailsModal e CustomerDetailsModal compartilham sub-componentes de tabs
-- [ ] **SPLIT-04**: settings/page-client, financeiro pages, local-xml-sync divididos em módulos
+- [x] **SPLIT-04**: settings/page-client, financeiro pages, local-xml-sync divididos em módulos
 
 ### Performance — Search & Pagination
 
