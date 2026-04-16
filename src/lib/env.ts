@@ -7,6 +7,10 @@ const required = [
   'NEXTAUTH_SECRET',
   'NEXTAUTH_URL',
   'ENCRYPTION_KEY',
+  // Required: the middleware now fails closed if this is missing at the edge,
+  // so startup must reject missing values too (otherwise the app boots but
+  // every x-api-key request returns 500 until operators notice).
+  'QLMED_API_KEY',
 ] as const;
 
 const optional = [
