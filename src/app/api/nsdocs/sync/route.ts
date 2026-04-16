@@ -54,6 +54,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Certificado digital não configurado para integrar com Receita NFS-e' }, { status: 400 });
     }
 
+    // Guard against concurrent syncs: the auto-sync scheduler (auto-sync.ts:149/192/229)
+    // checks for 'running' syncLogs before starting; the manual endpoint must do the same
+    // or two overlapping runs race on `lastSyncAt` / `lastNsu` cursors.
+    const runningSync = await prisma.syncLog.findFirst({
+      where: { companyId, status: 'running' },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (runningSync) {
+      return NextResponse.json(
+        {
+          error: 'Já existe uma sincronização em andamento',
+          syncMethod: runningSync.syncMethod,
+          syncLogId: runningSync.id,
+          startedAt: runningSync.startedAt,
+        },
+        { status: 409 },
+      );
+    }
+
     // SEFAZ: se method='sefaz' explícito OU fallback automático (sem method)
     if ((method === 'sefaz' || !method) && company.certificateConfig) {
       const cert = company.certificateConfig;
@@ -168,6 +187,7 @@ export async function GET(request: NextRequest) {
       status: log?.status || 'unknown',
       newDocs: log?.newDocs || 0,
       updatedDocs: log?.updatedDocs || 0,
+      skippedDocs: log?.skippedDocs || 0,
       error: log?.errorMessage,
       syncMethod: log?.syncMethod
     });
