@@ -82,10 +82,34 @@ model User {
   // lockedUntil is a soft lock — authorize() rejects the login while now < lockedUntil.
   failedAttempts Int        @default(0)
   lockedUntil    DateTime?
+  // Session revocation counter — every issued JWT embeds this value in its
+  // `tokenVersion` claim. Increment to invalidate ALL outstanding sessions
+  // for this user (logout-everywhere, role demotion, status change, etc.).
+  tokenVersion   Int        @default(0)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   companies      Company[]
   accessLogs     AccessLog[]
+  apiKeys        ApiKey[]   @relation("ApiKeyCreator")
+}
+
+// Named API keys used by external integrations (n8n, scripts). Each row
+// stores a SHA-256 hash of the raw key — the clear value is shown once
+// at creation time and never retrievable afterward. Revocation is a soft
+// delete via revokedAt so historical audit trails keep pointing to a
+// valid row.
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  scopes      String[]  @default([])
+  createdById String
+  createdBy   User      @relation("ApiKeyCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+
+  @@index([revokedAt])
 }
 
 model AccessLog {
