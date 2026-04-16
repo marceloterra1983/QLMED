@@ -29,7 +29,12 @@ async function isValidApiKey(): Promise<boolean> {
 }
 
 async function getApiKeyUserId(): Promise<string | null> {
-  if (!isValidApiKey()) return null;
+  // Without `await`, isValidApiKey() returns a Promise (always truthy),
+  // so !Promise === false and this early return NEVER fires — every request
+  // (with or without a valid x-api-key) would fall through and resolve to
+  // the first active admin, which requireAuth/requireRole then treated as
+  // the authenticated identity. Full RBAC bypass. See PR #<security-fix>.
+  if (!(await isValidApiKey())) return null;
   const admin = await prisma.user.findFirst({
     where: { role: 'admin', status: 'active' },
     select: { id: true },
