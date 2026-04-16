@@ -1,0 +1,330 @@
+{
+  "name": "NF-e Recebida - Notificação WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "f7fb0e73-8f6c-44e7-b9bc-0dfdfbfcbc3e",
+      "name": "A cada 10 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.QLMED_API_URL }}/api/invoices",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "NFE"
+            },
+            {
+              "name": "direction",
+              "value": "received"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            },
+            {
+              "name": "sort",
+              "value": "import"
+            },
+            {
+              "name": "order",
+              "value": "desc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.QLMED_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "ae5bbb0e-9045-4c6b-91d3-e337a067436c",
+      "name": "Buscar NF-e Recebidas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get static data (persisted across executions)\nconst staticData = $getWorkflowStaticData('global');\nconst lastNotifiedAt = staticData.lastNotifiedAt || '2026-01-01T00:00:00.000Z';\n\nconst invoicesData = $input.first().json;\nconst invoices = invoicesData.invoices || invoicesData.data || [];\n\nif (!Array.isArray(invoices) || invoices.length === 0) {\n  return [];\n}\n\n// Filter only invoices created after last notification\nconst newInvoices = invoices.filter(inv => {\n  const createdAt = new Date(inv.createdAt || inv.importedAt || '2000-01-01');\n  return createdAt > new Date(lastNotifiedAt);\n});\n\nif (newInvoices.length === 0) {\n  return [];\n}\n\n// Update last notified timestamp to the most recent invoice\nconst mostRecent = newInvoices.reduce((latest, inv) => {\n  const d = new Date(inv.createdAt || inv.importedAt || '2000-01-01');\n  return d > latest ? d : latest;\n}, new Date(lastNotifiedAt));\n\nstaticData.lastNotifiedAt = mostRecent.toISOString();\n\n// Return each new invoice as separate item\nreturn newInvoices.map(inv => ({\n  json: {\n    id: inv.id,\n    number: inv.number,\n    series: inv.series || '1',\n    senderName: inv.senderName || inv.issuerName || 'Não identificado',\n    senderCnpj: inv.senderCnpj || '',\n    totalValue: inv.totalValue,\n    issueDate: inv.issueDate,\n    accessKey: inv.accessKey,\n    createdAt: inv.createdAt\n  }\n}));"
+      },
+      "id": "847e451a-bc74-41bf-9bd7-094a0c464a26",
+      "name": "Filtrar Novas NF-e",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.QLMED_API_URL }}/api/invoices/{{ $json.id }}/pdf?download=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.QLMED_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "308aed61-3f25-4df7-afe7-4030ab40a985",
+      "name": "Baixar DANFE PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inv = $('Filtrar Novas NF-e').item.json;\nconst pdfItem = $input.first();\n\n// After adding \"Baixar XML Original\", binary has both `data` (PDF) and `xml` (XML).\n// Reference the PDF explicitly to avoid Object.keys() ordering issues.\nconst binaryData = pdfItem.binary && pdfItem.binary.data;\nif (!binaryData) {\n  throw new Error('PDF binary missing (expected binary.data from Baixar DANFE PDF)');\n}\nconst base64 = binaryData.data;\n\nfunction noAutoLink(s) {\n  let out = '';\n  let prev = false;\n  for (const ch of String(s)) {\n    const isDigit = ch >= '0' && ch <= '9';\n    if (isDigit && prev) out += '\\u034F';\n    out += ch;\n    prev = isDigit;\n  }\n  return out;\n}\n\nconst MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];\n\nconst valorRaw = parseFloat(inv.totalValue || 0)\n  .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });\n\nlet dataRaw = 'N/D';\nif (inv.issueDate) {\n  const d = new Date(inv.issueDate);\n  dataRaw = `${String(d.getUTCDate()).padStart(2,'0')} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n}\n\nconst nomeEmitente = inv.senderName.length > 40\n  ? inv.senderName.substring(0, 40) + '...'\n  : inv.senderName;\n\nconst numero = noAutoLink(inv.number);\nconst valor  = noAutoLink(valorRaw);\nconst data   = noAutoLink(dataRaw);\n\nconst caption = `📄 *NF-e Recebida*\\n\\nNF • ${numero}\\nEmitente: ${nomeEmitente}\\nValor • ${valor}\\nData • ${data}\\n\\n🔗 https://app.qlmed.com.br/fiscal/invoices`;\n\nconst fileName = `DANFE_${inv.number}_${nomeEmitente.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20)}.pdf`;\n\n// Fetch active users with phone\nconst apiUrl = $env.QLMED_API_URL;\nconst apiKey = $env.QLMED_API_KEY;\nconst usersResp = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${apiUrl}/api/users`,\n  headers: { 'x-api-key': apiKey },\n  json: true,\n});\n\nconst users = Array.isArray(usersResp)\n  ? usersResp\n  : (usersResp.users || usersResp.data || []);\n\nfunction normalizePhone(raw) {\n  if (!raw) return null;\n  let p = String(raw).replace(/\\D/g, '');\n  if (!p) return null;\n  if (p.startsWith('55')) p = p.substring(2);\n  if (p.length < 10 || p.length > 11) return null;\n  return '55' + p;\n}\n\nconst seen = new Set();\nconst recipients = [];\nfor (const u of users) {\n  if (u.status !== 'active') continue;\n  const phone = normalizePhone(u.phone);\n  if (!phone) continue;\n  if (seen.has(phone)) continue;\n  seen.add(phone);\n  recipients.push(phone);\n}\n\nif (recipients.length === 0) {\n  return [];\n}\n\nreturn recipients.map(phone => ({\n  json: {\n    number: phone,\n    mediatype: 'document',\n    media: base64,\n    mimetype: 'application/pdf',\n    fileName: fileName,\n    caption: caption,\n  }\n}));\n"
+      },
+      "id": "f807cbfa-b3a2-411f-9385-66d209bba270",
+      "name": "Preparar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-evolution-api:8080/message/sendMedia/qlmed-whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY || 'SET_IN_ENV' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "ad705ee5-0180-4938-aab9-4a6a643f7121",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.QLMED_API_URL }}/api/invoices/{{ $json.id }}/download",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.QLMED_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "xml"
+            }
+          }
+        }
+      },
+      "id": "be85a100-b5b4-4ce8-81e5-a7067d7850a1",
+      "name": "Baixar XML Original",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inv = $('Filtrar Novas NF-e').item.json;\nconst item = $input.first();\n\nconst pdfBinary = item.binary && item.binary.data ? item.binary.data : null;\nconst xmlBinary = item.binary && item.binary.xml ? item.binary.xml : null;\nif (!pdfBinary || !xmlBinary) {\n  throw new Error(`Binaries missing (pdf=${!!pdfBinary}, xml=${!!xmlBinary})`);\n}\n\n// Parse duplicatas (vencimentos) from XML\nconst xmlString = Buffer.from(xmlBinary.data, 'base64').toString('utf-8');\nconst dupRegex = /<dup>\\s*<nDup>([^<]*)<\\/nDup>\\s*<dVenc>([^<]*)<\\/dVenc>\\s*<vDup>([^<]*)<\\/vDup>\\s*<\\/dup>/g;\nconst duplicatas = [];\nlet m;\nwhile ((m = dupRegex.exec(xmlString)) !== null) {\n  duplicatas.push({ numero: m[1], vencimento: m[2], valor: parseFloat(m[3]) });\n}\n\nconst MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];\n\nconst valorRaw = parseFloat(inv.totalValue || 0)\n  .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });\n\nlet dataRaw = 'N/D';\nif (inv.issueDate) {\n  const d = new Date(inv.issueDate);\n  dataRaw = `${String(d.getUTCDate()).padStart(2,'0')} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n}\n\nconst nomeEmitente = inv.senderName || 'Não identificado';\nconst numeroNf = inv.number;\n\nfunction formatDate(ds) {\n  if (!ds) return 'N/D';\n  const [y, mo, dy] = ds.split('-');\n  return `${dy}/${mo}/${y}`;\n}\n\nfunction formatBrl(v) {\n  return parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });\n}\n\n// Tabela de vencimentos (só para financeiro e joseroberto)\nlet vencimentosHtml = '';\nif (duplicatas.length > 0) {\n  const rows = duplicatas.map(d =>\n    `<tr><td style=\"padding:4px 10px;border:1px solid #ddd;text-align:center\">${d.numero}</td>` +\n    `<td style=\"padding:4px 10px;border:1px solid #ddd;text-align:center\">${formatDate(d.vencimento)}</td>` +\n    `<td style=\"padding:4px 10px;border:1px solid #ddd;text-align:right\">${formatBrl(d.valor)}</td></tr>`\n  ).join('');\n  vencimentosHtml = `\n  <h3 style=\"color:#1a5490;margin:20px 0 8px 0\">📅 Vencimentos</h3>\n  <table style=\"border-collapse:collapse;font-size:14px;margin-bottom:15px\">\n    <tr style=\"background:#f0f4f8\">\n      <th style=\"padding:6px 10px;border:1px solid #ddd\">Parcela</th>\n      <th style=\"padding:6px 10px;border:1px solid #ddd\">Vencimento</th>\n      <th style=\"padding:6px 10px;border:1px solid #ddd\">Valor</th>\n    </tr>\n    ${rows}\n  </table>`;\n}\n\nconst subject = `NF-e Recebida: Nº ${numeroNf} — ${nomeEmitente.substring(0,60)}`;\n\nfunction buildHtml(includeVencimentos) {\n  return `\n<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:600px\">\n  <h2 style=\"color:#1a5490;margin:0 0 10px 0\">📄 NF-e Recebida</h2>\n  <table style=\"border-collapse:collapse;margin:15px 0\">\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">Número:</td><td>${numeroNf}</td></tr>\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">Emitente:</td><td>${nomeEmitente}</td></tr>\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">CNPJ emit.:</td><td>${inv.senderCnpj || '-'}</td></tr>\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">Valor:</td><td>${valorRaw}</td></tr>\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">Emissão:</td><td>${dataRaw}</td></tr>\n    <tr><td style=\"padding:4px 10px 4px 0;font-weight:bold;vertical-align:top\">Chave:</td><td style=\"font-family:monospace;font-size:12px\">${inv.accessKey || '-'}</td></tr>\n  </table>\n  ${includeVencimentos ? vencimentosHtml : ''}\n  <p>Em anexo o DANFE (PDF) e o arquivo XML original.</p>\n  <p style=\"margin-top:20px\">\n    <a href=\"https://app.qlmed.com.br/fiscal/invoices\" style=\"background:#1a5490;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;display:inline-block\">Abrir no sistema</a>\n  </p>\n  <hr style=\"margin-top:30px;border:none;border-top:1px solid #eee\">\n  <p style=\"color:#888;font-size:12px\">Mensagem automática enviada pelo Assistente Virtual QL MED.</p>\n</div>`;\n}\n\n// Fetch active users with phone (same criteria as WhatsApp) + faturamento\nconst usersResp = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${$env.QLMED_API_URL}/api/users`,\n  headers: { 'x-api-key': $env.QLMED_API_KEY },\n  json: true,\n});\nconst users = Array.isArray(usersResp) ? usersResp : (usersResp.users || usersResp.data || []);\n\nconst emails = new Set();\nfor (const u of users) {\n  if (u.status !== 'active') continue;\n  if (!u.phone) continue;\n  if (!u.email) continue;\n  emails.add(String(u.email).trim().toLowerCase());\n}\nemails.add('faturamento@qlmed.com.br');\n\nif (emails.size === 0) return [];\n\n// Destinatários que recebem vencimentos\nconst VENCIMENTOS_RECIPIENTS = new Set([\n  'financeiro@qlmed.com.br',\n  'joseroberto@qlmed.com.br',\n]);\n\nconst pdfFileName = `DANFE_${numeroNf}.pdf`;\nconst xmlFileName = `NFE_${inv.accessKey || numeroNf}.xml`;\n\nreturn Array.from(emails).map(email => ({\n  json: {\n    to: email,\n    subject,\n    html: buildHtml(VENCIMENTOS_RECIPIENTS.has(email)),\n    invoiceNumber: numeroNf,\n    invoiceSender: nomeEmitente,\n  },\n  binary: {\n    pdf: { ...pdfBinary, fileName: pdfFileName, mimeType: 'application/pdf' },\n    xml: { ...xmlBinary, fileName: xmlFileName, mimeType: 'application/xml' },\n  },\n}));\n"
+      },
+      "id": "1e0ed9df-e2aa-4067-b7ee-c59686327c9a",
+      "name": "Preparar Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "\"Assistente Virtual\" <adm@qlmed.com.br>",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "html": "={{ $json.html }}",
+        "options": {
+          "attachments": "pdf,xml"
+        }
+      },
+      "id": "624ca9b0-2bdc-4361-814c-d02fbd26ccb0",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        180
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_qlmed_adm_001",
+          "name": "QLMED Outlook SMTP (adm)"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "A cada 10 minutos": {
+      "main": [
+        [
+          {
+            "node": "Buscar NF-e Recebidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar NF-e Recebidas": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Novas NF-e",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Novas NF-e": {
+      "main": [
+        [
+          {
+            "node": "Baixar DANFE PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar DANFE PDF": {
+      "main": [
+        [
+          {
+            "node": "Baixar XML Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar XML Original": {
+      "main": [
+        [
+          {
+            "node": "Preparar Mensagem",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preparar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Email": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "meta": {
+    "description": "Varre /api/invoices a cada 10min por NF-e recebidas novas, baixa DANFE + XML original, envia WhatsApp (PDF apenas) para usuários com telefone e Email (PDF+XML) para usuários com telefone + faturamento@. Financeiro e Jose Roberto recebem tabela de vencimentos no email."
+  }
+}
