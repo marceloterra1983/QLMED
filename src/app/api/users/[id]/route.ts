@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import type { AccessLogAction } from '@prisma/client';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
@@ -86,6 +87,32 @@ export async function PATCH(
       updateData.passwordHash = await hash(password, 12);
     }
 
+    // Auth-sensitive mutations (role, status, allowedPages, password) force
+    // an immediate JWT invalidation across all devices: increment tokenVersion
+    // so the target's next request fails the session check in requireAuth
+    // and they must re-login with the new privileges in effect.
+    const auditEvents: Array<{ action: AccessLogAction; path: string }> = [];
+    const sensitiveChange =
+      (role !== undefined && role !== target.role) ||
+      (status !== undefined && status !== target.status) ||
+      (allowedPages !== undefined) ||
+      (password !== undefined && password !== '');
+    if (sensitiveChange) {
+      (updateData as { tokenVersion?: { increment: number } }).tokenVersion = { increment: 1 };
+    }
+    if (role !== undefined && role !== target.role) {
+      auditEvents.push({ action: 'role_changed', path: `from=${target.role} to=${role}` });
+    }
+    if (status !== undefined && status !== target.status) {
+      auditEvents.push({ action: 'status_changed', path: `from=${target.status} to=${status}` });
+    }
+    if (allowedPages !== undefined) {
+      auditEvents.push({ action: 'pages_changed', path: `count=${allowedPages.length}` });
+    }
+    // Always write a generic user_updated for admin traceability, tagged with
+    // the acting admin's id so the audit log attributes the change correctly.
+    auditEvents.push({ action: 'user_updated', path: `target=${id} by=${admin.userId}` });
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -100,6 +127,13 @@ export async function PATCH(
         createdAt: true,
       },
     });
+
+    // Fire-and-forget audit writes; don't block the response on log storage.
+    for (const ev of auditEvents) {
+      prisma.accessLog
+        .create({ data: { userId: admin.userId, action: ev.action, path: ev.path } })
+        .catch((err) => log.warn({ err, action: ev.action }, 'AccessLog write failed'));
+    }
 
     return NextResponse.json({ user });
   } catch (error) {
