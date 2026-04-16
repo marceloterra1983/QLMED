@@ -1,6 +1,6 @@
 import { SefazClient } from './sefaz-client';
 import { CertificateManager } from './certificate-manager';
-import { NsdocsClient } from './nsdocs-client';
+import { NsdocsClient, NsdocsTransientError, NsdocsPaginationError } from './nsdocs-client';
 import { decrypt } from './crypto';
 import { parseInvoiceXml } from './parse-invoice-xml';
 import { getNsdocsSyncWindow } from './nsdocs-sync-window';
@@ -631,15 +631,45 @@ export async function syncViaNsdocs(
 
     let totalNovos = 0;
     let totalAtualizados = 0;
+    const skippedReasons: string[] = [];
+    const skipDoc = (docId: string | undefined, chave: string | undefined, reason: string, err?: unknown) => {
+      const identifier = chave ? `chave=${chave.slice(0, 12)}…` : `docId=${docId || '?'}`;
+      const detail = err instanceof Error ? err.message.slice(0, 120) : '';
+      const entry = detail ? `${identifier} ${reason}: ${detail}` : `${identifier} ${reason}`;
+      skippedReasons.push(entry);
+      log.warn({ docId, chave, reason, err }, 'NSDocs doc skipped');
+    };
 
     for (const doc of documentos) {
       try {
-        if (!doc.id) continue;
-        const xmlContent = await client.recuperarXml(doc.id);
-        if (!xmlContent || xmlContent.length < 50) continue;
+        if (!doc.id) {
+          skipDoc(doc.id, doc.chave_acesso, 'missing_doc_id');
+          continue;
+        }
+
+        let xmlContent: string;
+        try {
+          xmlContent = await client.recuperarXml(doc.id);
+        } catch (xmlErr) {
+          // Transient errors abort the whole sync so we retry the window.
+          if (xmlErr instanceof NsdocsTransientError) throw xmlErr;
+          skipDoc(doc.id, doc.chave_acesso, 'xml_fetch_failed', xmlErr);
+          continue;
+        }
+        if (!xmlContent || xmlContent.length < 50) {
+          skipDoc(doc.id, doc.chave_acesso, 'xml_empty_or_too_small');
+          continue;
+        }
 
         const parsed = await parseInvoiceXml(xmlContent);
-        if (!parsed || !parsed.accessKey) continue;
+        if (!parsed) {
+          skipDoc(doc.id, doc.chave_acesso, 'parse_failed_unknown_schema');
+          continue;
+        }
+        if (!parsed.accessKey) {
+          skipDoc(doc.id, doc.chave_acesso, 'parse_missing_access_key');
+          continue;
+        }
 
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
@@ -688,12 +718,12 @@ export async function syncViaNsdocs(
         }
         // Incremental aggregate update
         if (parsed.type === 'NFE' && xmlContent) {
-          const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
+          const aggDirection = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
           updateProductAggregatesForInvoice({
             companyId,
             invoiceId: result.id,
             xmlContent,
-            direction,
+            direction: aggDirection,
             issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
             senderName: parsed.senderName,
             senderCnpj: parsed.senderCnpj,
@@ -703,28 +733,55 @@ export async function syncViaNsdocs(
           }).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'updateProductAggregatesForInvoice failed for NSDocs'); });
         }
       } catch (docErr) {
-        log.error({ err: docErr, docId: doc.id }, 'Erro no doc NSDocs');
+        if (docErr instanceof NsdocsTransientError) throw docErr;
+        skipDoc(doc.id, doc.chave_acesso, 'upsert_failed', docErr);
       }
     }
 
-    await prisma.nsdocsConfig.update({
-      where: { id: nsdocsConfig.id },
-      data: { lastSyncAt: syncedAt },
-    });
+    const skippedCount = skippedReasons.length;
+    const finalStatus: 'completed' | 'partial' = skippedCount === 0 ? 'completed' : 'partial';
+
+    // Only advance lastSyncAt when EVERY doc in the window was processed successfully.
+    // Partial runs keep the previous cursor so the skipped docs get retried next run
+    // (combined with the 1-day overlap in getNsdocsSyncWindow, this gives us durable replay).
+    if (skippedCount === 0) {
+      await prisma.nsdocsConfig.update({
+        where: { id: nsdocsConfig.id },
+        data: { lastSyncAt: syncedAt },
+      });
+    } else {
+      log.warn({ company: razaoSocial, skippedCount }, 'NSDocs sync partial — lastSyncAt NOT advanced, window will be retried');
+    }
+
+    const errorMessage = skippedCount > 0
+      ? `${skippedCount} docs skipped: ${skippedReasons.slice(0, 15).join('; ')}${skippedCount > 15 ? ` (+${skippedCount - 15} more)` : ''}`
+      : null;
 
     await prisma.syncLog.update({
       where: { id: syncLog.id },
-      data: { status: 'completed', newDocs: totalNovos, updatedDocs: totalAtualizados, completedAt: new Date() },
+      data: {
+        status: finalStatus,
+        newDocs: totalNovos,
+        updatedDocs: totalAtualizados,
+        skippedDocs: skippedCount,
+        errorMessage,
+        completedAt: new Date(),
+      },
     });
 
-    log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'NSDocs sync completed');
+    log.info(
+      { company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados, skippedDocs: skippedCount, status: finalStatus },
+      `NSDocs sync ${finalStatus}`,
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ err, company: razaoSocial }, 'Erro NSDocs');
+    const isTransient = err instanceof NsdocsTransientError;
+    const isPagination = err instanceof NsdocsPaginationError;
+    log.error({ err, company: razaoSocial, transient: isTransient, pagination: isPagination }, 'Erro NSDocs');
     try {
       await prisma.syncLog.update({
         where: { id: syncLog.id },
-        data: { status: 'error', errorMessage: message, completedAt: new Date() },
+        data: { status: 'error', errorMessage: message.slice(0, 2000), completedAt: new Date() },
       });
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
