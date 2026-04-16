@@ -8,6 +8,7 @@ declare module 'next-auth' {
       role: 'admin' | 'editor' | 'viewer';
       status: 'pending' | 'active' | 'inactive' | 'rejected';
       allowedPages: string[];
+      tokenVersion: number;
     } & DefaultSession['user'];
   }
 
@@ -24,6 +25,7 @@ declare module 'next-auth/jwt' {
     role: 'admin' | 'editor' | 'viewer';
     status: 'pending' | 'active' | 'inactive' | 'rejected';
     allowedPages: string[];
+    tokenVersion?: number;
     dbRefreshedAt?: number;
   }
 }

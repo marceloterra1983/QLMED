@@ -154,25 +154,31 @@ export const authOptions: AuthOptions = {
         token.status = user.status;
         token.allowedPages = user.allowedPages ?? [];
         token.dbRefreshedAt = Date.now();
+        // tokenVersion bootstrap — picked up from DB on the refresh path below
+        // because `user` (the NextAuth internal) doesn't expose tokenVersion.
         // login accessLog now written by recordSuccessfulLogin with
         // failedAttempts reset — no duplicate write here.
       }
-      // Always refresh role/status from DB if stale (>5 min) or missing valid role
+      // Always refresh role/status/tokenVersion from DB if stale (>5 min) or
+      // missing valid role / tokenVersion.
       const validRoles = ['admin', 'editor', 'viewer'];
       const staleMs = 5 * 60 * 1000;
+      const hasTokenVersion = typeof token.tokenVersion === 'number';
       const needsRefresh = !validRoles.includes(token.role as string)
         || !token.dbRefreshedAt
-        || (Date.now() - (token.dbRefreshedAt as number)) > staleMs;
+        || (Date.now() - (token.dbRefreshedAt as number)) > staleMs
+        || !hasTokenVersion;
       if (needsRefresh && token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { role: true, status: true, allowedPages: true },
+            select: { role: true, status: true, allowedPages: true, tokenVersion: true },
           });
           if (dbUser) {
             token.role = dbUser.role;
             token.status = dbUser.status;
             token.allowedPages = dbUser.allowedPages;
+            token.tokenVersion = dbUser.tokenVersion;
             token.dbRefreshedAt = Date.now();
           }
         } catch (err) {
@@ -187,6 +193,7 @@ export const authOptions: AuthOptions = {
         session.user.role = token.role;
         session.user.status = token.status;
         session.user.allowedPages = token.allowedPages ?? [];
+        session.user.tokenVersion = typeof token.tokenVersion === 'number' ? token.tokenVersion : 0;
       }
       return session;
     },
