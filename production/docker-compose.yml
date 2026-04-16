@@ -47,7 +47,12 @@ services:
     env_file:
       - ./env/n8n.env
     volumes:
+      # External volume owned by Coolify — holds workflows + credentials + encryption key.
       - n8n_data:/home/node/.n8n
+    networks:
+      # Share coolify_net so `qlmed-app:3000` resolves for HTTP nodes.
+      - default
+      - coolify_net
     depends_on:
       - qlmed-app
 
@@ -120,7 +125,10 @@ volumes:
   pgdata:
     name: qlmed_pgdata
   n8n_data:
-    name: qlmed_n8n_data
+    # External volume owned by Coolify — must NOT be recreated by compose.
+    # Contains n8n workflows, credentials, and encryption key.
+    external: true
+    name: lkwc0s0ck8kcckocc4goc0kg_n8n-data
   evolution_instances:
     name: qlmed_evolution_instances
   evolution_pgdata:
