@@ -144,3 +144,41 @@ describe('extractPartyFiscalData', () => {
     expect(data).toBeNull();
   });
 });
+
+describe('NFS-e accessKey fallback', () => {
+  const buildNfseXml = (emitCnpj: string, nNFSe: string) => `<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe nNFSe="${nNFSe}">
+    <DPS>
+      <infDPS Id="">
+        <prest><CNPJ>${emitCnpj}</CNPJ><xNome>Prestador</xNome></prest>
+        <toma><CNPJ>11111111000100</CNPJ><xNome>Tomador</xNome></toma>
+        <valores><vServPrest><vServ>100</vServ></vServPrest></valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>`;
+
+  it('synthesizes distinct accessKeys for different emitters sharing the same nNFSe', async () => {
+    const a = await parseInvoiceXml(buildNfseXml('11111111000199', '42'));
+    const b = await parseInvoiceXml(buildNfseXml('22222222000199', '42'));
+    expect(a?.accessKey).toBeTruthy();
+    expect(b?.accessKey).toBeTruthy();
+    expect(a!.accessKey).not.toBe(b!.accessKey);
+    expect(a!.accessKey).toContain('11111111000199');
+    expect(a!.accessKey).toContain('42');
+  });
+
+  it('returns null when both Id and document number are absent', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe>
+    <DPS>
+      <infDPS><prest><CNPJ>99999999000199</CNPJ></prest></infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>`;
+    const result = await parseInvoiceXml(xml);
+    expect(result).toBeNull();
+  });
+});

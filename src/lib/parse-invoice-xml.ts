@@ -200,9 +200,20 @@ function parseNFSe(result: {
     const accessKeyFromId = String(nfseNacional.Id || dps.Id || '')
       .replace(/^NFS/i, '')
       .replace(/^DPS/i, '');
+    // Prefer the ADN national ID. Fallback accessKey MUST include emitter CNPJ
+    // to avoid collisions across different emitters that happen to share nNFSe/nDPS
+    // (the DB uses accessKey as a UNIQUE constraint, and a collision would overwrite
+    // an unrelated invoice silently).
+    const emitCnpjDigits = String(emit.CNPJ || emit.CPF || '').replace(/\D/g, '');
+    const docNum = String(nfseNacional.nNFSe || dps.nDPS || '');
+    const fallbackKey = docNum
+      ? (emitCnpjDigits ? `NFSE-${emitCnpjDigits}-${docNum}` : `NFSE-unknown-${docNum}`)
+      : '';
+    const finalAccessKey = accessKeyFromId || fallbackKey;
+    if (!finalAccessKey) return null;
 
     return {
-      accessKey: accessKeyFromId || `NFSE-${String(nfseNacional.nNFSe || dps.nDPS || '')}`,
+      accessKey: finalAccessKey,
       type: 'NFSE',
       number: String(nfseNacional.nNFSe || dps.nDPS || ''),
       series: String(dps.serie || ''),
