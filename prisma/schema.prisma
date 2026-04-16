@@ -53,24 +53,39 @@ enum UserStatus {
 
 enum AccessLogAction {
   login
+  login_failed
+  logout
   navigation
+  api_key_used
+  user_created
+  user_updated
+  user_deleted
+  role_changed
+  status_changed
+  pages_changed
+  permission_denied
+  account_locked
 }
 
 // ── Models ──
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  name         String
-  phone        String?
-  role         UserRole   @default(viewer)
-  status       UserStatus @default(pending)
-  allowedPages String[]   @default([])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  companies    Company[]
-  accessLogs   AccessLog[]
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  role           UserRole   @default(viewer)
+  status         UserStatus @default(pending)
+  allowedPages   String[]   @default([])
+  // PIN brute-force protection: incremented on failed login, reset on success.
+  // lockedUntil is a soft lock — authorize() rejects the login while now < lockedUntil.
+  failedAttempts Int        @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  companies      Company[]
+  accessLogs     AccessLog[]
 }
 
 model AccessLog {
