@@ -8,12 +8,27 @@ import { canAccessApi, canAccessPage, PAGE_GROUPS } from '@/lib/navigation';
  * All other /api/* routes require a valid session or API key.
  */
 const PUBLIC_API_ROUTES = [
-  '/api/auth',           // NextAuth endpoints (login, callback, etc.)
-  '/api/register',       // User registration
+  '/api/auth',           // NextAuth endpoints (login, callback, etc.) — except /api/auth/logout which requires auth
   '/api/health',         // Basic health check (details require auth, handled in route)
 ];
 
+/**
+ * Sub-paths under a PUBLIC_API_ROUTES prefix that should still require auth.
+ * Keeps the coarse allowlist pattern but lets us punch holes for sensitive
+ * endpoints (e.g. logout, which must know WHO is logging out).
+ */
+const PROTECTED_SUBPATHS = [
+  '/api/auth/logout',
+];
+
 function isPublicApiRoute(pathname: string): boolean {
+  // Explicit protected sub-paths override the coarse allowlist prefixes.
+  for (let j = 0; j < PROTECTED_SUBPATHS.length; j++) {
+    const sub = PROTECTED_SUBPATHS[j];
+    if (pathname === sub || pathname.startsWith(sub + '/')) {
+      return false;
+    }
+  }
   for (let i = 0; i < PUBLIC_API_ROUTES.length; i++) {
     const route = PUBLIC_API_ROUTES[i];
     if (pathname === route || pathname.startsWith(route + '/')) {
@@ -31,30 +46,6 @@ const AUTH_COOKIE_NAMES = [
   'next-auth.csrf-token',
   '__Host-next-auth.csrf-token',
 ];
-
-async function safeEqual(a: string, b: string): Promise<boolean> {
-  if (a.length !== b.length) return false;
-
-  try {
-    const encoder = new TextEncoder();
-    const [left, right] = await Promise.all([
-      crypto.subtle.digest('SHA-256', encoder.encode(a)),
-      crypto.subtle.digest('SHA-256', encoder.encode(b)),
-    ]);
-
-    const leftBytes = new Uint8Array(left);
-    const rightBytes = new Uint8Array(right);
-    let diff = 0;
-
-    for (let i = 0; i < leftBytes.length; i += 1) {
-      diff |= leftBytes[i] ^ rightBytes[i];
-    }
-
-    return diff === 0;
-  } catch {
-    return false;
-  }
-}
 
 function clearAuthCookies(response: NextResponse) {
   for (const name of AUTH_COOKIE_NAMES) {
@@ -128,33 +119,23 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow API key authentication for n8n / external integrations
+  // API key validation is now done ENTIRELY at the route layer (auth.ts:
+  // getApiKeyContext) where Prisma can hash-lookup against the ApiKey table
+  // and attribute audit events to a specific key. The middleware used to
+  // pre-validate against process.env.QLMED_API_KEY and set an
+  // `x-api-key-validated: 1` flag, but that flag was trust-only (forgeable
+  // by any route that skipped middleware) and the env-based comparison
+  // couldn't distinguish between different integration keys. Now:
+  //   - If x-api-key is present, we strip any client-supplied `-validated`
+  //     header so route-level code can't be tricked into trusting it.
+  //   - Route-level auth does the real hash-and-compare.
+  //   - Requests without a session JWT fall through to the redirect/401 path.
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
-    const expected = process.env.QLMED_API_KEY;
     if (apiKey) {
-      // Previously forwarded requests when `expected` was missing, which let
-      // ANY non-empty x-api-key value bypass validation if the env var didn't
-      // reach the edge runtime. Now fails closed: if the edge can't verify,
-      // the client gets 503 so the misconfiguration is loud instead of silent.
-      if (!expected) {
-        console.error('[Auth] QLMED_API_KEY unavailable at edge — rejecting x-api-key request');
-        return NextResponse.json(
-          { error: 'Servidor mal configurado (QLMED_API_KEY ausente no edge)' },
-          { status: 503 },
-        );
-      }
-
-      if (await safeEqual(apiKey, expected)) {
-        // Strip any client-supplied x-api-key-validated header so only the
-        // middleware can set it — route-level auth trusts this flag.
-        const requestHeaders = new Headers(req.headers);
-        requestHeaders.delete('x-api-key-validated');
-        requestHeaders.set('x-api-key-validated', '1');
-        return NextResponse.next({
-          request: { headers: requestHeaders },
-        });
-      }
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.delete('x-api-key-validated');
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
   }
 
