@@ -34,6 +34,7 @@ enum SyncMethod {
 enum SyncStatus {
   running
   completed
+  partial
   error
 }
 
@@ -163,6 +164,7 @@ model SyncLog {
   status       SyncStatus @default(running)
   newDocs      Int        @default(0)
   updatedDocs  Int        @default(0)
+  skippedDocs  Int        @default(0)
   errorMessage String?
   startedAt    DateTime   @default(now())
   completedAt  DateTime?
