@@ -17,6 +17,16 @@ const n8nWebhookSchema = z.object({
 });
 const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 
+// Base64 expands by ~4/3; cap at 7MB so the decoded buffer cannot exceed the
+// downstream 5MB per-file limit. Reject early before Buffer.from allocates.
+const MAX_BASE64_XML_LENGTH = 7 * 1024 * 1024;
+
+function getApiKey(): string {
+  const k = process.env.QLMED_API_KEY;
+  if (!k) throw new Error('QLMED_API_KEY env var not set');
+  return k;
+}
+
 function validateApiKey(req: NextRequest): boolean {
   const key = req.headers.get('x-api-key');
   const expected = process.env.QLMED_API_KEY;
@@ -60,7 +70,7 @@ export async function POST(req: NextRequest) {
       case 'sync-nfe': {
         const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
         const data = await res.json();
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest) {
       case 'sync-cte': {
         const res = await fetch(`${baseUrl}/api/cte/sync`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
         const data = await res.json();
@@ -82,12 +92,18 @@ export async function POST(req: NextRequest) {
         if (!payload?.xml) {
           return NextResponse.json({ error: 'payload.xml is required' }, { status: 400 });
         }
+        if (typeof payload.xml !== 'string') {
+          return NextResponse.json({ error: 'payload.xml must be a base64 string' }, { status: 400 });
+        }
+        if (payload.xml.length > MAX_BASE64_XML_LENGTH) {
+          return NextResponse.json({ error: 'payload.xml too large' }, { status: 413 });
+        }
         const formData = new FormData();
-        const buffer = Buffer.from(payload.xml as string, 'base64');
+        const buffer = Buffer.from(payload.xml, 'base64');
         formData.append('file', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
         const res = await fetch(`${baseUrl}/api/invoices/upload`, {
           method: 'POST',
-          headers: { 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'x-api-key': getApiKey() },
           body: formData,
         });
         const data = await res.json();
@@ -97,7 +113,7 @@ export async function POST(req: NextRequest) {
       case 'sync-ncm-bulk': {
         const res = await fetch(`${baseUrl}/api/ncm/bulk-sync`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
         const data = await res.json();
@@ -107,7 +123,7 @@ export async function POST(req: NextRequest) {
       case 'backfill-tax-data': {
         const res = await fetch(`${baseUrl}/api/invoices/backfill-tax`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
         });
         const data = await res.json();
         return NextResponse.json({ ok: true, action, result: data });
@@ -116,7 +132,7 @@ export async function POST(req: NextRequest) {
       case 'batch-cnpj-check': {
         const res = await fetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.QLMED_API_KEY! },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
         const data = await res.json();

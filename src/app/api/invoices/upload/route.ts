@@ -14,6 +14,9 @@ const log = createLogger('invoices/upload');
 
 const MAX_XML_SIZE = 5 * 1024 * 1024; // 5MB per file
 const MAX_FILES = 50;
+// Hard cap on the whole multipart body so a 250MB+ burst can be rejected
+// before formData() buffers it. 5% headroom over MAX_FILES * MAX_XML_SIZE.
+const MAX_BODY_SIZE = Math.floor(MAX_FILES * MAX_XML_SIZE * 1.05);
 
 const uploadSchema = z.object({
   files: z
@@ -36,6 +39,14 @@ export async function POST(req: Request) {
     } catch (e: unknown) {
       if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
+    }
+
+    const contentLengthHeader = req.headers.get('content-length');
+    if (contentLengthHeader) {
+      const cl = Number(contentLengthHeader);
+      if (Number.isFinite(cl) && cl > MAX_BODY_SIZE) {
+        return NextResponse.json({ error: 'Payload muito grande' }, { status: 413 });
+      }
     }
 
     const formData = await req.formData();
