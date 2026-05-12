@@ -1,6 +1,11 @@
 import forge from 'node-forge';
 import crypto from 'crypto';
 
+// Metadata extracted from a PFX during upload validation.
+// Intentionally does NOT carry pfxData/pfxPassword back out: the caller already
+// has the buffer it passed in, and the password is re-encrypted at the call
+// site before being persisted. Keeping plaintext credentials on the return
+// value invites accidental logging.
 export interface CertificateInfo {
   serialNumber: string;
   issuer: string;
@@ -8,8 +13,6 @@ export interface CertificateInfo {
   validFrom: Date;
   validTo: Date;
   cnpj: string | null;
-  pfxData: Buffer | Uint8Array;
-  pfxPassword: string; // Em produção, isso deveria ser criptografado
 }
 
 export class CertificateManager {
@@ -73,8 +76,6 @@ export class CertificateManager {
       validFrom,
       validTo,
       cnpj,
-      pfxData: pfxBuffer,
-      pfxPassword: password
     };
   }
 

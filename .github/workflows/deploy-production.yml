@@ -5,6 +5,9 @@ on:
 
 jobs:
   deploy:
+    environment:
+      name: production
+      url: https://app.qlmed.com.br
     runs-on:
       - self-hosted
       - qlmed-prod
