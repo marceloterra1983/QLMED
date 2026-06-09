@@ -12,6 +12,11 @@ import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updat
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { importPeriodSchema } from '@/lib/schemas/nsdocs';
+import { createHistoricalInvoiceWithoutOutbox } from '@/lib/notification-outbox';
+import {
+  acquirePostgresTransactionAdvisoryLock,
+  productAggregateLockKey,
+} from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('nsdocs/import-period');
 
@@ -106,29 +111,34 @@ export async function POST(request: NextRequest) {
           select: { id: true, status: true },
         });
         if (exists) {
-          await prisma.invoice.update({
-            where: { id: exists.id },
-            data: {
-              type: parsed.type,
-              direction,
-              number: parsed.number,
-              series: parsed.series,
-              issueDate: parsed.issueDate,
-              senderCnpj: parsed.senderCnpj,
-              senderName: parsed.senderName,
-              recipientCnpj: parsed.recipientCnpj,
-              recipientName: parsed.recipientName,
-              totalValue: parsed.totalValue,
-              status: mappedStatus,
-              cfop,
-              xmlContent,
-            },
+          await prisma.$transaction(async (tx) => {
+            await acquirePostgresTransactionAdvisoryLock(tx, productAggregateLockKey(companyId));
+            await tx.invoice.update({
+              where: { id: exists.id },
+              data: {
+                type: parsed.type,
+                direction,
+                number: parsed.number,
+                series: parsed.series,
+                issueDate: parsed.issueDate,
+                senderCnpj: parsed.senderCnpj,
+                senderName: parsed.senderName,
+                recipientCnpj: parsed.recipientCnpj,
+                recipientName: parsed.recipientName,
+                totalValue: parsed.totalValue,
+                status: mappedStatus,
+                cfop,
+                xmlContent,
+              },
+            });
           });
           skipped++;
           continue;
         }
 
-        const savedInvoice = await prisma.invoice.create({
+        // This endpoint is an explicit historical backfill. Never notify users
+        // about old documents imported by a manually selected date range.
+        const savedInvoice = await createHistoricalInvoiceWithoutOutbox({
           data: {
              companyId,
              accessKey: parsed.accessKey,

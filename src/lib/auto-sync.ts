@@ -13,6 +13,7 @@ import { extractFirstCfop } from './cfop';
 import { prisma } from './prisma';
 import { UF_TO_CODE } from './constants';
 import { createLogger } from '@/lib/logger';
+import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 
 const log = createLogger('auto-sync');
 
@@ -21,6 +22,7 @@ const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo'
 const SEFAZ_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.SEFAZ_AUTO_SYNC_MINUTE, '00');
 const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
 const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
+const SEFAZ_AUTO_SYNC_INTERVAL_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_AUTO_SYNC_INTERVAL_MINUTES || '120');
 
 function getUfCode(subject?: string | null): string {
   if (!subject) return '50';
@@ -81,6 +83,53 @@ function normalizeSyncIntervalMinutes(rawInterval: unknown): number {
 function hasElapsedInterval(lastCompletedAt: Date | null | undefined, now: Date, intervalMinutes: number): boolean {
   if (!lastCompletedAt) return true;
   return (now.getTime() - lastCompletedAt.getTime()) >= intervalMinutes * 60 * 1000;
+}
+
+export async function getSefazCooldown(companyId: string, now = new Date()): Promise<{
+  active: boolean;
+  lastRunAt: Date | null;
+  waitMinutes: number;
+  reason: string | null;
+}> {
+  const lastRun = await prisma.syncLog.findFirst({
+    where: {
+      companyId,
+      syncMethod: 'sefaz',
+      status: { in: ['completed', 'error'] },
+      completedAt: { not: null },
+    },
+    orderBy: { completedAt: 'desc' },
+    select: {
+      status: true,
+      errorMessage: true,
+      completedAt: true,
+      newDocs: true,
+      updatedDocs: true,
+    },
+  });
+
+  if (!lastRun?.completedAt) {
+    return { active: false, lastRunAt: null, waitMinutes: 0, reason: null };
+  }
+
+  const isRateLimited = lastRun.status === 'error' && (lastRun.errorMessage || '').includes('656');
+  const wasEmptyRun = lastRun.status === 'completed' && lastRun.newDocs === 0 && lastRun.updatedDocs === 0;
+  if (!isRateLimited && !wasEmptyRun) {
+    return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
+  }
+
+  const elapsedMs = now.getTime() - lastRun.completedAt.getTime();
+  const cooldownMs = SEFAZ_AUTO_SYNC_INTERVAL_MINUTES * 60 * 1000;
+  if (elapsedMs >= cooldownMs) {
+    return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
+  }
+
+  return {
+    active: true,
+    lastRunAt: lastRun.completedAt,
+    waitMinutes: Math.ceil((cooldownMs - elapsedMs) / 60000),
+    reason: isRateLimited ? 'Bloqueio SEFAZ 656 recente' : 'Última consulta SEFAZ sem documentos',
+  };
 }
 
 export function startAutoSync() {
@@ -160,8 +209,17 @@ async function runStartupSync() {
           ? Date.now() - lastSefaz.completedAt.getTime()
           : Infinity;
 
-        // Roda se última sync completada foi há mais de 1h
+        // Roda no startup apenas se a janela mínima anti-bloqueio da SEFAZ já passou.
         if (sefazAge > 60 * 60 * 1000) {
+          const cooldown = await getSefazCooldown(company.id);
+          if (cooldown.active) {
+            log.info(
+              { company: company.razaoSocial, reason: cooldown.reason, waitMinutes: cooldown.waitMinutes },
+              'Startup SEFAZ skipped due to cooldown'
+            );
+            continue;
+          }
+
           log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(sefazAge / 60000) }, 'Startup SEFAZ sync');
           await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
             id: cert.id,
@@ -304,6 +362,14 @@ async function checkAndSync() {
             lastSefazRun?.completedAt &&
             getHourSlotKey(lastSefazRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
           ) {
+            continue;
+          }
+          const sefazCooldown = await getSefazCooldown(company.id, now);
+          if (sefazCooldown.active) {
+            log.info(
+              { company: company.razaoSocial, reason: sefazCooldown.reason, waitMinutes: sefazCooldown.waitMinutes },
+              'SEFAZ sync skipped due to cooldown'
+            );
             continue;
           }
 
@@ -510,7 +576,7 @@ export async function syncViaSefaz(
           const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, accessKey);
           const cfop = extractFirstCfop(doc.xml);
 
-          const result = await prisma.invoice.upsert({
+          const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
             where: { accessKey },
             update: {
               type: parsed.type,
@@ -544,7 +610,7 @@ export async function syncViaSefaz(
               xmlContent: doc.xml,
             },
           });
-          if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+          if (isNewInvoice) {
             totalNovos++;
             saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
           } else {
@@ -556,6 +622,7 @@ export async function syncViaSefaz(
               companyId,
               invoiceId: result.id,
               xmlContent: doc.xml,
+              updateAggregates: isNewInvoice,
               direction,
               issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
               senderName: parsed.senderName,
@@ -675,7 +742,7 @@ export async function syncViaNsdocs(
         const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
         const cfop = extractFirstCfop(xmlContent);
 
-        const result = await prisma.invoice.upsert({
+        const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
           where: { accessKey: parsed.accessKey },
           update: {
             type: parsed.type,
@@ -710,7 +777,7 @@ export async function syncViaNsdocs(
             xmlContent,
           },
         });
-        if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+        if (isNewInvoice) {
           totalNovos++;
           saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
         } else {
@@ -723,6 +790,7 @@ export async function syncViaNsdocs(
             companyId,
             invoiceId: result.id,
             xmlContent,
+            updateAggregates: isNewInvoice,
             direction: aggDirection,
             issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
             senderName: parsed.senderName,

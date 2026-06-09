@@ -58,9 +58,15 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
   try {
     const row = await prisma.apiKey.findUnique({
       where: { keyHash: hash },
-      select: { id: true, createdById: true, scopes: true, revokedAt: true },
+      select: {
+        id: true,
+        createdById: true,
+        scopes: true,
+        revokedAt: true,
+        createdBy: { select: { status: true } },
+      },
     });
-    if (row && !row.revokedAt) {
+    if (row && !row.revokedAt && row.createdBy.status === 'active') {
       prisma.apiKey
         .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
         .catch((err) => log.warn({ err, keyId: row.id }, 'ApiKey lastUsedAt update failed'));
@@ -94,6 +100,18 @@ export async function getApiKeyUserId(): Promise<string | null> {
   return ctx?.userId ?? null;
 }
 
+export async function requireApiKeyScope(scope: string): Promise<ApiKeyContext> {
+  const apiCtx = await getApiKeyContext();
+  if (!apiCtx) throw new Error('NOT_AUTHENTICATED');
+  if (!apiCtx.scopes.includes(scope) && !apiCtx.scopes.includes('admin')) {
+    throw new Error('FORBIDDEN');
+  }
+  prisma.accessLog
+    .create({ data: { userId: apiCtx.userId, action: 'api_key_used', path: `keyId=${apiCtx.keyId};scope=${scope}` } })
+    .catch((err) => log.warn({ err, scope }, 'AccessLog scoped api_key_used write failed'));
+  return apiCtx;
+}
+
 const ROLE_HIERARCHY: Record<string, number> = {
   admin: 3,
   editor: 2,
@@ -114,12 +132,17 @@ export async function getAuthUserId(): Promise<string | null> {
   return session?.user?.id ?? null;
 }
 
-export async function requireAuth(): Promise<string> {
-  // API key auth (n8n / external integrations)
+export async function requireAuth(options: { apiKeyScope?: string } = {}): Promise<string> {
+  // API keys must be explicitly allowed by the route. This prevents a
+  // narrowly-scoped integration key from inheriting generic session access.
   const apiCtx = await getApiKeyContext();
   if (apiCtx) {
+    const requiredScope = options.apiKeyScope || 'admin';
+    if (!apiCtx.scopes.includes(requiredScope) && !apiCtx.scopes.includes('admin')) {
+      throw new Error('FORBIDDEN');
+    }
     prisma.accessLog
-      .create({ data: { userId: apiCtx.userId, action: 'api_key_used', path: `keyId=${apiCtx.keyId}` } })
+      .create({ data: { userId: apiCtx.userId, action: 'api_key_used', path: `keyId=${apiCtx.keyId};scope=${requiredScope}` } })
       .catch((err) => log.warn({ err }, 'AccessLog api_key_used write failed'));
     return apiCtx.userId;
   }

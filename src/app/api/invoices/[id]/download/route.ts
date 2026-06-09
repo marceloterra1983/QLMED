@@ -12,7 +12,7 @@ export async function GET(
     const { id } = await params;
     let userId: string;
     try {
-      userId = await requireAuth();
+      userId = await requireAuth({ apiKeyScope: 'notifications:assets' });
     } catch {
       return unauthorizedResponse();
     }

@@ -7,6 +7,11 @@ import { extractFirstCfop } from '../cfop';
 import { updateProductAggregatesForInvoice } from '../product-aggregate-updater';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
+import { createHistoricalInvoiceWithoutOutbox } from '@/lib/notification-outbox';
+import {
+  acquirePostgresAdvisoryLock,
+  productAggregateLockKey,
+} from '@/lib/postgres-advisory-lock';
 import type { TargetCompany } from './sync-types';
 import { isXmlFile, getErrorCode, chunkArray, extractAccessKeyFromFilePath } from './sync-utils';
 
@@ -226,7 +231,9 @@ export async function importXmlFile(filePath: string): Promise<void> {
       parsed.accessKey,
     );
 
-    const savedInvoice = await prisma.invoice.create({
+    // Filesystem reconciliation may discover old documents during startup or
+    // rescans. Authoritative online sync paths are responsible for notifying.
+    const savedInvoice = await createHistoricalInvoiceWithoutOutbox({
       data: {
         companyId: company.id,
         accessKey: parsed.accessKey,
@@ -278,27 +285,37 @@ export async function importXmlFile(filePath: string): Promise<void> {
             select: { id: true, xmlContent: true, companyId: true },
           });
           if (existing && (!existing.xmlContent || existing.xmlContent === '')) {
-            await prisma.invoice.update({
-              where: { id: existing.id },
-              data: { xmlContent },
-            });
-            log.info({ file: path.basename(absolutePath) }, 'XML preenchido para nota existente');
+            const aggregateLock = await acquirePostgresAdvisoryLock(
+              productAggregateLockKey(existing.companyId),
+              { wait: true },
+            );
+            try {
+              await prisma.invoice.update({
+                where: { id: existing.id },
+                data: { xmlContent },
+              });
+              log.info({ file: path.basename(absolutePath) }, 'XML preenchido para nota existente');
 
-            const company = await getTargetCompany();
-            if (company && parsed.type === 'NFE') {
-              const normalizedDirection = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
-              updateProductAggregatesForInvoice({
-                companyId: company.id,
-                invoiceId: existing.id,
-                xmlContent,
-                direction: normalizedDirection,
-                issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
-                senderName: parsed.senderName,
-                senderCnpj: parsed.senderCnpj,
-                recipientName: parsed.recipientName,
-                recipientCnpj: parsed.recipientCnpj,
-                invoiceNumber: parsed.number,
-              }).catch((err) => { log.error({ err }, 'updateProductAggregatesForInvoice failed'); });
+              const company = await getTargetCompany();
+              if (company && parsed.type === 'NFE') {
+                const normalizedDirection = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
+                await updateProductAggregatesForInvoice({
+                  companyId: company.id,
+                  invoiceId: existing.id,
+                  xmlContent,
+                  direction: normalizedDirection,
+                  issueDate: parsed.issueDate ? new Date(parsed.issueDate) : null,
+                  senderName: parsed.senderName,
+                  senderCnpj: parsed.senderCnpj,
+                  recipientName: parsed.recipientName,
+                  recipientCnpj: parsed.recipientCnpj,
+                  invoiceNumber: parsed.number,
+                  ignoreRebuildCutoff: true,
+                  aggregateLockHeld: true,
+                });
+              }
+            } finally {
+              await aggregateLock?.release();
             }
           }
         }

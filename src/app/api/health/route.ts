@@ -98,8 +98,23 @@ export async function GET() {
 
     if (session) {
       // Authenticated response: add uptime, memory, integrity
+      const [outboxCounts, oldestPending] = await Promise.all([
+        prisma.notificationDelivery.groupBy({
+          by: ['status'],
+          _count: { _all: true },
+        }),
+        prisma.notificationDelivery.findFirst({
+          where: { status: { in: ['pending', 'retry'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { createdAt: true },
+        }),
+      ]);
       publicResponse.uptime = process.uptime();
       publicResponse.integrity = integrity;
+      publicResponse.outbox = {
+        counts: Object.fromEntries(outboxCounts.map((row) => [row.status, row._count._all])),
+        oldestPendingAt: oldestPending?.createdAt.toISOString() || null,
+      };
       publicResponse.memory = {
         rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
         heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),

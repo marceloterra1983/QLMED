@@ -11,12 +11,11 @@ import type { NFeDet, NFeProd, NFeMed, NFeRastro } from '@/types/nfe-xml';
 import type { XmlNode } from '@/types/xml-common';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
+import type { Prisma } from '@prisma/client';
 
 export { isResaleCustomer };
 
-const MAX_INVOICES = 3000;
-const MAX_ISSUED_INVOICES = 3000;
-const MAX_IMPORT_INVOICES = 500;
+const INVOICE_PAGE_SIZE = 100;
 const XML_BATCH_SIZE = 50;
 
 export interface ProductBatch {
@@ -56,7 +55,8 @@ export interface AggregatedProduct {
   lastSupplierCnpj: string | null;
   lastInvoiceId: string | null;
   lastInvoiceNumber: string | null;
-  invoiceIds: Set<string>;
+  invoiceCount: number;
+  lastCountedInvoiceId: string | null;
   productType: string | null;
   productSubtype: string | null;
   productSubgroup: string | null;
@@ -65,7 +65,61 @@ export interface AggregatedProduct {
   lastSalePrice: number | null;
 }
 
+type AggregationInvoice = {
+  id: string;
+  number: string;
+  issueDate: Date;
+  createdAt: Date;
+  senderName: string;
+  senderCnpj: string;
+  recipientName: string | null;
+  recipientCnpj: string | null;
+  xmlContent: string;
+};
+
 // ── Helpers ──
+
+async function* iterateAggregationInvoices(
+  where: Prisma.InvoiceWhereInput,
+): AsyncGenerator<AggregationInvoice[]> {
+  let cursor: Pick<AggregationInvoice, 'issueDate' | 'createdAt' | 'id'> | null = null;
+
+  while (true) {
+    const afterCursor: Prisma.InvoiceWhereInput | undefined = cursor
+      ? {
+          OR: [
+            { issueDate: { lt: cursor.issueDate } },
+            { issueDate: cursor.issueDate, createdAt: { lt: cursor.createdAt } },
+            { issueDate: cursor.issueDate, createdAt: cursor.createdAt, id: { lt: cursor.id } },
+          ],
+        }
+      : undefined;
+
+    const page: AggregationInvoice[] = await prisma.invoice.findMany({
+      where: afterCursor ? { AND: [where, afterCursor] } : where,
+      orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: INVOICE_PAGE_SIZE,
+      select: {
+        id: true,
+        number: true,
+        issueDate: true,
+        createdAt: true,
+        senderName: true,
+        senderCnpj: true,
+        recipientName: true,
+        recipientCnpj: true,
+        xmlContent: true,
+      },
+    });
+
+    if (page.length === 0) return;
+    yield page;
+    if (page.length < INVOICE_PAGE_SIZE) return;
+
+    const last: AggregationInvoice = page[page.length - 1];
+    cursor = { issueDate: last.issueDate, createdAt: last.createdAt, id: last.id };
+  }
+}
 
 function normalizeToken(value: string | null | undefined) {
   return (value || '').trim().toUpperCase();
@@ -247,7 +301,10 @@ function normalizeDescriptionToken(value: string | null | undefined) {
     .trim();
 }
 
-export async function extractProductsFromXml(xmlContent: string): Promise<ProductFromXml[]> {
+export async function extractProductsFromXml(
+  xmlContent: string,
+  options: { strict?: boolean } = {},
+): Promise<ProductFromXml[]> {
   try {
     const parsed = await parseXmlSafe(xmlContent);
     const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
@@ -275,9 +332,21 @@ export async function extractProductsFromXml(xmlContent: string): Promise<Produc
         batches: extractBatches(det, prod),
       };
     });
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     return [];
   }
+}
+
+function throwIfBatchFailed(
+  batch: PromiseSettledResult<unknown>[],
+  strict: boolean | undefined,
+): void {
+  if (!strict) return;
+  const failure = batch.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  );
+  if (failure) throw failure.reason;
 }
 
 /**
@@ -306,135 +375,31 @@ export function computeSearchText(product: {
  */
 export async function aggregateProductsFromInvoices(
   companyId: string,
+  options: { createdAtLte?: Date; strictXml?: boolean } = {},
 ): Promise<Map<string, AggregatedProduct>> {
   const productMap = new Map<string, AggregatedProduct>();
   const importProductKeys = new Set<string>();
 
   // ── Pass 1: received invoices (normal purchases) ──
-  const invoiceMetadata = await prisma.invoice.findMany({
-    where: { companyId, type: 'NFE', direction: 'received' },
-    orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
-    take: MAX_INVOICES,
-    select: {
-      id: true,
-      number: true,
-      issueDate: true,
-      senderName: true,
-      senderCnpj: true,
-    },
-  });
-
-  for (let i = 0; i < invoiceMetadata.length; i += XML_BATCH_SIZE) {
-    const batchMeta = invoiceMetadata.slice(i, i + XML_BATCH_SIZE);
-    const batchIds = batchMeta.map((inv) => inv.id);
-
-    const batchWithXml = await prisma.invoice.findMany({
-      where: { id: { in: batchIds } },
-      select: { id: true, xmlContent: true },
-    });
-    const xmlMap = new Map(batchWithXml.map((inv) => [inv.id, inv.xmlContent]));
-
-    const parsedBatch = await Promise.allSettled(
-      batchMeta.map(async (invoice) => {
-        const xmlContent = xmlMap.get(invoice.id);
-        if (!xmlContent) return null;
-        const products = await extractProductsFromXml(xmlContent);
-        return { invoice, products };
-      }),
-    );
-
-    for (const settled of parsedBatch) {
-      const result = settled.status === 'fulfilled' ? settled.value : null;
-      if (!result) continue;
-
-      const { invoice, products } = result;
-      const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-
-      for (const product of products) {
-        const key = buildProductKey(product);
-        const existing = productMap.get(key);
-
-        if (!existing) {
-          productMap.set(key, {
-            key,
-            code: product.code,
-            description: product.description,
-            ncm: product.ncm,
-            unit: product.unit,
-            anvisa: product.anvisa,
-            ean: product.ean,
-            totalQuantity: product.quantity,
-            totalValue: product.totalValue,
-            lastPrice: product.unitPrice,
-            lastIssueDate: issueDate,
-            lastSupplierName: invoice.senderName || null,
-            lastSupplierCnpj: invoice.senderCnpj || null,
-            lastInvoiceId: invoice.id,
-            lastInvoiceNumber: invoice.number || null,
-            invoiceIds: new Set([invoice.id]),
-            productType: null,
-            productSubtype: null,
-            productSubgroup: null,
-            resaleQuantity: 0,
-            lastSaleDate: null,
-            lastSalePrice: null,
-          });
-          continue;
-        }
-
-        existing.totalQuantity += product.quantity;
-        existing.totalValue += product.totalValue;
-        existing.invoiceIds.add(invoice.id);
-
-        if (!existing.anvisa && product.anvisa) existing.anvisa = product.anvisa;
-        if (!existing.ean && product.ean) existing.ean = product.ean;
-        if ((!existing.code || existing.code === '-') && product.code && product.code !== '-') {
-          existing.code = product.code;
-        }
-        if (!existing.ncm && product.ncm) existing.ncm = product.ncm;
-
-        if (issueDate && (!existing.lastIssueDate || issueDate > existing.lastIssueDate)) {
-          existing.lastIssueDate = issueDate;
-          existing.lastPrice = product.unitPrice;
-          existing.lastSupplierName = invoice.senderName || null;
-          existing.lastSupplierCnpj = invoice.senderCnpj || null;
-          existing.lastInvoiceId = invoice.id;
-          existing.lastInvoiceNumber = invoice.number || null;
-        }
-      }
-    }
-  }
-
-  // ── Pass 2: issued invoices with import CFOPs (3xxx) ──
-  {
-    const importInvoiceMeta = await prisma.invoice.findMany({
-      where: { companyId, type: 'NFE', direction: 'issued' },
-      orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
-      take: MAX_IMPORT_INVOICES,
-      select: {
-        id: true,
-        number: true,
-        issueDate: true,
-        senderName: true,
-        senderCnpj: true,
-        recipientName: true,
-        recipientCnpj: true,
-        xmlContent: true,
-      },
-    });
-
-    for (let i = 0; i < importInvoiceMeta.length; i += XML_BATCH_SIZE) {
-      const batchMeta = importInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
+  for await (const invoiceMetadata of iterateAggregationInvoices({
+    companyId,
+    type: 'NFE',
+    direction: 'received',
+    ...(options.createdAtLte ? { createdAt: { lte: options.createdAtLte } } : {}),
+  })) {
+    for (let i = 0; i < invoiceMetadata.length; i += XML_BATCH_SIZE) {
+      const batchMeta = invoiceMetadata.slice(i, i + XML_BATCH_SIZE);
 
       const parsedBatch = await Promise.allSettled(
         batchMeta.map(async (invoice) => {
           if (!invoice.xmlContent) return null;
-          const cfop = extractFirstCfop(invoice.xmlContent);
-          if (!isImportEntryCfop(cfop)) return null;
-          const products = await extractProductsFromXml(invoice.xmlContent);
+          const products = await extractProductsFromXml(invoice.xmlContent, {
+            strict: options.strictXml,
+          });
           return { invoice, products };
         }),
       );
+      throwIfBatchFailed(parsedBatch, options.strictXml);
 
       for (const settled of parsedBatch) {
         const result = settled.status === 'fulfilled' ? settled.value : null;
@@ -442,12 +407,9 @@ export async function aggregateProductsFromInvoices(
 
         const { invoice, products } = result;
         const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
-        const supplierName = invoice.recipientName || null;
-        const supplierCnpj = invoice.recipientCnpj || null;
 
         for (const product of products) {
           const key = buildProductKey(product);
-          importProductKeys.add(key);
           const existing = productMap.get(key);
 
           if (!existing) {
@@ -463,13 +425,14 @@ export async function aggregateProductsFromInvoices(
               totalValue: product.totalValue,
               lastPrice: product.unitPrice,
               lastIssueDate: issueDate,
-              lastSupplierName: supplierName,
-              lastSupplierCnpj: supplierCnpj,
+              lastSupplierName: invoice.senderName || null,
+              lastSupplierCnpj: invoice.senderCnpj || null,
               lastInvoiceId: invoice.id,
               lastInvoiceNumber: invoice.number || null,
-              invoiceIds: new Set([invoice.id]),
-              productType: 'LINHA CARDIACA',
-              productSubtype: 'VALVULAS IMPORTADAS',
+              invoiceCount: 1,
+              lastCountedInvoiceId: invoice.id,
+              productType: null,
+              productSubtype: null,
               productSubgroup: null,
               resaleQuantity: 0,
               lastSaleDate: null,
@@ -480,7 +443,10 @@ export async function aggregateProductsFromInvoices(
 
           existing.totalQuantity += product.quantity;
           existing.totalValue += product.totalValue;
-          existing.invoiceIds.add(invoice.id);
+          if (existing.lastCountedInvoiceId !== invoice.id) {
+            existing.invoiceCount++;
+            existing.lastCountedInvoiceId = invoice.id;
+          }
 
           if (!existing.anvisa && product.anvisa) existing.anvisa = product.anvisa;
           if (!existing.ean && product.ean) existing.ean = product.ean;
@@ -489,18 +455,113 @@ export async function aggregateProductsFromInvoices(
           }
           if (!existing.ncm && product.ncm) existing.ncm = product.ncm;
 
-          if (!existing.productType) {
-            existing.productType = 'LINHA CARDIACA';
-            existing.productSubtype = 'VALVULAS IMPORTADAS';
-          }
-
           if (issueDate && (!existing.lastIssueDate || issueDate > existing.lastIssueDate)) {
             existing.lastIssueDate = issueDate;
             existing.lastPrice = product.unitPrice;
-            existing.lastSupplierName = supplierName;
-            existing.lastSupplierCnpj = supplierCnpj;
+            existing.lastSupplierName = invoice.senderName || null;
+            existing.lastSupplierCnpj = invoice.senderCnpj || null;
             existing.lastInvoiceId = invoice.id;
             existing.lastInvoiceNumber = invoice.number || null;
+          }
+        }
+      }
+    }
+  }
+
+  // ── Pass 2: issued invoices with import CFOPs (3xxx) ──
+  {
+    for await (const importInvoiceMeta of iterateAggregationInvoices({
+      companyId,
+      type: 'NFE',
+      direction: 'issued',
+      ...(options.createdAtLte ? { createdAt: { lte: options.createdAtLte } } : {}),
+    })) {
+      for (let i = 0; i < importInvoiceMeta.length; i += XML_BATCH_SIZE) {
+        const batchMeta = importInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
+
+        const parsedBatch = await Promise.allSettled(
+          batchMeta.map(async (invoice) => {
+            if (!invoice.xmlContent) return null;
+            const cfop = extractFirstCfop(invoice.xmlContent);
+            if (!isImportEntryCfop(cfop)) return null;
+            const products = await extractProductsFromXml(invoice.xmlContent, {
+              strict: options.strictXml,
+            });
+            return { invoice, products };
+          }),
+        );
+        throwIfBatchFailed(parsedBatch, options.strictXml);
+
+        for (const settled of parsedBatch) {
+          const result = settled.status === 'fulfilled' ? settled.value : null;
+          if (!result) continue;
+
+          const { invoice, products } = result;
+          const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
+          const supplierName = invoice.recipientName || null;
+          const supplierCnpj = invoice.recipientCnpj || null;
+
+          for (const product of products) {
+            const key = buildProductKey(product);
+            importProductKeys.add(key);
+            const existing = productMap.get(key);
+
+            if (!existing) {
+              productMap.set(key, {
+                key,
+                code: product.code,
+                description: product.description,
+                ncm: product.ncm,
+                unit: product.unit,
+                anvisa: product.anvisa,
+                ean: product.ean,
+                totalQuantity: product.quantity,
+                totalValue: product.totalValue,
+                lastPrice: product.unitPrice,
+                lastIssueDate: issueDate,
+                lastSupplierName: supplierName,
+                lastSupplierCnpj: supplierCnpj,
+                lastInvoiceId: invoice.id,
+                lastInvoiceNumber: invoice.number || null,
+                invoiceCount: 1,
+                lastCountedInvoiceId: invoice.id,
+                productType: 'LINHA CARDIACA',
+                productSubtype: 'VALVULAS IMPORTADAS',
+                productSubgroup: null,
+                resaleQuantity: 0,
+                lastSaleDate: null,
+                lastSalePrice: null,
+              });
+              continue;
+            }
+
+            existing.totalQuantity += product.quantity;
+            existing.totalValue += product.totalValue;
+            if (existing.lastCountedInvoiceId !== invoice.id) {
+              existing.invoiceCount++;
+              existing.lastCountedInvoiceId = invoice.id;
+            }
+
+            if (!existing.anvisa && product.anvisa) existing.anvisa = product.anvisa;
+            if (!existing.ean && product.ean) existing.ean = product.ean;
+            if ((!existing.code || existing.code === '-') && product.code && product.code !== '-') {
+              existing.code = product.code;
+            }
+            if (!existing.ncm && product.ncm) existing.ncm = product.ncm;
+
+            if (!existing.productType) {
+              existing.productType = 'LINHA CARDIACA';
+              existing.productSubtype = 'VALVULAS IMPORTADAS';
+            }
+
+            if (issueDate && (!existing.lastIssueDate || issueDate > existing.lastIssueDate)) {
+              existing.lastIssueDate = issueDate;
+              existing.lastPrice = product.unitPrice;
+              existing.lastSupplierName = supplierName;
+              existing.lastSupplierCnpj = supplierCnpj;
+              existing.lastInvoiceId = invoice.id;
+              existing.lastInvoiceNumber = invoice.number || null;
+            }
           }
         }
       }
@@ -557,52 +618,51 @@ export async function aggregateProductsFromInvoices(
       return null;
     };
 
-    const resaleInvoiceMeta = await prisma.invoice.findMany({
-      where: { companyId, type: 'NFE', direction: 'issued' },
-      orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
-      take: MAX_ISSUED_INVOICES,
-      select: {
-        id: true,
-        recipientName: true,
-        xmlContent: true,
-      },
-    });
+    for await (const resaleInvoiceMeta of iterateAggregationInvoices({
+      companyId,
+      type: 'NFE',
+      direction: 'issued',
+      ...(options.createdAtLte ? { createdAt: { lte: options.createdAtLte } } : {}),
+    })) {
+      for (let i = 0; i < resaleInvoiceMeta.length; i += XML_BATCH_SIZE) {
+        const batch = resaleInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
 
-    for (let i = 0; i < resaleInvoiceMeta.length; i += XML_BATCH_SIZE) {
-      const batch = resaleInvoiceMeta.slice(i, i + XML_BATCH_SIZE);
+        const parsedBatch = await Promise.allSettled(
+          batch.map(async (invoice) => {
+            if (!invoice.xmlContent) return null;
+            if (!isResaleCustomer(invoice.recipientName)) return null;
+            const cfop = extractFirstCfop(invoice.xmlContent);
+            if (isImportEntryCfop(cfop)) return null;
+            const products = await extractProductsFromXml(invoice.xmlContent, {
+              strict: options.strictXml,
+            });
+            return { products };
+          }),
+        );
+        throwIfBatchFailed(parsedBatch, options.strictXml);
 
-      const parsedBatch = await Promise.allSettled(
-        batch.map(async (invoice) => {
-          if (!invoice.xmlContent) return null;
-          if (!isResaleCustomer(invoice.recipientName)) return null;
-          const cfop = extractFirstCfop(invoice.xmlContent);
-          if (isImportEntryCfop(cfop)) return null;
-          const products = await extractProductsFromXml(invoice.xmlContent);
-          return { products };
-        }),
-      );
+        for (const settled of parsedBatch) {
+          const result = settled.status === 'fulfilled' ? settled.value : null;
+          if (!result) continue;
 
-      for (const settled of parsedBatch) {
-        const result = settled.status === 'fulfilled' ? settled.value : null;
-        if (!result) continue;
+          for (const product of result.products) {
+            const mapKey = matchResaleProduct(product);
+            if (!mapKey) continue;
 
-        for (const product of result.products) {
-          const mapKey = matchResaleProduct(product);
-          if (!mapKey) continue;
+            const agg = productMap.get(mapKey);
+            if (!agg) continue;
 
-          const agg = productMap.get(mapKey);
-          if (!agg) continue;
-
-          agg.totalQuantity -= product.quantity;
-          agg.totalValue -= product.totalValue;
-          agg.resaleQuantity += product.quantity;
+            agg.totalQuantity -= product.quantity;
+            agg.totalValue -= product.totalValue;
+            agg.resaleQuantity += product.quantity;
+          }
         }
       }
     }
   }
 
   // ── Enrich last sale dates ──
-  await enrichLastSaleDates(companyId, productMap);
+  await enrichLastSaleDates(companyId, productMap, options);
 
   return productMap;
 }
@@ -613,6 +673,7 @@ export async function aggregateProductsFromInvoices(
 async function enrichLastSaleDates(
   companyId: string,
   productMap: Map<string, AggregatedProduct>,
+  options: { createdAtLte?: Date; strictXml?: boolean },
 ) {
   if (productMap.size === 0) return;
 
@@ -663,70 +724,65 @@ async function enrichLastSaleDates(
 
   if (unresolvedKeys.size === 0) return;
 
-  const issuedInvoiceMetadata = await prisma.invoice.findMany({
-    where: { companyId, type: 'NFE', direction: 'issued' },
-    orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
-    take: MAX_ISSUED_INVOICES,
-    select: { id: true, issueDate: true, recipientName: true },
-  });
+  invoicePageLoop: for await (const issuedInvoiceMetadata of iterateAggregationInvoices({
+    companyId,
+    type: 'NFE',
+    direction: 'issued',
+    ...(options.createdAtLte ? { createdAt: { lte: options.createdAtLte } } : {}),
+  })) {
+    for (let i = 0; i < issuedInvoiceMetadata.length; i += XML_BATCH_SIZE) {
+      const batchMeta = issuedInvoiceMetadata.slice(i, i + XML_BATCH_SIZE);
 
-  batchLoop: for (let i = 0; i < issuedInvoiceMetadata.length; i += XML_BATCH_SIZE) {
-    const batchMeta = issuedInvoiceMetadata.slice(i, i + XML_BATCH_SIZE);
-    const batchIds = batchMeta.map((inv) => inv.id);
+      const parsedBatch = await Promise.allSettled(
+        batchMeta.map(async (invoice) => {
+          if (isResaleCustomer(invoice.recipientName)) return null;
+          if (!invoice.xmlContent) return null;
+          const cfop = extractFirstCfop(invoice.xmlContent);
+          if (isImportEntryCfop(cfop)) return null;
+          const products = await extractProductsFromXml(invoice.xmlContent, {
+            strict: options.strictXml,
+          });
+          return { invoice, products };
+        }),
+      );
+      throwIfBatchFailed(parsedBatch, options.strictXml);
 
-    const batchWithXml = await prisma.invoice.findMany({
-      where: { id: { in: batchIds } },
-      select: { id: true, xmlContent: true },
-    });
-    const xmlMap = new Map(batchWithXml.map((inv) => [inv.id, inv.xmlContent]));
+      for (const settled of parsedBatch) {
+        const result = settled.status === 'fulfilled' ? settled.value : null;
+        if (!result) continue;
 
-    const parsedBatch = await Promise.allSettled(
-      batchMeta.map(async (invoice) => {
-        if (isResaleCustomer(invoice.recipientName)) return null;
-        const xmlContent = xmlMap.get(invoice.id);
-        if (!xmlContent) return null;
-        const cfop = extractFirstCfop(xmlContent);
-        if (isImportEntryCfop(cfop)) return null;
-        const products = await extractProductsFromXml(xmlContent);
-        return { invoice, products };
-      }),
-    );
+        const issueDate = result.invoice.issueDate ? new Date(result.invoice.issueDate) : null;
+        if (!issueDate) continue;
 
-    for (const settled of parsedBatch) {
-      const result = settled.status === 'fulfilled' ? settled.value : null;
-      if (!result) continue;
+        for (const product of result.products) {
+          const lookupKeys = buildStrictSaleLookupKeys({
+            code: product.code,
+            unit: product.unit,
+            ean: product.ean,
+          });
+          if (lookupKeys.length === 0) continue;
 
-      const issueDate = result.invoice.issueDate ? new Date(result.invoice.issueDate) : null;
-      if (!issueDate) continue;
-
-      for (const product of result.products) {
-        const lookupKeys = buildStrictSaleLookupKeys({
-          code: product.code,
-          unit: product.unit,
-          ean: product.ean,
-        });
-        if (lookupKeys.length === 0) continue;
-
-        const matchedMapKeys = new Set<string>();
-        for (const lk of lookupKeys) {
-          const mapKeys = keysByLookup.get(lk) || [];
-          for (const mk of mapKeys) {
-            if (unresolvedKeys.has(mk)) matchedMapKeys.add(mk);
+          const matchedMapKeys = new Set<string>();
+          for (const lk of lookupKeys) {
+            const mapKeys = keysByLookup.get(lk) || [];
+            for (const mk of mapKeys) {
+              if (unresolvedKeys.has(mk)) matchedMapKeys.add(mk);
+            }
           }
+
+          if (matchedMapKeys.size === 0) continue;
+
+          matchedMapKeys.forEach((mk) => {
+            const agg = productMap.get(mk);
+            if (!agg || agg.lastSaleDate) return;
+
+            agg.lastSaleDate = issueDate;
+            agg.lastSalePrice = Number.isFinite(product.unitPrice) ? product.unitPrice : null;
+            unresolvedKeys.delete(mk);
+          });
+
+          if (unresolvedKeys.size === 0) break invoicePageLoop;
         }
-
-        if (matchedMapKeys.size === 0) continue;
-
-        matchedMapKeys.forEach((mk) => {
-          const agg = productMap.get(mk);
-          if (!agg || agg.lastSaleDate) return;
-
-          agg.lastSaleDate = issueDate;
-          agg.lastSalePrice = Number.isFinite(product.unitPrice) ? product.unitPrice : null;
-          unresolvedKeys.delete(mk);
-        });
-
-        if (unresolvedKeys.size === 0) break batchLoop;
       }
     }
   }

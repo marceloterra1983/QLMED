@@ -9,6 +9,7 @@ import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 import { apiError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
+import { createInvoiceWithOutbox } from '@/lib/notification-outbox';
 
 const log = createLogger('invoices/upload');
 
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
         // Determinar direção: emitida ou recebida
         const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
 
-        const savedInvoice = await prisma.invoice.create({
+        const { invoice: savedInvoice } = await createInvoiceWithOutbox({
           data: {
             accessKey: parsed.accessKey,
             type: parsed.type,

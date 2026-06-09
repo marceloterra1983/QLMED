@@ -10,6 +10,10 @@ import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 import { createLogger } from '@/lib/logger';
+import {
+  acquirePostgresTransactionAdvisoryLock,
+  productAggregateLockKey,
+} from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('invoices');
 
@@ -449,8 +453,11 @@ export async function DELETE(req: Request) {
       current.issueDate < earliest ? current.issueDate : earliest
     ), invoicesToDelete[0].issueDate);
 
-    const result = await prisma.invoice.deleteMany({
-      where: { id: { in: invoicesToDelete.map((invoice) => invoice.id) }, companyId: company.id },
+    const result = await prisma.$transaction(async (tx) => {
+      await acquirePostgresTransactionAdvisoryLock(tx, productAggregateLockKey(company.id));
+      return tx.invoice.deleteMany({
+        where: { id: { in: invoicesToDelete.map((invoice) => invoice.id) }, companyId: company.id },
+      });
     });
 
     let syncRecoveryMarked = false;

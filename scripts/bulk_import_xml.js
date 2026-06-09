@@ -2,7 +2,15 @@
  * Bulk Import XML files from a local folder into the database.
  * Usage: node scripts/bulk_import_xml.js [folder_path] [start_year]
  * Example: node scripts/bulk_import_xml.js "/mnt/c/Users/marce/OneDrive - QL MED/BACKUP_QL MED/NFE/XML" 2021
+ *
+ * This historical backfill intentionally does not send notifications. Require
+ * an explicit acknowledgement so normal production operation cannot bypass
+ * the transactional outbox silently.
  */
+
+if (process.env.ALLOW_OUTBOX_BYPASS !== 'historical-import') {
+  throw new Error('Set ALLOW_OUTBOX_BYPASS=historical-import to run this historical import without notifications.');
+}
 
 const { PrismaClient } = require('@prisma/client');
 const { parseString } = require('xml2js');

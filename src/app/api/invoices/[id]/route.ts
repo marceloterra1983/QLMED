@@ -7,6 +7,10 @@ import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { invoiceUpdateStatusSchema } from '@/lib/schemas/invoice';
 import { idParamSchema } from '@/lib/schemas/common';
+import {
+  acquirePostgresTransactionAdvisoryLock,
+  productAggregateLockKey,
+} from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('invoices/:id');
 
@@ -69,7 +73,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Nota não encontrada' }, { status: 404 });
     }
 
-    await prisma.invoice.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await acquirePostgresTransactionAdvisoryLock(tx, productAggregateLockKey(company.id));
+      await tx.invoice.delete({ where: { id } });
+    });
 
     let syncRecoveryMarked = false;
     try {
@@ -93,8 +100,9 @@ export async function PATCH(
     const { id } = await params;
     let userId: string;
     try {
-      userId = await requireAuth();
-    } catch {
+      userId = (await requireEditor()).userId;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);

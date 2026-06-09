@@ -6,6 +6,7 @@ import { extractFirstCfop } from '@/lib/cfop';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 import { createLogger } from '@/lib/logger';
+import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 
 const log = createLogger('receita-nfse-sync');
 
@@ -163,7 +164,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
       const direction = resolveInvoiceDirection(companyCnpj, parsed.senderCnpj, parsed.accessKey);
       const cfop = extractFirstCfop(xmlContent);
 
-      const result = await prisma.invoice.upsert({
+      const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
         where: { accessKey: parsed.accessKey },
         update: {
           type: parsed.type,
@@ -199,7 +200,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
         },
       });
 
-      if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+      if (isNewInvoice) {
         newDocs++;
         saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
       } else {

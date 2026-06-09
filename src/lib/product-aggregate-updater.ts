@@ -23,6 +23,9 @@ import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
 import { extractPartyFiscalData } from '@/lib/parse-invoice-xml';
 import { upsertContactFiscal } from '@/lib/contact-fiscal-store';
+import { acquirePostgresAdvisoryLock, type PostgresAdvisoryLock } from '@/lib/postgres-advisory-lock';
+import { productAggregateLockKey } from '@/lib/postgres-advisory-lock';
+import type { Prisma } from '@prisma/client';
 
 /**
  * Update product aggregates for a single invoice after it's been upserted.
@@ -33,6 +36,7 @@ export async function updateProductAggregatesForInvoice(opts: {
   companyId: string;
   invoiceId: string;
   xmlContent: string;
+  updateAggregates?: boolean;
   direction: 'received' | 'issued';
   issueDate: Date | null;
   senderName: string | null;
@@ -40,30 +44,46 @@ export async function updateProductAggregatesForInvoice(opts: {
   recipientName: string | null;
   recipientCnpj: string | null;
   invoiceNumber: string | null;
+  ignoreRebuildCutoff?: boolean;
+  aggregateLockHeld?: boolean;
 }): Promise<void> {
+  let aggregateLock: PostgresAdvisoryLock | null = null;
+
   try {
+    if (opts.updateAggregates !== false && !opts.aggregateLockHeld) {
+      aggregateLock = await acquirePostgresAdvisoryLock(
+        productAggregateLockKey(opts.companyId),
+        { wait: true },
+      );
+    }
+
     await ensureProductRegistryTable();
 
-    const products = await extractProductsFromXml(opts.xmlContent);
+    const products = mergeProductLines(await extractProductsFromXml(opts.xmlContent));
     if (products.length === 0) return;
 
     const cfop = extractFirstCfop(opts.xmlContent);
     const isImport = isImportEntryCfop(cfop);
     const isResale = isResaleCustomer(opts.recipientName);
 
-    // Determine what kind of invoice this is
-    if (opts.direction === 'received') {
-      // Normal purchase — add to aggregates
-      await upsertProductAggregates(opts, products, 'purchase');
-    } else if (opts.direction === 'issued' && isImport) {
-      // Import entry — add to aggregates (supplier is recipient)
-      await upsertProductAggregates(opts, products, 'import');
-    } else if (opts.direction === 'issued' && isResale) {
-      // Resale deduction — subtract from aggregates
-      await updateResaleDeductions(opts, products);
-    } else if (opts.direction === 'issued') {
-      // Normal sale — update last sale date
-      await updateSaleDate(opts, products);
+    if (opts.updateAggregates !== false) {
+      const alreadyIncluded = opts.ignoreRebuildCutoff
+        ? false
+        : await wasInvoiceIncludedInLastRebuild(opts.companyId, opts.invoiceId);
+
+      if (!alreadyIncluded) {
+        await prisma.$transaction(async (tx) => {
+          if (opts.direction === 'received') {
+            await upsertProductAggregates(tx, opts, products, 'purchase');
+          } else if (opts.direction === 'issued' && isImport) {
+            await upsertProductAggregates(tx, opts, products, 'import');
+          } else if (opts.direction === 'issued' && isResale) {
+            await updateResaleDeductions(tx, opts, products);
+          } else if (opts.direction === 'issued') {
+            await updateSaleDate(tx, opts, products);
+          }
+        });
+      }
     }
 
     // Extract and persist tax data from the XML (NF-e only)
@@ -71,9 +91,37 @@ export async function updateProductAggregatesForInvoice(opts: {
 
     // Extract and persist fiscal data (IE, IM, CRT) for both parties
     await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
-  } catch (err) {
-    log.error({ err }, 'Error updating product aggregates');
+  } finally {
+    await aggregateLock?.release();
   }
+}
+
+function mergeProductLines(products: ProductFromXml[]): ProductFromXml[] {
+  const merged = new Map<string, ProductFromXml>();
+  for (const product of products) {
+    const key = buildProductKey(product);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { ...product, batches: [...product.batches] });
+      continue;
+    }
+    existing.quantity += product.quantity;
+    existing.totalValue += product.totalValue;
+    existing.unitPrice = existing.quantity > 0 ? existing.totalValue / existing.quantity : 0;
+    existing.batches.push(...product.batches);
+  }
+  return Array.from(merged.values());
+}
+
+async function wasInvoiceIncludedInLastRebuild(companyId: string, invoiceId: string): Promise<boolean> {
+  const [invoice, state] = await Promise.all([
+    prisma.invoice.findUnique({ where: { id: invoiceId }, select: { createdAt: true } }),
+    prisma.productAggregateRebuildState.findUnique({
+      where: { companyId },
+      select: { cutoffCreatedAt: true },
+    }),
+  ]);
+  return Boolean(invoice && state && invoice.createdAt <= state.cutoffCreatedAt);
 }
 
 async function extractAndStoreTaxData(
@@ -120,6 +168,7 @@ async function extractAndStoreTaxData(
 }
 
 async function upsertProductAggregates(
+  db: Prisma.TransactionClient,
   opts: {
     companyId: string;
     invoiceId: string;
@@ -147,7 +196,7 @@ async function upsertProductAggregates(
     });
 
     // Try to update existing row with incremental arithmetic
-    const updated = await prisma.$executeRawUnsafe(
+    const updated = await db.$executeRawUnsafe(
       `
       UPDATE product_registry SET
         agg_total_quantity = COALESCE(agg_total_quantity, 0) + $2,
@@ -210,7 +259,7 @@ async function upsertProductAggregates(
       const id = crypto.randomUUID();
       const avgPrice = product.quantity > 0 ? product.totalValue / product.quantity : 0;
 
-      await prisma.$executeRawUnsafe(
+      await db.$executeRawUnsafe(
         `
         INSERT INTO product_registry (
           id, company_id, product_key, code, description, ncm, unit, ean,
@@ -259,13 +308,14 @@ async function upsertProductAggregates(
 }
 
 async function updateResaleDeductions(
+  db: Prisma.TransactionClient,
   opts: { companyId: string },
   products: ProductFromXml[],
 ) {
   for (const product of products) {
     const key = buildProductKey(product);
 
-    await prisma.$executeRawUnsafe(
+    await db.$executeRawUnsafe(
       `
       UPDATE product_registry SET
         agg_total_quantity = GREATEST(COALESCE(agg_total_quantity, 0) - $2, 0),
@@ -289,6 +339,7 @@ async function updateResaleDeductions(
 }
 
 async function updateSaleDate(
+  db: Prisma.TransactionClient,
   opts: { companyId: string; issueDate: Date | null },
   products: ProductFromXml[],
 ) {
@@ -297,7 +348,7 @@ async function updateSaleDate(
   for (const product of products) {
     const key = buildProductKey(product);
 
-    await prisma.$executeRawUnsafe(
+    await db.$executeRawUnsafe(
       `
       UPDATE product_registry SET
         agg_last_sale_date = CASE
@@ -372,86 +423,17 @@ export function scheduleNightlyRebuild() {
     setTimeout(async () => {
       try {
         log.info('Starting nightly rebuild');
-        const { aggregateProductsFromInvoices, computeSearchText } = await import('@/lib/product-aggregation');
-        const { getOrCreateSingleCompany } = await import('@/lib/single-company');
+        const { rebuildProductAggregatesForCompany } = await import('@/lib/product-aggregate-rebuild');
 
         // Get all companies
         const companies = await prisma.company.findMany({ select: { id: true } });
 
         for (const company of companies) {
           try {
-            await ensureProductRegistryTable();
-            const productMap = await aggregateProductsFromInvoices(company.id);
-            const entries = Array.from(productMap.values());
-
-            for (const agg of entries) {
-              const searchText = computeSearchText({
-                code: agg.code,
-                description: agg.description,
-                ncm: agg.ncm,
-                anvisa: agg.anvisa,
-                lastSupplierName: agg.lastSupplierName,
-              });
-              const averagePrice = agg.totalQuantity > 0 ? agg.totalValue / agg.totalQuantity : 0;
-
-              await prisma.$executeRawUnsafe(
-                `
-                UPDATE product_registry SET
-                  agg_total_quantity = $2,
-                  agg_total_value = $3,
-                  agg_invoice_count = $4,
-                  agg_last_price = $5,
-                  agg_average_price = $6,
-                  agg_last_issue_date = $7,
-                  agg_last_supplier_name = $8,
-                  agg_last_supplier_cnpj = $9,
-                  agg_last_invoice_number = $10,
-                  agg_last_sale_date = $11,
-                  agg_last_sale_price = $12,
-                  agg_resale_quantity = $13,
-                  agg_computed_at = NOW(),
-                  agg_search_text = $14,
-                  updated_at = NOW()
-                WHERE company_id = $1 AND product_key = $15
-                `,
-                company.id,
-                agg.totalQuantity,
-                agg.totalValue,
-                agg.invoiceIds.size,
-                agg.lastPrice,
-                averagePrice,
-                agg.lastIssueDate,
-                agg.lastSupplierName,
-                agg.lastSupplierCnpj,
-                agg.lastInvoiceNumber,
-                agg.lastSaleDate,
-                agg.lastSalePrice,
-                agg.resaleQuantity,
-                searchText,
-                agg.key,
-              );
+            const result = await rebuildProductAggregatesForCompany(company.id);
+            if (result) {
+              log.info({ companyId: company.id, productCount: result.totalProducts }, 'Rebuilt products for company');
             }
-
-            // Stamp remaining registry products with no invoice match
-            await prisma.$executeRawUnsafe(
-              `
-              UPDATE product_registry SET
-                agg_total_quantity = COALESCE(agg_total_quantity, 0),
-                agg_total_value = COALESCE(agg_total_value, 0),
-                agg_invoice_count = COALESCE(agg_invoice_count, 0),
-                agg_last_price = COALESCE(agg_last_price, 0),
-                agg_average_price = COALESCE(agg_average_price, 0),
-                agg_computed_at = NOW(),
-                agg_search_text = COALESCE(agg_search_text,
-                  LOWER(COALESCE(code, '') || ' ' || COALESCE(description, '') || ' ' || COALESCE(ncm, '') || ' ' || COALESCE(anvisa_code, ''))),
-                updated_at = NOW()
-              WHERE company_id = $1
-                AND agg_computed_at IS NULL
-              `,
-              company.id,
-            );
-
-            log.info({ companyId: company.id, productCount: entries.length }, 'Rebuilt products for company');
           } catch (err) {
             log.error({ err, companyId: company.id }, 'Rebuild failed for company');
           }

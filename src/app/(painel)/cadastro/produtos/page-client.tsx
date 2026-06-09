@@ -184,7 +184,13 @@ export default function ProdutosPage() {
     fetchAbortRef.current = controller;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ sort: serverSortField, order: sortOrder, lineStatus: lineStatusFilter });
+      const params = new URLSearchParams({
+        sort: serverSortField,
+        order: sortOrder,
+        lineStatus: lineStatusFilter,
+        page: String(pagination.page),
+        limit: String(pagination.limit),
+      });
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (typeFilter) params.set('productType', typeFilter);
       if (subtypeFilter) params.set('productSubtype', subtypeFilter);
@@ -207,7 +213,7 @@ export default function ProdutosPage() {
             fetch(`/api/products/list?${params}`).then((r) => r.json()).then((d: ProductsResponse) => {
               setProducts(d.products || []);
               setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
-              setPagination({ page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
+              setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
               setMeta(d.meta || null);
             }).catch(() => {});
           })
@@ -219,6 +225,10 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
+  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing, pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    setPagination((current) => current.page === 1 ? current : { ...current, page: 1 });
   }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
 
   useEffect(() => { loadProducts(); loadSettingsHierarchy(); }, [loadProducts]);
@@ -329,7 +339,7 @@ export default function ProdutosPage() {
 
       {meta?.invoicesLimited && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-          A listagem esta limitada as {meta.maxInvoices?.toLocaleString('pt-BR') || 3000} NF-e de entrada mais recentes para manter desempenho.
+          A listagem usa os agregados materializados de todas as NF-e processadas.
         </div>
       )}
 
@@ -357,6 +367,32 @@ export default function ProdutosPage() {
         canWrite={canWrite}
         setSettingsOpen={setSettingsOpen}
       />
+
+      {pagination.pages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-4 py-3">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Pagina {pagination.page.toLocaleString('pt-BR')} de {pagination.pages.toLocaleString('pt-BR')} · {pagination.total.toLocaleString('pt-BR')} produtos
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPagination((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
+              disabled={loading || pagination.page <= 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => setPagination((current) => ({ ...current, page: Math.min(current.pages, current.page + 1) }))}
+              disabled={loading || pagination.page >= pagination.pages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40"
+            >
+              Proxima
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bulk action toolbar */}
       {selectedKeys.size > 0 && (
