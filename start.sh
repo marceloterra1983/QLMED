@@ -23,6 +23,10 @@ esac
 
 echo "Running database migrations..."
 node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js migrate diff \
+  --from-config-datasource \
+  --to-schema prisma/schema.prisma \
+  --exit-code
 
 if [ "${QLMED_REQUIRE_NONEMPTY_DB:-false}" = "true" ]; then
   echo "Running production database sanity check..."

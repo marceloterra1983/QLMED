@@ -1,10 +1,25 @@
-name: Legacy QLMED Server Sync
+name: QLMED Production Deploy
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["QLMED CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qlmed-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     environment:
       name: production
       url: https://app.qlmed.com.br
@@ -13,13 +28,21 @@ jobs:
       - qlmed-prod
 
     steps:
-      - name: Notice legacy workflow
-        run: |
-          echo "Legacy/manual workflow for /home/marce/QLMED/production."
-          echo "Public production at https://app.qlmed.com.br is normally deployed by Coolify after pushing main."
-
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Refuse stale or untrusted revision
+        run: |
+          expected_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          git fetch origin main
+          current_main="$(git rev-parse origin/main)"
+          if [ "$expected_sha" != "$current_main" ]; then
+            echo "Refusing deploy: validated SHA $expected_sha is not current main $current_main" >&2
+            exit 1
+          fi
 
       - name: Validate production compose
         run: |
@@ -47,22 +70,34 @@ jobs:
 
       - name: Stamp deploy metadata
         run: |
+          deploy_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
           cat > /home/marce/QLMED/production/app/.deploy-meta.env <<EOF
-          QLMED_BUILD_COMMIT_SHA=${GITHUB_SHA::12}
+          QLMED_BUILD_COMMIT_SHA=${deploy_sha}
           QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           QLMED_BUILD_SOURCE=github-actions
           EOF
+
+      - name: Capture rollback image
+        run: |
+          if docker inspect qlmed-app >/dev/null 2>&1; then
+            docker tag "$(docker inspect qlmed-app --format '{{.Image}}')" \
+              "qlmed-app:rollback-${GITHUB_RUN_ID}"
+            echo "ROLLBACK_IMAGE_AVAILABLE=1" >> "$GITHUB_ENV"
+          fi
 
       - name: Deploy stack on server
         run: |
           set -a
           . /home/marce/QLMED/production/app/.deploy-meta.env
           set +a
-          docker compose \
+          compose=(docker compose \
             --project-name qlmed \
             --env-file /home/marce/QLMED/production/.env \
-            -f /home/marce/QLMED/production/docker-compose.yml \
-            up -d --build qlmed-app
+            -f /home/marce/QLMED/production/docker-compose.yml)
+          "${compose[@]}" build qlmed-app
+          "${compose[@]}" run --rm --no-deps qlmed-app sh -c \
+            'node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code'
+          "${compose[@]}" up -d --no-build qlmed-app
 
       - name: Verify local health
         run: |
@@ -83,7 +118,7 @@ jobs:
 
       - name: Verify deployed revision
         run: |
-          expected_sha="${GITHUB_SHA::12}"
+          expected_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
           for url in \
             http://127.0.0.1:13000/api/health \
             https://app.qlmed.com.br/api/health
@@ -118,3 +153,25 @@ jobs:
               sleep 2
             done
           done
+
+      - name: Install transactional notification worker
+        run: |
+          bash /home/marce/QLMED/production/app/scripts/install-notification-outbox-cron.sh \
+            /home/marce/QLMED/production/app/scripts/notification-outbox-worker.py
+
+      - name: Roll back failed deployment
+        if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
+        run: |
+          QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" docker compose \
+            --project-name qlmed \
+            --env-file /home/marce/QLMED/production/.env \
+            -f /home/marce/QLMED/production/docker-compose.yml \
+            up -d --no-build --force-recreate qlmed-app
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:13000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Rollback health check failed" >&2
+          exit 1

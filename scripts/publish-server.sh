@@ -5,8 +5,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/publish-server.sh
 
-Pushes the current main branch to origin and waits for public production to
-serve the same revision through Coolify.
+Pushes the current main branch to origin and waits for the GitHub Actions
+production workflow to serve the same revision.
 EOF
 }
 
@@ -59,9 +59,8 @@ fetch_public_revision() {
     return
   fi
 
-  HEALTH_PAYLOAD="$response" node <<'NODE'
+  HEALTH_PAYLOAD="$response" node -e "
 const payload = process.env.HEALTH_PAYLOAD;
-
 try {
   const data = JSON.parse(payload || '{}');
   const build = data.build || {};
@@ -76,7 +75,7 @@ try {
 } catch {
   process.stdout.write('invalid\t\t\t\t\n');
 }
-NODE
+"
 }
 
 commit_matches() {
@@ -93,7 +92,7 @@ commit_matches() {
 echo "Pushing main to origin..."
 git push origin main
 
-echo "Push succeeded. Waiting for Coolify to publish ${EXPECTED_SHORT}..."
+echo "Push succeeded. Waiting for GitHub Actions to publish ${EXPECTED_SHORT}..."
 
 for attempt in $(seq 1 "$PUBLISH_WAIT_ATTEMPTS"); do
   IFS=$'\t' read -r PUBLIC_STATUS PUBLIC_COMMIT_SHA PUBLIC_COMMIT_SHORT PUBLIC_SOURCE PUBLIC_INTEGRITY <<< "$(fetch_public_revision)"

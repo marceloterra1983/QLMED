@@ -81,7 +81,7 @@ fetch_health_summary() {
     return
   fi
 
-  HEALTH_PAYLOAD="$response" node <<'NODE'
+  HEALTH_PAYLOAD="$response" node -e "
 const payload = process.env.HEALTH_PAYLOAD;
 
 try {
@@ -99,7 +99,7 @@ try {
 } catch {
   process.stdout.write('invalid\t\t\t\t\t\n');
 }
-NODE
+"
 }
 
 commit_matches() {
@@ -113,7 +113,7 @@ commit_matches() {
   [[ "$left" == "$right" || "$left" == "$right"* || "$right" == "$left"* ]]
 }
 
-IFS=$'\t' read -r DEV_STATUS DEV_COMMIT_SHA DEV_COMMIT_SHORT DEV_SOURCE DEV_BUILT_AT DEV_INTEGRITY <<< "$(fetch_health_summary "$DEV_URL")"
+IFS=$'\t' read -r DEV_STATUS _DEV_COMMIT_SHA DEV_COMMIT_SHORT DEV_SOURCE DEV_BUILT_AT DEV_INTEGRITY <<< "$(fetch_health_summary "$DEV_URL")"
 IFS=$'\t' read -r PUBLIC_STATUS PUBLIC_COMMIT_SHA PUBLIC_COMMIT_SHORT PUBLIC_SOURCE PUBLIC_BUILT_AT PUBLIC_INTEGRITY <<< "$(fetch_health_summary "$PUBLIC_URL")"
 
 PUBLIC_MATCHES_ORIGIN="no"

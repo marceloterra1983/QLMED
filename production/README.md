@@ -25,9 +25,18 @@ Fonte de verdade dos manifests de producao do QLMED.
 
 ## Deploy
 
-- a producao publica do app e publicada por `git push origin main`; o Coolify detecta o novo commit e recria o servico publico
+- `git push origin main` executa primeiro o workflow `QLMED CI`
+- somente apos CI aprovado, `QLMED Production Deploy` publica exatamente o SHA validado
 - `npm run publish:server` e o caminho operacional padrao porque faz o push e espera o `https://app.qlmed.com.br/api/health` refletir o commit publicado
-- `scripts/deploy-server.sh` e `.github/workflows/deploy-production.yml` continuam apenas como trilha manual/legada para sincronizar `/home/marce/QLMED/production` em recuperacao operacional
+- `scripts/deploy-server.sh --legacy` permanece apenas como recuperacao operacional manual
 - no Coolify, o Postgres 18 deve montar o volume em `/var/lib/postgresql` com `PGDATA=/var/lib/postgresql/18/docker`; voltar para `/var/lib/postgresql/data` recria um volume anonimo vazio a cada deploy
 - os segredos continuam apenas no host remoto
-- `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` do release ativo; em ambiente Coolify o valor pode vir de `SOURCE_COMMIT`
+- `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` completo do release ativo
+
+## Notificacoes fiscais
+
+- o deploy instala `/home/marce/notification-outbox-worker.py` e substitui apenas os crons legados de NF-e/CT-e
+- o worker deve usar uma chave dedicada com escopos `notifications:dispatch` e `notifications:assets`; nunca reutilize uma chave administrativa
+- cada nota recebida cria o evento e as entregas por destinatario/canal na mesma transacao
+- leases expirados antes do envio voltam para retry; resultados incertos apos inicio do envio nunca sao repetidos automaticamente
+- um administrador deve reconciliar entregas incertas como enviadas ou autorizar explicitamente o reenvio
