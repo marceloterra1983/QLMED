@@ -25,7 +25,7 @@ install -m 0755 "$worker_source" "$worker_tmp"
 mv -f "$worker_tmp" /home/marce/notification-outbox-worker.py
 
 existing="$(crontab -l 2>/dev/null || true)"
-filtered="$(printf '%s\n' "$existing" | grep -vE '/home/marce/(nfe|cte)-notify/(nfe|cte)_notify\\.py|/home/marce/notification-outbox-worker\\.py' || true)"
+filtered="$(printf '%s\n' "$existing" | grep -vE '/home/marce/(nfe|cte)-notify/(nfe|cte)_notify\.py|/home/marce/notification-outbox-worker\.py' || true)"
 
 {
   printf '%s\n' "$filtered"
