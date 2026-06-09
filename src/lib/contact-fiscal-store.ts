@@ -57,7 +57,7 @@ export async function ensureContactFiscalTable(): Promise<void> {
         ALTER TABLE contact_fiscal ADD COLUMN IF NOT EXISTS city TEXT
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_contact_fiscal_company
+        CREATE INDEX IF NOT EXISTS contact_fiscal_company_id_idx
         ON contact_fiscal(company_id)
       `);
     })().catch((err) => {

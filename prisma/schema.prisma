@@ -65,32 +65,51 @@ enum AccessLogAction {
   pages_changed
   permission_denied
   account_locked
+  notification_resolved
+}
+
+enum NotificationEventType {
+  invoice_received
+}
+
+enum NotificationChannel {
+  email
+  whatsapp
+}
+
+enum NotificationDeliveryStatus {
+  pending
+  processing
+  sent
+  retry
+  uncertain
+  dead
 }
 
 // ── Models ──
 
 model User {
-  id             String     @id @default(cuid())
-  email          String     @unique
+  id             String      @id @default(cuid())
+  email          String      @unique
   passwordHash   String
   name           String
   phone          String?
-  role           UserRole   @default(viewer)
-  status         UserStatus @default(pending)
-  allowedPages   String[]   @default([])
+  role           UserRole    @default(viewer)
+  status         UserStatus  @default(pending)
+  allowedPages   String[]    @default([])
   // PIN brute-force protection: incremented on failed login, reset on success.
   // lockedUntil is a soft lock — authorize() rejects the login while now < lockedUntil.
-  failedAttempts Int        @default(0)
+  failedAttempts Int         @default(0)
   lockedUntil    DateTime?
   // Session revocation counter — every issued JWT embeds this value in its
   // `tokenVersion` claim. Increment to invalidate ALL outstanding sessions
   // for this user (logout-everywhere, role demotion, status change, etc.).
-  tokenVersion   Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  tokenVersion   Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
   companies      Company[]
   accessLogs     AccessLog[]
-  apiKeys        ApiKey[]   @relation("ApiKeyCreator")
+  apiKeys        ApiKey[]    @relation("ApiKeyCreator")
 }
 
 // Named API keys used by external integrations (n8n, scripts). Each row
@@ -125,24 +144,26 @@ model AccessLog {
 }
 
 model Company {
-  id           String    @id @default(cuid())
-  cnpj         String    @unique
-  razaoSocial  String
-  nomeFantasia String?
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoices          Invoice[]
-  duplicataOverrides FinanceiroDuplicataOverride[]
-  manualInstallments FinanceiroDuplicataManualInstallment[]
-  contactNicknames   ContactNickname[]
-  contactOverrides   ContactOverride[]
-  nsdocsConfig      NsdocsConfig?
-  receitaNfseConfig ReceitaNfseConfig?
-  certificateConfig CertificateConfig?
+  id                  String                                 @id @default(cuid())
+  cnpj                String                                 @unique
+  razaoSocial         String
+  nomeFantasia        String?
+  userId              String
+  user                User                                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices            Invoice[]
+  duplicataOverrides  FinanceiroDuplicataOverride[]
+  manualInstallments  FinanceiroDuplicataManualInstallment[]
+  contactNicknames    ContactNickname[]
+  contactOverrides    ContactOverride[]
+  nsdocsConfig        NsdocsConfig?
+  receitaNfseConfig   ReceitaNfseConfig?
+  certificateConfig   CertificateConfig?
   oneDriveConnections OneDriveConnection[]
-  syncLogs          SyncLog[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  syncLogs            SyncLog[]
+  notificationEvents  NotificationOutboxEvent[]
+  productRebuildState ProductAggregateRebuildState?
+  createdAt           DateTime                               @default(now())
+  updatedAt           DateTime                               @updatedAt
 
   @@index([userId])
 }
@@ -161,19 +182,21 @@ model NsdocsConfig {
 }
 
 model ReceitaNfseConfig {
-  id           String   @id @default(cuid())
-  companyId    String   @unique
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  companyId    String    @unique
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   apiToken     String?
-  autoSync     Boolean  @default(true)
-  syncInterval Int      @default(60)
-  environment  String   @default("production")
+  autoSync     Boolean   @default(true)
+  syncInterval Int       @default(60)
+  environment  String    @default("production")
   baseUrl      String?
   cnpjConsulta String?
-  lastNsu      String   @default("000000000000000")
+  lastNsu      String    @default("000000000000000")
   lastSyncAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([companyId])
 }
 
 model CertificateConfig {
@@ -236,27 +259,28 @@ model OneDriveConnection {
 }
 
 model Invoice {
-  id             String           @id @default(cuid())
-  accessKey      String           @unique
-  type           InvoiceType
-  direction      InvoiceDirection @default(received)
-  number         String
-  series         String?
-  issueDate      DateTime
-  senderCnpj     String
-  senderName     String
-  recipientCnpj  String?
-  recipientName  String?
-  totalValue     Decimal
-  status         InvoiceStatus    @default(received)
-  cfop           String?
-  xmlContent     String
-  companyId      String
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                 String                                 @id @default(cuid())
+  accessKey          String                                 @unique
+  type               InvoiceType
+  direction          InvoiceDirection                       @default(received)
+  number             String
+  series             String?
+  issueDate          DateTime
+  senderCnpj         String
+  senderName         String
+  recipientCnpj      String?
+  recipientName      String?
+  totalValue         Decimal
+  status             InvoiceStatus                          @default(received)
+  cfop               String?
+  xmlContent         String
+  companyId          String
+  company            Company                                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   duplicataOverrides FinanceiroDuplicataOverride[]
   manualInstallments FinanceiroDuplicataManualInstallment[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  notificationEvent  NotificationOutboxEvent?
+  createdAt          DateTime                               @default(now())
+  updatedAt          DateTime                               @updatedAt
 
   @@index([companyId])
   @@index([senderCnpj])
@@ -269,6 +293,52 @@ model Invoice {
   @@index([senderName])
   @@index([recipientCnpj])
   @@index([companyId, recipientCnpj])
+}
+
+model NotificationOutboxEvent {
+  id         String                 @id @default(cuid())
+  eventKey   String                 @unique
+  eventType  NotificationEventType  @default(invoice_received)
+  companyId  String
+  company    Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId  String                 @unique
+  invoice    Invoice                @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt  DateTime               @default(now())
+  deliveries NotificationDelivery[]
+
+  @@index([eventType, createdAt])
+  @@index([companyId, createdAt])
+}
+
+model NotificationDelivery {
+  id                String                     @id @default(cuid())
+  eventId           String
+  event             NotificationOutboxEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  channel           NotificationChannel
+  recipient         String
+  idempotencyKey    String                     @unique
+  status            NotificationDeliveryStatus @default(pending)
+  attempts          Int                        @default(0)
+  availableAt       DateTime                   @default(now())
+  lockedAt          DateTime?
+  lockToken         String?
+  submittingAt      DateTime?
+  sentAt            DateTime?
+  providerMessageId String?
+  lastError         String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@unique([eventId, channel, recipient])
+  @@index([status, availableAt, createdAt])
+  @@index([eventId, status])
+}
+
+model ProductAggregateRebuildState {
+  companyId       String   @id
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cutoffCreatedAt DateTime
+  completedAt     DateTime
 }
 
 model FinanceiroDuplicataOverride {
@@ -308,22 +378,22 @@ model ContactNickname {
 }
 
 model ContactOverride {
-  id          String   @id @default(cuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  cnpj        String
-  phone       String?
-  email       String?
-  street      String?
-  number      String?
-  complement  String?
-  district    String?
-  city        String?
-  state       String?
-  zipCode     String?
-  country     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cnpj       String
+  phone      String?
+  email      String?
+  street     String?
+  number     String?
+  complement String?
+  district   String?
+  city       String?
+  state      String?
+  zipCode    String?
+  country    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([companyId, cnpj])
   @@index([companyId])
@@ -417,6 +487,7 @@ model ContactFiscal {
   im              String?
   crt             String?
   uf              String?
+  city            String?
   sourceInvoiceId String?   @map("source_invoice_id")
   extractedAt     DateTime? @default(now()) @map("extracted_at") @db.Timestamptz
 
@@ -426,14 +497,34 @@ model ContactFiscal {
   @@ignore
 }
 
+// Managed by raw SQL in src/lib/invoice-duplicata-store.ts. Model exists for schema visibility only.
+model InvoiceDuplicata {
+  id                  String   @id
+  invoiceId           String   @map("invoice_id")
+  companyId           String   @map("company_id")
+  dupNumero           String?  @map("dup_numero")
+  dupVencimento       String   @map("dup_vencimento")
+  dupValor            Float    @map("dup_valor")
+  faturaNumero        String?  @map("fatura_numero")
+  faturaValorOriginal Float?   @map("fatura_valor_original")
+  faturaValorLiquido  Float?   @map("fatura_valor_liquido")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([invoiceId, dupNumero, dupVencimento])
+  @@index([companyId])
+  @@index([invoiceId])
+  @@map("invoice_duplicata")
+  @@ignore
+}
+
 // Managed by raw SQL in src/lib/ncm-lookup.ts. Model exists for schema visibility only.
 model NcmCache {
-  code            String    @id
-  descricao       String    @default("")
-  parentCode      String?   @map("parent_code")
-  fullDescription String    @default("") @map("full_description")
-  hierarchy       Json      @default("[]")
-  fetchedAt       DateTime  @default(now()) @map("fetched_at") @db.Timestamptz
+  code            String   @id
+  descricao       String   @default("")
+  parentCode      String?  @map("parent_code")
+  fullDescription String   @default("") @map("full_description")
+  hierarchy       Json     @default("[]")
+  fetchedAt       DateTime @default(now()) @map("fetched_at") @db.Timestamptz
 
   @@index([parentCode])
   @@map("ncm_cache")
@@ -442,111 +533,112 @@ model NcmCache {
 
 // Managed by raw SQL in src/lib/product-registry-store.ts. Model exists for schema visibility only.
 model ProductRegistry {
-  id                       String    @id
-  companyId                String    @map("company_id")
-  productKey               String    @map("product_key")
-  code                     String?
-  description              String
-  ncm                      String?
-  unit                     String?
-  ean                      String?
-  anvisaCode               String?   @map("anvisa_code")
-  anvisaSource             String?   @map("anvisa_source")
-  anvisaConfidence         Float?    @map("anvisa_confidence")
-  anvisaMatchedProductName String?   @map("anvisa_matched_product_name")
-  anvisaHolder             String?   @map("anvisa_holder")
-  anvisaProcess            String?   @map("anvisa_process")
-  anvisaStatus             String?   @map("anvisa_status")
+  id                        String    @id
+  companyId                 String    @map("company_id")
+  productKey                String    @map("product_key")
+  code                      String?
+  description               String
+  ncm                       String?
+  unit                      String?
+  ean                       String?
+  anvisaCode                String?   @map("anvisa_code")
+  anvisaSource              String?   @map("anvisa_source")
+  anvisaConfidence          Float?    @map("anvisa_confidence")
+  anvisaMatchedProductName  String?   @map("anvisa_matched_product_name")
+  anvisaHolder              String?   @map("anvisa_holder")
+  anvisaProcess             String?   @map("anvisa_process")
+  anvisaStatus              String?   @map("anvisa_status")
   anvisaExpiration          String?   @map("anvisa_expiration")
-  anvisaRiskClass          String?   @map("anvisa_risk_class")
-  anvisaManufacturer       String?   @map("anvisa_manufacturer")
-  anvisaManufacturerCountry String?  @map("anvisa_manufacturer_country")
-  manufacturerShortName    String?   @map("manufacturer_short_name")
-  anvisaSyncedAt           DateTime? @map("anvisa_synced_at") @db.Timestamptz
-  shortName                String?   @map("short_name")
-  productType              String?   @map("product_type")
-  productSubtype           String?   @map("product_subtype")
-  productSubgroup          String?   @map("product_subgroup")
-  outOfLine                Boolean?  @default(false) @map("out_of_line")
-  instrumental             Boolean?  @default(false)
-  codigo                   String?
-  fiscalSitTributaria      String?   @map("fiscal_sit_tributaria")
-  fiscalNomeTributacao     String?   @map("fiscal_nome_tributacao")
-  fiscalIcms               Float?    @map("fiscal_icms")
-  fiscalPis                Float?    @map("fiscal_pis")
-  fiscalCofins             Float?    @map("fiscal_cofins")
-  fiscalObs                String?   @map("fiscal_obs")
-  fiscalCest               String?   @map("fiscal_cest")
-  fiscalOrigem             String?   @map("fiscal_origem")
-  fiscalCfopEntrada        String?   @map("fiscal_cfop_entrada")
-  fiscalCfopSaida          String?   @map("fiscal_cfop_saida")
-  fiscalIpi                Float?    @map("fiscal_ipi")
-  fiscalFcp                Float?    @map("fiscal_fcp")
-  fiscalCstIpi             String?   @map("fiscal_cst_ipi")
-  fiscalCstPis             String?   @map("fiscal_cst_pis")
-  fiscalCstCofins          String?   @map("fiscal_cst_cofins")
-  fiscalObsIcms            String?   @map("fiscal_obs_icms")
-  fiscalObsPisCofins       String?   @map("fiscal_obs_pis_cofins")
-  productRefs              String[]  @map("product_refs")
-  defaultSupplier          String?   @map("default_supplier")
-  aggTotalQuantity         Float?    @map("agg_total_quantity")
-  aggTotalValue            Float?    @map("agg_total_value")
-  aggInvoiceCount          Int?      @map("agg_invoice_count")
-  aggLastPrice             Float?    @map("agg_last_price")
-  aggAveragePrice          Float?    @map("agg_average_price")
-  aggLastIssueDate         DateTime? @map("agg_last_issue_date") @db.Timestamptz
-  aggLastSupplierName      String?   @map("agg_last_supplier_name")
-  aggLastSupplierCnpj      String?   @map("agg_last_supplier_cnpj")
-  aggLastInvoiceNumber     String?   @map("agg_last_invoice_number")
-  aggLastSaleDate          DateTime? @map("agg_last_sale_date") @db.Timestamptz
-  aggLastSalePrice         Float?    @map("agg_last_sale_price")
-  aggResaleQuantity        Float?    @map("agg_resale_quantity")
-  aggComputedAt            DateTime? @map("agg_computed_at") @db.Timestamptz
-  aggSearchText            String?   @map("agg_search_text")
-  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  anvisaRiskClass           String?   @map("anvisa_risk_class")
+  anvisaManufacturer        String?   @map("anvisa_manufacturer")
+  anvisaManufacturerCountry String?   @map("anvisa_manufacturer_country")
+  manufacturerShortName     String?   @map("manufacturer_short_name")
+  anvisaSyncedAt            DateTime? @map("anvisa_synced_at") @db.Timestamptz
+  shortName                 String?   @map("short_name")
+  productType               String?   @map("product_type")
+  productSubtype            String?   @map("product_subtype")
+  productSubgroup           String?   @map("product_subgroup")
+  outOfLine                 Boolean?  @default(false) @map("out_of_line")
+  instrumental              Boolean?  @default(false)
+  codigo                    String?
+  fiscalSitTributaria       String?   @map("fiscal_sit_tributaria")
+  fiscalNomeTributacao      String?   @map("fiscal_nome_tributacao")
+  fiscalIcms                Float?    @map("fiscal_icms")
+  fiscalPis                 Float?    @map("fiscal_pis")
+  fiscalCofins              Float?    @map("fiscal_cofins")
+  fiscalObs                 String?   @map("fiscal_obs")
+  fiscalCest                String?   @map("fiscal_cest")
+  fiscalOrigem              String?   @map("fiscal_origem")
+  fiscalCfopEntrada         String?   @map("fiscal_cfop_entrada")
+  fiscalCfopSaida           String?   @map("fiscal_cfop_saida")
+  fiscalIpi                 Float?    @map("fiscal_ipi")
+  fiscalFcp                 Float?    @map("fiscal_fcp")
+  fiscalCstIpi              String?   @map("fiscal_cst_ipi")
+  fiscalCstPis              String?   @map("fiscal_cst_pis")
+  fiscalCstCofins           String?   @map("fiscal_cst_cofins")
+  fiscalObsIcms             String?   @map("fiscal_obs_icms")
+  fiscalObsPisCofins        String?   @map("fiscal_obs_pis_cofins")
+  productRefs               String[]  @default([]) @map("product_refs")
+  defaultSupplier           String?   @map("default_supplier")
+  aggTotalQuantity          Float?    @map("agg_total_quantity")
+  aggTotalValue             Float?    @map("agg_total_value")
+  aggInvoiceCount           Int?      @map("agg_invoice_count")
+  aggLastPrice              Float?    @map("agg_last_price")
+  aggAveragePrice           Float?    @map("agg_average_price")
+  aggLastIssueDate          DateTime? @map("agg_last_issue_date") @db.Timestamptz
+  aggLastSupplierName       String?   @map("agg_last_supplier_name")
+  aggLastSupplierCnpj       String?   @map("agg_last_supplier_cnpj")
+  aggLastInvoiceNumber      String?   @map("agg_last_invoice_number")
+  aggLastSaleDate           DateTime? @map("agg_last_sale_date") @db.Timestamptz
+  aggLastSalePrice          Float?    @map("agg_last_sale_price")
+  aggResaleQuantity         Float?    @map("agg_resale_quantity")
+  aggComputedAt             DateTime? @map("agg_computed_at") @db.Timestamptz
+  aggSearchText             String?   @map("agg_search_text")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
   @@unique([companyId, productKey])
   @@index([companyId])
+  @@index([companyId, anvisaCode])
   @@map("product_registry")
   @@ignore
 }
 
 // Managed by raw SQL in src/lib/stock-entry-store.ts. Model exists for schema visibility only.
 model StockEntry {
-  id             String    @id
-  companyId      String    @map("company_id")
-  invoiceId      String    @map("invoice_id")
-  invoiceNumber  String?   @map("invoice_number")
-  supplierName   String?   @map("supplier_name")
-  supplierCnpj   String?   @map("supplier_cnpj")
-  issueDate      DateTime? @map("issue_date") @db.Timestamptz
-  totalValue     Float?    @map("total_value")
-  totalItems     Int?      @default(0) @map("total_items")
-  matchedItems   Int?      @default(0) @map("matched_items")
-  status         String    @default("pending")
-  registeredAt   DateTime? @map("registered_at") @db.Timestamptz
-  registeredBy   String?   @map("registered_by")
-  emitterCity    String?   @map("emitter_city")
-  emitterState   String?   @map("emitter_state")
-  accessKey      String?   @map("access_key")
-  cfop           String?
-  totVprod       Float?    @map("tot_vprod")
-  totVdesc       Float?    @map("tot_vdesc")
-  totVbc         Float?    @map("tot_vbc")
-  totVicms       Float?    @map("tot_vicms")
-  totVbcSt       Float?    @map("tot_vbc_st")
-  totVicmsSt     Float?    @map("tot_vicms_st")
-  totVfrete      Float?    @map("tot_vfrete")
-  totVseg        Float?    @map("tot_vseg")
-  totVoutro      Float?    @map("tot_voutro")
-  totVipi        Float?    @map("tot_vipi")
-  totVpis        Float?    @map("tot_vpis")
-  totVcofins     Float?    @map("tot_vcofins")
-  totVfcp        Float?    @map("tot_vfcp")
-  totVnf         Float?    @map("tot_vnf")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  id            String    @id
+  companyId     String    @map("company_id")
+  invoiceId     String    @map("invoice_id")
+  invoiceNumber String?   @map("invoice_number")
+  supplierName  String?   @map("supplier_name")
+  supplierCnpj  String?   @map("supplier_cnpj")
+  issueDate     DateTime? @map("issue_date") @db.Timestamptz
+  totalValue    Float?    @map("total_value")
+  totalItems    Int?      @default(0) @map("total_items")
+  matchedItems  Int?      @default(0) @map("matched_items")
+  status        String    @default("pending")
+  registeredAt  DateTime? @map("registered_at") @db.Timestamptz
+  registeredBy  String?   @map("registered_by")
+  emitterCity   String?   @map("emitter_city")
+  emitterState  String?   @map("emitter_state")
+  accessKey     String?   @map("access_key")
+  cfop          String?
+  totVprod      Float?    @map("tot_vprod")
+  totVdesc      Float?    @map("tot_vdesc")
+  totVbc        Float?    @map("tot_vbc")
+  totVicms      Float?    @map("tot_vicms")
+  totVbcSt      Float?    @map("tot_vbc_st")
+  totVicmsSt    Float?    @map("tot_vicms_st")
+  totVfrete     Float?    @map("tot_vfrete")
+  totVseg       Float?    @map("tot_vseg")
+  totVoutro     Float?    @map("tot_voutro")
+  totVipi       Float?    @map("tot_vipi")
+  totVpis       Float?    @map("tot_vpis")
+  totVcofins    Float?    @map("tot_vcofins")
+  totVfcp       Float?    @map("tot_vfcp")
+  totVnf        Float?    @map("tot_vnf")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
   @@unique([companyId, invoiceId])
   @@index([companyId])
@@ -622,17 +714,17 @@ model NfeEntryItem {
 
 // Managed by raw SQL in src/lib/product-settings-catalog.ts. Model exists for schema visibility only.
 model ProductSettingsCatalog {
-  id                     String   @id
-  companyId              String   @map("company_id")
-  section                String
-  value                  String
-  parentValue            String?  @map("parent_value")
-  parentSecondaryValue   String?  @map("parent_secondary_value")
-  parentValueKey         String   @default("") @map("parent_value_key")
-  parentSecondaryValueKey String  @default("") @map("parent_secondary_value_key")
-  extraValue             String?  @map("extra_value")
-  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  id                      String   @id
+  companyId               String   @map("company_id")
+  section                 String
+  value                   String
+  parentValue             String?  @map("parent_value")
+  parentSecondaryValue    String?  @map("parent_secondary_value")
+  parentValueKey          String   @default("") @map("parent_value_key")
+  parentSecondaryValueKey String   @default("") @map("parent_secondary_value_key")
+  extraValue              String?  @map("extra_value")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   @@unique([companyId, section, value, parentValueKey, parentSecondaryValueKey])
   @@index([companyId])

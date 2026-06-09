@@ -134,12 +134,12 @@ export async function ensureStockEntryTable() {
       `);
 
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS stock_entry_company_idx
+        CREATE INDEX IF NOT EXISTS stock_entry_company_id_idx
         ON stock_entry (company_id)
       `);
 
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS stock_entry_company_status_idx
+        CREATE INDEX IF NOT EXISTS stock_entry_company_id_status_idx
         ON stock_entry (company_id, status)
       `);
 
@@ -238,15 +238,15 @@ export async function ensureStockEntryTable() {
       `);
 
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_stock_entry_idx
+        CREATE INDEX IF NOT EXISTS nfe_entry_item_stock_entry_id_idx
         ON nfe_entry_item (stock_entry_id)
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_invoice_idx
+        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_id_invoice_id_idx
         ON nfe_entry_item (company_id, invoice_id)
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_codigo_idx
+        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_id_codigo_interno_idx
         ON nfe_entry_item (company_id, codigo_interno)
       `);
 

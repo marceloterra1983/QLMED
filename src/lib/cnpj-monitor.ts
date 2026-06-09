@@ -29,10 +29,10 @@ export async function ensureCnpjMonitoringTable(): Promise<void> {
         )
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_cnpj_mon_company ON cnpj_monitoring(company_id)
+        CREATE INDEX IF NOT EXISTS cnpj_monitoring_company_id_idx ON cnpj_monitoring(company_id)
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_cnpj_mon_changed ON cnpj_monitoring(company_id, changed_at)
+        CREATE INDEX IF NOT EXISTS cnpj_monitoring_company_id_changed_at_idx ON cnpj_monitoring(company_id, changed_at)
       `);
     })().catch((err) => {
       initState.promise = undefined;

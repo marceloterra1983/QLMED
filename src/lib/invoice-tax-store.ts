@@ -133,7 +133,7 @@ export async function ensureInvoiceTaxTables(): Promise<void> {
         )
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_tax_totals_company
+        CREATE INDEX IF NOT EXISTS invoice_tax_totals_company_id_idx
         ON invoice_tax_totals(company_id)
       `);
 
@@ -168,11 +168,11 @@ export async function ensureInvoiceTaxTables(): Promise<void> {
         )
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_item_tax_invoice
+        CREATE INDEX IF NOT EXISTS invoice_item_tax_invoice_id_idx
         ON invoice_item_tax(invoice_id)
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_item_tax_company_cfop
+        CREATE INDEX IF NOT EXISTS invoice_item_tax_company_id_cfop_idx
         ON invoice_item_tax(company_id, cfop)
       `);
     })().catch((err) => {

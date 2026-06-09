@@ -60,11 +60,11 @@ export async function ensureInvoiceDuplicataTable(): Promise<void> {
         )
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_invoice_duplicata_company
+        CREATE INDEX IF NOT EXISTS invoice_duplicata_company_id_idx
         ON invoice_duplicata(company_id)
       `);
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_invoice_duplicata_invoice
+        CREATE INDEX IF NOT EXISTS invoice_duplicata_invoice_id_idx
         ON invoice_duplicata(invoice_id)
       `);
     })().catch((err) => {

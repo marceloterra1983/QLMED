@@ -232,17 +232,26 @@ export async function ensureProductRegistryTable() {
           ADD COLUMN IF NOT EXISTS agg_computed_at TIMESTAMPTZ,
           ADD COLUMN IF NOT EXISTS agg_search_text TEXT,
           ADD COLUMN IF NOT EXISTS codigo TEXT,
-          ADD COLUMN IF NOT EXISTS product_refs TEXT[],
+          ADD COLUMN IF NOT EXISTS product_refs TEXT[] DEFAULT ARRAY[]::TEXT[],
           ADD COLUMN IF NOT EXISTS default_supplier TEXT
+      `);
+      await prisma.$executeRawUnsafe(`
+        UPDATE product_registry SET product_refs = ARRAY[]::TEXT[] WHERE product_refs IS NULL
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE product_registry ALTER COLUMN product_refs SET DEFAULT ARRAY[]::TEXT[]
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE product_registry ALTER COLUMN product_refs SET NOT NULL
       `);
 
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_company_idx
+        CREATE INDEX IF NOT EXISTS product_registry_company_id_idx
         ON product_registry (company_id)
       `);
 
       await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_company_anvisa_idx
+        CREATE INDEX IF NOT EXISTS product_registry_company_id_anvisa_code_idx
         ON product_registry (company_id, anvisa_code)
       `);
 
