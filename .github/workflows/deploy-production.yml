@@ -59,7 +59,7 @@ jobs:
       - name: Sync application source
         run: |
           mkdir -p /home/marce/QLMED/production/app
-          rsync -a --no-owner --no-group --delete \
+          rsync -rl --delete \
             --exclude '.git' \
             --exclude '.github' \
             --exclude '.env' \
