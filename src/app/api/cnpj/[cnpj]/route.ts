@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupCnpj } from '@/lib/cnpj-lookup';
 import { createLogger } from '@/lib/logger';
+import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 
 const log = createLogger('cnpj/:cnpj');
 
@@ -8,6 +9,12 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ cnpj: string }> },
 ) {
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
+
   const { cnpj } = await params;
   const digits = (cnpj || '').replace(/\D/g, '');
 

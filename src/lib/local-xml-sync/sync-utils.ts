@@ -54,7 +54,7 @@ export function getDelayUntilNextHalfHourMs(nowDate = new Date()): number {
 
 export function extractAccessKeyFromFilePath(filePath: string): string | null {
   const fileName = path.basename(filePath);
-  const match = fileName.match(/(\d{44})/);
+  const match = fileName.match(/(?:^|\D)(\d{50}|\d{44})(?=\D|$)/);
   return match?.[1] || null;
 }
 

@@ -35,19 +35,23 @@ interface PartyNode {
 }
 
 function extractAccessKey(proc: XmlNode, inf: XmlNode, prefix: string): string {
+  const isValidAccessKey = (value: unknown): value is string => (
+    typeof value === 'string' && /^\d{44}$/.test(value)
+  );
+
   // 1. From protocoled response (most reliable)
   const protKey = prefix === 'NFe' ? 'protNFe' : 'protCTe';
   const chKey = prefix === 'NFe' ? 'chNFe' : 'chCTe';
   const prot = proc?.[protKey] as XmlNode | undefined;
   const infProt = prot?.infProt as XmlNode | undefined;
   const chave = infProt?.[chKey] as string | undefined;
-  if (chave && chave.length >= 44) return chave;
+  if (isValidAccessKey(chave)) return chave;
 
   // 2. From infNFe/infCte Id attribute
   const id = (inf?.Id as string) || '';
   if (id) {
     const clean = id.replace(/^(NFe|CTe)/, '');
-    if (clean.length >= 44) return clean;
+    if (isValidAccessKey(clean)) return clean;
   }
 
   return '';

@@ -119,6 +119,15 @@ describe('parseInvoiceXml - invalid input', () => {
     const result = await parseInvoiceXml('<root><data>123</data></root>');
     expect(result).toBeNull();
   });
+
+  it('rejects NF-e access keys that are not exactly 44 digits', async () => {
+    const maliciousXml = SAMPLE_NFE_XML.replace(
+      /35241012345678000199550010000012341123456789/g,
+      '../../../tmp/35241012345678000199550010000012341123456789',
+    );
+
+    expect(await parseInvoiceXml(maliciousXml)).toBeNull();
+  });
 });
 
 describe('extractPartyFiscalData', () => {

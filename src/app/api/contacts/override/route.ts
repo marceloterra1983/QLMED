@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiValidationError } from '@/lib/api-error';
@@ -31,7 +31,12 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   try {
     let userId: string;
-    try { userId = await requireAuth(); } catch { return unauthorizedResponse(); }
+    try {
+      userId = (await requireEditor()).userId;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
     const company = await getOrCreateSingleCompany(userId);
     const body = await req.json().catch(() => ({}));

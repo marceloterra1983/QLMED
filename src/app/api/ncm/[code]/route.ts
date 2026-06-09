@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { lookupNcm } from '@/lib/ncm-lookup';
 import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
+import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 
 const log = createLogger('ncm/:code');
 
@@ -9,6 +10,12 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ code: string }> },
 ) {
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
+
   try {
     const { code } = await params;
     const digits = (code || '').replace(/\D/g, '');

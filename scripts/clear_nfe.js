@@ -1,5 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 
+if (process.env.ALLOW_DESTRUCTIVE_INVOICE_DELETE !== 'clear-nfe') {
+  throw new Error('Set ALLOW_DESTRUCTIVE_INVOICE_DELETE=clear-nfe to run this destructive maintenance script.');
+}
+
 async function main() {
   const prisma = new PrismaClient();
   try {

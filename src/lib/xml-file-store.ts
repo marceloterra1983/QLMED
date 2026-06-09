@@ -29,8 +29,11 @@ export function getMonthFolder(issueDate: Date | string | null): string {
   return `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function buildFileName(accessKey: string, type: string): string {
+export function buildXmlFileName(accessKey: string, type: string): string | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(accessKey)) return null;
+
   const suffix = TYPE_SUFFIX[type] || type.toLowerCase();
+  if (!/^[a-z0-9_-]+$/.test(suffix)) return null;
   return `${accessKey}-${suffix}.xml`;
 }
 
@@ -76,7 +79,11 @@ export async function saveXmlToFile(
     const dir = path.join(XML_BACKUP_DIR, monthFolder);
     await fs.mkdir(dir, { recursive: true });
 
-    const fileName = buildFileName(accessKey, type);
+    const fileName = buildXmlFileName(accessKey, type);
+    if (!fileName) {
+      log.warn({ accessKey, type }, 'Chave fiscal insegura; XML nao foi salvo em arquivo');
+      return null;
+    }
     const filePath = path.join(dir, fileName);
 
     // Skip if file already exists with same or larger size
