@@ -156,7 +156,8 @@ jobs:
 
       - name: Install transactional notification worker
         run: |
-          bash /home/marce/QLMED/production/app/scripts/install-notification-outbox-cron.sh \
+          sudo -n -u marce -- \
+            /usr/bin/bash /home/marce/QLMED/production/app/scripts/install-notification-outbox-cron.sh \
             /home/marce/QLMED/production/app/scripts/notification-outbox-worker.py
 
       - name: Roll back failed deployment
