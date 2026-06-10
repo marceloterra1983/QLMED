@@ -68,5 +68,10 @@
     "tailwindcss": "^3.4.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "@prisma/dev": {
+      "@hono/node-server": "1.19.14"
+    }
   }
 }
