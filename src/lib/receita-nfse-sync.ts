@@ -142,8 +142,16 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
       throw new Error(`Receita NFS-e: resposta HTTP ${response.statusCode} ao consultar NSU ${targetNsu}.`);
     }
 
-    // Página HTML devolvida com status 2xx (erro/interstitial do ADN): antes caía
-    // em isEmpty e o sync reportava "completed/0" silenciosamente. Trata como erro.
+    // Corpo não-fiscal (não-JSON e sem DF-e): sinalizado pelo próprio fetch, onde o
+    // parse realmente falha — robusto a qualquer forma de rawBody no resultado.
+    if (response.parseFailed) {
+      throw new Error(
+        `Receita NFS-e: resposta não-fiscal ao consultar NSU ${targetNsu} ` +
+          `(não-JSON/sem DF-e — provável página de erro do ADN). Verifique certificado/conectividade.`,
+      );
+    }
+
+    // Defesa adicional: content-type HTML ou corpo iniciando com tag HTML.
     const looksHtml =
       /text\/html/i.test(response.contentType || '') ||
       /^\s*<(?:!doctype|html)\b/i.test(response.rawBody || '');

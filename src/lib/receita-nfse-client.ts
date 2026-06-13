@@ -164,6 +164,8 @@ export interface ReceitaNfseFetchResult {
   documents: string[];
   nsuHints: string[];
   isEmpty: boolean;
+  /** true = corpo não-vazio que não parseou como JSON e não rendeu DF-e (HTML/erro do ADN). */
+  parseFailed: boolean;
 }
 
 export class ReceitaNfseClient {
@@ -248,6 +250,7 @@ export class ReceitaNfseClient {
     const statusCode = response.statusCode;
     const isEmptyStatus = statusCode === 204 || statusCode === 404;
 
+    let parseFailed = false;
     if (!isEmptyStatus && rawBody.trim()) {
       const maybeJson = contentType.includes('json') ? parseJsonSafe(rawBody) : parseJsonSafe(rawBody);
 
@@ -268,6 +271,11 @@ export class ReceitaNfseClient {
       Array.from(extractNsuFromText(rawBody)).forEach((hint) => {
         nsuHints.add(hint);
       });
+
+      // Corpo presente que NÃO parseou como JSON e NÃO rendeu nenhum DF-e =
+      // resposta não-fiscal (HTML de erro/WAF do ADN). Antes virava isEmpty e o
+      // sync reportava "completed/0" silenciosamente.
+      parseFailed = maybeJson === null && documents.size === 0;
     }
 
     const isEmpty = isEmptyStatus || documents.size === 0;
@@ -280,6 +288,7 @@ export class ReceitaNfseClient {
       documents: Array.from(documents),
       nsuHints: Array.from(nsuHints).sort(),
       isEmpty,
+      parseFailed,
     };
   }
 
