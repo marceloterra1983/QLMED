@@ -12,6 +12,12 @@ const log = createLogger('receita-nfse-sync');
 
 const DEFAULT_MAX_STEPS = 200;
 const DEFAULT_EMPTY_LIMIT = 2;
+// Intervalo entre consultas consecutivas à DistribuiçãoDFe do ADN no mesmo run.
+// O ADN devolve HTTP 429 ("limitou a consulta") quando as consultas vêm em rajada
+// (mesma causa do 656 no SEFAZ). Espaçar evita o 429 espúrio. Configurável por env.
+const RECEITA_NFSE_QUERY_DELAY_MS = Math.max(0, Number(process.env.RECEITA_NFSE_QUERY_DELAY_MS) || 2000);
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function getReceitaNfseBaseUrl(environment?: string | null, explicitBaseUrl?: string | null): string {
   const custom = (explicitBaseUrl || '').trim();
@@ -125,6 +131,10 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
   let rateLimited = false;
 
   for (let i = 0; i < maxSteps; i++) {
+    // Espaça consultas consecutivas (a partir da 2ª) — rajada disparava o 429.
+    if (i > 0 && RECEITA_NFSE_QUERY_DELAY_MS > 0) {
+      await sleep(RECEITA_NFSE_QUERY_DELAY_MS);
+    }
     const targetNsu = incrementNsu(lastNsu);
     const response = await client.fetchDfeByNsu(targetNsu, cnpjConsulta);
 
@@ -141,22 +151,6 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     if (response.statusCode >= 400 && response.statusCode !== 404) {
       throw new Error(`Receita NFS-e: resposta HTTP ${response.statusCode} ao consultar NSU ${targetNsu}.`);
     }
-
-    // DIAGNÓSTICO TEMPORÁRIO (2026-06-13): o throw de HTML/parseFailed não estava
-    // disparando em produção apesar do código deployado. Loga o que o sync vê de
-    // fato neste ponto p/ fechar o diagnóstico no próximo ciclo. Remover após.
-    log.warn(
-      {
-        nsu: targetNsu,
-        statusCode: response.statusCode,
-        contentType: response.contentType,
-        parseFailed: response.parseFailed,
-        isEmpty: response.isEmpty,
-        docs: response.documents.length,
-        rawBodyHead: (response.rawBody || '').slice(0, 80),
-      },
-      'NFSE-DEBUG pre-check',
-    );
 
     // Corpo não-fiscal (não-JSON e sem DF-e): sinalizado pelo próprio fetch, onde o
     // parse realmente falha — robusto a qualquer forma de rawBody no resultado.
