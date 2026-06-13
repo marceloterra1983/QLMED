@@ -23,6 +23,14 @@ const SEFAZ_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.SEFAZ_AUTO_SYNC_M
 const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
 const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
 const SEFAZ_AUTO_SYNC_INTERVAL_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_AUTO_SYNC_INTERVAL_MINUTES || '120');
+// Cooldown DEDICADO após bloqueio 656 (mais longo que o intervalo normal: a SEFAZ
+// pune consumo indevido por mais tempo). Evita o ciclo de retomar 656 logo após.
+const SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES || '180');
+// Intervalo entre consultas consecutivas à DistribuiçãoDFe no mesmo run (espaça a
+// rajada que disparava o 656 'consumo indevido').
+const SEFAZ_QUERY_DELAY_MS = Math.max(0, Number(process.env.SEFAZ_QUERY_DELAY_MS) || 2000);
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function getUfCode(subject?: string | null): string {
   if (!subject) return '50';
@@ -119,7 +127,10 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
   }
 
   const elapsedMs = now.getTime() - lastRun.completedAt.getTime();
-  const cooldownMs = SEFAZ_AUTO_SYNC_INTERVAL_MINUTES * 60 * 1000;
+  const cooldownMinutes = isRateLimited
+    ? SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES
+    : SEFAZ_AUTO_SYNC_INTERVAL_MINUTES;
+  const cooldownMs = cooldownMinutes * 60 * 1000;
   if (elapsedMs >= cooldownMs) {
     return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
   }
@@ -548,6 +559,10 @@ export async function syncViaSefaz(
 
     while (temMais && loopCount < 50) {
       loopCount++;
+      // Espaça consultas consecutivas (a partir da 2ª) — rajada disparava 656.
+      if (loopCount > 1 && SEFAZ_QUERY_DELAY_MS > 0) {
+        await sleep(SEFAZ_QUERY_DELAY_MS);
+      }
       const nsuAntes = ultNSU;
 
       const response = await sefaz.buscarNovosDocumentos(ultNSU);

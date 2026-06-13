@@ -142,6 +142,18 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
       throw new Error(`Receita NFS-e: resposta HTTP ${response.statusCode} ao consultar NSU ${targetNsu}.`);
     }
 
+    // Página HTML devolvida com status 2xx (erro/interstitial do ADN): antes caía
+    // em isEmpty e o sync reportava "completed/0" silenciosamente. Trata como erro.
+    const looksHtml =
+      /text\/html/i.test(response.contentType || '') ||
+      /^\s*<(?:!doctype|html)\b/i.test(response.rawBody || '');
+    if (looksHtml) {
+      throw new Error(
+        `Receita NFS-e: resposta HTML inesperada ao consultar NSU ${targetNsu} ` +
+          `(endpoint ADN devolveu página de erro, não DF-e). Verifique certificado/conectividade.`,
+      );
+    }
+
     scannedNsuCount++;
 
     if (response.isEmpty) {
