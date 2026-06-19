@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
@@ -21,13 +22,14 @@ const AUTO_REFRESH_MS = 30_000;
 
 export default function IssuedInvoicesPage() {
   const { canWrite } = useRole();
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState(() => `${new Date().getFullYear()}-01-01`);
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || `${new Date().getFullYear()}-01-01`);
+  const [dateTo, setDateTo] = useState(() => searchParams.get('to') || '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [total, setTotal] = useState(0);
   const [sortBy, setSortBy] = useState('emission');
