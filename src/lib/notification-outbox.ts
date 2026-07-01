@@ -41,7 +41,7 @@ export function getNotificationMaxInvoiceAgeDays(): number {
 }
 
 export function isInvoiceWithinNotificationWindow(
-  invoice: Pick<Invoice, 'issueDate'>,
+  invoice: { issueDate: Date | null },
   maxAgeDays: number = getNotificationMaxInvoiceAgeDays(),
   now: Date = new Date(),
 ): boolean {
