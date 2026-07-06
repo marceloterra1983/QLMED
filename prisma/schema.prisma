@@ -328,10 +328,24 @@ model NotificationDelivery {
   lastError         String?
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
+  clicks            NotificationClick[]
 
   @@unique([eventId, channel, recipient])
   @@index([status, availableAt, createdAt])
   @@index([eventId, status])
+}
+
+model NotificationClick {
+  id         String               @id @default(cuid())
+  deliveryId String
+  delivery   NotificationDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  targetPath String               @default("/fiscal/invoices")
+  userAgent  String?
+  ipHash     String?
+  createdAt  DateTime             @default(now())
+
+  @@index([deliveryId, createdAt])
+  @@index([createdAt])
 }
 
 model ProductAggregateRebuildState {

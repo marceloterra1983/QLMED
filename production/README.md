@@ -36,7 +36,9 @@ Fonte de verdade dos manifests de producao do QLMED.
 ## Notificacoes fiscais
 
 - o deploy instala `/home/marce/notification-outbox-worker.py` e substitui apenas os crons legados de NF-e/CT-e
+- os arquivos `/home/marce/nfe-notify/.env` e `/home/marce/cte-notify/.env` devem manter `QLMED_API_URL` para a API interna e `QLMED_PUBLIC_URL=https://app.qlmed.com.br` para os links enviados aos usuarios
 - o worker deve usar uma chave dedicada com escopos `notifications:dispatch` e `notifications:assets`; nunca reutilize uma chave administrativa
 - cada nota recebida cria o evento e as entregas por destinatario/canal na mesma transacao
+- mensagens WhatsApp usam `/r/<deliveryId>` para registrar o clique em `NotificationClick` antes de redirecionar para a tela fiscal correta
 - leases expirados antes do envio voltam para retry; resultados incertos apos inicio do envio nunca sao repetidos automaticamente
 - um administrador deve reconciliar entregas incertas como enviadas ou autorizar explicitamente o reenvio
