@@ -16,6 +16,7 @@ import urllib.request
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
+from urllib.parse import quote
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -61,7 +62,26 @@ def format_brl(value: object) -> str:
     return f"R$ {number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def build_text(invoice: dict) -> str:
+def invoice_target_path(invoice: dict) -> str:
+    return "/fiscal/cte" if invoice.get("type") == "CTE" else "/fiscal/invoices"
+
+
+def public_base_url(config: dict[str, str]) -> str:
+    return (
+        config.get("QLMED_PUBLIC_URL")
+        or config.get("QLMED_APP_URL")
+        or config.get("QLMED_API_URL")
+        or "https://app.qlmed.com.br"
+    ).rstrip("/")
+
+
+def build_delivery_link(config: dict[str, str], delivery: dict | None, invoice: dict, tracked: bool) -> str:
+    if tracked and delivery and delivery.get("id"):
+        return f"{public_base_url(config)}/r/{quote(str(delivery['id']), safe='')}"
+    return f"{public_base_url(config)}{invoice_target_path(invoice)}"
+
+
+def build_text(invoice: dict, link: str) -> str:
     label = "NF-e Recebida" if invoice["type"] == "NFE" else "CT-e Recebido"
     return (
         f"{label}\n\n"
@@ -69,12 +89,12 @@ def build_text(invoice: dict) -> str:
         f"Emitente/Transportadora: {invoice.get('senderName') or '-'}\n"
         f"Valor: {format_brl(invoice.get('totalValue'))}\n"
         f"Chave: {invoice.get('accessKey') or '-'}\n\n"
-        "https://app.qlmed.com.br/fiscal/invoices"
+        f"{link}"
     )
 
 
-def build_html(invoice: dict) -> str:
-    return "<pre style=\"font-family:Arial,sans-serif\">" + html.escape(build_text(invoice)) + "</pre>"
+def build_html(invoice: dict, link: str) -> str:
+    return "<pre style=\"font-family:Arial,sans-serif\">" + html.escape(build_text(invoice, link)) + "</pre>"
 
 
 def fetch_assets(base_url: str, api_key: str, invoice: dict) -> tuple[bytes, bytes]:
@@ -95,6 +115,7 @@ def fetch_assets(base_url: str, api_key: str, invoice: dict) -> tuple[bytes, byt
 def validate_config(config: dict[str, str]) -> None:
     required = {
         "QLMED_API_URL",
+        "QLMED_PUBLIC_URL",
         "QLMED_API_KEY",
         "SMTP_HOST",
         "SMTP_PORT",
@@ -136,12 +157,13 @@ def smoke_evolution(config: dict[str, str]) -> None:
 def send_email(config: dict[str, str], delivery: dict, invoice: dict, pdf: bytes, xml: bytes) -> str:
     message = EmailMessage()
     label = "NF-e Recebida" if invoice["type"] == "NFE" else "CT-e Recebido"
+    link = build_delivery_link(config, delivery, invoice, tracked=False)
     message["Subject"] = f"{label}: Nº {invoice.get('number') or '-'} — {invoice.get('senderName') or '-'}"
     message["From"] = formataddr(("QLMED", config["SMTP_USER"]))
     message["To"] = delivery["recipient"]
     message["Message-ID"] = f"<{delivery['idempotencyKey']}@notifications.qlmed.com.br>"
-    message.set_content(build_text(invoice))
-    message.add_alternative(build_html(invoice), subtype="html")
+    message.set_content(build_text(invoice, link))
+    message.add_alternative(build_html(invoice, link), subtype="html")
     message.add_attachment(pdf, maintype="application", subtype="pdf", filename=f"{invoice['type']}_{invoice['number']}.pdf")
     message.add_attachment(xml, maintype="application", subtype="xml", filename=f"{invoice['accessKey']}.xml")
 
@@ -161,13 +183,14 @@ def send_email(config: dict[str, str], delivery: dict, invoice: dict, pdf: bytes
 
 
 def send_whatsapp(config: dict[str, str], delivery: dict, invoice: dict, pdf: bytes) -> str | None:
+    link = build_delivery_link(config, delivery, invoice, tracked=True)
     body = {
         "number": delivery["recipient"],
         "mediatype": "document",
         "media": base64.b64encode(pdf).decode("ascii"),
         "mimetype": "application/pdf",
         "fileName": f"{invoice['type']}_{invoice['number']}.pdf",
-        "caption": build_text(invoice),
+        "caption": build_text(invoice, link),
     }
     data = json.dumps(body).encode("utf-8")
     request = urllib.request.Request(
