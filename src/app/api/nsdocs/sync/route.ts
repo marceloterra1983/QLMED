@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { syncViaSefaz, syncViaNsdocs, syncViaReceitaNfse } from '@/lib/auto-sync';
+import { getSefazCooldown, syncViaSefaz, syncViaNsdocs, syncViaReceitaNfse } from '@/lib/auto-sync';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { nsdocsSyncSchema } from '@/lib/schemas/nsdocs';
@@ -75,34 +75,48 @@ export async function POST(request: NextRequest) {
 
     // SEFAZ: se method='sefaz' explícito OU fallback automático (sem method)
     if ((method === 'sefaz' || !method) && company.certificateConfig) {
-      const cert = company.certificateConfig;
-
-      const syncLog = await prisma.syncLog.create({
-        data: {
-          companyId,
-          syncMethod: 'sefaz',
-          status: 'running',
-          errorMessage: null
+      const cooldown = await getSefazCooldown(companyId);
+      if (cooldown.active) {
+        if (method === 'sefaz') {
+          return NextResponse.json(
+            {
+              error: `${cooldown.reason}. Aguarde aproximadamente ${cooldown.waitMinutes} minuto(s) antes de tentar novamente.`,
+              retryAfterMinutes: cooldown.waitMinutes,
+              lastRunAt: cooldown.lastRunAt,
+            },
+            { status: 429 },
+          );
         }
-      });
+      } else {
+        const cert = company.certificateConfig;
 
-      // Processamento Assíncrono (Fire and forget para não bloquear request)
-      syncViaSefaz(companyId, company.cnpj, company.razaoSocial, {
-        id: cert.id,
-        pfxData: cert.pfxData,
-        pfxPassword: cert.pfxPassword,
-        lastNsu: cert.lastNsu,
-        environment: cert.environment,
-        subject: cert.subject,
-      }, syncLog.id).catch((err) => {
-        log.error({ err }, 'SEFAZ Sync unhandled error in fire-and-forget');
-      });
+        const syncLog = await prisma.syncLog.create({
+          data: {
+            companyId,
+            syncMethod: 'sefaz',
+            status: 'running',
+            errorMessage: null
+          }
+        });
 
-      return NextResponse.json({
-        message: 'Sincronização SEFAZ iniciada',
-        syncMethod: 'sefaz',
-        syncLogId: syncLog.id
-      });
+        // Processamento Assíncrono (Fire and forget para não bloquear request)
+        syncViaSefaz(companyId, company.cnpj, company.razaoSocial, {
+          id: cert.id,
+          pfxData: cert.pfxData,
+          pfxPassword: cert.pfxPassword,
+          lastNsu: cert.lastNsu,
+          environment: cert.environment,
+          subject: cert.subject,
+        }, syncLog.id).catch((err) => {
+          log.error({ err }, 'SEFAZ Sync unhandled error in fire-and-forget');
+        });
+
+        return NextResponse.json({
+          message: 'Sincronização SEFAZ iniciada',
+          syncMethod: 'sefaz',
+          syncLogId: syncLog.id
+        });
+      }
     }
 
     // NSDocs: se method='nsdocs' explícito OU fallback automático (sem method)

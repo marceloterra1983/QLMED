@@ -5,6 +5,12 @@ import { timingSafeEqual, createHash } from 'crypto';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import {
+  allowsApiKeyRequest,
+  apiKeyRoleFromScopes,
+  API_KEY_REQUEST_METHOD_HEADER,
+  API_KEY_REQUEST_PATH_HEADER,
+} from '@/lib/api-key-scopes';
 
 const log = createLogger('auth');
 
@@ -27,6 +33,32 @@ export interface ApiKeyContext {
   scopes: string[];
 }
 
+type HeaderReader = { get(name: string): string | null };
+
+function getApiRequestContextFromHeaders(h: HeaderReader) {
+  const pathname = h.get(API_KEY_REQUEST_PATH_HEADER);
+  const method = h.get(API_KEY_REQUEST_METHOD_HEADER);
+  if (!pathname || !method) return null;
+  return { pathname, method };
+}
+
+function assertApiKeyRequestAllowed(ctx: ApiKeyContext, h: HeaderReader) {
+  const requestContext = getApiRequestContextFromHeaders(h);
+  if (!requestContext) {
+    log.warn({ keyId: ctx.keyId }, 'ApiKey rejected without route context');
+    throw new Error('FORBIDDEN');
+  }
+  if (!allowsApiKeyRequest(ctx.scopes, requestContext.method, requestContext.pathname)) {
+    log.warn({
+      keyId: ctx.keyId,
+      scopes: ctx.scopes,
+      method: requestContext.method,
+      pathname: requestContext.pathname,
+    }, 'ApiKey rejected by request scope');
+    throw new Error('FORBIDDEN');
+  }
+}
+
 /**
  * Resolves an incoming request's x-api-key header to a full ApiKey context
  * (keyId + creator userId + scopes) so callers can attribute audit events
@@ -39,13 +71,14 @@ export interface ApiKeyContext {
  * 2. SHA-256 hash the key and look up an active `ApiKey` row. Updates
  *    `lastUsedAt` fire-and-forget.
  * 3. Fallback: constant-time compare against the legacy QLMED_API_KEY env
- *    var and resolve to the `apikey-legacy-001` seed row (will be removed
- *    once integrations migrate off the env-supplied key).
+ *    var for n8n/internal integrations. This deliberately grants only
+ *    integration/editor-level access, not admin access.
  */
 export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
   let rawKey: string | null = null;
+  let h: HeaderReader;
   try {
-    const h = await headers();
+    h = await headers();
     rawKey = h.get('x-api-key');
   } catch {
     return null;
@@ -55,19 +88,22 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
   const hash = hashApiKey(rawKey);
 
   // Primary path: DB-backed scoped key lookup (by hash).
+  let row: { id: string; createdById: string; scopes: string[]; revokedAt: Date | null } | null = null;
   try {
-    const row = await prisma.apiKey.findUnique({
+    row = await prisma.apiKey.findUnique({
       where: { keyHash: hash },
       select: { id: true, createdById: true, scopes: true, revokedAt: true },
     });
-    if (row && !row.revokedAt) {
-      prisma.apiKey
-        .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
-        .catch((err) => log.warn({ err, keyId: row.id }, 'ApiKey lastUsedAt update failed'));
-      return { keyId: row.id, userId: row.createdById, scopes: row.scopes };
-    }
   } catch (err) {
     log.error({ err }, 'ApiKey lookup failed');
+  }
+  if (row && !row.revokedAt) {
+    const ctx = { keyId: row.id, userId: row.createdById, scopes: row.scopes };
+    assertApiKeyRequestAllowed(ctx, h);
+    prisma.apiKey
+      .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
+      .catch((err) => log.warn({ err, keyId: row.id }, 'ApiKey lastUsedAt update failed'));
+    return ctx;
   }
 
   // Legacy path: env-based compare (back-compat until integrations rotate).
@@ -78,7 +114,9 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
       select: { id: true },
     });
     if (admin) {
-      return { keyId: 'legacy-env', userId: admin.id, scopes: ['admin'] };
+      const ctx = { keyId: 'legacy-env', userId: admin.id, scopes: ['integration'] };
+      assertApiKeyRequestAllowed(ctx, h);
+      return ctx;
     }
   }
   return null;
@@ -147,10 +185,10 @@ export async function requireAuth(): Promise<string> {
 }
 
 export async function requireRole(minRole: 'viewer' | 'editor' | 'admin'): Promise<{ userId: string; role: string }> {
-  // API key auth — scopes decide; for now only 'admin' scope grants admin role.
+  // API key auth — scopes decide. Legacy integration keys intentionally cap at editor.
   const apiCtx = await getApiKeyContext();
   if (apiCtx) {
-    const effectiveRole = apiCtx.scopes.includes('admin') ? 'admin' : 'viewer';
+    const effectiveRole = apiKeyRoleFromScopes(apiCtx.scopes);
     const actualLevel = ROLE_HIERARCHY[effectiveRole] ?? 0;
     const requiredLevel = ROLE_HIERARCHY[minRole] ?? 0;
     if (actualLevel < requiredLevel) {
@@ -191,12 +229,47 @@ export async function requireRole(minRole: 'viewer' | 'editor' | 'admin'): Promi
   return { userId, role: user.role };
 }
 
+export async function requireSessionRole(minRole: 'viewer' | 'editor' | 'admin'): Promise<{ userId: string; role: string }> {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  const role = session?.user?.role;
+  if (!userId || !role) {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, status: true, tokenVersion: true },
+  });
+  if (!user || user.status !== 'active') {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+  const sessionVersion = typeof session?.user?.tokenVersion === 'number' ? session.user.tokenVersion : 0;
+  if (sessionVersion !== user.tokenVersion) {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+
+  const actualLevel = ROLE_HIERARCHY[user.role] ?? 0;
+  const requiredLevel = ROLE_HIERARCHY[minRole] ?? 0;
+  if (actualLevel < requiredLevel) {
+    prisma.accessLog
+      .create({ data: { userId, action: 'permission_denied', path: `required=session:${minRole}` } })
+      .catch((err) => log.warn({ err }, 'AccessLog permission_denied write failed'));
+    throw new Error('FORBIDDEN');
+  }
+  return { userId, role: user.role };
+}
+
 export async function requireEditor(): Promise<{ userId: string; role: string }> {
   return requireRole('editor');
 }
 
 export async function requireAdmin(): Promise<{ userId: string; role: string }> {
   return requireRole('admin');
+}
+
+export async function requireSessionAdmin(): Promise<{ userId: string; role: string }> {
+  return requireSessionRole('admin');
 }
 
 export function unauthorizedResponse() {

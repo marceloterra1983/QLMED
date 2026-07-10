@@ -10,6 +10,8 @@ import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { extractAnvisa, normalizeAnvisaRegistration } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
+import { apiValidationError } from '@/lib/api-error';
+import { productsLegacyQuerySchema } from '@/lib/schemas/product';
 
 const log = createLogger('products');
 
@@ -17,7 +19,7 @@ const MAX_INVOICES = 3000;
 const MAX_ISSUED_INVOICES = 3000;
 const MAX_IMPORT_INVOICES = 500;
 const XML_BATCH_SIZE = 50;
-const MAX_LIMIT = 200;
+const EXPORT_ALL_LIMIT = 10000;
 
 interface ProductFromXml {
   code: string;
@@ -51,12 +53,6 @@ interface AggregatedProduct {
   productType: string | null;
   productSubtype: string | null;
   productSubgroup: string | null;
-}
-
-function toPositiveInt(value: string | null, fallback: number, max: number) {
-  const parsed = parseInt(value || '', 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return fallback;
-  return Math.min(parsed, max);
 }
 
 function compareStrings(left: string, right: string) {
@@ -382,18 +378,22 @@ export async function GET(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
+    const parsedQuery = productsLegacyQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsedQuery.success) return apiValidationError(parsedQuery.error);
 
-    const page = toPositiveInt(searchParams.get('page'), 1, 100000);
-    const limit = toPositiveInt(searchParams.get('limit'), 50, MAX_LIMIT);
-    const search = (searchParams.get('search') || '').trim();
-    const sort = searchParams.get('sort') || 'lastIssue';
-    const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
-    const useAnvisaLookup = searchParams.get('anvisaLookup') === '1';
-    const useIssuedNfeLookup = searchParams.get('issuedNfeLookup') === '1';
-    const onlyMissingAnvisa = searchParams.get('onlyMissingAnvisa') === '1';
-    const exportAll = searchParams.get('exportAll') === '1';
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
+    const {
+      page,
+      limit,
+      search,
+      sort,
+      order,
+      anvisaLookup: useAnvisaLookup,
+      issuedNfeLookup: useIssuedNfeLookup,
+      onlyMissingAnvisa,
+      exportAll,
+      dateFrom,
+      dateTo,
+    } = parsedQuery.data;
 
     const dateFilter: { gte?: Date; lte?: Date } = {};
     if (dateFrom) {
@@ -1383,10 +1383,11 @@ export async function GET(req: Request) {
     });
 
     const total = products.length;
-    const pages = Math.max(1, Math.ceil(total / limit));
-    const normalizedPage = Math.min(page, pages);
-    const start = (normalizedPage - 1) * limit;
-    const paginatedProducts = exportAll ? products : products.slice(start, start + limit);
+    const effectiveLimit = exportAll ? EXPORT_ALL_LIMIT : limit;
+    const pages = Math.max(1, Math.ceil(total / effectiveLimit));
+    const normalizedPage = exportAll ? 1 : Math.min(page, pages);
+    const start = (normalizedPage - 1) * effectiveLimit;
+    const paginatedProducts = products.slice(start, start + effectiveLimit);
 
     if (sort !== 'lastSale') {
       await enrichLastSaleDateForProducts(company.id, paginatedProducts);
@@ -1432,10 +1433,11 @@ export async function GET(req: Request) {
       summary,
       pagination: {
         page: normalizedPage,
-        limit,
+        limit: effectiveLimit,
         total,
         pages,
       },
+      exportLimited: exportAll && total > EXPORT_ALL_LIMIT,
       meta: {
         invoicesLimited: invoiceMetadata.length >= MAX_INVOICES,
         maxInvoices: MAX_INVOICES,

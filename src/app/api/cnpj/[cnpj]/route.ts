@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupCnpj } from '@/lib/cnpj-lookup';
 import { createLogger } from '@/lib/logger';
+import { forbiddenResponse, requireAuth, requireEditor, unauthorizedResponse } from '@/lib/auth';
 
 const log = createLogger('cnpj/:cnpj');
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ cnpj: string }> },
 ) {
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
+  }
+
   const { cnpj } = await params;
   const digits = (cnpj || '').replace(/\D/g, '');
 
@@ -19,7 +26,15 @@ export async function GET(
   }
 
   try {
-    const refresh = _req.nextUrl.searchParams.get('refresh') === '1';
+    const refresh = req.nextUrl.searchParams.get('refresh') === '1';
+    if (refresh) {
+      try {
+        await requireEditor();
+      } catch (err) {
+        if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
+        return unauthorizedResponse();
+      }
+    }
     const result = await lookupCnpj(digits, refresh);
     if (!result) {
       return NextResponse.json({ error: 'CNPJ não encontrado' }, { status: 404 });

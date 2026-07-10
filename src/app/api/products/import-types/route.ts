@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
@@ -12,7 +12,12 @@ const log = createLogger('products/import-types');
 export async function POST(req: Request) {
   try {
     let userId: string;
-    try { userId = await requireAuth(); } catch { return unauthorizedResponse(); }
+    try {
+      ({ userId } = await requireEditor());
+    } catch (err) {
+      if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
     const company = await getOrCreateSingleCompany(userId);
     await ensureProductRegistryTable();

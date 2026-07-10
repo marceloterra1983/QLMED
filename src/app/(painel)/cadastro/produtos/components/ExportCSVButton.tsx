@@ -3,14 +3,16 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { formatAmount } from '@/lib/utils';
+import { buildProductExportUrl, escapeCsvValue, type ProductExportQuery } from '@/lib/product-export';
 import type { ProductRow, ProductsResponse } from '../types';
 import { formatQuantity, formatDate, formatOptional } from './product-utils';
 
 interface ExportCSVButtonProps {
   filteredCount: number;
+  query: ProductExportQuery;
 }
 
-export default function ExportCSVButton({ filteredCount }: ExportCSVButtonProps) {
+export default function ExportCSVButton({ filteredCount, query }: ExportCSVButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -18,15 +20,12 @@ export default function ExportCSVButton({ filteredCount }: ExportCSVButtonProps)
     setIsExporting(true);
     const toastId = toast.loading('Exportando produtos...');
     try {
-      const res = await fetch('/api/products?exportAll=1&sort=lastIssue&order=desc');
+      const res = await fetch(buildProductExportUrl(query));
       if (!res.ok) throw new Error();
       const data = (await res.json()) as ProductsResponse;
       const all = data.products || [];
       if (all.length === 0) { toast.dismiss(toastId); toast.info('Nenhum produto para exportar'); return; }
-      const esc = (v: string | null | undefined) => {
-        const s = v || '';
-        return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
-      };
+      const esc = escapeCsvValue;
       const fmtNum = (v: number | null | undefined) => v != null ? String(v).replace('.', ',') : '';
       const headers = [
         'Codigo', 'Referencia', 'Produto', 'Nome Abreviado', 'Unidade', 'EAN',
@@ -53,7 +52,12 @@ export default function ExportCSVButton({ filteredCount }: ExportCSVButtonProps)
       const a = document.createElement('a');
       a.href = url; a.download = `produtos-${new Date().toISOString().split('T')[0]}.csv`; a.click();
       URL.revokeObjectURL(url);
-      toast.success(`${all.length.toLocaleString('pt-BR')} produtos exportados`, { id: toastId });
+      toast.success(
+        data.exportLimited
+          ? `${all.length.toLocaleString('pt-BR')} produtos exportados (limite de segurança)`
+          : `${all.length.toLocaleString('pt-BR')} produtos exportados`,
+        { id: toastId }
+      );
     } catch {
       toast.error('Erro ao exportar', { id: toastId });
     } finally {
@@ -64,7 +68,7 @@ export default function ExportCSVButton({ filteredCount }: ExportCSVButtonProps)
   return (
     <button
       onClick={handleExport}
-      disabled={filteredCount === 0}
+      disabled={filteredCount === 0 || isExporting}
       className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
     >
       <span className="material-symbols-outlined text-[20px]">download</span>

@@ -75,29 +75,32 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (integrity && !integrity.healthy) {
-      const errorResponse: Record<string, unknown> = {
-        status: 'error',
-        db: { status: 'connected', latencyMs: dbLatency },
-        timestamp: new Date().toISOString(),
-      };
+      const errorResponse: Record<string, unknown> = { status: 'error' };
       if (session) {
+        errorResponse.db = { status: 'connected', latencyMs: dbLatency };
         errorResponse.build = build;
         errorResponse.integrity = integrity;
         errorResponse.error = 'Banco sem dados obrigatórios de produção';
+        errorResponse.timestamp = new Date().toISOString();
       }
       return NextResponse.json(errorResponse, { status: 503 });
     }
 
-    // Public response: status, db connectivity, build metadata, timestamp
+    // Public response: minimal liveness plus commit only for deploy alignment.
+    // Operational diagnostics stay behind an authenticated session.
     const publicResponse: Record<string, unknown> = {
       status: 'ok',
-      db: { status: 'connected', latencyMs: dbLatency },
-      build,
-      timestamp: new Date().toISOString(),
+      build: {
+        commitSha: build.commitSha,
+        commitShort: build.commitShort,
+      },
     };
 
     if (session) {
-      // Authenticated response: add uptime, memory, integrity
+      // Authenticated response: add full operational diagnostics
+      publicResponse.db = { status: 'connected', latencyMs: dbLatency };
+      publicResponse.build = build;
+      publicResponse.timestamp = new Date().toISOString();
       publicResponse.uptime = process.uptime();
       publicResponse.integrity = integrity;
       publicResponse.memory = {
@@ -109,14 +112,12 @@ export async function GET() {
     return NextResponse.json(publicResponse);
   } catch (error) {
     const session = await getServerSession(authOptions).catch(() => null);
-    const errorResponse: Record<string, unknown> = {
-      status: 'error',
-      db: { status: 'disconnected' },
-      timestamp: new Date().toISOString(),
-    };
+    const errorResponse: Record<string, unknown> = { status: 'error' };
     if (session) {
+      errorResponse.db = { status: 'disconnected' };
       errorResponse.build = build;
       errorResponse.error = error instanceof Error ? error.message : 'Unknown';
+      errorResponse.timestamp = new Date().toISOString();
     }
     return NextResponse.json(errorResponse, { status: 503 });
   }

@@ -33,7 +33,7 @@
     "next": "^15.5.15",
     "next-auth": "^4.24.0",
     "node-forge": "^1.4.0",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.0.1",
     "pg": "^8.20.0",
     "pino": "^10.3.1",
     "prisma": "^7.7.0",
@@ -61,9 +61,14 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.15",
-    "postcss": "^8.4.0",
+    "postcss": "8.5.15",
     "tailwindcss": "^3.4.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.13",
+    "uuid": "11.1.1",
+    "postcss": "8.5.15"
   }
 }

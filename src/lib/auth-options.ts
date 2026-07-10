@@ -3,15 +3,16 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const log = createLogger('auth');
 
 // Brute-force defense against the 10^6 PIN space.
-// Permanent account lock after MAX_FAILED_ATTEMPTS consecutive failures;
-// cleared automatically on the next successful login. Chosen over timed-lock
-// because PINs don't rotate frequently and a timed lock leaves a predictable
-// cooldown attackers can ride; an admin re-enables explicitly via /api/users.
+// Permanent account lock after MAX_FAILED_ATTEMPTS consecutive failures.
+// Soft-lock starts only after a few misses to reduce accidental/low-effort DoS
+// while still slowing brute force against the PIN/password surface.
 const MAX_FAILED_ATTEMPTS = 10;
+const SOFT_LOCK_FAILED_ATTEMPTS = 3;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 min soft-lock while we reach 10 failures
 
 function getPinMap(): Record<string, string> {
@@ -33,10 +34,15 @@ async function recordFailedLogin(userId: string | null, email: string, type: 'pi
       where: { id: userId },
       data: {
         failedAttempts: { increment: 1 },
-        lockedUntil: { set: new Date(Date.now() + LOCKOUT_MS) },
       },
       select: { failedAttempts: true },
     });
+    if (updated.failedAttempts >= SOFT_LOCK_FAILED_ATTEMPTS) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { lockedUntil: new Date(Date.now() + LOCKOUT_MS) },
+      });
+    }
     await prisma.accessLog.create({
       data: { userId, action: 'login_failed', path: `reason=${reason}` },
     });
@@ -77,23 +83,29 @@ export const authOptions: AuthOptions = {
         if (!credentials?.password) {
           throw new Error('Senha é obrigatória');
         }
-
-        // Try PIN-based login first
-        const pinMap = getPinMap();
-        const pinEmail = pinMap[credentials.password];
-        const email = pinEmail || credentials.email;
-
-        if (!email) {
-          await recordFailedLogin(null, 'unknown', 'pin', 'no_email_resolved');
-          throw new Error('Senha inválida');
+        const submittedEmail = credentials.email?.trim().toLowerCase();
+        if (!submittedEmail) {
+          await recordFailedLogin(null, 'unknown', 'password', 'missing_email');
+          throw new Error('Email é obrigatório');
         }
 
+        const accountLimit = checkRateLimit(`login-account:${submittedEmail}`, RATE_LIMITS.loginAccount);
+        if (!accountLimit.allowed) {
+          log.warn({ email: submittedEmail, resetAt: accountLimit.resetAt }, 'Login account rate limited');
+          throw new Error('TOO_MANY_ATTEMPTS');
+        }
+
+        // PINs are only accepted when the submitted email matches the PIN owner.
+        const pinMap = getPinMap();
+        const pinEmail = pinMap[credentials.password]?.trim().toLowerCase();
+        const isPinLogin = Boolean(pinEmail);
+
         const user = await prisma.user.findUnique({
-          where: { email },
+          where: { email: submittedEmail },
         });
 
         if (!user) {
-          await recordFailedLogin(null, email, pinEmail ? 'pin' : 'password', 'user_not_found');
+          await recordFailedLogin(null, submittedEmail, isPinLogin ? 'pin' : 'password', 'user_not_found');
           throw new Error('Senha inválida');
         }
 
@@ -101,17 +113,22 @@ export const authOptions: AuthOptions = {
         // (admin must reset); intermediate soft-lock via lockedUntil prevents
         // rapid enumeration between failures.
         if (user.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-          log.warn({ userId: user.id, email }, 'Login attempt on locked account');
+          log.warn({ userId: user.id, email: submittedEmail }, 'Login attempt on locked account');
           throw new Error('ACCOUNT_LOCKED');
         }
         if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-          log.warn({ userId: user.id, email, until: user.lockedUntil }, 'Login attempt during soft-lock');
+          log.warn({ userId: user.id, email: submittedEmail, until: user.lockedUntil }, 'Login attempt during soft-lock');
           throw new Error('ACCOUNT_LOCKED');
         }
 
-        // If not a PIN login, verify bcrypt password
-        if (!pinEmail && !(await compare(credentials.password, user.passwordHash))) {
-          await recordFailedLogin(user.id, email, 'password', 'bcrypt_mismatch');
+        if (isPinLogin && pinEmail !== submittedEmail) {
+          await recordFailedLogin(user.id, submittedEmail, 'pin', 'pin_email_mismatch');
+          throw new Error('Email ou senha inválidos');
+        }
+
+        // If not a PIN login, verify bcrypt password.
+        if (!isPinLogin && !(await compare(credentials.password, user.passwordHash))) {
+          await recordFailedLogin(user.id, submittedEmail, 'password', 'bcrypt_mismatch');
           throw new Error('Email ou senha inválidos');
         }
 

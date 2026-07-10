@@ -172,6 +172,16 @@ export default function ProdutosPage() {
     const map: Record<string, string> = { description: 'description', code: 'code', ncm: 'ncm', anvisa: 'anvisa', lastPrice: 'lastPrice', lastIssueDate: 'lastIssueDate', lastSaleDate: 'lastSaleDate', supplier: 'supplier', productType: 'productType', totalQuantity: 'quantity', invoiceCount: 'invoices' };
     return map[sortBy] || 'lastIssueDate';
   }, [sortBy]);
+  const exportQuery = useMemo(() => ({
+    search: debouncedSearch,
+    sort: serverSortField,
+    order: sortOrder,
+    lineStatus: lineStatusFilter,
+    productType: typeFilter,
+    productSubtype: subtypeFilter,
+    productSubgroup: subgroupFilter,
+    onlyMissingAnvisa: onlyMissing,
+  }), [debouncedSearch, serverSortField, sortOrder, lineStatusFilter, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
 
   // ---- load products ----
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -309,7 +319,7 @@ export default function ProdutosPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <ExportCSVButton filteredCount={filtered.length} />
+          <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
         </div>
       </div>
 
