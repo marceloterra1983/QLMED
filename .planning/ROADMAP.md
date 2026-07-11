@@ -243,7 +243,7 @@ Plans:
 
 ### Phase 11: Unificação de Schema
 **Goal**: As 9 tabelas satélite hoje `@@ignore` + DDL manual nas stores passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
-**Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 (separação de banco dev/prod) em `/home/marce` — **não iniciar esta fase antes de confirmar que Phase 2 lá está concluída**
+**Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 em `/home/marce` — **CONFIRMADO CONCLUÍDA em 2026-07-11** (`qlmed_dev` provisionado, `.env` de dev repontado, isolamento comprovado ao vivo: marker count=1 em dev, count=0 em produção). Bloqueio removido, fase liberada para planejamento/execução.
 **Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03
 **Success Criteria** (o que precisa ser verdade):
   1. As 9 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, ncm_cache, cnpj_cache, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
