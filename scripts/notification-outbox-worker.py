@@ -13,10 +13,27 @@ import ssl
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
 from urllib.parse import quote
+
+# Heartbeat consumido pelo silent-watchdog do host: arquivo mais velho que o
+# esperado indica worker morto (cron parado, crash antes do claim, etc.).
+DEFAULT_HEARTBEAT_DIR = "/srv/qlmed/services/notification-outbox/state"
+
+
+def write_heartbeat(config: dict[str, str], invoice_type: str) -> None:
+    try:
+        heartbeat_dir = Path(config.get("QLMED_NOTIFY_HEARTBEAT_DIR") or DEFAULT_HEARTBEAT_DIR)
+        heartbeat_dir.mkdir(parents=True, exist_ok=True)
+        (heartbeat_dir / f"heartbeat-{invoice_type}").write_text(
+            datetime.now(timezone.utc).isoformat() + "\n"
+        )
+    except OSError:
+        # Heartbeat é observabilidade — nunca derruba o envio de notificações.
+        pass
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -293,6 +310,7 @@ def main() -> int:
         except Exception as error:
             ack(base_url, api_key, delivery, "uncertain", error=f"Provider outcome unknown: {error!r}")
 
+    write_heartbeat(config, args.invoice_type)
     return 0
 
 

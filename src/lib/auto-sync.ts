@@ -26,6 +26,9 @@ const SEFAZ_AUTO_SYNC_INTERVAL_MINUTES = normalizeSyncIntervalMinutes(process.en
 // Cooldown DEDICADO após bloqueio 656 (mais longo que o intervalo normal: a SEFAZ
 // pune consumo indevido por mais tempo). Evita o ciclo de retomar 656 logo após.
 const SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES || '180');
+// Bloqueios 656 consecutivos dobram o cooldown (3h → 6h → 12h...) até este teto:
+// retomar no mesmo ritmo após um 656 repetido só estende a punição da SEFAZ.
+const SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES || '720');
 // Intervalo entre consultas consecutivas à DistribuiçãoDFe no mesmo run (espaça a
 // rajada que disparava o 656 'consumo indevido').
 const SEFAZ_QUERY_DELAY_MS = Math.max(0, Number(process.env.SEFAZ_QUERY_DELAY_MS) || 2000);
@@ -99,7 +102,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
   waitMinutes: number;
   reason: string | null;
 }> {
-  const lastRun = await prisma.syncLog.findFirst({
+  const recentRuns = await prisma.syncLog.findMany({
     where: {
       companyId,
       syncMethod: 'sefaz',
@@ -107,6 +110,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
       completedAt: { not: null },
     },
     orderBy: { completedAt: 'desc' },
+    take: 6,
     select: {
       status: true,
       errorMessage: true,
@@ -115,20 +119,32 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
       updatedDocs: true,
     },
   });
+  const lastRun = recentRuns[0];
 
   if (!lastRun?.completedAt) {
     return { active: false, lastRunAt: null, waitMinutes: 0, reason: null };
   }
 
-  const isRateLimited = lastRun.status === 'error' && (lastRun.errorMessage || '').includes('656');
+  const is656 = (run: typeof lastRun) => run.status === 'error' && (run.errorMessage || '').includes('656');
+  const isRateLimited = is656(lastRun);
   const wasEmptyRun = lastRun.status === 'completed' && lastRun.newDocs === 0 && lastRun.updatedDocs === 0;
   if (!isRateLimited && !wasEmptyRun) {
     return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
   }
 
+  // Streak de 656 consecutivos (a partir do run mais recente) escala o cooldown.
+  let rateLimitStreak = 0;
+  for (const run of recentRuns) {
+    if (!is656(run)) break;
+    rateLimitStreak++;
+  }
+
   const elapsedMs = now.getTime() - lastRun.completedAt.getTime();
   const cooldownMinutes = isRateLimited
-    ? SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES
+    ? Math.min(
+        SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES * 2 ** (rateLimitStreak - 1),
+        SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES,
+      )
     : SEFAZ_AUTO_SYNC_INTERVAL_MINUTES;
   const cooldownMs = cooldownMinutes * 60 * 1000;
   if (elapsedMs >= cooldownMs) {
@@ -139,7 +155,9 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
     active: true,
     lastRunAt: lastRun.completedAt,
     waitMinutes: Math.ceil((cooldownMs - elapsedMs) / 60000),
-    reason: isRateLimited ? 'Bloqueio SEFAZ 656 recente' : 'Última consulta SEFAZ sem documentos',
+    reason: isRateLimited
+      ? `Bloqueio SEFAZ 656 recente (${rateLimitStreak} consecutivo${rateLimitStreak > 1 ? 's' : ''})`
+      : 'Última consulta SEFAZ sem documentos',
   };
 }
 
