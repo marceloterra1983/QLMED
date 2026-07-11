@@ -263,9 +263,9 @@ Plans:
   4. `siscomex-client` existe (fecha o `fetch` direto em `ncm/bulk-sync`); `products/sync-anvisa` elimina seu `fetch()` de loopback interno para `/api/products`, chamando `buildProductsListPayload()` diretamente em processo — **correção pós-planejamento**: o `fetch` original não era uma chamada externa à ANVISA (verificado no código durante o plan-check), não há `anvisa-api` para rotear ali
 **Plans:** 3 plans
 Plans:
-- [ ] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01)
-- [ ] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02)
-- [ ] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03)
+- [x] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01) — completed 2026-07-11
+- [x] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02) — completed 2026-07-11
+- [~] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03) — code complete, manual smoke test (Task 3) pending developer
 
 ## Progress
 
@@ -282,7 +282,7 @@ Plans:
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
 | 11. Unificação de Schema | 0/TBD | Not started | - |
-| 12. Desduplicação de Código | 0/3 | Planned | - |
+| 12. Desduplicação de Código | 2/3 (código) | Código completo, smoke test manual pendente | - |
 
 ---
 *Last updated: 2026-07-11 — adicionada milestone v2.0 (Phases 11-12), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*
