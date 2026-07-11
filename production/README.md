@@ -12,16 +12,16 @@ Fonte de verdade dos manifests de producao do QLMED.
 
 ## Estrutura remota esperada
 
-- `/home/marce/QLMED/production/docker-compose.yml`
-- `/home/marce/QLMED/production/.env`
-- `/home/marce/QLMED/production/env/app.env`
-- `/home/marce/QLMED/production/env/n8n.env`
-- `/home/marce/QLMED/production/app`
+- `/home/marce/qlmed/production/docker-compose.yml`
+- `/home/marce/qlmed/production/.env`
+- `/home/marce/qlmed/production/env/app.env`
+- `/home/marce/qlmed/production/env/n8n.env`
+- `/home/marce/qlmed/production/app`
 
 ## Fonte de verdade
 
 - o repositorio `QLMED` e a unica fonte de verdade para codigo e manifests de producao
-- `/home/marce/qlmed-server-deploy` e legado e nao deve mais ser usado como alvo de manutencao ou deploy
+- `/home/marce/qlmed/production` e legado e nao deve mais ser usado como alvo de manutencao ou deploy
 
 ## Deploy
 

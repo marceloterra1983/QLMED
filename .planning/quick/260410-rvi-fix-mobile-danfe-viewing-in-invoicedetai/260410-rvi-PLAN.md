@@ -202,7 +202,7 @@ Design notes:
 - Do NOT add any new imports (useState, useEffect already imported from 'react' on line 3).
   </action>
   <verify>
-    <automated>cd /home/marce/QLMED/dev &amp;&amp; export NVM_DIR="$HOME/.nvm" &amp;&amp; . "$NVM_DIR/nvm.sh" &amp;&amp; nvm use 22 &gt;/dev/null &amp;&amp; npx tsc --noEmit -p tsconfig.json 2&gt;&amp;1 | grep -i "InvoiceDetailsModal" || echo "OK: no type errors in InvoiceDetailsModal"</automated>
+    <automated>cd /home/marce/qlmed/dev &amp;&amp; export NVM_DIR="$HOME/.nvm" &amp;&amp; . "$NVM_DIR/nvm.sh" &amp;&amp; nvm use 22 &gt;/dev/null &amp;&amp; npx tsc --noEmit -p tsconfig.json 2&gt;&amp;1 | grep -i "InvoiceDetailsModal" || echo "OK: no type errors in InvoiceDetailsModal"</automated>
   </verify>
   <done>
 - `src/components/InvoiceDetailsModal.tsx` contains `const [isMobile, setIsMobile] = useState(false)`.

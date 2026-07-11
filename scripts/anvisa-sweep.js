@@ -8,7 +8,7 @@
  *   3. Gera SQL com UPDATE (anvisa_code = 'N/A' ou o registro encontrado)
  *
  * Uso:
- *   cd ~/QLMED && node scripts/anvisa-sweep.js [--apply]
+ *   cd ~/qlmed/app-dev && node scripts/anvisa-sweep.js [--apply]
  */
 
 const { execSync } = require('child_process');

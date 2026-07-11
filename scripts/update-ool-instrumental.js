@@ -9,7 +9,7 @@
  *   • instrumental = false nos demais
  *
  * Uso:
- *   cd ~/QLMED && node scripts/update-ool-instrumental.js [--apply]
+ *   cd ~/qlmed/app-dev && node scripts/update-ool-instrumental.js [--apply]
  */
 
 const XLSX         = require('xlsx');

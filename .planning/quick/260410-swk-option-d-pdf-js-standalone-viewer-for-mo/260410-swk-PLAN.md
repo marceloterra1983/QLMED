@@ -189,7 +189,7 @@ Mozilla PDF.js release to fetch:
 - Target directory: `public/pdfjs/`
 - After extraction, the zip contains `build/`, `web/`, `LICENSE` at the top level — these should land directly under `public/pdfjs/` (NOT nested under `public/pdfjs/pdfjs-4.8.69-legacy-dist/`).
 
-Extraction procedure (run from `/home/marce/QLMED/dev`):
+Extraction procedure (run from `/home/marce/qlmed/dev`):
 ```bash
 mkdir -p public/pdfjs
 curl -fsSL -o /tmp/pdfjs.zip https://github.com/mozilla/pdf.js/releases/download/v4.8.69/pdfjs-4.8.69-legacy-dist.zip
@@ -221,7 +221,7 @@ fi
   <action>
     Fetch Mozilla PDF.js v4.8.69 legacy dist and extract it into `public/pdfjs/` so that `public/pdfjs/web/viewer.html` and `public/pdfjs/build/pdf.mjs` exist as direct paths.
 
-    Steps (from repo root `/home/marce/QLMED/dev`):
+    Steps (from repo root `/home/marce/qlmed/dev`):
     1. `mkdir -p public/pdfjs`
     2. `curl -fsSL -o /tmp/pdfjs.zip https://github.com/mozilla/pdf.js/releases/download/v4.8.69/pdfjs-4.8.69-legacy-dist.zip`
     3. `unzip -q -o /tmp/pdfjs.zip -d public/pdfjs/` (if `unzip` missing, fall back to `python3 -c "import zipfile; zipfile.ZipFile('/tmp/pdfjs.zip').extractall('public/pdfjs/')"`)

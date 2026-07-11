@@ -14,7 +14,7 @@
  *   • anvisa_synced_at             = NOW()
  *
  * Uso:
- *   cd ~/QLMED && node scripts/sync-anvisa-opendata.js [--apply]
+ *   cd ~/qlmed/app-dev && node scripts/sync-anvisa-opendata.js [--apply]
  *
  * Arquivo CSV salvo em /tmp/anvisa-opendata.csv (reusado se < 7 dias)
  */

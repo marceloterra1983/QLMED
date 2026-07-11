@@ -1,3 +1,3 @@
 # Allow the isolated production runner to validate and install only the
 # versioned QLMED notification worker as the operational account.
-gh-runner ALL=(marce) NOPASSWD: /usr/bin/bash /home/marce/QLMED/production/app/scripts/install-notification-outbox-cron.sh /home/marce/QLMED/production/app/scripts/notification-outbox-worker.py
+gh-runner ALL=(marce) NOPASSWD: /usr/bin/bash /home/marce/qlmed/production/app/scripts/install-notification-outbox-cron.sh /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py

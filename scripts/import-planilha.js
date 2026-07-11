@@ -11,7 +11,7 @@
  *   • out_of_line segue o campo "tipo" da planilha (tipo = "FORA DE LINHA" → true)
  *
  * Uso:
- *   cd ~/QLMED && node scripts/import-planilha.js [--apply]
+ *   cd ~/qlmed/app-dev && node scripts/import-planilha.js [--apply]
  */
 
 const XLSX         = require('xlsx');

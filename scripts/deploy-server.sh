@@ -11,7 +11,7 @@ scripts/publish-server.sh via git push + Coolify.
 
 Defaults:
   DEPLOY_HOST=server
-  DEPLOY_DIR=/home/marce/QLMED/production
+  DEPLOY_DIR=/home/marce/qlmed/production
   DEPLOY_PROJECT_NAME=qlmed
   DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
@@ -61,7 +61,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
-DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
+DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/qlmed/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
 DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"

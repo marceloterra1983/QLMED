@@ -8,13 +8,13 @@ Usage:
   scripts/rollback-server.sh --legacy latest
   scripts/rollback-server.sh --legacy <release-name>
 
-Rolls back only the legacy/manual compose stack in /home/marce/QLMED/production.
+Rolls back only the legacy/manual compose stack in /home/marce/qlmed/production.
 Public production at https://app.qlmed.com.br is normally rolled forward/back via
 git history and Coolify, not by this script.
 
 Defaults:
   DEPLOY_HOST=server
-  DEPLOY_DIR=/home/marce/QLMED/production
+  DEPLOY_DIR=/home/marce/qlmed/production
   DEPLOY_PROJECT_NAME=qlmed
   DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
   DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
@@ -60,7 +60,7 @@ if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
 fi
 
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
-DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/QLMED/production}"
+DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/qlmed/production}"
 DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
 DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
 DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"

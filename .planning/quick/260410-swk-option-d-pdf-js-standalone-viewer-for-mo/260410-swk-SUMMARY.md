@@ -316,13 +316,13 @@ User should type **"approved"** if all steps pass, or describe any issue (e.g. "
 ## Self-Check: PASSED
 
 **File existence checks:**
-- FOUND: /home/marce/QLMED/dev/public/pdfjs/web/viewer.html
-- FOUND: /home/marce/QLMED/dev/public/pdfjs/build/pdf.mjs
-- FOUND: /home/marce/QLMED/dev/public/pdfjs/build/pdf.worker.mjs
-- FOUND: /home/marce/QLMED/dev/public/pdfjs/LICENSE
-- FOUND: /home/marce/QLMED/dev/src/app/api/invoices/[id]/pdf/route.ts (modified)
-- FOUND: /home/marce/QLMED/dev/src/components/InvoiceDetailsModal.tsx (modified)
-- FOUND: /home/marce/QLMED/dev/.planning/quick/260410-swk-option-d-pdf-js-standalone-viewer-for-mo/260410-swk-SUMMARY.md
+- FOUND: /home/marce/qlmed/dev/public/pdfjs/web/viewer.html
+- FOUND: /home/marce/qlmed/dev/public/pdfjs/build/pdf.mjs
+- FOUND: /home/marce/qlmed/dev/public/pdfjs/build/pdf.worker.mjs
+- FOUND: /home/marce/qlmed/dev/public/pdfjs/LICENSE
+- FOUND: /home/marce/qlmed/dev/src/app/api/invoices/[id]/pdf/route.ts (modified)
+- FOUND: /home/marce/qlmed/dev/src/components/InvoiceDetailsModal.tsx (modified)
+- FOUND: /home/marce/qlmed/dev/.planning/quick/260410-swk-option-d-pdf-js-standalone-viewer-for-mo/260410-swk-SUMMARY.md
 
 **Commit existence checks:**
 - FOUND: 84cfb84 (Task 1: PDF.js asset drop)

@@ -53,12 +53,12 @@ jobs:
 
       - name: Sync production manifests
         run: |
-          mkdir -p /home/marce/QLMED/production
-          cp production/docker-compose.yml /home/marce/QLMED/production/docker-compose.yml
+          mkdir -p /home/marce/qlmed/production
+          cp production/docker-compose.yml /home/marce/qlmed/production/docker-compose.yml
 
       - name: Sync application source
         run: |
-          mkdir -p /home/marce/QLMED/production/app
+          mkdir -p /home/marce/qlmed/production/app
           rsync -rl --delete \
             --exclude '.git' \
             --exclude '.github' \
@@ -66,12 +66,12 @@ jobs:
             --exclude '.next' \
             --exclude 'node_modules' \
             --exclude 'production' \
-            ./ /home/marce/QLMED/production/app/
+            ./ /home/marce/qlmed/production/app/
 
       - name: Stamp deploy metadata
         run: |
           deploy_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          cat > /home/marce/QLMED/production/app/.deploy-meta.env <<EOF
+          cat > /home/marce/qlmed/production/app/.deploy-meta.env <<EOF
           QLMED_BUILD_COMMIT_SHA=${deploy_sha}
           QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           QLMED_BUILD_SOURCE=github-actions
@@ -88,12 +88,12 @@ jobs:
       - name: Deploy stack on server
         run: |
           set -a
-          . /home/marce/QLMED/production/app/.deploy-meta.env
+          . /home/marce/qlmed/production/app/.deploy-meta.env
           set +a
           compose=(docker compose \
             --project-name qlmed \
-            --env-file /home/marce/QLMED/production/.env \
-            -f /home/marce/QLMED/production/docker-compose.yml)
+            --env-file /home/marce/qlmed/production/.env \
+            -f /home/marce/qlmed/production/docker-compose.yml)
           "${compose[@]}" build qlmed-app
           "${compose[@]}" run --rm --no-deps qlmed-app sh -c \
             'node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code'
@@ -157,16 +157,16 @@ jobs:
       - name: Install transactional notification worker
         run: |
           sudo -n -u marce -- \
-            /usr/bin/bash /home/marce/QLMED/production/app/scripts/install-notification-outbox-cron.sh \
-            /home/marce/QLMED/production/app/scripts/notification-outbox-worker.py
+            /usr/bin/bash /home/marce/qlmed/production/app/scripts/install-notification-outbox-cron.sh \
+            /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
 
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
         run: |
           QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" docker compose \
             --project-name qlmed \
-            --env-file /home/marce/QLMED/production/.env \
-            -f /home/marce/QLMED/production/docker-compose.yml \
+            --env-file /home/marce/qlmed/production/.env \
+            -f /home/marce/qlmed/production/docker-compose.yml \
             up -d --no-build --force-recreate qlmed-app
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:13000/api/health >/dev/null; then
