@@ -261,7 +261,11 @@ Plans:
   2. Resposta da API de produtos é idêntica antes/depois (snapshot comparado)
   3. `auto-sync.ts` está dividido em `sync-scheduler` + `sync-strategies/{sefaz,nsdocs,receita-nfse}` com um contrato de estratégia comum
   4. `siscomex-client` existe; `products/sync-anvisa` usa `anvisa-api` em vez de `fetch` direto
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01)
+- [ ] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02)
+- [ ] 12-03-PLAN.md — Create siscomex-client.ts, reroute ncm/bulk-sync + products/sync-anvisa off raw fetch() (CODEDUP-03)
 
 ## Progress
 
@@ -278,7 +282,7 @@ Plans:
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
 | 11. Unificação de Schema | 0/TBD | Not started | - |
-| 12. Desduplicação de Código | 0/TBD | Not started | - |
+| 12. Desduplicação de Código | 0/3 | Planned | - |
 
 ---
 *Last updated: 2026-07-11 — adicionada milestone v2.0 (Phases 11-12), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*
