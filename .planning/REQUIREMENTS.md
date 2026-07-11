@@ -136,9 +136,15 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 - [ ] **CODEDUP-02**: `auto-sync.ts` (god module, scheduler + cooldown + 3
       estratégias) quebrado em `sync-scheduler` + `sync-strategies/{sefaz,
       nsdocs,receita-nfse}` com contrato comum
-- [ ] **CODEDUP-03**: `siscomex-client` criado; `products/sync-anvisa`
-      roteado por `anvisa-api` — fecha os 2 últimos `fetch` diretos em
-      handler (SISCOMEX e um caminho ANVISA)
+- [ ] **CODEDUP-03**: `siscomex-client` criado, fechando o `fetch` direto em
+      `ncm/bulk-sync`. **Correção pós-planejamento (2026-07-11)**: a
+      caracterização original de `products/sync-anvisa` como "fetch externo à
+      ANVISA" estava errada — verificado no código que é um `fetch()` de
+      loopback interno para a própria `/api/products`, não uma chamada
+      externa. `anvisa-api.ts` já não é usado ali e não há nada de ANVISA
+      para rotear. O plano 12-03 corrige o problema real: substitui o
+      loopback HTTP por uma chamada em processo a
+      `buildProductsListPayload()` (extraída em CODEDUP-01)
 
 ## Out of Scope
 

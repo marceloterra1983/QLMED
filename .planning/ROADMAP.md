@@ -260,12 +260,12 @@ Plans:
   1. `products/route.ts` não contém mais `UNIT_ALIASES`, `normalizeUnit`, `buildProductKey`, `extractProductsFromXml` inline — importa de `product-aggregation.ts`
   2. Resposta da API de produtos é idêntica antes/depois (snapshot comparado)
   3. `auto-sync.ts` está dividido em `sync-scheduler` + `sync-strategies/{sefaz,nsdocs,receita-nfse}` com um contrato de estratégia comum
-  4. `siscomex-client` existe; `products/sync-anvisa` usa `anvisa-api` em vez de `fetch` direto
+  4. `siscomex-client` existe (fecha o `fetch` direto em `ncm/bulk-sync`); `products/sync-anvisa` elimina seu `fetch()` de loopback interno para `/api/products`, chamando `buildProductsListPayload()` diretamente em processo — **correção pós-planejamento**: o `fetch` original não era uma chamada externa à ANVISA (verificado no código durante o plan-check), não há `anvisa-api` para rotear ali
 **Plans:** 3 plans
 Plans:
 - [ ] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01)
 - [ ] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02)
-- [ ] 12-03-PLAN.md — Create siscomex-client.ts, reroute ncm/bulk-sync + products/sync-anvisa off raw fetch() (CODEDUP-03)
+- [ ] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03)
 
 ## Progress
 
