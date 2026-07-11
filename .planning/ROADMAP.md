@@ -18,6 +18,14 @@
 - [ ] **Phase 9: Search & Pagination** - Busca DB-level, paginacao real, cache headers, server component layout
 - [x] **Phase 10: Major Upgrades** - Next.js 15, React 19, Prisma 7, ESLint 9, minor upgrades (completed 2026-04-10)
 
+## Milestone v2.0: Remediação Pós-Revisão Arquitetural (iniciada 2026-07-11)
+
+**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
+Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
+
+- [ ] **Phase 11: Unificação de Schema** - Baseline Prisma das 9 tabelas satélite `@@ignore`, migração store-a-store para Client tipado, política expand/contract de migração
+- [ ] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado
+
 ## Phase Details
 
 ### Phase 1: Security Critical
@@ -222,6 +230,39 @@ Plans:
 
 **Total: 40/40 requirements mapped. Zero orphans.**
 
+| Requirement | Phase |
+|-------------|-------|
+| SCHEMA-01 | Phase 11 | Pending |
+| SCHEMA-02 | Phase 11 | Pending |
+| SCHEMA-03 | Phase 11 | Pending |
+| CODEDUP-01 | Phase 12 | Pending |
+| CODEDUP-02 | Phase 12 | Pending |
+| CODEDUP-03 | Phase 12 | Pending |
+
+**Milestone v2.0: 6/6 requirements mapped. Zero orphans.**
+
+### Phase 11: Unificação de Schema
+**Goal**: As 9 tabelas satélite hoje `@@ignore` + DDL manual nas stores passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
+**Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 (separação de banco dev/prod) em `/home/marce` — **não iniciar esta fase antes de confirmar que Phase 2 lá está concluída**
+**Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03
+**Success Criteria** (o que precisa ser verdade):
+  1. As 9 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, ncm_cache, cnpj_cache, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
+  2. Ao menos a store de menor tráfego (ex.: cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
+  3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
+  4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
+**Plans**: TBD
+
+### Phase 12: Desduplicação de Código
+**Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`
+**Depends on**: Nothing dentro deste repo (independente da Phase 11), mas roda depois dela para não competir por atenção com migração de schema
+**Requirements**: CODEDUP-01, CODEDUP-02, CODEDUP-03
+**Success Criteria** (o que precisa ser verdade):
+  1. `products/route.ts` não contém mais `UNIT_ALIASES`, `normalizeUnit`, `buildProductKey`, `extractProductsFromXml` inline — importa de `product-aggregation.ts`
+  2. Resposta da API de produtos é idêntica antes/depois (snapshot comparado)
+  3. `auto-sync.ts` está dividido em `sync-scheduler` + `sync-strategies/{sefaz,nsdocs,receita-nfse}` com um contrato de estratégia comum
+  4. `siscomex-client` existe; `products/sync-anvisa` usa `anvisa-api` em vez de `fetch` direto
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -236,6 +277,8 @@ Plans:
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
+| 11. Unificação de Schema | 0/TBD | Not started | - |
+| 12. Desduplicação de Código | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-04-10 after Phase 9 and 10 planning*
+*Last updated: 2026-07-11 — adicionada milestone v2.0 (Phases 11-12), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*

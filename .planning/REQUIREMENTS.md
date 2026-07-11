@@ -3,6 +3,17 @@
 **Defined:** 2026-04-10
 **Core Value:** Garantir que o QLMED em produção seja seguro, performático e manutenível
 
+> **Milestone v1.0 completo** (10 fases, 33 planos, 2026-04-10). O conteúdo
+> abaixo até "## v2 Requirements" é histórico dessa milestone.
+>
+> **Milestone v2.0 (iniciada 2026-07-11)**: ver seção "## Milestone v2.0"
+> mais abaixo — remediação pós-revisão arquitetural de 2026-07-11
+> (`docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4 do
+> plano original). Escopo deliberadamente separado do workstream
+> `server-hardening` em `/home/marce` (repo distinto) — ver lá para
+> backup, separação de banco dev/prod, versionamento AutomatizeMS, dedup
+> dos notificadores Python, e endurecimento de rede/secrets.
+
 ## v1 Requirements
 
 Requirements para este milestone. Cada um mapeia para fases do roadmap.
@@ -77,13 +88,57 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 - [x] **UPG-04**: ESLint 8→9+ (flat config, eslint.config.mjs)
 - [x] **UPG-05**: Minor upgrades — bcryptjs 2→3, zod 3→4, typescript 5→6
 
-## v2 Requirements
-
-Deferred para milestone futuro.
+## v2 Requirements (deferred da milestone v1.0)
 
 - **XMLSTORE-01**: Extrair xmlContent da tabela Invoice para storage externo (S3/filesystem) — referenciado em memory
 - **TW4-01**: Migração Tailwind CSS 3→4 — rewrite significativo
 - **TEST-01**: Implementar test suite (unit + integration) para rotas API críticas
+
+---
+
+## Milestone v2.0: Remediação Pós-Revisão Arquitetural
+
+**Defined:** 2026-07-11
+**Core Value (desta milestone):** Eliminar a dívida estrutural identificada na
+revisão arquitetural de 2026-07-11 — duplicação divergente entre rota e lib,
+e o padrão de dual source-of-truth do schema (modelo Prisma `@@ignore` + DDL
+manual nas stores) que a própria milestone v1.0 introduziu conscientemente
+(ver Key Decisions em STATE.md: "@@ignore stubs for schema visibility",
+fase 03-01) como forma de evitar `prisma migrate` num banco compartilhado
+dev/prod. Essa restrição deixa de existir quando o workstream
+`server-hardening` (repo `/home/marce`, Phase 2) separar o banco de dev —
+esta milestone assume que isso já aconteceu.
+
+**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md` (Fase 4 e Fase 5.1/5.3/5.4
+do plano original), produto de revisão por 3 agentes de arquitetura em
+2026-07-11.
+
+### Unificação de Schema (Fase 4 do plano original)
+
+- [ ] **SCHEMA-01**: Baseline Prisma das 9 tabelas satélite hoje `@@ignore`
+      (`invoice_tax_totals`, `invoice_item_tax`, `contact_fiscal`,
+      `invoice_duplicata`, `product_registry`, `stock_entry`, `ncm_cache`,
+      `cnpj_cache`, `product_settings_catalog`) — schema versionado substitui
+      o registro `@@ignore`
+- [ ] **SCHEMA-02**: Stores migradas para Prisma Client tipado uma de cada
+      vez (começando pela de menor tráfego), aposentando `ensureXxxTable()`
+      store a store, com deploy + observação entre cada uma
+- [ ] **SCHEMA-03**: Política expand/contract de migração documentada; ajuste
+      no `deploy-production.yml` refletindo que rollback de imagem não desfaz
+      migração de banco
+
+### Desduplicação de Código (Fase 5.1/5.3/5.4 do plano original)
+
+- [ ] **CODEDUP-01**: `products/route.ts` (1453 linhas) para de reimplementar
+      inline funções já existentes em `product-aggregation.ts`
+      (`normalizeUnit`, `buildProductKey`, `extractProductsFromXml`,
+      `UNIT_ALIASES`) — consome exclusivamente a lib
+- [ ] **CODEDUP-02**: `auto-sync.ts` (god module, scheduler + cooldown + 3
+      estratégias) quebrado em `sync-scheduler` + `sync-strategies/{sefaz,
+      nsdocs,receita-nfse}` com contrato comum
+- [ ] **CODEDUP-03**: `siscomex-client` criado; `products/sync-anvisa`
+      roteado por `anvisa-api` — fecha os 2 últimos `fetch` diretos em
+      handler (SISCOMEX e um caminho ANVISA)
 
 ## Out of Scope
 
@@ -94,6 +149,7 @@ Deferred para milestone futuro.
 | prisma migrate dev | DB compartilhado dev/prod, usar apenas db push |
 | Redesign de UI | Manter visual atual, apenas refatorar código |
 | Test suite completo | Foco em correção, não em testes — defer para v2 |
+| Backup/restore, separação de banco dev/prod, versionamento AutomatizeMS, dedup dos notificadores Python, endurecimento de rede/secrets | Pertence ao workstream `server-hardening` no repo `/home/marce` (raiz do domínio), não a este repo `app-dev` — ver `docs/server/ARCH-REMEDIATION-PLAN.md` |
 
 ## Traceability
 
@@ -109,6 +165,8 @@ Deferred para milestone futuro.
 | SPLIT-01..SPLIT-04 | Phase 8: File Splitting |
 | PERF-06..PERF-09 | Phase 9: Search & Pagination |
 | UPG-01..UPG-05 | Phase 10: Major Upgrades |
+| SCHEMA-01..SCHEMA-03 | Phase 11: Unificação de Schema |
+| CODEDUP-01..CODEDUP-03 | Phase 12: Desduplicação de Código |
 
 ---
-*Last updated: 2026-04-10 after initialization*
+*Last updated: 2026-07-11 — adicionada milestone v2.0 (SCHEMA-0x, CODEDUP-0x), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*

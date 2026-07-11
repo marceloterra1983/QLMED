@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-last_updated: "2026-04-10T04:48:51.836Z"
+milestone: v2.0
+milestone_name: Remediação Pós-Revisão Arquitetural
+status: planning
+last_updated: "2026-07-11T21:30:15.665Z"
+last_activity: 2026-07-11
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 33
-  completed_plans: 33
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: QLMED Correcao e Hardening
@@ -21,19 +22,10 @@ progress:
 
 ## Current Position
 
-**Milestone:** Correcao e Hardening Completo
-**Phase:** 10 of 10 (major upgrades)
-**Plan:** Not started
-**Status:** Milestone complete
-
-**Progress:**
-
-[██████████] 100%
-Phase: 10 (major-upgrades) — EXECUTING
-Plan: 1 of 4
-Milestone: [████████░░] 82%
-
-```
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-11 — Milestone v2.0 started
 
 ## Performance Metrics
 
@@ -115,10 +107,24 @@ _(none)_
 
 ### Gotchas
 
-- DB compartilhado dev/prod — nunca prisma migrate dev, apenas db push
+- DB compartilhado dev/prod — nunca prisma migrate dev, apenas db push.
+  **Condicional**: isso deixa de valer quando o workstream `server-hardening`
+  (repo `/home/marce`) concluir a Phase 2 (separação de banco `qlmed_dev`).
+  Phase 11 desta milestone (Unificação de Schema) NÃO deve começar antes de
+  confirmar isso — ver ROADMAP.md Phase 11 "Depends on".
 - node-forge update (Phase 2) precisa de teste cuidadoso com assinatura NF-e
 - PINs sao padrao da empresa — manter funcionalidade, proteger implementacao
 - Container names gerenciados pelo Coolify — nao criar containers conflitantes
+
+### Milestone v2.0 — Notas
+
+- Escopo derivado de `docs/server/ARCH-REMEDIATION-PLAN.md` (revisão
+  arquitetural de 2026-07-11), sem re-pesquisa — pesquisa já feita por 3
+  agentes especializados na sessão de origem.
+- Dependência cruzada de repo: Phase 11 (schema) depende de
+  `server-hardening` Phase 2 em `/home/marce` estar concluída. GSD não
+  rastreia dependências entre projetos automaticamente — checar manualmente
+  antes de planejar/executar a Phase 11.
 
 ## Session Continuity
 
