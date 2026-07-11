@@ -1,147 +1,165 @@
 # 12-01 SUMMARY — CODEDUP-01 (route.ts / product-aggregation.ts dedup)
 
-**Status: BLOCKED — Task 1 done and passing, Task 2 reverted after discovering the
-plan's target shape is not buildable, Task 3 not attempted.**
+**Status: DONE — second attempt, after the plan was corrected to fix the
+Next.js 15 route-export build failure hit by the first attempt (see git
+history / prior version of this file for that attempt's diagnosis).**
 
-## What was executed
+## Context: why this is attempt #2
 
-### Task 1 — Pre-refactor behavior snapshot (DONE, verified passing)
+The first execution of this plan hit a real, reproducible build error:
+Next.js 15.5.19's App Router route-file type validation rejects any named
+export from a `route.ts` file other than the recognized HTTP handlers
+(`GET`/`POST`/etc.) and route-segment-config fields. `buildProductsListPayload`
+cannot live in `route.ts`. The plan was corrected (see the "CORREÇÃO
+PÓS-EXECUÇÃO" note right after the frontmatter in `12-01-PLAN.md`) to place
+`buildProductsListPayload`/`ProductsListQueryParams` in
+`src/lib/product-aggregation.ts` instead. That first attempt reverted
+`route.ts` back to its original (duplicated) state via `git checkout --`,
+keeping only Task 1's test + snapshot (commit `728ba1e`). This execution
+starts from that reverted state and completes Task 2 and Task 3 against the
+corrected plan.
 
-Created `src/lib/__tests__/products-route-dedup.test.ts`:
-- Mocks `@/lib/auth` (`requireAuth` → `'user-1'`), `@/lib/single-company`
-  (`getOrCreateSingleCompany` → `{ id: 'company-1' }`), `@/lib/product-registry-store`
-  (`getProductRegistryByKeys` → `[]`), and `@/lib/prisma` (`invoice.findMany` backed by
-  an in-memory fixture of 3 invoices, projected by `where`/`select`/`take` the same way
-  the plan specified).
-- Fixtures: (1) a received NF-e with two `<det>` items using units `UNID` and `CAIXA`
-  (exercises `normalizeUnit`/`UNIT_ALIASES`), (2) an issued NF-e with CFOP `3102`
-  (import entry, exercises Pass 2), (3) an issued NF-e to `NAVIX DISTRIBUIDORA
-  HOSPITALAR LTDA` reselling the same code+unit as fixture 1's first item (exercises
-  Pass 3 deduction).
-- Calls `GET` from `@/app/api/products/route` with
-  `?limit=50&sort=lastIssue&order=desc`, asserts `response.status === 200` and
-  `payload` via `toMatchSnapshot()`.
+Pre-flight checks confirmed before starting:
+- `UNIT_ALIASES` in `src/lib/product-aggregation.ts` already had `export`
+  added (trivial fix from the prior attempt) — verified via grep, not redone.
+- `src/app/api/products/route.ts` was confirmed back in its original
+  (duplicated) state.
+- Task 1's test (`src/lib/__tests__/products-route-dedup.test.ts`) was
+  re-run against the original `route.ts` first and passed, confirming the
+  pre-refactor baseline snapshot is still valid before touching any
+  production code.
 
-Result: **passes**. The generated snapshot
-(`src/lib/__tests__/__snapshots__/products-route-dedup.test.ts.snap`) confirms
-`UNIT_ALIASES`/`buildProductKey` collapse `CAIXA`→`CX` and `UNID`→`UN` for keying
-purposes (while preserving the raw unit string in the displayed `unit` field), and
-that Pass 3 correctly deducted the resale quantity (PROD-001: `10 - 3 = 7`).
+## Task 2 — Remove duplicated helpers, extract `buildProductsListPayload` into `product-aggregation.ts`
 
-Acceptance criteria for Task 1: **both met**
-- `npx vitest run src/lib/__tests__/products-route-dedup.test.ts` exits 0. ✅
-- `.snap` file exists. ✅
+Implemented as the corrected plan describes:
 
-### Task 2 — Remove duplicated helpers, extract `buildProductsListPayload` (ATTEMPTED, REVERTED)
+- Deleted from `route.ts`: `interface ProductFromXml`, `UNIT_ALIASES`,
+  `function normalizeUnit`, `function buildProductKey`,
+  `async function extractProductsFromXml`.
+- `route.ts` now imports `buildProductsListPayload` (value) and
+  `ProductsListQueryParams` (type) from `@/lib/product-aggregation` — two
+  separate import statements, satisfying the "value import + type import"
+  requirement.
+- `buildProductsListPayload(companyId, params)` is defined in
+  `src/lib/product-aggregation.ts`, appended at the end of the file. It
+  contains the full extracted GET body (dateFilter construction, the
+  3-pass aggregation — received invoices / import-CFOP entries / resale
+  deduction — ANVISA enrichment via issued-NFe lookup and via
+  `resolveAnvisaByCodeAndName`, product-registry merge, search/filter,
+  sort, pagination, summary/anvisaStats), copied verbatim (no logic
+  changes) from the former `GET()` handler.
+- `route.ts`'s `GET()` is now a thin orchestrator: auth check, `log.warn`
+  deprecation notice, `getOrCreateSingleCompany`, parse `searchParams` into
+  a `ProductsListQueryParams` object, call `buildProductsListPayload`, wrap
+  the result in `NextResponse.json(...)` with the same `X-Deprecated`
+  header and try/catch error handling as before.
+- Helper functions/constants that were only used inside the extracted body
+  (`compareStrings`, `PRODUCT_LOOKUP_STOPWORDS`, `tokenizeForProductLookup`,
+  `buildLookupKeys`, a route-list-scoped `buildStrictSaleLookupKeysForList`,
+  `enrichLastSaleDateForProducts`, `MAX_INVOICES`, `MAX_ISSUED_INVOICES_LIST`,
+  `MAX_IMPORT_INVOICES`) moved with it into `product-aggregation.ts` as
+  private (non-exported) declarations. `normalizeToken` and
+  `normalizeDescriptionToken` were **not** duplicated — the extracted code
+  now calls `product-aggregation.ts`'s own pre-existing private functions of
+  the same name/behavior (byte-identical implementations already lived
+  there). `XML_BATCH_SIZE` likewise reuses the file's existing constant
+  (same value, 50) instead of being redeclared.
+- Added new imports to `product-aggregation.ts`: `resolveAnvisaByCodeAndName`
+  (from `@/lib/anvisa-open-data`), `getProductRegistryByKeys` (from
+  `@/lib/product-registry-store`), `createLogger` (from `@/lib/logger`).
+  Checked both new dependency modules for import cycles back to
+  `product-aggregation.ts` — neither imports it, so no cycle introduced.
+  `npm run build` (which type-checks the whole app) is the strongest
+  confirmation of this.
 
-Implemented exactly as specified: deleted the inline `ProductFromXml`,
-`UNIT_ALIASES`, `normalizeUnit`, `buildProductKey`, `extractProductsFromXml` from
-`route.ts`; imported them from `@/lib/product-aggregation`; renamed the local
-`AggregatedProduct` to `RouteAggregatedProduct`; extracted the `GET()` body into
-`export async function buildProductsListPayload(companyId, params)` with a new
-`export interface ProductsListQueryParams`, per the plan.
+### Naming-collision handling (`RouteAggregatedProduct`)
 
-**This is where the plan breaks: Next.js 15.5.19's App Router route-file type
-validation rejects any named export from a `route.ts` file other than the
-recognized HTTP handlers (`GET`/`POST`/etc.) and route-segment-config fields.**
+The per-request aggregation type (`invoiceIds: Set<string>`-based, distinct
+from the lib's already-exported `AggregatedProduct` which uses
+`invoiceCount`/`lastCountedInvoiceId` for the persisted rebuild job) was
+renamed to `RouteAggregatedProduct` as the plan specifies — **but declared
+in `src/lib/product-aggregation.ts`, not in `route.ts`**, because that is
+where the actual naming collision would occur once the corrected plan moved
+the entire extracted body (including this Map/interface) into
+`product-aggregation.ts`. The plan's acceptance criterion
+(`grep -c "RouteAggregatedProduct" route.ts == 2`) appears to be a stale
+carry-over from an earlier draft where `buildProductsListPayload` — and
+thus this type — was going to remain in `route.ts` itself. Once the
+correction moved the extraction target to `product-aggregation.ts`, this
+type necessarily moved with it (there is nothing left in `route.ts` that
+would use it — `route.ts`'s `GET` no longer does any per-request
+aggregation, it only calls `buildProductsListPayload`). Forcing a
+redundant, unused `RouteAggregatedProduct` declaration back into `route.ts`
+just to satisfy the literal grep would be dead code contradicting the
+plan's own "pure Extract-Method, no logic changes" instruction and its
+explicit "route.ts's GET() becomes: parse params ... call
+buildProductsListPayload ... wrap in NextResponse.json" description. I
+implemented the disambiguation in the file where it's actually needed and
+am flagging this as a deviation rather than silently deviating.
 
-`npm run build` fails with:
-```
-Type error: Route "src/app/api/products/route.ts" does not match the required types of a Next.js Route.
-  "buildProductsListPayload" is not a valid Route export field.
-```
+### Acceptance criteria — Task 2
 
-This is not a bug I introduced — it's a hard, version-enforced constraint on what a
-`route.ts` file is allowed to export, discovered only by actually running
-`npm run build` (the plan's own Task 2 acceptance criterion). The plan's
-`must_haves.artifacts` explicitly requires `buildProductsListPayload` to live in
-`src/app/api/products/route.ts` ("exposes buildProductsListPayload() for reuse"),
-and 12-03 is stated to depend on importing it from that exact path
-(`@/app/api/products/route`). That requirement is incompatible with Next's route
-export rules as currently written — fixing it means an architecture decision
-(e.g., moving `buildProductsListPayload`/`ProductsListQueryParams` into a plain
-`src/lib/*.ts` module and having `route.ts`'s `GET` import + call it there, then
-updating 12-03's planned import path to match), not a "no-op" refactor tweak.
+| Criterion | Result |
+|---|---|
+| `grep -c "^const UNIT_ALIASES" route.ts` == 0 | **PASS** (0) |
+| `grep -c "^function normalizeUnit" route.ts` == 0 | **PASS** (0) |
+| `grep -c "^function buildProductKey" route.ts` == 0 | **PASS** (0) |
+| `grep -c "^async function extractProductsFromXml" route.ts` == 0 | **PASS** (0) |
+| `grep -c "^interface ProductFromXml" route.ts` == 0 | **PASS** (0) |
+| `grep -c "RouteAggregatedProduct" route.ts` == 2 | **FAIL/DEVIATION** (0 in route.ts; disambiguation implemented in `product-aggregation.ts` instead — see rationale above) |
+| `grep -c "export async function buildProductsListPayload" route.ts` == 0 | **PASS** (0) |
+| `grep -c "export async function buildProductsListPayload" product-aggregation.ts` == 1 | **PASS** (1) |
+| `grep -c "buildProductsListPayload" route.ts` >= 1 | **PASS** (2 — import + call) |
+| `grep -c "from '@/lib/product-aggregation'" route.ts` == 2 | **PASS** (2 — value import + type import) |
+| `npm run build` exits 0 | **PASS** — confirmed twice, exit code 0 both times. This is the criterion that failed in attempt #1; it now passes under the corrected plan. |
 
-Per the run instructions for this session ("se algo falhar de um jeito que o plano
-não previu, PARE — não improvise uma correção arriscada em código de produção
-fiscal"), I did not unilaterally redesign the module boundary. I reverted
-`src/app/api/products/route.ts` to its pre-Task-2 (HEAD) content via
-`git checkout -- src/app/api/products/route.ts` and re-verified:
-- `npm run build` exits 0 again (confirmed).
-- The Task 1 snapshot test still passes against the untouched original file
-  (confirmed).
+## Task 3 — Verify byte-identical behavior post-refactor
 
-A secondary, smaller defect was also found and would need fixing regardless of the
-above: `UNIT_ALIASES` in `src/lib/product-aggregation.ts` (around line 254) is
-declared as `const UNIT_ALIASES = ...` **without** `export`, even though the plan's
-`<interfaces>` section asserts it's "already exported" and the `must_haves.key_links`
-requires `route.ts` to import it. This alone is a trivial one-word fix
-(`const` → `export const`), but it only matters once the Next.js route-export
-problem above is resolved.
+Re-ran the Task 1 snapshot test (unmodified test file, unmodified `.snap`)
+against the refactored code, plus build and lint.
 
-### Task 3 — Not attempted (depends on Task 2).
+| Criterion | Result |
+|---|---|
+| `npx vitest run src/lib/__tests__/products-route-dedup.test.ts` exits 0 | **PASS** — 1 test file, 1 test, passed. Snapshot matched byte-for-byte against the pre-refactor baseline captured in Task 1 (no `--update` needed, no diff). |
+| `npm run build` exits 0 | **PASS** |
+| `npm run lint` exits 0 | **PASS** (`eslint .` clean) |
 
-## Acceptance criteria — final status
+## Success criteria (phase-level)
 
-- Task 1 (`vitest run ... exits 0`, `.snap` file exists): **PASS**
-- Task 2 (5 grep checks + `npm run build` exits 0): **FAIL** — the code-shape checks
-  (UNIT_ALIASES/normalizeUnit/etc. removed, RouteAggregatedProduct present,
-  buildProductsListPayload exported) were all achievable, but `npm run build`
-  cannot pass with `buildProductsListPayload`/`ProductsListQueryParams` exported
-  from `route.ts` under Next.js 15.5.19's route-export validation. Reverted rather
-  than shipped in a broken state.
-- Task 3 (snapshot match + build + lint post-refactor): **NOT RUN** (blocked on
-  Task 2).
-- Overall phase `<success_criteria>`: not met — no behavior change was shipped
-  (good, no regression risk), but the dedup itself did not land.
-
-## Deviation from plan / recommendation for re-planning
-
-The plan needs a small revision before re-attempting Task 2:
-1. Move `buildProductsListPayload` + `ProductsListQueryParams` out of
-   `src/app/api/products/route.ts` into a plain lib module (suggest
-   `src/lib/products-list-payload.ts`, colocated with `product-aggregation.ts`
-   since it consumes it directly). `route.ts`'s `GET` becomes a true thin wrapper:
-   parse `searchParams`, resolve `company`, call the lib function, wrap in
-   `NextResponse.json` + the `X-Deprecated` header.
-2. Update 12-03's plan (currently expected to import `buildProductsListPayload`
-   from `@/app/api/products/route`) to import from the new lib path instead.
-3. Add `export` to `UNIT_ALIASES` in `src/lib/product-aggregation.ts` (currently
-   module-private) so `normalizeUnit`/`buildProductKey`/`extractProductsFromXml`
-   plus `UNIT_ALIASES` can all be imported as the plan's `key_links` pattern
-   requires.
-
-The Task 1 snapshot test (`src/lib/__tests__/products-route-dedup.test.ts` +
-its `.snap` baseline) remains valid and reusable for whichever plan revision
-follows — it doesn't depend on where `buildProductsListPayload` ends up living,
-only on `GET`'s HTTP-visible behavior.
-
-## Environment note (not the root cause, but worth flagging)
-
-While investigating an earlier confusing intermediate state of `route.ts`
-(a `ReferenceError: companyId is not defined` from my own incomplete edit, not
-an external actor), I confirmed there is a separate, concurrently-running
-`codex --dangerously-bypass-approvals-and-sandbox` agent process operating in
-this exact same working directory (`/home/marce/qlmed/app-dev`), which had
-independently modified/reverted unrelated files (`src/app/api/nsdocs/sync/route.ts`,
-`src/lib/bootstrap.ts`, `src/lib/auto-sync.ts`, `src/lib/sync-scheduler.ts`) during
-this session, outside of anything I touched. It did not touch
-`src/app/api/products/route.ts` and is not the cause of the Task 2 blocker (that
-is a genuine, reproducible Next.js build-time constraint, confirmed independently
-via `npm run build`), but running two autonomous agents against the same
-production-fiscal working tree at once is a real risk (uncoordinated commits,
-races on the same files) worth the user's attention.
+- `route.ts` has zero inline declarations of `UNIT_ALIASES`, `normalizeUnit`,
+  `buildProductKey`, `extractProductsFromXml`, `ProductFromXml` — all now
+  imported from `@/lib/product-aggregation`. **Met.**
+- GET /api/products response is byte-identical before/after, proven by the
+  vitest snapshot (Task 1 baseline == Task 3 result, unchanged). **Met.**
+- `buildProductsListPayload` + `ProductsListQueryParams` are exported from
+  `src/lib/product-aggregation.ts` and ready for reuse by Plan 12-03 (an
+  in-process import, no HTTP round-trip needed). **Met** — note the import
+  path for 12-03 is `@/lib/product-aggregation`, not
+  `@/app/api/products/route` (the latter is architecturally impossible
+  under Next.js 15's route-export rules; this is the whole reason for the
+  plan correction). Flagging this explicitly in case 12-03's plan text
+  still references the old path.
 
 ## Files touched
 
-- `src/lib/__tests__/products-route-dedup.test.ts` — new, passing, kept.
-- `src/lib/__tests__/__snapshots__/products-route-dedup.test.ts.snap` — new, kept.
-- `src/app/api/products/route.ts` — edited then reverted via
-  `git checkout --`; working tree matches HEAD, `npm run build` verified green.
+- `src/app/api/products/route.ts` — reduced from 1454 lines to ~55 lines;
+  now a thin orchestrator (auth, param parsing, delegate to
+  `buildProductsListPayload`, wrap response).
+- `src/lib/product-aggregation.ts` — grew by ~1350 lines: added
+  `ProductsListQueryParams`, `RouteAggregatedProduct` (private),
+  `buildProductsListPayload`, and its private helper functions
+  (`compareStrings`, `tokenizeForProductLookup`, `buildLookupKeys`,
+  `buildStrictSaleLookupKeysForList`, `enrichLastSaleDateForProducts`), plus
+  new imports (`resolveAnvisaByCodeAndName`, `getProductRegistryByKeys`,
+  `createLogger`). `UNIT_ALIASES` export (already applied before this run)
+  confirmed unchanged.
+- `src/lib/__tests__/products-route-dedup.test.ts` +
+  `src/lib/__tests__/__snapshots__/products-route-dedup.test.ts.snap` —
+  unchanged from Task 1 (commit `728ba1e`), re-verified passing both before
+  and after this run's changes.
 
 ## Commit
 
-Committed only the safe, inert Task 1 artifacts (new test + its snapshot). No
-changes to `route.ts` or `product-aggregation.ts` were committed since Task 2/3
-did not complete successfully.
+This run commits `route.ts` and `product-aggregation.ts` (the Task 2/3
+changes). The test + snapshot were already committed in `728ba1e` from the
+prior session and are not re-committed here.
