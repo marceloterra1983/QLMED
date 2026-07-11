@@ -80,8 +80,11 @@ jobs:
       - name: Capture rollback image
         run: |
           if docker inspect qlmed-app >/dev/null 2>&1; then
-            docker tag "$(docker inspect qlmed-app --format '{{.Image}}')" \
-              "qlmed-app:rollback-${GITHUB_RUN_ID}"
+            current_image="$(docker inspect qlmed-app --format '{{.Image}}')"
+            docker tag "$current_image" "qlmed-app:rollback-${GITHUB_RUN_ID}"
+            # Tag estável para rollback MANUAL pós-deploy (a tag por run é
+            # consumida só pelo passo de rollback automático desta execução).
+            docker tag "$current_image" "qlmed-app:previous"
             echo "ROLLBACK_IMAGE_AVAILABLE=1" >> "$GITHUB_ENV"
           fi
 
@@ -159,6 +162,13 @@ jobs:
           sudo -n -u marce -- \
             /usr/bin/bash /home/marce/qlmed/production/app/scripts/install-notification-outbox-cron.sh \
             /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
+
+      - name: Clean run-scoped rollback tag
+        if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
+        run: |
+          # Deploy saudável: a tag por run já cumpriu o papel. A imagem anterior
+          # continua acessível via qlmed-app:previous para rollback manual.
+          docker rmi "qlmed-app:rollback-${GITHUB_RUN_ID}" >/dev/null 2>&1 || true
 
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
