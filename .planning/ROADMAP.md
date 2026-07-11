@@ -242,15 +242,19 @@ Plans:
 **Milestone v2.0: 6/6 requirements mapped. Zero orphans.**
 
 ### Phase 11: Unificação de Schema
-**Goal**: As 9 tabelas satélite hoje `@@ignore` + DDL manual nas stores passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
+**Goal**: As 11 tabelas satélite hoje `@@ignore` + DDL manual nas stores (9 originalmente listadas + `nfe_entry_item` + `cnpj_monitoring`, achado verificado ao vivo em 2026-07-11) passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
 **Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 em `/home/marce` — **CONFIRMADO CONCLUÍDA em 2026-07-11** (`qlmed_dev` provisionado, `.env` de dev repontado, isolamento comprovado ao vivo: marker count=1 em dev, count=0 em produção). Bloqueio removido, fase liberada para planejamento/execução.
 **Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03
 **Success Criteria** (o que precisa ser verdade):
-  1. As 9 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, ncm_cache, cnpj_cache, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
-  2. Ao menos a store de menor tráfego (ex.: cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
+  1. As 11 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, nfe_entry_item, ncm_cache, cnpj_cache, cnpj_monitoring, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
+  2. Ao menos a store de menor tráfego (cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
   3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
   4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
-**Plans**: TBD
+**Plans:** 3 plans (leva 1 — baseline + 1 PoC de store migrada; as 10 tabelas satélite restantes ficam para um followup "Fase 11b", ver notas dos SUMMARYs de 11-01/11-02 após execução)
+Plans:
+- [ ] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01)
+- [ ] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02)
+- [ ] 11-03-PLAN.md — Documentar política expand/contract em CLAUDE.md + comentário explícito no deploy-production.yml sobre rollback não desfazer migração (SCHEMA-03)
 
 ### Phase 12: Desduplicação de Código
 **Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`
