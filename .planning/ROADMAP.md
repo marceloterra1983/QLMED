@@ -269,7 +269,7 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01) — completed 2026-07-11
 - [x] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02) — completed 2026-07-11
-- [~] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03) — code complete, manual smoke test (Task 3) pending developer
+- [x] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03) — completed 2026-07-12, smoke test passed against real SEFAZ/NSDocs/SISCOMEX/ANVISA (see 12-03-SUMMARY.md)
 
 ## Progress
 
@@ -286,7 +286,7 @@ Plans:
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
 | 11. Unificação de Schema | 0/TBD | Not started | - |
-| 12. Desduplicação de Código | 2/3 (código) | Código completo, smoke test manual pendente | - |
+| 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
 *Last updated: 2026-07-11 — adicionada milestone v2.0 (Phases 11-12), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*
