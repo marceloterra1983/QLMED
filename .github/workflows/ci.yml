@@ -49,6 +49,11 @@ jobs:
           npx prisma generate
           npx prisma validate
 
+      - name: Validate specifications and architecture documentation
+        run: |
+          npm run docs:validate:test
+          npm run docs:validate
+
       - name: Replay and verify migration history
         run: bash ./scripts/verify-migrations.sh
 

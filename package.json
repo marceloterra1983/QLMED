@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "docs:validate": "node ./scripts/validate-docs.mjs",
+    "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "check:deploy": "bash ./scripts/check-deploy-alignment.sh",
     "deploy:server": "bash ./scripts/deploy-server.sh --legacy",
     "publish:server": "bash ./scripts/publish-server.sh",
