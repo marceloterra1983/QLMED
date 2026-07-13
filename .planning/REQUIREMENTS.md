@@ -129,14 +129,14 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 
 ### Desduplicação de Código (Fase 5.1/5.3/5.4 do plano original)
 
-- [ ] **CODEDUP-01**: `products/route.ts` (1453 linhas) para de reimplementar
+- [x] **CODEDUP-01**: `products/route.ts` (1453 linhas) para de reimplementar
       inline funções já existentes em `product-aggregation.ts`
       (`normalizeUnit`, `buildProductKey`, `extractProductsFromXml`,
       `UNIT_ALIASES`) — consome exclusivamente a lib
-- [ ] **CODEDUP-02**: `auto-sync.ts` (god module, scheduler + cooldown + 3
+- [x] **CODEDUP-02**: `auto-sync.ts` (god module, scheduler + cooldown + 3
       estratégias) quebrado em `sync-scheduler` + `sync-strategies/{sefaz,
       nsdocs,receita-nfse}` com contrato comum
-- [ ] **CODEDUP-03**: `siscomex-client` criado, fechando o `fetch` direto em
+- [x] **CODEDUP-03**: `siscomex-client` criado, fechando o `fetch` direto em
       `ncm/bulk-sync`. **Correção pós-planejamento (2026-07-11)**: a
       caracterização original de `products/sync-anvisa` como "fetch externo à
       ANVISA" estava errada — verificado no código que é um `fetch()` de
@@ -175,4 +175,4 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 | CODEDUP-01..CODEDUP-03 | Phase 12: Desduplicação de Código |
 
 ---
-*Last updated: 2026-07-11 — adicionada milestone v2.0 (SCHEMA-0x, CODEDUP-0x), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*
+*Last updated: 2026-07-13 — CODEDUP-01..03 reconciliados com os três SUMMARYs concluídos; SCHEMA-01..03 permanecem abertos até autorização, migração e observação de produção.*

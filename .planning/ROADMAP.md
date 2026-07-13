@@ -24,7 +24,7 @@
 Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
 
 - [ ] **Phase 11: Unificação de Schema** - Baseline Prisma das 9 tabelas satélite `@@ignore`, migração store-a-store para Client tipado, política expand/contract de migração
-- [ ] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado
+- [x] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado — concluída em 2026-07-12
 
 ## Phase Details
 
@@ -235,9 +235,9 @@ Plans:
 | SCHEMA-01 | Phase 11 | Pending |
 | SCHEMA-02 | Phase 11 | Pending |
 | SCHEMA-03 | Phase 11 | Pending |
-| CODEDUP-01 | Phase 12 | Pending |
-| CODEDUP-02 | Phase 12 | Pending |
-| CODEDUP-03 | Phase 12 | Pending |
+| CODEDUP-01 | Phase 12 | Complete |
+| CODEDUP-02 | Phase 12 | Complete |
+| CODEDUP-03 | Phase 12 | Complete |
 
 **Milestone v2.0: 6/6 requirements mapped. Zero orphans.**
 
@@ -250,7 +250,7 @@ Plans:
   2. Ao menos a store de menor tráfego (cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
   3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
   4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
-**Plans:** 3 plans (leva 1 — baseline + 1 PoC de store migrada; as 10 tabelas satélite restantes ficam para um followup "Fase 11b", ver notas dos SUMMARYs de 11-01/11-02 após execução)
+**Plans:** 3 plans preparados no candidato; execução de produção continua bloqueada pelo checkpoint humano T007. As 10 tabelas satélite restantes ficam para um followup "Fase 11b" após a observação do piloto.
 Plans:
 - [ ] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01)
 - [ ] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02)
@@ -265,7 +265,7 @@ Plans:
   2. Resposta da API de produtos é idêntica antes/depois (snapshot comparado)
   3. `auto-sync.ts` está dividido em `sync-scheduler` + `sync-strategies/{sefaz,nsdocs,receita-nfse}` com um contrato de estratégia comum
   4. `siscomex-client` existe (fecha o `fetch` direto em `ncm/bulk-sync`); `products/sync-anvisa` elimina seu `fetch()` de loopback interno para `/api/products`, chamando `buildProductsListPayload()` diretamente em processo — **correção pós-planejamento**: o `fetch` original não era uma chamada externa à ANVISA (verificado no código durante o plan-check), não há `anvisa-api` para rotear ali
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01) — completed 2026-07-11
 - [x] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02) — completed 2026-07-11
@@ -285,8 +285,8 @@ Plans:
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
-| 11. Unificação de Schema | 0/TBD | Not started | - |
+| 11. Unificação de Schema | 0/3 | Candidate prepared; production blocked | - |
 | 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
-*Last updated: 2026-07-11 — adicionada milestone v2.0 (Phases 11-12), sem re-pesquisa (derivado de ARCH-REMEDIATION-PLAN.md já validado)*
+*Last updated: 2026-07-13 — estado reconciliado com o candidato Phase05: Phase 12 concluída; Phase 11 preparada, mas não executada em produção.*

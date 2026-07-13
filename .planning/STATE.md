@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Remediação Pós-Revisão Arquitetural
-status: planning
-last_updated: "2026-07-11T21:30:15.665Z"
-last_activity: 2026-07-11
+status: executing
+last_updated: "2026-07-13T00:00:00Z"
+last_activity: 2026-07-13
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 2
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 3
+  percent: 50
 ---
 
 # State: QLMED Correcao e Hardening
@@ -18,14 +18,14 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 10 — major-upgrades
+**Current focus:** Phase 11 — candidato de unificação de schema aguardando gates e autorização de produção
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-11 — Milestone v2.0 started
+Phase: 11 — Unificação de Schema
+Plan: 11-01..03 candidate prepared
+Status: Blocked before production checkpoint (T007)
+Last activity: 2026-07-13 — Phase 12 reconciliada como concluída; candidato Phase 11 permanece sem autorização de produção
 
 ## Performance Metrics
 
@@ -95,7 +95,8 @@ _(none yet)_
 
 ### Blockers
 
-_(none)_
+- Phase 11/T007 exige autorização humana explícita e evidência fail-closed antes de qualquer migração de produção.
+- SCHEMA-01..03 somente podem ser fechados depois de checkpoint, deploy, canários e janela de observação em produção.
 
 ### Quick Tasks Completed
 
@@ -136,8 +137,9 @@ _(none)_
 
 ### Next Session Should
 
-1. Execute Phase 06 Plan 02 (next plan in api-validation-logging)
-2. Phase 06 has 5 plans total, 4 remaining
+1. Validar o candidato integrado completo contra `origin/main`, sem reduzir o escopo aos commits finais.
+2. Fechar a dependência externa Phase04 e os gates Toolkit/assinatura/checkpoint.
+3. Executar T007 somente via PR e environment protegido; então observar e reconciliar SCHEMA-01..03.
 
 ---
-*Last updated: 2026-04-10 after 06-01 completion*
+*Last updated: 2026-07-13 — estado v2 reconciliado sem alegar execução de produção.*
