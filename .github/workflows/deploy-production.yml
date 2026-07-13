@@ -173,6 +173,9 @@ jobs:
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
         run: |
+          # Este rollback reverte apenas a imagem do qlmed-app; não desfaz migração
+          # de banco que já tenha sido aplicada. A imagem anterior deve permanecer
+          # compatível com o schema expandido conforme docs/architecture/data.md.
           QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" docker compose \
             --project-name qlmed \
             --env-file /home/marce/qlmed/production/.env \

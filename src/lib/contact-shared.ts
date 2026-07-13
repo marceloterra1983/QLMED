@@ -360,16 +360,14 @@ export async function handleContactList(
     const exportCnpjs = paginatedContacts.map((c) => c.cnpj).filter((c) => c && c.replace(/\D/g, '').length === 14);
     if (exportCnpjs.length > 0) {
       const digits = exportCnpjs.map((c) => c.replace(/\D/g, ''));
-      try {
-        const rows = await prisma.$queryRawUnsafe<{ cnpj: string; data: unknown }[]>(
-          `SELECT cnpj, data FROM cnpj_cache WHERE cnpj = ANY($1)`,
-          digits,
-        );
-        for (const r of rows) {
-          const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
-          cnpjCacheMap.set(r.cnpj, d as CnpjCacheData);
-        }
-      } catch { /* table may not exist */ }
+      const rows = await prisma.cnpjCache.findMany({
+        where: { cnpj: { in: digits } },
+        select: { cnpj: true, data: true },
+      });
+      for (const r of rows) {
+        const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+        cnpjCacheMap.set(r.cnpj, d as CnpjCacheData);
+      }
       const overrides = await prisma.contactOverride.findMany({
         where: { companyId: company.id, cnpj: { in: digits } },
       });

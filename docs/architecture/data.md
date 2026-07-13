@@ -21,6 +21,28 @@ products, inventory and financial data.
   empty and blanking contas a pagar/receber until
   `getFinanceiroDuplicatas` gained a lazy backfill).
 
+## Migration rollout and rollback
+
+Schema changes use an expand/contract sequence so both the current application
+and its rollback image can run against the expanded schema:
+
+1. **Expand:** add versioned, non-destructive structures first. New columns are
+   nullable or have a safe default, and a new table does not replace a table
+   still read by either application revision.
+2. **Migrate and observe:** deploy the compatible application, verify migration
+   replay and drift, and observe at least one healthy deployment cycle. A store
+   may move from legacy runtime DDL/raw CRUD to typed Prisma access only after
+   the corresponding versioned table is proven.
+3. **Contract:** remove or rename old structures only when neither the running
+   image nor the retained `qlmed-app:previous` rollback image depends on them.
+
+The production workflow runs `prisma migrate deploy` and then verifies drift.
+Its `Roll back failed deployment` step reverts only the application image; it
+does not reverse a migration that already succeeded. Consequently, every
+expand migration must remain compatible with the previous image throughout the
+observation window. Database rollback is forward-only unless a separate,
+reviewed data-recovery procedure explicitly says otherwise.
+
 ## Prisma 7 runtime
 
 Prisma 7 removed the built-in engine; every client needs a driver adapter
@@ -37,4 +59,3 @@ Prisma 7 removed the built-in engine; every client needs a driver adapter
 
 The exact schema is intentionally not reproduced here; consult
 `prisma/schema.prisma` and the ordered migration history.
-

@@ -432,9 +432,9 @@ model FinanceiroDuplicataManualInstallment {
   @@index([companyId, invoiceId])
 }
 
-// ── Shadow tables (managed by raw SQL, models for schema visibility only) ──
+// ── Satellite tables (versioned by the schema11 baseline) ──
 
-// Managed by raw SQL in src/lib/invoice-tax-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model InvoiceTaxTotals {
   invoiceId  String    @id @map("invoice_id")
   companyId  String    @map("company_id")
@@ -454,10 +454,9 @@ model InvoiceTaxTotals {
 
   @@index([companyId])
   @@map("invoice_tax_totals")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/invoice-tax-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model InvoiceItemTax {
   id                 String  @id
   invoiceId          String  @map("invoice_id")
@@ -489,10 +488,9 @@ model InvoiceItemTax {
   @@index([invoiceId])
   @@index([companyId, cfop])
   @@map("invoice_item_tax")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/contact-fiscal-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model ContactFiscal {
   id              String    @id
   companyId       String    @map("company_id")
@@ -508,10 +506,9 @@ model ContactFiscal {
   @@unique([companyId, cnpj])
   @@index([companyId])
   @@map("contact_fiscal")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/invoice-duplicata-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model InvoiceDuplicata {
   id                  String   @id
   invoiceId           String   @map("invoice_id")
@@ -528,10 +525,9 @@ model InvoiceDuplicata {
   @@index([companyId])
   @@index([invoiceId])
   @@map("invoice_duplicata")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/ncm-lookup.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model NcmCache {
   code            String   @id
   descricao       String   @default("")
@@ -542,10 +538,9 @@ model NcmCache {
 
   @@index([parentCode])
   @@map("ncm_cache")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/product-registry-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model ProductRegistry {
   id                        String    @id
   companyId                 String    @map("company_id")
@@ -615,10 +610,9 @@ model ProductRegistry {
   @@index([companyId])
   @@index([companyId, anvisaCode])
   @@map("product_registry")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/stock-entry-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model StockEntry {
   id            String    @id
   companyId     String    @map("company_id")
@@ -658,10 +652,9 @@ model StockEntry {
   @@index([companyId])
   @@index([companyId, status])
   @@map("stock_entry")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/stock-entry-store.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model NfeEntryItem {
   id                  Int       @id @default(autoincrement())
   stockEntryId        String    @map("stock_entry_id")
@@ -723,10 +716,9 @@ model NfeEntryItem {
   @@index([companyId, invoiceId])
   @@index([companyId, codigoInterno])
   @@map("nfe_entry_item")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/product-settings-catalog.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model ProductSettingsCatalog {
   id                      String   @id
   companyId               String   @map("company_id")
@@ -743,20 +735,18 @@ model ProductSettingsCatalog {
   @@unique([companyId, section, value, parentValueKey, parentSecondaryValueKey])
   @@index([companyId])
   @@map("product_settings_catalog")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/cnpj-lookup.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. CNPJ cache access is typed by SCHEMA-02.
 model CnpjCache {
   cnpj      String   @id
   data      Json
   fetchedAt DateTime @default(now()) @map("fetched_at") @db.Timestamptz
 
   @@map("cnpj_cache")
-  @@ignore
 }
 
-// Managed by raw SQL in src/lib/cnpj-monitor.ts. Model exists for schema visibility only.
+// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
 model CnpjMonitoring {
   id             String    @id
   companyId      String    @map("company_id")
@@ -771,5 +761,4 @@ model CnpjMonitoring {
   @@index([companyId])
   @@index([companyId, changedAt])
   @@map("cnpj_monitoring")
-  @@ignore
 }

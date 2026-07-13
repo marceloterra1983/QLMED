@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { ensureCnpjCacheTable } from '@/lib/cnpj-lookup';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
-
-const log = createLogger('contacts/cnpj-status');
 
 /**
  * GET /api/contacts/cnpj-status?cnpjs=X,Y,Z
@@ -35,19 +31,23 @@ export async function GET(req: Request) {
     // Limit batch size
     const batch = cnpjs.slice(0, 100);
 
-    await ensureCnpjCacheTable();
-
-    const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT cnpj, data FROM cnpj_cache WHERE cnpj = ANY($1::text[])`,
-      batch,
-    );
+    const rows = await prisma.cnpjCache.findMany({
+      where: { cnpj: { in: batch } },
+      select: { cnpj: true, data: true },
+    });
 
     const results = rows.map((row) => {
       try {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          return { cnpj: row.cnpj, status: null };
+        }
         return {
           cnpj: row.cnpj,
-          status: data?.situacaoCadastral || data?.descSituacao || null,
+          status:
+            (typeof data.situacaoCadastral === 'string' && data.situacaoCadastral) ||
+            (typeof data.descSituacao === 'string' && data.descSituacao) ||
+            null,
         };
       } catch {
         return { cnpj: row.cnpj, status: null };
