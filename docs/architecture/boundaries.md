@@ -30,6 +30,16 @@ Schedulers decide when work runs; strategies implement how each integration
 runs. A strategy must be callable independently of its scheduler so it can be
 tested without starting background loops.
 
+## Navigation and page permissions
+
+`src/lib/navigation.ts` (`PAGE_GROUPS`, `VALID_PAGE_PATHS`) is the canonical
+list of panel pages and validates `allowedPages` on the user PATCH endpoint.
+Every path rendered by `src/components/SidebarNav.tsx` must have a matching
+entry there: a missing entry makes per-user page customization fail with
+"Páginas inválidas" while the sidebar still renders, so the mismatch is
+invisible until someone edits a user. When adding or moving a sidebar page,
+update both files in the same change.
+
 ## Dependency direction
 
 ```text
