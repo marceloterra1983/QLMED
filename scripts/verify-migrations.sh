@@ -6,6 +6,9 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
+echo "Verifying the production migration-window image contract..."
+node scripts/test-production-migration-window.cjs
+
 echo "Replaying migration history..."
 npx prisma migrate deploy
 

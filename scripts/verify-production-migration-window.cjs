@@ -36,6 +36,12 @@ function verifyExpectedSql() {
   if (executable !== '') fail('release migration is no longer metadata-only');
 }
 
+function migrationState(pending) {
+  if (pending.length === 0) return 'already-applied';
+  if (pending.length === 1 && pending[0] === EXPECTED_MIGRATION) return 'pending';
+  fail(`unexpected pending migrations: ${pending.join(',')}`);
+}
+
 async function snapshot(client) {
   const counts = {};
   for (const table of TABLES) {
@@ -60,17 +66,26 @@ async function main() {
     const pending = localMigrations().filter((name) => !applied.has(name));
     const counts = await snapshot(client);
     if (mode === 'before') {
-      if (pending.length !== 1 || pending[0] !== EXPECTED_MIGRATION) {
-        fail(`unexpected pending migrations: ${pending.join(',') || 'none'}`);
-      }
-      fs.writeFileSync(statePath, JSON.stringify({ schemaVersion: 1, migration: EXPECTED_MIGRATION, counts }));
+      const migrationStatus = migrationState(pending);
+      fs.writeFileSync(statePath, JSON.stringify({
+        schemaVersion: 2,
+        migration: EXPECTED_MIGRATION,
+        migrationStatus,
+        counts,
+      }));
       fs.chmodSync(statePath, 0o600);
-      process.stdout.write(JSON.stringify({ status: 'PASSED', stage: mode, pending: pending.length, tables: TABLES.length }) + '\n');
+      process.stdout.write(JSON.stringify({
+        status: 'PASSED', stage: mode, pending: pending.length, migrationStatus, tables: TABLES.length,
+      }) + '\n');
       return;
     }
     if (pending.length !== 0) fail(`migrations remain pending: ${pending.join(',')}`);
     const before = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-    if (before.schemaVersion !== 1 || before.migration !== EXPECTED_MIGRATION) fail('pre-migration state binding invalid');
+    if (
+      before.schemaVersion !== 2
+      || before.migration !== EXPECTED_MIGRATION
+      || !['pending', 'already-applied'].includes(before.migrationStatus)
+    ) fail('pre-migration state binding invalid');
     // The approved migration is comment-only. Equality therefore proves that
     // the migration path itself performed no table-row writes; normal traffic
     // must be quiesced by the environment approval window for this comparison.
@@ -81,7 +96,14 @@ async function main() {
   }
 }
 
-module.exports = { EXPECTED_MIGRATION, EXPECTED_SQL_SHA256, TABLES, localMigrations, verifyExpectedSql };
+module.exports = {
+  EXPECTED_MIGRATION,
+  EXPECTED_SQL_SHA256,
+  TABLES,
+  localMigrations,
+  migrationState,
+  verifyExpectedSql,
+};
 
 if (require.main === module) {
   main().catch((error) => fail(error instanceof Error ? error.message : 'unknown error'));
