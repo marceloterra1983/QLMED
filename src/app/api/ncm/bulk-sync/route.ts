@@ -4,11 +4,13 @@ import { ensureNcmCacheTable, formatNcmCode } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
+import {
+  fetchSiscomexNomenclature,
+  SiscomexApiError,
+  SiscomexTimeoutError,
+} from '@/lib/siscomex-client';
 
 const log = createLogger('ncm/bulk-sync');
-
-const SISCOMEX_URL =
-  'https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json';
 
 /** Strip HTML tags and leading dashes from SISCOMEX descriptions */
 function cleanDescription(text: string): string {
@@ -49,37 +51,20 @@ export async function POST() {
     await ensureNcmCacheTable();
 
     // Download full NCM table from SISCOMEX
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-    interface SiscomexItem { Codigo?: string; codigo?: string; Descricao?: string; descricao?: string }
-    let rawItems: SiscomexItem[];
+    let rawItems;
     try {
-      const res = await fetch(SISCOMEX_URL, {
-        signal: controller.signal,
-        headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-      });
-      if (!res.ok) {
-        return NextResponse.json(
-          { error: `SISCOMEX retornou status ${res.status}` },
-          { status: 502 },
-        );
-      }
-      const json = await res.json();
-      rawItems = json?.Nomenclaturas ?? json ?? [];
-      if (!Array.isArray(rawItems)) {
-        return NextResponse.json(
-          { error: 'Formato inesperado da resposta do SISCOMEX' },
-          { status: 502 },
-        );
-      }
+      rawItems = await fetchSiscomexNomenclature();
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return NextResponse.json({ error: 'Timeout ao baixar tabela SISCOMEX' }, { status: 504 });
+      if (err instanceof SiscomexApiError) {
+        return NextResponse.json({ error: err.message }, { status: 502 });
+      }
+      if (err instanceof SiscomexTimeoutError) {
+        return NextResponse.json({ error: err.message }, { status: 504 });
+      }
+      if (err instanceof Error && err.message === 'Formato inesperado da resposta do SISCOMEX') {
+        return NextResponse.json({ error: err.message }, { status: 502 });
       }
       throw err;
-    } finally {
-      clearTimeout(timeoutId);
     }
 
     // Parse items into a map: code → description

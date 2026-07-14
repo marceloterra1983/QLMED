@@ -1,0 +1,11 @@
+-- Non-destructive ownership baseline for the satellite tables exposed by
+-- Prisma Client in SCHEMA-01:
+-- invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata,
+-- ncm_cache, product_registry, stock_entry, nfe_entry_item,
+-- product_settings_catalog, cnpj_cache and cnpj_monitoring.
+--
+-- Their physical DDL and indexes are already versioned by
+-- 20260609190000_reconcile_current_schema_and_outbox. This marker migration
+-- intentionally executes no DDL: it records the reviewed point where the
+-- matching models stopped using @@ignore without recreating tables or
+-- modifying existing rows.

@@ -18,6 +18,14 @@
 - [ ] **Phase 9: Search & Pagination** - Busca DB-level, paginacao real, cache headers, server component layout
 - [x] **Phase 10: Major Upgrades** - Next.js 15, React 19, Prisma 7, ESLint 9, minor upgrades (completed 2026-04-10)
 
+## Milestone v2.0: Remediação Pós-Revisão Arquitetural (iniciada 2026-07-11)
+
+**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
+Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
+
+- [ ] **Phase 11: Unificação de Schema** - Baseline Prisma das 9 tabelas satélite `@@ignore`, migração store-a-store para Client tipado, política expand/contract de migração
+- [x] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado — concluída em 2026-07-12
+
 ## Phase Details
 
 ### Phase 1: Security Critical
@@ -222,6 +230,47 @@ Plans:
 
 **Total: 40/40 requirements mapped. Zero orphans.**
 
+| Requirement | Phase |
+|-------------|-------|
+| SCHEMA-01 | Phase 11 | Pending |
+| SCHEMA-02 | Phase 11 | Pending |
+| SCHEMA-03 | Phase 11 | Pending |
+| CODEDUP-01 | Phase 12 | Complete |
+| CODEDUP-02 | Phase 12 | Complete |
+| CODEDUP-03 | Phase 12 | Complete |
+
+**Milestone v2.0: 6/6 requirements mapped. Zero orphans.**
+
+### Phase 11: Unificação de Schema
+**Goal**: As 11 tabelas satélite hoje `@@ignore` + DDL manual nas stores (9 originalmente listadas + `nfe_entry_item` + `cnpj_monitoring`, achado verificado ao vivo em 2026-07-11) passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
+**Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 em `/home/marce` — **CONFIRMADO CONCLUÍDA em 2026-07-11** (`qlmed_dev` provisionado, `.env` de dev repontado, isolamento comprovado ao vivo: marker count=1 em dev, count=0 em produção). Bloqueio removido, fase liberada para planejamento/execução.
+**Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03
+**Success Criteria** (o que precisa ser verdade):
+  1. As 11 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, nfe_entry_item, ncm_cache, cnpj_cache, cnpj_monitoring, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
+  2. Ao menos a store de menor tráfego (cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
+  3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
+  4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
+**Plans:** 3 plans preparados no candidato; execução de produção continua bloqueada pelo checkpoint humano T007. As 10 tabelas satélite restantes ficam para um followup "Fase 11b" após a observação do piloto.
+Plans:
+- [ ] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01)
+- [ ] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02)
+- [ ] 11-03-PLAN.md — Documentar política expand/contract em CLAUDE.md + comentário explícito no deploy-production.yml sobre rollback não desfazer migração (SCHEMA-03)
+
+### Phase 12: Desduplicação de Código
+**Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`
+**Depends on**: Nothing dentro deste repo (independente da Phase 11), mas roda depois dela para não competir por atenção com migração de schema
+**Requirements**: CODEDUP-01, CODEDUP-02, CODEDUP-03
+**Success Criteria** (o que precisa ser verdade):
+  1. `products/route.ts` não contém mais `UNIT_ALIASES`, `normalizeUnit`, `buildProductKey`, `extractProductsFromXml` inline — importa de `product-aggregation.ts`
+  2. Resposta da API de produtos é idêntica antes/depois (snapshot comparado)
+  3. `auto-sync.ts` está dividido em `sync-scheduler` + `sync-strategies/{sefaz,nsdocs,receita-nfse}` com um contrato de estratégia comum
+  4. `siscomex-client` existe (fecha o `fetch` direto em `ncm/bulk-sync`); `products/sync-anvisa` elimina seu `fetch()` de loopback interno para `/api/products`, chamando `buildProductsListPayload()` diretamente em processo — **correção pós-planejamento**: o `fetch` original não era uma chamada externa à ANVISA (verificado no código durante o plan-check), não há `anvisa-api` para rotear ali
+**Plans:** 3/3 plans complete
+Plans:
+- [x] 12-01-PLAN.md — Dedup products/route.ts against product-aggregation.ts + behavior-preservation snapshot test (CODEDUP-01) — completed 2026-07-11
+- [x] 12-02-PLAN.md — Split auto-sync.ts into sync-scheduler.ts + sync-strategies/{sefaz,nsdocs,receita-nfse}.ts with common contract (CODEDUP-02) — completed 2026-07-11
+- [x] 12-03-PLAN.md — Create siscomex-client.ts (ncm/bulk-sync) + replace products/sync-anvisa's internal loopback fetch with in-process buildProductsListPayload() call (CODEDUP-03) — completed 2026-07-12, smoke test passed against real SEFAZ/NSDocs/SISCOMEX/ANVISA (see 12-03-SUMMARY.md)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -236,6 +285,8 @@ Plans:
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
+| 11. Unificação de Schema | 0/3 | Candidate prepared; production blocked | - |
+| 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
-*Last updated: 2026-04-10 after Phase 9 and 10 planning*
+*Last updated: 2026-07-13 — estado reconciliado com o candidato Phase05: Phase 12 concluída; Phase 11 preparada, mas não executada em produção.*

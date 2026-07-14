@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { getSefazCooldown, syncViaSefaz, syncViaNsdocs, syncViaReceitaNfse } from '@/lib/auto-sync';
+import { getSefazCooldown } from '@/lib/sync-scheduler';
+import { syncViaSefaz } from '@/lib/sync-strategies/sefaz';
+import { syncViaNsdocs } from '@/lib/sync-strategies/nsdocs';
+import { syncViaReceitaNfse } from '@/lib/sync-strategies/receita-nfse';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { nsdocsSyncSchema } from '@/lib/schemas/nsdocs';
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Certificado digital não configurado para integrar com Receita NFS-e' }, { status: 400 });
     }
 
-    // Guard against concurrent syncs: the auto-sync scheduler (auto-sync.ts:149/192/229)
+    // Guard against concurrent syncs: the auto-sync scheduler (sync-scheduler.ts)
     // checks for 'running' syncLogs before starting; the manual endpoint must do the same
     // or two overlapping runs race on `lastSyncAt` / `lastNsu` cursors.
     const runningSync = await prisma.syncLog.findFirst({

@@ -20,6 +20,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
+    timeout-minutes: 45
     environment:
       name: production
       url: https://app.qlmed.com.br
@@ -98,9 +99,29 @@ jobs:
             --env-file /home/marce/qlmed/production/.env \
             -f /home/marce/qlmed/production/docker-compose.yml)
           "${compose[@]}" build qlmed-app
-          "${compose[@]}" run --rm --no-deps qlmed-app sh -c \
-            'node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code'
+          rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
+          rollback_available="${ROLLBACK_IMAGE_AVAILABLE:-0}"
+          if [[ "$rollback_available" == "1" ]]; then
+            docker image inspect "$rollback_image" >/dev/null
+          fi
+          restore_previous() {
+            if [[ "$rollback_available" == "1" ]]; then
+              QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" \
+                "${compose[@]}" up -d --no-build --force-recreate qlmed-app
+            fi
+          }
+          trap restore_previous ERR
+          "${compose[@]}" stop qlmed-app
+          "${compose[@]}" run --rm --no-deps qlmed-app sh -c '
+            set -eu
+            state=/tmp/qlmed-production-migration-window.json
+            node scripts/verify-production-migration-window.cjs before "$state"
+            node node_modules/prisma/build/index.js migrate deploy
+            node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+            node scripts/verify-production-migration-window.cjs after "$state"
+          '
           "${compose[@]}" up -d --no-build qlmed-app
+          trap - ERR
 
       - name: Verify local health
         run: |
@@ -173,6 +194,9 @@ jobs:
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
         run: |
+          # Este rollback reverte apenas a imagem do qlmed-app; não desfaz migração
+          # de banco que já tenha sido aplicada. A imagem anterior deve permanecer
+          # compatível com o schema expandido conforme docs/architecture/data.md.
           QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" docker compose \
             --project-name qlmed \
             --env-file /home/marce/qlmed/production/.env \

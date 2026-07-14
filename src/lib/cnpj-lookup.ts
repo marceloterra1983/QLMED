@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import type { Prisma } from '@prisma/client';
 
 const log = createLogger('cnpj-lookup');
 
@@ -27,18 +28,9 @@ export interface CnpjResult {
   mei: boolean | null;
 }
 
-// ── Table setup ──
-
-type InitState = { promise?: Promise<void> };
 const globalForCnpj = globalThis as unknown as {
-  cnpjCacheInitState?: InitState;
   cnpjMemoryCache?: Map<string, { result: CnpjResult | null; at: number }>;
 };
-
-if (!globalForCnpj.cnpjCacheInitState) {
-  globalForCnpj.cnpjCacheInitState = {};
-}
-const initState = globalForCnpj.cnpjCacheInitState;
 
 const MEMORY_TTL_MS = 10 * 60 * 1000; // 10 min
 const DB_TTL_DAYS = 30;
@@ -46,24 +38,6 @@ const DB_TTL_DAYS = 30;
 function getMemoryCache(): Map<string, { result: CnpjResult | null; at: number }> {
   if (!globalForCnpj.cnpjMemoryCache) globalForCnpj.cnpjMemoryCache = new Map();
   return globalForCnpj.cnpjMemoryCache;
-}
-
-export async function ensureCnpjCacheTable(): Promise<void> {
-  if (!initState.promise) {
-    initState.promise = (async () => {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS cnpj_cache (
-          cnpj TEXT PRIMARY KEY,
-          data JSONB NOT NULL,
-          fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-    })().catch((err) => {
-      initState.promise = undefined;
-      throw err;
-    });
-  }
-  return initState.promise;
 }
 
 // ── BrasilAPI fetch ──
@@ -114,28 +88,21 @@ async function fetchFromApi(cnpj: string): Promise<CnpjResult | null> {
 // ── DB cache ──
 
 async function getFromDb(cnpj: string): Promise<CnpjResult | null> {
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT data FROM cnpj_cache WHERE cnpj = $1 AND fetched_at > NOW() - INTERVAL '${DB_TTL_DAYS} days'`,
-    cnpj,
-  );
-  if (rows.length === 0) return null;
-  try {
-    const data = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
-    return data as CnpjResult;
-  } catch {
-    return null;
-  }
+  const row = await prisma.cnpjCache.findUnique({ where: { cnpj } });
+  const staleBefore = Date.now() - DB_TTL_DAYS * 24 * 60 * 60 * 1000;
+  if (!row || row.fetchedAt.getTime() <= staleBefore) return null;
+  return row.data as unknown as CnpjResult;
 }
 
 async function saveToDb(cnpj: string, data: CnpjResult): Promise<void> {
   try {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO cnpj_cache (cnpj, data, fetched_at)
-       VALUES ($1, $2::jsonb, NOW())
-       ON CONFLICT (cnpj) DO UPDATE SET data = EXCLUDED.data, fetched_at = NOW()`,
-      cnpj,
-      JSON.stringify(data),
-    );
+    const fetchedAt = new Date();
+    const json = data as unknown as Prisma.InputJsonValue;
+    await prisma.cnpjCache.upsert({
+      where: { cnpj },
+      create: { cnpj, data: json, fetchedAt },
+      update: { data: json, fetchedAt },
+    });
   } catch (err) {
     log.error({ err }, 'Error saving to DB');
   }
@@ -146,8 +113,6 @@ async function saveToDb(cnpj: string, data: CnpjResult): Promise<void> {
 export async function lookupCnpj(cnpj: string, forceRefresh = false): Promise<CnpjResult | null> {
   const digits = cnpj.replace(/\D/g, '');
   if (digits.length !== 14) return null;
-
-  await ensureCnpjCacheTable();
 
   const mem = getMemoryCache();
 

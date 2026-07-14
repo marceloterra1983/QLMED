@@ -21,7 +21,7 @@ const globalForBootstrap = globalThis as unknown as {
 if (!globalForBootstrap.__autoSyncStarted) {
   globalForBootstrap.__autoSyncStarted = true;
   setTimeout(() => {
-    import('./auto-sync')
+    import('./sync-scheduler')
       .then((m) => m.startAutoSync())
       .catch((err) => log.error({ err }, 'AutoSync falha ao iniciar'));
   }, 10_000);

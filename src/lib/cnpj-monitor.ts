@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
-import { lookupCnpj, ensureCnpjCacheTable } from '@/lib/cnpj-lookup';
+import { lookupCnpj } from '@/lib/cnpj-lookup';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('cnpj-monitor');
@@ -57,7 +57,6 @@ export async function runBatchCnpjCheck(
   delayMs = 2000,
 ): Promise<{ checked: number; changed: number; errors: number }> {
   await ensureCnpjMonitoringTable();
-  await ensureCnpjCacheTable();
 
   // Get distinct CNPJs from invoices
   const cnpjRows = await prisma.$queryRawUnsafe<any[]>(
@@ -84,11 +83,11 @@ export async function runBatchCnpjCheck(
   );
 
   // Check stale or unknown CNPJs first
-  const staleThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const staleCnpjs = await prisma.$queryRawUnsafe<{ cnpj: string }[]>(
-    `SELECT cnpj FROM cnpj_cache WHERE fetched_at < $1::timestamptz`,
-    staleThreshold,
-  );
+  const staleThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const staleCnpjs = await prisma.cnpjCache.findMany({
+    where: { fetchedAt: { lt: staleThreshold } },
+    select: { cnpj: true },
+  });
   const staleSet = new Set(staleCnpjs.map((r) => r.cnpj));
 
   // Prioritize stale + unknown

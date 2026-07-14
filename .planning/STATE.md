@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-last_updated: "2026-04-10T04:48:51.836Z"
+milestone: v2.0
+milestone_name: Remediação Pós-Revisão Arquitetural
+status: executing
+last_updated: "2026-07-13T00:00:00Z"
+last_activity: 2026-07-13
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 33
-  completed_plans: 33
-  percent: 100
+  total_phases: 2
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 3
+  percent: 50
 ---
 
 # State: QLMED Correcao e Hardening
@@ -17,23 +18,14 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 10 — major-upgrades
+**Current focus:** Phase 11 — candidato de unificação de schema aguardando gates e autorização de produção
 
 ## Current Position
 
-**Milestone:** Correcao e Hardening Completo
-**Phase:** 10 of 10 (major upgrades)
-**Plan:** Not started
-**Status:** Milestone complete
-
-**Progress:**
-
-[██████████] 100%
-Phase: 10 (major-upgrades) — EXECUTING
-Plan: 1 of 4
-Milestone: [████████░░] 82%
-
-```
+Phase: 11 — Unificação de Schema
+Plan: 11-01..03 candidate prepared
+Status: Blocked before production checkpoint (T007)
+Last activity: 2026-07-13 — Phase 12 reconciliada como concluída; candidato Phase 11 permanece sem autorização de produção
 
 ## Performance Metrics
 
@@ -103,7 +95,8 @@ _(none yet)_
 
 ### Blockers
 
-_(none)_
+- Phase 11/T007 exige autorização humana explícita e evidência fail-closed antes de qualquer migração de produção.
+- SCHEMA-01..03 somente podem ser fechados depois de checkpoint, deploy, canários e janela de observação em produção.
 
 ### Quick Tasks Completed
 
@@ -115,10 +108,24 @@ _(none)_
 
 ### Gotchas
 
-- DB compartilhado dev/prod — nunca prisma migrate dev, apenas db push
+- DB compartilhado dev/prod — nunca prisma migrate dev, apenas db push.
+  **Condicional**: isso deixa de valer quando o workstream `server-hardening`
+  (repo `/home/marce`) concluir a Phase 2 (separação de banco `qlmed_dev`).
+  Phase 11 desta milestone (Unificação de Schema) NÃO deve começar antes de
+  confirmar isso — ver ROADMAP.md Phase 11 "Depends on".
 - node-forge update (Phase 2) precisa de teste cuidadoso com assinatura NF-e
 - PINs sao padrao da empresa — manter funcionalidade, proteger implementacao
 - Container names gerenciados pelo Coolify — nao criar containers conflitantes
+
+### Milestone v2.0 — Notas
+
+- Escopo derivado de `docs/server/ARCH-REMEDIATION-PLAN.md` (revisão
+  arquitetural de 2026-07-11), sem re-pesquisa — pesquisa já feita por 3
+  agentes especializados na sessão de origem.
+- Dependência cruzada de repo: Phase 11 (schema) depende de
+  `server-hardening` Phase 2 em `/home/marce` estar concluída. GSD não
+  rastreia dependências entre projetos automaticamente — checar manualmente
+  antes de planejar/executar a Phase 11.
 
 ## Session Continuity
 
@@ -130,8 +137,9 @@ _(none)_
 
 ### Next Session Should
 
-1. Execute Phase 06 Plan 02 (next plan in api-validation-logging)
-2. Phase 06 has 5 plans total, 4 remaining
+1. Validar o candidato integrado completo contra `origin/main`, sem reduzir o escopo aos commits finais.
+2. Fechar a dependência externa Phase04 e os gates Toolkit/assinatura/checkpoint.
+3. Executar T007 somente via PR e environment protegido; então observar e reconciliar SCHEMA-01..03.
 
 ---
-*Last updated: 2026-04-10 after 06-01 completion*
+*Last updated: 2026-07-13 — estado v2 reconciliado sem alegar execução de produção.*

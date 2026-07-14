@@ -10,6 +10,7 @@ import { cleanString } from '@/lib/utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { syncAnvisaSchema } from '@/lib/schemas/product';
+import { buildProductsListPayload, type ProductsListQueryParams } from '@/lib/product-aggregation';
 
 const log = createLogger('products/sync-anvisa');
 
@@ -21,7 +22,7 @@ interface SyncProductItem {
   unit: string;
   ean?: string | null;
   anvisa: string | null;
-  anvisaMatchMethod?: 'xml' | 'issued_nfe' | 'catalog_code_exact' | 'catalog_name' | null;
+  anvisaMatchMethod?: 'xml' | 'issued_nfe' | 'catalog_code_exact' | 'catalog_name' | 'manual' | null;
   anvisaConfidence?: number | null;
   anvisaMatchedProductName?: string | null;
   anvisaHolder?: string | null;
@@ -52,42 +53,23 @@ export async function POST(req: Request) {
     if (!parsed.success) return apiValidationError(parsed.error);
     const mode = parsed.data.mode;
 
-    const origin = new URL(req.url).origin;
-    const cookieHeader = req.headers.get('cookie') || '';
-    const limit = 200;
-    let page = 1;
-    let totalPages = 1;
-    const products: SyncProductItem[] = [];
-
-    while (page <= totalPages) {
-      const url = new URL('/api/products', origin);
-      url.searchParams.set('page', String(page));
-      url.searchParams.set('limit', String(limit));
-      url.searchParams.set('sort', 'quantity');
-      url.searchParams.set('order', 'desc');
-      url.searchParams.set('issuedNfeLookup', '1');
-      url.searchParams.set('anvisaLookup', '1');
-
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '');
-        return NextResponse.json(
-          { error: `Falha na leitura de produtos para sincronização (HTTP ${response.status})`, detail },
-          { status: 500 },
-        );
-      }
-
-      const payload = await response.json();
-      const pageProducts = Array.isArray(payload?.products) ? payload.products : [];
-      products.push(...pageProducts);
-      totalPages = Number(payload?.pagination?.pages || 1);
-      page += 1;
-    }
+    const queryParams: ProductsListQueryParams = {
+      page: 1,
+      limit: 200,
+      search: '',
+      sort: 'quantity',
+      order: 'desc',
+      useAnvisaLookup: true,
+      useIssuedNfeLookup: true,
+      onlyMissingAnvisa: false,
+      exportAll: true,
+      dateFrom: null,
+      dateTo: null,
+    };
+    const listPayload = await buildProductsListPayload(company.id, queryParams);
+    const products: SyncProductItem[] = Array.isArray(listPayload?.products)
+      ? listPayload.products
+      : [];
 
     const productKeys = products.map((product) => product.key);
     const existingRows =
