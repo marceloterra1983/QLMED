@@ -99,9 +99,24 @@ jobs:
             --env-file /home/marce/qlmed/production/.env \
             -f /home/marce/qlmed/production/docker-compose.yml)
           "${compose[@]}" build qlmed-app
-          "${compose[@]}" run --rm --no-deps qlmed-app sh -c \
-            'node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code'
+          rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
+          docker image inspect "$rollback_image" >/dev/null
+          restore_previous() {
+            QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" \
+              "${compose[@]}" up -d --no-build --force-recreate qlmed-app
+          }
+          trap restore_previous ERR
+          "${compose[@]}" stop qlmed-app
+          "${compose[@]}" run --rm --no-deps qlmed-app sh -c '
+            set -eu
+            state=/tmp/qlmed-production-migration-window.json
+            node scripts/verify-production-migration-window.cjs before "$state"
+            node node_modules/prisma/build/index.js migrate deploy
+            node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+            node scripts/verify-production-migration-window.cjs after "$state"
+          '
           "${compose[@]}" up -d --no-build qlmed-app
+          trap - ERR
 
       - name: Verify local health
         run: |
