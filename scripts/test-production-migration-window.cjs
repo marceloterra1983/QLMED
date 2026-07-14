@@ -13,6 +13,8 @@ assert.deepEqual(
   [gate.EXPECTED_MIGRATION],
 );
 gate.verifyExpectedSql();
+assert.equal(gate.migrationState([]), 'already-applied');
+assert.equal(gate.migrationState([gate.EXPECTED_MIGRATION]), 'pending');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 assert.match(
   dockerfile,
