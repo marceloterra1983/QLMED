@@ -100,10 +100,15 @@ jobs:
             -f /home/marce/qlmed/production/docker-compose.yml)
           "${compose[@]}" build qlmed-app
           rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
-          docker image inspect "$rollback_image" >/dev/null
+          rollback_available="${ROLLBACK_IMAGE_AVAILABLE:-0}"
+          if [[ "$rollback_available" == "1" ]]; then
+            docker image inspect "$rollback_image" >/dev/null
+          fi
           restore_previous() {
-            QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" \
-              "${compose[@]}" up -d --no-build --force-recreate qlmed-app
+            if [[ "$rollback_available" == "1" ]]; then
+              QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" \
+                "${compose[@]}" up -d --no-build --force-recreate qlmed-app
+            fi
           }
           trap restore_previous ERR
           "${compose[@]}" stop qlmed-app
