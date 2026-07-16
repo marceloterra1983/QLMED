@@ -43,6 +43,11 @@ services:
     image: n8nio/n8n:2.23.4
     container_name: qlmed-n8n
     restart: unless-stopped
+    # host.docker.internal → host-gateway permite ao n8n alcançar o listener
+    # de enqueue do Autofix no host (127.0.0.1:18642). Perdido ao recriar via
+    # compose em 2026-07-14; restaurado 2026-07-16 (shared-n8n já o tinha).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:5678:5678"
       - "100.83.11.58:5678:5678"
