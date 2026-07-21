@@ -180,8 +180,12 @@ jobs:
 
       - name: Install transactional notification worker
         run: |
+          # Installer é cópia root-owned FORA da árvore sincronizada pelo rsync
+          # do deploy (auditoria 2026-07-21) — evita escalada gh-runner→marce
+          # via script que o próprio deploy poderia sobrescrever. Atualizar via:
+          #   sudo install -o root -g root -m 755 <fonte> /usr/local/lib/qlmed/
           sudo -n -u marce -- \
-            /usr/bin/bash /home/marce/qlmed/production/app/scripts/install-notification-outbox-cron.sh \
+            /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh \
             /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
 
       - name: Clean run-scoped rollback tag
@@ -190,6 +194,20 @@ jobs:
           # Deploy saudável: a tag por run já cumpriu o papel. A imagem anterior
           # continua acessível via qlmed-app:previous para rollback manual.
           docker rmi "qlmed-app:rollback-${GITHUB_RUN_ID}" >/dev/null 2>&1 || true
+
+      - name: Verify manual rollback tag survived
+        if: ${{ success() }}
+        run: |
+          # Rollback manual pós-deploy depende de qlmed-app:previous existir.
+          # Já sumiu uma vez (removida por prune) — auditoria 2026-07-21. Falha
+          # ruidosa se não sobreviveu ao deploy.
+          if [[ "${ROLLBACK_IMAGE_AVAILABLE:-0}" == "1" ]]; then
+            docker image inspect qlmed-app:previous >/dev/null \
+              || { echo "::error::qlmed-app:previous ausente após deploy — rollback manual quebrado"; exit 1; }
+            echo "qlmed-app:previous OK"
+          else
+            echo "Primeiro deploy sem container prévio — nada a verificar"
+          fi
 
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
