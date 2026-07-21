@@ -1,23 +1,9 @@
+# Este compose gerencia SOMENTE qlmed-app e qlmed-n8n.
+# qlmed-db e evolution (api/db/redis) são Coolify-managed — definição de
+# referência em ./docker-compose.coolify.yml. Não redeclarar aqui: um
+# `up -d` criaria stack vazia paralela e colidiria na porta 8085
+# (auditoria 2026-07-21).
 services:
-  qlmed-db:
-    image: postgres:18-alpine
-    container_name: qlmed-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: /var/lib/postgresql/18/docker
-    volumes:
-      # postgres:18-alpine persists the cluster under /var/lib/postgresql/18/docker.
-      # Mount the parent directory so container recreation keeps the actual database files.
-      - pgdata:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   qlmed-app:
     image: qlmed-app:${QLMED_BUILD_COMMIT_SHA:-local}
     build:
@@ -40,9 +26,14 @@ services:
       - coolify_net
 
   qlmed-n8n:
-    image: n8nio/n8n:2.23.4
+    image: n8nio/n8n:2.23.4@sha256:1872cce3548bf4dcfe5aceaf3d9293f4499635823fbdea0ee726bd222d2e44b8
     container_name: qlmed-n8n
     restart: unless-stopped
+    # host.docker.internal → host-gateway permite ao n8n alcançar o listener
+    # de enqueue do Autofix no host (127.0.0.1:18642). Perdido ao recriar via
+    # compose em 2026-07-14; restaurado 2026-07-16 (shared-n8n já o tinha).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:5678:5678"
       - "100.83.11.58:5678:5678"
@@ -57,86 +48,19 @@ services:
       - coolify_net
     depends_on:
       - qlmed-app
-
-  qlmed-evolution-api:
-    image: evoapicloud/evolution-api:v2.3.7
-    container_name: qlmed-evolution-api
-    restart: unless-stopped
-    ports:
-      - "${EVOLUTION_PORT:-8085}:8080"
-    environment:
-      SERVER_URL: "${EVOLUTION_SERVER_URL}"
-      AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY}"
-      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
-      DEL_INSTANCE: "false"
-      LANGUAGE: "pt-BR"
-      DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: "postgresql"
-      DATABASE_CONNECTION_URI: "postgresql://evolution:${EVOLUTION_POSTGRES_PASSWORD}@qlmed-evolution-db:5432/${EVOLUTION_POSTGRES_DB}"
-      DATABASE_CONNECTION_CLIENT_NAME: "qlmed_evolution_api"
-      DATABASE_SAVE_DATA_INSTANCE: "true"
-      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
-      DATABASE_SAVE_MESSAGE_UPDATE: "true"
-      DATABASE_SAVE_DATA_CONTACTS: "true"
-      DATABASE_SAVE_DATA_CHATS: "true"
-      DATABASE_SAVE_DATA_LABELS: "true"
-      DATABASE_SAVE_DATA_HISTORIC: "true"
-      CACHE_REDIS_ENABLED: "true"
-      CACHE_REDIS_URI: "redis://qlmed-evolution-redis:6379/0"
-      CACHE_REDIS_PREFIX_KEY: "evolution"
-      CACHE_REDIS_SAVE_INSTANCES: "true"
-      CACHE_LOCAL_ENABLED: "false"
-      WEBHOOK_GLOBAL_ENABLED: "false"
-      WEBHOOK_GLOBAL_URL: ""
-      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
-      TZ: "America/Sao_Paulo"
-      LOG_LEVEL: "DEBUG,ERROR,WARN,INFO,LOG,VERBOSE,DARK,WEBHOOKS"
-    volumes:
-      - evolution_instances:/evolution/instances
-    depends_on:
-      qlmed-evolution-db:
-        condition: service_healthy
-      qlmed-evolution-redis:
-        condition: service_started
-
-  qlmed-evolution-db:
-    image: postgres:16-alpine
-    container_name: qlmed-evolution-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${EVOLUTION_POSTGRES_DB}
-    volumes:
-      - evolution_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U evolution"]
-      interval: 10s
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-
-  qlmed-evolution-redis:
-    image: redis:7-alpine
-    container_name: qlmed-evolution-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - evolution_redis:/data
+      retries: 3
+      start_period: 60s
 
 volumes:
-  pgdata:
-    name: qlmed_pgdata
   n8n_data:
     # External volume owned by Coolify — must NOT be recreated by compose.
     # Contains n8n workflows, credentials, and encryption key.
     external: true
     name: lkwc0s0ck8kcckocc4goc0kg_n8n-data
-  evolution_instances:
-    name: qlmed_evolution_instances
-  evolution_pgdata:
-    name: qlmed_evolution_pgdata
-  evolution_redis:
-    name: qlmed_evolution_redis
   app_storage:
     name: qlmed_app_storage
 
