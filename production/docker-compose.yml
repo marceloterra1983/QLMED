@@ -15,6 +15,11 @@ services:
         QLMED_BUILD_SOURCE: ${QLMED_BUILD_SOURCE:-production}
     container_name: qlmed-app
     restart: unless-stopped
+    # 2g dá folga para os picos do Puppeteer/Chromium (geração de PDF) — 1g
+    # arriscaria OOM no meio de um render. Auditoria 2026-07-21.
+    mem_limit: 2g
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "13000:3000"
     env_file:
@@ -29,6 +34,11 @@ services:
     image: n8nio/n8n:2.23.4@sha256:1872cce3548bf4dcfe5aceaf3d9293f4499635823fbdea0ee726bd222d2e44b8
     container_name: qlmed-n8n
     restart: unless-stopped
+    # Aplica só quando o n8n for recriado (o deploy não o recria) — fazer em
+    # janela curta preservando o extra_hosts. Auditoria 2026-07-21.
+    mem_limit: 1g
+    security_opt:
+      - no-new-privileges:true
     # host.docker.internal → host-gateway permite ao n8n alcançar o listener
     # de enqueue do Autofix no host (127.0.0.1:18642). Perdido ao recriar via
     # compose em 2026-07-14; restaurado 2026-07-16 (shared-n8n já o tinha).
