@@ -25,6 +25,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+# nunca versionar backups de .env (auditoria 2026-07-21)
+.env.bak*
+.env*.bak*
 
 # vercel
 .vercel

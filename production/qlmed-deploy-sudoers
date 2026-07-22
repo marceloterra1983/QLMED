@@ -1,3 +1,6 @@
 # Allow the isolated production runner to validate and install only the
 # versioned QLMED notification worker as the operational account.
-gh-runner ALL=(marce) NOPASSWD: /usr/bin/bash /home/marce/qlmed/production/app/scripts/install-notification-outbox-cron.sh /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
+# Installer é cópia root-owned FORA da árvore sincronizada pelo deploy
+# (auditoria 2026-07-21). Atualizar via:
+#   sudo install -o root -g root -m 755 <fonte> /usr/local/lib/qlmed/install-notification-outbox-cron.sh
+gh-runner ALL=(marce) NOPASSWD: /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
