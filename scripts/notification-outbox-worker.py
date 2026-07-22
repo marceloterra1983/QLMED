@@ -231,6 +231,15 @@ def ack(base_url: str, api_key: str, delivery: dict, outcome: str, **extra: str 
     response = request_json(f"{base_url}/api/notifications/outbox/ack", api_key, {"deliveries": [item]})
     if response.get("accepted") != 1 or response.get("rejected") != 0:
         raise RuntimeError(f"Delivery acknowledgement rejected: {delivery['id']}")
+    # Trilha estruturada por delivery no cron.log (antes só havia heartbeat, sem
+    # registro de entrega auditável fora do banco). Painel de especialistas
+    # 2026-07-22. Nunca inclui conteúdo fiscal/credencial — só id, outcome e nota.
+    note = next((str(value) for key, value in extra.items() if key == "error" and value), "")
+    print(
+        f"{datetime.now(timezone.utc).isoformat()} outbox delivery={delivery['id']} outcome={outcome}"
+        + (f" note={note}" if note else ""),
+        flush=True,
+    )
 
 
 def mark_submitting(base_url: str, api_key: str, delivery: dict) -> None:
