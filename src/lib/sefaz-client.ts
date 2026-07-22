@@ -108,6 +108,15 @@ export class SefazClient {
         });
       });
 
+      // O NFeDistribuicaoDFe pode ficar sem resposta e, sem timeout, o ciclo de
+      // sync bloqueia indefinidamente. O timeout apenas ABORTA a requisição —
+      // NÃO faz retry de propósito: repetir a chamada ao DistribuicaoDFe arrisca
+      // o erro 656 "Consumo Indevido" (bloqueio por horas). Painel 2026-07-22.
+      const timeoutMs = Number(process.env.SEFAZ_TIMEOUT_MS) || 30000;
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(new Error(`SEFAZ timeout após ${timeoutMs}ms (DistribuicaoDFe sem resposta)`));
+      });
+
       req.on('error', (e) => reject(e));
       req.write(envelope);
       req.end();
