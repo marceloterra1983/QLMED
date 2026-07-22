@@ -96,6 +96,9 @@ async function requestToken(params: URLSearchParams): Promise<OneDriveTokenRespo
     },
     body: params.toString(),
     cache: 'no-store',
+    // Timeout p/ não travar o fluxo se o endpoint de token não responder
+    // (fetch não tem timeout por padrão). Painel 2026-07-22.
+    signal: AbortSignal.timeout(Number(process.env.ONEDRIVE_TIMEOUT_MS) || 30000),
   });
 
   const payload = (await response.json().catch(() => null)) as unknown;
@@ -167,6 +170,8 @@ async function graphRequest<T>(resourcePath: string, accessToken: string): Promi
       Authorization: `Bearer ${accessToken}`,
     },
     cache: 'no-store',
+    // Timeout p/ não travar em chamada à Graph API sem resposta. Painel 2026-07-22.
+    signal: AbortSignal.timeout(Number(process.env.ONEDRIVE_TIMEOUT_MS) || 30000),
   });
 
   const payload = (await response.json().catch(() => null)) as unknown;
