@@ -55,6 +55,14 @@ services:
         condition: service_healthy
       qlmed-evolution-redis:
         condition: service_started
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
   qlmed-evolution-db:
     image: 'postgres:16-alpine'
     restart: unless-stopped
@@ -80,6 +88,14 @@ services:
       - 'yes'
     volumes:
       - 'evolution_redis:/data'
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 30s
+      timeout: 5s
+      retries: 3
 volumes:
   pgdata:
     name: qlmed_pgdata
