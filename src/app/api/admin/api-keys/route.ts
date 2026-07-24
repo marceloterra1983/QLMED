@@ -3,11 +3,12 @@ import { randomBytes, createHash } from 'crypto';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { apiError } from '@/lib/api-error';
+import { API_KEY_SCOPES, normalizeApiKeyScopes } from '@/lib/api-key-scopes';
 import { z } from 'zod';
 
 const createSchema = z.object({
   name: z.string().trim().min(3).max(80),
-  scopes: z.array(z.string().trim().min(1).max(40)).min(1).max(20),
+  scopes: z.array(z.enum(API_KEY_SCOPES)).min(1).max(20),
 });
 
 /**
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     const created = await prisma.apiKey.create({
       data: {
         name: parsed.data.name,
-        scopes: parsed.data.scopes,
+        scopes: normalizeApiKeyScopes(parsed.data.scopes),
         keyHash,
         createdById: admin.userId,
       },

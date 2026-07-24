@@ -11,7 +11,8 @@ import { invoiceBulkDownloadSchema } from '@/lib/schemas/invoice';
 
 const log = createLogger('invoices/bulk-download');
 
-const MAX_BULK_ITEMS = 200;
+const MAX_BULK_XML_ITEMS = 200;
+const MAX_BULK_PDF_ITEMS = 25;
 
 type BulkDownloadFormat = 'xml' | 'pdf';
 
@@ -94,7 +95,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payload invalido' }, { status: 400 });
     }
 
-    const ids = payload.ids.slice(0, MAX_BULK_ITEMS);
+    const maxItems = payload.format === 'pdf' ? MAX_BULK_PDF_ITEMS : MAX_BULK_XML_ITEMS;
+    if (payload.ids.length > maxItems) {
+      return NextResponse.json(
+        { error: `Limite de ${maxItems} documento(s) por lote ${payload.format.toUpperCase()}` },
+        { status: 413 }
+      );
+    }
+
+    const ids = payload.ids;
     const invoices = await prisma.invoice.findMany({
       where: {
         id: { in: ids },

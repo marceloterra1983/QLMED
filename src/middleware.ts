@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders, RateLimitConfig } from '@/lib/rate-limit';
 import { canAccessApi, canAccessPage, PAGE_GROUPS } from '@/lib/navigation';
+import { API_KEY_REQUEST_METHOD_HEADER, API_KEY_REQUEST_PATH_HEADER } from '@/lib/api-key-scopes';
 
 /**
  * Public API routes that don't require authentication.
@@ -21,6 +22,26 @@ const PROTECTED_SUBPATHS = [
   '/api/auth/logout',
 ];
 
+const API_KEY_PASSTHROUGH_PREFIXES = [
+  '/api/anvisa',
+  '/api/cnpj',
+  '/api/contacts',
+  '/api/cte',
+  '/api/customers',
+  '/api/dashboard',
+  '/api/estoque',
+  '/api/financeiro',
+  '/api/fiscal',
+  '/api/invoices',
+  '/api/ncm',
+  '/api/nsdocs',
+  '/api/products',
+  '/api/receita',
+  '/api/reports',
+  '/api/suppliers',
+  '/api/webhooks',
+];
+
 function isPublicApiRoute(pathname: string): boolean {
   // Explicit protected sub-paths override the coarse allowlist prefixes.
   for (let j = 0; j < PROTECTED_SUBPATHS.length; j++) {
@@ -32,6 +53,15 @@ function isPublicApiRoute(pathname: string): boolean {
   for (let i = 0; i < PUBLIC_API_ROUTES.length; i++) {
     const route = PUBLIC_API_ROUTES[i];
     if (pathname === route || pathname.startsWith(route + '/')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function allowsRouteLevelApiKeyAuth(pathname: string): boolean {
+  for (const prefix of API_KEY_PASSTHROUGH_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
       return true;
     }
   }
@@ -57,11 +87,32 @@ function clearAuthCookies(response: NextResponse) {
   }
 }
 
-function getRateLimitConfig(pathname: string): RateLimitConfig | null {
-  if (pathname.startsWith('/api/auth/')) return RATE_LIMITS.login;
+export function getRateLimitConfig(pathname: string): RateLimitConfig | null {
+  if (pathname === '/api/auth/callback/credentials') return RATE_LIMITS.login;
   if (pathname.includes('/upload')) return RATE_LIMITS.upload;
   if (pathname.startsWith('/api/webhooks/')) return RATE_LIMITS.webhook;
   return null;
+}
+
+function isValidHeaderIp(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 45) return false;
+  return /^[0-9a-fA-F:.]+$/.test(trimmed);
+}
+
+export function getClientIp(headers: Headers) {
+  if (process.env.TRUST_PROXY_HEADERS === 'false') return 'untrusted-proxy';
+
+  const forwardedFor = headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    const ips = forwardedFor.split(',').map((part) => part.trim()).filter(isValidHeaderIp);
+    const last = ips.at(-1);
+    if (last) return last;
+  }
+
+  const realIp = headers.get('x-real-ip');
+  if (realIp && isValidHeaderIp(realIp)) return realIp.trim();
+  return 'unknown';
 }
 
 /**
@@ -100,9 +151,7 @@ export async function middleware(req: NextRequest) {
   if (isApiRoute) {
     const rateLimitConfig = getRateLimitConfig(req.nextUrl.pathname);
     if (rateLimitConfig) {
-      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-        || req.headers.get('x-real-ip')
-        || 'unknown';
+      const clientIp = getClientIp(req.headers);
       const key = `${clientIp}:${req.nextUrl.pathname}`;
       const result = checkRateLimit(key, rateLimitConfig);
       if (!result.allowed) {
@@ -110,6 +159,15 @@ export async function middleware(req: NextRequest) {
           { error: 'Muitas tentativas. Tente novamente mais tarde.' },
           { status: 429, headers: getRateLimitHeaders(result.remaining, result.resetAt) }
         );
+      }
+      if (req.nextUrl.pathname === '/api/auth/callback/credentials') {
+        const globalResult = checkRateLimit('global:/api/auth/callback/credentials', RATE_LIMITS.loginGlobal);
+        if (!globalResult.allowed) {
+          return NextResponse.json(
+            { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+            { status: 429, headers: getRateLimitHeaders(globalResult.remaining, globalResult.resetAt) }
+          );
+        }
       }
     }
   }
@@ -119,22 +177,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // API key validation is now done ENTIRELY at the route layer (auth.ts:
-  // getApiKeyContext) where Prisma can hash-lookup against the ApiKey table
-  // and attribute audit events to a specific key. The middleware used to
-  // pre-validate against process.env.QLMED_API_KEY and set an
-  // `x-api-key-validated: 1` flag, but that flag was trust-only (forgeable
-  // by any route that skipped middleware) and the env-based comparison
-  // couldn't distinguish between different integration keys. Now:
-  //   - If x-api-key is present, we strip any client-supplied `-validated`
-  //     header so route-level code can't be tricked into trusting it.
-  //   - Route-level auth does the real hash-and-compare.
-  //   - Requests without a session JWT fall through to the redirect/401 path.
+  // API key validation is done at the route layer (auth.ts:getApiKeyContext)
+  // where Prisma can hash-lookup against ApiKey and enforce scopes. The Edge
+  // middleware only allows pass-through for known protected API prefixes that
+  // have route-level guards, and strips any spoofed validation marker.
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
-    if (apiKey) {
+    if (apiKey && allowsRouteLevelApiKeyAuth(req.nextUrl.pathname)) {
       const requestHeaders = new Headers(req.headers);
       requestHeaders.delete('x-api-key-validated');
+      requestHeaders.delete(API_KEY_REQUEST_PATH_HEADER);
+      requestHeaders.delete(API_KEY_REQUEST_METHOD_HEADER);
+      requestHeaders.set(API_KEY_REQUEST_PATH_HEADER, req.nextUrl.pathname);
+      requestHeaders.set(API_KEY_REQUEST_METHOD_HEADER, req.method.toUpperCase());
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
   }

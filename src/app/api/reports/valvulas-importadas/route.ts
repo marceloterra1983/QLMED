@@ -129,8 +129,46 @@ interface MonthlySeries {
   soldValue: number;
 }
 
-const MAX_INVOICES = 20000;
+const MAX_INVOICES_PER_DIRECTION = 5000;
+const MAX_RANGE_MONTHS = 60;
 const XML_BATCH_SIZE = 50;
+const REPORT_CACHE_TTL_MS = 120_000;
+const reportCache = new Map<string, { expiresAt: number; data: unknown }>();
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function parseIsoDate(value: string | null, fallback: string) {
+  if (!value) return fallback;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('INVALID_DATE');
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error('INVALID_DATE');
+  }
+  return value;
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate()));
+}
+
+function getReportDateRange(req: Request) {
+  const now = new Date();
+  const defaultFrom = `${now.getUTCFullYear() - 4}-01-01`;
+  const defaultTo = toIsoDate(now);
+  const { searchParams } = new URL(req.url);
+  const dateFrom = parseIsoDate(searchParams.get('dateFrom'), defaultFrom);
+  const dateTo = parseIsoDate(searchParams.get('dateTo'), defaultTo);
+  if (dateFrom > dateTo) throw new Error('INVALID_DATE_RANGE');
+
+  const fromDate = new Date(`${dateFrom}T00:00:00.000Z`);
+  const maxToDate = addMonths(fromDate, MAX_RANGE_MONTHS);
+  const toDate = new Date(`${dateTo}T23:59:59.999Z`);
+  if (toDate > maxToDate) throw new Error('DATE_RANGE_TOO_LARGE');
+
+  return { dateFrom, dateTo, fromDate, toDate };
+}
 
 /* ── Fixed list of product codes that belong to the "Válvulas Mecânicas Corcym" report ── */
 const VALVULAS_CODES = new Set([
@@ -187,6 +225,45 @@ export async function GET(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     await ensureProductRegistryTable();
+    const { dateFrom, dateTo, fromDate, toDate } = getReportDateRange(req);
+    const cacheKey = `${company.id}:${dateFrom}:${dateTo}`;
+    const cached = reportCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data, {
+        headers: {
+          'Cache-Control': 'private, max-age=60',
+          'X-Cache': 'HIT',
+        },
+      });
+    }
+
+    const [issuedCount, receivedCount] = await Promise.all([
+      prisma.invoice.count({
+        where: {
+          companyId: company.id,
+          type: 'NFE',
+          direction: 'issued',
+          issueDate: { gte: fromDate, lte: toDate },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          companyId: company.id,
+          type: 'NFE',
+          direction: 'received',
+          issueDate: { gte: fromDate, lte: toDate },
+        },
+      }),
+    ]);
+    if (issuedCount > MAX_INVOICES_PER_DIRECTION || receivedCount > MAX_INVOICES_PER_DIRECTION) {
+      return NextResponse.json(
+        {
+          error: `Periodo muito amplo para este relatorio. Limite: ${MAX_INVOICES_PER_DIRECTION.toLocaleString('pt-BR')} NF-e por direcao.`,
+          details: { issuedCount, receivedCount, dateFrom, dateTo },
+        },
+        { status: 413 }
+      );
+    }
 
     const importProductMap = new Map<string, ImportProduct>();
 
@@ -209,10 +286,14 @@ export async function GET(req: Request) {
        WHERE "companyId" = $1
          AND type = 'NFE'
          AND direction = 'issued'
+         AND "issueDate" >= $2
+         AND "issueDate" <= $3
        ORDER BY "issueDate" DESC
-       LIMIT $2`,
+       LIMIT $4`,
       company.id,
-      MAX_INVOICES,
+      fromDate,
+      toDate,
+      MAX_INVOICES_PER_DIRECTION,
     );
 
     // Load registry for shortName lookup
@@ -420,10 +501,14 @@ export async function GET(req: Request) {
        WHERE "companyId" = $1
          AND type = 'NFE'
          AND direction = 'received'
+         AND "issueDate" >= $2
+         AND "issueDate" <= $3
        ORDER BY "issueDate" DESC
-       LIMIT $2`,
+       LIMIT $4`,
       company.id,
-      MAX_INVOICES,
+      fromDate,
+      toDate,
+      MAX_INVOICES_PER_DIRECTION,
     );
 
     for (let i = 0; i < receivedInvoices.length; i += XML_BATCH_SIZE) {
@@ -526,7 +611,7 @@ export async function GET(req: Request) {
 
     const monthlySeries = Array.from(monthlyMap.values());
 
-    return NextResponse.json({
+    const responseData = {
       summary: {
         totalProducts: products.length,
         totalPurchasedQty: Math.round(totalPurchasedQty * 100) / 100,
@@ -540,9 +625,27 @@ export async function GET(req: Request) {
       customerYearlySales,
       customerSales,
       monthlySeries,
-      meta: { invoicesScanned, issuedInvoicesScanned },
+      meta: { invoicesScanned, issuedInvoicesScanned, dateFrom, dateTo },
+    };
+    reportCache.set(cacheKey, { expiresAt: Date.now() + REPORT_CACHE_TTL_MS, data: responseData });
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control': 'private, max-age=60',
+        'X-Cache': 'MISS',
+      },
     });
   } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === 'INVALID_DATE') {
+        return NextResponse.json({ error: 'Datas devem estar no formato YYYY-MM-DD' }, { status: 400 });
+      }
+      if (e.message === 'INVALID_DATE_RANGE') {
+        return NextResponse.json({ error: 'dateTo deve ser maior ou igual a dateFrom' }, { status: 400 });
+      }
+      if (e.message === 'DATE_RANGE_TOO_LARGE') {
+        return NextResponse.json({ error: `Periodo maximo permitido: ${MAX_RANGE_MONTHS} meses` }, { status: 400 });
+      }
+    }
     log.error({ err: e }, 'reports/valvulas-importadas error');
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }

@@ -15,7 +15,7 @@ export const invoiceUpdateStatusSchema = z.object({
  * Download em lote de XMLs ou PDFs.
  */
 export const invoiceBulkDownloadSchema = z.object({
-  ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um documento'),
+  ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um documento').max(200, 'Maximo de 200 documentos por lote'),
   format: z.enum(['xml', 'pdf'], {
     error: 'Formato invalido. Valores aceitos: xml, pdf',
   }),

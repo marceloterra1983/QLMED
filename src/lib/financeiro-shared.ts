@@ -9,6 +9,8 @@ const log = createLogger('financeiro-shared');
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
+import { apiValidationError } from '@/lib/api-error';
+import { financeiroListQuerySchema } from '@/lib/schemas/financeiro';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -366,14 +368,19 @@ export async function handleContasGet(
 ): Promise<NextResponse> {
   try {
     const config = DIRECTION_CONFIG[direction];
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get('limit') || '50')));
-    const search = searchParams.get('search') || '';
-    const statusFilter = searchParams.get('status') || '';
-    const dateFrom = searchParams.get('dateFrom') || '';
-    const dateTo = searchParams.get('dateTo') || '';
-    const sortBy = searchParams.get('sort') || 'vencimento';
-    const sortOrder = searchParams.get('order') || 'asc';
+    const parsedQuery = financeiroListQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsedQuery.success) return apiValidationError(parsedQuery.error);
+
+    const {
+      page,
+      limit,
+      search,
+      status: statusFilter,
+      dateFrom,
+      dateTo,
+      sort: sortBy,
+      order: sortOrder,
+    } = parsedQuery.data;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -580,8 +587,9 @@ export async function handleContasGet(
     });
 
     const total = filtered.length;
-    const pages = Math.ceil(total / limit);
-    const offset = (page - 1) * limit;
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const normalizedPage = Math.min(page, pages);
+    const offset = (normalizedPage - 1) * limit;
     const paginated = filtered.slice(offset, offset + limit);
 
     // Rename party fields to direction-specific names in output
@@ -590,7 +598,7 @@ export async function handleContasGet(
     return NextResponse.json({
       duplicatas: renamedDuplicatas,
       summary,
-      pagination: { page, limit, total, pages },
+      pagination: { page: normalizedPage, limit, total, pages },
     });
   } catch (error) {
     const config = DIRECTION_CONFIG[direction];
