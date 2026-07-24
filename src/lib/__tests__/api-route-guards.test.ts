@@ -7,7 +7,8 @@ const PUBLIC_OR_DISABLED_ROUTES = new Set([
   'src/app/api/register/route.ts',
 ]);
 
-const GUARD_PATTERN = /\b(requireAuth|requireRole|requireEditor|requireAdmin|validateApiKey|getServerSession|getApiKeyContext)\s*\(/;
+const GUARD_PATTERN =
+  /\b(requireAuth|requireRole|requireEditor|requireAdmin|requireSessionRole|requireSessionAdmin|requireApiKeyScope|validateApiKey|getServerSession|getApiKeyContext)\s*\(/;
 
 function collectRouteFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];

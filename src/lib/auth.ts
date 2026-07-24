@@ -214,12 +214,56 @@ export async function requireRole(minRole: 'viewer' | 'editor' | 'admin'): Promi
   return { userId, role: user.role };
 }
 
+export async function requireSessionRole(
+  minRole: 'viewer' | 'editor' | 'admin',
+): Promise<{ userId: string; role: string }> {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  const role = session?.user?.role;
+  if (!userId || !role) {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, status: true, tokenVersion: true },
+  });
+  if (!user || user.status !== 'active') {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+  const sessionVersion =
+    typeof session.user.tokenVersion === 'number' ? session.user.tokenVersion : 0;
+  if (sessionVersion !== user.tokenVersion) {
+    throw new Error('NOT_AUTHENTICATED');
+  }
+
+  const actualLevel = ROLE_HIERARCHY[user.role] ?? 0;
+  const requiredLevel = ROLE_HIERARCHY[minRole] ?? 0;
+  if (actualLevel < requiredLevel) {
+    prisma.accessLog
+      .create({
+        data: {
+          userId,
+          action: 'permission_denied',
+          path: `required=session:${minRole}`,
+        },
+      })
+      .catch((err) => log.warn({ err }, 'AccessLog permission_denied write failed'));
+    throw new Error('FORBIDDEN');
+  }
+  return { userId, role: user.role };
+}
+
 export async function requireEditor(): Promise<{ userId: string; role: string }> {
   return requireRole('editor');
 }
 
 export async function requireAdmin(): Promise<{ userId: string; role: string }> {
   return requireRole('admin');
+}
+
+export async function requireSessionAdmin(): Promise<{ userId: string; role: string }> {
+  return requireSessionRole('admin');
 }
 
 export function unauthorizedResponse() {
