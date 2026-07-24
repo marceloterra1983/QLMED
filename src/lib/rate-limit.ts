@@ -61,6 +61,8 @@ export function getRateLimitHeaders(remaining: number, resetAt: number): Record<
 
 export const RATE_LIMITS = {
   login: { interval: 60_000, maxRequests: 5 },
+  loginGlobal: { interval: 60_000, maxRequests: 120 },
+  loginAccount: { interval: 15 * 60_000, maxRequests: 10 },
   upload: { interval: 60_000, maxRequests: 10 },
   webhook: { interval: 60_000, maxRequests: 60 },
 } as const satisfies Record<string, RateLimitConfig>;

@@ -1,3 +1,5 @@
+import { generateOneDriveOAuthState } from '@/lib/onedrive-oauth-state';
+
 const GRAPH_SCOPE = 'offline_access User.Read Files.ReadWrite';
 
 export type OneDriveTokenResponse = {
@@ -120,7 +122,7 @@ export function buildOneDriveAuthorizeUrl(options?: { loginHint?: string; state?
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('response_mode', 'query');
   url.searchParams.set('scope', GRAPH_SCOPE);
-  url.searchParams.set('state', options?.state || `qlmed-${Date.now()}`);
+  url.searchParams.set('state', options?.state || generateOneDriveOAuthState());
 
   const loginHint = options?.loginHint?.trim();
   if (loginHint) {

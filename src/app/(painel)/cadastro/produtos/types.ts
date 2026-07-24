@@ -63,6 +63,8 @@ export interface ProductsResponse {
   products: ProductRow[];
   summary: ProductsSummary;
   pagination: { page: number; limit: number; total: number; pages: number };
+  exportLimited?: boolean;
+  needsRebuild?: boolean;
   meta?: {
     invoicesLimited?: boolean;
     maxInvoices?: number;

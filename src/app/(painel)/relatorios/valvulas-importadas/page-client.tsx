@@ -68,7 +68,7 @@ export default function ValvulasImportadasPage() {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -154,7 +154,7 @@ export default function ValvulasImportadasPage() {
 
   const openEmailModal = useCallback(async () => {
     setEmailModalOpen(true);
-    setSelectedEmail(null);
+    setSelectedUserId(null);
     if (users.length === 0) {
       setLoadingUsers(true);
       try {
@@ -176,20 +176,25 @@ export default function ValvulasImportadasPage() {
   }, [users.length]);
 
   const handleSendEmail = useCallback(async () => {
-    if (!selectedEmail) return;
+    if (!selectedUserId) return;
+    const selectedUser = users.find((u) => u.id === selectedUserId);
     setSendingEmail(true);
     try {
-      const res = await fetch(`/api/reports/valvulas-importadas/pdf?action=email&to=${encodeURIComponent(selectedEmail)}`);
+      const res = await fetch('/api/reports/valvulas-importadas/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientUserId: selectedUserId }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erro ao enviar');
-      toast.success(`Email enviado para ${selectedEmail}`);
+      toast.success(`Email enviado para ${selectedUser?.email || 'destinatário selecionado'}`);
       setEmailModalOpen(false);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao enviar email');
     } finally {
       setSendingEmail(false);
     }
-  }, [selectedEmail]);
+  }, [selectedUserId, users]);
 
   return (
     <>
@@ -249,15 +254,15 @@ export default function ValvulasImportadasPage() {
                   {users.map(u => (
                     <button
                       key={u.id}
-                      onClick={() => setSelectedEmail(u.email)}
+                      onClick={() => setSelectedUserId(u.id)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
-                        selectedEmail === u.email
+                        selectedUserId === u.id
                           ? 'bg-primary/10 border border-primary/30'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent'
                       }`}
                     >
-                      <span className={`material-symbols-outlined text-[16px] ${selectedEmail === u.email ? 'text-primary' : 'text-slate-400'}`}>
-                        {selectedEmail === u.email ? 'radio_button_checked' : 'radio_button_unchecked'}
+                      <span className={`material-symbols-outlined text-[16px] ${selectedUserId === u.id ? 'text-primary' : 'text-slate-400'}`}>
+                        {selectedUserId === u.id ? 'radio_button_checked' : 'radio_button_unchecked'}
                       </span>
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{u.name}</div>
@@ -272,7 +277,7 @@ export default function ValvulasImportadasPage() {
             <div className="sm:hidden border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-2">
               <button
                 onClick={handleSendEmail}
-                disabled={!selectedEmail || sendingEmail}
+                disabled={!selectedUserId || sendingEmail}
                 className="flex items-center justify-center gap-1.5 w-full px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingEmail && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
@@ -295,7 +300,7 @@ export default function ValvulasImportadasPage() {
               </button>
               <button
                 onClick={handleSendEmail}
-                disabled={!selectedEmail || sendingEmail}
+                disabled={!selectedUserId || sendingEmail}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingEmail && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse, requireAuth, requireSessionAdmin, unauthorizedResponse } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 import puppeteer from 'puppeteer';
 import nodemailer from 'nodemailer';
 import { apiError } from '@/lib/api-error';
@@ -56,7 +57,7 @@ interface ReportData {
   summary: { totalProducts: number };
   products: Product[];
   customerYearlySales: { years: number[]; customers: CustomerYear[] };
-  meta: { invoicesScanned: number; issuedInvoicesScanned: number };
+  meta: { invoicesScanned: number; issuedInvoicesScanned: number; dateFrom?: string; dateTo?: string };
 }
 
 /* ── Build HTML ── */
@@ -236,8 +237,6 @@ async function generatePdf(html: string): Promise<Buffer> {
 
 /* ── Send email ── */
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 async function sendEmail(to: string, pdfBuffer: Buffer): Promise<void> {
   if (!process.env.SMTP_PASS) {
     throw new Error('SMTP_PASS não configurado no servidor');
@@ -273,9 +272,14 @@ async function sendEmail(to: string, pdfBuffer: Buffer): Promise<void> {
 /* ── Fetch report data from internal API ── */
 
 async function fetchReportData(req: NextRequest): Promise<ReportData> {
-  const origin = req.nextUrl.origin;
+  const origin = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const url = new URL('/api/reports/valvulas-importadas', origin);
+  const dateFrom = req.nextUrl.searchParams.get('dateFrom');
+  const dateTo = req.nextUrl.searchParams.get('dateTo');
+  if (dateFrom) url.searchParams.set('dateFrom', dateFrom);
+  if (dateTo) url.searchParams.set('dateTo', dateTo);
   const cookie = req.headers.get('cookie') || '';
-  const res = await fetch(`${origin}/api/reports/valvulas-importadas`, {
+  const res = await fetch(url.toString(), {
     headers: { cookie },
   });
   if (!res.ok) throw new Error(`Report API returned ${res.status}`);
@@ -292,25 +296,15 @@ export async function GET(req: NextRequest) {
   }
 
   const action = req.nextUrl.searchParams.get('action') || 'download';
-  const to = req.nextUrl.searchParams.get('to') || '';
+  if (action !== 'download') {
+    return NextResponse.json({ error: 'Ação inválida' }, { status: 400 });
+  }
 
   try {
     const data = await fetchReportData(req);
     const html = buildHtml(data);
     const pdfBuffer = await generatePdf(html);
 
-    if (action === 'email') {
-      if (!to) {
-        return NextResponse.json({ error: 'Parâmetro "to" obrigatório' }, { status: 400 });
-      }
-      if (!EMAIL_REGEX.test(to)) {
-        return NextResponse.json({ error: 'Endereço de email inválido' }, { status: 400 });
-      }
-      await sendEmail(to, pdfBuffer);
-      return NextResponse.json({ ok: true });
-    }
-
-    // Default: download
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
@@ -319,5 +313,43 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: unknown) {
     return apiError(err, 'GET /api/reports/valvulas-importadas/pdf');
+  }
+}
+
+export async function POST(req: NextRequest) {
+  let auth: { userId: string };
+  try {
+    auth = await requireSessionAdmin();
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
+  const body = await req.json().catch(() => null) as { recipientUserId?: unknown } | null;
+  const recipientUserId = typeof body?.recipientUserId === 'string' ? body.recipientUserId.trim() : '';
+  if (!recipientUserId || recipientUserId.length > 128) {
+    return NextResponse.json({ error: 'recipientUserId obrigatório' }, { status: 400 });
+  }
+
+  const recipient = await prisma.user.findFirst({
+    where: {
+      id: recipientUserId,
+      status: 'active',
+    },
+    select: { email: true },
+  });
+  if (!recipient?.email || recipient.email.length > 254) {
+    return NextResponse.json({ error: 'Destinatário inválido' }, { status: 400 });
+  }
+
+  try {
+    const data = await fetchReportData(req);
+    const html = buildHtml(data);
+    const pdfBuffer = await generatePdf(html);
+    await sendEmail(recipient.email, pdfBuffer);
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    log.warn({ err, userId: auth.userId, recipientUserId }, 'Falha ao enviar relatorio por email');
+    return apiError(err, 'POST /api/reports/valvulas-importadas/pdf');
   }
 }

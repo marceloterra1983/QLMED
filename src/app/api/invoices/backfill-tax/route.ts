@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes, ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
 
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    ({ userId } = await requireEditor());
+  } catch (err) {
+    if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

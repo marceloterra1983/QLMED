@@ -1,5 +1,104 @@
 import { z } from 'zod';
 
+const isoDateString = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato YYYY-MM-DD')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }, 'Data invalida');
+
+function intQuery(defaultValue: number, min: number, max: number) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    if (typeof value === 'string') return Number(value);
+    return value;
+  }, z.number().int().min(min).max(max));
+}
+
+function stringQuery(defaultValue = '', max = 200) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null) return defaultValue;
+    return String(value).trim();
+  }, z.string().max(max));
+}
+
+function flagQuery() {
+  return z.preprocess((value) => value === '1' || value === 'true' || value === true, z.boolean());
+}
+
+const productLegacySortSchema = z.enum([
+  'code',
+  'description',
+  'ncm',
+  'anvisa',
+  'unit',
+  'quantity',
+  'invoices',
+  'lastPrice',
+  'lastSale',
+  'supplier',
+  'lastIssue',
+]);
+
+const productListSortSchema = z.enum([
+  'description',
+  'code',
+  'ncm',
+  'anvisa',
+  'lastPrice',
+  'lastIssueDate',
+  'lastSaleDate',
+  'supplier',
+  'productType',
+  'quantity',
+  'totalQuantity',
+  'invoices',
+  'invoiceCount',
+  'averagePrice',
+]);
+
+/**
+ * Schema para GET /api/products (rota legacy; novas listagens usam /api/products/list).
+ */
+export const productsLegacyQuerySchema = z.object({
+  page: intQuery(1, 1, 100000),
+  limit: intQuery(50, 1, 200),
+  search: stringQuery('', 200),
+  sort: productLegacySortSchema.optional().default('lastIssue'),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
+  anvisaLookup: flagQuery().optional().default(false),
+  issuedNfeLookup: flagQuery().optional().default(false),
+  onlyMissingAnvisa: flagQuery().optional().default(false),
+  exportAll: flagQuery().optional().default(false),
+  dateFrom: z.union([isoDateString, z.literal('')]).optional().default(''),
+  dateTo: z.union([isoDateString, z.literal('')]).optional().default(''),
+}).superRefine((data, ctx) => {
+  if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['dateTo'],
+      message: 'dateTo deve ser maior ou igual a dateFrom',
+    });
+  }
+});
+
+/**
+ * Schema para GET /api/products/list.
+ */
+export const productsListQuerySchema = z.object({
+  page: intQuery(1, 1, 100000),
+  limit: intQuery(50, 1, 200),
+  search: stringQuery('', 200),
+  sort: productListSortSchema.optional().default('lastIssueDate'),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
+  lineStatus: z.enum(['active', 'outOfLine', 'all']).optional().default('active'),
+  productType: stringQuery('', 120),
+  productSubtype: stringQuery('', 120),
+  productSubgroup: stringQuery('', 120),
+  onlyMissingAnvisa: flagQuery().optional().default(false),
+  exportAll: flagQuery().optional().default(false),
+});
+
 /**
  * Schema para PATCH /api/products/anvisa
  * Atualiza dados ANVISA de um produto individual.
