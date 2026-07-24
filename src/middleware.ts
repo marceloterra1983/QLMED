@@ -34,6 +34,7 @@ const API_KEY_PASSTHROUGH_PREFIXES = [
   '/api/fiscal',
   '/api/invoices',
   '/api/ncm',
+  '/api/notifications',
   '/api/nsdocs',
   '/api/products',
   '/api/receita',
@@ -59,7 +60,7 @@ function isPublicApiRoute(pathname: string): boolean {
   return false;
 }
 
-function allowsRouteLevelApiKeyAuth(pathname: string): boolean {
+export function allowsRouteLevelApiKeyAuth(pathname: string): boolean {
   for (const prefix of API_KEY_PASSTHROUGH_PREFIXES) {
     if (pathname === prefix || pathname.startsWith(prefix + '/')) {
       return true;

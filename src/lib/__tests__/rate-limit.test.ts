@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { checkRateLimit } from '../rate-limit';
-import { getClientIp, getRateLimitConfig } from '../../middleware';
+import {
+  allowsRouteLevelApiKeyAuth,
+  getClientIp,
+  getRateLimitConfig,
+} from '../../middleware';
 
 describe('rate limit helpers', () => {
   it('blocks after the configured limit until the window expires', () => {
@@ -34,5 +38,11 @@ describe('rate limit helpers', () => {
     vi.stubEnv('TRUST_PROXY_HEADERS', 'false');
     expect(getClientIp(headers)).toBe('untrusted-proxy');
     vi.unstubAllEnvs();
+  });
+
+  it('passes notification worker API keys to route-level scope checks', () => {
+    expect(allowsRouteLevelApiKeyAuth('/api/notifications/outbox/smoke')).toBe(true);
+    expect(allowsRouteLevelApiKeyAuth('/api/notifications/outbox/claim')).toBe(true);
+    expect(allowsRouteLevelApiKeyAuth('/api/admin/api-keys')).toBe(false);
   });
 });
