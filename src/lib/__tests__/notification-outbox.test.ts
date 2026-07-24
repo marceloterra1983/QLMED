@@ -5,6 +5,7 @@ import {
   buildNotificationEventKey,
   canReceiveInvoiceNotifications,
   getRetryDelaySeconds,
+  isInvoiceWithinNotificationWindow,
   isNotificationEligibleInvoice,
   normalizeNotificationRecipient,
 } from '@/lib/notification-outbox';
@@ -15,6 +16,19 @@ describe('notification outbox', () => {
     expect(isNotificationEligibleInvoice({ type: 'CTE', direction: 'received' })).toBe(true);
     expect(isNotificationEligibleInvoice({ type: 'NFSE', direction: 'received' })).toBe(false);
     expect(isNotificationEligibleInvoice({ type: 'NFE', direction: 'issued' })).toBe(false);
+  });
+
+  it('suppresses notifications for stale backlog invoices by issue date', () => {
+    const now = new Date('2026-07-01T12:00:00Z');
+    const fresh = { issueDate: new Date('2026-06-29T00:00:00Z') };
+    const stale = { issueDate: new Date('2026-06-05T00:00:00Z') };
+
+    expect(isInvoiceWithinNotificationWindow(fresh, 5, now)).toBe(true);
+    expect(isInvoiceWithinNotificationWindow(stale, 5, now)).toBe(false);
+    // 0 desliga a guarda (comportamento anterior: sempre notifica)
+    expect(isInvoiceWithinNotificationWindow(stale, 0, now)).toBe(true);
+    // sem data de emissão: fail-open, não suprime
+    expect(isInvoiceWithinNotificationWindow({ issueDate: null }, 5, now)).toBe(true);
   });
 
   it('normalizes recipients before deriving a stable delivery key', () => {

@@ -22,6 +22,35 @@ export function isNotificationEligibleInvoice(
   return invoice.direction === 'received' && (invoice.type === 'NFE' || invoice.type === 'CTE');
 }
 
+// Guarda anti-backlog: a SEFAZ/NSDocs pode distribuir documentos emitidos há
+// semanas todos de uma vez. Sem esta guarda, cada documento antigo dispararia
+// uma notificação, inundando os destinatários com CT-e/NF-e velhos. Documentos
+// mais antigos que a janela ainda são importados e ficam visíveis no sistema —
+// apenas não geram notificação. 0 (ou negativo) desliga a guarda.
+export const DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS = 5;
+
+export function getNotificationMaxInvoiceAgeDays(): number {
+  const raw = process.env.NOTIFICATION_MAX_INVOICE_AGE_DAYS;
+  if (raw === undefined || raw.trim() === '') {
+    return DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS;
+}
+
+export function isInvoiceWithinNotificationWindow(
+  invoice: { issueDate: Date | null },
+  maxAgeDays: number = getNotificationMaxInvoiceAgeDays(),
+  now: Date = new Date(),
+): boolean {
+  if (!(maxAgeDays > 0)) return true; // guarda desligada
+  if (!invoice.issueDate) return true; // sem data de emissão: fail-open (não suprime)
+  const ageMs = now.getTime() - new Date(invoice.issueDate).getTime();
+  return ageMs <= maxAgeDays * 24 * 60 * 60 * 1000;
+}
+
 export function buildNotificationEventKey(invoiceId: string): string {
   return `${OUTBOX_EVENT_TYPE}:${invoiceId}`;
 }
@@ -118,6 +147,14 @@ async function enqueueInvoiceEvent(
   });
 
   if (result.count !== 1) return false;
+
+  // Backlog antigo (ex.: distribuição SEFAZ/NSDocs de documentos emitidos há
+  // semanas, todos de uma vez): registra o evento — a nota continua contando
+  // como recebida/nova — mas NÃO gera nenhuma entrega, evitando inundar os
+  // destinatários com notificações de documentos velhos.
+  if (!isInvoiceWithinNotificationWindow(invoice)) {
+    return true;
+  }
 
   const companyCount = await tx.company.count();
   const [event, users] = await Promise.all([
