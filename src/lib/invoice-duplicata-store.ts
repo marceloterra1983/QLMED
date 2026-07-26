@@ -177,23 +177,40 @@ const BACKFILL_BATCH_SIZE = 500;
 const BACKFILL_FETCH_SIZE = 100;
 
 export async function backfillInvoiceDuplicatas(companyId: string): Promise<BackfillResult> {
-  // Anti-join over Invoice × satellite — single raw discovery query (not satellite DDL/CRUD)
-  const missingIds = await prisma.$queryRawUnsafe<{ id: string }[]>(
-    `SELECT i.id FROM "Invoice" i
-     LEFT JOIN invoice_duplicata d ON d.invoice_id = i.id
-     WHERE i."companyId" = $1
-       AND i.type = 'NFE'
-       AND d.invoice_id IS NULL
-     LIMIT $2`,
-    companyId,
-    BACKFILL_BATCH_SIZE,
-  );
+  // Paginate NFE invoices and collect those without any invoice_duplicata row
+  const ids: string[] = [];
+  const pageSize = 500;
+  let cursor: string | undefined;
+  while (ids.length < BACKFILL_BATCH_SIZE) {
+    const page = await prisma.invoice.findMany({
+      where: { companyId, type: 'NFE' },
+      orderBy: [{ issueDate: 'desc' }, { id: 'desc' }],
+      take: pageSize,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      select: { id: true },
+    });
+    if (page.length === 0) break;
+    cursor = page[page.length - 1].id;
+    const pageIds = page.map((p) => p.id);
+    const existing = await prisma.invoiceDuplicata.findMany({
+      where: { invoiceId: { in: pageIds } },
+      select: { invoiceId: true },
+      distinct: ['invoiceId'],
+    });
+    const hasDup = new Set(existing.map((e) => e.invoiceId));
+    for (const id of pageIds) {
+      if (!hasDup.has(id)) {
+        ids.push(id);
+        if (ids.length >= BACKFILL_BATCH_SIZE) break;
+      }
+    }
+    if (page.length < pageSize) break;
+  }
 
-  if (missingIds.length === 0) {
+  if (ids.length === 0) {
     return { processed: 0, remaining: 0 };
   }
 
-  const ids = missingIds.map((r) => r.id);
   let processed = 0;
 
   for (let i = 0; i < ids.length; i += BACKFILL_FETCH_SIZE) {
@@ -242,15 +259,15 @@ export async function backfillInvoiceDuplicatas(companyId: string): Promise<Back
     }
   }
 
-  const remainingResult = await prisma.$queryRawUnsafe<{ count: string }[]>(
-    `SELECT COUNT(*)::text as count FROM "Invoice" i
-     LEFT JOIN invoice_duplicata d ON d.invoice_id = i.id
-     WHERE i."companyId" = $1
-       AND i.type = 'NFE'
-       AND d.invoice_id IS NULL`,
-    companyId,
-  );
-  const remaining = parseInt(remainingResult[0]?.count || '0', 10);
+  const [totalNfe, withDup] = await Promise.all([
+    prisma.invoice.count({ where: { companyId, type: 'NFE' } }),
+    prisma.invoiceDuplicata.groupBy({
+      by: ['invoiceId'],
+      where: { companyId },
+      _count: true,
+    }),
+  ]);
+  const remaining = Math.max(0, totalNfe - withDup.length);
 
   return { processed, remaining };
 }

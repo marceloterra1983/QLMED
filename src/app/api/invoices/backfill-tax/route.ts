@@ -27,21 +27,36 @@ export async function POST(req: NextRequest) {
   const company = await getOrCreateSingleCompany(userId);
   await ensureInvoiceTaxTables();
 
-  // Anti-join discovery: NFE invoices without tax totals (kept as raw for efficiency)
-  const invoices = await prisma.$queryRawUnsafe<{ id: string }[]>(
-    `SELECT i.id
-     FROM "Invoice" i
-     LEFT JOIN invoice_tax_totals t ON t.invoice_id = i.id
-     WHERE i."companyId" = $1
-       AND i.type = 'NFE'
-       AND t.invoice_id IS NULL
-     ORDER BY i."issueDate" DESC
-     LIMIT $2`,
-    company.id,
-    BATCH_SIZE,
-  );
+  // Paginate NFE invoices and collect those without tax totals
+  const ids: string[] = [];
+  const pageSize = 500;
+  let cursor: string | undefined;
+  while (ids.length < BATCH_SIZE) {
+    const page = await prisma.invoice.findMany({
+      where: { companyId: company.id, type: 'NFE' },
+      orderBy: [{ issueDate: 'desc' }, { id: 'desc' }],
+      take: pageSize,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      select: { id: true },
+    });
+    if (page.length === 0) break;
+    cursor = page[page.length - 1].id;
+    const pageIds = page.map((p) => p.id);
+    const existingTax = await prisma.invoiceTaxTotals.findMany({
+      where: { invoiceId: { in: pageIds } },
+      select: { invoiceId: true },
+    });
+    const hasTax = new Set(existingTax.map((t) => t.invoiceId));
+    for (const id of pageIds) {
+      if (!hasTax.has(id)) {
+        ids.push(id);
+        if (ids.length >= BATCH_SIZE) break;
+      }
+    }
+    if (page.length < pageSize) break;
+  }
 
-  if (invoices.length === 0) {
+  if (ids.length === 0) {
     return NextResponse.json({
       ok: true,
       processed: 0,
@@ -51,8 +66,6 @@ export async function POST(req: NextRequest) {
 
   let processed = 0;
   let errors = 0;
-
-  const ids = invoices.map((i) => i.id);
   const fullInvoices = await prisma.invoice.findMany({
     where: { id: { in: ids } },
     select: { id: true, xmlContent: true, companyId: true },
@@ -185,16 +198,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const remainingResult = await prisma.$queryRawUnsafe<{ count: string }[]>(
-    `SELECT COUNT(*)::text as count
-     FROM "Invoice" i
-     LEFT JOIN invoice_tax_totals t ON t.invoice_id = i.id
-     WHERE i."companyId" = $1
-       AND i.type = 'NFE'
-       AND t.invoice_id IS NULL`,
-    company.id,
-  );
-  const remainingCount = parseInt(remainingResult[0]?.count || '0', 10);
+  // Approximate remaining: NFE total minus rows that already have tax data
+  const [totalNfe, withTaxData] = await Promise.all([
+    prisma.invoice.count({ where: { companyId: company.id, type: 'NFE' } }),
+    prisma.invoiceTaxTotals.count({ where: { companyId: company.id } }),
+  ]);
+  const remainingCount = Math.max(0, totalNfe - withTaxData);
 
   return NextResponse.json({
     ok: true,
