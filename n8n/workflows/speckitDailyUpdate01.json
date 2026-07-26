@@ -1,0 +1,180 @@
+{
+  "id": "speckitDailyUpdate01",
+  "name": "Spec Kit — Update Diário",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-speckit-01",
+      "name": "Todo dia às 07h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:18644/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Speckit-Token",
+              "value": "={{ $env.SPECKIT_UPDATE_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 900000,
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-run-01",
+      "name": "Rodar Update Spec Kit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Interpreta resultado do listener host (Spec Kit daily update).\nconst raw = $input.first().json || {};\nconst statusCode = raw.statusCode || raw.status || 0;\nconst body = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\n\nconst ok = body.ok === true;\nconst action = body.action || (ok ? 'unknown' : 'error');\nconst notify = body.notify === true || !ok;\nconst cli = body.cli || {};\nconst project = body.project || {};\nconst prUrl = project.prUrl || '';\nconst releaseUrl = body.releaseUrl || 'https://github.com/github/spec-kit/releases';\nconst message = body.message || body.error || 'Sem detalhes';\n\nconst hoje = new Intl.DateTimeFormat('pt-BR', {\n  timeZone: 'America/Campo_Grande',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n}).format(new Date());\n\nlet text;\nif (action === 'up_to_date') {\n  text = `✅ *Spec Kit OK — ${hoje}*\\n\\nCLI e projeto em *v${cli.latest || project.latest || '?'}*.`;\n} else if (action === 'updated' || action === 'pr_exists') {\n  text =\n    `⬆️ *Spec Kit atualizado — ${hoje}*\\n\\n` +\n    `*CLI:* ${cli.current || '?'} (upgraded=${!!cli.upgraded})\\n` +\n    `*Projeto:* ${project.current || '?'} → ${project.latest || '?'}\\n` +\n    (prUrl ? `*PR:* ${prUrl}\\n` : '') +\n    `\\n🔗 Release: ${releaseUrl}`;\n} else if (action === 'update_available') {\n  text =\n    `⚠️ *Spec Kit desatualizado — ${hoje}*\\n\\n` +\n    `${message}\\n\\n🔗 ${releaseUrl}`;\n} else {\n  text =\n    `🚨 *Spec Kit update falhou — ${hoje}*\\n\\n` +\n    `*Ação:* ${action}\\n` +\n    `*Erro:* ${message}\\n` +\n    (statusCode ? `*HTTP:* ${statusCode}\\n` : '') +\n    `\\nVer listener :18644 / logs do host.`;\n}\n\n// Notifica só quando há drift, PR ou erro (não spam diário se ok).\nconst shouldNotify = notify && action !== 'up_to_date';\n\nreturn [{\n  json: {\n    ok,\n    action,\n    shouldNotify,\n    text,\n    waBody: { number: '556791908000', text },\n    emailBody: text.replace(/\\*/g, ''),\n    prUrl,\n    cli,\n    project,\n    raw: body,\n  },\n}];\n"
+      },
+      "id": "code-montar-01",
+      "name": "Montar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "should-notify",
+              "leftValue": "={{ $json.shouldNotify }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notify-01",
+      "name": "Notificar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [740, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-evolution-api:8080/message/sendText/qlmed-whatsapp",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.waBody) }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-wa-01",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, -80],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZMOfknEbqeGX2gt2",
+          "name": "Evolution API - QLMED WhatsApp"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Todo dia às 07h": {
+      "main": [[{ "node": "Rodar Update Spec Kit", "type": "main", "index": 0 }]]
+    },
+    "Rodar Update Spec Kit": {
+      "main": [[{ "node": "Montar Resultado", "type": "main", "index": 0 }]]
+    },
+    "Montar Resultado": {
+      "main": [[{ "node": "Notificar?", "type": "main", "index": 0 }]]
+    },
+    "Notificar?": {
+      "main": [
+        [{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Campo_Grande",
+    "errorWorkflow": "qlmedGlobalErr01",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "ops" },
+    { "name": "spec-kit" }
+  ]
+}

@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { NextResponse } from 'next/server';
 
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { GET as getInvoicePdfDownload } from '@/app/api/invoices/[id]/pdf/route';
@@ -76,8 +76,9 @@ export async function POST(req: Request) {
   try {
     let userId: string;
     try {
-      userId = await requireAuth();
-    } catch {
+      ({ userId } = await requireEditor());
+    } catch (err) {
+      if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
 

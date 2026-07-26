@@ -1,29 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { buildOneDriveAuthorizeUrl } from '@/lib/onedrive-client';
 import { generateOneDriveOAuthState, ONEDRIVE_OAUTH_STATE_COOKIE, oneDriveOAuthStateCookieOptions } from '@/lib/onedrive-oauth-state';
+import { withAuth } from '@/lib/with-auth';
 
-export async function GET(request: NextRequest) {
-  try {
-    await requireAdmin();
-  } catch (e: unknown) {
-      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
-      return unauthorizedResponse();
-    }
+export const GET = withAuth({ role: 'admin' }, async (request) => {
+  const loginHint = new URL(request.url).searchParams.get('loginHint')?.trim() || undefined;
+  const state = generateOneDriveOAuthState();
+  const url = buildOneDriveAuthorizeUrl({
+    loginHint,
+    state,
+  });
 
-  try {
-    const loginHint = request.nextUrl.searchParams.get('loginHint')?.trim() || undefined;
-    const state = generateOneDriveOAuthState();
-    const url = buildOneDriveAuthorizeUrl({
-      loginHint,
-      state,
-    });
-
-    const response = NextResponse.json({ url });
-    response.cookies.set(ONEDRIVE_OAUTH_STATE_COOKIE, state, oneDriveOAuthStateCookieOptions());
-    return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro ao gerar URL de autorização';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+  const response = NextResponse.json({ url });
+  response.cookies.set(ONEDRIVE_OAUTH_STATE_COOKIE, state, oneDriveOAuthStateCookieOptions());
+  return response;
+});

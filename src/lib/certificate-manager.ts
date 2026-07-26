@@ -1,5 +1,6 @@
 import forge from 'node-forge';
 import crypto from 'crypto';
+import { sefazRejectUnauthorized } from '@/lib/ssl-verify';
 
 // Metadata extracted from a PFX during upload validation.
 // Intentionally does NOT carry pfxData/pfxPassword back out: the caller already
@@ -86,9 +87,8 @@ export class CertificateManager {
     return {
       pfx: pfxData,
       passphrase,
-      // SEFAZ servers may have incomplete certificate chains.
-      // Set SEFAZ_VERIFY_SSL=true in .env to enable strict verification.
-      rejectUnauthorized: process.env.SEFAZ_VERIFY_SSL === 'true',
+      // Default on; set SEFAZ_VERIFY_SSL=false only for broken SEFAZ chains.
+      rejectUnauthorized: sefazRejectUnauthorized(),
     };
   }
 

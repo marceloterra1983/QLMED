@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InvoiceType, InvoiceDirection } from '@prisma/client';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 import { invoiceExportXmlSchema } from '@/lib/schemas/invoice';
@@ -11,8 +11,9 @@ const VALID_DIRECTIONS = new Set<string>(Object.values(InvoiceDirection));
 export async function POST(request: NextRequest) {
   let userId: string;
   try {
-    userId = await requireAuth();
-  } catch {
+    ({ userId } = await requireEditor());
+  } catch (err) {
+    if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
 

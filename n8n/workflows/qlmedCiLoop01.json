@@ -1,0 +1,140 @@
+{
+  "id": "qlmedCiLoop01",
+  "name": "QLMED — CI Loop Melhoria Contínua",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "sched-ciloop-01",
+      "name": "Segunda 07:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:18645/propose",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Ci-Loop-Token",
+              "value": "={{ $env.CI_LOOP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-propose-01",
+      "name": "Rodar CI Loop Propose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json || {};\nconst body = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst ok = body.ok === true;\nconst score = body.score ?? '?';\nconst notify = body.notify === true || !ok;\nconst fails = (body.failTracks || []).join(', ') || '—';\nconst majors = (body.majorWatch || []).slice(0, 5).map(x => x.name).join(', ') || '—';\nconst dead = (body.deadDeps || []).join(', ') || '—';\nconst pr = body.prUrl || '';\nconst issue = body.issueUrl || '';\nconst stack = body.stack || {};\nconst hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Campo_Grande', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());\n\nlet text;\nif (!ok) {\n  text = `🚨 *CI Loop falhou — ${hoje}*\\n\\n${body.error || body.message || 'erro desconhecido'}`;\n} else {\n  text =\n    `🔁 *CI Loop QLMED — ${hoje}*\\n\\n` +\n    `*Score:* ${score}/10\\n` +\n    `*Stack:* Next ${stack.next || '?'} · Prisma ${stack.prisma || '?'} · Node ${stack.node || '?'}\\n` +\n    `*Tracks FAIL:* ${fails}\\n` +\n    `*Dead deps:* ${dead}\\n` +\n    `*Majors:* ${majors}\\n` +\n    (issue ? `*Issue:* ${issue}\\n` : '') +\n    (pr ? `*PR deps:* ${pr}\\n` : '');\n}\n\nreturn [{ json: { ok, notify, shouldNotify: notify, text, waBody: { number: '556791908000', text }, score, pr, issue } }];"
+      },
+      "id": "code-montar-01",
+      "name": "Montar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "should-notify",
+              "leftValue": "={{ $json.shouldNotify }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notify-01",
+      "name": "Notificar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [740, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qlmed-evolution-api:8080/message/sendText/qlmed-whatsapp",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.waBody) }}",
+        "options": {
+          "timeout": 15000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "http-wa-01",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, -60],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZMOfknEbqeGX2gt2",
+          "name": "Evolution API - QLMED WhatsApp"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Segunda 07:30": { "main": [[{ "node": "Rodar CI Loop Propose", "type": "main", "index": 0 }]] },
+    "Rodar CI Loop Propose": { "main": [[{ "node": "Montar Resultado", "type": "main", "index": 0 }]] },
+    "Montar Resultado": { "main": [[{ "node": "Notificar?", "type": "main", "index": 0 }]] },
+    "Notificar?": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }], []]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Campo_Grande",
+    "errorWorkflow": "qlmedGlobalErr01",
+    "saveDataErrorExecution": "all"
+  },
+  "tags": [{ "name": "ops" }, { "name": "ci-loop" }]
+}
