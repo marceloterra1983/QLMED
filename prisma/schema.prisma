@@ -434,7 +434,7 @@ model FinanceiroDuplicataManualInstallment {
 
 // ── Satellite tables (versioned by the schema11 baseline) ──
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model InvoiceTaxTotals {
   invoiceId  String    @id @map("invoice_id")
   companyId  String    @map("company_id")
@@ -456,7 +456,7 @@ model InvoiceTaxTotals {
   @@map("invoice_tax_totals")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model InvoiceItemTax {
   id                 String  @id
   invoiceId          String  @map("invoice_id")
@@ -612,7 +612,7 @@ model ProductRegistry {
   @@map("product_registry")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model StockEntry {
   id            String    @id
   companyId     String    @map("company_id")
@@ -654,7 +654,7 @@ model StockEntry {
   @@map("stock_entry")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model NfeEntryItem {
   id                  Int       @id @default(autoincrement())
   stockEntryId        String    @map("stock_entry_id")
