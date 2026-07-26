@@ -9,10 +9,10 @@ const mocks = vi.hoisted(() => ({
   registerInvoiceEntry: vi.fn(),
   updateNfeEntryItemLot: vi.fn(),
   cloneNfeEntryItemBatch: vi.fn(),
-  queryRawUnsafe: vi.fn(),
-  executeRawUnsafe: vi.fn(),
   invoiceFindMany: vi.fn(),
   nfeFindMany: vi.fn(),
+  productRegistryFindMany: vi.fn(),
+  productRegistryUpdate: vi.fn(),
   loggerError: vi.fn(),
 }));
 
@@ -40,13 +40,15 @@ vi.mock('@/lib/register-entry', () => ({
 }));
 vi.mock('@/lib/prisma', () => ({
   default: {
-    $queryRawUnsafe: mocks.queryRawUnsafe,
-    $executeRawUnsafe: mocks.executeRawUnsafe,
     invoice: {
       findMany: mocks.invoiceFindMany,
     },
     nfeEntryItem: {
       findMany: mocks.nfeFindMany,
+    },
+    productRegistry: {
+      findMany: mocks.productRegistryFindMany,
+      update: mocks.productRegistryUpdate,
     },
   },
 }));
@@ -80,7 +82,7 @@ describe('ExcelJS import route regressions', () => {
     mocks.ensureProductRegistryTable.mockResolvedValue(undefined);
     mocks.ensureStockEntryTable.mockResolvedValue(undefined);
     mocks.registerInvoiceEntry.mockResolvedValue(null);
-    mocks.executeRawUnsafe.mockResolvedValue(1);
+    mocks.productRegistryUpdate.mockResolvedValue({ id: 'registry-1' });
     mocks.updateNfeEntryItemLot.mockResolvedValue({ id: 42, lot: 'LOT-2026' });
     mocks.cloneNfeEntryItemBatch.mockResolvedValue({ id: 43 });
   });
@@ -92,19 +94,21 @@ describe('ExcelJS import route regressions', () => {
     sheet.addRow(['1 - VALVULAS']);
     sheet.addRow(['CARDIACA']);
     sheet.addRow(['PROD-001', 'Produto teste']);
-    mocks.queryRawUnsafe.mockResolvedValue([{ id: 'registry-1', code: 'prod-001' }]);
+    mocks.productRegistryFindMany.mockResolvedValue([{ id: 'registry-1', code: 'prod-001' }]);
 
     const response = await importTypes(requestWithFile(await workbookFile(workbook, 'tipos.xlsx')));
 
     expect(mocks.loggerError).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ parsed: 1, matched: 1, total: 1 });
-    expect(mocks.executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE product_registry'),
-      'registry-1',
-      'VALVULAS',
-      'CARDIACA',
-    );
+    expect(mocks.productRegistryUpdate).toHaveBeenCalledWith({
+      where: { id: 'registry-1' },
+      data: {
+        productType: 'VALVULAS',
+        productSubtype: 'CARDIACA',
+        updatedAt: expect.any(Date),
+      },
+    });
   });
 
   it('round-trips extended conditional formatting through the ExcelJS UUID path', async () => {

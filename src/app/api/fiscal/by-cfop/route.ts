@@ -3,10 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
-
-const log = createLogger('fiscal/by-cfop');
 
 export async function GET(req: Request) {
   let userId: string;
@@ -26,43 +23,78 @@ export async function GET(req: Request) {
   const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
 
   try {
-    const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-        it.cfop,
-        CASE
-          WHEN it.cfop LIKE '1%' OR it.cfop LIKE '2%' OR it.cfop LIKE '3%' THEN 'entrada'
-          ELSE 'saida'
-        END as direction,
-        COUNT(*) as item_count,
-        COALESCE(SUM(it.total_value), 0) as total_value,
-        COALESCE(SUM(it.valor_icms), 0) as total_icms,
-        COALESCE(SUM(it.valor_pis), 0) as total_pis,
-        COALESCE(SUM(it.valor_cofins), 0) as total_cofins,
-        COALESCE(SUM(it.valor_ipi), 0) as total_ipi
-       FROM invoice_item_tax it
-       INNER JOIN "Invoice" i ON i.id = it.invoice_id
-       WHERE it.company_id = $1
-         AND it.cfop IS NOT NULL
-         AND i."issueDate" >= $2
-         AND i."issueDate" <= $3
-       GROUP BY it.cfop
-       ORDER BY COALESCE(SUM(it.total_value), 0) DESC`,
-      company.id,
-      startDate,
-      endDate,
-    );
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        companyId: company.id,
+        issueDate: { gte: startDate, lte: endDate },
+      },
+      select: { id: true },
+    });
+    const invoiceIds = invoices.map((i) => i.id);
+
+    if (invoiceIds.length === 0) {
+      return NextResponse.json({ year, byCfop: [] });
+    }
+
+    const items = await prisma.invoiceItemTax.findMany({
+      where: {
+        companyId: company.id,
+        invoiceId: { in: invoiceIds },
+        cfop: { not: null },
+      },
+      select: {
+        cfop: true,
+        totalValue: true,
+        valorIcms: true,
+        valorPis: true,
+        valorCofins: true,
+        valorIpi: true,
+      },
+    });
+
+    type Agg = {
+      cfop: string;
+      itemCount: number;
+      totalValue: number;
+      icms: number;
+      pis: number;
+      cofins: number;
+      ipi: number;
+    };
+    const byCfop = new Map<string, Agg>();
+
+    for (const it of items) {
+      const cfop = it.cfop || '';
+      if (!cfop) continue;
+      let agg = byCfop.get(cfop);
+      if (!agg) {
+        agg = { cfop, itemCount: 0, totalValue: 0, icms: 0, pis: 0, cofins: 0, ipi: 0 };
+        byCfop.set(cfop, agg);
+      }
+      agg.itemCount += 1;
+      agg.totalValue += Number(it.totalValue || 0);
+      agg.icms += Number(it.valorIcms || 0);
+      agg.pis += Number(it.valorPis || 0);
+      agg.cofins += Number(it.valorCofins || 0);
+      agg.ipi += Number(it.valorIpi || 0);
+    }
+
+    const rows = Array.from(byCfop.values()).sort((a, b) => b.totalValue - a.totalValue);
 
     return NextResponse.json({
       year,
       byCfop: rows.map((r) => ({
         cfop: r.cfop,
-        direction: r.direction,
-        itemCount: Number(r.item_count),
-        totalValue: Number(r.total_value),
-        icms: Number(r.total_icms),
-        pis: Number(r.total_pis),
-        cofins: Number(r.total_cofins),
-        ipi: Number(r.total_ipi),
+        direction:
+          r.cfop.startsWith('1') || r.cfop.startsWith('2') || r.cfop.startsWith('3')
+            ? 'entrada'
+            : 'saida',
+        itemCount: r.itemCount,
+        totalValue: r.totalValue,
+        icms: r.icms,
+        pis: r.pis,
+        cofins: r.cofins,
+        ipi: r.ipi,
       })),
     });
   } catch (error) {

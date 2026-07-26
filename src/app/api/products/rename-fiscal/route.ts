@@ -11,20 +11,35 @@ import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { renameFiscalSchema } from '@/lib/schemas/product';
 
-const VALID_FIELDS = ['ncm', 'fiscalSitTributaria', 'fiscalNomeTributacao', 'cest', 'origem', 'cfopEntrada', 'cfopSaida', 'obsIcms', 'obsPisCofins', 'aliqIcms', 'aliqPis', 'aliqCofins', 'aliqIpi', 'aliqFcp'] as const;
+const VALID_FIELDS = [
+  'ncm',
+  'fiscalSitTributaria',
+  'fiscalNomeTributacao',
+  'cest',
+  'origem',
+  'cfopEntrada',
+  'cfopSaida',
+  'obsIcms',
+  'obsPisCofins',
+  'aliqIcms',
+  'aliqPis',
+  'aliqCofins',
+  'aliqIpi',
+  'aliqFcp',
+] as const;
 type FiscalField = (typeof VALID_FIELDS)[number];
 
-// null means catalog-only (no corresponding TEXT column in product_registry)
-const DB_COLUMN: Record<FiscalField, string | null> = {
+/** Prisma ProductRegistry field for text renames; null = catalog-only (alíquotas). */
+const PRISMA_FIELD: Record<FiscalField, string | null> = {
   ncm: 'ncm',
-  fiscalSitTributaria: 'fiscal_sit_tributaria',
-  fiscalNomeTributacao: 'fiscal_nome_tributacao',
-  cest: 'fiscal_cest',
-  origem: 'fiscal_origem',
-  cfopEntrada: 'fiscal_cfop_entrada',
-  cfopSaida: 'fiscal_cfop_saida',
-  obsIcms: 'fiscal_obs_icms',
-  obsPisCofins: 'fiscal_obs_pis_cofins',
+  fiscalSitTributaria: 'fiscalSitTributaria',
+  fiscalNomeTributacao: 'fiscalNomeTributacao',
+  cest: 'fiscalCest',
+  origem: 'fiscalOrigem',
+  cfopEntrada: 'fiscalCfopEntrada',
+  cfopSaida: 'fiscalCfopSaida',
+  obsIcms: 'fiscalObsIcms',
+  obsPisCofins: 'fiscalObsPisCofins',
   aliqIcms: null,
   aliqPis: null,
   aliqCofins: null,
@@ -71,46 +86,37 @@ function clean(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function isPlaceholderKey(productKey: string): boolean {
+  return productKey.includes('placeholder');
+}
+
 async function hasFiscalValue(companyId: string, field: FiscalField, value: string) {
-  const col = DB_COLUMN[field];
+  const prismaField = PRISMA_FIELD[field];
   const section = CATALOG_SECTION[field];
 
-  if (col) {
-    const real = await prisma.$queryRawUnsafe<any[]>(
-      `
-        SELECT 1
-        FROM product_registry
-        WHERE company_id = $1
-          AND product_key NOT LIKE '__%placeholder__%'
-          AND ${col} = $2
-        LIMIT 1
-      `,
-      companyId,
-      value,
-    );
-    if (real.length > 0) return true;
+  if (prismaField) {
+    const rows = await prisma.productRegistry.findMany({
+      where: {
+        companyId,
+        [prismaField]: value,
+      },
+      select: { productKey: true },
+      take: 50,
+    });
+    if (rows.some((r) => !isPlaceholderKey(r.productKey))) return true;
   }
 
-  const catalog = await prisma.$queryRawUnsafe<any[]>(
-    `
-      SELECT 1
-      FROM product_settings_catalog
-      WHERE company_id = $1
-        AND section = $2
-        AND value = $3
-      LIMIT 1
-    `,
-    companyId,
-    section,
-    value,
-  );
-  return catalog.length > 0;
+  const catalog = await prisma.productSettingsCatalog.findFirst({
+    where: { companyId, section, value },
+    select: { id: true },
+  });
+  return catalog != null;
 }
 
 /**
  * POST /api/products/rename-fiscal
  * Actions:
- *   { action: 'add', field, name }      — add a new catalog value (without placeholders)
+ *   { action: 'add', field, name }      — add a new catalog value
  *   { field, oldValue, newValue }       — rename (newValue: string) or delete (newValue: null)
  */
 export async function POST(req: NextRequest) {
@@ -134,7 +140,6 @@ export async function POST(req: NextRequest) {
   const company = await getOrCreateSingleCompany(auth.userId);
   await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
-  // --- Add new catalog value ---
   if (action === 'add') {
     const itemName = clean(name);
     if (!itemName) return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
@@ -149,7 +154,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ created: true });
   }
 
-  // --- Rename / delete ---
   const trimmedOld = clean(oldValue);
   if (!trimmedOld) {
     return NextResponse.json({ error: 'oldValue é obrigatório' }, { status: 400 });
@@ -159,16 +163,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'newValue deve ser string não-vazia ou null' }, { status: 400 });
   }
 
-  const col = DB_COLUMN[f];
-  // catalog-only fields (numeric alíquotas) don't have a text column to update
+  const prismaField = PRISMA_FIELD[f];
   let updated = 0;
-  if (col) {
-    updated = await prisma.$executeRawUnsafe(
-      `UPDATE product_registry SET ${col} = $1, updated_at = NOW() WHERE company_id = $2 AND ${col} = $3`,
-      trimmedNew,
-      company.id,
-      trimmedOld,
-    );
+  if (prismaField) {
+    const result = await prisma.productRegistry.updateMany({
+      where: {
+        companyId: company.id,
+        [prismaField]: trimmedOld,
+      },
+      data: {
+        [prismaField]: trimmedNew,
+        updatedAt: new Date(),
+      },
+    });
+    updated = result.count;
   }
 
   if (trimmedNew) {
@@ -179,17 +187,13 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await prisma.$executeRawUnsafe(
-    `
-      DELETE FROM product_settings_catalog
-      WHERE company_id = $1
-        AND section = $2
-        AND value = $3
-    `,
-    company.id,
-    CATALOG_SECTION[f],
-    trimmedOld,
-  );
+  await prisma.productSettingsCatalog.deleteMany({
+    where: {
+      companyId: company.id,
+      section: CATALOG_SECTION[f],
+      value: trimmedOld,
+    },
+  });
 
   return NextResponse.json({ updated });
 }

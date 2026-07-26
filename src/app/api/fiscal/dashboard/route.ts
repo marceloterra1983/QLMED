@@ -3,10 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
-
-const log = createLogger('fiscal/dashboard');
 
 export async function GET(req: Request) {
   let userId: string;
@@ -18,7 +15,7 @@ export async function GET(req: Request) {
 
   const company = await getOrCreateSingleCompany(userId);
   const { searchParams } = new URL(req.url);
-  const period = searchParams.get('period') || 'year'; // month, quarter, year
+  const period = searchParams.get('period') || 'year';
   const year = Number(searchParams.get('year') || new Date().getFullYear());
   const month = Number(searchParams.get('month') || new Date().getMonth() + 1);
 
@@ -40,124 +37,184 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Totals for the period
-    const totals = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-        COALESCE(SUM(t.vicms), 0) as total_icms,
-        COALESCE(SUM(t.vpis), 0) as total_pis,
-        COALESCE(SUM(t.vcofins), 0) as total_cofins,
-        COALESCE(SUM(t.vipi), 0) as total_ipi,
-        COALESCE(SUM(t.vfrete), 0) as total_frete,
-        COALESCE(SUM(t.vtottrib), 0) as total_trib_aprox,
-        COALESCE(SUM(t.vfcp), 0) as total_fcp,
-        COALESCE(SUM(t.vicms_st), 0) as total_icms_st,
-        COALESCE(SUM(t.vbc), 0) as total_bc,
-        COALESCE(SUM(t.vdesc), 0) as total_desc,
-        COUNT(*) as invoice_count
-       FROM invoice_tax_totals t
-       INNER JOIN "Invoice" i ON i.id = t.invoice_id
-       WHERE t.company_id = $1
-         AND i."issueDate" >= $2
-         AND i."issueDate" <= $3`,
-      company.id,
-      startDate,
-      endDate,
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        companyId: company.id,
+        issueDate: { gte: startDate, lte: endDate },
+      },
+      select: {
+        id: true,
+        issueDate: true,
+        senderName: true,
+        senderCnpj: true,
+        direction: true,
+      },
+    });
+
+    const invoiceById = new Map(invoices.map((i) => [i.id, i]));
+    const invoiceIds = invoices.map((i) => i.id);
+
+    const taxRows =
+      invoiceIds.length === 0
+        ? []
+        : await prisma.invoiceTaxTotals.findMany({
+            where: {
+              companyId: company.id,
+              invoiceId: { in: invoiceIds },
+            },
+          });
+
+    let totalIcms = 0;
+    let totalPis = 0;
+    let totalCofins = 0;
+    let totalIpi = 0;
+    let totalFrete = 0;
+    let totalTribAprox = 0;
+    let totalFcp = 0;
+    let totalIcmsSt = 0;
+    let totalBc = 0;
+    let totalDesc = 0;
+
+    type MonthKey = string;
+    const monthlyMap = new Map<
+      MonthKey,
+      {
+        year: number;
+        month: number;
+        icms: number;
+        pis: number;
+        cofins: number;
+        ipi: number;
+        frete: number;
+        tribAprox: number;
+        invoiceCount: number;
+      }
+    >();
+
+    type SupplierKey = string;
+    const supplierMap = new Map<
+      SupplierKey,
+      {
+        name: string | null;
+        cnpj: string | null;
+        icms: number;
+        pisCofins: number;
+        ipi: number;
+        invoiceCount: number;
+      }
+    >();
+
+    for (const t of taxRows) {
+      const inv = invoiceById.get(t.invoiceId);
+      if (!inv?.issueDate) continue;
+
+      const vicms = Number(t.vicms || 0);
+      const vpis = Number(t.vpis || 0);
+      const vcofins = Number(t.vcofins || 0);
+      const vipi = Number(t.vipi || 0);
+      const vfrete = Number(t.vfrete || 0);
+      const vtottrib = Number(t.vtottrib || 0);
+      const vfcp = Number(t.vfcp || 0);
+      const vicmsSt = Number(t.vicmsSt || 0);
+      const vbc = Number(t.vbc || 0);
+      const vdesc = Number(t.vdesc || 0);
+
+      totalIcms += vicms;
+      totalPis += vpis;
+      totalCofins += vcofins;
+      totalIpi += vipi;
+      totalFrete += vfrete;
+      totalTribAprox += vtottrib;
+      totalFcp += vfcp;
+      totalIcmsSt += vicmsSt;
+      totalBc += vbc;
+      totalDesc += vdesc;
+
+      const y = inv.issueDate.getUTCFullYear();
+      const m = inv.issueDate.getUTCMonth() + 1;
+      const mk = `${y}-${m}`;
+      let monthAgg = monthlyMap.get(mk);
+      if (!monthAgg) {
+        monthAgg = {
+          year: y,
+          month: m,
+          icms: 0,
+          pis: 0,
+          cofins: 0,
+          ipi: 0,
+          frete: 0,
+          tribAprox: 0,
+          invoiceCount: 0,
+        };
+        monthlyMap.set(mk, monthAgg);
+      }
+      monthAgg.icms += vicms;
+      monthAgg.pis += vpis;
+      monthAgg.cofins += vcofins;
+      monthAgg.ipi += vipi;
+      monthAgg.frete += vfrete;
+      monthAgg.tribAprox += vtottrib;
+      monthAgg.invoiceCount += 1;
+
+      if (inv.direction === 'received') {
+        const sk = `${inv.senderCnpj || ''}|${inv.senderName || ''}`;
+        let sup = supplierMap.get(sk);
+        if (!sup) {
+          sup = {
+            name: inv.senderName,
+            cnpj: inv.senderCnpj,
+            icms: 0,
+            pisCofins: 0,
+            ipi: 0,
+            invoiceCount: 0,
+          };
+          supplierMap.set(sk, sup);
+        }
+        sup.icms += vicms;
+        sup.pisCofins += vpis + vcofins;
+        sup.ipi += vipi;
+        sup.invoiceCount += 1;
+      }
+    }
+
+    const [totalNfe, withTaxData] = await Promise.all([
+      prisma.invoice.count({ where: { companyId: company.id, type: 'NFE' } }),
+      prisma.invoiceTaxTotals.count({ where: { companyId: company.id } }),
+    ]);
+
+    const monthly = Array.from(monthlyMap.values()).sort((a, b) =>
+      a.year === b.year ? a.month - b.month : a.year - b.year,
     );
 
-    // Monthly breakdown
-    const monthly = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-        EXTRACT(YEAR FROM i."issueDate") as ano,
-        EXTRACT(MONTH FROM i."issueDate") as mes,
-        COALESCE(SUM(t.vicms), 0) as vicms,
-        COALESCE(SUM(t.vpis), 0) as vpis,
-        COALESCE(SUM(t.vcofins), 0) as vcofins,
-        COALESCE(SUM(t.vipi), 0) as vipi,
-        COALESCE(SUM(t.vfrete), 0) as vfrete,
-        COALESCE(SUM(t.vtottrib), 0) as vtottrib,
-        COUNT(*) as invoice_count
-       FROM invoice_tax_totals t
-       INNER JOIN "Invoice" i ON i.id = t.invoice_id
-       WHERE t.company_id = $1
-         AND i."issueDate" >= $2
-         AND i."issueDate" <= $3
-       GROUP BY ano, mes
-       ORDER BY ano, mes`,
-      company.id,
-      startDate,
-      endDate,
-    );
-
-    // Top 10 suppliers by tax value
-    const topSuppliers = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-        i."senderName" as supplier_name,
-        i."senderCnpj" as supplier_cnpj,
-        COALESCE(SUM(t.vicms), 0) as total_icms,
-        COALESCE(SUM(COALESCE(t.vpis,0) + COALESCE(t.vcofins,0)), 0) as total_pis_cofins,
-        COALESCE(SUM(t.vipi), 0) as total_ipi,
-        COUNT(*) as invoice_count
-       FROM invoice_tax_totals t
-       INNER JOIN "Invoice" i ON i.id = t.invoice_id
-       WHERE t.company_id = $1
-         AND i."issueDate" >= $2
-         AND i."issueDate" <= $3
-         AND i.direction = 'received'
-       GROUP BY i."senderName", i."senderCnpj"
-       ORDER BY (COALESCE(SUM(t.vicms), 0) + COALESCE(SUM(t.vpis), 0) + COALESCE(SUM(t.vcofins), 0) + COALESCE(SUM(t.vipi), 0)) DESC
-       LIMIT 10`,
-      company.id,
-      startDate,
-      endDate,
-    );
-
-    // Count total NFE invoices and how many have tax data (for backfill progress)
-    const counts = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-        (SELECT COUNT(*)::bigint FROM "Invoice" WHERE "companyId" = $1 AND type = 'NFE') as total_nfe,
-        (SELECT COUNT(*)::bigint FROM invoice_tax_totals WHERE company_id = $1) as with_tax_data`,
-      company.id,
-    );
-    const totalNfe = Number(counts[0]?.total_nfe ?? 0);
-    const withTaxData = Number(counts[0]?.with_tax_data ?? 0);
-
-    const t = totals[0] || {};
+    const topSuppliers = Array.from(supplierMap.values())
+      .sort((a, b) => b.icms + b.pisCofins + b.ipi - (a.icms + a.pisCofins + a.ipi))
+      .slice(0, 10);
 
     return NextResponse.json({
       period: { type: period, year, month, startDate, endDate },
       totalNfe,
       withTaxData,
       totals: {
-        icms: Number(t.total_icms || 0),
-        pis: Number(t.total_pis || 0),
-        cofins: Number(t.total_cofins || 0),
-        ipi: Number(t.total_ipi || 0),
-        frete: Number(t.total_frete || 0),
-        tribAprox: Number(t.total_trib_aprox || 0),
-        fcp: Number(t.total_fcp || 0),
-        icmsSt: Number(t.total_icms_st || 0),
-        baseCalculo: Number(t.total_bc || 0),
-        descontos: Number(t.total_desc || 0),
-        invoiceCount: Number(t.invoice_count || 0),
+        icms: totalIcms,
+        pis: totalPis,
+        cofins: totalCofins,
+        ipi: totalIpi,
+        frete: totalFrete,
+        tribAprox: totalTribAprox,
+        fcp: totalFcp,
+        icmsSt: totalIcmsSt,
+        baseCalculo: totalBc,
+        descontos: totalDesc,
+        invoiceCount: taxRows.length,
       },
-      monthly: monthly.map((m) => ({
-        year: Number(m.ano),
-        month: Number(m.mes),
-        icms: Number(m.vicms),
-        pis: Number(m.vpis),
-        cofins: Number(m.vcofins),
-        ipi: Number(m.vipi),
-        frete: Number(m.vfrete),
-        tribAprox: Number(m.vtottrib),
-        invoiceCount: Number(m.invoice_count),
-      })),
+      monthly,
       topSuppliers: topSuppliers.map((s) => ({
-        name: s.supplier_name,
-        cnpj: s.supplier_cnpj,
-        icms: Number(s.total_icms),
-        pisCofins: Number(s.total_pis_cofins),
-        ipi: Number(s.total_ipi),
-        invoiceCount: Number(s.invoice_count),
+        name: s.name,
+        cnpj: s.cnpj,
+        icms: s.icms,
+        pisCofins: s.pisCofins,
+        ipi: s.ipi,
+        invoiceCount: s.invoiceCount,
       })),
     });
   } catch (error) {
