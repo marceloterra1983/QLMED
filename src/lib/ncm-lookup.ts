@@ -397,17 +397,17 @@ export async function searchNcmSorted(
   const cleaned = term.trim();
   if (cleaned.length < 2) return [];
 
-  // Usage counts still come from product_registry (raw until that store migrates).
-  const usageRows = await prisma.$queryRawUnsafe<Array<{ ncm_clean: string; usage_count: number }>>(
-    `
-    SELECT REPLACE(REPLACE(ncm, '.', ''), ' ', '') AS ncm_clean, COUNT(*)::int AS usage_count
-    FROM product_registry
-    WHERE company_id = $1 AND ncm IS NOT NULL AND TRIM(ncm) <> ''
-    GROUP BY REPLACE(REPLACE(ncm, '.', ''), ' ', '')
-    `,
-    companyId,
-  );
-  const usage = new Map(usageRows.map((r) => [r.ncm_clean, r.usage_count]));
+  // Usage counts from product_registry (Prisma)
+  const regRows = await prisma.productRegistry.findMany({
+    where: { companyId, ncm: { not: null } },
+    select: { ncm: true },
+  });
+  const usage = new Map<string, number>();
+  for (const row of regRows) {
+    const clean = (row.ncm || '').replace(/[\s.]/g, '');
+    if (!clean) continue;
+    usage.set(clean, (usage.get(clean) || 0) + 1);
+  }
 
   const candidates = await searchFromDb(cleaned, Math.max(limit * 5, 50));
   if (candidates.length > 0) {

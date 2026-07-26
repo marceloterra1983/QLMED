@@ -160,171 +160,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export async function ensureProductRegistryTable() {
-  if (!registryInitState.promise) {
-    registryInitState.promise = (async () => {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS product_registry (
-          id TEXT PRIMARY KEY,
-          company_id TEXT NOT NULL,
-          product_key TEXT NOT NULL,
-          code TEXT,
-          description TEXT NOT NULL,
-          ncm TEXT,
-          unit TEXT,
-          ean TEXT,
-          anvisa_code TEXT,
-          anvisa_source TEXT,
-          anvisa_confidence DOUBLE PRECISION,
-          anvisa_matched_product_name TEXT,
-          anvisa_holder TEXT,
-          anvisa_process TEXT,
-          anvisa_status TEXT,
-          anvisa_synced_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (company_id, product_key)
-        )
-      `);
-
-      // Add columns that may not exist in older installations
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE product_registry
-          ADD COLUMN IF NOT EXISTS product_type TEXT,
-          ADD COLUMN IF NOT EXISTS product_subtype TEXT,
-          ADD COLUMN IF NOT EXISTS anvisa_expiration TEXT,
-          ADD COLUMN IF NOT EXISTS anvisa_risk_class TEXT,
-          ADD COLUMN IF NOT EXISTS anvisa_manufacturer TEXT,
-          ADD COLUMN IF NOT EXISTS anvisa_manufacturer_country TEXT,
-          ADD COLUMN IF NOT EXISTS short_name TEXT,
-          ADD COLUMN IF NOT EXISTS manufacturer_short_name TEXT,
-          ADD COLUMN IF NOT EXISTS out_of_line BOOLEAN DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS fiscal_sit_tributaria TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_nome_tributacao TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_icms DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS fiscal_pis DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS fiscal_cofins DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS fiscal_obs TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_cest TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_origem TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_cfop_entrada TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_cfop_saida TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_ipi DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS fiscal_fcp DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS fiscal_cst_ipi TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_cst_pis TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_cst_cofins TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_obs_icms TEXT,
-          ADD COLUMN IF NOT EXISTS fiscal_obs_pis_cofins TEXT,
-          ADD COLUMN IF NOT EXISTS instrumental BOOLEAN DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS product_subgroup TEXT,
-          ADD COLUMN IF NOT EXISTS agg_total_quantity DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_total_value DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_invoice_count INTEGER,
-          ADD COLUMN IF NOT EXISTS agg_last_price DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_average_price DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_last_issue_date TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS agg_last_supplier_name TEXT,
-          ADD COLUMN IF NOT EXISTS agg_last_supplier_cnpj TEXT,
-          ADD COLUMN IF NOT EXISTS agg_last_invoice_number TEXT,
-          ADD COLUMN IF NOT EXISTS agg_last_sale_date TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS agg_last_sale_price DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_resale_quantity DOUBLE PRECISION,
-          ADD COLUMN IF NOT EXISTS agg_computed_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS agg_search_text TEXT,
-          ADD COLUMN IF NOT EXISTS codigo TEXT,
-          ADD COLUMN IF NOT EXISTS product_refs TEXT[] DEFAULT ARRAY[]::TEXT[],
-          ADD COLUMN IF NOT EXISTS default_supplier TEXT
-      `);
-      await prisma.$executeRawUnsafe(`
-        UPDATE product_registry SET product_refs = ARRAY[]::TEXT[] WHERE product_refs IS NULL
-      `);
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE product_registry ALTER COLUMN product_refs SET DEFAULT ARRAY[]::TEXT[]
-      `);
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE product_registry ALTER COLUMN product_refs SET NOT NULL
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_company_id_idx
-        ON product_registry (company_id)
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_company_id_anvisa_code_idx
-        ON product_registry (company_id, anvisa_code)
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_agg_issue_idx
-        ON product_registry (company_id, agg_last_issue_date DESC NULLS LAST)
-        WHERE agg_computed_at IS NOT NULL
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_agg_type_idx
-        ON product_registry (company_id, product_type, product_subtype)
-        WHERE agg_computed_at IS NOT NULL
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_registry_out_of_line_idx
-        ON product_registry (company_id, out_of_line)
-        WHERE agg_computed_at IS NOT NULL
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE UNIQUE INDEX IF NOT EXISTS product_registry_company_codigo_idx
-        ON product_registry (company_id, codigo)
-        WHERE codigo IS NOT NULL
-      `);
-
-      try {
-        await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
-        await prisma.$executeRawUnsafe(`
-          CREATE INDEX IF NOT EXISTS product_registry_search_trgm_idx
-          ON product_registry USING gin (agg_search_text gin_trgm_ops)
-          WHERE agg_computed_at IS NOT NULL
-        `);
-      } catch (err) {
-        log.warn({ err }, 'pg_trgm extension unavailable, falling back to ILIKE search');
-      }
-
-      // Migrate product_key unit tokens to normalized form
-      // e.g. CODE:123::UNIT:UNID → CODE:123::UNIT:UN
-      const unitAliases: Record<string, string> = {
-        UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
-        PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
-        CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
-      };
-      for (const [from, to] of Object.entries(unitAliases)) {
-        // Update keys that end with ::UNIT:{from} to ::UNIT:{to}
-        // Use ON CONFLICT to handle collisions (merge by deleting the old row)
-        await prisma.$executeRawUnsafe(`
-          DELETE FROM product_registry
-          WHERE id IN (
-            SELECT old.id FROM product_registry old
-            INNER JOIN product_registry existing
-              ON existing.company_id = old.company_id
-              AND existing.product_key = REPLACE(old.product_key, '::UNIT:${from}', '::UNIT:${to}')
-            WHERE old.product_key LIKE '%::UNIT:${from}'
-              AND old.product_key != existing.product_key
-          )
-        `);
-        await prisma.$executeRawUnsafe(`
-          UPDATE product_registry
-          SET product_key = REPLACE(product_key, '::UNIT:${from}', '::UNIT:${to}'),
-              updated_at = NOW()
-          WHERE product_key LIKE '%::UNIT:${from}'
-        `);
-      }
-    })().catch((error) => {
-      registryInitState.promise = undefined;
-      throw error;
-    });
-  }
-
-  return registryInitState.promise;
+  // product_registry is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
+  // One-time unit alias rewrites already applied in production; do not re-run DDL here.
+  return;
 }
 
 function mapRegistryRow(row: ProductRegistryDbRow): ProductRegistryRow {
@@ -383,135 +221,135 @@ function mapRegistryRow(row: ProductRegistryDbRow): ProductRegistryRow {
   };
 }
 
+/** Map Prisma ProductRegistry model → domain row */
+function mapPrismaRegistryRow(row: {
+  id: string;
+  companyId: string;
+  productKey: string;
+  codigo: string | null;
+  code: string | null;
+  description: string;
+  ncm: string | null;
+  unit: string | null;
+  ean: string | null;
+  anvisaCode: string | null;
+  anvisaSource: string | null;
+  anvisaConfidence: number | null;
+  anvisaMatchedProductName: string | null;
+  anvisaHolder: string | null;
+  anvisaProcess: string | null;
+  anvisaStatus: string | null;
+  anvisaExpiration: string | null;
+  anvisaRiskClass: string | null;
+  anvisaManufacturer: string | null;
+  anvisaManufacturerCountry: string | null;
+  manufacturerShortName: string | null;
+  anvisaSyncedAt: Date | null;
+  shortName: string | null;
+  productType: string | null;
+  productSubtype: string | null;
+  productSubgroup: string | null;
+  outOfLine: boolean | null;
+  instrumental: boolean | null;
+  fiscalSitTributaria: string | null;
+  fiscalNomeTributacao: string | null;
+  fiscalIcms: number | null;
+  fiscalPis: number | null;
+  fiscalCofins: number | null;
+  fiscalObs: string | null;
+  fiscalCest: string | null;
+  fiscalOrigem: string | null;
+  fiscalCfopEntrada: string | null;
+  fiscalCfopSaida: string | null;
+  fiscalIpi: number | null;
+  fiscalFcp: number | null;
+  fiscalCstIpi: string | null;
+  fiscalCstPis: string | null;
+  fiscalCstCofins: string | null;
+  fiscalObsIcms: string | null;
+  fiscalObsPisCofins: string | null;
+  productRefs: string[];
+  defaultSupplier: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): ProductRegistryRow {
+  return {
+    id: row.id,
+    companyId: row.companyId,
+    productKey: row.productKey,
+    codigo: row.codigo ?? null,
+    code: row.code ?? null,
+    description: row.description || '',
+    ncm: row.ncm ?? null,
+    unit: row.unit ?? null,
+    ean: row.ean ?? null,
+    anvisaCode: row.anvisaCode ?? null,
+    anvisaSource: row.anvisaSource ?? null,
+    anvisaConfidence: row.anvisaConfidence ?? null,
+    anvisaMatchedProductName: row.anvisaMatchedProductName ?? null,
+    anvisaHolder: row.anvisaHolder ?? null,
+    anvisaProcess: row.anvisaProcess ?? null,
+    anvisaStatus: row.anvisaStatus ?? null,
+    anvisaExpiration: row.anvisaExpiration ?? null,
+    anvisaRiskClass: row.anvisaRiskClass ?? null,
+    anvisaManufacturer: row.anvisaManufacturer ?? null,
+    anvisaManufacturerCountry: row.anvisaManufacturerCountry ?? null,
+    manufacturerShortName: row.manufacturerShortName ?? null,
+    anvisaSyncedAt: row.anvisaSyncedAt,
+    shortName: row.shortName ?? null,
+    productType: row.productType ?? null,
+    productSubtype: row.productSubtype ?? null,
+    productSubgroup: row.productSubgroup ?? null,
+    outOfLine: Boolean(row.outOfLine),
+    instrumental: Boolean(row.instrumental),
+    fiscalSitTributaria: row.fiscalSitTributaria ?? null,
+    fiscalNomeTributacao: row.fiscalNomeTributacao ?? null,
+    fiscalIcms: row.fiscalIcms ?? null,
+    fiscalPis: row.fiscalPis ?? null,
+    fiscalCofins: row.fiscalCofins ?? null,
+    fiscalObs: row.fiscalObs ?? null,
+    fiscalCest: row.fiscalCest ?? null,
+    fiscalOrigem: row.fiscalOrigem ?? null,
+    fiscalCfopEntrada: row.fiscalCfopEntrada ?? null,
+    fiscalCfopSaida: row.fiscalCfopSaida ?? null,
+    fiscalIpi: row.fiscalIpi ?? null,
+    fiscalFcp: row.fiscalFcp ?? null,
+    fiscalCstIpi: row.fiscalCstIpi ?? null,
+    fiscalCstPis: row.fiscalCstPis ?? null,
+    fiscalCstCofins: row.fiscalCstCofins ?? null,
+    fiscalObsIcms: row.fiscalObsIcms ?? null,
+    fiscalObsPisCofins: row.fiscalObsPisCofins ?? null,
+    productRefs: Array.isArray(row.productRefs) ? row.productRefs : [],
+    defaultSupplier: row.defaultSupplier ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export async function getProductRegistryByKeys(
   companyId: string,
   productKeys: string[],
 ): Promise<ProductRegistryRow[]> {
-  await ensureProductRegistryTable();
   if (productKeys.length === 0) return [];
 
-  const rows = await prisma.$queryRawUnsafe<ProductRegistryDbRow[]>(
-    `
-      SELECT
-        id,
-        company_id,
-        product_key,
-        codigo,
-        code,
-        description,
-        ncm,
-        unit,
-        ean,
-        anvisa_code,
-        anvisa_source,
-        anvisa_confidence,
-        anvisa_matched_product_name,
-        anvisa_holder,
-        anvisa_process,
-        anvisa_status,
-        anvisa_expiration,
-        anvisa_risk_class,
-        anvisa_manufacturer,
-        anvisa_manufacturer_country,
-        manufacturer_short_name,
-        anvisa_synced_at,
-        short_name,
-        product_type,
-        product_subtype,
-        product_subgroup,
-        out_of_line,
-        instrumental,
-        fiscal_sit_tributaria,
-        fiscal_nome_tributacao,
-        fiscal_icms,
-        fiscal_pis,
-        fiscal_cofins,
-        fiscal_obs,
-        fiscal_cest,
-        fiscal_origem,
-        fiscal_cfop_entrada,
-        fiscal_cfop_saida,
-        fiscal_ipi,
-        fiscal_fcp,
-        fiscal_cst_ipi,
-        fiscal_cst_pis,
-        fiscal_cst_cofins,
-        fiscal_obs_icms,
-        fiscal_obs_pis_cofins,
-        product_refs,
-        default_supplier,
-        created_at,
-        updated_at
-      FROM product_registry
-      WHERE company_id = $1
-        AND product_key = ANY($2::text[])
-    `,
-    companyId,
-    productKeys,
-  );
-
-  return rows.map(mapRegistryRow);
+  const rows = await prisma.productRegistry.findMany({
+    where: { companyId, productKey: { in: productKeys } },
+  });
+  return rows.map(mapPrismaRegistryRow);
 }
 
 export async function getProductRegistryWithAnvisa(
   companyId: string,
 ): Promise<ProductRegistryRow[]> {
-  await ensureProductRegistryTable();
-
-  const rows = await prisma.$queryRawUnsafe<ProductRegistryDbRow[]>(
-    `
-      SELECT
-        id,
-        company_id,
-        product_key,
-        codigo,
-        code,
-        description,
-        ncm,
-        unit,
-        ean,
-        anvisa_code,
-        anvisa_source,
-        anvisa_confidence,
-        anvisa_matched_product_name,
-        anvisa_holder,
-        anvisa_process,
-        anvisa_status,
-        anvisa_expiration,
-        anvisa_risk_class,
-        anvisa_manufacturer,
-        anvisa_manufacturer_country,
-        manufacturer_short_name,
-        anvisa_synced_at,
-        short_name,
-        product_type,
-        product_subtype,
-        product_subgroup,
-        out_of_line,
-        fiscal_sit_tributaria,
-        fiscal_nome_tributacao,
-        fiscal_icms,
-        fiscal_pis,
-        fiscal_cofins,
-        fiscal_obs,
-        fiscal_cest,
-        fiscal_origem,
-        fiscal_cfop_entrada,
-        fiscal_cfop_saida,
-        fiscal_ipi,
-        fiscal_fcp,
-        created_at,
-        updated_at
-      FROM product_registry
-      WHERE company_id = $1
-        AND anvisa_code IS NOT NULL
-        AND anvisa_code != ''
-      ORDER BY updated_at DESC
-    `,
-    companyId,
-  );
-
-  return rows.map(mapRegistryRow);
+  const rows = await prisma.productRegistry.findMany({
+    where: {
+      companyId,
+      anvisaCode: { not: null },
+      NOT: { anvisaCode: '' },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+  return rows.map(mapPrismaRegistryRow);
 }
 
 export async function updateRegistryAnvisaData(
@@ -528,107 +366,96 @@ export async function updateRegistryAnvisaData(
     anvisaSyncedAt: Date;
   },
 ): Promise<void> {
-  await ensureProductRegistryTable();
-
-  await prisma.$executeRawUnsafe(
-    `
-      UPDATE product_registry SET
-        anvisa_matched_product_name = $2,
-        anvisa_holder = $3,
-        anvisa_process = $4,
-        anvisa_status = $5,
-        anvisa_expiration = $6,
-        anvisa_risk_class = $7,
-        anvisa_manufacturer = $8,
-        anvisa_manufacturer_country = $9,
-        anvisa_synced_at = $10,
-        updated_at = NOW()
-      WHERE id = $1
-    `,
-    id,
-    data.anvisaMatchedProductName,
-    data.anvisaHolder,
-    data.anvisaProcess,
-    data.anvisaStatus,
-    data.anvisaExpiration,
-    data.anvisaRiskClass,
-    data.anvisaManufacturer,
-    data.anvisaManufacturerCountry,
-    data.anvisaSyncedAt,
-  );
+  await prisma.productRegistry.update({
+    where: { id },
+    data: {
+      anvisaMatchedProductName: data.anvisaMatchedProductName,
+      anvisaHolder: data.anvisaHolder,
+      anvisaProcess: data.anvisaProcess,
+      anvisaStatus: data.anvisaStatus,
+      anvisaExpiration: data.anvisaExpiration,
+      anvisaRiskClass: data.anvisaRiskClass,
+      anvisaManufacturer: data.anvisaManufacturer,
+      anvisaManufacturerCountry: data.anvisaManufacturerCountry,
+      anvisaSyncedAt: data.anvisaSyncedAt,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 export async function upsertProductRegistry(
   input: UpsertProductRegistryInput,
 ): Promise<void> {
-  await ensureProductRegistryTable();
+  const existing = await prisma.productRegistry.findUnique({
+    where: {
+      companyId_productKey: {
+        companyId: input.companyId,
+        productKey: input.productKey,
+      },
+    },
+    select: { id: true },
+  });
 
-  await prisma.$executeRawUnsafe(
-    `
-      INSERT INTO product_registry (
-        id,
-        company_id,
-        product_key,
-        code,
-        description,
-        ncm,
-        unit,
-        ean,
-        anvisa_code,
-        anvisa_source,
-        anvisa_confidence,
-        anvisa_matched_product_name,
-        anvisa_holder,
-        anvisa_process,
-        anvisa_status,
-        anvisa_expiration,
-        anvisa_risk_class,
-        anvisa_synced_at,
-        out_of_line,
-        codigo,
-        created_at,
-        updated_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, TRUE,
-        (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $2),
-        NOW(), NOW()
-      )
-      ON CONFLICT (company_id, product_key)
-      DO UPDATE SET
-        code = EXCLUDED.code,
-        description = EXCLUDED.description,
-        ncm = EXCLUDED.ncm,
-        unit = EXCLUDED.unit,
-        ean = EXCLUDED.ean,
-        anvisa_code = EXCLUDED.anvisa_code,
-        anvisa_source = EXCLUDED.anvisa_source,
-        anvisa_confidence = EXCLUDED.anvisa_confidence,
-        anvisa_matched_product_name = EXCLUDED.anvisa_matched_product_name,
-        anvisa_holder = EXCLUDED.anvisa_holder,
-        anvisa_process = EXCLUDED.anvisa_process,
-        anvisa_status = EXCLUDED.anvisa_status,
-        anvisa_expiration = EXCLUDED.anvisa_expiration,
-        anvisa_risk_class = EXCLUDED.anvisa_risk_class,
-        anvisa_synced_at = EXCLUDED.anvisa_synced_at,
-        updated_at = NOW()
-    `,
-    randomUUID(),
-    input.companyId,
-    input.productKey,
-    input.code,
-    input.description,
-    input.ncm,
-    input.unit,
-    input.ean,
-    input.anvisaCode,
-    input.anvisaSource,
-    input.anvisaConfidence,
-    input.anvisaMatchedProductName,
-    input.anvisaHolder,
-    input.anvisaProcess,
-    input.anvisaStatus,
-    input.anvisaExpiration ?? null,
-    input.anvisaRiskClass ?? null,
-    input.anvisaSyncedAt,
-  );
+  if (existing) {
+    await prisma.productRegistry.update({
+      where: { id: existing.id },
+      data: {
+        code: input.code,
+        description: input.description,
+        ncm: input.ncm,
+        unit: input.unit,
+        ean: input.ean,
+        anvisaCode: input.anvisaCode,
+        anvisaSource: input.anvisaSource,
+        anvisaConfidence: input.anvisaConfidence,
+        anvisaMatchedProductName: input.anvisaMatchedProductName,
+        anvisaHolder: input.anvisaHolder,
+        anvisaProcess: input.anvisaProcess,
+        anvisaStatus: input.anvisaStatus,
+        anvisaExpiration: input.anvisaExpiration ?? null,
+        anvisaRiskClass: input.anvisaRiskClass ?? null,
+        anvisaSyncedAt: input.anvisaSyncedAt,
+        updatedAt: new Date(),
+      },
+    });
+    return;
+  }
+
+  const codigos = await prisma.productRegistry.findMany({
+    where: { companyId: input.companyId, NOT: { codigo: null } },
+    select: { codigo: true },
+  });
+  let maxNum = 0;
+  for (const row of codigos) {
+    const digits = (row.codigo || '').replace(/\D/g, '');
+    if (!digits) continue;
+    const n = Number(digits);
+    if (Number.isFinite(n) && n > maxNum) maxNum = n;
+  }
+  const nextCodigo = String(maxNum + 1).padStart(5, '0');
+
+  await prisma.productRegistry.create({
+    data: {
+      id: randomUUID(),
+      companyId: input.companyId,
+      productKey: input.productKey,
+      code: input.code,
+      description: input.description,
+      ncm: input.ncm,
+      unit: input.unit,
+      ean: input.ean,
+      anvisaCode: input.anvisaCode,
+      anvisaSource: input.anvisaSource,
+      anvisaConfidence: input.anvisaConfidence,
+      anvisaMatchedProductName: input.anvisaMatchedProductName,
+      anvisaHolder: input.anvisaHolder,
+      anvisaProcess: input.anvisaProcess,
+      anvisaStatus: input.anvisaStatus,
+      anvisaExpiration: input.anvisaExpiration ?? null,
+      anvisaRiskClass: input.anvisaRiskClass ?? null,
+      anvisaSyncedAt: input.anvisaSyncedAt,
+      outOfLine: true,
+      codigo: nextCodigo,
+    },
+  });
 }
