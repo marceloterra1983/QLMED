@@ -291,21 +291,49 @@ export async function handleContactList(
   const priceItemCountMap = new Map<string, number>();
   if (paginatedCnpjs.length > 0) {
     try {
-      const cnpjColumn = contactType === 'supplier' ? 'senderCnpj' : 'recipientCnpj';
-      const rows = await prisma.$queryRawUnsafe<Array<{ cnpj: string; cnt: bigint }>>(
-        `SELECT i."${cnpjColumn}" as cnpj, COUNT(DISTINCT CONCAT(it.product_code, '::', it.product_description)) as cnt
-         FROM invoice_item_tax it
-         INNER JOIN "Invoice" i ON i.id = it.invoice_id
-         WHERE it.company_id = $1
-           AND i."type" = 'NFE'
-           AND i."direction" = '${cfg.invoiceDirection}'
-           AND i."${cnpjColumn}" = ANY($2)
-         GROUP BY i."${cnpjColumn}"`,
-        company.id,
-        paginatedCnpjs,
-      );
-      for (const row of rows) {
-        priceItemCountMap.set(row.cnpj, Number(row.cnt));
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          companyId: company.id,
+          type: 'NFE',
+          direction: cfg.invoiceDirection as 'received' | 'issued',
+          ...(contactType === 'supplier'
+            ? { senderCnpj: { in: paginatedCnpjs } }
+            : { recipientCnpj: { in: paginatedCnpjs } }),
+        },
+        select: {
+          id: true,
+          senderCnpj: true,
+          recipientCnpj: true,
+        },
+      });
+      const invById = new Map(invoices.map((i) => [i.id, i]));
+      const invIds = invoices.map((i) => i.id);
+      if (invIds.length > 0) {
+        const items = await prisma.invoiceItemTax.findMany({
+          where: { companyId: company.id, invoiceId: { in: invIds } },
+          select: {
+            invoiceId: true,
+            productCode: true,
+            productDescription: true,
+          },
+        });
+        const distinctByCnpj = new Map<string, Set<string>>();
+        for (const it of items) {
+          const inv = invById.get(it.invoiceId);
+          if (!inv) continue;
+          const cnpj =
+            contactType === 'supplier' ? inv.senderCnpj : inv.recipientCnpj;
+          if (!cnpj) continue;
+          let set = distinctByCnpj.get(cnpj);
+          if (!set) {
+            set = new Set();
+            distinctByCnpj.set(cnpj, set);
+          }
+          set.add(`${it.productCode || ''}::${it.productDescription || ''}`);
+        }
+        for (const [cnpj, set] of distinctByCnpj) {
+          priceItemCountMap.set(cnpj, set.size);
+        }
       }
     } catch (err) {
       log.warn({ err }, 'invoice_item_tax price count query failed — fallback to 0 counts');

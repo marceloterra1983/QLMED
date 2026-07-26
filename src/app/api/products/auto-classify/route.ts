@@ -129,22 +129,24 @@ export async function POST(req: Request) {
     // The simplest approach: call our own products endpoint internally.
     // But since we're server-side, we'll build the product list from the DB.
 
-    // Get all registry rows
-    interface RegistryRow {
-      id: string; product_key: string; code: string | null; description: string;
-      ncm: string | null; unit: string | null; ean: string | null;
-      anvisa_code: string | null; anvisa_source: string | null;
-      product_type: string | null; product_subtype: string | null;
-      anvisa_holder: string | null; anvisa_manufacturer: string | null;
-    }
-    const registryRows = await prisma.$queryRawUnsafe<RegistryRow[]>(
-      `SELECT id, product_key, code, description, ncm, unit, ean,
-              anvisa_code, anvisa_source, product_type, product_subtype,
-              anvisa_holder, anvisa_manufacturer
-       FROM product_registry
-       WHERE company_id = $1`,
-      company.id,
-    );
+    const registryRows = await prisma.productRegistry.findMany({
+      where: { companyId: company.id },
+      select: {
+        id: true,
+        productKey: true,
+        code: true,
+        description: true,
+        ncm: true,
+        unit: true,
+        ean: true,
+        anvisaCode: true,
+        anvisaSource: true,
+        productType: true,
+        productSubtype: true,
+        anvisaHolder: true,
+        anvisaManufacturer: true,
+      },
+    });
 
     // ── Build supplier map from invoices ──
     // Maps product code (uppercase) → { supplierCnpj, supplierName } from most recent invoice
@@ -174,18 +176,18 @@ export async function POST(req: Request) {
       const code = r.code || null;
       const sup = code ? supplierByCode.get(code.trim().toUpperCase()) : undefined;
       return {
-        key: r.product_key,
+        key: r.productKey,
         code,
         description: r.description || '',
         ncm: r.ncm || null,
         unit: r.unit || null,
         ean: r.ean || null,
-        anvisa: r.anvisa_code || null,
-        anvisaSource: r.anvisa_source || null,
-        productType: r.product_type || null,
-        productSubtype: r.product_subtype || null,
-        anvisaHolder: r.anvisa_holder || null,
-        anvisaManufacturer: r.anvisa_manufacturer || null,
+        anvisa: r.anvisaCode || null,
+        anvisaSource: r.anvisaSource || null,
+        productType: r.productType || null,
+        productSubtype: r.productSubtype || null,
+        anvisaHolder: r.anvisaHolder || null,
+        anvisaManufacturer: r.anvisaManufacturer || null,
         supplierCnpj: sup?.cnpj || null,
         supplierName: sup?.name || null,
       };
@@ -234,7 +236,7 @@ export async function POST(req: Request) {
     };
 
     const updates: Update[] = [];
-    const idMap = new Map(registryRows.map((r) => [r.product_key, r.id]));
+    const idMap = new Map(registryRows.map((r) => [r.productKey, r.id]));
 
     for (const p of products) {
       const pId = idMap.get(p.key);
@@ -498,22 +500,27 @@ export async function POST(req: Request) {
     }
 
     // ── Apply updates ──
+    const SNAKE_TO_PRISMA: Record<string, string> = {
+      anvisa_code: 'anvisaCode',
+      anvisa_source: 'anvisaSource',
+      product_type: 'productType',
+      product_subtype: 'productSubtype',
+      anvisa_manufacturer: 'anvisaManufacturer',
+      anvisa_holder: 'anvisaHolder',
+    };
+
     let applied = 0;
     if (!dryRun && updates.length > 0) {
       for (const u of updates) {
-        const setClauses: string[] = ['updated_at = NOW()'];
-        const params: unknown[] = [u.id];
-        let pi = 2;
-
+        const data: Record<string, unknown> = { updatedAt: new Date() };
         for (const [col, val] of Object.entries(u.fields)) {
-          setClauses.push(`${col} = $${pi++}`);
-          params.push(val);
+          const prismaField = SNAKE_TO_PRISMA[col] || col;
+          data[prismaField] = val;
         }
-
-        await prisma.$executeRawUnsafe(
-          `UPDATE product_registry SET ${setClauses.join(', ')} WHERE id = $1`,
-          ...params,
-        );
+        await prisma.productRegistry.update({
+          where: { id: u.id },
+          data,
+        });
         applied++;
       }
     }

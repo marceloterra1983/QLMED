@@ -11,11 +11,9 @@ const log = createLogger('invoices/backfill-tax');
 
 const BATCH_SIZE = 200;
 
-// No request body — schema valida que e um POST sem payload
 const noBodySchema = z.object({}).optional();
 
 export async function POST(req: NextRequest) {
-  // safeParse para consistencia com padrao de validacao
   noBodySchema.safeParse({});
 
   let userId: string;
@@ -29,7 +27,7 @@ export async function POST(req: NextRequest) {
   const company = await getOrCreateSingleCompany(userId);
   await ensureInvoiceTaxTables();
 
-  // Find invoices without tax data
+  // Anti-join discovery: NFE invoices without tax totals (kept as raw for efficiency)
   const invoices = await prisma.$queryRawUnsafe<{ id: string }[]>(
     `SELECT i.id
      FROM "Invoice" i
@@ -44,20 +42,22 @@ export async function POST(req: NextRequest) {
   );
 
   if (invoices.length === 0) {
-    return NextResponse.json({ ok: true, processed: 0, message: 'All invoices already have tax data' });
+    return NextResponse.json({
+      ok: true,
+      processed: 0,
+      message: 'All invoices already have tax data',
+    });
   }
 
   let processed = 0;
   let errors = 0;
 
-  // Batch-fetch all invoices in a single query (eliminates N+1)
-  const ids = invoices.map(i => i.id);
+  const ids = invoices.map((i) => i.id);
   const fullInvoices = await prisma.invoice.findMany({
     where: { id: { in: ids } },
     select: { id: true, xmlContent: true, companyId: true },
   });
 
-  // Process in parallel chunks of 10
   const CHUNK_SIZE = 10;
   for (let i = 0; i < fullInvoices.length; i += CHUNK_SIZE) {
     const chunk = fullInvoices.slice(i, i + CHUNK_SIZE);
@@ -71,47 +71,122 @@ export async function POST(req: NextRequest) {
         if (items.length > 0) {
           await upsertItemTaxes(full.id, full.companyId, items);
         }
-      })
+      }),
     );
     for (const r of results) {
       if (r.status === 'fulfilled') processed++;
-      else { log.error({ err: r.reason }, 'backfill-tax error'); errors++; }
+      else {
+        log.error({ err: r.reason }, 'backfill-tax error');
+        errors++;
+      }
     }
   }
 
-  // Update product_registry fiscal fields from the latest invoice_item_tax data
-  // Uses the most recent item (by invoice issue date) for each product code
-  await prisma.$executeRawUnsafe(
-    `UPDATE product_registry pr SET
-      fiscal_icms = sub.aliq_icms,
-      fiscal_pis = sub.aliq_pis,
-      fiscal_cofins = sub.aliq_cofins,
-      fiscal_ipi = sub.aliq_ipi,
-      fiscal_cfop_entrada = sub.cfop,
-      updated_at = NOW()
-    FROM (
-      SELECT DISTINCT ON (it.product_code)
-        it.product_code,
-        it.aliq_icms,
-        it.aliq_pis,
-        it.aliq_cofins,
-        it.aliq_ipi,
-        it.cfop
-      FROM invoice_item_tax it
-      INNER JOIN "Invoice" i ON i.id = it.invoice_id
-      WHERE it.company_id = $1
-        AND it.product_code IS NOT NULL
-      ORDER BY it.product_code, i."issueDate" DESC
-    ) sub
-    WHERE pr.company_id = $1
-      AND UPPER(TRIM(pr.code)) = UPPER(TRIM(sub.product_code))
-      AND (pr.fiscal_icms IS NULL OR pr.fiscal_pis IS NULL OR pr.fiscal_cofins IS NULL)`,
-    company.id,
-  );
+  // Push latest tax rates into product_registry (read item taxes + update via Prisma)
+  const taxItems = await prisma.invoiceItemTax.findMany({
+    where: {
+      companyId: company.id,
+      productCode: { not: null },
+    },
+    select: {
+      productCode: true,
+      aliqIcms: true,
+      aliqPis: true,
+      aliqCofins: true,
+      aliqIpi: true,
+      cfop: true,
+      invoiceId: true,
+    },
+  });
 
-  // Check how many remaining
-  const remaining = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
-    `SELECT COUNT(*)::bigint as count
+  if (taxItems.length > 0) {
+    const invDates = await prisma.invoice.findMany({
+      where: {
+        id: { in: Array.from(new Set(taxItems.map((t) => t.invoiceId))) },
+      },
+      select: { id: true, issueDate: true },
+    });
+    const dateById = new Map(invDates.map((i) => [i.id, i.issueDate?.getTime() || 0]));
+
+    // Latest tax rates per product code (case-insensitive)
+    const latestByCode = new Map<
+      string,
+      {
+        code: string;
+        aliqIcms: number | null;
+        aliqPis: number | null;
+        aliqCofins: number | null;
+        aliqIpi: number | null;
+        cfop: string | null;
+        ts: number;
+      }
+    >();
+
+    for (const it of taxItems) {
+      const code = (it.productCode || '').trim();
+      if (!code) continue;
+      const key = code.toUpperCase();
+      const ts = dateById.get(it.invoiceId) || 0;
+      const prev = latestByCode.get(key);
+      if (!prev || ts >= prev.ts) {
+        latestByCode.set(key, {
+          code,
+          aliqIcms: it.aliqIcms,
+          aliqPis: it.aliqPis,
+          aliqCofins: it.aliqCofins,
+          aliqIpi: it.aliqIpi,
+          cfop: it.cfop,
+          ts,
+        });
+      }
+    }
+
+    const registry = await prisma.productRegistry.findMany({
+      where: {
+        companyId: company.id,
+        OR: [{ fiscalIcms: null }, { fiscalPis: null }, { fiscalCofins: null }],
+      },
+      select: {
+        id: true,
+        code: true,
+        fiscalIcms: true,
+        fiscalPis: true,
+        fiscalCofins: true,
+        fiscalIpi: true,
+        fiscalCfopEntrada: true,
+      },
+    });
+
+    const now = new Date();
+    for (const row of registry) {
+      const key = (row.code || '').trim().toUpperCase();
+      if (!key) continue;
+      const rates = latestByCode.get(key);
+      if (!rates) continue;
+      // Only fill null fiscal fields (same COALESCE intent as previous SQL WHERE)
+      if (
+        row.fiscalIcms != null &&
+        row.fiscalPis != null &&
+        row.fiscalCofins != null
+      ) {
+        continue;
+      }
+      await prisma.productRegistry.update({
+        where: { id: row.id },
+        data: {
+          fiscalIcms: rates.aliqIcms ?? row.fiscalIcms,
+          fiscalPis: rates.aliqPis ?? row.fiscalPis,
+          fiscalCofins: rates.aliqCofins ?? row.fiscalCofins,
+          fiscalIpi: rates.aliqIpi ?? row.fiscalIpi,
+          fiscalCfopEntrada: rates.cfop ?? row.fiscalCfopEntrada,
+          updatedAt: now,
+        },
+      });
+    }
+  }
+
+  const remainingResult = await prisma.$queryRawUnsafe<{ count: string }[]>(
+    `SELECT COUNT(*)::text as count
      FROM "Invoice" i
      LEFT JOIN invoice_tax_totals t ON t.invoice_id = i.id
      WHERE i."companyId" = $1
@@ -119,15 +194,16 @@ export async function POST(req: NextRequest) {
        AND t.invoice_id IS NULL`,
     company.id,
   );
-  const remainingCount = Number(remaining[0]?.count ?? 0);
+  const remainingCount = parseInt(remainingResult[0]?.count || '0', 10);
 
   return NextResponse.json({
     ok: true,
     processed,
     errors,
     remaining: remainingCount,
-    message: remainingCount > 0
-      ? `Processed ${processed} invoices. ${remainingCount} remaining — call again to continue.`
-      : `Done! All ${processed} invoices processed.`,
+    message:
+      remainingCount > 0
+        ? `Processed ${processed} invoices. ${remainingCount} remaining — call again to continue.`
+        : `Done! All ${processed} invoices processed.`,
   });
 }
