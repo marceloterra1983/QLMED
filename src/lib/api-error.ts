@@ -9,6 +9,15 @@ const log = createLogger('api-error');
  * Loga o erro com contexto e retorna NextResponse 500.
  */
 export function apiError(e: unknown, context?: string): NextResponse {
+  if (e instanceof Error) {
+    if (e.message === 'NOT_AUTHENTICATED') {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    if (e.message === 'FORBIDDEN') {
+      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+    }
+  }
+
   const meta: Record<string, unknown> = {};
   if (context) meta.context = context;
 

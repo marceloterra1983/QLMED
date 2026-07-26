@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { listOneDriveChildren } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
+import { apiError } from '@/lib/api-error';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,7 +53,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro ao listar arquivos do OneDrive';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return apiError(error, 'onedrive/files');
   }
 }

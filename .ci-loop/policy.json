@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "name": "qlmed-app-ci-loop",
+  "repo": "marceloterra1983/QLMED",
+  "appDir": "app-dev",
+  "baseBranch": "main",
+  "timezone": "America/Campo_Grande",
+  "manualMajors": [
+    "next",
+    "react",
+    "react-dom",
+    "prisma",
+    "@prisma/client",
+    "eslint-config-next",
+    "tailwindcss",
+    "typescript"
+  ],
+  "deadDepsSuspect": [],
+  "autoPatch": {
+    "enabled": true,
+    "maxPackagesPerPr": 12,
+    "exclude": [
+      "next",
+      "react",
+      "react-dom",
+      "prisma",
+      "@prisma/client",
+      "eslint-config-next",
+      "puppeteer"
+    ]
+  },
+  "qualityTracks": [
+    {
+      "id": "schema-dual",
+      "title": "SCHEMA-02: eliminar ensure*Table / DDL runtime",
+      "severity": "high",
+      "check": "rg_count",
+      "pattern": "ensure\\w+Table|CREATE TABLE IF NOT EXISTS",
+      "path": "src",
+      "targetMax": 0
+    },
+    {
+      "id": "money-float",
+      "title": "Precisão monetária: Float residual em schema Prisma",
+      "severity": "high",
+      "check": "rg_count",
+      "pattern": "Float",
+      "path": "prisma/schema.prisma",
+      "targetMax": 5
+    },
+    {
+      "id": "god-module-aggregation",
+      "title": "Quebrar product-aggregation.ts (≤600 LOC)",
+      "severity": "medium",
+      "check": "file_lines",
+      "path": "src/lib/product-aggregation.ts",
+      "targetMax": 600
+    },
+    {
+      "id": "test-coverage-lib",
+      "title": "Ampliar suites Vitest (mín. 30 arquivos)",
+      "severity": "medium",
+      "check": "glob_count",
+      "path": "src/lib/__tests__/*.{test,integration.test}.ts",
+      "targetMin": 30
+    },
+    {
+      "id": "zod-routes",
+      "title": "Zod em ≥80% das rotas API",
+      "severity": "medium",
+      "check": "zod_route_ratio",
+      "targetMinRatio": 0.8
+    }
+  ],
+  "stackPins": {
+    "node": "22",
+    "next": "15",
+    "react": "19",
+    "prisma": "7",
+    "n8nImage": "2.23.4"
+  }
+}

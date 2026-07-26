@@ -1,4 +1,7 @@
 import { formatCurrency } from '@/lib/utils';
+import { roundMoney } from '@/lib/money';
+
+export { roundMoney };
 
 export interface Duplicata {
   invoiceId: string;
@@ -118,10 +121,6 @@ export function parseCurrencyInput(value: string): number {
 
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : Number.NaN;
-}
-
-export function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function toCurrencyInput(value: number): string {

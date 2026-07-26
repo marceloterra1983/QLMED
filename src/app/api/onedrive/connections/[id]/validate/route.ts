@@ -80,7 +80,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       connection: mapOneDriveConnectionSummary(updated),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro ao validar conexão OneDrive';
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    // Não vazar error.message de integração Microsoft ao cliente.
+    return apiError(error, 'onedrive/validate');
   }
 }

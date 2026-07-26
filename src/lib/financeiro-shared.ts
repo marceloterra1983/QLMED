@@ -4,13 +4,14 @@
  */
 import { NextResponse } from 'next/server';
 import { createLogger } from '@/lib/logger';
-
-const log = createLogger('financeiro-shared');
 import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { financeiroListQuerySchema } from '@/lib/schemas/financeiro';
+import { roundMoney } from '@/lib/money';
+
+const log = createLogger('financeiro-shared');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,10 +107,6 @@ const DIRECTION_CONFIG = {
 // ---------------------------------------------------------------------------
 // Utility functions
 // ---------------------------------------------------------------------------
-
-function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
 
 function getNetInstallmentValue(valor: number, desconto: number): number {
   return roundMoney(Math.max(0, valor - desconto));
