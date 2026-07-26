@@ -9,15 +9,14 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are REQUIRED for behavioral changes by the QLMED constitution.
+**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-## Format: `[ID] [P?] [Story] [Requirement/AC] Description`
+## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- **[Requirement/AC]**: IDs proved by this task (e.g., FR-001/AC-002)
 - Include exact file paths in descriptions
 
 ## Path Conventions

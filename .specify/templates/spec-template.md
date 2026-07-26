@@ -1,13 +1,5 @@
 # Feature Specification: [FEATURE NAME]
 
----
-id: SPEC-[###]
-status: draft
-owner: QLMED
-related_decisions: []
-affected_modules: []
----
-
 **Feature Branch**: `[###-feature-name]`
 
 **Created**: [DATE]
@@ -101,21 +93,6 @@ affected_modules: []
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
-### Roles and ownership *(mandatory)*
-
-- **ROLE-001**: [Who may observe or execute the behavior]
-- **OWN-001**: [How company/data ownership is derived and enforced]
-
-### Non-functional requirements *(mandatory)*
-
-- **NFR-001 Security**: [Authentication, authorization and sensitive-data rule]
-- **NFR-002 Reliability**: [Failure, retry, idempotency or rollback behavior]
-- **NFR-003 Observability**: [Safe logs/metrics without secrets or fiscal payloads]
-
-### Acceptance criteria traceability *(mandatory)*
-
-- **AC-001**: [Observable pass/fail outcome] — covers [FR/ROLE/OWN/NFR IDs]
-
 *Example of marking unclear requirements:*
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
@@ -152,11 +129,3 @@ affected_modules: []
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
-
-## Out of scope
-
-- [Explicitly excluded behavior]
-
-## Related decisions
-
-- [ADR link, or "None — no durable architectural decision"]
