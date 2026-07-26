@@ -72,213 +72,39 @@ export async function GET() {
     const company = await getOrCreateSingleCompany(auth.userId);
     await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
-    const [lineRows, manufacturerRows, ncmRows, sitRows, nomeRows, cestRows, origemRows, cfopEntradaRows, cfopSaidaRows, obsIcmsRows, obsPisCofinsRows, catalogEntries] = await Promise.all([
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(product_type) AS type_name,
-            NULLIF(TRIM(product_subtype), '') AS subtype_name,
-            NULLIF(TRIM(product_subgroup), '') AS subgroup_name,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND product_type IS NOT NULL
-            AND TRIM(product_type) <> ''
-          GROUP BY
-            TRIM(product_type),
-            NULLIF(TRIM(product_subtype), ''),
-            NULLIF(TRIM(product_subgroup), '')
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), TRIM(manufacturer_short_name)) AS name,
-            NULLIF(MAX(NULLIF(TRIM(manufacturer_short_name), '')), '') AS short_name,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), NULLIF(TRIM(manufacturer_short_name), '')) IS NOT NULL
-          GROUP BY COALESCE(NULLIF(TRIM(anvisa_manufacturer), ''), TRIM(manufacturer_short_name))
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(pr.ncm) AS value,
-            COUNT(*)::int AS count,
-            MAX(nc.descricao) AS description
-          FROM product_registry pr
-          LEFT JOIN ncm_cache nc ON nc.code = REPLACE(REPLACE(TRIM(pr.ncm), '.', ''), ' ', '')
-          WHERE pr.company_id = $1
-            AND pr.product_key NOT LIKE '__%placeholder__%'
-            AND pr.ncm IS NOT NULL
-            AND TRIM(pr.ncm) <> ''
-          GROUP BY TRIM(pr.ncm)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_sit_tributaria) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_sit_tributaria IS NOT NULL
-            AND TRIM(fiscal_sit_tributaria) <> ''
-          GROUP BY TRIM(fiscal_sit_tributaria)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_nome_tributacao) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_nome_tributacao IS NOT NULL
-            AND TRIM(fiscal_nome_tributacao) <> ''
-          GROUP BY TRIM(fiscal_nome_tributacao)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_cest) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_cest IS NOT NULL
-            AND TRIM(fiscal_cest) <> ''
-          GROUP BY TRIM(fiscal_cest)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_origem) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_origem IS NOT NULL
-            AND TRIM(fiscal_origem) <> ''
-          GROUP BY TRIM(fiscal_origem)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_cfop_entrada) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_cfop_entrada IS NOT NULL
-            AND TRIM(fiscal_cfop_entrada) <> ''
-          GROUP BY TRIM(fiscal_cfop_entrada)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_cfop_saida) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_cfop_saida IS NOT NULL
-            AND TRIM(fiscal_cfop_saida) <> ''
-          GROUP BY TRIM(fiscal_cfop_saida)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_obs_icms) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_obs_icms IS NOT NULL
-            AND TRIM(fiscal_obs_icms) <> ''
-          GROUP BY TRIM(fiscal_obs_icms)
-        `,
-        company.id,
-      ),
-      prisma.$queryRawUnsafe<any[]>(
-        `
-          SELECT
-            TRIM(fiscal_obs_pis_cofins) AS value,
-            COUNT(*)::int AS count
-          FROM product_registry
-          WHERE company_id = $1
-            AND product_key NOT LIKE '__%placeholder__%'
-            AND fiscal_obs_pis_cofins IS NOT NULL
-            AND TRIM(fiscal_obs_pis_cofins) <> ''
-          GROUP BY TRIM(fiscal_obs_pis_cofins)
-        `,
-        company.id,
-      ),
+    const [registryRows, catalogEntries] = await Promise.all([
+      prisma.productRegistry.findMany({
+        where: { companyId: company.id },
+        select: {
+          productKey: true,
+          productType: true,
+          productSubtype: true,
+          productSubgroup: true,
+          anvisaManufacturer: true,
+          manufacturerShortName: true,
+          ncm: true,
+          fiscalSitTributaria: true,
+          fiscalNomeTributacao: true,
+          fiscalCest: true,
+          fiscalOrigem: true,
+          fiscalCfopEntrada: true,
+          fiscalCfopSaida: true,
+          fiscalObsIcms: true,
+          fiscalObsPisCofins: true,
+        },
+      }),
       listProductSettingsCatalogEntries(company.id),
     ]);
 
     await seedDefaultFiscalCatalog(company.id, catalogEntries);
 
-    const lineMap = new Map<string, { count: number; groups: Map<string, { count: number; subgroups: Map<string, number> }> }>();
+    const products = registryRows.filter((r) => !r.productKey.includes('placeholder'));
 
-    for (const row of lineRows) {
-      const lineName = clean(row.type_name);
-      const subtypeName = clean(row.subtype_name);
-      const subgroupName = clean(row.subgroup_name);
-      const count = Number(row.count) || 0;
-      if (!lineName) continue;
-
-      let lineNode = lineMap.get(lineName);
-      if (!lineNode) {
-        lineNode = { count: 0, groups: new Map() };
-        lineMap.set(lineName, lineNode);
-      }
-      lineNode.count += count;
-
-      if (!subtypeName) continue;
-      let groupNode = lineNode.groups.get(subtypeName);
-      if (!groupNode) {
-        groupNode = { count: 0, subgroups: new Map() };
-        lineNode.groups.set(subtypeName, groupNode);
-      }
-      groupNode.count += count;
-
-      if (subgroupName) {
-        groupNode.subgroups.set(subgroupName, (groupNode.subgroups.get(subgroupName) || 0) + count);
-      }
-    }
-
+    const lineMap = new Map<
+      string,
+      { count: number; groups: Map<string, { count: number; subgroups: Map<string, number> }> }
+    >();
     const manufacturerMap = new Map<string, ManufacturerNode>();
-    for (const row of manufacturerRows) {
-      const name = clean(row.name);
-      if (!name) continue;
-      manufacturerMap.set(name, {
-        name,
-        count: Number(row.count) || 0,
-        shortName: clean(row.short_name),
-      });
-    }
-
     const ncmMap = new Map<string, { count: number; description: string }>();
     const sitMap = new Map<string, number>();
     const nomeMap = new Map<string, number>();
@@ -294,50 +120,88 @@ export async function GET() {
     const aliqIpiMap = new Map<string, number>();
     const aliqFcpMap = new Map<string, number>();
 
-    for (const row of ncmRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      ncmMap.set(value, { count: Number(row.count) || 0, description: clean(row.description) || '' });
+    const bump = (map: Map<string, number>, value: string | null | undefined) => {
+      const v = clean(value);
+      if (!v) return;
+      map.set(v, (map.get(v) || 0) + 1);
+    };
+
+    for (const row of products) {
+      const lineName = clean(row.productType);
+      const subtypeName = clean(row.productSubtype);
+      const subgroupName = clean(row.productSubgroup);
+
+      if (lineName) {
+        let lineNode = lineMap.get(lineName);
+        if (!lineNode) {
+          lineNode = { count: 0, groups: new Map() };
+          lineMap.set(lineName, lineNode);
+        }
+        lineNode.count += 1;
+        if (subtypeName) {
+          let groupNode = lineNode.groups.get(subtypeName);
+          if (!groupNode) {
+            groupNode = { count: 0, subgroups: new Map() };
+            lineNode.groups.set(subtypeName, groupNode);
+          }
+          groupNode.count += 1;
+          if (subgroupName) {
+            groupNode.subgroups.set(
+              subgroupName,
+              (groupNode.subgroups.get(subgroupName) || 0) + 1,
+            );
+          }
+        }
+      }
+
+      const mfrName =
+        clean(row.anvisaManufacturer) || clean(row.manufacturerShortName);
+      if (mfrName) {
+        const existing = manufacturerMap.get(mfrName);
+        if (existing) {
+          existing.count += 1;
+          const short = clean(row.manufacturerShortName);
+          if (short) existing.shortName = short;
+        } else {
+          manufacturerMap.set(mfrName, {
+            name: mfrName,
+            count: 1,
+            shortName: clean(row.manufacturerShortName),
+          });
+        }
+      }
+
+      const ncm = clean(row.ncm);
+      if (ncm) {
+        const prev = ncmMap.get(ncm);
+        ncmMap.set(ncm, { count: (prev?.count || 0) + 1, description: prev?.description || '' });
+      }
+
+      bump(sitMap, row.fiscalSitTributaria);
+      bump(nomeMap, row.fiscalNomeTributacao);
+      bump(cestMap, row.fiscalCest);
+      bump(origemMap, row.fiscalOrigem);
+      bump(cfopEntradaMap, row.fiscalCfopEntrada);
+      bump(cfopSaidaMap, row.fiscalCfopSaida);
+      bump(obsIcmsMap, row.fiscalObsIcms);
+      bump(obsPisCofinsMap, row.fiscalObsPisCofins);
     }
-    for (const row of sitRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      sitMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of nomeRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      nomeMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of cestRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      cestMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of origemRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      origemMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of cfopEntradaRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      cfopEntradaMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of cfopSaidaRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      cfopSaidaMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of obsIcmsRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      obsIcmsMap.set(value, Number(row.count) || 0);
-    }
-    for (const row of obsPisCofinsRows) {
-      const value = clean(row.value);
-      if (!value) continue;
-      obsPisCofinsMap.set(value, Number(row.count) || 0);
+
+    // Enrich NCM descriptions from cache
+    const ncmCodes = Array.from(ncmMap.keys()).map((v) =>
+      v.replace(/[.\s]/g, '').trim(),
+    );
+    if (ncmCodes.length > 0) {
+      const cacheRows = await prisma.ncmCache.findMany({
+        where: { code: { in: ncmCodes } },
+        select: { code: true, descricao: true },
+      });
+      const byCode = new Map(cacheRows.map((r) => [r.code, r.descricao || '']));
+      for (const [value, data] of ncmMap) {
+        const digits = value.replace(/[.\s]/g, '').trim();
+        const desc = byCode.get(digits);
+        if (desc) data.description = desc;
+      }
     }
 
     for (const entry of catalogEntries) {

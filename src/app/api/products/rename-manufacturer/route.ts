@@ -15,34 +15,23 @@ function clean(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-async function hasManufacturer(companyId: string, manufacturerName: string) {
-  const real = await prisma.$queryRawUnsafe<any[]>(
-    `
-      SELECT 1
-      FROM product_registry
-      WHERE company_id = $1
-        AND product_key NOT LIKE '__%placeholder__%'
-        AND anvisa_manufacturer = $2
-      LIMIT 1
-    `,
-    companyId,
-    manufacturerName,
-  );
-  if (real.length > 0) return true;
+function isPlaceholderKey(productKey: string): boolean {
+  return productKey.includes('placeholder');
+}
 
-  const catalog = await prisma.$queryRawUnsafe<any[]>(
-    `
-      SELECT 1
-      FROM product_settings_catalog
-      WHERE company_id = $1
-        AND section = 'manufacturer'
-        AND value = $2
-      LIMIT 1
-    `,
-    companyId,
-    manufacturerName,
-  );
-  return catalog.length > 0;
+async function hasManufacturer(companyId: string, manufacturerName: string) {
+  const real = await prisma.productRegistry.findMany({
+    where: { companyId, anvisaManufacturer: manufacturerName },
+    select: { productKey: true },
+    take: 50,
+  });
+  if (real.some((r) => !isPlaceholderKey(r.productKey))) return true;
+
+  const catalog = await prisma.productSettingsCatalog.findFirst({
+    where: { companyId, section: 'manufacturer', value: manufacturerName },
+    select: { id: true },
+  });
+  return catalog != null;
 }
 
 /**
@@ -72,6 +61,7 @@ export async function POST(req: NextRequest) {
 
   const company = await getOrCreateSingleCompany(auth.userId);
   await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
+  const now = new Date();
 
   if (action === 'rename') {
     const oldName = clean(oldValue);
@@ -80,45 +70,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'oldValue e newValue são obrigatórios' }, { status: 400 });
     }
 
-    const updated: number = await prisma.$executeRawUnsafe(
-      `UPDATE product_registry SET anvisa_manufacturer = $1, updated_at = NOW() WHERE company_id = $2 AND anvisa_manufacturer = $3`,
-      nextName,
-      company.id,
-      oldName,
-    );
+    const result = await prisma.productRegistry.updateMany({
+      where: { companyId: company.id, anvisaManufacturer: oldName },
+      data: { anvisaManufacturer: nextName, updatedAt: now },
+    });
 
-    const oldCatalog = await prisma.$queryRawUnsafe<any[]>(
-      `
-        SELECT extra_value
-        FROM product_settings_catalog
-        WHERE company_id = $1
-          AND section = 'manufacturer'
-          AND value = $2
-        LIMIT 1
-      `,
-      company.id,
-      oldName,
-    );
+    const oldCatalog = await prisma.productSettingsCatalog.findFirst({
+      where: { companyId: company.id, section: 'manufacturer', value: oldName },
+      select: { extraValue: true },
+    });
 
     await upsertProductSettingsCatalogEntry({
       companyId: company.id,
       section: 'manufacturer',
       value: nextName,
-      extraValue: clean(oldCatalog[0]?.extra_value) || null,
+      extraValue: clean(oldCatalog?.extraValue) || null,
     });
 
-    await prisma.$executeRawUnsafe(
-      `
-        DELETE FROM product_settings_catalog
-        WHERE company_id = $1
-          AND section = 'manufacturer'
-          AND value = $2
-      `,
-      company.id,
-      oldName,
-    );
+    await prisma.productSettingsCatalog.deleteMany({
+      where: { companyId: company.id, section: 'manufacturer', value: oldName },
+    });
 
-    return NextResponse.json({ updated });
+    return NextResponse.json({ updated: result.count });
   }
 
   if (action === 'delete') {
@@ -126,24 +99,20 @@ export async function POST(req: NextRequest) {
     if (!oldName) {
       return NextResponse.json({ error: 'oldValue é obrigatório' }, { status: 400 });
     }
-    const updated: number = await prisma.$executeRawUnsafe(
-      `UPDATE product_registry SET anvisa_manufacturer = NULL, manufacturer_short_name = NULL, updated_at = NOW() WHERE company_id = $1 AND anvisa_manufacturer = $2`,
-      company.id,
-      oldName,
-    );
+    const result = await prisma.productRegistry.updateMany({
+      where: { companyId: company.id, anvisaManufacturer: oldName },
+      data: {
+        anvisaManufacturer: null,
+        manufacturerShortName: null,
+        updatedAt: now,
+      },
+    });
 
-    await prisma.$executeRawUnsafe(
-      `
-        DELETE FROM product_settings_catalog
-        WHERE company_id = $1
-          AND section = 'manufacturer'
-          AND value = $2
-      `,
-      company.id,
-      oldName,
-    );
+    await prisma.productSettingsCatalog.deleteMany({
+      where: { companyId: company.id, section: 'manufacturer', value: oldName },
+    });
 
-    return NextResponse.json({ updated });
+    return NextResponse.json({ updated: result.count });
   }
 
   if (action === 'shortName') {
@@ -152,12 +121,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'manufacturer é obrigatório' }, { status: 400 });
     }
     const trimmedShort = clean(shortName);
-    const updated: number = await prisma.$executeRawUnsafe(
-      `UPDATE product_registry SET manufacturer_short_name = $1, updated_at = NOW() WHERE company_id = $2 AND anvisa_manufacturer = $3`,
-      trimmedShort,
-      company.id,
-      mfrName,
-    );
+    const result = await prisma.productRegistry.updateMany({
+      where: { companyId: company.id, anvisaManufacturer: mfrName },
+      data: { manufacturerShortName: trimmedShort, updatedAt: now },
+    });
 
     await upsertProductSettingsCatalogEntry({
       companyId: company.id,
@@ -166,7 +133,7 @@ export async function POST(req: NextRequest) {
       extraValue: trimmedShort,
     });
 
-    return NextResponse.json({ updated });
+    return NextResponse.json({ updated: result.count });
   }
 
   if (action === 'add') {
@@ -188,5 +155,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ created: true });
   }
 
-  return NextResponse.json({ error: 'action deve ser rename, delete, shortName ou add' }, { status: 400 });
+  return NextResponse.json(
+    { error: 'action deve ser rename, delete, shortName ou add' },
+    { status: 400 },
+  );
 }
