@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import { ensureStockEntryTable } from '@/lib/stock-entry-store';
+import {
+  ensureStockEntryTable,
+  updateNfeEntryItemLot,
+  cloneNfeEntryItemBatch,
+} from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
 import ExcelJS from 'exceljs';
 import { apiError, apiValidationError } from '@/lib/api-error';
@@ -106,24 +110,21 @@ export async function POST(req: Request) {
     }
 
     // Collect unique access keys and NF numbers for batch lookup
-    const accessKeys = Array.from(new Set(rows.filter(r => r.accessKey).map(r => r.accessKey)));
-    const nfNumbers = Array.from(new Set(rows.map(r => r.nfNumber).filter(Boolean)));
+    const accessKeys = Array.from(new Set(rows.filter((r) => r.accessKey).map((r) => r.accessKey)));
+    const nfNumbers = Array.from(new Set(rows.map((r) => r.nfNumber).filter(Boolean)));
 
     // Find invoices by access key
     const invoiceByKey = new Map<string, string>(); // accessKey → invoiceId
     const invoiceByNumber = new Map<string, string>(); // number → invoiceId
 
     if (accessKeys.length > 0) {
-      // Query in batches to avoid too many params
       const BATCH = 100;
       for (let i = 0; i < accessKeys.length; i += BATCH) {
         const batch = accessKeys.slice(i, i + BATCH);
-        const akPlaceholders = batch.map((_, j) => `$${j + 2}`).join(', ');
-        const akRows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT i.id, i."accessKey", i.number FROM "Invoice" i
-           WHERE i."companyId" = $1 AND i."accessKey" IN (${akPlaceholders})`,
-          company.id, ...batch
-        );
+        const akRows = await prisma.invoice.findMany({
+          where: { companyId: company.id, accessKey: { in: batch } },
+          select: { id: true, accessKey: true, number: true },
+        });
         for (const row of akRows) {
           if (row.accessKey) invoiceByKey.set(row.accessKey, row.id);
           if (row.number) invoiceByNumber.set(row.number.replace(/^0+/, ''), row.id);
@@ -132,16 +133,15 @@ export async function POST(req: Request) {
     }
 
     // Fallback: find invoices by number
-    const missingNumbers = nfNumbers.filter(n => !invoiceByNumber.has(n));
+    const missingNumbers = nfNumbers.filter((n) => !invoiceByNumber.has(n));
     if (missingNumbers.length > 0) {
       const BATCH = 100;
       for (let i = 0; i < missingNumbers.length; i += BATCH) {
         const batch = missingNumbers.slice(i, i + BATCH);
-        const nPlaceholders = batch.map((_, j) => `$${j + 2}`).join(', ');
-        const nRows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT id, number FROM "Invoice" WHERE "companyId" = $1 AND number IN (${nPlaceholders})`,
-          company.id, ...batch
-        );
+        const nRows = await prisma.invoice.findMany({
+          where: { companyId: company.id, number: { in: batch } },
+          select: { id: true, number: true },
+        });
         for (const row of nRows) {
           if (row.number) invoiceByNumber.set(row.number.replace(/^0+/, ''), row.id);
         }
@@ -149,32 +149,32 @@ export async function POST(req: Request) {
     }
 
     // Step 1: Auto-register invoices that don't have nfe_entry_item rows yet
-    const allInvoiceIds = Array.from(new Set([...Array.from(invoiceByKey.values()), ...Array.from(invoiceByNumber.values())]));
+    const allInvoiceIds = Array.from(
+      new Set([...Array.from(invoiceByKey.values()), ...Array.from(invoiceByNumber.values())]),
+    );
 
-    // Check which already have entries
     const existingEntries = new Set<string>();
     if (allInvoiceIds.length > 0) {
       const BATCH = 100;
       for (let i = 0; i < allInvoiceIds.length; i += BATCH) {
         const batch = allInvoiceIds.slice(i, i + BATCH);
-        const ph = batch.map((_, j) => `$${j + 2}`).join(', ');
-        const entryRows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT DISTINCT invoice_id FROM nfe_entry_item WHERE company_id = $1 AND invoice_id IN (${ph})`,
-          company.id, ...batch
-        );
-        for (const row of entryRows) existingEntries.add(row.invoice_id);
+        const entryRows = await prisma.nfeEntryItem.findMany({
+          where: { companyId: company.id, invoiceId: { in: batch } },
+          select: { invoiceId: true },
+          distinct: ['invoiceId'],
+        });
+        for (const row of entryRows) existingEntries.add(row.invoiceId);
       }
     }
 
-    // Register missing ones
     let autoRegistered = 0;
-    const toRegister = allInvoiceIds.filter(id => !existingEntries.has(id));
+    const toRegister = allInvoiceIds.filter((id) => !existingEntries.has(id));
     for (const invoiceId of toRegister) {
       try {
         const result = await registerInvoiceEntry(company.id, invoiceId, userId);
         if (result) autoRegistered++;
       } catch (err) {
-        log.error({ err: err }, 'Failed to auto-register invoice ${invoiceId}');
+        log.error({ err }, `Failed to auto-register invoice ${invoiceId}`);
       }
     }
 
@@ -192,24 +192,30 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // Find matching nfe_entry_item by supplier_code (referencia) or codigo_interno
-      interface MatchRow { id: number; lot: string | null; quantity: number }
-      let matchRows: MatchRow[] = [];
+      let matchRows: Array<{ id: number; lot: string | null; quantity: number | null }> = [];
       if (row.referencia) {
-        matchRows = await prisma.$queryRawUnsafe<MatchRow[]>(
-          `SELECT id, lot, quantity FROM nfe_entry_item
-           WHERE company_id = $1 AND invoice_id = $2 AND supplier_code = $3
-           ORDER BY id LIMIT 10`,
-          company.id, invoiceId, row.referencia
-        );
+        matchRows = await prisma.nfeEntryItem.findMany({
+          where: {
+            companyId: company.id,
+            invoiceId,
+            supplierCode: row.referencia,
+          },
+          select: { id: true, lot: true, quantity: true },
+          orderBy: { id: 'asc' },
+          take: 10,
+        });
       }
       if (matchRows.length === 0 && row.codigoInterno) {
-        matchRows = await prisma.$queryRawUnsafe<MatchRow[]>(
-          `SELECT id, lot, quantity FROM nfe_entry_item
-           WHERE company_id = $1 AND invoice_id = $2 AND codigo_interno = $3
-           ORDER BY id LIMIT 10`,
-          company.id, invoiceId, row.codigoInterno
-        );
+        matchRows = await prisma.nfeEntryItem.findMany({
+          where: {
+            companyId: company.id,
+            invoiceId,
+            codigoInterno: row.codigoInterno,
+          },
+          select: { id: true, lot: true, quantity: true },
+          orderBy: { id: 'asc' },
+          take: 10,
+        });
       }
 
       if (matchRows.length === 0) {
@@ -217,54 +223,24 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // Find a row with lot=NULL to update, or insert if all have different lots
       const nullLotRow = matchRows.find((r) => r.lot == null);
       const itemQty = Number(matchRows[0].quantity || 0);
       if (nullLotRow) {
         const effQty = itemQty === 1 ? 1 : row.qtdeLote;
-        await prisma.$executeRawUnsafe(
-          `UPDATE nfe_entry_item SET lot = $2, lot_quantity = $3 WHERE id = $1`,
-          nullLotRow.id, row.lote, effQty
-        );
+        await updateNfeEntryItemLot(company.id, invoiceId, nullLotRow.id, {
+          lot: row.lote,
+          lotQuantity: effQty,
+        });
         imported++;
       } else {
         const existingLot = matchRows.find((r) => r.lot === row.lote);
         if (existingLot) {
           skipped++;
         } else {
-          // Insert new batch row by duplicating the first matched item
-          const src = matchRows[0];
-          await prisma.$executeRawUnsafe(
-            `INSERT INTO nfe_entry_item (
-               stock_entry_id, company_id, invoice_id, item_number,
-               supplier_code, supplier_description, ncm, cfop, cest, ean, anvisa, unit,
-               registry_id, codigo_interno, product_name, manufacturer, product_type, product_subtype,
-               quantity, unit_price, total_value_gross, item_discount, total_value_net,
-               origem, cst_icms, base_icms, aliq_icms, valor_icms,
-               base_icms_st, valor_icms_st,
-               cst_ipi, aliq_ipi, base_ipi, valor_ipi,
-               cst_pis, aliq_pis, base_pis, valor_pis,
-               cst_cofins, aliq_cofins, base_cofins, valor_cofins,
-               valor_fcp,
-               rateio_frete, rateio_seguro, rateio_outras_desp, rateio_desconto,
-               lot, lot_serial, lot_quantity, lot_fabrication, lot_expiry
-             )
-             SELECT
-               stock_entry_id, company_id, invoice_id, item_number,
-               supplier_code, supplier_description, ncm, cfop, cest, ean, anvisa, unit,
-               registry_id, codigo_interno, product_name, manufacturer, product_type, product_subtype,
-               quantity, unit_price, total_value_gross, item_discount, total_value_net,
-               origem, cst_icms, base_icms, aliq_icms, valor_icms,
-               base_icms_st, valor_icms_st,
-               cst_ipi, aliq_ipi, base_ipi, valor_ipi,
-               cst_pis, aliq_pis, base_pis, valor_pis,
-               cst_cofins, aliq_cofins, base_cofins, valor_cofins,
-               valor_fcp,
-               rateio_frete, rateio_seguro, rateio_outras_desp, rateio_desconto,
-               $2, lot_serial, $3, lot_fabrication, lot_expiry
-             FROM nfe_entry_item WHERE id = $1`,
-            src.id, row.lote, itemQty === 1 ? 1 : row.qtdeLote
-          );
+          await cloneNfeEntryItemBatch(company.id, invoiceId, matchRows[0].id, {
+            lot: row.lote,
+            lotQuantity: itemQty === 1 ? 1 : row.qtdeLote,
+          });
           imported++;
         }
       }
