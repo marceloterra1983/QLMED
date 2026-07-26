@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
-import { ensureNcmCacheTable, formatNcmCode } from '@/lib/ncm-lookup';
+import { formatNcmCode } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
@@ -47,8 +47,6 @@ export async function POST() {
       if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
-
-    await ensureNcmCacheTable();
 
     // Download full NCM table from SISCOMEX
     let rawItems;
@@ -105,44 +103,48 @@ export async function POST() {
       items.push({ code, descricao: desc, parentCode: parent, fullDescription, hierarchy });
     }
 
-    // Batch insert in chunks of 100
+    // Batch upsert via Prisma Client (ncm_cache owned by schema)
     const BATCH_SIZE = 100;
     let inserted = 0;
     let updated = 0;
 
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       const batch = items.slice(i, i + BATCH_SIZE);
+      const existing = await prisma.ncmCache.findMany({
+        where: { code: { in: batch.map((b) => b.code) } },
+        select: { code: true },
+      });
+      const existingSet = new Set(existing.map((e) => e.code));
+      const now = new Date();
 
-      const values: string[] = [];
-      const params: (string | null)[] = [];
-      let paramIdx = 1;
-
-      for (const item of batch) {
-        values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}::jsonb, NOW())`);
-        params.push(item.code, item.descricao, item.parentCode, item.fullDescription, JSON.stringify(item.hierarchy));
-        paramIdx += 5;
-      }
-
-      const result = await prisma.$executeRawUnsafe(
-        `INSERT INTO ncm_cache (code, descricao, parent_code, full_description, hierarchy, fetched_at)
-         VALUES ${values.join(', ')}
-         ON CONFLICT (code) DO UPDATE SET
-           descricao = CASE WHEN EXCLUDED.descricao <> '' THEN EXCLUDED.descricao ELSE ncm_cache.descricao END,
-           parent_code = COALESCE(EXCLUDED.parent_code, ncm_cache.parent_code),
-           full_description = CASE WHEN EXCLUDED.full_description <> '' THEN EXCLUDED.full_description ELSE ncm_cache.full_description END,
-           hierarchy = CASE WHEN EXCLUDED.hierarchy::text <> '[]' THEN EXCLUDED.hierarchy ELSE ncm_cache.hierarchy END,
-           fetched_at = NOW()`,
-        ...params,
+      await prisma.$transaction(
+        batch.map((item) =>
+          prisma.ncmCache.upsert({
+            where: { code: item.code },
+            create: {
+              code: item.code,
+              descricao: item.descricao,
+              parentCode: item.parentCode,
+              fullDescription: item.fullDescription,
+              hierarchy: item.hierarchy,
+              fetchedAt: now,
+            },
+            update: {
+              descricao: item.descricao || undefined,
+              parentCode: item.parentCode ?? undefined,
+              fullDescription: item.fullDescription || undefined,
+              hierarchy: item.hierarchy.length > 0 ? item.hierarchy : undefined,
+              fetchedAt: now,
+            },
+          }),
+        ),
       );
 
-      // result is the number of affected rows
-      if (typeof result === 'number') {
-        // Affected rows includes both inserts and updates
-        updated += result;
+      for (const item of batch) {
+        if (existingSet.has(item.code)) updated += 1;
+        else inserted += 1;
       }
     }
-
-    inserted = items.length;
 
     return NextResponse.json({
       ok: true,

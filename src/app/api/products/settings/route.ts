@@ -9,7 +9,7 @@ import {
   type ProductSettingsCatalogSection,
   type ProductSettingsCatalogEntry,
 } from '@/lib/product-settings-catalog';
-import { ensureNcmCacheTable } from '@/lib/ncm-lookup';
+
 import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
@@ -70,7 +70,7 @@ export async function GET() {
     }
 
     const company = await getOrCreateSingleCompany(auth.userId);
-    await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable(), ensureNcmCacheTable()]);
+    await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
     const [lineRows, manufacturerRows, ncmRows, sitRows, nomeRows, cestRows, origemRows, cfopEntradaRows, cfopSaidaRows, obsIcmsRows, obsPisCofinsRows, catalogEntries] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(

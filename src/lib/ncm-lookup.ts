@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import type { Prisma } from '@prisma/client';
 
 const log = createLogger('ncm-lookup');
 
@@ -21,18 +22,12 @@ export interface NcmSearchItem {
   fullDescription: string;
 }
 
-// ── Table setup ──
+// ── In-memory cache ──
+// ncm_cache is owned by Prisma (Phase 11 baseline). No ensure* DDL.
 
-type InitState = { promise?: Promise<void> };
 const globalForNcm = globalThis as unknown as {
-  ncmCacheInitState?: InitState;
   ncmMemoryCache?: Map<string, { result: NcmResult | null; at: number }>;
 };
-
-if (!globalForNcm.ncmCacheInitState) {
-  globalForNcm.ncmCacheInitState = {};
-}
-const initState = globalForNcm.ncmCacheInitState;
 
 // Short in-memory TTL (10 min) to avoid repeated DB reads within same request burst
 const MEMORY_TTL_MS = 10 * 60 * 1000;
@@ -40,30 +35,6 @@ const MEMORY_TTL_MS = 10 * 60 * 1000;
 function getMemoryCache(): Map<string, { result: NcmResult | null; at: number }> {
   if (!globalForNcm.ncmMemoryCache) globalForNcm.ncmMemoryCache = new Map();
   return globalForNcm.ncmMemoryCache;
-}
-
-export async function ensureNcmCacheTable(): Promise<void> {
-  if (!initState.promise) {
-    initState.promise = (async () => {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS ncm_cache (
-          code TEXT PRIMARY KEY,
-          descricao TEXT NOT NULL DEFAULT '',
-          parent_code TEXT,
-          full_description TEXT NOT NULL DEFAULT '',
-          hierarchy JSONB NOT NULL DEFAULT '[]',
-          fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS ncm_cache_parent_idx ON ncm_cache (parent_code)
-      `);
-    })().catch((err) => {
-      initState.promise = undefined;
-      throw err;
-    });
-  }
-  return initState.promise;
 }
 
 // ── Formatting ──
@@ -137,51 +108,63 @@ async function fetchSearchFromApi(term: string): Promise<Array<{ codigo: string;
   }
 }
 
-// ── DB cache read/write ──
+// ── DB cache read/write (Prisma Client — ncm_cache) ──
 
 function parseHierarchy(raw: unknown): NcmHierarchyLevel[] {
   try {
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === 'string') return JSON.parse(raw);
+    if (Array.isArray(raw)) return raw as NcmHierarchyLevel[];
+    if (typeof raw === 'string') return JSON.parse(raw) as NcmHierarchyLevel[];
   } catch { /* corrupted JSON */ }
   return [];
 }
 
 async function getFromDb(code: string): Promise<NcmResult | null> {
-  const rows = await prisma.$queryRawUnsafe<{ code: string; descricao: string; full_description: string; hierarchy: unknown }[]>(
-    `SELECT code, descricao, full_description, hierarchy FROM ncm_cache WHERE code = $1`,
-    code,
-  );
-  if (rows.length === 0) return null;
-  const row = rows[0];
+  const row = await prisma.ncmCache.findUnique({ where: { code } });
+  if (!row) return null;
   const hierarchy = parseHierarchy(row.hierarchy);
   return {
     codigo: formatNcmCode(row.code),
     descricao: row.descricao || '',
     hierarchy,
-    fullDescription: row.full_description || '',
+    fullDescription: row.fullDescription || '',
   };
 }
 
-async function saveToDb(code: string, descricao: string, parentCode: string | null, fullDescription: string, hierarchy: NcmHierarchyLevel[]): Promise<void> {
+async function saveToDb(
+  code: string,
+  descricao: string,
+  parentCode: string | null,
+  fullDescription: string,
+  hierarchy: NcmHierarchyLevel[],
+): Promise<void> {
   try {
-    await prisma.$executeRawUnsafe(
-      `
-      INSERT INTO ncm_cache (code, descricao, parent_code, full_description, hierarchy, fetched_at)
-      VALUES ($1, $2, $3, $4, $5::jsonb, NOW())
-      ON CONFLICT (code) DO UPDATE SET
-        descricao = CASE WHEN EXCLUDED.descricao <> '' THEN EXCLUDED.descricao ELSE ncm_cache.descricao END,
-        parent_code = COALESCE(EXCLUDED.parent_code, ncm_cache.parent_code),
-        full_description = CASE WHEN EXCLUDED.full_description <> '' THEN EXCLUDED.full_description ELSE ncm_cache.full_description END,
-        hierarchy = CASE WHEN EXCLUDED.hierarchy::text <> '[]' THEN EXCLUDED.hierarchy ELSE ncm_cache.hierarchy END,
-        fetched_at = NOW()
-      `,
-      code,
-      descricao,
-      parentCode,
-      fullDescription,
-      JSON.stringify(hierarchy),
-    );
+    const existing = await prisma.ncmCache.findUnique({ where: { code } });
+    const nextDescricao = descricao !== '' ? descricao : (existing?.descricao ?? '');
+    const nextParent = parentCode ?? existing?.parentCode ?? null;
+    const nextFull =
+      fullDescription !== '' ? fullDescription : (existing?.fullDescription ?? '');
+    const nextHierarchy =
+      hierarchy.length > 0 ? hierarchy : parseHierarchy(existing?.hierarchy ?? []);
+
+    const hierarchyJson = nextHierarchy as unknown as Prisma.InputJsonValue;
+    await prisma.ncmCache.upsert({
+      where: { code },
+      create: {
+        code,
+        descricao: nextDescricao,
+        parentCode: nextParent,
+        fullDescription: nextFull,
+        hierarchy: hierarchyJson,
+        fetchedAt: new Date(),
+      },
+      update: {
+        descricao: nextDescricao,
+        parentCode: nextParent,
+        fullDescription: nextFull,
+        hierarchy: hierarchyJson,
+        fetchedAt: new Date(),
+      },
+    });
   } catch (err) {
     log.error({ err }, 'Error saving to DB');
   }
@@ -194,38 +177,38 @@ async function saveBatchToDb(items: Array<{ code: string; descricao: string }>):
   }
 }
 
-/** Search ncm_cache by code prefix */
+/** Search ncm_cache by code prefix or description (leaf codes only, length 8) */
 async function searchFromDb(term: string, limit: number): Promise<NcmSearchItem[]> {
   const digits = term.replace(/\D/g, '');
   const isCodeSearch = digits.length >= 2 && digits === term.trim();
 
-  interface NcmSearchRow { code: string; descricao: string; full_description: string }
-  let rows: NcmSearchRow[];
-  if (isCodeSearch) {
-    rows = await prisma.$queryRawUnsafe<NcmSearchRow[]>(
-      `SELECT code, descricao, full_description FROM ncm_cache
-       WHERE code LIKE $1 AND LENGTH(code) = 8
-       ORDER BY code
-       LIMIT $2`,
-      `${digits}%`,
-      limit,
-    );
-  } else {
-    rows = await prisma.$queryRawUnsafe<NcmSearchRow[]>(
-      `SELECT code, descricao, full_description FROM ncm_cache
-       WHERE LENGTH(code) = 8 AND (LOWER(descricao) LIKE $1 OR LOWER(full_description) LIKE $1)
-       ORDER BY code
-       LIMIT $2`,
-      `%${term.toLowerCase()}%`,
-      limit,
-    );
-  }
+  const rows = isCodeSearch
+    ? await prisma.ncmCache.findMany({
+        where: { code: { startsWith: digits } },
+        orderBy: { code: 'asc' },
+        take: limit * 3,
+        select: { code: true, descricao: true, fullDescription: true },
+      })
+    : await prisma.ncmCache.findMany({
+        where: {
+          OR: [
+            { descricao: { contains: term, mode: 'insensitive' } },
+            { fullDescription: { contains: term, mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { code: 'asc' },
+        take: limit * 3,
+        select: { code: true, descricao: true, fullDescription: true },
+      });
 
-  return rows.map((row) => ({
-    codigo: row.code,
-    descricao: row.descricao || '',
-    fullDescription: row.full_description || '',
-  }));
+  return rows
+    .filter((row) => row.code.length === 8)
+    .slice(0, limit)
+    .map((row) => ({
+      codigo: row.code,
+      descricao: row.descricao || '',
+      fullDescription: row.fullDescription || '',
+    }));
 }
 
 // ── Build hierarchy (DB-first, API fallback) ──
@@ -239,10 +222,10 @@ async function buildHierarchy(digits: string): Promise<NcmHierarchyLevel[]> {
   if (digits.length >= 8) prefixes.push(digits.slice(0, 8));
 
   // Batch DB lookup — single query instead of N+1
-  const dbRows = await prisma.$queryRawUnsafe<{ code: string; descricao: string }[]>(
-    `SELECT code, descricao FROM ncm_cache WHERE code = ANY($1::text[])`,
-    prefixes,
-  );
+  const dbRows = await prisma.ncmCache.findMany({
+    where: { code: { in: prefixes } },
+    select: { code: true, descricao: true },
+  });
 
   const dbResults = new Map<string, { codigo: string; descricao: string }>();
   for (const row of dbRows) {
@@ -305,8 +288,6 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
   const digits = code.replace(/\D/g, '');
   if (digits.length < 4) return null;
 
-  await ensureNcmCacheTable();
-
   // Check in-memory cache first (avoids DB hit for repeated lookups)
   const mem = getMemoryCache();
   const cached = mem.get(digits);
@@ -350,8 +331,6 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
 export async function searchNcm(term: string, limit = 20): Promise<NcmSearchItem[]> {
   const cleaned = term.trim();
   if (cleaned.length < 2) return [];
-
-  await ensureNcmCacheTable();
 
   // Try DB first
   const dbResults = await searchFromDb(cleaned, limit);
@@ -418,65 +397,31 @@ export async function searchNcmSorted(
   const cleaned = term.trim();
   if (cleaned.length < 2) return [];
 
-  await ensureNcmCacheTable();
+  // Usage counts still come from product_registry (raw until that store migrates).
+  const usageRows = await prisma.$queryRawUnsafe<Array<{ ncm_clean: string; usage_count: number }>>(
+    `
+    SELECT REPLACE(REPLACE(ncm, '.', ''), ' ', '') AS ncm_clean, COUNT(*)::int AS usage_count
+    FROM product_registry
+    WHERE company_id = $1 AND ncm IS NOT NULL AND TRIM(ncm) <> ''
+    GROUP BY REPLACE(REPLACE(ncm, '.', ''), ' ', '')
+    `,
+    companyId,
+  );
+  const usage = new Map(usageRows.map((r) => [r.ncm_clean, r.usage_count]));
 
-  const digits = cleaned.replace(/\D/g, '');
-  const isCodeSearch = digits.length >= 2 && digits === cleaned;
-
-  // Search DB with usage count sorting
-  interface NcmSortedRow { code: string; descricao: string; full_description: string; usage_count: number }
-  let rows: NcmSortedRow[];
-  if (isCodeSearch) {
-    rows = await prisma.$queryRawUnsafe<NcmSortedRow[]>(
-      `
-      SELECT nc.code, nc.descricao, nc.full_description,
-        COALESCE(u.usage_count, 0)::int AS usage_count
-      FROM ncm_cache nc
-      LEFT JOIN (
-        SELECT REPLACE(REPLACE(ncm, '.', ''), ' ', '') AS ncm_clean, COUNT(*)::int AS usage_count
-        FROM product_registry
-        WHERE company_id = $1 AND ncm IS NOT NULL AND TRIM(ncm) <> ''
-        GROUP BY REPLACE(REPLACE(ncm, '.', ''), ' ', '')
-      ) u ON u.ncm_clean = nc.code
-      WHERE nc.code LIKE $2 AND LENGTH(nc.code) = 8
-      ORDER BY COALESCE(u.usage_count, 0) DESC, nc.code ASC
-      LIMIT $3
-      `,
-      companyId,
-      `${digits}%`,
-      limit,
-    );
-  } else {
-    rows = await prisma.$queryRawUnsafe<NcmSortedRow[]>(
-      `
-      SELECT nc.code, nc.descricao, nc.full_description,
-        COALESCE(u.usage_count, 0)::int AS usage_count
-      FROM ncm_cache nc
-      LEFT JOIN (
-        SELECT REPLACE(REPLACE(ncm, '.', ''), ' ', '') AS ncm_clean, COUNT(*)::int AS usage_count
-        FROM product_registry
-        WHERE company_id = $1 AND ncm IS NOT NULL AND TRIM(ncm) <> ''
-        GROUP BY REPLACE(REPLACE(ncm, '.', ''), ' ', '')
-      ) u ON u.ncm_clean = nc.code
-      WHERE LENGTH(nc.code) = 8 AND (LOWER(nc.descricao) LIKE $2 OR LOWER(nc.full_description) LIKE $2)
-      ORDER BY COALESCE(u.usage_count, 0) DESC, nc.code ASC
-      LIMIT $3
-      `,
-      companyId,
-      `%${cleaned.toLowerCase()}%`,
-      limit,
-    );
+  const candidates = await searchFromDb(cleaned, Math.max(limit * 5, 50));
+  if (candidates.length > 0) {
+    return candidates
+      .map((c) => ({
+        ...c,
+        _u: usage.get(c.codigo.replace(/\D/g, '')) ?? 0,
+      }))
+      .sort((a, b) => b._u - a._u || a.codigo.localeCompare(b.codigo))
+      .slice(0, limit)
+      .map(({ _u: _unused, ...rest }) => rest);
   }
 
-  if (rows.length > 0) {
-    return rows.map((row) => ({
-      codigo: row.code,
-      descricao: row.descricao || '',
-      fullDescription: row.full_description || '',
-    }));
-  }
-
-  // Fallback: search API then return sorted
+  // Fallback: search API then return (usage sort only applies to DB hits)
   return searchNcm(cleaned, limit);
 }
 
@@ -486,7 +431,6 @@ export async function searchNcmSorted(
  */
 export async function refreshNcmCache(codes: string[]): Promise<number> {
   if (codes.length === 0) return 0;
-  await ensureNcmCacheTable();
   let updated = 0;
 
   // Group by chapter (4-digit prefix) to avoid duplicate API calls

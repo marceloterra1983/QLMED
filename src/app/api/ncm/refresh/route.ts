@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import { refreshNcmCache, ensureNcmCacheTable } from '@/lib/ncm-lookup';
+import { refreshNcmCache } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
@@ -32,7 +32,7 @@ export async function POST() {
     }
 
     const company = await getOrCreateSingleCompany(auth.userId);
-    await Promise.all([ensureProductRegistryTable(), ensureNcmCacheTable()]);
+    await ensureProductRegistryTable();
 
     // Get all distinct NCM codes from product_registry
     const ncmRows = await prisma.$queryRawUnsafe<{ ncm: string }[]>(
