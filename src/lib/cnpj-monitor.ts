@@ -25,11 +25,11 @@ export async function runBatchCnpjCheck(
   batchSize = 10,
   delayMs = 2000,
 ): Promise<{ checked: number; changed: number; errors: number }> {
+  // `not: ''` also drops NULL in SQL three-valued logic (NULL <> '' is unknown).
   const senders = await prisma.invoice.findMany({
     where: {
       companyId,
-      senderCnpj: { not: null },
-      NOT: { senderCnpj: '' },
+      senderCnpj: { not: '' },
     },
     select: { senderCnpj: true, senderName: true },
     distinct: ['senderCnpj'],
@@ -37,8 +37,7 @@ export async function runBatchCnpjCheck(
   const recipients = await prisma.invoice.findMany({
     where: {
       companyId,
-      recipientCnpj: { not: null },
-      NOT: { recipientCnpj: '' },
+      recipientCnpj: { not: '' },
     },
     select: { recipientCnpj: true, recipientName: true },
     distinct: ['recipientCnpj'],
