@@ -31,7 +31,8 @@ services:
       - coolify_net
 
   qlmed-n8n:
-    image: n8nio/n8n:2.23.4@sha256:1872cce3548bf4dcfe5aceaf3d9293f4499635823fbdea0ee726bd222d2e44b8
+    # Alinhado ao shared-n8n 2.29.10 (digest pin) — upgrade 2026-07-26
+    image: n8nio/n8n:2.29.10@sha256:9cb60554716a0ab11a966e79ed65171e1bbf00b6d262ba12aa119bba22eb6000
     container_name: qlmed-n8n
     restart: unless-stopped
     # Aplica só quando o n8n for recriado (o deploy não o recria) — fazer em
