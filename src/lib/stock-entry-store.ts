@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 export interface StockEntryRow {
@@ -33,290 +34,132 @@ export interface UpsertStockEntryInput {
   registeredBy?: string | null;
 }
 
-// ── DB row interfaces (snake_case, matching SQL columns) ──
+// stock_entry / nfe_entry_item are schema-owned (Phase 11 baseline).
+// No CREATE/ALTER at runtime.
 
-interface StockEntryDbRow {
+export async function ensureStockEntryTable(): Promise<void> {
+  return;
+}
+
+function mapStockEntry(row: {
   id: string;
-  company_id: string;
-  invoice_id: string;
-  invoice_number: string | null;
-  supplier_name: string | null;
-  supplier_cnpj: string | null;
-  issue_date: string | Date | null;
-  total_value: number | null;
-  total_items: number;
-  matched_items: number;
+  companyId: string;
+  invoiceId: string;
+  invoiceNumber: string | null;
+  supplierName: string | null;
+  supplierCnpj: string | null;
+  issueDate: Date | null;
+  totalValue: number | null;
+  totalItems: number | null;
+  matchedItems: number | null;
   status: string;
-  registered_at: string | Date | null;
-  registered_by: string | null;
-  created_at: string | Date;
-  updated_at: string | Date;
-  emitter_city: string | null;
-  emitter_state: string | null;
-  access_key: string | null;
-  cfop: string | null;
-  tot_vprod: number | null;
-  tot_vdesc: number | null;
-  tot_vbc: number | null;
-  tot_vicms: number | null;
-  tot_vbc_st: number | null;
-  tot_vicms_st: number | null;
-  tot_vfrete: number | null;
-  tot_vseg: number | null;
-  tot_voutro: number | null;
-  tot_vipi: number | null;
-  tot_vpis: number | null;
-  tot_vcofins: number | null;
-  tot_vfcp: number | null;
-  tot_vnf: number | null;
-}
-
-interface PendencyCountsDbRow {
-  invoice_id: string;
-  unmatched_count: number | string;
-  missing_lot_count: number | string;
-}
-
-type StockEntryInitState = {
-  promise?: Promise<void>;
-};
-
-const globalStockEntryState = globalThis as unknown as {
-  stockEntryInitState?: StockEntryInitState;
-};
-
-const stockEntryInitState: StockEntryInitState =
-  globalStockEntryState.stockEntryInitState || {};
-globalStockEntryState.stockEntryInitState = stockEntryInitState;
-
-function mapStockEntryRow(row: StockEntryDbRow): StockEntryRow {
+  registeredAt: Date | null;
+  registeredBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): StockEntryRow {
   return {
     id: row.id,
-    companyId: row.company_id,
-    invoiceId: row.invoice_id,
-    invoiceNumber: row.invoice_number ?? null,
-    supplierName: row.supplier_name ?? null,
-    supplierCnpj: row.supplier_cnpj ?? null,
-    issueDate: row.issue_date ? new Date(row.issue_date) : null,
-    totalValue: row.total_value === null || row.total_value === undefined ? null : Number(row.total_value),
-    totalItems: Number(row.total_items || 0),
-    matchedItems: Number(row.matched_items || 0),
+    companyId: row.companyId,
+    invoiceId: row.invoiceId,
+    invoiceNumber: row.invoiceNumber ?? null,
+    supplierName: row.supplierName ?? null,
+    supplierCnpj: row.supplierCnpj ?? null,
+    issueDate: row.issueDate,
+    totalValue: row.totalValue === null || row.totalValue === undefined ? null : Number(row.totalValue),
+    totalItems: Number(row.totalItems || 0),
+    matchedItems: Number(row.matchedItems || 0),
     status: (row.status || 'pending') as StockEntryRow['status'],
-    registeredAt: row.registered_at ? new Date(row.registered_at) : null,
-    registeredBy: row.registered_by ?? null,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
+    registeredAt: row.registeredAt,
+    registeredBy: row.registeredBy ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
-export async function ensureStockEntryTable() {
-  if (!stockEntryInitState.promise) {
-    stockEntryInitState.promise = (async () => {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS stock_entry (
-          id TEXT PRIMARY KEY,
-          company_id TEXT NOT NULL,
-          invoice_id TEXT NOT NULL,
-          invoice_number TEXT,
-          supplier_name TEXT,
-          supplier_cnpj TEXT,
-          issue_date TIMESTAMPTZ,
-          total_value DOUBLE PRECISION,
-          total_items INTEGER DEFAULT 0,
-          matched_items INTEGER DEFAULT 0,
-          status TEXT NOT NULL DEFAULT 'pending',
-          registered_at TIMESTAMPTZ,
-          registered_by TEXT,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (company_id, invoice_id)
-        )
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS stock_entry_company_id_idx
-        ON stock_entry (company_id)
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS stock_entry_company_id_status_idx
-        ON stock_entry (company_id, status)
-      `);
-
-      // Fiscal totals columns (E509 pattern)
-      const fiscalCols = [
-        'emitter_city TEXT',
-        'emitter_state TEXT',
-        'access_key TEXT',
-        'cfop TEXT',
-        'tot_vprod DOUBLE PRECISION',
-        'tot_vdesc DOUBLE PRECISION',
-        'tot_vbc DOUBLE PRECISION',
-        'tot_vicms DOUBLE PRECISION',
-        'tot_vbc_st DOUBLE PRECISION',
-        'tot_vicms_st DOUBLE PRECISION',
-        'tot_vfrete DOUBLE PRECISION',
-        'tot_vseg DOUBLE PRECISION',
-        'tot_voutro DOUBLE PRECISION',
-        'tot_vipi DOUBLE PRECISION',
-        'tot_vpis DOUBLE PRECISION',
-        'tot_vcofins DOUBLE PRECISION',
-        'tot_vfcp DOUBLE PRECISION',
-        'tot_vnf DOUBLE PRECISION',
-      ];
-      for (const col of fiscalCols) {
-        await prisma.$executeRawUnsafe(
-          `ALTER TABLE stock_entry ADD COLUMN IF NOT EXISTS ${col}`
-        );
-      }
-
-      // nfe_entry_item table (1 row per lot, E509 pattern)
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS nfe_entry_item (
-          id SERIAL PRIMARY KEY,
-          stock_entry_id TEXT NOT NULL,
-          company_id TEXT NOT NULL,
-          invoice_id TEXT NOT NULL,
-
-          item_number INTEGER NOT NULL,
-          supplier_code TEXT,
-          supplier_description TEXT,
-          ncm TEXT,
-          cfop TEXT,
-          cest TEXT,
-          ean TEXT,
-          anvisa TEXT,
-          unit TEXT,
-
-          registry_id TEXT,
-          codigo_interno TEXT,
-          product_name TEXT,
-          manufacturer TEXT,
-          product_type TEXT,
-          product_subtype TEXT,
-
-          quantity DOUBLE PRECISION DEFAULT 0,
-          unit_price DOUBLE PRECISION DEFAULT 0,
-          total_value_gross DOUBLE PRECISION DEFAULT 0,
-          item_discount DOUBLE PRECISION DEFAULT 0,
-          total_value_net DOUBLE PRECISION DEFAULT 0,
-
-          origem TEXT,
-          cst_icms TEXT,
-          base_icms DOUBLE PRECISION,
-          aliq_icms DOUBLE PRECISION,
-          valor_icms DOUBLE PRECISION,
-          base_icms_st DOUBLE PRECISION,
-          valor_icms_st DOUBLE PRECISION,
-          cst_ipi TEXT,
-          aliq_ipi DOUBLE PRECISION,
-          base_ipi DOUBLE PRECISION,
-          valor_ipi DOUBLE PRECISION,
-          cst_pis TEXT,
-          aliq_pis DOUBLE PRECISION,
-          base_pis DOUBLE PRECISION,
-          valor_pis DOUBLE PRECISION,
-          cst_cofins TEXT,
-          aliq_cofins DOUBLE PRECISION,
-          base_cofins DOUBLE PRECISION,
-          valor_cofins DOUBLE PRECISION,
-          valor_fcp DOUBLE PRECISION,
-
-          rateio_frete DOUBLE PRECISION DEFAULT 0,
-          rateio_seguro DOUBLE PRECISION DEFAULT 0,
-          rateio_outras_desp DOUBLE PRECISION DEFAULT 0,
-          rateio_desconto DOUBLE PRECISION DEFAULT 0,
-
-          lot TEXT,
-          lot_serial TEXT,
-          lot_quantity DOUBLE PRECISION,
-          lot_fabrication TEXT,
-          lot_expiry TEXT,
-
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_stock_entry_id_idx
-        ON nfe_entry_item (stock_entry_id)
-      `);
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_id_invoice_id_idx
-        ON nfe_entry_item (company_id, invoice_id)
-      `);
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS nfe_entry_item_company_id_codigo_interno_idx
-        ON nfe_entry_item (company_id, codigo_interno)
-      `);
-
-      await prisma.$executeRawUnsafe(
-        `ALTER TABLE nfe_entry_item ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`
-      );
-    })().catch((error) => {
-      stockEntryInitState.promise = undefined;
-      throw error;
-    });
-  }
-  await stockEntryInitState.promise;
+export async function getStockEntryByInvoiceId(
+  companyId: string,
+  invoiceId: string,
+): Promise<StockEntryRow | null> {
+  const row = await prisma.stockEntry.findUnique({
+    where: { companyId_invoiceId: { companyId, invoiceId } },
+  });
+  return row ? mapStockEntry(row) : null;
 }
 
-export async function getStockEntryByInvoiceId(companyId: string, invoiceId: string): Promise<StockEntryRow | null> {
-  await ensureStockEntryTable();
-  const rows = await prisma.$queryRawUnsafe<StockEntryDbRow[]>(
-    `SELECT * FROM stock_entry WHERE company_id = $1 AND invoice_id = $2 LIMIT 1`,
-    companyId, invoiceId
-  );
-  return rows.length > 0 ? mapStockEntryRow(rows[0]) : null;
-}
-
-export async function getStockEntriesByInvoiceIds(companyId: string, invoiceIds: string[]): Promise<Map<string, StockEntryRow>> {
-  await ensureStockEntryTable();
+export async function getStockEntriesByInvoiceIds(
+  companyId: string,
+  invoiceIds: string[],
+): Promise<Map<string, StockEntryRow>> {
   if (invoiceIds.length === 0) return new Map();
-  const placeholders = invoiceIds.map((_, i) => `$${i + 2}`).join(', ');
-  const rows = await prisma.$queryRawUnsafe<StockEntryDbRow[]>(
-    `SELECT * FROM stock_entry WHERE company_id = $1 AND invoice_id IN (${placeholders})`,
-    companyId, ...invoiceIds
-  );
+  const rows = await prisma.stockEntry.findMany({
+    where: { companyId, invoiceId: { in: invoiceIds } },
+  });
   const map = new Map<string, StockEntryRow>();
   for (const row of rows) {
-    const entry = mapStockEntryRow(row);
+    const entry = mapStockEntry(row);
     map.set(entry.invoiceId, entry);
   }
   return map;
 }
 
 export async function upsertStockEntry(input: UpsertStockEntryInput): Promise<StockEntryRow> {
-  await ensureStockEntryTable();
-  const id = randomUUID();
   const now = new Date();
-  const registeredAt = input.status === 'registered' ? now : null;
+  const status = input.status ?? 'pending';
+  const registeredAt = status === 'registered' ? now : null;
+  const totalItems = input.totalItems ?? 0;
+  const matchedItems = input.matchedItems ?? 0;
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO stock_entry (id, company_id, invoice_id, invoice_number, supplier_name, supplier_cnpj, issue_date, total_value, total_items, matched_items, status, registered_at, registered_by, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-     ON CONFLICT (company_id, invoice_id) DO UPDATE SET
-       invoice_number = COALESCE(EXCLUDED.invoice_number, stock_entry.invoice_number),
-       supplier_name = COALESCE(EXCLUDED.supplier_name, stock_entry.supplier_name),
-       supplier_cnpj = COALESCE(EXCLUDED.supplier_cnpj, stock_entry.supplier_cnpj),
-       issue_date = COALESCE(EXCLUDED.issue_date, stock_entry.issue_date),
-       total_value = COALESCE(EXCLUDED.total_value, stock_entry.total_value),
-       total_items = EXCLUDED.total_items,
-       matched_items = EXCLUDED.matched_items,
-       status = EXCLUDED.status,
-       registered_at = EXCLUDED.registered_at,
-       registered_by = EXCLUDED.registered_by,
-       updated_at = NOW()`,
-    id, input.companyId, input.invoiceId,
-    input.invoiceNumber ?? null, input.supplierName ?? null, input.supplierCnpj ?? null,
-    input.issueDate ?? null, input.totalValue ?? null,
-    input.totalItems ?? 0, input.matchedItems ?? 0,
-    input.status ?? 'pending', registeredAt, input.registeredBy ?? null,
-    now, now
-  );
+  const existing = await prisma.stockEntry.findUnique({
+    where: {
+      companyId_invoiceId: {
+        companyId: input.companyId,
+        invoiceId: input.invoiceId,
+      },
+    },
+  });
 
-  const entry = await getStockEntryByInvoiceId(input.companyId, input.invoiceId);
-  return entry!;
+  if (existing) {
+    const updated = await prisma.stockEntry.update({
+      where: { id: existing.id },
+      data: {
+        // COALESCE semantics from previous raw SQL
+        invoiceNumber: input.invoiceNumber ?? existing.invoiceNumber,
+        supplierName: input.supplierName ?? existing.supplierName,
+        supplierCnpj: input.supplierCnpj ?? existing.supplierCnpj,
+        issueDate: input.issueDate ?? existing.issueDate,
+        totalValue: input.totalValue ?? existing.totalValue,
+        totalItems,
+        matchedItems,
+        status,
+        registeredAt,
+        registeredBy: input.registeredBy ?? null,
+        updatedAt: now,
+      },
+    });
+    return mapStockEntry(updated);
+  }
+
+  const created = await prisma.stockEntry.create({
+    data: {
+      id: randomUUID(),
+      companyId: input.companyId,
+      invoiceId: input.invoiceId,
+      invoiceNumber: input.invoiceNumber ?? null,
+      supplierName: input.supplierName ?? null,
+      supplierCnpj: input.supplierCnpj ?? null,
+      issueDate: input.issueDate ?? null,
+      totalValue: input.totalValue ?? null,
+      totalItems,
+      matchedItems,
+      status,
+      registeredAt,
+      registeredBy: input.registeredBy ?? null,
+      createdAt: now,
+      updatedAt: now,
+    },
+  });
+  return mapStockEntry(created);
 }
 
 // ── Fiscal totals UPDATE ──
@@ -345,31 +188,36 @@ export interface FiscalTotalsInput {
 export async function updateStockEntryFiscalTotals(
   companyId: string,
   invoiceId: string,
-  data: FiscalTotalsInput
-) {
-  await ensureStockEntryTable();
-  await prisma.$executeRawUnsafe(
-    `UPDATE stock_entry SET
-      emitter_city = $3, emitter_state = $4, access_key = $5, cfop = $6,
-      tot_vprod = $7, tot_vdesc = $8, tot_vbc = $9, tot_vicms = $10,
-      tot_vbc_st = $11, tot_vicms_st = $12, tot_vfrete = $13, tot_vseg = $14,
-      tot_voutro = $15, tot_vipi = $16, tot_vpis = $17, tot_vcofins = $18,
-      tot_vfcp = $19, tot_vnf = $20, updated_at = NOW()
-    WHERE company_id = $1 AND invoice_id = $2`,
-    companyId, invoiceId,
-    data.emitterCity ?? null, data.emitterState ?? null,
-    data.accessKey ?? null, data.cfop ?? null,
-    data.totVprod ?? null, data.totVdesc ?? null,
-    data.totVbc ?? null, data.totVicms ?? null,
-    data.totVbcSt ?? null, data.totVicmsSt ?? null,
-    data.totVfrete ?? null, data.totVseg ?? null,
-    data.totVoutro ?? null, data.totVipi ?? null,
-    data.totVpis ?? null, data.totVcofins ?? null,
-    data.totVfcp ?? null, data.totVnf ?? null
-  );
+  data: FiscalTotalsInput,
+): Promise<void> {
+  await prisma.stockEntry.updateMany({
+    where: { companyId, invoiceId },
+    data: {
+      emitterCity: data.emitterCity ?? null,
+      emitterState: data.emitterState ?? null,
+      accessKey: data.accessKey ?? null,
+      cfop: data.cfop ?? null,
+      totVprod: data.totVprod ?? null,
+      totVdesc: data.totVdesc ?? null,
+      totVbc: data.totVbc ?? null,
+      totVicms: data.totVicms ?? null,
+      totVbcSt: data.totVbcSt ?? null,
+      totVicmsSt: data.totVicmsSt ?? null,
+      totVfrete: data.totVfrete ?? null,
+      totVseg: data.totVseg ?? null,
+      totVoutro: data.totVoutro ?? null,
+      totVipi: data.totVipi ?? null,
+      totVpis: data.totVpis ?? null,
+      totVcofins: data.totVcofins ?? null,
+      totVfcp: data.totVfcp ?? null,
+      totVnf: data.totVnf ?? null,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 // ── nfe_entry_item CRUD ──
+// Public row shape stays snake_case for API route compatibility.
 
 export interface NfeEntryItemRow {
   id: number;
@@ -484,74 +332,202 @@ export interface NfeEntryItemInput {
   lotExpiry?: string | null;
 }
 
-type PrismaLike = Pick<typeof prisma, '$executeRawUnsafe' | '$queryRawUnsafe'>;
+type DbClient = Prisma.TransactionClient | typeof prisma;
 
-export async function insertNfeEntryItems(stockEntryId: string, items: NfeEntryItemInput[], tx?: PrismaLike) {
-  await ensureStockEntryTable();
-  if (items.length === 0) return;
+function mapNfeEntryItem(row: {
+  id: number;
+  stockEntryId: string;
+  companyId: string;
+  invoiceId: string;
+  itemNumber: number;
+  supplierCode: string | null;
+  supplierDescription: string | null;
+  ncm: string | null;
+  cfop: string | null;
+  cest: string | null;
+  ean: string | null;
+  anvisa: string | null;
+  unit: string | null;
+  registryId: string | null;
+  codigoInterno: string | null;
+  productName: string | null;
+  manufacturer: string | null;
+  productType: string | null;
+  productSubtype: string | null;
+  quantity: number | null;
+  unitPrice: number | null;
+  totalValueGross: number | null;
+  itemDiscount: number | null;
+  totalValueNet: number | null;
+  origem: string | null;
+  cstIcms: string | null;
+  baseIcms: number | null;
+  aliqIcms: number | null;
+  valorIcms: number | null;
+  baseIcmsSt: number | null;
+  valorIcmsSt: number | null;
+  cstIpi: string | null;
+  aliqIpi: number | null;
+  baseIpi: number | null;
+  valorIpi: number | null;
+  cstPis: string | null;
+  aliqPis: number | null;
+  basePis: number | null;
+  valorPis: number | null;
+  cstCofins: string | null;
+  aliqCofins: number | null;
+  baseCofins: number | null;
+  valorCofins: number | null;
+  valorFcp: number | null;
+  rateioFrete: number | null;
+  rateioSeguro: number | null;
+  rateioOutrasDesp: number | null;
+  rateioDesconto: number | null;
+  lot: string | null;
+  lotSerial: string | null;
+  lotQuantity: number | null;
+  lotFabrication: string | null;
+  lotExpiry: string | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): NfeEntryItemRow {
+  return {
+    id: row.id,
+    stock_entry_id: row.stockEntryId,
+    company_id: row.companyId,
+    invoice_id: row.invoiceId,
+    item_number: row.itemNumber,
+    supplier_code: row.supplierCode,
+    supplier_description: row.supplierDescription,
+    ncm: row.ncm,
+    cfop: row.cfop,
+    cest: row.cest,
+    ean: row.ean,
+    anvisa: row.anvisa,
+    unit: row.unit,
+    registry_id: row.registryId,
+    codigo_interno: row.codigoInterno,
+    product_name: row.productName,
+    manufacturer: row.manufacturer,
+    product_type: row.productType,
+    product_subtype: row.productSubtype,
+    quantity: Number(row.quantity ?? 0),
+    unit_price: Number(row.unitPrice ?? 0),
+    total_value_gross: Number(row.totalValueGross ?? 0),
+    item_discount: Number(row.itemDiscount ?? 0),
+    total_value_net: Number(row.totalValueNet ?? 0),
+    origem: row.origem,
+    cst_icms: row.cstIcms,
+    base_icms: row.baseIcms,
+    aliq_icms: row.aliqIcms,
+    valor_icms: row.valorIcms,
+    base_icms_st: row.baseIcmsSt,
+    valor_icms_st: row.valorIcmsSt,
+    cst_ipi: row.cstIpi,
+    aliq_ipi: row.aliqIpi,
+    base_ipi: row.baseIpi,
+    valor_ipi: row.valorIpi,
+    cst_pis: row.cstPis,
+    aliq_pis: row.aliqPis,
+    base_pis: row.basePis,
+    valor_pis: row.valorPis,
+    cst_cofins: row.cstCofins,
+    aliq_cofins: row.aliqCofins,
+    base_cofins: row.baseCofins,
+    valor_cofins: row.valorCofins,
+    valor_fcp: row.valorFcp,
+    rateio_frete: Number(row.rateioFrete ?? 0),
+    rateio_seguro: Number(row.rateioSeguro ?? 0),
+    rateio_outras_desp: Number(row.rateioOutrasDesp ?? 0),
+    rateio_desconto: Number(row.rateioDesconto ?? 0),
+    lot: row.lot,
+    lot_serial: row.lotSerial,
+    lot_quantity: row.lotQuantity,
+    lot_fabrication: row.lotFabrication,
+    lot_expiry: row.lotExpiry,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  };
+}
 
-  const run = async (db: PrismaLike) => {
-    await db.$executeRawUnsafe(
-      `DELETE FROM nfe_entry_item WHERE stock_entry_id = $1`,
-      stockEntryId
-    );
+function toNfeCreateData(item: NfeEntryItemInput) {
+  return {
+    stockEntryId: item.stockEntryId,
+    companyId: item.companyId,
+    invoiceId: item.invoiceId,
+    itemNumber: item.itemNumber,
+    supplierCode: item.supplierCode ?? null,
+    supplierDescription: item.supplierDescription ?? null,
+    ncm: item.ncm ?? null,
+    cfop: item.cfop ?? null,
+    cest: item.cest ?? null,
+    ean: item.ean ?? null,
+    anvisa: item.anvisa ?? null,
+    unit: item.unit ?? null,
+    registryId: item.registryId ?? null,
+    codigoInterno: item.codigoInterno ?? null,
+    productName: item.productName ?? null,
+    manufacturer: item.manufacturer ?? null,
+    productType: item.productType ?? null,
+    productSubtype: item.productSubtype ?? null,
+    quantity: item.quantity ?? 0,
+    unitPrice: item.unitPrice ?? 0,
+    totalValueGross: item.totalValueGross ?? 0,
+    itemDiscount: item.itemDiscount ?? 0,
+    totalValueNet: item.totalValueNet ?? 0,
+    origem: item.origem ?? null,
+    cstIcms: item.cstIcms ?? null,
+    baseIcms: item.baseIcms ?? null,
+    aliqIcms: item.aliqIcms ?? null,
+    valorIcms: item.valorIcms ?? null,
+    baseIcmsSt: item.baseIcmsSt ?? null,
+    valorIcmsSt: item.valorIcmsSt ?? null,
+    cstIpi: item.cstIpi ?? null,
+    aliqIpi: item.aliqIpi ?? null,
+    baseIpi: item.baseIpi ?? null,
+    valorIpi: item.valorIpi ?? null,
+    cstPis: item.cstPis ?? null,
+    aliqPis: item.aliqPis ?? null,
+    basePis: item.basePis ?? null,
+    valorPis: item.valorPis ?? null,
+    cstCofins: item.cstCofins ?? null,
+    aliqCofins: item.aliqCofins ?? null,
+    baseCofins: item.baseCofins ?? null,
+    valorCofins: item.valorCofins ?? null,
+    valorFcp: item.valorFcp ?? null,
+    rateioFrete: item.rateioFrete ?? 0,
+    rateioSeguro: item.rateioSeguro ?? 0,
+    rateioOutrasDesp: item.rateioOutrasDesp ?? 0,
+    rateioDesconto: item.rateioDesconto ?? 0,
+    lot: item.lot ?? null,
+    lotSerial: item.lotSerial ?? null,
+    lotQuantity: item.lotQuantity ?? null,
+    lotFabrication: item.lotFabrication ?? null,
+    lotExpiry: item.lotExpiry ?? null,
+  };
+}
 
-    const ITEM_COLUMNS = [
-    'stock_entry_id', 'company_id', 'invoice_id', 'item_number',
-    'supplier_code', 'supplier_description',
-    'ncm', 'cfop', 'cest', 'ean', 'anvisa', 'unit',
-    'registry_id', 'codigo_interno', 'product_name', 'manufacturer', 'product_type', 'product_subtype',
-    'quantity', 'unit_price', 'total_value_gross', 'item_discount', 'total_value_net',
-    'origem', 'cst_icms', 'base_icms', 'aliq_icms', 'valor_icms',
-    'base_icms_st', 'valor_icms_st',
-    'cst_ipi', 'aliq_ipi', 'base_ipi', 'valor_ipi',
-    'cst_pis', 'aliq_pis', 'base_pis', 'valor_pis',
-    'cst_cofins', 'aliq_cofins', 'base_cofins', 'valor_cofins',
-    'valor_fcp',
-    'rateio_frete', 'rateio_seguro', 'rateio_outras_desp', 'rateio_desconto',
-    'lot', 'lot_serial', 'lot_quantity', 'lot_fabrication', 'lot_expiry',
-  ] as const;
-  const COLS_PER_ROW = ITEM_COLUMNS.length;
-  const BATCH = 50;
-  for (let i = 0; i < items.length; i += BATCH) {
-    const batch = items.slice(i, i + BATCH);
-    const values: (string | number | null)[] = [];
-    const placeholders: string[] = [];
-
-    for (let j = 0; j < batch.length; j++) {
-      const item = batch[j];
-      const offset = j * COLS_PER_ROW;
-      const p = (n: number) => `$${offset + n}`;
-      placeholders.push(`(${[...Array(COLS_PER_ROW)].map((_, k) => p(k + 1)).join(',')})`);
-      values.push(
-        item.stockEntryId, item.companyId, item.invoiceId, item.itemNumber,
-        item.supplierCode ?? null, item.supplierDescription ?? null,
-        item.ncm ?? null, item.cfop ?? null, item.cest ?? null,
-        item.ean ?? null, item.anvisa ?? null, item.unit ?? null,
-        item.registryId ?? null, item.codigoInterno ?? null,
-        item.productName ?? null, item.manufacturer ?? null,
-        item.productType ?? null, item.productSubtype ?? null,
-        item.quantity ?? 0, item.unitPrice ?? 0,
-        item.totalValueGross ?? 0, item.itemDiscount ?? 0, item.totalValueNet ?? 0,
-        item.origem ?? null, item.cstIcms ?? null,
-        item.baseIcms ?? null, item.aliqIcms ?? null, item.valorIcms ?? null,
-        item.baseIcmsSt ?? null, item.valorIcmsSt ?? null,
-        item.cstIpi ?? null, item.aliqIpi ?? null, item.baseIpi ?? null, item.valorIpi ?? null,
-        item.cstPis ?? null, item.aliqPis ?? null, item.basePis ?? null, item.valorPis ?? null,
-        item.cstCofins ?? null, item.aliqCofins ?? null, item.baseCofins ?? null, item.valorCofins ?? null,
-        item.valorFcp ?? null,
-        item.rateioFrete ?? 0, item.rateioSeguro ?? 0,
-        item.rateioOutrasDesp ?? 0, item.rateioDesconto ?? 0,
-        item.lot ?? null, item.lotSerial ?? null, item.lotQuantity ?? null,
-        item.lotFabrication ?? null, item.lotExpiry ?? null,
-      );
-    }
-
-    await db.$executeRawUnsafe(
-      `INSERT INTO nfe_entry_item (${ITEM_COLUMNS.join(', ')}) VALUES ${placeholders.join(',')}`,
-      ...values
-    );
+export async function insertNfeEntryItems(
+  stockEntryId: string,
+  items: NfeEntryItemInput[],
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  if (items.length === 0) {
+    const db: DbClient = tx ?? prisma;
+    await db.nfeEntryItem.deleteMany({ where: { stockEntryId } });
+    return;
   }
+
+  const run = async (db: DbClient) => {
+    await db.nfeEntryItem.deleteMany({ where: { stockEntryId } });
+    // Batch createMany to avoid oversized single inserts
+    const BATCH = 50;
+    for (let i = 0; i < items.length; i += BATCH) {
+      const batch = items.slice(i, i + BATCH);
+      await db.nfeEntryItem.createMany({
+        data: batch.map(toNfeCreateData),
+      });
+    }
   };
 
   if (tx) {
@@ -561,44 +537,47 @@ export async function insertNfeEntryItems(stockEntryId: string, items: NfeEntryI
   }
 }
 
-export async function getNfeEntryItemsByInvoice(companyId: string, invoiceId: string): Promise<NfeEntryItemRow[]> {
-  await ensureStockEntryTable();
-  return prisma.$queryRawUnsafe<NfeEntryItemRow[]>(
-    `SELECT * FROM nfe_entry_item
-     WHERE company_id = $1 AND invoice_id = $2
-     ORDER BY item_number, id`,
-    companyId, invoiceId
-  );
+export async function getNfeEntryItemsByInvoice(
+  companyId: string,
+  invoiceId: string,
+): Promise<NfeEntryItemRow[]> {
+  const rows = await prisma.nfeEntryItem.findMany({
+    where: { companyId, invoiceId },
+    orderBy: [{ itemNumber: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map(mapNfeEntryItem);
 }
 
 export async function updateNfeEntryItemLot(
   companyId: string,
   invoiceId: string,
   itemId: number,
-  data: { lot?: string | null; lotExpiry?: string | null; lotQuantity?: number | null }
+  data: { lot?: string | null; lotExpiry?: string | null; lotQuantity?: number | null },
 ): Promise<NfeEntryItemRow | null> {
-  await ensureStockEntryTable();
-  // If item quantity is 1, always force lot_quantity = 1
   let effQty = data.lotQuantity ?? null;
   if (effQty == null) {
-    const item = await prisma.$queryRawUnsafe<NfeEntryItemRow[]>(
-      `SELECT quantity FROM nfe_entry_item WHERE id = $1 AND company_id = $2 LIMIT 1`,
-      itemId, companyId
-    );
-    if (item.length > 0 && Number(item[0].quantity) === 1) effQty = 1;
+    const item = await prisma.nfeEntryItem.findFirst({
+      where: { id: itemId, companyId },
+      select: { quantity: true },
+    });
+    if (item && Number(item.quantity) === 1) effQty = 1;
   }
-  const rows = await prisma.$queryRawUnsafe<NfeEntryItemRow[]>(
-    `UPDATE nfe_entry_item
-     SET lot = $4,
-         lot_expiry = $5,
-         lot_quantity = $6,
-         updated_at = NOW()
-     WHERE id = $1 AND company_id = $2 AND invoice_id = $3
-     RETURNING *`,
-    itemId, companyId, invoiceId,
-    data.lot ?? null, data.lotExpiry ?? null, effQty
-  );
-  return rows.length > 0 ? rows[0] : null;
+
+  const result = await prisma.nfeEntryItem.updateMany({
+    where: { id: itemId, companyId, invoiceId },
+    data: {
+      lot: data.lot ?? null,
+      lotExpiry: data.lotExpiry ?? null,
+      lotQuantity: effQty,
+      updatedAt: new Date(),
+    },
+  });
+  if (result.count === 0) return null;
+
+  const row = await prisma.nfeEntryItem.findFirst({
+    where: { id: itemId, companyId, invoiceId },
+  });
+  return row ? mapNfeEntryItem(row) : null;
 }
 
 /** Clone an existing nfe_entry_item row with new lot data (for splitting an item into multiple lots) */
@@ -606,74 +585,99 @@ export async function cloneNfeEntryItemBatch(
   companyId: string,
   invoiceId: string,
   sourceItemId: number,
-  data: { lot: string; lotExpiry?: string | null; lotQuantity?: number | null }
+  data: { lot: string; lotExpiry?: string | null; lotQuantity?: number | null },
 ): Promise<NfeEntryItemRow | null> {
-  await ensureStockEntryTable();
-  const rows = await prisma.$queryRawUnsafe<NfeEntryItemRow[]>(
-    `INSERT INTO nfe_entry_item (
-      stock_entry_id, company_id, invoice_id, item_number,
-      supplier_code, supplier_description,
-      ncm, cfop, cest, ean, anvisa, unit,
-      registry_id, codigo_interno, product_name, manufacturer, product_type, product_subtype,
-      quantity, unit_price, total_value_gross, item_discount, total_value_net,
-      origem, cst_icms, base_icms, aliq_icms, valor_icms,
-      base_icms_st, valor_icms_st,
-      cst_ipi, aliq_ipi, base_ipi, valor_ipi,
-      cst_pis, aliq_pis, base_pis, valor_pis,
-      cst_cofins, aliq_cofins, base_cofins, valor_cofins,
-      valor_fcp,
-      rateio_frete, rateio_seguro, rateio_outras_desp, rateio_desconto,
-      lot, lot_serial, lot_quantity, lot_fabrication, lot_expiry
-    )
-    SELECT
-      stock_entry_id, company_id, invoice_id, item_number,
-      supplier_code, supplier_description,
-      ncm, cfop, cest, ean, anvisa, unit,
-      registry_id, codigo_interno, product_name, manufacturer, product_type, product_subtype,
-      quantity, unit_price, total_value_gross, item_discount, total_value_net,
-      origem, cst_icms, base_icms, aliq_icms, valor_icms,
-      base_icms_st, valor_icms_st,
-      cst_ipi, aliq_ipi, base_ipi, valor_ipi,
-      cst_pis, aliq_pis, base_pis, valor_pis,
-      cst_cofins, aliq_cofins, base_cofins, valor_cofins,
-      valor_fcp,
-      rateio_frete, rateio_seguro, rateio_outras_desp, rateio_desconto,
-      $4, lot_serial, $6, lot_fabrication, $5
-    FROM nfe_entry_item
-    WHERE id = $1 AND company_id = $2 AND invoice_id = $3
-    RETURNING *`,
-    sourceItemId, companyId, invoiceId,
-    data.lot,
-    data.lotExpiry ?? null,
-    data.lotQuantity ?? null,
-  );
-  return rows.length > 0 ? rows[0] : null;
+  const source = await prisma.nfeEntryItem.findFirst({
+    where: { id: sourceItemId, companyId, invoiceId },
+  });
+  if (!source) return null;
+
+  const created = await prisma.nfeEntryItem.create({
+    data: {
+      stockEntryId: source.stockEntryId,
+      companyId: source.companyId,
+      invoiceId: source.invoiceId,
+      itemNumber: source.itemNumber,
+      supplierCode: source.supplierCode,
+      supplierDescription: source.supplierDescription,
+      ncm: source.ncm,
+      cfop: source.cfop,
+      cest: source.cest,
+      ean: source.ean,
+      anvisa: source.anvisa,
+      unit: source.unit,
+      registryId: source.registryId,
+      codigoInterno: source.codigoInterno,
+      productName: source.productName,
+      manufacturer: source.manufacturer,
+      productType: source.productType,
+      productSubtype: source.productSubtype,
+      quantity: source.quantity,
+      unitPrice: source.unitPrice,
+      totalValueGross: source.totalValueGross,
+      itemDiscount: source.itemDiscount,
+      totalValueNet: source.totalValueNet,
+      origem: source.origem,
+      cstIcms: source.cstIcms,
+      baseIcms: source.baseIcms,
+      aliqIcms: source.aliqIcms,
+      valorIcms: source.valorIcms,
+      baseIcmsSt: source.baseIcmsSt,
+      valorIcmsSt: source.valorIcmsSt,
+      cstIpi: source.cstIpi,
+      aliqIpi: source.aliqIpi,
+      baseIpi: source.baseIpi,
+      valorIpi: source.valorIpi,
+      cstPis: source.cstPis,
+      aliqPis: source.aliqPis,
+      basePis: source.basePis,
+      valorPis: source.valorPis,
+      cstCofins: source.cstCofins,
+      aliqCofins: source.aliqCofins,
+      baseCofins: source.baseCofins,
+      valorCofins: source.valorCofins,
+      valorFcp: source.valorFcp,
+      rateioFrete: source.rateioFrete,
+      rateioSeguro: source.rateioSeguro,
+      rateioOutrasDesp: source.rateioOutrasDesp,
+      rateioDesconto: source.rateioDesconto,
+      lot: data.lot,
+      lotSerial: source.lotSerial,
+      lotQuantity: data.lotQuantity ?? null,
+      lotFabrication: source.lotFabrication,
+      lotExpiry: data.lotExpiry ?? null,
+    },
+  });
+  return mapNfeEntryItem(created);
 }
 
-/** Delete a batch row — only allowed if the item has more than one row (atomic CTE) */
+/** Delete a batch row — only allowed if the item has more than one row */
 export async function deleteNfeEntryItemBatch(
   companyId: string,
   invoiceId: string,
   batchRowId: number,
 ): Promise<boolean> {
-  await ensureStockEntryTable();
-  const deleted = await prisma.$executeRawUnsafe(
-    `WITH target AS (
-       SELECT id, item_number FROM nfe_entry_item
-       WHERE id = $1 AND company_id = $2 AND invoice_id = $3
-     ),
-     sibling_count AS (
-       SELECT COUNT(*)::int AS cnt
-       FROM nfe_entry_item
-       WHERE company_id = $2 AND invoice_id = $3
-         AND item_number = (SELECT item_number FROM target)
-     )
-     DELETE FROM nfe_entry_item
-     WHERE id = (SELECT id FROM target)
-       AND (SELECT cnt FROM sibling_count) > 1`,
-    batchRowId, companyId, invoiceId
-  );
-  return deleted > 0;
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.nfeEntryItem.findFirst({
+      where: { id: batchRowId, companyId, invoiceId },
+      select: { id: true, itemNumber: true },
+    });
+    if (!target) return false;
+
+    const siblingCount = await tx.nfeEntryItem.count({
+      where: {
+        companyId,
+        invoiceId,
+        itemNumber: target.itemNumber,
+      },
+    });
+    if (siblingCount <= 1) return false;
+
+    const deleted = await tx.nfeEntryItem.deleteMany({
+      where: { id: target.id },
+    });
+    return deleted.count > 0;
+  });
 }
 
 export interface PendencyCounts {
@@ -684,26 +688,37 @@ export interface PendencyCounts {
 
 export async function getNfePendencyCounts(
   companyId: string,
-  invoiceIds: string[]
+  invoiceIds: string[],
 ): Promise<Map<string, PendencyCounts>> {
-  await ensureStockEntryTable();
   if (invoiceIds.length === 0) return new Map();
-  const placeholders = invoiceIds.map((_, i) => `$${i + 2}`).join(', ');
-  const rows = await prisma.$queryRawUnsafe<PendencyCountsDbRow[]>(
-    `SELECT invoice_id,
-       COUNT(DISTINCT CASE WHEN registry_id IS NULL THEN item_number END) as unmatched_count,
-       COUNT(DISTINCT CASE WHEN lot IS NULL THEN item_number END) as missing_lot_count
-     FROM nfe_entry_item
-     WHERE company_id = $1 AND invoice_id IN (${placeholders})
-     GROUP BY invoice_id`,
-    companyId, ...invoiceIds
-  );
-  const map = new Map<string, PendencyCounts>();
+
+  const rows = await prisma.nfeEntryItem.findMany({
+    where: { companyId, invoiceId: { in: invoiceIds } },
+    select: {
+      invoiceId: true,
+      itemNumber: true,
+      registryId: true,
+      lot: true,
+    },
+  });
+
+  const byInvoice = new Map<string, { unmatched: Set<number>; missingLot: Set<number> }>();
   for (const row of rows) {
-    map.set(row.invoice_id, {
-      invoiceId: row.invoice_id,
-      unmatchedCount: Number(row.unmatched_count || 0),
-      missingLotCount: Number(row.missing_lot_count || 0),
+    let bucket = byInvoice.get(row.invoiceId);
+    if (!bucket) {
+      bucket = { unmatched: new Set(), missingLot: new Set() };
+      byInvoice.set(row.invoiceId, bucket);
+    }
+    if (row.registryId == null) bucket.unmatched.add(row.itemNumber);
+    if (row.lot == null) bucket.missingLot.add(row.itemNumber);
+  }
+
+  const map = new Map<string, PendencyCounts>();
+  for (const [invoiceId, bucket] of byInvoice) {
+    map.set(invoiceId, {
+      invoiceId,
+      unmatchedCount: bucket.unmatched.size,
+      missingLotCount: bucket.missingLot.size,
     });
   }
   return map;
