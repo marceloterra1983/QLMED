@@ -1,0 +1,278 @@
+{
+  "ok": true,
+  "day": "2026-07-26",
+  "checkedAt": "2026-07-26T03:15:09Z",
+  "score": 6.7,
+  "stack": {
+    "node": "22.22.1",
+    "next": "15.5.19",
+    "react": "^19.2.5",
+    "prisma": "7.8.0",
+    "zod": "^4.3.6",
+    "nextAuth": "4.24.14",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.0",
+    "speckitProject": "0.12.11",
+    "speckitCli": "0.14.2",
+    "n8nImage": "n8nio/n8n:2.23.4@sha256:1872cce3548bf4dcfe5aceaf3d9293f4499635823fbdea0ee726bd222d2e44b8",
+    "pins": {
+      "node": "22",
+      "next": "15",
+      "react": "19",
+      "prisma": "7",
+      "n8nImage": "2.23.4"
+    }
+  },
+  "vulnerabilities": {
+    "info": 0,
+    "low": 0,
+    "moderate": 4,
+    "high": 11,
+    "critical": 1,
+    "total": 16
+  },
+  "vulnHighOrCritical": 12,
+  "outdatedCount": 27,
+  "patchCandidates": [
+    {
+      "name": "@eslint/eslintrc",
+      "current": "3.3.5",
+      "wanted": "3.3.6",
+      "latest": "3.3.6",
+      "type": null
+    },
+    {
+      "name": "@tanstack/react-virtual",
+      "current": "3.13.19",
+      "wanted": "3.14.8",
+      "latest": "3.14.8",
+      "type": null
+    },
+    {
+      "name": "@types/nodemailer",
+      "current": "8.0.0",
+      "wanted": "8.0.1",
+      "latest": "8.0.1",
+      "type": null
+    },
+    {
+      "name": "@types/react",
+      "current": "19.2.14",
+      "wanted": "19.2.17",
+      "latest": "19.2.17",
+      "type": null
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "current": "6.0.1",
+      "wanted": "6.0.4",
+      "latest": "6.0.4",
+      "type": null
+    },
+    {
+      "name": "autoprefixer",
+      "current": "10.4.24",
+      "wanted": "10.5.4",
+      "latest": "10.5.4",
+      "type": null
+    },
+    {
+      "name": "effect",
+      "current": "3.21.0",
+      "wanted": "3.22.0",
+      "latest": "3.22.0",
+      "type": null
+    },
+    {
+      "name": "fast-check",
+      "current": "4.6.0",
+      "wanted": "4.9.0",
+      "latest": "4.9.0",
+      "type": null
+    },
+    {
+      "name": "pg",
+      "current": "8.20.0",
+      "wanted": "8.22.0",
+      "latest": "8.22.0",
+      "type": null
+    },
+    {
+      "name": "recharts",
+      "current": "3.7.0",
+      "wanted": "3.10.1",
+      "latest": "3.10.1",
+      "type": null
+    },
+    {
+      "name": "vitest",
+      "current": "4.1.0",
+      "wanted": "4.1.10",
+      "latest": "4.1.10",
+      "type": null
+    },
+    {
+      "name": "zod",
+      "current": "4.3.6",
+      "wanted": "4.4.3",
+      "latest": "4.4.3",
+      "type": null
+    }
+  ],
+  "minorCandidates": [
+    {
+      "name": "@prisma/adapter-pg",
+      "current": "7.8.0",
+      "wanted": "7.8.0",
+      "latest": "7.9.0",
+      "type": null
+    },
+    {
+      "name": "@prisma/client",
+      "current": "7.8.0",
+      "wanted": "7.8.0",
+      "latest": "7.9.0",
+      "type": null
+    },
+    {
+      "name": "next-auth",
+      "current": "4.24.14",
+      "wanted": "4.24.14",
+      "latest": "4.24.15",
+      "type": null
+    },
+    {
+      "name": "postcss",
+      "current": "8.5.19",
+      "wanted": "8.5.19",
+      "latest": "8.5.23",
+      "type": null
+    },
+    {
+      "name": "prisma",
+      "current": "7.8.0",
+      "wanted": "7.8.0",
+      "latest": "7.9.0",
+      "type": null
+    },
+    {
+      "name": "react",
+      "current": "19.2.5",
+      "wanted": "19.2.8",
+      "latest": "19.2.8",
+      "type": null
+    },
+    {
+      "name": "react-dom",
+      "current": "19.2.5",
+      "wanted": "19.2.8",
+      "latest": "19.2.8",
+      "type": null
+    }
+  ],
+  "majorWatch": [
+    {
+      "name": "@types/node",
+      "current": "20.19.33",
+      "wanted": "20.19.43",
+      "latest": "26.1.1",
+      "type": null
+    },
+    {
+      "name": "chokidar",
+      "current": "4.0.3",
+      "wanted": "4.0.3",
+      "latest": "5.0.0",
+      "type": null
+    },
+    {
+      "name": "eslint",
+      "current": "9.39.4",
+      "wanted": "9.39.5",
+      "latest": "10.8.0",
+      "type": null
+    },
+    {
+      "name": "eslint-config-next",
+      "current": "15.5.19",
+      "wanted": "15.5.19",
+      "latest": "16.2.12",
+      "type": null
+    },
+    {
+      "name": "next",
+      "current": "15.5.19",
+      "wanted": "15.5.19",
+      "latest": "16.2.12",
+      "type": null
+    },
+    {
+      "name": "puppeteer",
+      "current": "24.37.5",
+      "wanted": "24.43.1",
+      "latest": "25.3.0",
+      "type": null
+    },
+    {
+      "name": "tailwindcss",
+      "current": "3.4.19",
+      "wanted": "3.4.19",
+      "latest": "4.3.3",
+      "type": null
+    },
+    {
+      "name": "typescript",
+      "current": "6.0.2",
+      "wanted": "6.0.3",
+      "latest": "7.0.2",
+      "type": null
+    }
+  ],
+  "deadDeps": [
+    "effect",
+    "fast-check"
+  ],
+  "qualityTracks": [
+    {
+      "id": "schema-dual",
+      "title": "SCHEMA-02: eliminar ensure*Table / DDL runtime",
+      "severity": "high",
+      "status": "fail",
+      "detail": "124 matches (max 0)"
+    },
+    {
+      "id": "money-float",
+      "title": "Precisão monetária: Float residual em schema Prisma",
+      "severity": "high",
+      "status": "pass",
+      "detail": "0 matches (max 5)"
+    },
+    {
+      "id": "god-module-aggregation",
+      "title": "Quebrar product-aggregation.ts (≤600 LOC)",
+      "severity": "medium",
+      "status": "fail",
+      "detail": "2139 LOC (max 600)"
+    },
+    {
+      "id": "test-coverage-lib",
+      "title": "Ampliar suites Vitest (mín. 30 arquivos)",
+      "severity": "medium",
+      "status": "fail",
+      "detail": "0 files (min 30)"
+    },
+    {
+      "id": "zod-routes",
+      "title": "Zod em ≥80% das rotas API",
+      "severity": "medium",
+      "status": "fail",
+      "detail": "49/89 = 55% (min 80%)"
+    }
+  ],
+  "failTracks": [
+    "schema-dual",
+    "god-module-aggregation",
+    "test-coverage-lib",
+    "zod-routes"
+  ]
+}
