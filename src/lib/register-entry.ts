@@ -53,18 +53,31 @@ export async function registerInvoiceEntry(
   const products = await extractProductsFromXml(invoice.xmlContent);
 
   await ensureProductRegistryTable();
-  const allRegistryRows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT id, codigo, code, description, short_name, manufacturer_short_name,
-            product_type, product_subtype
-     FROM product_registry
-     WHERE company_id = $1 AND code IS NOT NULL AND code != ''
-           AND codigo IS NOT NULL AND codigo != ''`,
-    companyId
-  );
+  const allRegistryRows = await prisma.productRegistry.findMany({
+    where: {
+      companyId,
+      AND: [
+        { code: { not: '' } },
+        { codigo: { not: '' } },
+      ],
+    },
+    select: {
+      id: true,
+      codigo: true,
+      code: true,
+      description: true,
+      shortName: true,
+      manufacturerShortName: true,
+      productType: true,
+      productSubtype: true,
+    },
+  });
 
-  const registryByCode = new Map<string, any>();
-  const registryByAlnum = new Map<string, any>();
+  type RegRow = (typeof allRegistryRows)[number];
+  const registryByCode = new Map<string, RegRow>();
+  const registryByAlnum = new Map<string, RegRow>();
   for (const row of allRegistryRows) {
+    if (!row.code || !row.codigo) continue;
     const norm = normalizeCode(row.code || '');
     if (!norm) continue;
     const alnum = stripNonAlnum(norm);
@@ -160,10 +173,10 @@ export async function registerInvoiceEntry(
       unit: prod.unit || null,
       registryId: registry?.id ?? null,
       codigoInterno: registry?.codigo ?? null,
-      productName: registry?.short_name ?? registry?.description ?? null,
-      manufacturer: registry?.manufacturer_short_name ?? null,
-      productType: registry?.product_type ?? null,
-      productSubtype: registry?.product_subtype ?? null,
+      productName: registry?.shortName ?? registry?.description ?? null,
+      manufacturer: registry?.manufacturerShortName ?? null,
+      productType: registry?.productType ?? null,
+      productSubtype: registry?.productSubtype ?? null,
       quantity: tax?.quantity ?? prod.quantity ?? 0,
       unitPrice: tax?.unitPrice ?? prod.unitPrice ?? 0,
       totalValueGross: itemVProd,

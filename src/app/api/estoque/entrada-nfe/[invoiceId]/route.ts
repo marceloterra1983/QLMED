@@ -150,18 +150,29 @@ export async function GET(req: Request, { params }: { params: Promise<{ invoiceI
     const products = await extractProductsFromXml(invoice.xmlContent);
 
     await ensureProductRegistryTable();
-    const allRegistryRows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT id, codigo, code, description, short_name
-       FROM product_registry
-       WHERE company_id = $1 AND code IS NOT NULL AND code != ''
-             AND codigo IS NOT NULL AND codigo != ''`,
-      company.id
-    );
+    const allRegistryRows = await prisma.productRegistry.findMany({
+      where: {
+        companyId: company.id,
+        AND: [
+          { code: { not: '' } },
+          { codigo: { not: '' } },
+        ],
+      },
+      select: {
+        id: true,
+        codigo: true,
+        code: true,
+        description: true,
+        shortName: true,
+      },
+    });
 
-    const registryByCode = new Map<string, any>();
-    const registryByAlnum = new Map<string, any>();
+    type RegRow = (typeof allRegistryRows)[number];
+    const registryByCode = new Map<string, RegRow>();
+    const registryByAlnum = new Map<string, RegRow>();
 
     for (const row of allRegistryRows) {
+      if (!row.code || !row.codigo) continue;
       const norm = normalizeCode(row.code || '');
       if (!norm) continue;
       const alnum = stripNonAlnum(norm);
@@ -196,7 +207,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ invoiceI
         matchStatus: registry ? 'matched' as const : 'unmatched' as const,
         registryId: registry?.id ?? null,
         codigoInterno: registry?.codigo ?? null,
-        registryDescription: registry?.short_name ?? registry?.description ?? null,
+        registryDescription: registry?.shortName ?? registry?.description ?? null,
       };
     });
 

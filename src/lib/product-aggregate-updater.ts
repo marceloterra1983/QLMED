@@ -4,11 +4,10 @@
  * Also provides the daily full rebuild schedule.
  */
 
+import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { createLogger } from '@/lib/logger';
-
-const log = createLogger('product-aggregate-updater');
 import {
   extractProductsFromXml,
   buildProductKey,
@@ -27,10 +26,11 @@ import { acquirePostgresAdvisoryLock, type PostgresAdvisoryLock } from '@/lib/po
 import { productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 import type { Prisma } from '@prisma/client';
 
+const log = createLogger('product-aggregate-updater');
+
 /**
  * Update product aggregates for a single invoice after it's been upserted.
- * This is a lightweight incremental update — it processes only the products
- * in this invoice and updates the affected registry rows.
+ * Lightweight incremental update — processes only products in this invoice.
  */
 export async function updateProductAggregatesForInvoice(opts: {
   companyId: string;
@@ -86,10 +86,7 @@ export async function updateProductAggregatesForInvoice(opts: {
       }
     }
 
-    // Extract and persist tax data from the XML (NF-e only)
     await extractAndStoreTaxData(opts.invoiceId, opts.companyId, opts.xmlContent);
-
-    // Extract and persist fiscal data (IE, IM, CRT) for both parties
     await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
   } finally {
     await aggregateLock?.release();
@@ -124,6 +121,39 @@ async function wasInvoiceIncludedInLastRebuild(companyId: string, invoiceId: str
   return Boolean(invoice && state && invoice.createdAt <= state.cutoffCreatedAt);
 }
 
+/** Pick new value when issueDate is null (COALESCE old,new), null last date, or newer/equal issue. */
+function pickIfNewerOrFirst<T>(
+  issueDate: Date | null,
+  lastIssueDate: Date | null,
+  newVal: T,
+  oldVal: T | null | undefined,
+): T {
+  if (issueDate == null) {
+    return (oldVal ?? newVal) as T;
+  }
+  if (lastIssueDate == null) return newVal;
+  if (issueDate >= lastIssueDate) return newVal;
+  return (oldVal ?? newVal) as T;
+}
+
+async function nextCodigo(
+  db: Prisma.TransactionClient | typeof prisma,
+  companyId: string,
+): Promise<string> {
+  const codigos = await db.productRegistry.findMany({
+    where: { companyId, NOT: { codigo: null } },
+    select: { codigo: true },
+  });
+  let maxNum = 0;
+  for (const row of codigos) {
+    const digits = (row.codigo || '').replace(/\D/g, '');
+    if (!digits) continue;
+    const n = Number(digits);
+    if (Number.isFinite(n) && n > maxNum) maxNum = n;
+  }
+  return String(maxNum + 1).padStart(5, '0');
+}
+
 async function extractAndStoreTaxData(
   invoiceId: string,
   companyId: string,
@@ -139,27 +169,36 @@ async function extractAndStoreTaxData(
     if (items.length > 0) {
       await upsertItemTaxes(invoiceId, companyId, items);
 
-      // Update product_registry fiscal fields with tax rates from this invoice
       for (const item of items) {
         if (!item.productCode) continue;
-        await prisma.$executeRawUnsafe(
-          `UPDATE product_registry SET
-            fiscal_icms = COALESCE($2, fiscal_icms),
-            fiscal_pis = COALESCE($3, fiscal_pis),
-            fiscal_cofins = COALESCE($4, fiscal_cofins),
-            fiscal_ipi = COALESCE($5, fiscal_ipi),
-            fiscal_cfop_entrada = COALESCE($6, fiscal_cfop_entrada),
-            updated_at = NOW()
-          WHERE company_id = $1
-            AND UPPER(TRIM(code)) = UPPER(TRIM($7))`,
-          companyId,
-          item.aliqIcms,
-          item.aliqPis,
-          item.aliqCofins,
-          item.aliqIpi,
-          item.cfop,
-          item.productCode,
-        );
+        const code = item.productCode.trim();
+        const matches = await prisma.productRegistry.findMany({
+          where: {
+            companyId,
+            code: { equals: code, mode: 'insensitive' },
+          },
+          select: {
+            id: true,
+            fiscalIcms: true,
+            fiscalPis: true,
+            fiscalCofins: true,
+            fiscalIpi: true,
+            fiscalCfopEntrada: true,
+          },
+        });
+        for (const row of matches) {
+          await prisma.productRegistry.update({
+            where: { id: row.id },
+            data: {
+              fiscalIcms: item.aliqIcms ?? row.fiscalIcms,
+              fiscalPis: item.aliqPis ?? row.fiscalPis,
+              fiscalCofins: item.aliqCofins ?? row.fiscalCofins,
+              fiscalIpi: item.aliqIpi ?? row.fiscalIpi,
+              fiscalCfopEntrada: item.cfop ?? row.fiscalCfopEntrada,
+              updatedAt: new Date(),
+            },
+          });
+        }
       }
     }
   } catch (err) {
@@ -184,6 +223,7 @@ async function upsertProductAggregates(
 ) {
   const supplierName = mode === 'import' ? opts.recipientName : opts.senderName;
   const supplierCnpj = mode === 'import' ? opts.recipientCnpj : opts.senderCnpj;
+  const now = new Date();
 
   for (const product of products) {
     const key = buildProductKey(product);
@@ -195,114 +235,102 @@ async function upsertProductAggregates(
       lastSupplierName: supplierName,
     });
 
-    // Try to update existing row with incremental arithmetic
-    const updated = await db.$executeRawUnsafe(
-      `
-      UPDATE product_registry SET
-        agg_total_quantity = COALESCE(agg_total_quantity, 0) + $2,
-        agg_total_value = COALESCE(agg_total_value, 0) + $3,
-        agg_invoice_count = COALESCE(agg_invoice_count, 0) + 1,
-        agg_last_price = CASE
-          WHEN $4::timestamptz IS NULL THEN COALESCE(agg_last_price, $5)
-          WHEN agg_last_issue_date IS NULL THEN $5
-          WHEN $4::timestamptz >= agg_last_issue_date THEN $5
-          ELSE agg_last_price
-        END,
-        agg_average_price = CASE
-          WHEN (COALESCE(agg_total_quantity, 0) + $2) > 0
-            THEN (COALESCE(agg_total_value, 0) + $3) / (COALESCE(agg_total_quantity, 0) + $2)
-          ELSE 0
-        END,
-        agg_last_issue_date = CASE
-          WHEN $4::timestamptz IS NULL THEN agg_last_issue_date
-          WHEN agg_last_issue_date IS NULL THEN $4::timestamptz
-          WHEN $4::timestamptz >= agg_last_issue_date THEN $4::timestamptz
-          ELSE agg_last_issue_date
-        END,
-        agg_last_supplier_name = CASE
-          WHEN $4::timestamptz IS NULL THEN COALESCE(agg_last_supplier_name, $6)
-          WHEN agg_last_issue_date IS NULL THEN $6
-          WHEN $4::timestamptz >= agg_last_issue_date THEN $6
-          ELSE agg_last_supplier_name
-        END,
-        agg_last_supplier_cnpj = CASE
-          WHEN $4::timestamptz IS NULL THEN COALESCE(agg_last_supplier_cnpj, $7)
-          WHEN agg_last_issue_date IS NULL THEN $7
-          WHEN $4::timestamptz >= agg_last_issue_date THEN $7
-          ELSE agg_last_supplier_cnpj
-        END,
-        agg_last_invoice_number = CASE
-          WHEN $4::timestamptz IS NULL THEN COALESCE(agg_last_invoice_number, $8)
-          WHEN agg_last_issue_date IS NULL THEN $8
-          WHEN $4::timestamptz >= agg_last_issue_date THEN $8
-          ELSE agg_last_invoice_number
-        END,
-        agg_computed_at = NOW(),
-        agg_search_text = $9,
-        updated_at = NOW()
-      WHERE company_id = $1 AND product_key = $10
-      `,
-      opts.companyId,
-      product.quantity,
-      product.totalValue,
-      opts.issueDate,
-      product.unitPrice,
-      supplierName,
-      supplierCnpj,
-      opts.invoiceNumber,
-      searchText,
-      key,
-    );
+    const existing = await db.productRegistry.findUnique({
+      where: {
+        companyId_productKey: {
+          companyId: opts.companyId,
+          productKey: key,
+        },
+      },
+    });
 
-    // If no existing row, create one (product wasn't in registry yet)
-    if (typeof updated === 'number' && updated === 0) {
-      const id = crypto.randomUUID();
-      const avgPrice = product.quantity > 0 ? product.totalValue / product.quantity : 0;
-
-      await db.$executeRawUnsafe(
-        `
-        INSERT INTO product_registry (
-          id, company_id, product_key, code, description, ncm, unit, ean,
-          anvisa_code, product_type, product_subtype,
-          agg_total_quantity, agg_total_value, agg_invoice_count,
-          agg_last_price, agg_average_price, agg_last_issue_date,
-          agg_last_supplier_name, agg_last_supplier_cnpj, agg_last_invoice_number,
-          agg_computed_at, agg_search_text,
-          codigo,
-          created_at, updated_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11,
-          $12, $13, 1,
-          $14, $15, $16,
-          $17, $18, $19,
-          NOW(), $20,
-          (SELECT LPAD((COALESCE(MAX(CAST(NULLIF(REGEXP_REPLACE(codigo, '[^0-9]', '', 'g'), '') AS BIGINT)), 0) + 1)::TEXT, 5, '0') FROM product_registry WHERE company_id = $2),
-          NOW(), NOW()
-        )
-        ON CONFLICT (company_id, product_key) DO NOTHING
-        `,
-        id,
-        opts.companyId,
-        key,
-        product.code,
-        product.description,
-        product.ncm,
-        normalizeUnit(product.unit),
-        product.ean,
-        normalizeAnvisaRegistration(product.anvisa),
-        mode === 'import' ? 'LINHA CARDIACA' : null,
-        mode === 'import' ? 'VALVULAS IMPORTADAS' : null,
-        product.quantity,
-        product.totalValue,
-        product.unitPrice,
-        avgPrice,
+    if (existing) {
+      const newQty = (existing.aggTotalQuantity ?? 0) + product.quantity;
+      const newVal = (existing.aggTotalValue ?? 0) + product.totalValue;
+      const avgPrice = newQty > 0 ? newVal / newQty : 0;
+      const lastIssue = pickIfNewerOrFirst(
         opts.issueDate,
-        supplierName,
-        supplierCnpj,
-        opts.invoiceNumber,
-        searchText,
+        existing.aggLastIssueDate,
+        opts.issueDate,
+        existing.aggLastIssueDate,
       );
+
+      await db.productRegistry.update({
+        where: { id: existing.id },
+        data: {
+          aggTotalQuantity: newQty,
+          aggTotalValue: newVal,
+          aggInvoiceCount: (existing.aggInvoiceCount ?? 0) + 1,
+          aggLastPrice: pickIfNewerOrFirst(
+            opts.issueDate,
+            existing.aggLastIssueDate,
+            product.unitPrice,
+            existing.aggLastPrice,
+          ),
+          aggAveragePrice: avgPrice,
+          aggLastIssueDate: lastIssue,
+          aggLastSupplierName: pickIfNewerOrFirst(
+            opts.issueDate,
+            existing.aggLastIssueDate,
+            supplierName,
+            existing.aggLastSupplierName,
+          ),
+          aggLastSupplierCnpj: pickIfNewerOrFirst(
+            opts.issueDate,
+            existing.aggLastIssueDate,
+            supplierCnpj,
+            existing.aggLastSupplierCnpj,
+          ),
+          aggLastInvoiceNumber: pickIfNewerOrFirst(
+            opts.issueDate,
+            existing.aggLastIssueDate,
+            opts.invoiceNumber,
+            existing.aggLastInvoiceNumber,
+          ),
+          aggComputedAt: now,
+          aggSearchText: searchText,
+          updatedAt: now,
+        },
+      });
+      continue;
+    }
+
+    const avgPrice = product.quantity > 0 ? product.totalValue / product.quantity : 0;
+    const codigo = await nextCodigo(db, opts.companyId);
+
+    try {
+      await db.productRegistry.create({
+        data: {
+          id: randomUUID(),
+          companyId: opts.companyId,
+          productKey: key,
+          code: product.code,
+          description: product.description || '',
+          ncm: product.ncm,
+          unit: normalizeUnit(product.unit),
+          ean: product.ean,
+          anvisaCode: normalizeAnvisaRegistration(product.anvisa),
+          productType: mode === 'import' ? 'LINHA CARDIACA' : null,
+          productSubtype: mode === 'import' ? 'VALVULAS IMPORTADAS' : null,
+          aggTotalQuantity: product.quantity,
+          aggTotalValue: product.totalValue,
+          aggInvoiceCount: 1,
+          aggLastPrice: product.unitPrice,
+          aggAveragePrice: avgPrice,
+          aggLastIssueDate: opts.issueDate,
+          aggLastSupplierName: supplierName,
+          aggLastSupplierCnpj: supplierCnpj,
+          aggLastInvoiceNumber: opts.invoiceNumber,
+          aggComputedAt: now,
+          aggSearchText: searchText,
+          codigo,
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+    } catch (err) {
+      // Concurrent create on same key — safe to ignore under advisory lock races
+      log.warn({ err, key }, 'product_registry create race ignored');
     }
   }
 }
@@ -312,29 +340,35 @@ async function updateResaleDeductions(
   opts: { companyId: string },
   products: ProductFromXml[],
 ) {
+  const now = new Date();
   for (const product of products) {
     const key = buildProductKey(product);
+    const existing = await db.productRegistry.findUnique({
+      where: {
+        companyId_productKey: {
+          companyId: opts.companyId,
+          productKey: key,
+        },
+      },
+    });
+    if (!existing) continue;
 
-    await db.$executeRawUnsafe(
-      `
-      UPDATE product_registry SET
-        agg_total_quantity = GREATEST(COALESCE(agg_total_quantity, 0) - $2, 0),
-        agg_total_value = GREATEST(COALESCE(agg_total_value, 0) - $3, 0),
-        agg_resale_quantity = COALESCE(agg_resale_quantity, 0) + $2,
-        agg_average_price = CASE
-          WHEN (COALESCE(agg_total_quantity, 0) - $2) > 0
-            THEN (COALESCE(agg_total_value, 0) - $3) / (COALESCE(agg_total_quantity, 0) - $2)
-          ELSE COALESCE(agg_average_price, 0)
-        END,
-        agg_computed_at = NOW(),
-        updated_at = NOW()
-      WHERE company_id = $1 AND product_key = $4
-      `,
-      opts.companyId,
-      product.quantity,
-      product.totalValue,
-      key,
-    );
+    const newQty = Math.max((existing.aggTotalQuantity ?? 0) - product.quantity, 0);
+    const newVal = Math.max((existing.aggTotalValue ?? 0) - product.totalValue, 0);
+    const avgPrice =
+      newQty > 0 ? newVal / newQty : (existing.aggAveragePrice ?? 0);
+
+    await db.productRegistry.update({
+      where: { id: existing.id },
+      data: {
+        aggTotalQuantity: newQty,
+        aggTotalValue: newVal,
+        aggResaleQuantity: (existing.aggResaleQuantity ?? 0) + product.quantity,
+        aggAveragePrice: avgPrice,
+        aggComputedAt: now,
+        updatedAt: now,
+      },
+    });
   }
 }
 
@@ -344,32 +378,32 @@ async function updateSaleDate(
   products: ProductFromXml[],
 ) {
   if (!opts.issueDate) return;
+  const now = new Date();
 
   for (const product of products) {
     const key = buildProductKey(product);
+    const existing = await db.productRegistry.findUnique({
+      where: {
+        companyId_productKey: {
+          companyId: opts.companyId,
+          productKey: key,
+        },
+      },
+    });
+    if (!existing) continue;
 
-    await db.$executeRawUnsafe(
-      `
-      UPDATE product_registry SET
-        agg_last_sale_date = CASE
-          WHEN agg_last_sale_date IS NULL THEN $2::timestamptz
-          WHEN $2::timestamptz > agg_last_sale_date THEN $2::timestamptz
-          ELSE agg_last_sale_date
-        END,
-        agg_last_sale_price = CASE
-          WHEN agg_last_sale_date IS NULL THEN $3
-          WHEN $2::timestamptz > agg_last_sale_date THEN $3
-          ELSE agg_last_sale_price
-        END,
-        agg_computed_at = NOW(),
-        updated_at = NOW()
-      WHERE company_id = $1 AND product_key = $4
-      `,
-      opts.companyId,
-      opts.issueDate,
-      product.unitPrice,
-      key,
-    );
+    const isNewer =
+      existing.aggLastSaleDate == null || opts.issueDate > existing.aggLastSaleDate;
+
+    await db.productRegistry.update({
+      where: { id: existing.id },
+      data: {
+        aggLastSaleDate: isNewer ? opts.issueDate : existing.aggLastSaleDate,
+        aggLastSalePrice: isNewer ? product.unitPrice : existing.aggLastSalePrice,
+        aggComputedAt: now,
+        updatedAt: now,
+      },
+    });
   }
 }
 
@@ -386,16 +420,26 @@ async function extractAndStoreContactFiscal(
 
     if (emit?.cnpj) {
       await upsertContactFiscal({
-        companyId, cnpj: emit.cnpj,
-        ie: emit.ie, im: emit.im, crt: emit.crt, uf: emit.uf,
-        city: emit.city, sourceInvoiceId: invoiceId,
+        companyId,
+        cnpj: emit.cnpj,
+        ie: emit.ie,
+        im: emit.im,
+        crt: emit.crt,
+        uf: emit.uf,
+        city: emit.city,
+        sourceInvoiceId: invoiceId,
       });
     }
     if (dest?.cnpj) {
       await upsertContactFiscal({
-        companyId, cnpj: dest.cnpj,
-        ie: dest.ie, im: dest.im, crt: dest.crt, uf: dest.uf,
-        city: dest.city, sourceInvoiceId: invoiceId,
+        companyId,
+        cnpj: dest.cnpj,
+        ie: dest.ie,
+        im: dest.im,
+        crt: dest.crt,
+        uf: dest.uf,
+        city: dest.city,
+        sourceInvoiceId: invoiceId,
       });
     }
   } catch (err) {
@@ -418,21 +462,26 @@ export function scheduleNightlyRebuild() {
     if (target <= now) target.setDate(target.getDate() + 1);
 
     const delay = target.getTime() - now.getTime();
-    log.info({ nextRebuild: target.toISOString(), delayMinutes: Math.round(delay / 60000) }, 'Next rebuild scheduled');
+    log.info(
+      { nextRebuild: target.toISOString(), delayMinutes: Math.round(delay / 60000) },
+      'Next rebuild scheduled',
+    );
 
     setTimeout(async () => {
       try {
         log.info('Starting nightly rebuild');
         const { rebuildProductAggregatesForCompany } = await import('@/lib/product-aggregate-rebuild');
 
-        // Get all companies
         const companies = await prisma.company.findMany({ select: { id: true } });
 
         for (const company of companies) {
           try {
             const result = await rebuildProductAggregatesForCompany(company.id);
             if (result) {
-              log.info({ companyId: company.id, productCount: result.totalProducts }, 'Rebuilt products for company');
+              log.info(
+                { companyId: company.id, productCount: result.totalProducts },
+                'Rebuilt products for company',
+              );
             }
           } catch (err) {
             log.error({ err, companyId: company.id }, 'Rebuild failed for company');
@@ -442,7 +491,6 @@ export function scheduleNightlyRebuild() {
         log.error({ err }, 'Nightly rebuild error');
       }
 
-      // Schedule next run
       scheduleNext();
     }, delay);
   };

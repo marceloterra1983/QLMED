@@ -7,8 +7,12 @@ const mocks = vi.hoisted(() => ({
   ensureProductRegistryTable: vi.fn(),
   ensureStockEntryTable: vi.fn(),
   registerInvoiceEntry: vi.fn(),
+  updateNfeEntryItemLot: vi.fn(),
+  cloneNfeEntryItemBatch: vi.fn(),
   queryRawUnsafe: vi.fn(),
   executeRawUnsafe: vi.fn(),
+  invoiceFindMany: vi.fn(),
+  nfeFindMany: vi.fn(),
   loggerError: vi.fn(),
 }));
 
@@ -28,6 +32,8 @@ vi.mock('@/lib/product-registry-store', () => ({
 }));
 vi.mock('@/lib/stock-entry-store', () => ({
   ensureStockEntryTable: mocks.ensureStockEntryTable,
+  updateNfeEntryItemLot: mocks.updateNfeEntryItemLot,
+  cloneNfeEntryItemBatch: mocks.cloneNfeEntryItemBatch,
 }));
 vi.mock('@/lib/register-entry', () => ({
   registerInvoiceEntry: mocks.registerInvoiceEntry,
@@ -36,6 +42,12 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     $queryRawUnsafe: mocks.queryRawUnsafe,
     $executeRawUnsafe: mocks.executeRawUnsafe,
+    invoice: {
+      findMany: mocks.invoiceFindMany,
+    },
+    nfeEntryItem: {
+      findMany: mocks.nfeFindMany,
+    },
   },
 }));
 vi.mock('@/lib/logger', () => ({
@@ -69,6 +81,8 @@ describe('ExcelJS import route regressions', () => {
     mocks.ensureStockEntryTable.mockResolvedValue(undefined);
     mocks.registerInvoiceEntry.mockResolvedValue(null);
     mocks.executeRawUnsafe.mockResolvedValue(1);
+    mocks.updateNfeEntryItemLot.mockResolvedValue({ id: 42, lot: 'LOT-2026' });
+    mocks.cloneNfeEntryItemBatch.mockResolvedValue({ id: 43 });
   });
 
   it('parses a real product type workbook and updates matching products', async () => {
@@ -125,9 +139,14 @@ describe('ExcelJS import route regressions', () => {
     sheet.getCell(5, 34).value = 'SUPPLIER-1';
     sheet.getCell(5, 83).value = 'LOT-2026';
     sheet.getCell(5, 84).value = 5;
-    mocks.queryRawUnsafe
-      .mockResolvedValueOnce([{ id: 'invoice-1', accessKey: 'access-key-1', number: '123' }])
-      .mockResolvedValueOnce([{ invoice_id: 'invoice-1' }])
+
+    mocks.invoiceFindMany.mockResolvedValueOnce([
+      { id: 'invoice-1', accessKey: 'access-key-1', number: '123' },
+    ]);
+    // existing entry check (distinct invoice ids)
+    mocks.nfeFindMany
+      .mockResolvedValueOnce([{ invoiceId: 'invoice-1' }])
+      // match by supplier_code
       .mockResolvedValueOnce([{ id: 42, lot: null, quantity: 5 }]);
 
     const response = await importE509(requestWithFile(await workbookFile(workbook, 'e509.xlsx')));
@@ -141,11 +160,11 @@ describe('ExcelJS import route regressions', () => {
       registered: 0,
       totalRows: 1,
     });
-    expect(mocks.executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE nfe_entry_item SET lot'),
+    expect(mocks.updateNfeEntryItemLot).toHaveBeenCalledWith(
+      'company-1',
+      'invoice-1',
       42,
-      'LOT-2026',
-      5,
+      { lot: 'LOT-2026', lotQuantity: 5 },
     );
   });
 });
