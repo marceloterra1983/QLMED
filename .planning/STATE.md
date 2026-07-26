@@ -18,14 +18,14 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 11 — candidato de unificação de schema aguardando gates e autorização de produção
+**Current focus:** Phase 11 complete for SCHEMA-01/02/03 baseline+PoC+policy; further stores later
 
 ## Current Position
 
 Phase: 11 — Unificação de Schema
-Plan: 11-01..03 candidate prepared
-Status: Blocked before production checkpoint (T007)
-Last activity: 2026-07-13 — Phase 12 reconciliada como concluída; candidato Phase 11 permanece sem autorização de produção
+Plan: 11-01 baseline done (prod+dev); 11-02 CnpjCache Prisma PoC verified; 11-03 expand/contract docs done
+Status: SCHEMA-01/02/03 closed 2026-07-26; remaining satellite stores are follow-up
+Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lookup Prisma; CLAUDE expand/contract; n8n 2.29.10
 
 ## Performance Metrics
 

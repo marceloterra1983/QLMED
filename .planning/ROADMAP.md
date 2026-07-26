@@ -285,7 +285,7 @@ Plans:
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
-| 11. Unificação de Schema | 0/3 | Candidate prepared; production blocked | - |
+| 11. Unificação de Schema | 0/3 | SCHEMA-01..03 closed 2026-07-26 (baseline+PoC CnpjCache+policy) | - |
 | 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
