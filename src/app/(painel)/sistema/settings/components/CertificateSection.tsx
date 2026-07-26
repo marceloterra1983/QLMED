@@ -139,6 +139,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={certPassword}
                   onChange={(e) => setCertPassword(e.target.value)}
                   disabled={!canManageSettings}
