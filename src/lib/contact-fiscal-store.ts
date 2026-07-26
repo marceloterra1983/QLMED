@@ -169,34 +169,59 @@ export async function backfillContactFiscalCity(companyId: string): Promise<numb
   for (let i = 0; i < cnpjsToBackfill.length; i += batchSize) {
     const batch = cnpjsToBackfill.slice(i, i + batchSize);
 
-    // Window anti-join over Invoice XML — kept as raw (core Invoice, not satellite CRUD)
-    const invoices = await prisma.$queryRawUnsafe<
-      Array<{ cnpj: string; xml_content: string; direction: string }>
-    >(
-      `SELECT sub.cnpj, sub.xml_content, sub.direction FROM (
-        SELECT "recipientCnpj" as cnpj, "xmlContent" as xml_content, "direction",
-               ROW_NUMBER() OVER (PARTITION BY "recipientCnpj" ORDER BY "issueDate" DESC) as rn
-        FROM "Invoice"
-        WHERE "companyId" = $1
-          AND "recipientCnpj" = ANY($2::text[])
-          AND "xmlContent" IS NOT NULL
-        UNION ALL
-        SELECT "senderCnpj" as cnpj, "xmlContent" as xml_content, "direction",
-               ROW_NUMBER() OVER (PARTITION BY "senderCnpj" ORDER BY "issueDate" DESC) as rn
-        FROM "Invoice"
-        WHERE "companyId" = $1
-          AND "senderCnpj" = ANY($2::text[])
-          AND "xmlContent" IS NOT NULL
-      ) sub WHERE sub.rn = 1`,
-      companyId,
-      batch,
-    );
+    // Most recent invoice per CNPJ as recipient and as sender (replaces window SQL)
+    const [asRecipient, asSender] = await Promise.all([
+      prisma.invoice.findMany({
+        where: {
+          companyId,
+          recipientCnpj: { in: batch },
+          // not:'' also drops NULL for text columns
+          xmlContent: { not: '' },
+        },
+        orderBy: { issueDate: 'desc' },
+        select: {
+          recipientCnpj: true,
+          xmlContent: true,
+          direction: true,
+        },
+      }),
+      prisma.invoice.findMany({
+        where: {
+          companyId,
+          senderCnpj: { in: batch },
+          xmlContent: { not: '' },
+        },
+        orderBy: { issueDate: 'desc' },
+        select: {
+          senderCnpj: true,
+          xmlContent: true,
+          direction: true,
+        },
+      }),
+    ]);
 
-    for (const inv of invoices) {
-      if (!inv.xml_content) continue;
+    type InvHit = { cnpj: string; xmlContent: string; direction: string };
+    const hits: InvHit[] = [];
+    const seenRecipient = new Set<string>();
+    for (const inv of asRecipient) {
+      const cnpj = inv.recipientCnpj;
+      if (!cnpj || !inv.xmlContent || seenRecipient.has(cnpj)) continue;
+      seenRecipient.add(cnpj);
+      hits.push({ cnpj, xmlContent: inv.xmlContent, direction: inv.direction });
+    }
+    const seenSender = new Set<string>();
+    for (const inv of asSender) {
+      const cnpj = inv.senderCnpj;
+      if (!cnpj || !inv.xmlContent || seenSender.has(cnpj)) continue;
+      seenSender.add(cnpj);
+      hits.push({ cnpj, xmlContent: inv.xmlContent, direction: inv.direction });
+    }
+
+    for (const inv of hits) {
+      // issued → party is dest (enderDest); received → emit (enderEmit)
       const isRecipient = inv.direction === 'issued';
       const enderTag = isRecipient ? 'enderDest' : 'enderEmit';
-      const enderBlock = inv.xml_content.match(
+      const enderBlock = inv.xmlContent.match(
         new RegExp(`<${enderTag}\\b[^>]*>[\\s\\S]*?<\\/${enderTag}>`, 'i'),
       )?.[0];
       if (!enderBlock) continue;
