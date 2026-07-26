@@ -28,39 +28,37 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Check if we have recent data in product_registry
-    const cached = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT
-         anvisa_matched_product_name AS "productName",
-         anvisa_holder AS company,
-         anvisa_status AS status,
-         anvisa_expiration AS expiration,
-         anvisa_risk_class AS "riskClass",
-         anvisa_process AS process,
-         anvisa_synced_at AS "syncedAt"
-       FROM product_registry
-       WHERE anvisa_code = $1
-         AND anvisa_synced_at > NOW() - INTERVAL '7 days'
-         AND anvisa_status IS NOT NULL
-       LIMIT 1`,
-      code,
-    );
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const cached = await prisma.productRegistry.findFirst({
+      where: {
+        anvisaCode: code,
+        anvisaSyncedAt: { gt: since },
+        anvisaStatus: { not: null },
+      },
+      select: {
+        anvisaMatchedProductName: true,
+        anvisaHolder: true,
+        anvisaStatus: true,
+        anvisaExpiration: true,
+        anvisaRiskClass: true,
+        anvisaProcess: true,
+        anvisaSyncedAt: true,
+      },
+    });
 
-    if (cached.length > 0) {
-      const row = cached[0];
+    if (cached) {
       return NextResponse.json({
         registration: code,
-        productName: row.productName || null,
-        company: row.company || null,
-        status: row.status || null,
-        expiration: row.expiration || null,
-        riskClass: row.riskClass || null,
-        process: row.process || null,
+        productName: cached.anvisaMatchedProductName || null,
+        company: cached.anvisaHolder || null,
+        status: cached.anvisaStatus || null,
+        expiration: cached.anvisaExpiration || null,
+        riskClass: cached.anvisaRiskClass || null,
+        process: cached.anvisaProcess || null,
         cached: true,
       });
     }
 
-    // Fetch from ANVISA API
     const data = await fetchAnvisaData(code);
 
     if (!data) {
@@ -77,25 +75,32 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // If we have a matching product in registry, update it
-    await prisma.$executeRawUnsafe(
-      `UPDATE product_registry SET
-         anvisa_matched_product_name = COALESCE($2, anvisa_matched_product_name),
-         anvisa_holder = COALESCE($3, anvisa_holder),
-         anvisa_status = COALESCE($4, anvisa_status),
-         anvisa_expiration = $5,
-         anvisa_risk_class = $6,
-         anvisa_process = COALESCE($7, anvisa_process),
-         anvisa_synced_at = NOW()
-       WHERE anvisa_code = $1`,
-      code,
-      data.nomeProduto,
-      data.nomeEmpresa,
-      data.situacaoRegistro,
-      data.vencimentoRegistro,
-      data.classeRisco,
-      data.processoRegistro,
-    );
+    const matches = await prisma.productRegistry.findMany({
+      where: { anvisaCode: code },
+      select: {
+        id: true,
+        anvisaMatchedProductName: true,
+        anvisaHolder: true,
+        anvisaStatus: true,
+        anvisaProcess: true,
+      },
+    });
+
+    const now = new Date();
+    for (const row of matches) {
+      await prisma.productRegistry.update({
+        where: { id: row.id },
+        data: {
+          anvisaMatchedProductName: data.nomeProduto ?? row.anvisaMatchedProductName,
+          anvisaHolder: data.nomeEmpresa ?? row.anvisaHolder,
+          anvisaStatus: data.situacaoRegistro ?? row.anvisaStatus,
+          anvisaExpiration: data.vencimentoRegistro,
+          anvisaRiskClass: data.classeRisco,
+          anvisaProcess: data.processoRegistro ?? row.anvisaProcess,
+          anvisaSyncedAt: now,
+        },
+      });
+    }
 
     return NextResponse.json({
       registration: code,
@@ -109,7 +114,7 @@ export async function GET(req: NextRequest) {
       cached: false,
     });
   } catch (err) {
-    log.error({ err: err }, '[anvisa/validate] Error');
+    log.error({ err }, '[anvisa/validate] Error');
     return NextResponse.json({ error: 'Erro ao validar registro ANVISA' }, { status: 500 });
   }
 }

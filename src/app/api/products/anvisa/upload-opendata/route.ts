@@ -36,7 +36,6 @@ export async function POST(req: Request) {
 
   const items: OpenDataItem[] = parsed.data.items as OpenDataItem[];
 
-  // Build lookup map: registration code (padded to 11 digits) → data
   const byCode = new Map<string, OpenDataItem>();
   for (const item of items) {
     const raw = (item.registration || '').replace(/\D/g, '');
@@ -51,17 +50,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Nenhum código de registro válido encontrado' }, { status: 400 });
   }
 
-  // Fetch all registry rows for this company that have anvisa codes
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT id, anvisa_code FROM product_registry
-     WHERE company_id = $1 AND anvisa_code IS NOT NULL AND anvisa_code != ''`,
-    company.id,
-  );
+  const rows = await prisma.productRegistry.findMany({
+    where: {
+      companyId: company.id,
+      anvisaCode: { not: null },
+      NOT: { anvisaCode: '' },
+    },
+    select: { id: true, anvisaCode: true },
+  });
 
-  let updated = 0, notFound = 0;
+  let updated = 0;
+  let notFound = 0;
 
   for (const row of rows) {
-    const code = (row.anvisa_code || '').replace(/\D/g, '').padStart(11, '0');
+    const code = (row.anvisaCode || '').replace(/\D/g, '').padStart(11, '0');
     const match = byCode.get(code);
     if (!match) {
       notFound++;
