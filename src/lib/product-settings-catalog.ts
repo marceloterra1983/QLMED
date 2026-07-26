@@ -33,19 +33,10 @@ export interface ProductSettingsCatalogEntry {
   updatedAt: Date;
 }
 
-type CatalogInitState = {
-  promise?: Promise<void>;
-};
+// product_settings_catalog is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-const globalCatalogState = globalThis as unknown as {
-  productSettingsCatalogInitState?: CatalogInitState;
-};
-
-const catalogInitState: CatalogInitState =
-  globalCatalogState.productSettingsCatalogInitState || {};
-
-if (process.env.NODE_ENV !== 'production') {
-  globalCatalogState.productSettingsCatalogInitState = catalogInitState;
+export async function ensureProductSettingsCatalogTable(): Promise<void> {
+  return;
 }
 
 export function toCatalogKey(value: string | null | undefined): string {
@@ -53,104 +44,37 @@ export function toCatalogKey(value: string | null | undefined): string {
   return normalized.length > 0 ? normalized : '';
 }
 
-function clean(value: unknown): string | null {
-  const normalized = String(value ?? '').trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
-interface ProductSettingsCatalogRow {
+function mapCatalogRow(row: {
   id: string;
-  company_id: string;
+  companyId: string;
   section: string;
   value: string;
-  parent_value: string | null;
-  parent_secondary_value: string | null;
-  extra_value: string | null;
-  created_at: string | Date;
-  updated_at: string | Date;
-}
-
-function mapCatalogRow(row: ProductSettingsCatalogRow): ProductSettingsCatalogEntry {
+  parentValue: string | null;
+  parentSecondaryValue: string | null;
+  extraValue: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): ProductSettingsCatalogEntry {
   return {
-    id: String(row.id),
-    companyId: String(row.company_id),
-    section: String(row.section) as ProductSettingsCatalogSection,
-    value: String(row.value),
-    parentValue: row.parent_value ?? null,
-    parentSecondaryValue: row.parent_secondary_value ?? null,
-    extraValue: row.extra_value ?? null,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
+    id: row.id,
+    companyId: row.companyId,
+    section: row.section as ProductSettingsCatalogSection,
+    value: row.value,
+    parentValue: row.parentValue ?? null,
+    parentSecondaryValue: row.parentSecondaryValue ?? null,
+    extraValue: row.extraValue ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
-}
-
-export async function ensureProductSettingsCatalogTable() {
-  if (!catalogInitState.promise) {
-    catalogInitState.promise = (async () => {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS product_settings_catalog (
-          id TEXT PRIMARY KEY,
-          company_id TEXT NOT NULL,
-          section TEXT NOT NULL,
-          value TEXT NOT NULL,
-          parent_value TEXT,
-          parent_secondary_value TEXT,
-          parent_value_key TEXT NOT NULL DEFAULT '',
-          parent_secondary_value_key TEXT NOT NULL DEFAULT '',
-          extra_value TEXT,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE UNIQUE INDEX IF NOT EXISTS product_settings_catalog_unique_idx
-        ON product_settings_catalog (
-          company_id,
-          section,
-          value,
-          parent_value_key,
-          parent_secondary_value_key
-        )
-      `);
-
-      await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS product_settings_catalog_company_idx
-        ON product_settings_catalog (company_id)
-      `);
-    })().catch((error) => {
-      catalogInitState.promise = undefined;
-      throw error;
-    });
-  }
-
-  return catalogInitState.promise;
 }
 
 export async function listProductSettingsCatalogEntries(
   companyId: string,
 ): Promise<ProductSettingsCatalogEntry[]> {
-  await ensureProductSettingsCatalogTable();
-
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `
-      SELECT
-        id,
-        company_id,
-        section,
-        value,
-        parent_value,
-        parent_secondary_value,
-        extra_value,
-        created_at,
-        updated_at
-      FROM product_settings_catalog
-      WHERE company_id = $1
-      ORDER BY section ASC, value ASC
-    `,
-    companyId,
-  );
-
+  const rows = await prisma.productSettingsCatalog.findMany({
+    where: { companyId },
+    orderBy: [{ section: 'asc' }, { value: 'asc' }],
+  });
   return rows.map(mapCatalogRow);
 }
 
@@ -161,45 +85,43 @@ export async function upsertProductSettingsCatalogEntry(input: {
   parentValue?: string | null;
   parentSecondaryValue?: string | null;
   extraValue?: string | null;
-}) {
-  await ensureProductSettingsCatalogTable();
-
+}): Promise<void> {
   const value = input.value.trim();
   if (!value) return;
 
-  const parentValue = toCatalogKey(input.parentValue);
-  const parentSecondaryValue = toCatalogKey(input.parentSecondaryValue);
+  const parentValueKey = toCatalogKey(input.parentValue);
+  const parentSecondaryValueKey = toCatalogKey(input.parentSecondaryValue);
+  const parentValue = parentValueKey || null;
+  const parentSecondaryValue = parentSecondaryValueKey || null;
+  const extraValue = input.extraValue?.trim() || null;
+  const now = new Date();
 
-  await prisma.$executeRawUnsafe(
-    `
-      INSERT INTO product_settings_catalog (
-        id,
-        company_id,
-        section,
+  await prisma.productSettingsCatalog.upsert({
+    where: {
+      companyId_section_value_parentValueKey_parentSecondaryValueKey: {
+        companyId: input.companyId,
+        section: input.section,
         value,
-        parent_value,
-        parent_secondary_value,
-        parent_value_key,
-        parent_secondary_value_key,
-        extra_value,
-        created_at,
-        updated_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
-      )
-      ON CONFLICT (company_id, section, value, parent_value_key, parent_secondary_value_key)
-      DO UPDATE SET
-        extra_value = EXCLUDED.extra_value,
-        updated_at = NOW()
-    `,
-    randomUUID(),
-    input.companyId,
-    input.section,
-    value,
-    parentValue || null,
-    parentSecondaryValue || null,
-    parentValue,
-    parentSecondaryValue,
-    input.extraValue?.trim() || null,
-  );
+        parentValueKey,
+        parentSecondaryValueKey,
+      },
+    },
+    create: {
+      id: randomUUID(),
+      companyId: input.companyId,
+      section: input.section,
+      value,
+      parentValue,
+      parentSecondaryValue,
+      parentValueKey,
+      parentSecondaryValueKey,
+      extraValue,
+      createdAt: now,
+      updatedAt: now,
+    },
+    update: {
+      extraValue,
+      updatedAt: now,
+    },
+  });
 }

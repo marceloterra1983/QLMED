@@ -490,7 +490,7 @@ model InvoiceItemTax {
   @@map("invoice_item_tax")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model ContactFiscal {
   id              String    @id
   companyId       String    @map("company_id")
@@ -508,7 +508,7 @@ model ContactFiscal {
   @@map("contact_fiscal")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model InvoiceDuplicata {
   id                  String   @id
   invoiceId           String   @map("invoice_id")
@@ -718,7 +718,7 @@ model NfeEntryItem {
   @@map("nfe_entry_item")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model ProductSettingsCatalog {
   id                      String   @id
   companyId               String   @map("company_id")
@@ -737,7 +737,7 @@ model ProductSettingsCatalog {
   @@map("product_settings_catalog")
 }
 
-// Baseline: the physical table predates Prisma ownership. CNPJ cache access is typed by SCHEMA-02.
+// Satellite table baselined in Phase 11; cnpj-lookup already uses Prisma Client.
 model CnpjCache {
   cnpj      String   @id
   data      Json
@@ -746,7 +746,7 @@ model CnpjCache {
   @@map("cnpj_cache")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model CnpjMonitoring {
   id             String    @id
   companyId      String    @map("company_id")
