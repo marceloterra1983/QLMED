@@ -23,37 +23,6 @@ export interface FinanceiroDuplicataBase {
   dupValor: number;
 }
 
-interface DuplicataQueryRow {
-  invoice_id: string;
-  dup_numero: string | null;
-  dup_vencimento: string;
-  dup_valor: number;
-  fatura_numero: string | null;
-  fatura_valor_original: number | null;
-  fatura_valor_liquido: number | null;
-  accessKey: string;
-  number: string;
-  senderCnpj: string | null;
-  senderName: string | null;
-  recipientCnpj: string | null;
-  recipientName: string | null;
-  issueDate: Date;
-  totalValue: number;
-  cfop: string | null;
-}
-
-interface ImportFallbackRow {
-  id: string;
-  accessKey: string;
-  number: string;
-  senderCnpj: string | null;
-  senderName: string | null;
-  recipientCnpj: string | null;
-  recipientName: string | null;
-  issueDate: Date;
-  totalValue: number;
-}
-
 interface FinanceiroCacheEntry {
   version: string;
   createdAt: number;
@@ -168,57 +137,60 @@ async function buildDuplicatas(
   const matchingCfops = getMatchingCfopCodes(allowedTags, direction);
   const allDuplicatas: FinanceiroDuplicataBase[] = [];
 
-  // Query 1: Read duplicatas from invoice_duplicata table (excludes sentinel rows)
+  // Query 1: Read duplicatas from invoice_duplicata (excludes sentinel rows)
   if (matchingCfops.length > 0) {
-    const rows = await prisma.$queryRawUnsafe<DuplicataQueryRow[]>(
-      `SELECT
-        d.invoice_id,
-        d.dup_numero,
-        d.dup_vencimento,
-        d.dup_valor,
-        d.fatura_numero,
-        d.fatura_valor_original,
-        d.fatura_valor_liquido,
-        i."accessKey",
-        i."number",
-        i."senderCnpj",
-        i."senderName",
-        i."recipientCnpj",
-        i."recipientName",
-        i."issueDate",
-        i."totalValue"::double precision as "totalValue",
-        i."cfop"
-      FROM invoice_duplicata d
-      INNER JOIN "Invoice" i ON i.id = d.invoice_id
-      WHERE d.company_id = $1
-        AND i.type = 'NFE'
-        AND i.direction = $2
-        AND d.dup_numero != '__NONE__'
-        AND (i."cfop" = ANY($3::text[]) OR i."cfop" IS NULL)`,
-      companyId,
-      direction,
-      matchingCfops,
-    );
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        companyId,
+        type: 'NFE',
+        direction,
+        OR: [{ cfop: { in: matchingCfops } }, { cfop: null }],
+      },
+      select: {
+        id: true,
+        accessKey: true,
+        number: true,
+        senderCnpj: true,
+        senderName: true,
+        recipientCnpj: true,
+        recipientName: true,
+        issueDate: true,
+        totalValue: true,
+        cfop: true,
+      },
+    });
+    const invoiceById = new Map(invoices.map((i) => [i.id, i]));
+    const invoiceIds = invoices.map((i) => i.id);
 
-    for (const row of rows) {
-      // For cfop=null rows, we include them conservatively (same as old behavior
-      // where cfop=null invoices passed through the filter)
-      const party = getParty(row, direction);
-      allDuplicatas.push({
-        invoiceId: row.invoice_id,
-        accessKey: row.accessKey,
-        nfNumero: row.number,
-        partyCnpj: party.cnpj,
-        partyNome: party.nome,
-        nfEmissao: row.issueDate,
-        nfValorTotal: row.totalValue,
-        faturaNumero: row.fatura_numero || '',
-        faturaValorOriginal: row.fatura_valor_original || 0,
-        faturaValorLiquido: row.fatura_valor_liquido || 0,
-        dupNumero: row.dup_numero || '',
-        dupVencimento: row.dup_vencimento,
-        dupValor: row.dup_valor,
+    if (invoiceIds.length > 0) {
+      const dups = await prisma.invoiceDuplicata.findMany({
+        where: {
+          companyId,
+          invoiceId: { in: invoiceIds },
+          NOT: { dupNumero: '__NONE__' },
+        },
       });
+
+      for (const d of dups) {
+        const inv = invoiceById.get(d.invoiceId);
+        if (!inv?.issueDate) continue;
+        const party = getParty(inv, direction);
+        allDuplicatas.push({
+          invoiceId: d.invoiceId,
+          accessKey: inv.accessKey || '',
+          nfNumero: inv.number || '',
+          partyCnpj: party.cnpj,
+          partyNome: party.nome,
+          nfEmissao: inv.issueDate,
+          nfValorTotal: Number(inv.totalValue || 0),
+          faturaNumero: d.faturaNumero || '',
+          faturaValorOriginal: d.faturaValorOriginal || 0,
+          faturaValorLiquido: d.faturaValorLiquido || 0,
+          dupNumero: d.dupNumero || '',
+          dupVencimento: d.dupVencimento,
+          dupValor: d.dupValor,
+        });
+      }
     }
   }
 
@@ -232,38 +204,50 @@ async function buildDuplicatas(
   if (effectiveImportTag && allowedTags.includes(effectiveImportTag)) {
     const importCfops = getImportCfopCodes(direction);
     if (importCfops.length > 0) {
-      const importRows = await prisma.$queryRawUnsafe<ImportFallbackRow[]>(
-        `SELECT
-          i.id,
-          i."accessKey",
-          i."number",
-          i."senderCnpj",
-          i."senderName",
-          i."recipientCnpj",
-          i."recipientName",
-          i."issueDate",
-          i."totalValue"::double precision as "totalValue"
-        FROM "Invoice" i
-        LEFT JOIN invoice_duplicata d ON d.invoice_id = i.id AND d.dup_numero != '__NONE__'
-        WHERE i."companyId" = $1
-          AND i.type = 'NFE'
-          AND i.direction = $2
-          AND i."cfop" = ANY($3::text[])
-          AND i."totalValue" > 0
-          AND d.invoice_id IS NULL`,
-        companyId,
-        direction,
-        importCfops,
-      );
+      const candidates = await prisma.invoice.findMany({
+        where: {
+          companyId,
+          type: 'NFE',
+          direction,
+          cfop: { in: importCfops },
+          totalValue: { gt: 0 },
+        },
+        select: {
+          id: true,
+          accessKey: true,
+          number: true,
+          senderCnpj: true,
+          senderName: true,
+          recipientCnpj: true,
+          recipientName: true,
+          issueDate: true,
+          totalValue: true,
+        },
+      });
+      const candidateIds = candidates.map((c) => c.id);
+      const withRealDups = new Set<string>();
+      if (candidateIds.length > 0) {
+        const realDups = await prisma.invoiceDuplicata.findMany({
+          where: {
+            invoiceId: { in: candidateIds },
+            NOT: { dupNumero: '__NONE__' },
+          },
+          select: { invoiceId: true },
+          distinct: ['invoiceId'],
+        });
+        for (const d of realDups) withRealDups.add(d.invoiceId);
+      }
+      const importRows = candidates.filter((c) => !withRealDups.has(c.id));
 
       for (const row of importRows) {
+        if (!row.issueDate) continue;
         const party = getParty(row, direction);
-        const totalNum = row.totalValue;
+        const totalNum = Number(row.totalValue || 0);
         const fallbackDueDate = addDaysUtc(row.issueDate, IMPORT_NO_DUP_FALLBACK_DUE_DAYS);
         allDuplicatas.push({
           invoiceId: row.id,
-          accessKey: row.accessKey,
-          nfNumero: row.number,
+          accessKey: row.accessKey || '',
+          nfNumero: row.number || '',
           partyCnpj: party.cnpj,
           partyNome: party.nome,
           nfEmissao: row.issueDate,
@@ -319,11 +303,10 @@ export async function getFinanceiroDuplicatas(
 
   const promise = (async () => {
     // Lazy backfill: populate invoice_duplicata if empty
-    const countResult = await prisma.$queryRawUnsafe<{ cnt: bigint }[]>(
-      `SELECT COUNT(*)::bigint as cnt FROM invoice_duplicata WHERE company_id = $1 LIMIT 1`,
-      companyId,
-    );
-    if (Number(countResult[0]?.cnt ?? 0) === 0) {
+    const dupCount = await prisma.invoiceDuplicata.count({
+      where: { companyId },
+    });
+    if (dupCount === 0) {
       // Run backfill in batches until done
       let remaining = 1;
       while (remaining > 0) {

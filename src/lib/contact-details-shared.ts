@@ -411,12 +411,18 @@ export async function handleContactDetails(
   let shortNameMap = new Map<string, string>();
   if (!metaOnly && priceMap.size > 0) {
     const productKeys = Array.from(priceMap.keys());
-    const shortNameRows = await prisma.$queryRawUnsafe<{ product_key: string; short_name: string }[]>(
-      `SELECT product_key, short_name FROM product_registry WHERE company_id = $1 AND product_key = ANY($2) AND short_name IS NOT NULL AND short_name != ''`,
-      company.id,
-      productKeys,
-    );
-    for (const row of shortNameRows) shortNameMap.set(row.product_key, row.short_name);
+    const shortNameRows = await prisma.productRegistry.findMany({
+      where: {
+        companyId: company.id,
+        productKey: { in: productKeys },
+        shortName: { not: null },
+        NOT: { shortName: '' },
+      },
+      select: { productKey: true, shortName: true },
+    });
+    for (const row of shortNameRows) {
+      if (row.shortName) shortNameMap.set(row.productKey, row.shortName);
+    }
   }
 
   const priceTable = metaOnly
@@ -497,14 +503,18 @@ export async function handleContactDetails(
   if (cfg.hasProductTypes && contactCnpj) {
     try {
       await ensureProductRegistryTable();
-      const typeRows = await prisma.$queryRawUnsafe<{ product_type: string }[]>(
-        `SELECT DISTINCT product_type FROM product_registry
-         WHERE company_id = $1 AND agg_last_supplier_cnpj = $2 AND product_type IS NOT NULL AND product_type != ''
-         LIMIT 20`,
-        company.id,
-        contactCnpj,
-      );
-      productTypes = typeRows.map((r) => r.product_type);
+      const typeRows = await prisma.productRegistry.findMany({
+        where: {
+          companyId: company.id,
+          aggLastSupplierCnpj: contactCnpj,
+          productType: { not: null },
+          NOT: { productType: '' },
+        },
+        select: { productType: true },
+        distinct: ['productType'],
+        take: 20,
+      });
+      productTypes = typeRows.map((r) => r.productType!).filter(Boolean);
     } catch { /* non-critical */ }
   }
 

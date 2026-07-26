@@ -65,33 +65,50 @@ export async function GET(req: Request) {
       likePatterns.push(`%<cProd>${escapedCode}</cProd>%`);
     }
 
-    const fetchInvoices = async (pattern: string, dir: string) => {
-      return prisma.$queryRawUnsafe<Array<{
-        id: string;
-        number: string | null;
-        issueDate: Date | null;
-        senderName: string | null;
-        senderCnpj: string | null;
-        recipientName: string | null;
-        recipientCnpj: string | null;
-        xmlContent: string;
-      }>>(
-        `SELECT id, number, "issueDate", "senderName", "senderCnpj", "recipientName", "recipientCnpj", "xmlContent"
-         FROM "Invoice"
-         WHERE "companyId" = $1
-           AND type = 'NFE'
-           AND direction = $3::"InvoiceDirection"
-           AND "xmlContent" LIKE $2
-         ORDER BY "issueDate" DESC
-         LIMIT 200`,
-        company.id,
-        pattern,
-        dir,
-      );
+    type HistoryInvoice = {
+      id: string;
+      number: string | null;
+      issueDate: Date | null;
+      senderName: string | null;
+      senderCnpj: string | null;
+      recipientName: string | null;
+      recipientCnpj: string | null;
+      xmlContent: string | null;
+    };
+
+    const fetchInvoices = async (
+      pattern: string,
+      dir: 'received' | 'issued',
+    ): Promise<HistoryInvoice[]> => {
+      // Strip SQL LIKE escapes for Prisma contains (substring match)
+      const contains = pattern.replace(/\\([%_\\])/g, '$1').replace(/%/g, '');
+      return prisma.invoice.findMany({
+        where: {
+          companyId: company.id,
+          type: 'NFE',
+          direction: dir,
+          xmlContent: { contains },
+        },
+        orderBy: { issueDate: 'desc' },
+        take: 200,
+        select: {
+          id: true,
+          number: true,
+          issueDate: true,
+          senderName: true,
+          senderCnpj: true,
+          recipientName: true,
+          recipientCnpj: true,
+          xmlContent: true,
+        },
+      });
     };
 
     // First pass
-    let invoices = await fetchInvoices(likePatterns[0], direction);
+    let invoices: HistoryInvoice[] = await fetchInvoices(
+      likePatterns[0],
+      direction as 'received' | 'issued',
+    );
 
     // For issued direction, exclude resale customers (Navix/Prime)
     if (direction === 'issued') {
@@ -115,6 +132,7 @@ export async function GET(req: Request) {
             senderCnpj: inv.recipientCnpj,
             recipientName: inv.senderName,
             recipientCnpj: inv.senderCnpj,
+            xmlContent: inv.xmlContent || '',
           });
         }
       }

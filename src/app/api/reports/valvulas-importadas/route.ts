@@ -274,43 +274,46 @@ export async function GET(req: Request) {
     });
     const nicknameMap = new Map(allNicknames.map((n) => [n.cnpj, n.shortName]));
 
-    const issuedInvoices = await prisma.$queryRawUnsafe<Array<{
-      id: string;
-      issueDate: Date | null;
-      recipientCnpj: string | null;
-      recipientName: string | null;
-      xmlContent: string;
-    }>>(
-      `SELECT id, "issueDate", "recipientCnpj", "recipientName", "xmlContent"
-       FROM "Invoice"
-       WHERE "companyId" = $1
-         AND type = 'NFE'
-         AND direction = 'issued'
-         AND "issueDate" >= $2
-         AND "issueDate" <= $3
-       ORDER BY "issueDate" DESC
-       LIMIT $4`,
-      company.id,
-      fromDate,
-      toDate,
-      MAX_INVOICES_PER_DIRECTION,
-    );
+    const issuedInvoices = await prisma.invoice.findMany({
+      where: {
+        companyId: company.id,
+        type: 'NFE',
+        direction: 'issued',
+        issueDate: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { issueDate: 'desc' },
+      take: MAX_INVOICES_PER_DIRECTION,
+      select: {
+        id: true,
+        issueDate: true,
+        recipientCnpj: true,
+        recipientName: true,
+        xmlContent: true,
+      },
+    });
 
     // Load registry for shortName lookup
-    const allRegistryRows = await prisma.$queryRawUnsafe<Array<{
-      code: string | null;
-      description: string;
-      short_name: string | null;
-      anvisa_code: string | null;
-    }>>(
-      `SELECT code, description, short_name, anvisa_code
-       FROM product_registry
-       WHERE company_id = $1`,
-      company.id,
-    );
-    const registryByCode = new Map<string, { description: string; short_name: string | null; anvisa_code: string | null }>();
+    const allRegistryRows = await prisma.productRegistry.findMany({
+      where: { companyId: company.id },
+      select: {
+        code: true,
+        description: true,
+        shortName: true,
+        anvisaCode: true,
+      },
+    });
+    const registryByCode = new Map<
+      string,
+      { description: string; short_name: string | null; anvisa_code: string | null }
+    >();
     for (const row of allRegistryRows) {
-      if (row.code) registryByCode.set(row.code, row);
+      if (row.code) {
+        registryByCode.set(row.code, {
+          description: row.description,
+          short_name: row.shortName,
+          anvisa_code: row.anvisaCode,
+        });
+      }
     }
 
     // Monthly series (last 12 months)
@@ -491,25 +494,21 @@ export async function GET(req: Request) {
     // PASS 2: Scan received invoices for domestic purchases of target products
     // ═══════════════════════════════════════════════════════════
     let invoicesScanned = 0;
-    const receivedInvoices = await prisma.$queryRawUnsafe<Array<{
-      id: string;
-      issueDate: Date | null;
-      xmlContent: string;
-    }>>(
-      `SELECT id, "issueDate", "xmlContent"
-       FROM "Invoice"
-       WHERE "companyId" = $1
-         AND type = 'NFE'
-         AND direction = 'received'
-         AND "issueDate" >= $2
-         AND "issueDate" <= $3
-       ORDER BY "issueDate" DESC
-       LIMIT $4`,
-      company.id,
-      fromDate,
-      toDate,
-      MAX_INVOICES_PER_DIRECTION,
-    );
+    const receivedInvoices = await prisma.invoice.findMany({
+      where: {
+        companyId: company.id,
+        type: 'NFE',
+        direction: 'received',
+        issueDate: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { issueDate: 'desc' },
+      take: MAX_INVOICES_PER_DIRECTION,
+      select: {
+        id: true,
+        issueDate: true,
+        xmlContent: true,
+      },
+    });
 
     for (let i = 0; i < receivedInvoices.length; i += XML_BATCH_SIZE) {
       const batch = receivedInvoices.slice(i, i + XML_BATCH_SIZE);
