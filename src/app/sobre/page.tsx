@@ -48,7 +48,7 @@ export default function SobrePage() {
             <h2 className="text-lg font-bold text-slate-900 mb-2">Dados da empresa</h2>
             <ul className="text-slate-600 space-y-1">
               <li><strong>Raz&atilde;o Social:</strong> QL MED Produtos Hospitalares LTDA</li>
-              <li><strong>CNPJ:</strong> 07.382.369/0001-30</li>
+              <li><strong>CNPJ:</strong> 07.832.309/0001-97</li>
               <li><strong>Localiza&ccedil;&atilde;o:</strong> Campo Grande, MS &mdash; Brasil</li>
               <li><strong>Segmento:</strong> Distribui&ccedil;&atilde;o de produtos m&eacute;dico-hospitalares</li>
             </ul>

@@ -8,9 +8,14 @@ const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS || '')
 // 'unsafe-eval' é exigência só do Next em dev (react-refresh / eval-source-map).
 // Em produção fica de fora. 'unsafe-inline' permanece até migrarmos para nonce
 // (exige tornar as rotas dinâmicas — backlog). Auditoria 2026-07-21.
+// Cloudflare Web Analytics (beacon) é injetado no edge; sem allowlist o browser
+// loga CSP violation em todas as páginas (smoke 2026-07-26).
 const scriptSrc = isProd
-  ? "'self' 'unsafe-inline'"
+  ? "'self' 'unsafe-inline' https://static.cloudflareinsights.com"
   : "'self' 'unsafe-inline' 'unsafe-eval'";
+const connectSrc = isProd
+  ? "'self' https://cloudflareinsights.com https://*.cloudflareinsights.com"
+  : "'self'";
 
 const nextConfig = {
   ...(isProd ? { output: 'standalone' } : {}),
@@ -36,7 +41,7 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy', value: `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'` },
+          { key: 'Content-Security-Policy', value: `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src ${connectSrc}; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'` },
         ],
       },
     ];

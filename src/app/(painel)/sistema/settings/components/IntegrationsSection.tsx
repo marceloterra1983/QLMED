@@ -408,6 +408,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
             <div className="flex gap-2">
               <input
                 type="password"
+                autoComplete="off"
                 value={apiToken}
                 onChange={(e) => setApiToken(e.target.value)}
                 disabled={!canManageSettings}
