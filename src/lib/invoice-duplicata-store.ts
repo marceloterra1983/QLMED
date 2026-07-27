@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val, num } from '@/lib/xml-helpers';
+import { resolveInvoiceXmlContent } from '@/lib/xml-file-store';
 
 // ── Types ──
 
@@ -217,11 +218,19 @@ export async function backfillInvoiceDuplicatas(companyId: string): Promise<Back
     const batchIds = ids.slice(i, i + BACKFILL_FETCH_SIZE);
     const invoices = await prisma.invoice.findMany({
       where: { id: { in: batchIds } },
-      select: { id: true, xmlContent: true, companyId: true },
+      select: {
+        id: true,
+        accessKey: true,
+        type: true,
+        issueDate: true,
+        xmlContent: true,
+        companyId: true,
+      },
     });
 
     for (const invoice of invoices) {
-      const duplicatas = await extractDuplicatasFromXml(invoice.xmlContent || '');
+      const xml = await resolveInvoiceXmlContent(invoice);
+      const duplicatas = await extractDuplicatasFromXml(xml || '');
 
       // Sentinel row so the LEFT JOIN won't re-pick invoices with no dups
       if (duplicatas.length === 0) {

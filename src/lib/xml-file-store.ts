@@ -143,3 +143,43 @@ export async function readIssuedPdfFromFile(
     return null;
   }
 }
+
+export function getXmlFilePath(
+  accessKey: string,
+  type: string,
+  issueDate: Date | string | null,
+): string | null {
+  const fileName = buildXmlFileName(accessKey, type);
+  if (!fileName) return null;
+  return path.join(XML_BACKUP_DIR, getMonthFolder(issueDate), fileName);
+}
+
+/** Lê XML do filesystem (Phase 11 — fonte preferida quando existir). */
+export async function readXmlFromFile(
+  accessKey: string,
+  type: string,
+  issueDate: Date | string | null,
+): Promise<string | null> {
+  const filePath = getXmlFilePath(accessKey, type, issueDate);
+  if (!filePath) return null;
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve XML: arquivo em storage primeiro, fallback para coluna Invoice.xmlContent.
+ * Não remove xmlContent do banco nesta fase — só prepara o caminho de leitura.
+ */
+export async function resolveInvoiceXmlContent(invoice: {
+  accessKey: string;
+  type: string;
+  issueDate: Date | string | null;
+  xmlContent?: string | null;
+}): Promise<string | null> {
+  const fromFile = await readXmlFromFile(invoice.accessKey, invoice.type, invoice.issueDate);
+  if (fromFile) return fromFile;
+  return invoice.xmlContent || null;
+}

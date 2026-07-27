@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildXmlFileName } from '../xml-file-store';
+import { buildXmlFileName, resolveInvoiceXmlContent } from '../xml-file-store';
 
 describe('buildXmlFileName', () => {
   it('builds names for supported fiscal access keys', () => {
@@ -13,5 +13,17 @@ describe('buildXmlFileName', () => {
   it('rejects path traversal and unsafe suffixes', () => {
     expect(buildXmlFileName('../../../tmp/invoice', 'NFE')).toBeNull();
     expect(buildXmlFileName('safe-key', '../../outside')).toBeNull();
+  });
+});
+
+describe('resolveInvoiceXmlContent', () => {
+  it('faz fallback para xmlContent quando não há arquivo', async () => {
+    const xml = await resolveInvoiceXmlContent({
+      accessKey: 'KEY_THAT_DOES_NOT_EXIST_ON_DISK_999',
+      type: 'NFE',
+      issueDate: new Date('2026-01-15'),
+      xmlContent: '<nfe>ok</nfe>',
+    });
+    expect(xml).toBe('<nfe>ok</nfe>');
   });
 });
