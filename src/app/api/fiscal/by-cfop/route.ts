@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import { ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+
+const byCfopQuerySchema = z.object({
+  year: z.coerce.number().int().default(new Date().getFullYear()),
+});
 
 export async function GET(req: Request) {
   let userId: string;
@@ -15,9 +19,9 @@ export async function GET(req: Request) {
 
   const company = await getOrCreateSingleCompany(userId);
   const { searchParams } = new URL(req.url);
-  const year = Number(searchParams.get('year') || new Date().getFullYear());
-
-  await ensureInvoiceTaxTables();
+  const parsed = byCfopQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!parsed.success) return apiValidationError(parsed.error);
+  const { year } = parsed.data;
 
   const startDate = new Date(Date.UTC(year, 0, 1));
   const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));

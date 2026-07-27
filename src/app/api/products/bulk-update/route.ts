@@ -2,7 +2,6 @@ import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { cleanString } from '@/lib/utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
@@ -78,8 +77,6 @@ export async function PATCH(req: Request) {
             return n;
           })()
       : null;
-
-    await ensureProductRegistryTable();
 
     let updated = 0;
     const now = new Date();

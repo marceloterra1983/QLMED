@@ -3,7 +3,7 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
-import { ensureStockEntryTable, getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-entry-store';
+import { getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry, LotOverride } from '@/lib/register-entry';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
@@ -20,7 +20,6 @@ export async function GET(req: Request) {
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    await ensureStockEntryTable();
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1', 10) || 1;

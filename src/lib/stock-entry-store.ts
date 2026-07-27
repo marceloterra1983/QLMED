@@ -37,10 +37,6 @@ export interface UpsertStockEntryInput {
 // stock_entry / nfe_entry_item are schema-owned (Phase 11 baseline).
 // No CREATE/ALTER at runtime.
 
-export async function ensureStockEntryTable(): Promise<void> {
-  return;
-}
-
 function mapStockEntry(row: {
   id: string;
   companyId: string;

@@ -50,12 +50,6 @@ export interface InvoiceItemTax {
   valorFcp: number | null;
 }
 
-// invoice_tax_totals / invoice_item_tax are schema-owned (Phase 11 baseline).
-// No CREATE/ALTER at runtime.
-
-export async function ensureInvoiceTaxTables(): Promise<void> {
-  return;
-}
 
 // ── Upsert totals ──
 

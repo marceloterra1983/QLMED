@@ -16,10 +16,6 @@ export interface ContactFiscalRow {
 
 // contact_fiscal is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-export async function ensureContactFiscalTable(): Promise<void> {
-  return;
-}
-
 function mapRow(r: {
   id: string;
   companyId: string;

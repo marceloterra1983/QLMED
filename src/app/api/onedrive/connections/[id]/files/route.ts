@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { listOneDriveChildren } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
+
+const oneDriveFilesQuerySchema = z.object({
+  itemId: z.string().trim().min(1).max(200).default('root'),
+});
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const paramsParsed = idParamSchema.safeParse({ id });
+  if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
   let userId: string;
   try {
     userId = await requireAuth();
@@ -17,7 +26,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const company = await getOrCreateSingleCompany(userId);
-    const itemId = request.nextUrl.searchParams.get('itemId')?.trim() || 'root';
+    const queryParsed = oneDriveFilesQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
+    if (!queryParsed.success) return apiValidationError(queryParsed.error);
+    const itemId = queryParsed.data.itemId;
 
     const connection = await prisma.oneDriveConnection.findFirst({
       where: {

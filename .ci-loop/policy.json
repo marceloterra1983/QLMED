@@ -62,7 +62,8 @@
       "severity": "medium",
       "check": "glob_count",
       "path": "src/lib/__tests__/*.{test,integration.test}.ts",
-      "targetMin": 30
+      "targetMin": 30,
+      "_note": "brace expansion handled by qlmed-app-ci-loop.sh glob_count"
     },
     {
       "id": "zod-routes",

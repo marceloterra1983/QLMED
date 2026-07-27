@@ -3,7 +3,6 @@ import type { Prisma } from '@prisma/client';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { normalizeForSearch } from '@/lib/utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
@@ -38,7 +37,6 @@ export async function GET(req: Request) {
     }
 
     const company = await getOrCreateSingleCompany(userId);
-    await ensureProductRegistryTable();
 
     const { searchParams } = new URL(req.url);
     const parsedQuery = productsListQuerySchema.safeParse(Object.fromEntries(searchParams));

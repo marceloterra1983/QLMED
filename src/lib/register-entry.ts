@@ -4,14 +4,7 @@
  */
 import prisma from '@/lib/prisma';
 import { extractProductsFromXml } from '@/lib/product-aggregation';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  ensureStockEntryTable,
-  upsertStockEntry,
-  updateStockEntryFiscalTotals,
-  insertNfeEntryItems,
-  NfeEntryItemInput,
-} from '@/lib/stock-entry-store';
+import { upsertStockEntry, updateStockEntryFiscalTotals, insertNfeEntryItems, NfeEntryItemInput } from '@/lib/stock-entry-store';
 import { extractTaxTotals, extractItemTaxes, extractEmitterLocation } from '@/lib/parse-invoice-tax';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
 
@@ -38,7 +31,6 @@ export async function registerInvoiceEntry(
   userId: string,
   lotOverrides?: Map<number, LotOverride[]>,
 ): Promise<RegisterResult | null> {
-  await ensureStockEntryTable();
 
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, companyId },
@@ -51,8 +43,6 @@ export async function registerInvoiceEntry(
   if (!invoice?.xmlContent) return null;
 
   const products = await extractProductsFromXml(invoice.xmlContent);
-
-  await ensureProductRegistryTable();
   const allRegistryRows = await prisma.productRegistry.findMany({
     where: {
       companyId,

@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import { ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+
+const fiscalDashboardQuerySchema = z.object({
+  period: z.enum(['month', 'quarter', 'year']).default('year'),
+  year: z.coerce.number().int().min(2000).max(2100).default(new Date().getFullYear()),
+  month: z.coerce.number().int().min(1).max(12).default(new Date().getMonth() + 1),
+});
 
 export async function GET(req: Request) {
   let userId: string;
@@ -15,11 +21,9 @@ export async function GET(req: Request) {
 
   const company = await getOrCreateSingleCompany(userId);
   const { searchParams } = new URL(req.url);
-  const period = searchParams.get('period') || 'year';
-  const year = Number(searchParams.get('year') || new Date().getFullYear());
-  const month = Number(searchParams.get('month') || new Date().getMonth() + 1);
-
-  await ensureInvoiceTaxTables();
+  const parsed = fiscalDashboardQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!parsed.success) return apiValidationError(parsed.error);
+  const { period, year, month } = parsed.data;
 
   let startDate: Date;
   let endDate: Date;

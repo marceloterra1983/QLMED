@@ -31,10 +31,6 @@ interface BackfillResult {
 
 // invoice_duplicata is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-export async function ensureInvoiceDuplicataTable(): Promise<void> {
-  return;
-}
-
 // ── XML extraction helpers (moved from financeiro-duplicatas.ts) ──
 
 function extractTagValue(xml: string, tag: string): string {

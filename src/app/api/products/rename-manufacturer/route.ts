@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  ensureProductSettingsCatalogTable,
-  upsertProductSettingsCatalogEntry,
-} from '@/lib/product-settings-catalog';
+import { upsertProductSettingsCatalogEntry } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { renameManufacturerSchema } from '@/lib/schemas/product';
@@ -60,7 +56,6 @@ export async function POST(req: NextRequest) {
   const { action, oldValue, newValue, manufacturer, shortName } = parsed.data;
 
   const company = await getOrCreateSingleCompany(auth.userId);
-  await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
   const now = new Date();
 
   if (action === 'rename') {

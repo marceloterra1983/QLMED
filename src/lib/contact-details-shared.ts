@@ -6,7 +6,6 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { getContactFiscal } from '@/lib/contact-fiscal-store';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getCfopTagByCode } from '@/lib/cfop';
 import { cleanString, ensureArray, toNumber } from '@/lib/utils';
 import type { Prisma } from '@prisma/client';
@@ -502,7 +501,6 @@ export async function handleContactDetails(
   let productTypes: string[] = [];
   if (cfg.hasProductTypes && contactCnpj) {
     try {
-      await ensureProductRegistryTable();
       const typeRows = await prisma.productRegistry.findMany({
         where: {
           companyId: company.id,

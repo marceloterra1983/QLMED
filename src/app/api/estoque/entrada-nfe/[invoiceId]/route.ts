@@ -3,7 +3,6 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractProductsFromXml } from '@/lib/product-aggregation';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
@@ -148,8 +147,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ invoiceI
     }
 
     const products = await extractProductsFromXml(invoice.xmlContent);
-
-    await ensureProductRegistryTable();
     const allRegistryRows = await prisma.productRegistry.findMany({
       where: {
         companyId: company.id,

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
@@ -118,8 +117,6 @@ export async function POST(req: Request) {
     const parsed = autoClassifySchema.safeParse(body);
     if (!parsed.success) return apiValidationError(parsed.error);
     const dryRun = parsed.data.dryRun;
-
-    await ensureProductRegistryTable();
 
     // ── Load all products with their registry data ──
     // First, get all products from invoices (we need the products API data)

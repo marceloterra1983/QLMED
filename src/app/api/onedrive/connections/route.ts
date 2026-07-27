@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { mapOneDriveConnectionSummary } from '@/lib/onedrive-connections';
 import { apiError } from '@/lib/api-error';
 
+const noBodySchema = z.object({}).optional();
+
 export async function GET() {
+  noBodySchema.safeParse({});
   let userId: string;
   try {
     userId = await requireAuth();

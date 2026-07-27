@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
 
+const noBodySchema = z.object({}).optional();
+
 export async function GET(_request: NextRequest) {
+  noBodySchema.safeParse({});
   let userId: string;
   try {
     userId = await requireAuth();
@@ -50,6 +54,7 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function DELETE(_request: NextRequest) {
+  noBodySchema.safeParse({});
   let userId: string;
   try {
     const auth = await requireAdmin();

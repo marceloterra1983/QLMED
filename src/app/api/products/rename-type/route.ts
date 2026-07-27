@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  ensureProductSettingsCatalogTable,
-  toCatalogKey,
-  upsertProductSettingsCatalogEntry,
-} from '@/lib/product-settings-catalog';
+import { toCatalogKey, upsertProductSettingsCatalogEntry } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { renameTypeSchema } from '@/lib/schemas/product';
@@ -313,7 +308,6 @@ export async function POST(req: NextRequest) {
   } = parsed.data;
 
   const company = await getOrCreateSingleCompany(auth.userId);
-  await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
   if (action === 'addLine') {
     const lineName = clean(name);

@@ -9,62 +9,6 @@ import { extractAllTaxData } from '../src/lib/parse-invoice-tax';
 const prisma = new PrismaClient();
 const BATCH_SIZE = 200;
 
-async function ensureTables() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS invoice_tax_totals (
-      invoice_id TEXT PRIMARY KEY,
-      company_id TEXT NOT NULL,
-      vbc DOUBLE PRECISION,
-      vicms DOUBLE PRECISION,
-      vpis DOUBLE PRECISION,
-      vcofins DOUBLE PRECISION,
-      vipi DOUBLE PRECISION,
-      vfrete DOUBLE PRECISION,
-      vseg DOUBLE PRECISION,
-      vdesc DOUBLE PRECISION,
-      voutro DOUBLE PRECISION,
-      vtottrib DOUBLE PRECISION,
-      vfcp DOUBLE PRECISION,
-      vicms_st DOUBLE PRECISION,
-      computed_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_tax_totals_company ON invoice_tax_totals(company_id)`);
-
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS invoice_item_tax (
-      id TEXT PRIMARY KEY,
-      invoice_id TEXT NOT NULL,
-      company_id TEXT NOT NULL,
-      item_number INTEGER,
-      product_code TEXT,
-      product_description TEXT,
-      ncm TEXT,
-      cfop TEXT,
-      cest TEXT,
-      origem TEXT,
-      quantity DOUBLE PRECISION,
-      unit_price DOUBLE PRECISION,
-      total_value DOUBLE PRECISION,
-      cst_icms TEXT,
-      base_icms DOUBLE PRECISION,
-      aliq_icms DOUBLE PRECISION,
-      valor_icms DOUBLE PRECISION,
-      cst_pis TEXT,
-      aliq_pis DOUBLE PRECISION,
-      valor_pis DOUBLE PRECISION,
-      cst_cofins TEXT,
-      aliq_cofins DOUBLE PRECISION,
-      valor_cofins DOUBLE PRECISION,
-      aliq_ipi DOUBLE PRECISION,
-      valor_ipi DOUBLE PRECISION,
-      valor_fcp DOUBLE PRECISION
-    )
-  `);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_item_tax_invoice ON invoice_item_tax(invoice_id)`);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_item_tax_company_cfop ON invoice_item_tax(company_id, cfop)`);
-}
-
 async function upsertTotals(data: {
   invoiceId: string; companyId: string;
   vbc: number | null; vicms: number | null; vpis: number | null; vcofins: number | null;
@@ -117,9 +61,7 @@ async function upsertItems(invoiceId: string, companyId: string, items: any[]) {
 }
 
 async function main() {
-  console.log('Ensuring tables...');
-  await ensureTables();
-
+  // Tables are schema-owned (Prisma migrations). No runtime DDL.
   let totalProcessed = 0;
   let totalErrors = 0;
 

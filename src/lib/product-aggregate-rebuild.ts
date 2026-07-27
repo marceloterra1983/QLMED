@@ -1,16 +1,8 @@
 import { randomUUID } from 'crypto';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  aggregateProductsFromInvoices,
-  computeSearchText,
-  type AggregatedProduct,
-} from '@/lib/product-aggregation';
-import {
-  acquirePostgresAdvisoryLock,
-  productAggregateLockKey,
-} from '@/lib/postgres-advisory-lock';
+import { aggregateProductsFromInvoices, computeSearchText, type AggregatedProduct } from '@/lib/product-aggregation';
+import { acquirePostgresAdvisoryLock, productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 
 const WRITE_TRANSACTION_TIMEOUT_MS = 15 * 60 * 1000;
 
@@ -185,7 +177,6 @@ export async function rebuildProductAggregatesForCompany(
   if (!lock) return null;
 
   try {
-    await ensureProductRegistryTable();
     const startedAt = Date.now();
     const cutoffCreatedAt = new Date();
     const productMap = await aggregateProductsFromInvoices(companyId, {

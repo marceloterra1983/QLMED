@@ -35,10 +35,6 @@ export interface ProductSettingsCatalogEntry {
 
 // product_settings_catalog is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-export async function ensureProductSettingsCatalogTable(): Promise<void> {
-  return;
-}
-
 export function toCatalogKey(value: string | null | undefined): string {
   const normalized = (value || '').trim();
   return normalized.length > 0 ? normalized : '';
