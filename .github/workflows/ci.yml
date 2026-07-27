@@ -7,9 +7,80 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+
+concurrency:
+  group: qlmed-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      # Push to main always runs the full app job (deploy gate).
+      app: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.app }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Detect app-relevant paths
+        if: github.event_name == 'pull_request'
+        id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'prisma/**'
+              - 'public/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'next.config.*'
+              - 'tsconfig*.json'
+              - 'eslint.config.*'
+              - '.eslintrc*'
+              - 'postcss.config.*'
+              - 'tailwind.config.*'
+              - 'vitest*.{ts,mjs,js}'
+              - 'Dockerfile*'
+              - 'start.sh'
+              - '.ci-loop/**'
+              - 'n8n/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy-production.yml'
+
+  docs:
+    name: docs
+    needs: changes
+    if: needs.changes.outputs.app != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate specifications and architecture documentation
+        run: |
+          npm run docs:validate:test
+          npm run docs:validate
+
+  app:
+    name: app
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -40,6 +111,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Cache Next.js build
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('next.config.*', 'tsconfig*.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            next-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
@@ -77,3 +157,20 @@ jobs:
 
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
+
+  # Required check name for branch protection on main.
+  quality:
+    name: quality
+    needs: [changes, docs, app]
+    if: always() && needs.changes.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Gate required status check
+        run: |
+          set -euo pipefail
+          if [[ "${{ needs.changes.outputs.app }}" == "true" ]]; then
+            test "${{ needs.app.result }}" = "success"
+          else
+            test "${{ needs.docs.result }}" = "success"
+          fi
