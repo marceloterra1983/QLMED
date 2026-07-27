@@ -12,13 +12,19 @@ const AUTO_SYNC_TIMEZONE = process.env.AUTO_SYNC_TIMEZONE || 'America/Sao_Paulo'
 const SEFAZ_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.SEFAZ_AUTO_SYNC_MINUTE, '00');
 const NSDOCS_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.NSDOCS_AUTO_SYNC_MINUTE, '00');
 const RECEITA_NFSE_AUTO_SYNC_MINUTE = normalizeMinuteSlot(process.env.RECEITA_NFSE_AUTO_SYNC_MINUTE, '30');
-const SEFAZ_AUTO_SYNC_INTERVAL_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_AUTO_SYNC_INTERVAL_MINUTES || '120');
-// Cooldown DEDICADO após bloqueio 656 (mais longo que o intervalo normal: a SEFAZ
-// pune consumo indevido por mais tempo). Evita o ciclo de retomar 656 logo após.
-const SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES || '180');
-// Bloqueios 656 consecutivos dobram o cooldown (3h → 6h → 12h...) até este teto:
-// retomar no mesmo ritmo após um 656 repetido só estende a punição da SEFAZ.
-const SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES || '720');
+// Intervalo mínimo entre syncs SEFAZ quando o último run trouxe documentos.
+// Consultar DistDFe com frequência alta (ainda mais com ultNSU==maxNSU) dispara
+// cStat 656 — padrão observado em prod: empty às HH:15 → 656 2–3h depois.
+const SEFAZ_AUTO_SYNC_INTERVAL_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_AUTO_SYNC_INTERVAL_MINUTES || '360');
+// Após sync vazio (caught-up), usar o mesmo piso longo: a SEFAZ pune reconsulta
+// sem documentos novos mais do que o intervalo "com novidade".
+const SEFAZ_EMPTY_SYNC_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(
+  process.env.SEFAZ_EMPTY_SYNC_COOLDOWN_MINUTES || String(SEFAZ_AUTO_SYNC_INTERVAL_MINUTES),
+);
+// Cooldown DEDICADO após bloqueio 656 (a SEFAZ pune consumo indevido por horas).
+const SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES || '360');
+// Bloqueios 656 consecutivos dobram o cooldown (6h → 12h → 24h...) até este teto.
+const SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES || '1440');
 
 const STUCK_SYNC_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -98,33 +104,63 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
       updatedDocs: true,
     },
   });
-  const lastRun = recentRuns[0];
+  type SyncRun = (typeof recentRuns)[number];
+  const is656 = (run: SyncRun) =>
+    run.status === 'error' && (run.errorMessage || '').includes('656');
+  const isEmptyCompleted = (run: SyncRun) =>
+    run.status === 'completed' && run.newDocs === 0 && run.updatedDocs === 0;
+  const isProductiveCompleted = (run: SyncRun) =>
+    run.status === 'completed' && (run.newDocs > 0 || run.updatedDocs > 0);
 
+  const lastRun = recentRuns[0];
   if (!lastRun?.completedAt) {
     return { active: false, lastRunAt: null, waitMinutes: 0, reason: null };
   }
 
-  const is656 = (run: typeof lastRun) => run.status === 'error' && (run.errorMessage || '').includes('656');
-  const isRateLimited = is656(lastRun);
-  const wasEmptyRun = lastRun.status === 'completed' && lastRun.newDocs === 0 && lastRun.updatedDocs === 0;
-  if (!isRateLimited && !wasEmptyRun) {
+  // Streak de 656 a partir do mais recente. Empty no meio NÃO zera (não cura o
+  // bloqueio). Só um completed com documentos novos encerra a sequência.
+  let rateLimitStreak = 0;
+  let latest656At: Date | null = null;
+  for (const run of recentRuns) {
+    if (is656(run)) {
+      rateLimitStreak++;
+      if (!latest656At && run.completedAt) latest656At = run.completedAt;
+      continue;
+    }
+    if (isProductiveCompleted(run)) break;
+    if (isEmptyCompleted(run)) continue;
+    break;
+  }
+
+  const wasEmptyRun = isEmptyCompleted(lastRun);
+  const wasProductiveRun = isProductiveCompleted(lastRun);
+
+  if (!wasEmptyRun && !wasProductiveRun && rateLimitStreak === 0) {
     return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
   }
 
-  // Streak de 656 consecutivos (a partir do run mais recente) escala o cooldown.
-  let rateLimitStreak = 0;
-  for (const run of recentRuns) {
-    if (!is656(run)) break;
-    rateLimitStreak++;
+  let cooldownMinutes: number;
+  let reason: string;
+  let anchorAt = lastRun.completedAt;
+
+  if (rateLimitStreak > 0) {
+    cooldownMinutes = Math.min(
+      SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES * 2 ** (rateLimitStreak - 1),
+      SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES,
+    );
+    anchorAt = latest656At || lastRun.completedAt;
+    reason = `Bloqueio SEFAZ 656 recente (${rateLimitStreak} consecutivo${rateLimitStreak > 1 ? 's' : ''})`;
+  } else if (wasEmptyRun) {
+    cooldownMinutes = SEFAZ_EMPTY_SYNC_COOLDOWN_MINUTES;
+    reason = 'Última consulta SEFAZ sem documentos (caught-up)';
+  } else if (wasProductiveRun) {
+    cooldownMinutes = SEFAZ_AUTO_SYNC_INTERVAL_MINUTES;
+    reason = 'Intervalo mínimo entre syncs SEFAZ com documentos';
+  } else {
+    return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
   }
 
-  const elapsedMs = now.getTime() - lastRun.completedAt.getTime();
-  const cooldownMinutes = isRateLimited
-    ? Math.min(
-        SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES * 2 ** (rateLimitStreak - 1),
-        SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES,
-      )
-    : SEFAZ_AUTO_SYNC_INTERVAL_MINUTES;
+  const elapsedMs = now.getTime() - anchorAt.getTime();
   const cooldownMs = cooldownMinutes * 60 * 1000;
   if (elapsedMs >= cooldownMs) {
     return { active: false, lastRunAt: lastRun.completedAt, waitMinutes: 0, reason: null };
@@ -134,9 +170,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
     active: true,
     lastRunAt: lastRun.completedAt,
     waitMinutes: Math.ceil((cooldownMs - elapsedMs) / 60000),
-    reason: isRateLimited
-      ? `Bloqueio SEFAZ 656 recente (${rateLimitStreak} consecutivo${rateLimitStreak > 1 ? 's' : ''})`
-      : 'Última consulta SEFAZ sem documentos',
+    reason,
   };
 }
 
