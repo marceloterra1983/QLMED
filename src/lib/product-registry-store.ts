@@ -144,27 +144,6 @@ interface ProductRegistryDbRow {
   updated_at: string | Date;
 }
 
-type RegistryInitState = {
-  promise?: Promise<void>;
-};
-
-const globalRegistryState = globalThis as unknown as {
-  productRegistryInitState?: RegistryInitState;
-};
-
-const registryInitState: RegistryInitState =
-  globalRegistryState.productRegistryInitState || {};
-
-if (process.env.NODE_ENV !== 'production') {
-  globalRegistryState.productRegistryInitState = registryInitState;
-}
-
-export async function ensureProductRegistryTable() {
-  // product_registry is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
-  // One-time unit alias rewrites already applied in production; do not re-run DDL here.
-  return;
-}
-
 function mapRegistryRow(row: ProductRegistryDbRow): ProductRegistryRow {
   return {
     id: String(row.id),

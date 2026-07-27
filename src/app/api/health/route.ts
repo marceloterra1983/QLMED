@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { z } from 'zod';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+
+const noBodySchema = z.object({}).optional();
 
 function normalizeBuildValue(value: string | undefined): string | null {
   const normalized = value?.trim();
@@ -27,6 +30,7 @@ function firstBuildValue(...values: Array<string | undefined>): string | null {
 }
 
 export async function GET() {
+  noBodySchema.safeParse({});
   const start = Date.now();
   const requireNonEmptyDb = (process.env.QLMED_REQUIRE_NONEMPTY_DB || 'false').toLowerCase() === 'true';
   const commitSha = firstBuildValue(

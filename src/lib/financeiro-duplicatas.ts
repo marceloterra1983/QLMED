@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getCfopCodesByTag } from '@/lib/cfop';
-import { ensureInvoiceDuplicataTable, backfillInvoiceDuplicatas } from '@/lib/invoice-duplicata-store';
+import { backfillInvoiceDuplicatas } from '@/lib/invoice-duplicata-store';
 
 export type FinanceiroDirection = 'received' | 'issued';
 interface FinanceiroDuplicatasOptions {
@@ -271,7 +271,6 @@ export async function getFinanceiroDuplicatas(
   direction: FinanceiroDirection,
   options?: FinanceiroDuplicatasOptions
 ): Promise<FinanceiroDuplicataBase[]> {
-  await ensureInvoiceDuplicataTable();
 
   const allowedTags = options?.allowedTags?.length
     ? Array.from(new Set(options.allowedTags))

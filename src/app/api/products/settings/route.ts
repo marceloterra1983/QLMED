@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  ensureProductSettingsCatalogTable,
-  listProductSettingsCatalogEntries,
-  upsertProductSettingsCatalogEntry,
-  type ProductSettingsCatalogSection,
-  type ProductSettingsCatalogEntry,
-} from '@/lib/product-settings-catalog';
+import { listProductSettingsCatalogEntries, upsertProductSettingsCatalogEntry, type ProductSettingsCatalogSection, type ProductSettingsCatalogEntry } from '@/lib/product-settings-catalog';
 
 import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
@@ -16,6 +10,7 @@ import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
 
 const log = createLogger('products/settings');
+const noBodySchema = z.object({}).optional();
 
 type LineNode = {
   name: string;
@@ -60,6 +55,7 @@ function clean(value: unknown): string | null {
 }
 
 export async function GET() {
+  noBodySchema.safeParse({});
   try {
     let auth: { userId: string; role: string };
     try {
@@ -70,7 +66,6 @@ export async function GET() {
     }
 
     const company = await getOrCreateSingleCompany(auth.userId);
-    await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
     const [registryRows, catalogEntries] = await Promise.all([
       prisma.productRegistry.findMany({

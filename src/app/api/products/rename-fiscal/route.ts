@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import {
-  ensureProductSettingsCatalogTable,
-  upsertProductSettingsCatalogEntry,
-  type ProductSettingsCatalogSection,
-} from '@/lib/product-settings-catalog';
+import { upsertProductSettingsCatalogEntry, type ProductSettingsCatalogSection } from '@/lib/product-settings-catalog';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { renameFiscalSchema } from '@/lib/schemas/product';
@@ -138,7 +133,6 @@ export async function POST(req: NextRequest) {
 
   const f = field as FiscalField;
   const company = await getOrCreateSingleCompany(auth.userId);
-  await Promise.all([ensureProductRegistryTable(), ensureProductSettingsCatalogTable()]);
 
   if (action === 'add') {
     const itemName = clean(name);

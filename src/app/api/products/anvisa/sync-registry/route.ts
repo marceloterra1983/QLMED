@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import {
-  getProductRegistryWithAnvisa,
-  getProductRegistryByKeys,
-  updateRegistryAnvisaData,
-  ensureProductRegistryTable,
-} from '@/lib/product-registry-store';
+import { getProductRegistryWithAnvisa, getProductRegistryByKeys, updateRegistryAnvisaData } from '@/lib/product-registry-store';
 import { fetchAnvisaData, type AnvisaRegistryData } from '@/lib/anvisa-api';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
@@ -28,7 +23,6 @@ export async function POST(req: Request) {
   }
 
   const company = await getOrCreateSingleCompany(userId);
-  await ensureProductRegistryTable();
 
   const body = await req.json().catch(() => ({}));
   const parsed = anvisaSyncRegistrySchema.safeParse(body);

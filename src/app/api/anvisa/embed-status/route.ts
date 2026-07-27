@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { apiValidationError } from '@/lib/api-error';
 
 type AnvisaSourceKey = 'produtos_saude' | 'medicamentos';
+
+const embedStatusQuerySchema = z.object({
+  source: z.enum(['produtos_saude', 'medicamentos']).default('produtos_saude'),
+});
 
 const PROBE_URLS: Record<AnvisaSourceKey, string> = {
   produtos_saude: 'https://consultas.anvisa.gov.br/',
@@ -35,7 +41,9 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const source = (searchParams.get('source') || 'produtos_saude') as AnvisaSourceKey;
+    const parsed = embedStatusQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const source: AnvisaSourceKey = parsed.data.source;
     const probeUrl = PROBE_URLS[source] || PROBE_URLS.produtos_saude;
 
     const response = await fetch(probeUrl, {

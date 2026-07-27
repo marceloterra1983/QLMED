@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
 
 export async function GET(
   req: Request,
@@ -10,6 +11,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const paramsParsed = idParamSchema.safeParse({ id });
+    if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
     let userId: string;
     try {
       userId = await requireAuth({ apiKeyScope: 'notifications:assets' });

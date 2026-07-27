@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const paramsParsed = idParamSchema.safeParse({ id });
+  if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
   let userId: string;
   try {
     const auth = await requireAdmin();

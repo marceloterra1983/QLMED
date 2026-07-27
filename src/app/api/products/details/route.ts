@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+
+const productDetailsQuerySchema = z
+  .object({
+    key: z.string().optional(),
+    code: z.string().optional(),
+  })
+  .refine((d) => Boolean(d.key || d.code), { message: 'Parâmetro key ou code obrigatório' });
 
 export async function GET(req: Request) {
   try {
@@ -15,15 +22,14 @@ export async function GET(req: Request) {
     }
 
     const company = await getOrCreateSingleCompany(userId);
-    await ensureProductRegistryTable();
 
     const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-    const code = searchParams.get('code');
-
-    if (!key && !code) {
-      return NextResponse.json({ error: 'Parâmetro key ou code obrigatório' }, { status: 400 });
-    }
+    const parsed = productDetailsQuerySchema.safeParse({
+      key: searchParams.get('key') || undefined,
+      code: searchParams.get('code') || undefined,
+    });
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const { key, code } = parsed.data;
 
     const row = key
       ? await prisma.productRegistry.findUnique({

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { refreshNcmCache } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { apiError } from '@/lib/api-error';
@@ -26,7 +25,6 @@ export async function POST() {
     }
 
     const company = await getOrCreateSingleCompany(auth.userId);
-    await ensureProductRegistryTable();
 
     const ncmRows = await prisma.productRegistry.findMany({
       where: {
