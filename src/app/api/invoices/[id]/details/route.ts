@@ -5,7 +5,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val } from '@/lib/xml-helpers';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
 import type { XmlNode } from '@/types/xml-common';
 import type { NFeInfNFe, NFeDet, NFeImposto, NFeTaxGroup } from '@/types/nfe-xml';
 import type { CTeInfCte, CTeProc, CTeInfQ, CTeInfNFe as CTeDocNFe, CTeComp } from '@/types/cte-xml';
@@ -502,6 +503,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const paramsParsed = idParamSchema.safeParse({ id });
+    if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
     let userId: string;
     try {
       userId = await requireAuth();

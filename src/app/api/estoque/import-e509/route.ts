@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import {
-  ensureStockEntryTable,
-  updateNfeEntryItemLot,
-  cloneNfeEntryItemBatch,
-} from '@/lib/stock-entry-store';
+import { updateNfeEntryItemLot, cloneNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
 import ExcelJS from 'exceljs';
 import { apiError, apiValidationError } from '@/lib/api-error';
@@ -58,7 +54,6 @@ export async function POST(req: Request) {
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
-    await ensureStockEntryTable();
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

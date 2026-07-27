@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable, updateRegistryAnvisaData } from '@/lib/product-registry-store';
+import { updateRegistryAnvisaData } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { anvisaUploadOpendataSchema } from '@/lib/schemas/product';
@@ -28,7 +28,6 @@ export async function POST(req: Request) {
   }
 
   const company = await getOrCreateSingleCompany(userId);
-  await ensureProductRegistryTable();
 
   const body = await req.json().catch(() => null);
   const parsed = anvisaUploadOpendataSchema.safeParse(body);

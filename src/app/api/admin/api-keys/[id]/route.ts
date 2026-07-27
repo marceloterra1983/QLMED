@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { idParamSchema } from '@/lib/schemas/common';
 
 /**
  * DELETE — soft-revoke an API key (sets revokedAt). Historical AccessLog
@@ -21,6 +22,9 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const paramsParsed = idParamSchema.safeParse({ id });
+    if (!paramsParsed.success) return apiValidationError(paramsParsed.error);
+
     const key = await prisma.apiKey.findUnique({ where: { id } });
     if (!key) {
       return NextResponse.json({ error: 'Chave não encontrada' }, { status: 404 });

@@ -4,7 +4,6 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { isImportEntryCfop, getCfopTagByCode } from '@/lib/cfop';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { cleanString, ensureArray, toNumber } from '@/lib/utils';
 import { extractAnvisa } from '@/lib/product-aggregation';
@@ -224,7 +223,6 @@ export async function GET(req: Request) {
     if (!userId) return unauthorizedResponse();
 
     const company = await getOrCreateSingleCompany(userId);
-    await ensureProductRegistryTable();
     const { dateFrom, dateTo, fromDate, toDate } = getReportDateRange(req);
     const cacheKey = `${company.id}:${dateFrom}:${dateTo}`;
     const cached = reportCache.get(cacheKey);

@@ -4,6 +4,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { buildProductsListPayload } from '@/lib/product-aggregation';
 import type { ProductsListQueryParams } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
+import { productsLegacyQuerySchema } from '@/lib/schemas/product';
+import { apiValidationError } from '@/lib/api-error';
 
 const log = createLogger('products');
 
@@ -28,6 +30,9 @@ export async function GET(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
+
+    const parsed = productsLegacyQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) return apiValidationError(parsed.error);
 
     const params: ProductsListQueryParams = {
       page: toPositiveInt(searchParams.get('page'), 1, 100000),

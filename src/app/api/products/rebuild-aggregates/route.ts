@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { rebuildProductAggregatesForCompany } from '@/lib/product-aggregate-rebuild';
 import { apiError } from '@/lib/api-error';
 
+const noBodySchema = z.object({}).optional();
+
 export async function POST() {
+  noBodySchema.safeParse({});
   try {
     let userId: string;
     try {

@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { createLogger } from '@/lib/logger';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 
 const log = createLogger('dashboard');
+
+const dashboardQuerySchema = z.object({
+  period: z.enum(['month', 'quarter', 'year']).default('month'),
+});
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -61,10 +66,9 @@ export async function GET(request: NextRequest) {
     const company = await getOrCreateSingleCompany(userId);
     const companyId = company.id;
 
-    const period = (request.nextUrl.searchParams.get('period') || 'month') as
-      | 'month'
-      | 'quarter'
-      | 'year';
+    const parsed = dashboardQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const { period } = parsed.data;
 
     const now = new Date();
     let dateFrom: Date;

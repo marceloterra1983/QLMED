@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
-import { upsertTaxTotals, upsertItemTaxes, ensureInvoiceTaxTables } from '@/lib/invoice-tax-store';
+import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
   }
 
   const company = await getOrCreateSingleCompany(userId);
-  await ensureInvoiceTaxTables();
 
   // Paginate NFE invoices and collect those without tax totals
   const ids: string[] = [];

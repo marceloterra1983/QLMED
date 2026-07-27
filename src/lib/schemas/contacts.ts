@@ -1,6 +1,30 @@
 import { z } from 'zod';
 
 /**
+ * Schema para GET /api/customers|suppliers (listagem de contatos).
+ */
+export const contactListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().max(10000).catch(1),
+  limit: z.coerce.number().int().positive().max(500).catch(50),
+  search: z.string().max(200).catch(''),
+  sort: z
+    .enum([
+      'name',
+      'cnpj',
+      'documents',
+      'documentsPrevYear',
+      'documentsCurrentYear',
+      'value',
+      'firstIssue',
+      'lastIssue',
+      'city',
+    ])
+    .catch('name'),
+  order: z.enum(['asc', 'desc']).catch('desc'),
+  exportAll: z.enum(['0', '1']).catch('0'),
+});
+
+/**
  * Schema para POST /api/contacts/cnpj-monitor
  * Executa verificacao em lote de CNPJs.
  */

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { z } from 'zod';
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
     }
 
     const company = await getOrCreateSingleCompany(userId);
-    await ensureProductRegistryTable();
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

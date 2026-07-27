@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAuth, unauthorizedResponse, revokeUserSessions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { apiError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('auth/logout');
+const noBodySchema = z.object({}).optional();
 
 /**
  * Server-side logout. Clients still call NextAuth's `signOut()` to clear
@@ -17,6 +19,7 @@ const log = createLogger('auth/logout');
  * closes the login→logout loop.
  */
 export async function POST() {
+  noBodySchema.safeParse({});
   let userId: string;
   try {
     userId = await requireAuth();

@@ -7,10 +7,6 @@ const log = createLogger('cnpj-monitor');
 
 // cnpj_monitoring is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-export async function ensureCnpjMonitoringTable(): Promise<void> {
-  return;
-}
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

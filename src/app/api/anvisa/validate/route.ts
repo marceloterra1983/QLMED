@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { fetchAnvisaData } from '@/lib/anvisa-api';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('anvisa/validate');
+
+const anvisaCodeSchema = z.object({
+  code: z.preprocess(
+    (value) => String(value ?? '').replace(/\D/g, ''),
+    z.string().min(7, 'Código ANVISA inválido. Informe pelo menos 7 dígitos.'),
+  ),
+});
 
 /**
  * GET /api/anvisa/validate?code=XXXXXXXXXXX
@@ -18,9 +26,10 @@ export async function GET(req: NextRequest) {
     return unauthorizedResponse();
   }
 
+  const codeParsed = anvisaCodeSchema.safeParse({ code: req.nextUrl.searchParams.get('code') });
   const code = (req.nextUrl.searchParams.get('code') || '').replace(/\D/g, '');
 
-  if (!code || code.length < 7) {
+  if (!code || code.length < 7 || !codeParsed.success) {
     return NextResponse.json(
       { error: 'Código ANVISA inválido. Informe pelo menos 7 dígitos.' },
       { status: 400 },

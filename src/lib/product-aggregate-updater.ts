@@ -6,17 +6,8 @@
 
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
-import { ensureProductRegistryTable } from '@/lib/product-registry-store';
 import { createLogger } from '@/lib/logger';
-import {
-  extractProductsFromXml,
-  buildProductKey,
-  normalizeUnit,
-  isResaleCustomer,
-  computeSearchText,
-  normalizeAnvisaRegistration,
-  type ProductFromXml,
-} from '@/lib/product-aggregation';
+import { extractProductsFromXml, buildProductKey, normalizeUnit, isResaleCustomer, computeSearchText, normalizeAnvisaRegistration, type ProductFromXml } from '@/lib/product-aggregation';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
@@ -56,8 +47,6 @@ export async function updateProductAggregatesForInvoice(opts: {
         { wait: true },
       );
     }
-
-    await ensureProductRegistryTable();
 
     const products = mergeProductLines(await extractProductsFromXml(opts.xmlContent));
     if (products.length === 0) return;

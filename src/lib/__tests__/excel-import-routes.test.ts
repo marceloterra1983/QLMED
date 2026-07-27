@@ -4,8 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requireEditor: vi.fn(),
   getOrCreateSingleCompany: vi.fn(),
-  ensureProductRegistryTable: vi.fn(),
-  ensureStockEntryTable: vi.fn(),
   registerInvoiceEntry: vi.fn(),
   updateNfeEntryItemLot: vi.fn(),
   cloneNfeEntryItemBatch: vi.fn(),
@@ -27,11 +25,7 @@ vi.mock('@/lib/auth', async () => {
 vi.mock('@/lib/single-company', () => ({
   getOrCreateSingleCompany: mocks.getOrCreateSingleCompany,
 }));
-vi.mock('@/lib/product-registry-store', () => ({
-  ensureProductRegistryTable: mocks.ensureProductRegistryTable,
-}));
 vi.mock('@/lib/stock-entry-store', () => ({
-  ensureStockEntryTable: mocks.ensureStockEntryTable,
   updateNfeEntryItemLot: mocks.updateNfeEntryItemLot,
   cloneNfeEntryItemBatch: mocks.cloneNfeEntryItemBatch,
 }));
@@ -79,8 +73,6 @@ describe('ExcelJS import route regressions', () => {
     vi.clearAllMocks();
     mocks.requireEditor.mockResolvedValue({ userId: 'user-1', role: 'editor' });
     mocks.getOrCreateSingleCompany.mockResolvedValue({ id: 'company-1' });
-    mocks.ensureProductRegistryTable.mockResolvedValue(undefined);
-    mocks.ensureStockEntryTable.mockResolvedValue(undefined);
     mocks.registerInvoiceEntry.mockResolvedValue(null);
     mocks.productRegistryUpdate.mockResolvedValue({ id: 'registry-1' });
     mocks.updateNfeEntryItemLot.mockResolvedValue({ id: 42, lot: 'LOT-2026' });
