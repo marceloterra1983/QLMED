@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" agent="QLMED-generator" version="22.1.0">
+  <diagram id="1fde39a7" name="09-backup-retention">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="450" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Backup e retenção QLMED" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=17;fontColor=#1a1a1a;" vertex="1" parent="1"><mxGeometry x="40" y="16" width="1000" height="34" as="geometry"/></mxCell>
+        <mxCell id="3" value="PostgreSQL
+qlmed-db" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="80" y="140" width="140" height="70" as="geometry"/></mxCell>
+        <mxCell id="4" value="qlmed-pg-backup.sh
+cron 03:00 e 19:00 UTC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="280" y="140" width="200" height="70" as="geometry"/></mxCell>
+        <mxCell id="5" value="/srv/backups/qlmed-pg/
+*.sql.gz
+retenção 14 dias
+(RAID1 md0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="540" y="100" width="200" height="90" as="geometry"/></mxCell>
+        <mxCell id="6" value="Google Drive
+rclone off-site
+qlmed-server-backups/qlmed-pg/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="540" y="230" width="220" height="80" as="geometry"/></mxCell>
+        <mxCell id="7" value="Volume app_storage
+xml_backup / pdf_backup
+YYYY_MM/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="80" y="280" width="200" height="80" as="geometry"/></mxCell>
+        <mxCell id="8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="4" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="11" value="Backups em /srv/backups (RAID1 sdb+sdc).
+Image rollback ≠ schema downgrade (expand/contract)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="280" y="280" width="300" height="90" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

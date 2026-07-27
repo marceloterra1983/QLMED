@@ -1,0 +1,3 @@
+# Vendored PDF.js viewer (20M) — third-party, drowns the graph in ~164 nodes
+# of viewer internals that say nothing about this codebase.
+public/pdfjs/

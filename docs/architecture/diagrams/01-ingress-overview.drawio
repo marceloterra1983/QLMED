@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" agent="QLMED-generator" version="22.1.0">
+  <diagram id="5a4d1f54" name="01-ingress-overview">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="650" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="QLMED Server — visão de ingress (Cloudflare Tunnel único)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=17;fontColor=#1a1a1a;" vertex="1" parent="1"><mxGeometry x="40" y="16" width="1000" height="34" as="geometry"/></mxCell>
+        <mxCell id="3" value="Internet" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="560" y="50" width="120" height="50" as="geometry"/></mxCell>
+        <mxCell id="4" value="Cloudflare
+SSL + DNS
+*.qlmed.com.br
+*.automatizems.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="520" y="130" width="200" height="80" as="geometry"/></mxCell>
+        <mxCell id="5" value="cloudflared
+qlmed-cloudflared
+tunnel único" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="520" y="240" width="200" height="70" as="geometry"/></mxCell>
+        <mxCell id="6" value="Zona QLMED" style="text;html=1;fontStyle=1;fontSize=13;strokeColor=none;fillColor=none;" vertex="1" parent="1"><mxGeometry x="40" y="340" width="120" height="30" as="geometry"/></mxCell>
+        <mxCell id="7" value="app.qlmed.com.br
+:13000 qlmed-app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="40" y="380" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="8" value="n8n.qlmed.com.br
+:5678 qlmed-n8n" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="220" y="380" width="150" height="60" as="geometry"/></mxCell>
+        <mxCell id="9" value="evolution.qlmed.com.br
+:8085 Evolution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="390" y="380" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="10" value="coolify / uptime / sdd / brain
+:8000 / :13001 / :8779 / :13080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="570" y="380" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="11" value="Zona Charlie / AutomatizeMS" style="text;html=1;fontStyle=1;fontSize=13;strokeColor=none;fillColor=none;" vertex="1" parent="1"><mxGeometry x="40" y="480" width="240" height="30" as="geometry"/></mxCell>
+        <mxCell id="12" value="n8n.automatizems.com
+Traefik → shared-n8n" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="40" y="520" width="180" height="60" as="geometry"/></mxCell>
+        <mxCell id="13" value="evolution.automatizems.com
+shared-evolution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="520" width="180" height="60" as="geometry"/></mxCell>
+        <mxCell id="14" value="status / sdd / toolkit / home / news
+(compartilhados ou Charlie)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="440" y="520" width="260" height="60" as="geometry"/></mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="13"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="14"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Nenhuma porta pública aberta na internet.
+Mesmo tunnel serve QLMED + Charlie — blast radius único.
+Fonte: stack-overview + networking SDD." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="820" y="130" width="280" height="100" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
