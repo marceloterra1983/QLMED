@@ -188,26 +188,30 @@ jobs:
             /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh \
             /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
 
+      - name: Preserve and verify manual rollback tag
+        if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
+        run: |
+          # Recria a tag manual a partir da referência protegida por run. Assim,
+          # mesmo que um prune remova qlmed-app:previous durante o deploy, ainda
+          # preservamos a imagem anterior antes de descartar a referência segura.
+          rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
+          docker image inspect "$rollback_image" >/dev/null
+          docker tag "$rollback_image" qlmed-app:previous
+          docker image inspect qlmed-app:previous >/dev/null \
+            || { echo "::error::qlmed-app:previous ausente após deploy — rollback manual quebrado"; exit 1; }
+          echo "qlmed-app:previous OK"
+
+      - name: Verify first-deploy rollback state
+        if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE != '1' }}
+        run: |
+          echo "Primeiro deploy sem container prévio — nada a verificar"
+
       - name: Clean run-scoped rollback tag
         if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
         run: |
-          # Deploy saudável: a tag por run já cumpriu o papel. A imagem anterior
-          # continua acessível via qlmed-app:previous para rollback manual.
+          # Só remove a referência segura depois de confirmar a tag manual. Se a
+          # verificação falhar, o passo de rollback ainda encontra esta imagem.
           docker rmi "qlmed-app:rollback-${GITHUB_RUN_ID}" >/dev/null 2>&1 || true
-
-      - name: Verify manual rollback tag survived
-        if: ${{ success() }}
-        run: |
-          # Rollback manual pós-deploy depende de qlmed-app:previous existir.
-          # Já sumiu uma vez (removida por prune) — auditoria 2026-07-21. Falha
-          # ruidosa se não sobreviveu ao deploy.
-          if [[ "${ROLLBACK_IMAGE_AVAILABLE:-0}" == "1" ]]; then
-            docker image inspect qlmed-app:previous >/dev/null \
-              || { echo "::error::qlmed-app:previous ausente após deploy — rollback manual quebrado"; exit 1; }
-            echo "qlmed-app:previous OK"
-          else
-            echo "Primeiro deploy sem container prévio — nada a verificar"
-          fi
 
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
