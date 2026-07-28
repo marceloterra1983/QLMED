@@ -36,14 +36,6 @@
 
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
-**Related ADRs**: [links or N/A]
-
-**Security/Ownership**: [roles, company boundary, sensitive data]
-
-**Rollout/Rollback**: [safe deployment and recovery; state "no deploy" when applicable]
-
-**Verification**: [exact docs, typecheck, lint, test, build and DB commands]
-
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -110,18 +102,6 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
-
-## Requirement-to-test traceability
-
-| Requirement / acceptance criterion | Test level | Planned file or command |
-|------------------------------------|------------|-------------------------|
-| [FR-001 / AC-001] | [unit/route/integration/manual] | [exact path or command] |
-
-## Risks
-
-| Risk | Impact | Mitigation | Rollback signal |
-|------|--------|------------|-----------------|
-| [risk] | [impact] | [mitigation] | [signal] |
 
 ## Complexity Tracking
 

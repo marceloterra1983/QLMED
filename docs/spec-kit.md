@@ -1,10 +1,10 @@
 # Spec Kit operations
 
-QLMED uses Spec Kit `0.12.11` no **projeto** (`.specify/`), instalado originalmente de:
+QLMED uses Spec Kit `0.14.2` no **projeto** (`.specify/`), instalado originalmente de:
 
 ```bash
 uv tool install specify-cli --force \
-  --from git+https://github.com/github/spec-kit.git@v0.12.11
+  --from git+https://github.com/github/spec-kit.git@v0.14.2
 specify --version
 ```
 
