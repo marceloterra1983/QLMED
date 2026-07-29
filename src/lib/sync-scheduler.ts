@@ -81,6 +81,19 @@ function hasElapsedInterval(lastCompletedAt: Date | null | undefined, now: Date,
   return (now.getTime() - lastCompletedAt.getTime()) >= intervalMinutes * 60 * 1000;
 }
 
+export function shouldRunScheduledSync(
+  lastStartedAt: Date | null | undefined,
+  now: Date,
+  intervalMinutes: number,
+  timeZone: string,
+): boolean {
+  if (!lastStartedAt) return true;
+  if (getHourSlotKey(lastStartedAt, timeZone) === getHourSlotKey(now, timeZone)) {
+    return false;
+  }
+  return hasElapsedInterval(lastStartedAt, now, intervalMinutes);
+}
+
 export async function getSefazCooldown(companyId: string, now = new Date()): Promise<{
   active: boolean;
   lastRunAt: Date | null;
@@ -449,7 +462,9 @@ async function checkAndSync() {
           });
           if (running) continue;
 
-          // Evita mais de uma execução automática de NSDocs dentro da mesma hora.
+          // Mede o intervalo pelo INÍCIO da execução anterior. Usar completedAt
+          // fazia um job de 60 min iniciado em HH:00 e concluído em HH:01 perder
+          // o slot seguinte (HH+1:00), reduzindo a frequência real para 2 horas.
           const lastNsdocsRun = await prisma.syncLog.findFirst({
             where: {
               companyId: company.id,
@@ -457,17 +472,15 @@ async function checkAndSync() {
               status: { in: ['completed', 'error'] },
             },
             orderBy: { completedAt: 'desc' },
-            select: { completedAt: true },
+            select: { startedAt: true },
           });
           if (
-            lastNsdocsRun?.completedAt &&
-            getHourSlotKey(lastNsdocsRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-          ) {
-            continue;
-          }
-          if (
-            lastNsdocsRun?.completedAt &&
-            !hasElapsedInterval(lastNsdocsRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+            !shouldRunScheduledSync(
+              lastNsdocsRun?.startedAt,
+              now,
+              normalizeSyncIntervalMinutes(config.syncInterval),
+              AUTO_SYNC_TIMEZONE,
+            )
           ) {
             continue;
           }
@@ -512,17 +525,15 @@ async function checkAndSync() {
               status: { in: ['completed', 'error'] },
             },
             orderBy: { completedAt: 'desc' },
-            select: { completedAt: true },
+            select: { startedAt: true },
           });
           if (
-            lastReceitaRun?.completedAt &&
-            getHourSlotKey(lastReceitaRun.completedAt, AUTO_SYNC_TIMEZONE) === currentHourSlotKey
-          ) {
-            continue;
-          }
-          if (
-            lastReceitaRun?.completedAt &&
-            !hasElapsedInterval(lastReceitaRun.completedAt, now, normalizeSyncIntervalMinutes(config.syncInterval))
+            !shouldRunScheduledSync(
+              lastReceitaRun?.startedAt,
+              now,
+              normalizeSyncIntervalMinutes(config.syncInterval),
+              AUTO_SYNC_TIMEZONE,
+            )
           ) {
             continue;
           }
