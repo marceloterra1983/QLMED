@@ -1,7 +1,7 @@
 # Spec Kit operations
 
-QLMED uses Spec Kit no **projeto** (`.specify/`), pin em
-`.specify/init-options.json` → `speckit_version`. Instalação/upgrade do CLI:
+QLMED uses Spec Kit `0.14.2` no **projeto** (`.specify/`, pin em
+`init-options.json`). Instalação/upgrade do CLI:
 
 ```bash
 uv tool install specify-cli --force \
@@ -10,7 +10,7 @@ specify --version
 ```
 
 O CLI no host pode estar à frente do pin do projeto — isso é esperado até o PR
-diário de upgrade ser revisado e mergeado (ex.: `chore/speckit-upgrade-v0.14.2`).
+diário de upgrade ser revisado e mergeado.
 
 The project uses the `codex` integration in skills mode. Configuration and
 installed skills are committed under `.specify/` and `.agents/skills/`.
