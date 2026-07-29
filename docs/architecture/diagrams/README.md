@@ -22,7 +22,7 @@ Fontes: SDD (`/srv/shared/sdd/specs/server/…`), `docker-compose.yml`, `qlmed-a
 | 03 | `app-modules` | Next.js painel, API, lib, Prisma |
 | 04 | `external-integrations` | SEFAZ, NSDocs, Receita, ANVISA, OneDrive, Evolution, n8n |
 | 05 | `deploy-pipeline` | CI → aprovação → runner → health/rollback |
-| 06 | `dev-prod-data` | app-dev :3001, `qlmed_dev` vs `postgres`, db-proxy |
+| 06 | `dev-prod-data` | app-dev :3000 (`npm run dev`), `qlmed_dev` vs `postgres`, db-proxy |
 | 07 | `invoice-sync` | NF-e / CT-e DistDFe / NFS-e → ingest |
 | 08 | `notifications-whatsapp` | Outbox + worker + Evolution + n8n |
 | 09 | `backup-retention` | pg_dump local + GDrive |

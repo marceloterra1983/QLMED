@@ -13,9 +13,10 @@ related_specs: []
 As sincronizações periódicas com fontes fiscais (SEFAZ, NSDocs, Receita/NFS-e) e
 o watcher local de XML são disparados por um scheduler in-process
 (`src/lib/sync-scheduler.ts`) via `setInterval`/`setTimeout`, iniciado pelo
-`instrumentation.register()` do Next.js. Não há lock distribuído. O painel de
-especialistas (2026-07-22) apontou o teto de escala horizontal: múltiplas
-réplicas duplicariam o sync.
+bootstrap lazy em `src/lib/prisma.ts` → `src/lib/bootstrap.ts` (não via
+`instrumentation.register()`, que só valida env). Não há lock distribuído. O
+painel de especialistas (2026-07-22) apontou o teto de escala horizontal:
+múltiplas réplicas duplicariam o sync.
 
 ## Decision drivers
 

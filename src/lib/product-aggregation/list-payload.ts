@@ -1,12 +1,10 @@
 /**
- * GET /api/products list payload (moved from src/app/api/products/route.ts
- * — CODEDUP-01 / Phase 12 plan 12-01). This is a pure Extract-Method: the
- * per-request aggregation below is intentionally NOT unified with
- * `aggregateProductsFromInvoices` in aggregate.ts — that function paginates through
- * ALL invoices with no cap (used by the batch rebuild job), while this one
- * preserves route.ts's original MAX_INVOICES/MAX_ISSUED_INVOICES/
- * MAX_IMPORT_INVOICES caps and `Set<string>`-based invoiceIds bookkeeping.
- * Unifying them would be a behavior change, which is out of scope here.
+ * GET /api/products list payload (CODEDUP-01 / Phase 12 plan 12-01).
+ * Pure Extract-Method: intentionally NOT unified with
+ * `aggregateProductsFromInvoices` in aggregate.ts — that function paginates
+ * through ALL invoices with no cap (batch rebuild job), while this one keeps
+ * the route's MAX_INVOICES / MAX_ISSUED_INVOICES / MAX_IMPORT_INVOICES caps and
+ * `Set<string>` invoiceIds bookkeeping. Unifying would change behavior.
  */
 
 import prisma from '@/lib/prisma';

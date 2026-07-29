@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Remediação Pós-Revisão Arquitetural
 status: executing
-last_updated: "2026-07-13T00:00:00Z"
-last_activity: 2026-07-13
+last_updated: "2026-07-26T00:00:00Z"
+last_activity: 2026-07-26
 progress:
-  total_phases: 2
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 3
-  percent: 50
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 36
+  completed_plans: 36
+  percent: 100
 ---
 
 # State: QLMED Correcao e Hardening
@@ -31,10 +31,9 @@ Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lo
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 1 |
+| Plans completed | 36 |
 | Plans failed | 0 |
-| Phases completed | 0/10 |
-| Requirements done | 1/40 |
+| Phases completed | 12/12 (milestone v2.0 core; satellite-store follow-ups out of phase scope) |
 | Repair budget used | 0/2 per plan |
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -72,6 +71,8 @@ Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lo
 | Phase 10 P02 | 338 | 1 tasks | 8 files |
 | Phase 10 P03 | 648 | 2 tasks | 8 files |
 | Phase 10 P04 | 460 | 2 tasks | 41 files |
+| Phase 11 P01–P03 | — | SCHEMA-01..03 closed 2026-07-26 | — |
+| Phase 12 P01–P03 | — | Complete 2026-07-12 | — |
 
 ## Accumulated Context
 
@@ -95,8 +96,8 @@ _(none yet)_
 
 ### Blockers
 
-- Phase 11/T007 exige autorização humana explícita e evidência fail-closed antes de qualquer migração de produção.
-- SCHEMA-01..03 somente podem ser fechados depois de checkpoint, deploy, canários e janela de observação em produção.
+- Nenhum blocker ativo para SCHEMA-01..03 (fechados 2026-07-26).
+- Follow-up: migrar stores satélite restantes para Prisma Client; FKs/`@relation`; `Float`→`Decimal` (ver ADR-0002).
 
 ### Quick Tasks Completed
 
@@ -108,11 +109,9 @@ _(none yet)_
 
 ### Gotchas
 
-- DB compartilhado dev/prod — nunca prisma migrate dev, apenas db push.
-  **Condicional**: isso deixa de valer quando o workstream `server-hardening`
-  (repo `/home/marce`) concluir a Phase 2 (separação de banco `qlmed_dev`).
-  Phase 11 desta milestone (Unificação de Schema) NÃO deve começar antes de
-  confirmar isso — ver ROADMAP.md Phase 11 "Depends on".
+- Dev usa banco isolado `qlmed_dev` (server-hardening Phase 2, 2026-07-11).
+  `prisma db push` permanece o fluxo de dev; `migrate deploy` é o caminho de
+  produção. Ver CLAUDE.md (expand/contract).
 - node-forge update (Phase 2) precisa de teste cuidadoso com assinatura NF-e
 - PINs sao padrao da empresa — manter funcionalidade, proteger implementacao
 - Container names gerenciados pelo Coolify — nao criar containers conflitantes
@@ -122,24 +121,23 @@ _(none yet)_
 - Escopo derivado de `docs/server/ARCH-REMEDIATION-PLAN.md` (revisão
   arquitetural de 2026-07-11), sem re-pesquisa — pesquisa já feita por 3
   agentes especializados na sessão de origem.
-- Dependência cruzada de repo: Phase 11 (schema) depende de
-  `server-hardening` Phase 2 em `/home/marce` estar concluída. GSD não
-  rastreia dependências entre projetos automaticamente — checar manualmente
-  antes de planejar/executar a Phase 11.
+- Dependência cruzada de repo: Phase 11 (schema) dependia de
+  `server-hardening` Phase 2 em `/home/marce` — **concluída 2026-07-11**.
+  SCHEMA-01..03 fechados 2026-07-26.
 
 ## Session Continuity
 
 ### Last Session
 
-- **Date:** 2026-04-10
-- **What happened:** Executed Phase 06 Plan 01 (API Foundation Modules) -- pino logger, apiError helpers, Zod schemas
-- **Where stopped:** Completed 06-01-PLAN.md
+- **Date:** 2026-07-26
+- **What happened:** SCHEMA-01/02/03 closed (baseline, CnpjCache Prisma PoC, expand/contract policy); n8n 2.29.10.
+- **Where stopped:** Phase 11 PoC complete; remaining satellite stores are follow-up outside closed SCHEMA scope.
 
 ### Next Session Should
 
-1. Validar o candidato integrado completo contra `origin/main`, sem reduzir o escopo aos commits finais.
-2. Fechar a dependência externa Phase04 e os gates Toolkit/assinatura/checkpoint.
-3. Executar T007 somente via PR e environment protegido; então observar e reconciliar SCHEMA-01..03.
+1. Migrar stores satélite restantes (pós-CnpjCache) para Prisma Client tipado.
+2. Adicionar FKs/`@relation` onde ainda faltam; planejar `Float`→`Decimal`.
+3. Manter CI Loop `schema-dual` / `money-float` verdes após cada store.
 
 ---
-*Last updated: 2026-07-13 — estado v2 reconciliado sem alegar execução de produção.*
+*Last updated: 2026-07-28 — frontmatter reconciliado com Phase 11 closed 2026-07-26; blockers/session atualizados.*

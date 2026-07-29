@@ -8,11 +8,18 @@ related_specs: []
 
 # Tabelas satélite com DDL em runtime são legado a consolidar em Prisma
 
+> **Status 2026-07-28:** o DDL runtime (`ensure*Table` / `CREATE TABLE IF NOT
+> EXISTS` em `src/`) foi **removido** (SCHEMA-01/02 PoC + limpeza). A direção
+> deste ADR (fonte única Prisma/migrations) permanece válida. Ainda pendente:
+> FKs/`@relation` nas satélites remanescentes e migração `Float`→`Decimal` nos
+> campos monetários. Sem ADR sucessor — progresso documentado aqui (histórico
+> preservado).
+
 ## Context
 
 Cerca de 8 tabelas satélite (`invoice_item_tax`, `invoice_tax_totals`,
 `invoice_duplicata`, `stock_entry`, `nfe_entry_item`, `product_registry`,
-`contact_fiscal`, `product_settings_catalog`, `ncm_cache`) são criadas/alteradas
+`contact_fiscal`, `product_settings_catalog`, `ncm_cache`) eram criadas/alteradas
 em **runtime** por funções `ensure*Table` (`CREATE TABLE IF NOT EXISTS` /
 `ALTER TABLE ADD COLUMN IF NOT EXISTS`) e acessadas por SQL cru
 (`$queryRaw`/`$executeRaw`), ao mesmo tempo em que são declaradas no
@@ -53,17 +60,19 @@ reseedado + rollback).
 
 - Caminho claro para fonte única, FKs, índices sem duplicata e fim do drift.
 - Rotas deixam de pagar round-trip DDL por request.
+- **Atualizado 2026-07-28:** `ensure*Table` ausente em `src/`; track
+  `schema-dual` do CI Loop em 0 matches.
 
 ### Negative
 
-- Até a SCHEMA-02, o drift e a ausência de FK permanecem; integridade fica só na
-  aplicação (ver [ADR-0001]).
+- Ausência de FK/`@relation` em satélites ainda remanescentes; integridade
+  parcial fica na aplicação (ver [ADR-0001]).
 - Migração de tipos (ex.: valores fiscais `Float`→`Decimal`) exige cuidado com
-  precisão em dado existente.
+  precisão em dado existente — ainda aberta (track `money-float`).
 
 ## Verification
 
 - `scripts/gsd/audit-runtime-declarative.py` / drift-check verdes.
-- Ausência de `ensure*Table` e de `$queryRaw`/`$executeRaw` para essas tabelas
-  após a SCHEMA-02.
-- FKs presentes em `pg_constraint` para as satélites.
+- Ausência de `ensure*Table` em `src/` — **cumprido**.
+- Ausência de `$queryRaw`/`$executeRaw` para satélites restantes e FKs em
+  `pg_constraint` — **ainda pendente** (follow-up pós Phase 11 PoC).

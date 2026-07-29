@@ -78,6 +78,6 @@
     "next": "15",
     "react": "19",
     "prisma": "7",
-    "n8nImage": "2.23.4"
+    "n8nImage": "2.29.10"
   }
 }

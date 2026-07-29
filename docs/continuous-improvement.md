@@ -64,4 +64,4 @@ Cada iteração do produto pode adicionar tracks (ex.: “zero Float em tax”, 
 - `product-aggregation` fatiado em módulos (barrel preservado)
 - Testes: money, ssl-verify, with-auth, mutation-roles, parse-invoice-tax
 
-Ainda manuais / fases seguintes: SCHEMA-02 (ensure*), Float→Decimal, Next 16, Tailwind 4, restante de vulns exceljs/archiver.
+Ainda manuais / fases seguintes: SCHEMA-02 (FKs / acesso tipado nas satélites — `ensure*Table` já removido de `src/`), Float→Decimal no Prisma, Next 16, Tailwind 4, restante de vulns exceljs/archiver.
