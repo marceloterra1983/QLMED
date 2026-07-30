@@ -16,7 +16,11 @@ concurrency:
 jobs:
   changes:
     name: changes
-    runs-on: ubuntu-latest
+    # Self-hosted: GitHub-hosted minutes blocked by account billing/spending limit
+    # after recovery (2026-07-30). Keep label aligned with production runner.
+    runs-on:
+      - self-hosted
+      - qlmed-prod
     timeout-minutes: 5
     outputs:
       # Push to main always runs the full app job (deploy gate).
@@ -57,7 +61,9 @@ jobs:
     name: docs
     needs: changes
     if: needs.changes.outputs.app != 'true'
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - qlmed-prod
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -81,7 +87,9 @@ jobs:
     name: app
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - qlmed-prod
     timeout-minutes: 30
     services:
       postgres:
@@ -90,15 +98,16 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: qlmed_ci
           POSTGRES_DB: qlmed_ci
+        # 5433 avoids colliding with production qlmed-db on the same host.
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d qlmed_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
     env:
-      DATABASE_URL: postgresql://postgres:qlmed_ci@127.0.0.1:5432/qlmed_ci?schema=public
+      DATABASE_URL: postgresql://postgres:qlmed_ci@127.0.0.1:5433/qlmed_ci?schema=public
       NEXTAUTH_SECRET: ci-only-secret
       NEXTAUTH_URL: http://127.0.0.1:3000
 
@@ -163,7 +172,9 @@ jobs:
     name: quality
     needs: [changes, docs, app]
     if: always() && needs.changes.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - qlmed-prod
     timeout-minutes: 5
     steps:
       - name: Gate required status check
