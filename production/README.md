@@ -21,7 +21,7 @@ Fonte de verdade dos manifests de producao do QLMED.
 ## Fonte de verdade
 
 - o repositorio `QLMED` e a unica fonte de verdade para codigo e manifests de producao
-- `/home/marce/qlmed/production` e legado e nao deve mais ser usado como alvo de manutencao ou deploy
+- `/home/marce/qlmed/production` e o destino de sync do workflow `QLMED Production Deploy`; nao editar a mao no host
 
 ## Deploy
 
@@ -29,14 +29,15 @@ Fonte de verdade dos manifests de producao do QLMED.
 - somente apos CI aprovado, `QLMED Production Deploy` publica exatamente o SHA validado
 - `npm run publish:server` e o caminho operacional padrao porque faz o push e espera o `https://app.qlmed.com.br/api/health` refletir o commit publicado
 - `scripts/deploy-server.sh --legacy` permanece apenas como recuperacao operacional manual
+- rollback da producao publica: imagens `qlmed-app:rollback-*` / `qlmed-app:previous` (ou re-deploy de SHA)
 - no Coolify, o Postgres 18 deve montar o volume em `/var/lib/postgresql` com `PGDATA=/var/lib/postgresql/18/docker`; voltar para `/var/lib/postgresql/data` recria um volume anonimo vazio a cada deploy
 - os segredos continuam apenas no host remoto
 - `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` completo do release ativo
 
 ## Notificacoes fiscais
 
-- o deploy instala `/home/marce/notification-outbox-worker.py` e substitui apenas os crons legados de NF-e/CT-e
-- os arquivos `/home/marce/nfe-notify/.env` e `/home/marce/cte-notify/.env` devem manter `QLMED_API_URL` para a API interna e `QLMED_PUBLIC_URL=https://app.qlmed.com.br` para os links enviados aos usuarios
+- o deploy copia o worker do release e instala em `/srv/qlmed/services/notification-outbox/worker.py` (via `scripts/install-notification-outbox-cron.sh`)
+- envs em `/srv/qlmed/services/nfe-notify/.env` e `/srv/qlmed/services/cte-notify/.env` devem manter `QLMED_API_URL` para a API interna e `QLMED_PUBLIC_URL=https://app.qlmed.com.br` para os links enviados aos usuarios
 - o worker deve usar uma chave dedicada com escopos `notifications:dispatch` e `notifications:assets`; nunca reutilize uma chave administrativa
 - cada nota recebida cria o evento e as entregas por destinatario/canal na mesma transacao
 - mensagens WhatsApp usam `/r/<deliveryId>` para registrar o clique em `NotificationClick` antes de redirecionar para a tela fiscal correta

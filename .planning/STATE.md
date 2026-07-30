@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Remediação Pós-Revisão Arquitetural
 status: executing
-last_updated: "2026-07-13T00:00:00Z"
-last_activity: 2026-07-13
+last_updated: "2026-07-26T00:00:00Z"
+last_activity: 2026-07-26
 progress:
-  total_phases: 2
-  completed_phases: 1
+  total_phases: 12
+  completed_phases: 11
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 6
+  percent: 92
 ---
 
 # State: QLMED Correcao e Hardening

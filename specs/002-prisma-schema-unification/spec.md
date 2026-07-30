@@ -1,8 +1,9 @@
 ---
 id: SPEC-002
-status: draft
+status: active
 owner: QLMED
-related_decisions: []
+related_decisions:
+  - ADR-0005
 affected_modules:
   - prisma
   - persistence-stores
@@ -13,10 +14,11 @@ affected_modules:
 
 ## Problem
 
-QLMED currently has satellite tables represented through `@@ignore` models and
-legacy runtime DDL/store helpers. This creates two schema authorities and weakens
-migration, type-safety and rollback reasoning. GSD Phase 11 already defines the
-delivery sequence; this spec is the behavioral and safety contract.
+Satellite tables used to be dual-sourced via `@@ignore` / runtime `ensure*Table`
+DDL alongside Prisma. Runtime DDL and `@@ignore` are already gone from `src/` and
+`prisma/schema.prisma`; remaining work is typed Client migration for residual
+stores, FKs, and expand/contract discipline. GSD Phase 11 defines the delivery
+sequence; this spec is the behavioral and safety contract.
 
 ## User scenarios
 

@@ -2,9 +2,9 @@
 
 ## Fonte de verdade (produção)
 
-- Snapshot git diário: `~/shared/ops/n8n/qlmed-workflows-snapshot/`
+- Snapshot git diário: `~/server-ops/shared/ops/n8n/qlmed-workflows-snapshot/`
 - Instância: https://n8n.qlmed.com.br/ (container `qlmed-n8n`)
-- Promoção staging→prod: `~/shared/ops/scripts/n8n-promote.sh`
+- Promoção staging→prod: `~/server-ops/shared/ops/scripts/n8n-promote.sh`
 
 ## Workflows versionados neste diretório
 
@@ -27,14 +27,14 @@
    systemctl --user enable --now qlmed-speckit-update-listener.service
    curl -sS http://127.0.0.1:18644/health
    ```
-2. Token em `~/qlmed/ops/secrets/speckit-update.token` — exportar no `env/n8n.env`:
+2. Token em `~/server-ops/qlmed/ops/secrets/speckit-update.token` — exportar no `env/n8n.env`:
    ```bash
-   SPECKIT_UPDATE_TOKEN=$(cat ~/qlmed/ops/secrets/speckit-update.token)
+   SPECKIT_UPDATE_TOKEN=$(cat ~/server-ops/qlmed/ops/secrets/speckit-update.token)
    ```
    Reiniciar `qlmed-n8n` após incluir a variável.
 3. Importar (staging preferível) e promover:
    ```bash
-   docker cp ~/qlmed/app-dev/n8n/workflows/speckitDailyUpdate01.json qlmed-n8n:/tmp/
+   docker cp ~/qlmed/n8n/workflows/speckitDailyUpdate01.json qlmed-n8n:/tmp/
    docker exec qlmed-n8n n8n import:workflow --input=/tmp/speckitDailyUpdate01.json
    # Ativar na UI e publicar versão (n8n 2.x exige activeVersionId)
    ```

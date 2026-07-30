@@ -1,6 +1,6 @@
 # Implementation Plan: Prisma schema unification
 
-**Status:** Draft — implementation not authorized by this initialization step.
+**Status:** Pilot delivery complete in Phase 11 (baseline + PoC + expand/contract docs). Remaining: human authorization for further production store migrations (tasks T007) and residual FKs / typed stores (ADR-0005).
 
 ## Sequence
 

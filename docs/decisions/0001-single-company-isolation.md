@@ -10,12 +10,13 @@ related_specs: []
 
 ## Context
 
-O QLMED é multi-tenant: cada empresa (Company) só pode ver/alterar seus próprios
-dados fiscais (invoices, produtos, estoque, financeiro). Toda tabela de negócio
-carrega `companyId`, e o filtro por empresa precisa ser inviolável — vazamento
-cross-company num sistema fiscal é incidente grave. A decisão vinha sendo
-aplicada em todo o código sem registro formal (painel de especialistas
-2026-07-22).
+O modelo de dados do QLMED é multi-tenant (cada `Company` isola invoices,
+produtos, estoque, financeiro via `companyId`), mas a operação atual é
+**single-company** (`src/lib/single-company.ts`): o contexto de empresa vem da
+identidade autenticada, não de um seletor multi-empresa. O filtro por empresa
+precisa ser inviolável — vazamento cross-company num sistema fiscal é incidente
+grave. A decisão vinha sendo aplicada em todo o código sem registro formal
+(painel de especialistas 2026-07-22).
 
 ## Decision drivers
 

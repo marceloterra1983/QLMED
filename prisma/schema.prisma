@@ -527,7 +527,7 @@ model InvoiceDuplicata {
   @@map("invoice_duplicata")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Baseline: physical table predated Prisma ownership; store uses Prisma Client (Phase 11).
 model NcmCache {
   code            String   @id
   descricao       String   @default("")
@@ -540,7 +540,7 @@ model NcmCache {
   @@map("ncm_cache")
 }
 
-// Baseline: the physical table predates Prisma ownership. The store remains raw SQL until SCHEMA-02 follow-up.
+// Baseline: physical table predated Prisma ownership; store uses Prisma Client (Phase 11).
 model ProductRegistry {
   id                        String    @id
   companyId                 String    @map("company_id")

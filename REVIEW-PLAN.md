@@ -6,6 +6,10 @@
 
 ---
 
+> **SUPERSEDED (2026-07-30).** Plano de abr/2026 absorvido pelo roadmap GSD
+> (`.planning/`) e pelas fases 01–12. Manter só como arquivo histórico; não
+> usar como checklist operacional.
+
 ## Visão Geral
 
 10 fases organizadas por prioridade (risco + impacto). Cada fase é uma branch + PR independente.

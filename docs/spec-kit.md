@@ -37,9 +37,9 @@ drift/PR/erro).
 | Peça | Path |
 |------|------|
 | Workflow | `n8n/workflows/speckitDailyUpdate01.json` (id `speckitDailyUpdate01`) |
-| Script | `~/qlmed/ops/scripts/qlmed-speckit-daily-update.sh` |
-| Listener | `~/qlmed/ops/scripts/qlmed-speckit-update-listener.py` (:18644) |
-| Token | `~/qlmed/ops/secrets/speckit-update.token` → env `SPECKIT_UPDATE_TOKEN` no n8n |
+| Script | `~/server-ops/qlmed/ops/scripts/qlmed-speckit-daily-update.sh` |
+| Listener | `~/server-ops/qlmed/ops/scripts/qlmed-speckit-update-listener.py` (:18644) — **a restaurar no host** (ausente pós-recovery) |
+| Token | `~/server-ops/qlmed/ops/secrets/speckit-update.token` → env `SPECKIT_UPDATE_TOKEN` no n8n |
 | systemd | `~/.config/systemd/user/qlmed-speckit-update-listener.service` |
 
 Comportamento do script (`--mode update`):
@@ -55,7 +55,7 @@ Comportamento do script (`--mode update`):
 Check manual (sem efeitos):
 
 ```bash
-~/qlmed/ops/scripts/qlmed-speckit-daily-update.sh --mode check --json
-curl -sS -H "X-Speckit-Token: $(cat ~/qlmed/ops/secrets/speckit-update.token)" \
+~/server-ops/qlmed/ops/scripts/qlmed-speckit-daily-update.sh --mode check --json
+curl -sS -H "X-Speckit-Token: $(cat ~/server-ops/qlmed/ops/secrets/speckit-update.token)" \
   -X POST http://127.0.0.1:18644/check
 ```

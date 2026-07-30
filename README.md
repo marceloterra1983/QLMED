@@ -2,31 +2,32 @@
 
 Modelo operacional do projeto:
 
-- `dev` fica no computador `dev`
-- `prod` fica no computador `server`
+- `prod` fica no computador `server` (checkout canônico do app: `~/qlmed`)
+- scripts/ops do host ficam em `~/server-ops/qlmed/ops` (e shared em `~/server-ops/shared/ops`)
 - `n8n` existe em `dev` e em `prod`
 - `Evolution` fica somente em `prod`
+- um host `dev` dedicado permanece o alvo preferido para desenvolvimento isolado, quando disponível
 
 ## Desenvolvimento
 
-- `n8n dev`: `http://100.123.233.116:5678/`
-- `app dev` via `npm run dev`: `http://100.123.233.116:3000/`
-- `app dev` via Docker: `http://100.123.233.116:3001/`
+- `n8n dev`: `http://100.83.11.58:5678/`
+- `app dev` via `npm run dev`: `http://100.83.11.58:3000/`
+- `app dev` via Docker: `http://100.83.11.58:3001/`
 - `Evolution usado pelo dev`: `https://evolution.qlmed.com.br`
 
 ## Fonte de verdade
 
 - todo desenvolvimento do app deve acontecer em `QLMED`
-- os manifests de producao ficam em `QLMED/production`
-- `/home/marce/qlmed/production` e apenas um snapshot legado e nao deve receber novas mudancas
-- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` seguido do auto deploy do Coolify
+- os manifests de producao versionados ficam em `QLMED/production` (no repo)
+- `/home/marce/qlmed/production` e o destino de deploy do workflow; nao editar la a mao
+- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` seguido do workflow GitHub Actions `deploy-production.yml` (aprovacao no environment `production`)
 
 ## Publicacao
 
 - antes de publicar, validar o alinhamento com `npm run check:deploy`
 - para publicar o estado atual de `main`, usar `npm run publish:server`; o script faz `git push origin main` e espera o `https://app.qlmed.com.br/api/health` refletir o commit
-- `npm run deploy:server` e apenas um deploy manual/legado do compose em `/home/marce/qlmed/production`; nao e o caminho normal da producao publica
-- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada; para a producao publica o rollback correto continua sendo via Git + Coolify
+- `npm run deploy:server` e apenas um deploy manual/legado do compose; nao e o caminho normal da producao publica
+- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada; para a producao publica o rollback e via imagem `qlmed-app:rollback-*` / `qlmed-app:previous` no workflow (ou re-deploy de um commit anterior)
 - depois de publicar, confirmar o `build.commitSha` em `https://app.qlmed.com.br/api/health`
 
 ## Regras

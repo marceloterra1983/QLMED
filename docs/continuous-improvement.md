@@ -18,7 +18,7 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 | Peça | Path |
 |------|------|
 | Policy | `.ci-loop/policy.json` |
-| Script | `~/qlmed/ops/scripts/qlmed-app-ci-loop.sh` |
+| Script | `~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` |
 | Listener | `:18645` · `qlmed-ci-loop-listener.service` |
 | Workflow n8n | `n8n/workflows/qlmedCiLoop01.json` |
 | Estado local | `~/.local/state/qlmed-ci-loop/` |
@@ -32,8 +32,8 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 Manual:
 
 ```bash
-~/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
-curl -sS -H "X-Ci-Loop-Token: $(cat ~/qlmed/ops/secrets/ci-loop.token)" \
+~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
+curl -sS -H "X-Ci-Loop-Token: $(cat ~/server-ops/qlmed/ops/secrets/ci-loop.token)" \
   -X POST http://127.0.0.1:18645/audit
 ```
 
@@ -64,4 +64,4 @@ Cada iteração do produto pode adicionar tracks (ex.: “zero Float em tax”, 
 - `product-aggregation` fatiado em módulos (barrel preservado)
 - Testes: money, ssl-verify, with-auth, mutation-roles, parse-invoice-tax
 
-Ainda manuais / fases seguintes: SCHEMA-02 (ensure*), Float→Decimal, Next 16, Tailwind 4, restante de vulns exceljs/archiver.
+Ainda manuais / fases seguintes: SCHEMA-02 (FKs / acesso tipado residual — `ensure*Table` já removido de `src/`), Float→Decimal no Prisma, Next 16, Tailwind 4.

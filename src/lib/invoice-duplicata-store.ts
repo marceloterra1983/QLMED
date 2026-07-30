@@ -31,7 +31,7 @@ interface BackfillResult {
 
 // invoice_duplicata is schema-owned (Phase 11 baseline). No CREATE/ALTER at runtime.
 
-// ── XML extraction helpers (moved from financeiro-duplicatas.ts) ──
+// ── XML extraction helpers ──
 
 function extractTagValue(xml: string, tag: string): string {
   const re = new RegExp(`<(?:\\w+:)?${tag}\\b[^>]*>[\\s\\S]*?<\\/(?:\\w+:)?${tag}>`, 'i');

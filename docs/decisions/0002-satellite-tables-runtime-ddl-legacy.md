@@ -1,10 +1,14 @@
 ---
 id: ADR-0002
-status: accepted
+status: superseded
 date: 2026-07-22
 supersedes: null
 related_specs: []
 ---
+
+> **Superseded by [ADR-0005](0005-satellite-runtime-ddl-eliminated.md)** (2026-07-30):
+> runtime DDL/`ensure*Table` already removed from `src/`. Keep this record for
+> history; do not treat “Option A as current legacy” as the AS-IS.
 
 # Tabelas satélite com DDL em runtime são legado a consolidar em Prisma
 
@@ -63,7 +67,6 @@ reseedado + rollback).
 
 ## Verification
 
-- `scripts/gsd/audit-runtime-declarative.py` / drift-check verdes.
-- Ausência de `ensure*Table` e de `$queryRaw`/`$executeRaw` para essas tabelas
-  após a SCHEMA-02.
+- (histórico) drift-check / `npm run db:migrate:verify` verdes.
+- Ausência de `ensure*Table` — ver progresso em [ADR-0005](0005-satellite-runtime-ddl-eliminated.md).
 - FKs presentes em `pg_constraint` para as satélites.
