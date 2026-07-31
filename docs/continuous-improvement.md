@@ -18,7 +18,7 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 | Peça | Path |
 |------|------|
 | Policy | `.ci-loop/policy.json` |
-| Script | `~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` |
+| Script | `~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` |
 | Listener | `:18645` · `qlmed-ci-loop-listener.service` |
 | Workflow n8n | `n8n/workflows/qlmedCiLoop01.json` |
 | Estado local | `~/.local/state/qlmed-ci-loop/` |
@@ -32,8 +32,8 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 Manual:
 
 ```bash
-~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
-curl -sS -H "X-Ci-Loop-Token: $(cat ~/server-ops/qlmed/ops/secrets/ci-loop.token)" \
+~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
+curl -sS -H "X-Ci-Loop-Token: $(cat ~/ops/qlmed/ops/secrets/ci-loop.token)" \
   -X POST http://127.0.0.1:18645/audit
 ```
 

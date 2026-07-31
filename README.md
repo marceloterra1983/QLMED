@@ -7,7 +7,7 @@ Modelo operacional do projeto:
 - o runtime implantado do app, sem Git, fica em `/srv/qlmed/app`
 - o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed`
   (`~/qlmed/production` é o alias operacional)
-- scripts/ops do host ficam em `~/server-ops/qlmed/ops` (e shared em `~/server-ops/shared/ops`)
+- scripts/ops do host ficam em `~/ops/qlmed/ops` (e shared em `~/ops/shared/ops`)
 - `n8n` existe em `dev` e em `prod`
 - `Evolution` fica somente em `prod`
 - um host `dev` dedicado permanece o alvo preferido para desenvolvimento isolado, quando disponível
