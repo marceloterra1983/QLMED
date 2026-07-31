@@ -9,8 +9,9 @@ uv tool install specify-cli --force \
 specify --version
 ```
 
-O CLI no host pode estar à frente do pin do projeto — isso é esperado até o PR
-diário de upgrade ser revisado e mergeado.
+O CLI no host pode estar à frente do pin do projeto. O updater diário mantém o
+CLI atual, mas não altera automaticamente a integração versionada do projeto;
+esse upgrade continua sujeito à política manual abaixo.
 
 The project uses the `codex` integration in skills mode. Configuration and
 installed skills are committed under `.specify/` and `.agents/skills/`.
@@ -39,34 +40,34 @@ Never run a forced integration upgrade directly on `main`.
 
 ## Atualização automática diária (n8n)
 
-Fluxo: **n8n Schedule 07:00 (America/Campo_Grande)** → HTTP
-`host.docker.internal:18644/run` → script host → WhatsApp (só se houver
-drift/PR/erro).
+Fluxo: **shared-n8n Schedule 07:00** → HTTP
+`host.docker.internal:8765/speckit/update` → serviço host → WhatsApp (só se
+houver atualização ou erro). A cópia que existia no n8n QLMED foi removida em
+31/07/2026 para impedir execução duplicada.
 
 | Peça | Path |
 |------|------|
-| Workflow | `n8n/workflows/speckitDailyUpdate01.json` (id `speckitDailyUpdate01`) |
-| Script | `~/server-ops/qlmed/ops/scripts/qlmed-speckit-daily-update.sh` |
-| Listener | `~/server-ops/qlmed/ops/scripts/qlmed-speckit-update-listener.py` (:18644) — **a restaurar no host** (ausente pós-recovery) |
-| Token | `~/server-ops/qlmed/ops/secrets/speckit-update.token` → env `SPECKIT_UPDATE_TOKEN` no n8n |
-| systemd | `~/.config/systemd/user/qlmed-speckit-update-listener.service` |
+| Workflow | `~/server-ops/shared/ops/n8n/workflows-snapshot/SpecKitAutoUpd01.json` (id `SpecKitAutoUpd01`) |
+| Script | `~/server-ops/qlmed/ops/scripts/speckit-updater.py` |
+| Segredo | `/etc/qlmed/speckit-updater.env` → env `SPECKIT_WEBHOOK_SECRET` no serviço e no shared-n8n |
+| systemd | `/etc/systemd/system/speckit-updater.service` (porta 8765) |
 
-Comportamento do script (`--mode update`):
+Comportamento do serviço:
 
-1. Compara CLI local e pin do projeto (`.specify/init-options.json`) com a
-   latest release de `github/spec-kit`.
-2. Se o CLI estiver atrás → `specify self upgrade` no host.
-3. Se o **projeto** estiver atrás → cria branch `chore/speckit-upgrade-vX.Y.Z`
-   a partir de `main`, roda `specify integration upgrade --force` **somente na
-   branch**, abre PR e notifica. Não mergeia.
-4. Se já existir PR aberta para a mesma tag → reusa e notifica o link.
+1. Compara a versão do CLI no host com a latest release de `github/spec-kit`.
+2. Em `mode=apply`, atualiza somente o ambiente isolado do CLI em
+   `~/.local/share/specify-cli` quando houver versão nova.
+3. A constituição, os templates e o pin do projeto não são alterados pelo
+   workflow. Um upgrade da integração exige branch descartável, validação e PR
+   conforme a política acima.
+4. O endpoint exige `X-Webhook-Secret`, limita o corpo a 4 KiB e serializa
+   atualizações concorrentes.
 
 Check manual (sem efeitos):
 
 ```bash
-~/server-ops/qlmed/ops/scripts/qlmed-speckit-daily-update.sh --mode check --json
-curl -sS -H "X-Speckit-Token: $(cat ~/server-ops/qlmed/ops/secrets/speckit-update.token)" \
-  -X POST http://127.0.0.1:18644/check
+systemctl status speckit-updater.service --no-pager
+curl -fsS http://127.0.0.1:8765/healthz
 ```
 
 Validação local de docs do app:
