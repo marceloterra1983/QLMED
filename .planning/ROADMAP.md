@@ -23,7 +23,9 @@
 **Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
 Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
 
-- [x] **Phase 11: Unificação de Schema** - Baseline Prisma das tabelas satélite, PoC CnpjCache tipado, política expand/contract — SCHEMA-01..03 closed 2026-07-26; stores restantes = follow-up
+- [x] **Phase 11: Unificação de Schema** - Baseline Prisma, stores satélite em
+  Client tipado e política expand/contract — SCHEMA-01..03 closed 2026-07-26;
+  FKs e `Float`→`Decimal` permanecem como follow-up
 - [x] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado — concluída em 2026-07-12
 
 ## Phase Details
@@ -250,12 +252,16 @@ Plans:
   2. Ao menos a store de menor tráfego (cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
   3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
   4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
-**Plans:** 3/3 plans complete (SCHEMA-01..03 closed 2026-07-26). As tabelas
-satélite restantes (fora do PoC CnpjCache) ficam como follow-up pós-fase.
+**Plans:** 3/3 plans complete (SCHEMA-01..03 closed 2026-07-26). A migração
+das stores restantes foi concluída depois pelos PRs #52/#53; FKs e
+`Float`→`Decimal` ficam como follow-up pós-fase.
 Plans:
 - [x] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01) — completed 2026-07-26
 - [x] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02) — completed 2026-07-26
 - [x] 11-03-PLAN.md — Documentar política expand/contract em CLAUDE.md + comentário explícito no deploy-production.yml sobre rollback não desfazer migração (SCHEMA-03) — completed 2026-07-26
+
+Follow-up executado em 2026-07-26: PRs #52/#53 migraram as demais stores
+satélite para Prisma Client sem reabrir o escopo da fase.
 
 ### Phase 12: Desduplicação de Código
 **Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`

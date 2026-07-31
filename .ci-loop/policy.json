@@ -2,7 +2,7 @@
   "version": 1,
   "name": "qlmed-app-ci-loop",
   "repo": "marceloterra1983/QLMED",
-  "appDir": "app-dev",
+  "appDir": ".",
   "baseBranch": "main",
   "timezone": "America/Campo_Grande",
   "manualMajors": [
@@ -41,7 +41,7 @@
     },
     {
       "id": "money-float",
-      "title": "Precisão monetária: Float residual em schema Prisma",
+      "title": "Precis\u00e3o monet\u00e1ria: Float residual em schema Prisma",
       "severity": "high",
       "check": "rg_count",
       "pattern": "Float",
@@ -50,15 +50,15 @@
     },
     {
       "id": "god-module-aggregation",
-      "title": "Quebrar product-aggregation.ts (≤600 LOC)",
+      "title": "Manter product-aggregation fatiado (index \u2264600 LOC)",
       "severity": "medium",
       "check": "file_lines",
-      "path": "src/lib/product-aggregation.ts",
+      "path": "src/lib/product-aggregation/index.ts",
       "targetMax": 600
     },
     {
       "id": "test-coverage-lib",
-      "title": "Ampliar suites Vitest (mín. 30 arquivos)",
+      "title": "Ampliar suites Vitest (m\u00edn. 30 arquivos)",
       "severity": "medium",
       "check": "glob_count",
       "path": "src/lib/__tests__/*.{test,integration.test}.ts",
@@ -67,7 +67,7 @@
     },
     {
       "id": "zod-routes",
-      "title": "Zod em ≥80% das rotas API",
+      "title": "Zod em \u226580% das rotas API",
       "severity": "medium",
       "check": "zod_route_ratio",
       "targetMinRatio": 0.8

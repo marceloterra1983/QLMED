@@ -8,6 +8,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
+  '/cadastro/anvisa': { label: 'ANVISA', icon: 'medication' },
   '/estoque/entrada-nfe': { label: 'Entrada NF-e', icon: 'inventory' },
   '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
   '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },
@@ -21,6 +22,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/sistema/errors': { label: 'Erros', icon: 'warning' },
   '/sistema/upload': { label: 'Upload XML', icon: 'cloud_upload' },
   '/sistema/settings': { label: 'Configurações', icon: 'settings' },
+  '/sistema/automacoes': { label: 'Automações', icon: 'account_tree' },
   '/sistema/usuarios': { label: 'Usuários', icon: 'manage_accounts' },
 };
 
@@ -59,6 +61,7 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
         { label: 'Produtos', icon: 'inventory_2', href: '/cadastro/produtos' },
         { label: 'Clientes', icon: 'group', href: '/cadastro/clientes' },
         { label: 'Fornecedores', icon: 'storefront', href: '/cadastro/fornecedores' },
+        { label: 'ANVISA', icon: 'medication', href: '/cadastro/anvisa' },
       ],
     },
     {
@@ -97,6 +100,7 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
         { label: 'Erros', icon: 'warning', href: '/sistema/errors' },
         { label: 'Upload XML', icon: 'cloud_upload', href: '/sistema/upload' },
         { label: 'Configurações', icon: 'settings', href: '/sistema/settings' },
+        { label: 'Automações', icon: 'account_tree', href: '/sistema/automacoes' },
         ...(isAdmin ? [{
           label: 'Usuários',
           icon: 'manage_accounts',

@@ -34,11 +34,12 @@ tested without starting background loops.
 
 `src/lib/navigation.ts` (`PAGE_GROUPS`, `VALID_PAGE_PATHS`) is the canonical
 list of panel pages and validates `allowedPages` on the user PATCH endpoint.
-Every path rendered by `src/components/SidebarNav.tsx` must have a matching
-entry there: a missing entry makes per-user page customization fail with
-"Páginas inválidas" while the sidebar still renders, so the mismatch is
-invisible until someone edits a user. When adding or moving a sidebar page,
-update both files in the same change.
+**Invariant (one-way):** every `href` in `src/components/SidebarNav.tsx` must
+exist in `VALID_PAGE_PATHS`. Navigation may list additional pages (deep links /
+`allowedPages`) that the sidebar does not show; that is intentional. A sidebar
+path missing from navigation makes per-user page customization fail with
+"Páginas inválidas" while the sidebar still renders. When adding or moving a
+sidebar page, update both files in the same change.
 
 ## Dependency direction
 

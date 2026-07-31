@@ -48,8 +48,17 @@ jobs:
       - name: Validate production compose
         run: |
           mkdir -p production/env
-          : > production/env/app.env
-          : > production/env/n8n.env
+          for env_file in \
+            app.env \
+            n8n.env \
+            n8n-legacy.env \
+            n8n-restored.env \
+            n8n-automation.env \
+            n8n-db.env
+          do
+            : > "production/env/${env_file}"
+          done
+          : > production/.deploy-meta.env
           docker compose --env-file production/.env.example -f production/docker-compose.yml config >/dev/null
 
       - name: Sync production manifests
@@ -72,7 +81,7 @@ jobs:
       - name: Stamp deploy metadata
         run: |
           deploy_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          cat > /home/marce/qlmed/production/app/.deploy-meta.env <<EOF
+          cat > /home/marce/qlmed/production/.deploy-meta.env <<EOF
           QLMED_BUILD_COMMIT_SHA=${deploy_sha}
           QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           QLMED_BUILD_SOURCE=github-actions
@@ -92,7 +101,7 @@ jobs:
       - name: Deploy stack on server
         run: |
           set -a
-          . /home/marce/qlmed/production/app/.deploy-meta.env
+          . /home/marce/qlmed/production/.deploy-meta.env
           set +a
           compose=(docker compose \
             --project-name qlmed \

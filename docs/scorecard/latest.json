@@ -1,10 +1,10 @@
 {
   "ok": true,
-  "day": "2026-07-29",
-  "checkedAt": "2026-07-29T02:23:00Z",
+  "day": "2026-07-30",
+  "checkedAt": "2026-07-30T23:06:48Z",
   "score": 8.8,
   "stack": {
-    "node": "22.22.1",
+    "node": "24.18.1",
     "next": "15.5.21",
     "react": "^19.2.8",
     "prisma": "7.8.0",
@@ -12,9 +12,9 @@
     "nextAuth": "4.24.15",
     "typescript": "^6.0.2",
     "vitest": "^4.1.10",
-    "speckitProject": "0.12.11",
-    "speckitCli": "0.14.2",
-    "n8nImage": "n8nio/n8n:2.29.10@sha256:9cb60554716a0ab11a966e79ed65171e1bbf00b6d262ba12aa119bba22eb6000",
+    "speckitProject": "0.14.2",
+    "speckitCli": "0.14.4",
+    "n8nImage": "n8nio/n8n:2.29.10",
     "pins": {
       "node": "22",
       "next": "15",
@@ -32,34 +32,34 @@
     "total": 0
   },
   "vulnHighOrCritical": 0,
-  "outdatedCount": 14,
+  "outdatedCount": 15,
   "patchCandidates": [
     {
       "name": "@tanstack/react-virtual",
-      "current": "3.14.7",
+      "current": "3.14.8",
       "wanted": "3.14.9",
       "latest": "3.14.9",
       "type": null
     },
     {
+      "name": "@types/react",
+      "current": "19.2.17",
+      "wanted": "19.2.18",
+      "latest": "19.2.18",
+      "type": null
+    },
+    {
+      "name": "@types/react-dom",
+      "current": "19.2.3",
+      "wanted": "19.2.4",
+      "latest": "19.2.4",
+      "type": null
+    },
+    {
       "name": "@vitejs/plugin-react",
-      "current": "6.0.3",
-      "wanted": "6.0.4",
-      "latest": "6.0.4",
-      "type": null
-    },
-    {
-      "name": "postcss",
-      "current": "8.5.21",
-      "wanted": "8.5.23",
-      "latest": "8.5.24",
-      "type": null
-    },
-    {
-      "name": "recharts",
-      "current": "3.10.0",
-      "wanted": "3.10.1",
-      "latest": "3.10.1",
+      "current": "6.0.4",
+      "wanted": "6.0.5",
+      "latest": "6.0.5",
       "type": null
     }
   ],
@@ -76,6 +76,13 @@
       "current": "7.8.0",
       "wanted": "7.8.0",
       "latest": "7.9.1",
+      "type": null
+    },
+    {
+      "name": "postcss",
+      "current": "8.5.23",
+      "wanted": "8.5.23",
+      "latest": "8.5.25",
       "type": null
     },
     {
@@ -155,17 +162,17 @@
     },
     {
       "id": "god-module-aggregation",
-      "title": "Quebrar product-aggregation.ts (≤600 LOC)",
+      "title": "Manter product-aggregation fatiado (index ≤600 LOC)",
       "severity": "medium",
       "status": "pass",
-      "detail": "1 LOC (max 600)"
+      "detail": "27 LOC (max 600)"
     },
     {
       "id": "test-coverage-lib",
       "title": "Ampliar suites Vitest (mín. 30 arquivos)",
       "severity": "medium",
       "status": "pass",
-      "detail": "31 files (min 30)"
+      "detail": "32 files (min 30)"
     },
     {
       "id": "zod-routes",
@@ -184,7 +191,7 @@
   "prUrl": "",
   "prCreated": false,
   "issueUpdated": false,
-  "scorecardPath": "/home/marce/.local/state/qlmed-ci-loop/SCORECARD-2026-07-29.md",
-  "reportPath": "/home/marce/.local/state/qlmed-ci-loop/report-2026-07-29.json",
+  "scorecardPath": "/home/marce/.local/state/qlmed-ci-loop/SCORECARD-2026-07-30.md",
+  "reportPath": "/home/marce/.local/state/qlmed-ci-loop/report-2026-07-30.json",
   "notify": true
 }

@@ -1,6 +1,8 @@
 # Implementation Plan: Prisma schema unification
 
-**Status:** Draft — implementation not authorized by this initialization step.
+**Status:** Phase 11 and the satellite-store migrations are complete. Remaining:
+residual FKs and `Float`→`Decimal` under a separately authorized plan
+(ADR-0006).
 
 ## Sequence
 
@@ -8,9 +10,9 @@
    evidence in development.
 2. Create/review a non-destructive baseline migration.
 3. Replay the complete migration history in isolated PostgreSQL.
-4. Migrate one low-risk store to Prisma Client with regression tests.
+4. Migrate stores incrementally to Prisma Client with regression tests.
 5. Document expand/contract and application rollback semantics.
-6. Stop at the existing human checkpoint before any production migration.
+6. Stop at the human checkpoint before each production migration.
 
 ## Constitution gates
 
@@ -28,4 +30,3 @@
 | FR-001/FR-002, AC-001/AC-002 | migration replay and drift verification |
 | FR-003/FR-004, AC-003/AC-004 | focused store tests and source audit |
 | NFR-002, AC-005/AC-006 | rollout/rollback documentation and checkpoint |
-

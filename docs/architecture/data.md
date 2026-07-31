@@ -17,9 +17,10 @@ products, inventory and financial data.
   backfill wired to run automatically (lazily on first access or via a
   dedicated endpoint), and be validated at production data volume. Creating
   the table only populates future ingestions; existing rows stay uncovered
-  (seen twice: `invoice_item_tax` at 323/1421 coverage, `invoice_duplicata`
-  empty and blanking contas a pagar/receber until
-  `getFinanceiroDuplicatas` gained a lazy backfill).
+  (histórico pré-backfill, visto em incidentes 2026: `invoice_item_tax` em
+  ~323/1421 de cobertura e `invoice_duplicata` vazio blankando contas a
+  pagar/receber até `getFinanceiroDuplicatas` ganhar backfill lazy — não
+  tratar esses números como estado atual do banco).
 
 ## Migration rollout and rollback
 

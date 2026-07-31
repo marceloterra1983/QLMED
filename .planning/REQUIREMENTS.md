@@ -122,7 +122,8 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
       o registro `@@ignore` — **closed 2026-07-26**
 - [x] **SCHEMA-02**: Stores migradas para Prisma Client tipado uma de cada
       vez (começando pela de menor tráfego), aposentando `ensureXxxTable()`
-      store a store — **PoC CnpjCache closed 2026-07-26**; demais stores = follow-up
+      store a store — **closed 2026-07-26**; PoC CnpjCache e stores restantes
+      concluídas pelos PRs #52/#53
 - [x] **SCHEMA-03**: Política expand/contract de migração documentada; ajuste
       no `deploy-production.yml` refletindo que rollback de imagem não desfaz
       migração de banco — **closed 2026-07-26**

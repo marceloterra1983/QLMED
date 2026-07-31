@@ -8,8 +8,8 @@ last_activity: 2026-07-26
 progress:
   total_phases: 12
   completed_phases: 12
-  total_plans: 36
-  completed_plans: 36
+  total_plans: 39
+  completed_plans: 39
   percent: 100
 ---
 
@@ -18,20 +18,20 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 11 complete for SCHEMA-01/02/03 baseline+PoC+policy; further stores later
+**Current focus:** Phase 11 complete; remaining schema work is FKs and money precision
 
 ## Current Position
 
 Phase: 11 — Unificação de Schema
 Plan: 11-01 baseline done (prod+dev); 11-02 CnpjCache Prisma PoC verified; 11-03 expand/contract docs done
-Status: SCHEMA-01/02/03 closed 2026-07-26; remaining satellite stores are follow-up
+Status: SCHEMA-01/02/03 closed 2026-07-26; all satellite stores use Prisma Client
 Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lookup Prisma; CLAUDE expand/contract; n8n 2.29.10
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 36 |
+| Plans completed | 39 |
 | Plans failed | 0 |
 | Phases completed | 12/12 (milestone v2.0 core; satellite-store follow-ups out of phase scope) |
 | Repair budget used | 0/2 per plan |
@@ -97,7 +97,7 @@ _(none yet)_
 ### Blockers
 
 - Nenhum blocker ativo para SCHEMA-01..03 (fechados 2026-07-26).
-- Follow-up: migrar stores satélite restantes para Prisma Client; FKs/`@relation`; `Float`→`Decimal` (ver ADR-0002).
+- Follow-up: FKs/`@relation` e `Float`→`Decimal` (ver ADR-0006).
 
 ### Quick Tasks Completed
 
@@ -131,13 +131,13 @@ _(none yet)_
 
 - **Date:** 2026-07-26
 - **What happened:** SCHEMA-01/02/03 closed (baseline, CnpjCache Prisma PoC, expand/contract policy); n8n 2.29.10.
-- **Where stopped:** Phase 11 PoC complete; remaining satellite stores are follow-up outside closed SCHEMA scope.
+- **Where stopped:** Phase 11 and the remaining satellite-store migrations are complete; FKs and money precision remain.
 
 ### Next Session Should
 
-1. Migrar stores satélite restantes (pós-CnpjCache) para Prisma Client tipado.
-2. Adicionar FKs/`@relation` onde ainda faltam; planejar `Float`→`Decimal`.
-3. Manter CI Loop `schema-dual` / `money-float` verdes após cada store.
+1. Adicionar FKs/`@relation` onde ainda faltam.
+2. Planejar `Float`→`Decimal` com compatibilidade expand/contract.
+3. Manter CI Loop `schema-dual` / `money-float` verde a cada mudança.
 
 ---
 *Last updated: 2026-07-28 — frontmatter reconciliado com Phase 11 closed 2026-07-26; blockers/session atualizados.*

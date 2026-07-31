@@ -10,7 +10,7 @@ _Nenhuma aceitação de risco ativa no momento._
 
 - **Owner:** Marcelo
 - **Accepted:** 2026-07-14
-- **Remediated:** 2026-07-29
+- **Remediated:** 2026-07-30
 - **Advisory:** `GHSA-qx2v-qp2m-jg93`
 - **Severity:** moderate
 - **Former affected path:** `postcss@8.4.31` bundled by older Next releases
