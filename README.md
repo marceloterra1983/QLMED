@@ -19,7 +19,7 @@ Modelo operacional do projeto:
 
 - todo desenvolvimento do app deve acontecer em `QLMED`
 - os manifests de producao versionados ficam em `QLMED/production` (no repo)
-- `/home/marce/qlmed/production` e o destino de deploy do workflow; nao editar la a mao
+- `/home/marce/qlmed/production` aponta para o runtime canônico `/srv/qlmed`; o workflow sincroniza o app em `/srv/qlmed/app` e o compose no diretório pai
 - a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` seguido do workflow GitHub Actions `deploy-production.yml` (aprovacao no environment `production`)
 
 ## Publicacao
