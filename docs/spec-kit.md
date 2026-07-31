@@ -1,6 +1,7 @@
 # Spec Kit operations
 
-QLMED uses Spec Kit `0.14.2` no **projeto** (`.specify/`), instalado originalmente de:
+QLMED uses Spec Kit `0.14.2` no **projeto** (`.specify/`, pin em
+`init-options.json`). Instalação/upgrade do CLI:
 
 ```bash
 uv tool install specify-cli --force \
@@ -13,6 +14,14 @@ diário de upgrade ser revisado e mergeado.
 
 The project uses the `codex` integration in skills mode. Configuration and
 installed skills are committed under `.specify/` and `.agents/skills/`.
+
+## Host SDD (runtime specs)
+
+Specs operacionais do host (Coolify, n8n, qlmed-app, networking, etc.) vivem em
+`/home/marce/sdd-specs` (alias de navegação:
+`/home/marce/domains/shared/sdd-specs`). Comece por `INDEX.md`. Spec Kit neste
+repo cobre features do app; SDD cobre a stack do servidor. Não duplicar
+conteúdo entre os dois.
 
 ## Upgrade policy
 
@@ -58,4 +67,11 @@ Check manual (sem efeitos):
 ~/server-ops/qlmed/ops/scripts/qlmed-speckit-daily-update.sh --mode check --json
 curl -sS -H "X-Speckit-Token: $(cat ~/server-ops/qlmed/ops/secrets/speckit-update.token)" \
   -X POST http://127.0.0.1:18644/check
+```
+
+Validação local de docs do app:
+
+```bash
+npm run docs:validate
+npm run docs:validate:test
 ```

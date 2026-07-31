@@ -79,3 +79,7 @@ scripts/clean3.js
 scripts/check-dirty.js
 scripts/reclassify.js
 scripts/classify.js
+
+# Graphify: keep report/graph artifacts; ignore rebuild cache/intermediates
+graphify-out/cache/
+graphify-out/.graphify_*

@@ -115,17 +115,18 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 
 ### Unificação de Schema (Fase 4 do plano original)
 
-- [ ] **SCHEMA-01**: Baseline Prisma das 9 tabelas satélite hoje `@@ignore`
+- [x] **SCHEMA-01**: Baseline Prisma das 9 tabelas satélite hoje `@@ignore`
       (`invoice_tax_totals`, `invoice_item_tax`, `contact_fiscal`,
       `invoice_duplicata`, `product_registry`, `stock_entry`, `ncm_cache`,
       `cnpj_cache`, `product_settings_catalog`) — schema versionado substitui
-      o registro `@@ignore`
-- [ ] **SCHEMA-02**: Stores migradas para Prisma Client tipado uma de cada
+      o registro `@@ignore` — **closed 2026-07-26**
+- [x] **SCHEMA-02**: Stores migradas para Prisma Client tipado uma de cada
       vez (começando pela de menor tráfego), aposentando `ensureXxxTable()`
-      store a store, com deploy + observação entre cada uma
-- [ ] **SCHEMA-03**: Política expand/contract de migração documentada; ajuste
+      store a store — **closed 2026-07-26**; PoC CnpjCache e stores restantes
+      concluídas pelos PRs #52/#53
+- [x] **SCHEMA-03**: Política expand/contract de migração documentada; ajuste
       no `deploy-production.yml` refletindo que rollback de imagem não desfaz
-      migração de banco
+      migração de banco — **closed 2026-07-26**
 
 ### Desduplicação de Código (Fase 5.1/5.3/5.4 do plano original)
 
@@ -175,4 +176,4 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 | CODEDUP-01..CODEDUP-03 | Phase 12: Desduplicação de Código |
 
 ---
-*Last updated: 2026-07-13 — CODEDUP-01..03 reconciliados com os três SUMMARYs concluídos; SCHEMA-01..03 permanecem abertos até autorização, migração e observação de produção.*
+*Last updated: 2026-07-28 — SCHEMA-01..03 marcados complete (fechamento 2026-07-26); CODEDUP-01..03 já reconciliados.*

@@ -1,5 +1,10 @@
 # QLMED — Plano de Correção Completa
 
+> **SUPERSEDED (2026-07-28).** Este plano de 2026-04 é histórico. A fonte de
+> verdade do roadmap, fases e estado é `.planning/` (`ROADMAP.md`, `STATE.md`,
+> `REQUIREMENTS.md`, `phases/`). Não usar este arquivo para priorizar trabalho
+> novo — consultar `.planning/` primeiro.
+
 **Data**: 2026-04-10
 **Baseado em**: Security Audit, Deps Audit, Tech Debt Audit, Performance Audit
 **Branch base**: `main`

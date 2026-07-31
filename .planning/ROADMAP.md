@@ -23,7 +23,9 @@
 **Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
 Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
 
-- [ ] **Phase 11: Unificação de Schema** - Baseline Prisma das 9 tabelas satélite `@@ignore`, migração store-a-store para Client tipado, política expand/contract de migração
+- [x] **Phase 11: Unificação de Schema** - Baseline Prisma, stores satélite em
+  Client tipado e política expand/contract — SCHEMA-01..03 closed 2026-07-26;
+  FKs e `Float`→`Decimal` permanecem como follow-up
 - [x] **Phase 12: Desduplicação de Código** - products/route.ts consome product-aggregation.ts (sem cópias inline), auto-sync.ts quebrado em scheduler+strategies, siscomex-client criado — concluída em 2026-07-12
 
 ## Phase Details
@@ -232,9 +234,9 @@ Plans:
 
 | Requirement | Phase |
 |-------------|-------|
-| SCHEMA-01 | Phase 11 | Pending |
-| SCHEMA-02 | Phase 11 | Pending |
-| SCHEMA-03 | Phase 11 | Pending |
+| SCHEMA-01 | Phase 11 | Complete (2026-07-26) |
+| SCHEMA-02 | Phase 11 | Complete (2026-07-26) |
+| SCHEMA-03 | Phase 11 | Complete (2026-07-26) |
 | CODEDUP-01 | Phase 12 | Complete |
 | CODEDUP-02 | Phase 12 | Complete |
 | CODEDUP-03 | Phase 12 | Complete |
@@ -250,11 +252,16 @@ Plans:
   2. Ao menos a store de menor tráfego (cnpj_cache) foi migrada para Prisma Client tipado, com `ensureXxxTable()` correspondente removido
   3. Existe uma política expand/contract documentada (CLAUDE.md ou spec) para migrações futuras
   4. `deploy-production.yml` documenta explicitamente que rollback de imagem não desfaz migração de banco
-**Plans:** 3 plans preparados no candidato; execução de produção continua bloqueada pelo checkpoint humano T007. As 10 tabelas satélite restantes ficam para um followup "Fase 11b" após a observação do piloto.
+**Plans:** 3/3 plans complete (SCHEMA-01..03 closed 2026-07-26). A migração
+das stores restantes foi concluída depois pelos PRs #52/#53; FKs e
+`Float`→`Decimal` ficam como follow-up pós-fase.
 Plans:
-- [ ] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01)
-- [ ] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02)
-- [ ] 11-03-PLAN.md — Documentar política expand/contract em CLAUDE.md + comentário explícito no deploy-production.yml sobre rollback não desfazer migração (SCHEMA-03)
+- [x] 11-01-PLAN.md — Baseline Prisma das 11 tabelas satélite (remove @@ignore, migra `_prisma_migrations` em qlmed_dev e produção via `migrate resolve --applied`, checkpoint humano antes de tocar produção) (SCHEMA-01) — completed 2026-07-26
+- [x] 11-02-PLAN.md — PoC: migrar CnpjCache (cnpj_cache) de raw SQL/`ensureCnpjCacheTable()` para Prisma Client tipado (SCHEMA-02) — completed 2026-07-26
+- [x] 11-03-PLAN.md — Documentar política expand/contract em CLAUDE.md + comentário explícito no deploy-production.yml sobre rollback não desfazer migração (SCHEMA-03) — completed 2026-07-26
+
+Follow-up executado em 2026-07-26: PRs #52/#53 migraram as demais stores
+satélite para Prisma Client sem reabrir o escopo da fase.
 
 ### Phase 12: Desduplicação de Código
 **Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`
@@ -285,8 +292,8 @@ Plans:
 | 8. File Splitting | 0/4 | Planned | - |
 | 9. Search & Pagination | 0/3 | Planned | - |
 | 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
-| 11. Unificação de Schema | 0/3 | SCHEMA-01..03 closed 2026-07-26 (baseline+PoC CnpjCache+policy) | - |
+| 11. Unificação de Schema | 3/3 | Complete (SCHEMA-01..03 closed) | 2026-07-26 |
 | 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
-*Last updated: 2026-07-13 — estado reconciliado com o candidato Phase05: Phase 12 concluída; Phase 11 preparada, mas não executada em produção.*
+*Last updated: 2026-07-28 — Phase 11 checkboxes/SCHEMA status reconciliados com fechamento 2026-07-26; Phase 12 permanece Complete.*

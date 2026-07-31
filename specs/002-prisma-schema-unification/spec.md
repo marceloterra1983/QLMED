@@ -3,7 +3,7 @@ id: SPEC-002
 status: active
 owner: QLMED
 related_decisions:
-  - ADR-0005
+  - ADR-0006
 affected_modules:
   - prisma
   - persistence-stores
@@ -16,9 +16,10 @@ affected_modules:
 
 Satellite tables used to be dual-sourced via `@@ignore` / runtime `ensure*Table`
 DDL alongside Prisma. Runtime DDL and `@@ignore` are already gone from `src/` and
-`prisma/schema.prisma`; remaining work is typed Client migration for residual
-stores, FKs, and expand/contract discipline. GSD Phase 11 defines the delivery
-sequence; this spec is the behavioral and safety contract.
+`prisma/schema.prisma`, and all satellite stores use Prisma Client for ordinary
+CRUD. Remaining work is FKs, money precision and expand/contract discipline.
+GSD Phase 11 defines the completed delivery sequence; this spec is the
+behavioral and safety contract.
 
 ## User scenarios
 
@@ -32,11 +33,12 @@ using versioned Prisma migrations only.
 
 ### US2 — Typed persistence migration (P1)
 
-As a developer, I need the selected satellite store to use Prisma Client rather
-than runtime table creation and raw access for ordinary CRUD.
+As a developer, I need satellite stores to use Prisma Client rather than
+runtime table creation and raw access for ordinary CRUD.
 
-- **AC-003**: The pilot store contains no runtime `CREATE TABLE` path.
-- **AC-004**: Its existing behavior remains covered by tests.
+- **AC-003**: Satellite stores contain no runtime `CREATE TABLE` path or raw
+  SQL for ordinary CRUD.
+- **AC-004**: Their existing behavior remains covered by tests.
 
 ### US3 — Safe rollout and rollback (P1)
 
@@ -53,8 +55,8 @@ revision until the contract phase is explicitly completed.
   satellite tables.
 - **FR-002**: Baseline work preserves existing production data and migration
   history.
-- **FR-003**: Store migration proceeds one table at a time with tests and an
-  observation checkpoint.
+- **FR-003**: Each migrated store retains focused tests and explicit Prisma
+  model mappings.
 - **FR-004**: Runtime DDL is removed only after the corresponding migration is
   proven in development and CI.
 - **ROLE-001**: Only an explicitly authorized operator may execute production
@@ -71,7 +73,8 @@ revision until the contract phase is explicitly completed.
 ## Out of scope
 
 - Executing production migrations during specification/planning.
-- Converting all stores in one release.
+- Adding residual FKs or converting `Float` money fields to `Decimal` in this
+  documentation-only reconciliation.
 - Destructive column/table removal before an observation window.
 - Modifying production backup policy.
 
@@ -80,4 +83,3 @@ revision until the contract phase is explicitly completed.
 - `.planning/phases/11-unifica-o-de-schema/11-01-PLAN.md`
 - `.planning/phases/11-unifica-o-de-schema/11-02-PLAN.md`
 - `.planning/phases/11-unifica-o-de-schema/11-03-PLAN.md`
-
