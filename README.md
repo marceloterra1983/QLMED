@@ -2,7 +2,11 @@
 
 Modelo operacional do projeto:
 
-- `prod` fica no computador `server` (checkout canônico do app: `~/qlmed`)
+- `prod` fica no computador `server`
+- o checkout canônico com Git fica em `~/qlmed/app`
+- o runtime implantado do app, sem Git, fica em `/srv/qlmed/app`
+- o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed`
+  (`~/qlmed/production` é o alias operacional)
 - scripts/ops do host ficam em `~/server-ops/qlmed/ops` (e shared em `~/server-ops/shared/ops`)
 - `n8n` existe em `dev` e em `prod`
 - `Evolution` fica somente em `prod`
@@ -17,13 +21,17 @@ Modelo operacional do projeto:
 
 ## Fonte de verdade
 
-- todo desenvolvimento do app deve acontecer em `QLMED`
-- os manifests de producao versionados ficam em `QLMED/production` (no repo)
+- todo desenvolvimento do app deve acontecer no checkout canônico `~/qlmed/app`
+- os manifests de producao versionados ficam em `~/qlmed/app/production`
+- `/srv/qlmed/app/production` não é fonte de verdade: esse diretório é excluído
+  do rsync de deploy e pode conter artefatos antigos
 - `/home/marce/qlmed/production` aponta para o runtime canônico `/srv/qlmed`; o workflow sincroniza o app em `/srv/qlmed/app` e o compose no diretório pai
-- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` seguido do workflow GitHub Actions `deploy-production.yml` (aprovacao no environment `production`)
+- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` a partir do checkout canônico `~/qlmed/app`, seguido do workflow GitHub Actions `deploy-production.yml` (aprovacao no environment `production`)
 
 ## Publicacao
 
+- execute os comandos abaixo somente no checkout canônico `~/qlmed/app`,
+  nunca no runtime `/srv/qlmed/app`
 - antes de publicar, validar o alinhamento com `npm run check:deploy`
 - para publicar o estado atual de `main`, usar `npm run publish:server`; o script faz `git push origin main` e espera o `https://app.qlmed.com.br/api/health` refletir o commit
 - `npm run deploy:server` e apenas um deploy manual/legado do compose; nao e o caminho normal da producao publica
