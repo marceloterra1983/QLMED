@@ -12,6 +12,7 @@ Fonte de verdade dos manifests de producao do QLMED.
 
 ## Estrutura remota esperada
 
+- `/home/marce/qlmed/production` → `/srv/qlmed`
 - `/home/marce/qlmed/production/docker-compose.yml`
 - `/home/marce/qlmed/production/.env`
 - `/home/marce/qlmed/production/env/app.env`
@@ -21,7 +22,9 @@ Fonte de verdade dos manifests de producao do QLMED.
 ## Fonte de verdade
 
 - o repositorio `QLMED` e a unica fonte de verdade para codigo e manifests de producao
-- `/home/marce/qlmed/production` e o destino de sync do workflow `QLMED Production Deploy`; nao editar a mao no host
+- `/srv/qlmed` e o runtime canônico; `/home/marce/qlmed/production` e o alias de compatibilidade usado pelo workflow `QLMED Production Deploy`
+- o codigo do app fica em `/srv/qlmed/app`; compose, envs e metadados de deploy ficam no diretorio pai
+- nao editar os manifests implantados a mao no host
 
 ## Deploy
 
@@ -30,7 +33,7 @@ Fonte de verdade dos manifests de producao do QLMED.
 - `npm run publish:server` e o caminho operacional padrao porque faz o push e espera o `https://app.qlmed.com.br/api/health` refletir o commit publicado
 - `scripts/deploy-server.sh --legacy` permanece apenas como recuperacao operacional manual
 - rollback da producao publica: imagens `qlmed-app:rollback-*` / `qlmed-app:previous` (ou re-deploy de SHA)
-- no Coolify, o Postgres 18 deve montar o volume em `/var/lib/postgresql` com `PGDATA=/var/lib/postgresql/18/docker`; voltar para `/var/lib/postgresql/data` recria um volume anonimo vazio a cada deploy
+- o Postgres 18 deve montar o volume em `/var/lib/postgresql` com `PGDATA=/var/lib/postgresql/18/docker`; voltar para `/var/lib/postgresql/data` recria um volume anonimo vazio a cada deploy
 - os segredos continuam apenas no host remoto
 - `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` completo do release ativo
 
