@@ -6,8 +6,9 @@ usage() {
 Usage: scripts/deploy-server.sh --legacy
 
 Deploys the current Git HEAD to the legacy/manual compose stack on the server.
-Public production at https://app.qlmed.com.br is normally published by
-scripts/publish-server.sh via git push + Coolify.
+Public production at https://app.qlmed.com.br is published by GitHub Actions
+QLMED Production Deploy (manual workflow_dispatch after CI on main), typically
+started after scripts/publish-server.sh pushes main — not by Coolify.
 
 Defaults:
   DEPLOY_HOST=server

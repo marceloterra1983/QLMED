@@ -1,13 +1,26 @@
 name: QLMED Production Deploy
 
+# Manual, fail-closed production deploy.
+# Requires workflow_dispatch on refs/heads/main with:
+#   - confirm_production exactly DEPLOY
+#   - revision = full origin/main SHA at fetch time
+#   - a completed successful QLMED CI (ci.yml) push run for that exact SHA
+# Does NOT run automatically after CI on main.
 on:
-  workflow_run:
-    workflows: ["QLMED CI"]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: 'Type exactly DEPLOY to authorize production mutation'
+        required: true
+        type: string
+      revision:
+        description: 'Full 40-character lowercase hex SHA of origin/main to deploy'
+        required: true
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: qlmed-production
@@ -15,11 +28,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
     timeout-minutes: 45
     environment:
       name: production
@@ -29,21 +37,109 @@ jobs:
       - qlmed-prod
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Refuse stale or untrusted revision
+      - name: Fail closed — require explicit DEPLOY confirmation
+        env:
+          CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
         run: |
-          expected_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          git fetch origin main
-          current_main="$(git rev-parse origin/main)"
-          if [ "$expected_sha" != "$current_main" ]; then
-            echo "Refusing deploy: validated SHA $expected_sha is not current main $current_main" >&2
+          set -euo pipefail
+          if [ "${CONFIRM_PRODUCTION}" != "DEPLOY" ]; then
+            echo "Refusing deploy: confirm_production must be exactly DEPLOY" >&2
             exit 1
           fi
+
+      - name: Fail closed — require dispatch on main
+        env:
+          WORKFLOW_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [ "${WORKFLOW_REF}" != "refs/heads/main" ]; then
+            echo "Refusing deploy: workflow must run on refs/heads/main (got ${WORKFLOW_REF})" >&2
+            exit 1
+          fi
+
+      - name: Fail closed — require full lowercase SHA input
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "${REQUESTED_REVISION}" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Refusing deploy: revision must be exactly 40 lowercase hex characters" >&2
+            exit 1
+          fi
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fail closed — revision must match origin/main then detach
+        id: pin-revision
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          current_main="$(git rev-parse origin/main)"
+          if [ "${REQUESTED_REVISION}" != "${current_main}" ]; then
+            echo "Refusing deploy: revision ${REQUESTED_REVISION} is not current origin/main ${current_main}" >&2
+            exit 1
+          fi
+          git checkout --detach "${REQUESTED_REVISION}"
+          echo "expected_sha=${REQUESTED_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "EXPECTED_SHA=${REQUESTED_REVISION}" >> "$GITHUB_ENV"
+
+      - name: Fail closed — require successful QLMED CI for this SHA
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          EXPECTED_SHA: ${{ steps.pin-revision.outputs.expected_sha }}
+        with:
+          script: |
+            const expectedSha = process.env.EXPECTED_SHA;
+            if (!expectedSha || !/^[0-9a-f]{40}$/.test(expectedSha)) {
+              core.setFailed(`Internal error: EXPECTED_SHA is not a full lowercase SHA (${expectedSha})`);
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const expectedFullName = `${owner}/${repo}`;
+
+            // Single-page query for completed push runs of ci.yml matching head_sha.
+            // Do not wait/poll: if CI is missing or not successful, fail immediately.
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'ci.yml',
+              event: 'push',
+              branch: 'main',
+              status: 'completed',
+              head_sha: expectedSha,
+              per_page: 20,
+            });
+
+            const match = (data.workflow_runs || []).find((run) => {
+              const headRepo = run.head_repository?.full_name || run.repository?.full_name;
+              return (
+                run.head_sha === expectedSha &&
+                run.event === 'push' &&
+                run.head_branch === 'main' &&
+                run.status === 'completed' &&
+                run.conclusion === 'success' &&
+                run.path === '.github/workflows/ci.yml' &&
+                headRepo === expectedFullName
+              );
+            });
+
+            if (!match) {
+              core.setFailed(
+                `Refusing deploy: no completed successful QLMED CI (ci.yml) push run on main for SHA ${expectedSha}. ` +
+                  'Wait for CI on that exact SHA, then re-dispatch. PR runs or other SHAs/branches are not accepted.'
+              );
+              return;
+            }
+
+            core.info(`CI gate OK: run id=${match.id} head_sha=${match.head_sha} conclusion=${match.conclusion} url=${match.html_url}`);
 
       - name: Validate production compose
         run: |
@@ -60,6 +156,20 @@ jobs:
           done
           : > production/.deploy-meta.env
           docker compose --env-file production/.env.example -f production/docker-compose.yml config >/dev/null
+
+      - name: Fail closed — re-check origin/main before mutation
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPECTED_SHA:-}" ]; then
+            echo "Refusing deploy: EXPECTED_SHA is empty" >&2
+            exit 1
+          fi
+          git fetch origin main
+          current_main="$(git rev-parse origin/main)"
+          if [ "${EXPECTED_SHA}" != "${current_main}" ]; then
+            echo "Refusing deploy: origin/main advanced to ${current_main}; expected ${EXPECTED_SHA}" >&2
+            exit 1
+          fi
 
       - name: Sync production manifests
         run: |
@@ -80,7 +190,7 @@ jobs:
 
       - name: Stamp deploy metadata
         run: |
-          deploy_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          deploy_sha="${EXPECTED_SHA}"
           cat > /home/marce/qlmed/production/.deploy-meta.env <<EOF
           QLMED_BUILD_COMMIT_SHA=${deploy_sha}
           QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -151,7 +261,7 @@ jobs:
 
       - name: Verify deployed revision
         run: |
-          expected_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          expected_sha="${EXPECTED_SHA}"
           for url in \
             http://127.0.0.1:13000/api/health \
             https://app.qlmed.com.br/api/health
