@@ -81,7 +81,7 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "13000:3000"
+      - "127.0.0.1:13000:3000"
     env_file:
       - ./env/app.env
       - ./.deploy-meta.env
