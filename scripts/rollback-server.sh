@@ -9,8 +9,13 @@ Usage:
   scripts/rollback-server.sh --legacy <release-name>
 
 Rolls back only the legacy/manual compose stack in /home/marce/qlmed/production.
-Public production at https://app.qlmed.com.br is normally rolled forward/back via
-git history and Coolify, not by this script.
+
+Public production (https://app.qlmed.com.br) is NOT handled by this script:
+  - mid-workflow failure: automatic image rollback inside that deploy run;
+  - host-level manual recovery: preserved image tag qlmed-app:previous;
+  - code rollback via Actions: land a revert/recovery commit on main, wait for CI
+    on that new tip SHA, then workflow_dispatch that current origin/main SHA
+    (deploy accepts only the live origin/main tip, not an arbitrary historical SHA).
 
 Defaults:
   DEPLOY_HOST=server
@@ -55,7 +60,7 @@ done
 
 if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
   echo "This script only rolls back the legacy/manual compose stack on the server." >&2
-  echo "Use git history + Coolify for the public production rollback path." >&2
+  echo "For public production: mid-run workflow rollback, host recovery using the preserved image qlmed-app:previous, or a new main tip (revert commit + CI + dispatch)." >&2
   exit 1
 fi
 
