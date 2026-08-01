@@ -96,7 +96,7 @@ volumes:
     name: qlmed_pgdata
   n8n_data:
     external: true
-    name: lkwc0s0ck8kcckocc4goc0kg_n8n-data
+    name: qlmed_n8n_data
   app_storage:
     name: qlmed_app_storage
   n8n_pgdata:
