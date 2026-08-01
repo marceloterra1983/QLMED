@@ -23,7 +23,8 @@ jobs:
       - qlmed-prod
     timeout-minutes: 5
     outputs:
-      # Push to main always runs the full app job (deploy gate).
+      # Push to main always runs the full app job (CI verification on main).
+      # Production deploy is manual (workflow_dispatch); CI success alone never deploys.
       app: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.app }}
     steps:
       - name: Checkout

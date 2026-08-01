@@ -10,13 +10,14 @@
 git push main" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="60" y="120" width="140" height="70" as="geometry"/></mxCell>
         <mxCell id="4" value="QLMED CI
 (build/test)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="120" width="130" height="70" as="geometry"/></mxCell>
-        <mxCell id="5" value="workflow_run
-deploy-production.yml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410" y="120" width="170" height="70" as="geometry"/></mxCell>
-        <mxCell id="6" value="Aprovação manual
-environment production" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="120" width="170" height="80" as="geometry"/></mxCell>
+        <mxCell id="5" value="CI success obrigatório
+mesmo SHA (ci.yml push/main)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="410" y="120" width="170" height="70" as="geometry"/></mxCell>
+        <mxCell id="6" value="workflow_dispatch manual
+DEPLOY + SHA
+env production — main-only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="120" width="170" height="80" as="geometry"/></mxCell>
         <mxCell id="7" value="Runner self-hosted
 qlmed-prod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="830" y="120" width="150" height="70" as="geometry"/></mxCell>
-        <mxCell id="8" value="Sync → /srv/qlmed/app/app/
+        <mxCell id="8" value="Sync → /srv/qlmed/app
 compose up --build
 health local + público" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="830" y="240" width="200" height="90" as="geometry"/></mxCell>
         <mxCell id="9" value="Falha → rollback image

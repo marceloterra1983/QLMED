@@ -26,17 +26,25 @@ Modelo operacional do projeto:
 - `/srv/qlmed/app/production` não é fonte de verdade: esse diretório é excluído
   do rsync de deploy e pode conter artefatos antigos
 - `/home/marce/qlmed/production` aponta para o runtime canônico `/srv/qlmed`; o workflow sincroniza o app em `/srv/qlmed/app` e o compose no diretório pai
-- a publicacao do app em `https://app.qlmed.com.br` acontece por `git push` em `main` a partir do checkout canônico `~/qlmed/app`, seguido do workflow GitHub Actions `deploy-production.yml` (aprovacao no environment `production`)
+- a publicacao do app em `https://app.qlmed.com.br` **nao** e automatica no push: exige CI verde no SHA de `main` e um `workflow_dispatch` manual do `QLMED Production Deploy` (sem required reviewers no environment; so politica main-only)
 
 ## Publicacao
 
-- execute os comandos abaixo somente no checkout canônico `~/qlmed/app`,
-  nunca no runtime `/srv/qlmed/app`
-- antes de publicar, validar o alinhamento com `npm run check:deploy`
-- para publicar o estado atual de `main`, usar `npm run publish:server`; o script faz `git push origin main` e espera o `https://app.qlmed.com.br/api/health` refletir o commit
-- `npm run deploy:server` e apenas um deploy manual/legado do compose; nao e o caminho normal da producao publica
-- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada; para a producao publica o rollback e via imagem `qlmed-app:rollback-*` / `qlmed-app:previous` no workflow (ou re-deploy de um commit anterior)
-- depois de publicar, confirmar o `build.commitSha` em `https://app.qlmed.com.br/api/health`
+Sequencia real:
+
+1. push/merge em `main` (checkout canônico `~/qlmed/app`);
+2. `QLMED CI` para esse SHA em `main` conclui com sucesso;
+3. dispatch manual de `QLMED Production Deploy` com `confirm_production=DEPLOY` e `revision=<SHA_COMPLETO>`;
+4. gates internos (confirmacao, ref, SHA == origin/main, CI do mesmo SHA, re-check antes de mutar);
+5. deploy no runner self-hosted `qlmed-prod`.
+
+- execute os comandos somente no checkout canônico `~/qlmed/app`, nunca no runtime `/srv/qlmed/app`
+- `npm run publish:server` **somente** faz `git push origin main` e imprime o SHA + o comando de dispatch; **nao** dispara deploy e **nao** aguarda health
+- apos o push: aguarde CI verde do SHA, faca o `workflow_dispatch` manual, acompanhe o workflow no GitHub (o workflow valida health e revisao)
+- depois que o workflow concluir com sucesso, execute `npm run check:deploy`
+- `npm run deploy:server` e apenas deploy manual/legado do compose; nao e o caminho normal da producao publica
+- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada
+- producao publica: rollback automatico de imagem na falha do workflow; `qlmed-app:previous` so no host (manual); codigo anterior via Actions exige revert/recovery em `main` (novo tip), CI desse SHA e dispatch do `origin/main` atual
 
 ## Regras
 
