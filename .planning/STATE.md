@@ -114,7 +114,7 @@ _(none yet)_
   produção. Ver CLAUDE.md (expand/contract).
 - node-forge update (Phase 2) precisa de teste cuidadoso com assinatura NF-e
 - PINs sao padrao da empresa — manter funcionalidade, proteger implementacao
-- Container names gerenciados pelo Coolify — nao criar containers conflitantes
+- Containers de produção usam os nomes estáveis do Compose (`qlmed-app`, `qlmed-db`, `qlmed-n8n` e serviços Evolution)
 
 ### Milestone v2.0 — Notas
 

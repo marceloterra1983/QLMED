@@ -10,38 +10,33 @@ Activate when the user asks about Docker containers, stack management, rebuildin
 
 ## Stack architecture
 
-The QLMED stack is managed by **Coolify** (not docker-compose directly). Container names have Coolify suffixes.
+The QLMED stack is managed by Docker Compose from `/srv/qlmed/docker-compose.yml`. GitHub Actions is the production deployment controller.
 
-| Service | Container pattern | Port |
+| Service | Container name | Port |
 |---|---|---|
-| App (Next.js) | `qlmed-app-*` | 13000→3000 |
-| DB (PostgreSQL 18) | `qlmed-db-*` | internal only |
-| n8n | `qlmed-n8n-*` | 5678 |
-| Evolution API | `qlmed-evolution-api-*` | 8085→8080 |
-| Evolution DB | `qlmed-evolution-db-*` | internal |
-| Evolution Redis | `qlmed-evolution-redis-*` | internal |
-| DB Proxy (socat) | `qlmed-db-proxy` | 127.0.0.1:5432 |
+| App (Next.js) | `qlmed-app` | 13000→3000 |
+| DB (PostgreSQL 18) | `qlmed-db` | 127.0.0.1:5432 |
+| n8n | `qlmed-n8n` | 5678 |
+| Evolution API | `qlmed-evolution-api` | 8085→8080 |
+| Evolution DB | `qlmed-evolution-db` | internal |
+| Evolution Redis | `qlmed-evolution-redis` | internal |
 
 ## Important notes
 
-- **Coolify manages the stack** — container names include random suffixes like `lkwc0s0ck8kcckocc4goc0kg-*`
-- The `docker-compose.yml` at `~/QLMED/production/` is used by GitHub Actions deploy, NOT by Coolify
-- Do NOT create containers named `qlmed-db` or `qlmed-app` directly — they conflict with Coolify containers
-- The `qlmed-db-proxy` container is the ONLY non-Coolify container; it forwards `localhost:5432` to the Coolify DB
+- `/srv/qlmed` is the canonical runtime; `~/qlmed/production` is its compatibility alias.
+- Production changes go through the GitHub Actions deployment workflow.
+- Use `docker compose --project-name qlmed --env-file /srv/qlmed/.env -f /srv/qlmed/docker-compose.yml` for read-only inspection and authorized recovery.
 
 ## Common commands
 
 ### View logs
 ```bash
-# Find actual container name first
-docker ps --format "{{.Names}}" | grep qlmed-app
-# Then tail logs
-docker logs -f --tail 100 <container-name>
+docker logs -f --tail 100 qlmed-app
 ```
 
 ### Restart a service
 ```bash
-docker restart <container-name>
+docker restart qlmed-app
 ```
 
 ### Health checks
@@ -53,16 +48,12 @@ curl http://127.0.0.1:8085              # Evolution
 
 ### DB access
 ```bash
-# Via proxy (from host)
-docker exec -it qlmed-db-proxy sh -c "apk add postgresql-client && psql postgresql://postgres:PASSWORD@qlmed-db-SUFFIX:5432/postgres"
-
-# Or directly into the DB container
-docker exec -it <qlmed-db-container> psql -U postgres
+docker exec -it qlmed-db psql -U postgres -d postgres
 ```
 
 ### Rebuild via GitHub Actions deploy
 ```bash
-cd ~/QLMED/production
+cd /srv/qlmed
 docker compose --project-name qlmed --env-file .env up -d --build qlmed-app
 ```
 
@@ -74,6 +65,6 @@ docker stats --no-stream  # CPU/Memory per container
 
 ## Troubleshooting
 - Container in restart loop → check `docker logs <name>` for error
-- DB not reachable → verify `qlmed-db-proxy` is running
+- DB not reachable → inspect `qlmed-db` health and the `qlmed_internal` network
 - Port conflict → check `ss -tlnp | grep <port>`
 - Out of disk → `docker system prune` (careful with volumes)

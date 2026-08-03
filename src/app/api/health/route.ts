@@ -47,7 +47,7 @@ export async function GET() {
     firstBuildValue(
       process.env.QLMED_BUILD_SOURCE,
       process.env.APP_QLMED_BUILD_SOURCE,
-      process.env.SOURCE_COMMIT ? 'coolify' : undefined,
+      process.env.SOURCE_COMMIT ? 'legacy-build' : undefined,
       process.env.NODE_ENV === 'development' ? 'next-dev' : process.env.NODE_ENV
     ) || 'unknown';
   const build = {

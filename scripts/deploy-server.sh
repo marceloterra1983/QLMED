@@ -8,7 +8,7 @@ Usage: scripts/deploy-server.sh --legacy
 Deploys the current Git HEAD to the legacy/manual compose stack on the server.
 Public production at https://app.qlmed.com.br is published by GitHub Actions
 QLMED Production Deploy (manual workflow_dispatch after CI on main), typically
-started after scripts/publish-server.sh pushes main — not by Coolify.
+started after scripts/publish-server.sh pushes main.
 
 Defaults:
   DEPLOY_HOST=server
@@ -137,10 +137,6 @@ load_build_metadata() {
 
 sync_production_manifests() {
   cp "\$staging_dir/production/docker-compose.yml" "\$DEPLOY_DIR/docker-compose.yml"
-
-  if [[ -f "\$staging_dir/production/docker-compose.coolify.yml" ]]; then
-    cp "\$staging_dir/production/docker-compose.coolify.yml" "\$DEPLOY_DIR/docker-compose.coolify.yml"
-  fi
 
   if [[ -f "\$staging_dir/production/README.md" ]]; then
     cp "\$staging_dir/production/README.md" "\$DEPLOY_DIR/README.md"

@@ -21,8 +21,8 @@ tunnel único" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeC
 :5678 qlmed-n8n" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="220" y="380" width="150" height="60" as="geometry"/></mxCell>
         <mxCell id="9" value="evolution.qlmed.com.br
 :8085 Evolution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="390" y="380" width="160" height="60" as="geometry"/></mxCell>
-        <mxCell id="10" value="coolify / uptime / sdd / brain
-:8000 / :13001 / :8779 / :13080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="570" y="380" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="10" value="uptime / sdd / brain
+:13001 / :8779 / :13080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="570" y="380" width="220" height="60" as="geometry"/></mxCell>
         <mxCell id="11" value="Zona Charlie / AutomatizeMS" style="text;html=1;fontStyle=1;fontSize=13;strokeColor=none;fillColor=none;" vertex="1" parent="1"><mxGeometry x="40" y="480" width="240" height="30" as="geometry"/></mxCell>
         <mxCell id="12" value="n8n.automatizems.com
 Traefik → shared-n8n" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1"><mxGeometry x="40" y="520" width="180" height="60" as="geometry"/></mxCell>
