@@ -8,7 +8,7 @@ Fonte de verdade dos manifests de producao do QLMED.
 - app: `https://app.qlmed.com.br`
 - n8n: `https://n8n.qlmed.com.br`
 - evolution: `https://evolution.qlmed.com.br`
-- publicacao: GitHub Actions `QLMED Production Deploy` (manual); Coolify nao e caminho atual
+- publicacao: GitHub Actions `QLMED Production Deploy` (manual)
 
 ## Estrutura remota esperada
 

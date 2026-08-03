@@ -87,7 +87,7 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 - **DB compartilhado**: Dev/prod usam mesmo PostgreSQL. Nunca `prisma migrate dev`. Apenas `prisma db push` após review.
 - **Zero downtime**: App em produção com usuários. Cada fase deve ser deployável independentemente.
 - **Node 22**: Host usa nvm com Node 22. Docker usa Alpine.
-- **Coolify**: Reverse proxy e SSL gerenciados pelo Coolify — não mexer em container names.
+- **Ingress**: Reverse proxy e SSL passam pelo Cloudflare Tunnel; os containers têm nomes estáveis definidos pelo Compose.
 - **Deploy**: Via GitHub Actions workflow_dispatch. Rollback disponível.
 - **Assinaturas NF-e**: node-forge é usado para certificados digitais A1 — testar cuidadosamente após update.
 

@@ -8,9 +8,9 @@ allowed-tools: Read, Grep, Bash, Glob, Edit, Write
 # Prisma QLMED - Schema & Database Conventions
 
 ## Stack
-- Prisma 5.22.0 + PostgreSQL 15
+- Prisma 7.8.0 + PostgreSQL 18
 - Schema: `prisma/schema.prisma`
-- DB: PostgreSQL at `10.0.1.8:5432/postgres` (Coolify internal network)
+- DB: PostgreSQL in container `qlmed-db`; host access is bound to `127.0.0.1:5432`
 
 ## CLI Commands
 
@@ -28,7 +28,7 @@ npx prisma studio                              # Visual DB browser (port 5555)
 npx prisma validate                            # Validate schema syntax
 
 # Direct DB access
-docker exec coolify-db psql -U postgres -d postgres -c "SELECT ..."
+docker exec qlmed-db psql -U postgres -d postgres -c "SELECT ..."
 ```
 
 ## Schema Overview

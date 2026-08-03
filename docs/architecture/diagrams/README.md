@@ -18,7 +18,6 @@ Fontes: SDD (`/srv/shared/sdd/specs/server/…`), `docker-compose.yml`, `qlmed-a
 | # | Arquivo | Conteúdo |
 |---|---|---|
 | 01 | `ingress-overview` | Cloudflare Tunnel único (QLMED + Charlie) |
-| 02 | `stack-compose-coolify` | Split compose (app/n8n) vs Coolify (db/evolution) |
 | 03 | `app-modules` | Next.js painel, API, lib, Prisma |
 | 04 | `external-integrations` | SEFAZ, NSDocs, Receita, ANVISA, OneDrive, Evolution, n8n |
 | 05 | `deploy-pipeline` | CI → aprovação → runner → health/rollback |
