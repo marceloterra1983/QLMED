@@ -2,7 +2,8 @@
 
 Fluxogramas da arquitetura do sistema QLMED (gestão fiscal NF-e/CT-e/NFS-e) e da stack no host `server`.
 
-Fontes: SDD (`/srv/shared/sdd/specs/server/…`), `docker-compose.yml`, `qlmed-app.spec.md`, stack-overview.
+Fontes: SDD (`/home/marce/sdd-specs/server/…`), `docker-compose.yml`,
+`qlmed-app.spec.md`, stack-overview.
 
 ## Ferramenta
 

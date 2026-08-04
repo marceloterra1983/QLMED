@@ -1,5 +1,10 @@
 # Melhoria contínua autônoma — QLMED app
 
+> **Estado verificado em 2026-08-03 — DIFERIDO:** o listener QLMED de CI Loop
+> (`:18645`, `qlmed-ci-loop-listener.service`) não está instalado nem ativo no
+> host. O workflow `qlmedCiLoop01` permanece apenas como arquivo versionado e
+> inativo; não trate este documento como autorização para ativá-lo.
+
 Sistema que **mede → classifica → propõe** melhorias do app ao longo da vida do
 produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 
@@ -18,24 +23,26 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 | Peça | Path |
 |------|------|
 | Policy | `.ci-loop/policy.json` |
-| Script | `~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` |
-| Listener | `:18645` · `qlmed-ci-loop-listener.service` |
-| Workflow n8n | `n8n/workflows/qlmedCiLoop01.json` |
+| Script | `~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` (execução manual, com `QLMED_APP_DEV=~/qlmed/app`) |
+| Listener | **não instalado/ativo** (`:18645` e `qlmed-ci-loop-listener.service` são planejados) |
+| Workflow n8n | `n8n/workflows/qlmedCiLoop01.json` (fonte versionada, inativo) |
 | Estado local | `~/.local/state/qlmed-ci-loop/` |
 | ADR | `docs/decisions/0004-continuous-improvement-loop.md` |
 
-## Ciclo (n8n)
+## Ciclo planejado (n8n; atualmente desativado)
 
 1. **Segunda 07:30** (Campo Grande): `POST /propose` — atualiza issue scorecard + abre PR de patches seguros se houver.
 2. WhatsApp só se `notify=true` (falhas de track, vuln high, major watch, PR criado).
 
-Manual:
+Execução manual do script (sem listener):
 
 ```bash
-~/server-ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
-curl -sS -H "X-Ci-Loop-Token: $(cat ~/server-ops/qlmed/ops/secrets/ci-loop.token)" \
-  -X POST http://127.0.0.1:18645/audit
+QLMED_APP_DEV=~/qlmed/app \
+  ~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
 ```
+
+Não há endpoint local `:18645` para chamar até que o listener seja
+reimplantado e revalidado.
 
 ## O que o loop NÃO faz
 

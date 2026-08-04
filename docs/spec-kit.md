@@ -40,16 +40,16 @@ Never run a forced integration upgrade directly on `main`.
 
 ## Atualização automática diária (n8n)
 
-Fluxo: **shared-n8n Schedule 07:00** → HTTP
+Fluxo: **n8n Shared (container `n8n`) Schedule 07:00** → HTTP
 `host.docker.internal:8765/speckit/update` → serviço host → WhatsApp (só se
 houver atualização ou erro). A cópia que existia no n8n QLMED foi removida em
 31/07/2026 para impedir execução duplicada.
 
 | Peça | Path |
 |------|------|
-| Workflow | `~/server-ops/shared/ops/n8n/workflows-snapshot/SpecKitAutoUpd01.json` (id `SpecKitAutoUpd01`) |
-| Script | `~/server-ops/qlmed/ops/scripts/speckit-updater.py` |
-| Segredo | `/etc/qlmed/speckit-updater.env` → env `SPECKIT_WEBHOOK_SECRET` no serviço e no shared-n8n |
+| Workflow | `~/ops/n8n/workflows-snapshot/SpecKitAutoUpd01.json` (id `SpecKitAutoUpd01`, n8n Shared) |
+| Script | `~/ops/qlmed/ops/scripts/speckit-updater.py` |
+| Segredo | `/etc/qlmed/speckit-updater.env` → env `SPECKIT_WEBHOOK_SECRET` no serviço e no n8n Shared |
 | systemd | `/etc/systemd/system/speckit-updater.service` (porta 8765) |
 
 Comportamento do serviço:

@@ -7,7 +7,8 @@ Modelo operacional do projeto:
 - o runtime implantado do app, sem Git, fica em `/srv/qlmed/app`
 - o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed`
   (`~/qlmed/production` é o alias operacional)
-- scripts/ops do host ficam em `~/server-ops/qlmed/ops` (e shared em `~/server-ops/shared/ops`)
+- scripts/ops do host ficam em `~/ops/qlmed/ops`; os serviços compartilhados ficam
+  em `~/ops/{n8n,evolution,dependencies,...}`
 - `n8n` existe em `dev` e em `prod`
 - `Evolution` fica somente em `prod`
 - um host `dev` dedicado permanece o alvo preferido para desenvolvimento isolado, quando disponível
@@ -16,7 +17,9 @@ Modelo operacional do projeto:
 
 - `n8n dev`: `http://100.83.11.58:5678/`
 - `app dev` via `npm run dev`: `http://100.83.11.58:3000/`
-- `app dev` via Docker: `http://100.83.11.58:3001/`
+- `app dev` via Docker: `http://100.83.11.58:3001/` (a porta 3001 está
+  ocupada pelo Uptime Kuma no server atual; use somente com override de porta
+  ou em outro host)
 - `Evolution usado pelo dev`: `https://evolution.qlmed.com.br`
 
 ## Fonte de verdade
