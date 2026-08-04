@@ -1,0 +1,11 @@
+# Commits que so mexeram em formatacao. O git blame os ignora e mostra o autor
+# real de cada linha.
+#
+# O GitHub le este arquivo sozinho. Localmente, ative uma vez:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: normalizar finais de linha para LF (#98) — 111 arquivos, so CRLF -> LF
+de6cbbfecd27b110febe54e64cd15d9ea8c70947
+
+# chore: normalize list-payload header line endings (#99) — so fim de linha
+ccbdae7b447034453eb8ec4223d3cf42ea9e60a2
