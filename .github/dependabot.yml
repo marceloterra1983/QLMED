@@ -32,6 +32,11 @@ updates:
       # nao existem em producao.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # typescript 7.x nao tem parser de lint: @typescript-eslint mais recente
+      # (8.66.0) declara peer `typescript: >=4.8.4 <6.1.0` e nao existe 9.x.
+      # Reavaliar quando typescript-eslint publicar suporte a TS 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include: "scope"
