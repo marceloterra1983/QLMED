@@ -1,4 +1,8 @@
 import { createLogger } from '@/lib/logger';
+import {
+  validateCanonicalDatabaseConfig,
+  type DatabaseConfigurationError,
+} from '@/lib/database-config';
 
 const log = createLogger('env');
 
@@ -32,6 +36,17 @@ export function validateEnv() {
 
   if (missing.length > 0) {
     log.error({ missing }, 'Variaveis de ambiente obrigatorias nao configuradas');
+    process.exit(1);
+  }
+
+  try {
+    validateCanonicalDatabaseConfig();
+  } catch (error) {
+    const reason = error as DatabaseConfigurationError;
+    log.error(
+      { reason: reason.message },
+      'Configuracao de banco canonico invalida',
+    );
     process.exit(1);
   }
 

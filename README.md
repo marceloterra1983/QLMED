@@ -7,17 +7,32 @@ Modelo operacional do projeto:
 - o runtime implantado do app, sem Git, fica em `/srv/qlmed/app`
 - o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed`
   (`~/qlmed/production` é o alias operacional)
-- scripts/ops do host ficam em `~/server-ops/qlmed/ops` (e shared em `~/server-ops/shared/ops`)
+- scripts/ops do host ficam em `~/ops/qlmed/ops`; os serviços compartilhados ficam
+  em `~/ops/{n8n,evolution,dependencies,...}`
 - `n8n` existe em `dev` e em `prod`
 - `Evolution` fica somente em `prod`
-- um host `dev` dedicado permanece o alvo preferido para desenvolvimento isolado, quando disponível
+- o QLMED mantém um único banco PostgreSQL persistente e canônico (`postgres`),
+  configurado somente por `DATABASE_URL`; não existe um segundo banco
+  persistente `qlmed_dev`
+- o CI usa `qlmed_ci` apenas como banco efêmero de testes, nunca como runtime
 
 ## Desenvolvimento
 
 - `n8n dev`: `http://100.83.11.58:5678/`
 - `app dev` via `npm run dev`: `http://100.83.11.58:3000/`
-- `app dev` via Docker: `http://100.83.11.58:3001/`
+- `app dev` via Docker: `http://100.83.11.58:3001/` (a porta 3001 está
+  ocupada pelo Uptime Kuma no server atual; use somente com override de porta
+  ou em outro host)
 - `Evolution usado pelo dev`: `https://evolution.qlmed.com.br`
+- `DATABASE_URL` deve ser fornecida pelo ambiente protegido. O processo local
+  usa o mesmo banco persistente canônico `postgres` do QLMED; não crie aliases
+  `*_DEV` ou `*_PROD` nem aponte para outro nome de banco.
+- O `docker-compose.yml` do checkout não sobe PostgreSQL local: ele exige
+  `DATABASE_URL` no `.env` protegido e conecta o app ao banco canônico. O
+  `qlmed_ci` do CI continua efêmero e separado apenas para testes.
+- Antes de uma operação que possa alterar dados, confirme o receipt recente do
+  conjunto `qlmed` no projeto `server-backup`. O código não lê `.env` nem
+  backups; essa conferência pertence ao operador/CI.
 
 ## Fonte de verdade
 
@@ -53,9 +68,12 @@ Sequencia real:
 - o `n8n dev` deve testar integracoes com `Manual Trigger`
 - a chave do `Evolution` de producao nao deve ficar versionada no repositorio
 - o ideal e cadastrar a credencial do `Evolution` direto no `n8n dev`
+- `npm run dev` não deve iniciar sincronizadores de fundo contra o banco
+  canônico; use `QLMED_DISABLE_BACKGROUND_SERVICES=true` durante o trabalho
+  local.
 
 ## Variaveis uteis no n8n dev
 
-- `QLMED_DEV_MODE=true`
+- `QLMED_DEV_MODE=true` (somente modo do n8n; não seleciona outro banco)
 - `QLMED_ALLOW_REAL_EXECUTIONS=false`
 - `QLMED_EVOLUTION_BASE_URL=https://evolution.qlmed.com.br`

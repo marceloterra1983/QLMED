@@ -244,8 +244,8 @@ Plans:
 **Milestone v2.0: 6/6 requirements mapped. Zero orphans.**
 
 ### Phase 11: Unificação de Schema
-**Goal**: As 11 tabelas satélite hoje `@@ignore` + DDL manual nas stores (9 originalmente listadas + `nfe_entry_item` + `cnpj_monitoring`, achado verificado ao vivo em 2026-07-11) passam a ser schema Prisma versionado; migrações voltam a ser seguras agora que dev roda em banco isolado (depende de `server-hardening` Phase 2 no repo `/home/marce`, concluída)
-**Depends on**: Phase 10 (código deve estar limpo/atualizado antes); externamente, `server-hardening` workstream Phase 2 em `/home/marce` — **CONFIRMADO CONCLUÍDA em 2026-07-11** (`qlmed_dev` provisionado, `.env` de dev repontado, isolamento comprovado ao vivo: marker count=1 em dev, count=0 em produção). Bloqueio removido, fase liberada para planejamento/execução.
+**Goal**: As 11 tabelas satélite hoje `@@ignore` + DDL manual nas stores (9 originalmente listadas + `nfe_entry_item` + `cnpj_monitoring`, achado verificado ao vivo em 2026-07-11) passam a ser schema Prisma versionado, com replay reprodutível no CI e compatibilidade expand/contract.
+**Depends on**: Phase 10 (código deve estar limpo/atualizado antes). O contrato atual de persistência está em ADR-0007: um único banco persistente protegido (`postgres` via `DATABASE_URL`) e `qlmed_ci` somente para CI; não há dependência operacional de `qlmed_dev`.
 **Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03
 **Success Criteria** (o que precisa ser verdade):
   1. As 11 tabelas (invoice_tax_totals, invoice_item_tax, contact_fiscal, invoice_duplicata, product_registry, stock_entry, nfe_entry_item, ncm_cache, cnpj_cache, cnpj_monitoring, product_settings_catalog) têm modelo Prisma sem `@@ignore`, com migração baseline aplicada em produção sem perda de dados
@@ -262,6 +262,13 @@ Plans:
 
 Follow-up executado em 2026-07-26: PRs #52/#53 migraram as demais stores
 satélite para Prisma Client sem reabrir o escopo da fase.
+
+**Contrato atual (2026-08-03):** ADR-0007 e SPEC-002 substituem a suposição
+de um banco persistente separado para desenvolvimento. Os nomes e instruções
+`qlmed_dev` nos arquivos `11-01-PLAN.md` e `11-02-PLAN.md` são registros
+históricos da execução anterior; permanecem imutáveis e não são instruções para
+novas operações. Novos testes/replays usam `qlmed_ci`, e o runtime usa apenas a
+conexão protegida `DATABASE_URL` para `postgres`.
 
 ### Phase 12: Desduplicação de Código
 **Goal**: Eliminar a duplicação divergente entre `products/route.ts` e `product-aggregation.ts`, e quebrar o god module `auto-sync.ts`
@@ -296,4 +303,5 @@ Plans:
 | 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 
 ---
-*Last updated: 2026-07-28 — Phase 11 checkboxes/SCHEMA status reconciliados com fechamento 2026-07-26; Phase 12 permanece Complete.*
+*Last updated: 2026-08-03 — contrato de persistência atualizado para ADR-0007;
+referências históricas a `qlmed_dev` não foram reescritas.*

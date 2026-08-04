@@ -5,7 +5,7 @@
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="2" value="Dev vs produção — dados e DB proxy" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=17;fontColor=#1a1a1a;" vertex="1" parent="1"><mxGeometry x="40" y="16" width="1000" height="34" as="geometry"/></mxCell>
+        <mxCell id="2" value="Banco canônico QLMED e recuperação" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=17;fontColor=#1a1a1a;" vertex="1" parent="1"><mxGeometry x="40" y="16" width="1000" height="34" as="geometry"/></mxCell>
         <mxCell id="3" value="Host server
 (localhost)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="60" y="140" width="140" height="60" as="geometry"/></mxCell>
         <mxCell id="4" value="app-dev
@@ -13,24 +13,23 @@ PORT=3001
 npm run dev" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="60" y="240" width="140" height="70" as="geometry"/></mxCell>
         <mxCell id="5" value="qlmed-app
 :13000 produção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="60" y="360" width="140" height="70" as="geometry"/></mxCell>
-        <mxCell id="6" value="qlmed-db-proxy
-socat
-127.0.0.1:5432" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="280" y="240" width="160" height="70" as="geometry"/></mxCell>
+        <mxCell id="6" value="DATABASE_URL
+variável protegida" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1"><mxGeometry x="280" y="240" width="160" height="70" as="geometry"/></mxCell>
         <mxCell id="7" value="PostgreSQL 18
-qlmed-db" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="520" y="240" width="160" height="80" as="geometry"/></mxCell>
-        <mxCell id="8" value="database
-qlmed_dev" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="160" width="130" height="60" as="geometry"/></mxCell>
-        <mxCell id="9" value="database
-postgres
-(produção)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="320" width="130" height="70" as="geometry"/></mxCell>
+qlmed-db / postgres" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1"><mxGeometry x="520" y="240" width="160" height="80" as="geometry"/></mxCell>
+        <mxCell id="8" value="QLMED
+PostgreSQL canônico" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="240" width="160" height="70" as="geometry"/></mxCell>
+        <mxCell id="9" value="server-backup
+conjunto qlmed
+pg_dump + remoto" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="360" width="160" height="70" as="geometry"/></mxCell>
         <mxCell id="10" value="DATABASE_URL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="4" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
         <mxCell id="11" value="qlmed_network" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="5" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
         <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="6" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
         <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="7" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="15" value="Mesma instância PG, DBs distintos.
-Write em dev não aparece em prod.
-Sempre use o alias qlmed-db." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="280" y="360" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;" edge="1" parent="1" source="8" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="15" value="Um único banco persistente.
+CI usa qlmed_ci somente de forma efêmera.
+Confirme receipt do backup antes de manutenção." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="280" y="360" width="360" height="100" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

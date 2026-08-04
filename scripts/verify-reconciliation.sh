@@ -6,6 +6,8 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
+node scripts/validate-database-config.mjs
+
 echo 'ALTER TABLE "ApiKey" DROP COLUMN "scopes";' | npx prisma db execute --stdin
 npx prisma db execute \
   --file prisma/migrations/20260609190000_reconcile_current_schema_and_outbox/migration.sql

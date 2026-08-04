@@ -19,6 +19,12 @@ Fonte de verdade dos manifests de producao do QLMED.
 - `/home/marce/qlmed/production/env/n8n.env`
 - `/home/marce/qlmed/production/app`
 
+`env/app.env` must provide the protected canonical `DATABASE_URL` for the
+`qlmed-app` service. It must target the PostgreSQL instance in this Compose
+stack (database `postgres`) and must not use `qlmed_dev` or a parallel URL
+alias. The value is never committed; the `server-backup` project covers this
+database through its `qlmed` backup set.
+
 ## Fonte de verdade
 
 - o repositorio `QLMED` e a unica fonte de verdade para codigo e manifests de producao

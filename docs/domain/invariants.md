@@ -11,4 +11,6 @@
   company and method when a run is already active.
 - Notification delivery is recorded durably before asynchronous publication.
 - Development automations never own production schedules or real webhooks.
-
+- Persistent QLMED data is addressed only through the protected `DATABASE_URL`
+  for the canonical `postgres` database; `qlmed_ci` is disposable CI state,
+  and application code never reads backup files or backup credentials.

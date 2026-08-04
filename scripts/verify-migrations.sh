@@ -6,6 +6,8 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
+node scripts/validate-database-config.mjs
+
 echo "Verifying the production migration-window image contract..."
 node scripts/test-production-migration-window.cjs
 

@@ -2,7 +2,11 @@
 
 ## What This Is
 
-Projeto de correção completa do QLMED — sistema fiscal/invoice brasileiro (NF-e, CT-e, NFS-e) built with Next.js 14, Prisma, PostgreSQL. Este milestone foca em resolver todos os problemas identificados em 4 audits paralelos (Security, Dependencies, Tech Debt, Performance) sem adicionar funcionalidades novas.
+Projeto de correção completa do QLMED — sistema fiscal/invoice brasileiro (NF-e,
+CT-e, NFS-e) built with Next.js 15, React 19, Prisma 7 e PostgreSQL. Este
+milestone foca em resolver todos os problemas identificados em 4 audits
+paralelos (Security, Dependencies, Tech Debt, Performance) sem adicionar
+funcionalidades novas.
 
 ## Core Value
 
@@ -23,6 +27,11 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 - ✓ Deploy via GitHub Actions — existing
 
 ### Active
+
+> Este ledger conserva a lista original da milestone v1.0. Para o estado
+> atual, consulte `.planning/REQUIREMENTS.md` e `.planning/ROADMAP.md`; não
+> interprete os marcadores históricos abaixo como autorização para operar o
+> banco canônico.
 
 - ✓ **SEC-01**: Sistema de PINs protegido (env var + logging) — Phase 1
 - ✓ **SEC-02**: Rate limiting em endpoints críticos — Phase 1
@@ -69,13 +78,17 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 
 - Novas funcionalidades de negócio — este milestone é exclusivamente correção/hardening
 - Tailwind 3→4 — rewrite muito grande, avaliar em milestone separado
-- Migração de banco de dados — usar apenas `prisma db push`, nunca `migrate dev`
+- Criar um segundo banco persistente ou usar `prisma migrate dev` no runtime —
+  migrations versionadas são verificadas no `qlmed_ci`; qualquer operação no
+  banco canônico exige revisão e autorização explícitas
 - Redesign de UI — manter visual atual, apenas refatorar código
 
 ## Context
 
 - **Produção ativa**: app.qlmed.com.br com usuários reais
-- **DB compartilhado**: dev e produção usam o mesmo PostgreSQL — cuidado extremo com schema changes
+- **Persistência canônica**: o runtime usa um único PostgreSQL protegido,
+  `postgres`, por `DATABASE_URL`; CI usa somente o banco efêmero `qlmed_ci`.
+  `qlmed_dev` e aliases de URL não são suportados (ADR-0007).
 - **4 audits realizados** (2026-04-10): Security, Dependencies, Tech Debt, Performance
 - **Vulnerabilidades críticas**: node-forge (assinatura NF-e), PINs hardcoded, zero rate limiting
 - **Performance**: rotas carregam xmlContent completo (50-200KB/invoice) para extrair dados via regex em runtime
@@ -84,7 +97,10 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 
 ## Constraints
 
-- **DB compartilhado**: Dev/prod usam mesmo PostgreSQL. Nunca `prisma migrate dev`. Apenas `prisma db push` após review.
+- **Persistência canônica**: somente `DATABASE_URL` para o banco persistente
+  `postgres`; não provisionar `qlmed_dev`, aliases ou outro banco persistente.
+  Replay e testes de migrations usam `qlmed_ci`; não executar operação no banco
+  canônico sem revisão e autorização.
 - **Zero downtime**: App em produção com usuários. Cada fase deve ser deployável independentemente.
 - **Node 22**: Host usa nvm com Node 22. Docker usa Alpine.
 - **Ingress**: Reverse proxy e SSL passam pelo Cloudflare Tunnel; os containers têm nomes estáveis definidos pelo Compose.
@@ -100,6 +116,7 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 | Substituir xlsx por exceljs | xlsx é abandonware com prototype pollution sem fix | — Pending |
 | Persistir dados XML na ingestão | Eliminar parsing runtime que carrega 100MB+ por request | — Pending |
 | Não migrar Tailwind 3→4 | Rewrite muito grande, baixo ROI para este milestone | — Pending |
+| Banco persistente canônico único | ADR-0007: `postgres` via `DATABASE_URL`; `qlmed_ci` somente para CI; backup/restore pertence ao `server-backup` | ✓ Accepted |
 | .planning/ local-only | Não poluir repositório QLMED com docs de planejamento | ✓ Good |
 
 ## Evolution
@@ -120,4 +137,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after Phase 1 completion*
+*Last updated: 2026-08-03 — versões e limite de persistência reconciliados com
+ADR-0007; o ledger histórico de requisitos permanece preservado.*

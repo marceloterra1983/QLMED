@@ -21,8 +21,11 @@ role and ownership behavior.
 ### III. Prisma migrations own durable schema
 
 `prisma/schema.prisma` and ordered migrations are the database source of truth.
-New runtime DDL is prohibited. Schema work MUST include migration verification,
-development/production separation and rollback consequences. Destructive or
+New runtime DDL is prohibited. The persistent runtime uses the protected
+canonical `DATABASE_URL` and the `postgres` database; CI uses only the
+disposable `qlmed_ci` database. `qlmed_dev`, arbitrary database names and
+parallel URL aliases are not supported. Schema work MUST include migration
+verification, compatibility and rollback consequences. Destructive or
 incompatible changes MUST use an explicit expand/contract plan.
 
 ### IV. Routes adapt; shared modules implement
@@ -86,5 +89,14 @@ Compliance is checked during planning, analysis and review. Any exception MUST
 be explicit in the plan's Complexity Tracking section, including the rejected
 simpler alternative and a removal path.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12
+### Amendment 1.0.1 — canonical persistence boundary (2026-08-03)
 
+ADR-0007 clarifies Principle III after the repository reconciliation found that
+the previously documented `qlmed_dev` persistent database does not exist in the
+current stack. The amendment preserves versioned migrations and adds the
+explicit distinction between the protected persistent `postgres` database and
+the disposable CI database `qlmed_ci`; it does not authorize live migrations or
+alter the backup project. The affected specification, plan and task templates
+were reviewed together with this amendment.
+
+**Version**: 1.0.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-08-03

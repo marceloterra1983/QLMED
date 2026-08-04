@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { createLogger } from '@/lib/logger';
+import { getCanonicalDatabaseUrl } from '@/lib/database-config';
 
 const log = createLogger('prisma');
 
@@ -9,10 +10,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
+  const connectionString = getCanonicalDatabaseUrl();
   const adapter = new PrismaPg(connectionString);
   return new PrismaClient({ adapter });
 }

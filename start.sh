@@ -21,6 +21,8 @@ case "$DATABASE_URL" in
     ;;
 esac
 
+node scripts/validate-database-config.mjs
+
 echo "Running database migrations..."
 node node_modules/prisma/build/index.js migrate deploy
 node node_modules/prisma/build/index.js migrate diff \
