@@ -222,7 +222,10 @@ async function generatePdf(html: string): Promise<Buffer> {
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // O HTML é autocontido (CSS inline, fontes do sistema, sem imagens nem
+    // scripts), então o 'load' padrão já basta. `networkidle0` nunca valeu aqui:
+    // setContent não o suporta, e o puppeteer 25 passou a rejeitá-lo no tipo.
+    await page.setContent(html);
     const pdf = await page.pdf({
       format: 'A4',
       landscape: true,
