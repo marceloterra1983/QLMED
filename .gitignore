@@ -54,9 +54,16 @@ test-insert.js
 
 # temp files
 *.pdf
+# extensoes em maiuscula tambem: exports do ERP saem como .XLSX/.ODS e o Git
+# no Linux e case-sensitive, entao *.xlsx sozinho nao pega List_*.XLSX
 *.xls
+*.XLS
 *.xlsx
+*.XLSX
+*.ods
+*.ODS
 *.csv
+*.CSV
 *.jpeg
 *.jpg
 *.png

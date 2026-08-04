@@ -27,6 +27,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
         update-types: ["version-update:semver-major"]
+      # @types/node acompanha o runtime, nao o ultimo release: Dockerfile e
+      # ci.yml rodam node:22, entao um bump para 26.x tipa contra APIs que
+      # nao existem em producao.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include: "scope"
