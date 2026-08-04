@@ -6,4 +6,4 @@ const EntradaNfePage = dynamic(() => import('./page-client'), { ssr: false });
 
 export default function Page() {
   return <EntradaNfePage />;
-}
+}
