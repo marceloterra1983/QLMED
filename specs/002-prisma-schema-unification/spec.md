@@ -4,6 +4,7 @@ status: active
 owner: QLMED
 related_decisions:
   - ADR-0006
+  - ADR-0007
 affected_modules:
   - prisma
   - persistence-stores
@@ -25,10 +26,11 @@ behavioral and safety contract.
 
 ### US1 — Reproducible schema (P1)
 
-As an operator, I need a fresh development database to reach the expected schema
-using versioned Prisma migrations only.
+As an operator, I need the canonical QLMED database to reach the expected
+schema using versioned Prisma migrations only, while CI proves replay in a
+disposable PostgreSQL service.
 
-- **AC-001**: Replaying migrations in an empty CI/dev database succeeds.
+- **AC-001**: Replaying migrations in the empty CI database `qlmed_ci` succeeds.
 - **AC-002**: `prisma migrate diff` reports no unexpected drift afterward.
 
 ### US2 — Typed persistence migration (P1)
@@ -49,6 +51,23 @@ revision until the contract phase is explicitly completed.
 - **AC-006**: Application rollback consequences are explicit; no plan claims
   that an image rollback reverses a database migration.
 
+### US4 — Single canonical persistence boundary (P1)
+
+As the sole maintainer, I need the application and its automated checks to use
+one documented persistence boundary, so local setup does not depend on an
+unavailable second database and cannot silently select an arbitrary target.
+
+- **AC-007**: The configuration guard accepts only `DATABASE_URL` targeting the
+  persistent `postgres` database or the disposable CI database `qlmed_ci`, and
+  rejects `qlmed_dev`, arbitrary database names and parallel URL aliases without
+  echoing credentials.
+- **AC-008**: The root Compose file consumes a protected `DATABASE_URL` and
+  does not provision a persistent PostgreSQL service; CI creates `qlmed_ci` for
+  replay/tests only.
+- **AC-009**: The documentation identifies the `server-backup` `qlmed` set and
+  its current receipt as the recovery gate; application code does not read
+  backup files or backup credentials.
+
 ## Requirements
 
 - **FR-001**: Prisma schema and migrations become canonical for the selected
@@ -58,11 +77,19 @@ revision until the contract phase is explicitly completed.
 - **FR-003**: Each migrated store retains focused tests and explicit Prisma
   model mappings.
 - **FR-004**: Runtime DDL is removed only after the corresponding migration is
-  proven in development and CI.
+  proven in CI and, when required, in an explicitly authorized canonical
+  environment; no second persistent development database is assumed.
+- **FR-005**: Application startup, Prisma configuration and database scripts
+  share one fail-closed canonical database resolver.
+- **FR-006**: Compose, CI and operator-facing documentation expose the same
+  persistent/ephemeral boundary and do not create a second persistent database.
 - **ROLE-001**: Only an explicitly authorized operator may execute production
   migration deployment.
-- **OWN-001**: Development verification uses `qlmed_dev` or CI PostgreSQL, never
-  production.
+- **OWN-001**: The persistent runtime has one canonical `DATABASE_URL` targeting
+  the production `postgres` database; no arbitrary database name, `qlmed_dev`
+  or parallel URL aliases are supported. Automated verification uses the
+  disposable CI PostgreSQL service, and any operator-authorized check against
+  the canonical database requires a current `server-backup` receipt.
 - **NFR-001 Security**: No database URL or credential appears in specs, logs or
   commits.
 - **NFR-002 Reliability**: Every step defines backup, compatibility, validation
@@ -77,6 +104,8 @@ revision until the contract phase is explicitly completed.
   documentation-only reconciliation.
 - Destructive column/table removal before an observation window.
 - Modifying production backup policy.
+- Creating a second persistent QLMED database or migrating historical records
+  that mention the former `qlmed_dev` convention.
 
 ## Related delivery plan
 

@@ -136,6 +136,7 @@ jobs:
 
       - name: Generate and validate Prisma client
         run: |
+          npm run db:config:verify
           npx prisma generate
           npx prisma validate
 

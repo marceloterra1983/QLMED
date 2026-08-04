@@ -44,7 +44,12 @@ npm run db:reconcile:verify
 ## Safety boundaries
 
 - Never read, print, add or commit `.env` files or backups.
-- Development uses `qlmed_dev`; never point development commands at production.
+- QLMED has one persistent canonical PostgreSQL database (`postgres`) configured
+  only through `DATABASE_URL`; do not create or expect a `qlmed_dev` database,
+  arbitrary database name or parallel database URL aliases. CI may use its
+  disposable `qlmed_ci` service. Local development against the canonical
+  database is allowed only with protected credentials, background services
+  disabled, and a current backup receipt.
 - Do not run deploy, publish, migration deploy or production scripts unless the
   user explicitly requests that external effect.
 - Schema changes use versioned Prisma migrations. Runtime DDL is legacy and
@@ -66,4 +71,3 @@ npm run db:reconcile:verify
   persistence, integrations or significant non-functional requirements.
 - Use an ADR when a decision is durable, cross-feature or architecturally
   constraining. Keep local reversible choices in the feature plan.
-

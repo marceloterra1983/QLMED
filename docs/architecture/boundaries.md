@@ -18,6 +18,13 @@ Prisma schema and migrations are the database source of truth. New tables or
 columns require a migration and migration verification. Raw SQL is reserved for
 cases Prisma cannot express adequately and must remain parameterized.
 
+The runtime has one persistent database boundary: the canonical `postgres`
+database through `DATABASE_URL`. Do not add arbitrary database names,
+environment-specific URL aliases or code paths for `qlmed_dev`; the only
+additional database allowed by the repository contract is the disposable
+`qlmed_ci` service created by CI. Backup and restore decisions belong to the
+`server-backup` project and are checked before data-changing maintenance.
+
 ## Integrations
 
 Integration clients and strategies belong in `src/lib`. HTTP routes should not
@@ -49,4 +56,3 @@ UI/HTTP adapters -> application/domain modules -> persistence/integration ports
 
 Shared domain behavior must not import pages or HTTP route handlers. Tests may
 exercise route adapters, but core behavior should remain testable in isolation.
-

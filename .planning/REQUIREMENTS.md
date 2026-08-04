@@ -10,9 +10,11 @@
 > mais abaixo — remediação pós-revisão arquitetural de 2026-07-11
 > (`docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4 do
 > plano original). Escopo deliberadamente separado do workstream
-> `server-hardening` em `/home/marce` (repo distinto) — ver lá para
-> backup, separação de banco dev/prod, versionamento AutomatizeMS, dedup
-> dos notificadores Python, e endurecimento de rede/secrets.
+> `server-hardening` em `/home/marce` (repo distinto) — ver lá para política de
+> backup/recuperação, versionamento AutomatizeMS, dedup dos notificadores Python
+> e endurecimento de rede/secrets. A antiga suposição de um banco persistente
+> separado para desenvolvimento foi supersedida neste repositório pelo
+> ADR-0007; os planos históricos continuam preservados.
 
 ## v1 Requirements
 
@@ -104,10 +106,9 @@ revisão arquitetural de 2026-07-11 — duplicação divergente entre rota e lib
 e o padrão de dual source-of-truth do schema (modelo Prisma `@@ignore` + DDL
 manual nas stores) que a própria milestone v1.0 introduziu conscientemente
 (ver Key Decisions em STATE.md: "@@ignore stubs for schema visibility",
-fase 03-01) como forma de evitar `prisma migrate` num banco compartilhado
-dev/prod. Essa restrição deixa de existir quando o workstream
-`server-hardening` (repo `/home/marce`, Phase 2) separar o banco de dev —
-esta milestone assume que isso já aconteceu.
+fase 03-01). O contrato atual, definido pelo ADR-0007, mantém um único banco
+persistente protegido (`postgres` via `DATABASE_URL`) e um banco efêmero
+`qlmed_ci` para replay/testes; não depende de provisionar `qlmed_dev`.
 
 **Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md` (Fase 4 e Fase 5.1/5.3/5.4
 do plano original), produto de revisão por 3 agentes de arquitetura em
@@ -147,16 +148,26 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
       loopback HTTP por uma chamada em processo a
       `buildProductsListPayload()` (extraída em CODEDUP-01)
 
+### Persistence Boundary (contrato atual)
+
+- [x] **PERSIST-01**: O runtime persistente aceita somente `DATABASE_URL`
+      apontando para o banco canônico `postgres`; `qlmed_dev`, nomes arbitrários
+      e aliases como `DATABASE_URL_DEV`/`DATABASE_URL_PROD` são rejeitados sem
+      expor credenciais. O CI usa apenas o banco efêmero `qlmed_ci`, o
+      `docker-compose.yml` raiz não provisiona PostgreSQL persistente local e o
+      gate de manutenção exige receipt atual do conjunto `qlmed` no
+      `server-backup`.
+
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
 | Novas funcionalidades de negócio | Milestone exclusivamente de correção/hardening |
 | Tailwind 3→4 | Rewrite muito grande, baixo ROI para este milestone |
-| prisma migrate dev | DB compartilhado dev/prod, usar apenas db push |
+| prisma migrate dev | Não é o fluxo canônico; o replay versionado usa `qlmed_ci` e qualquer migration no banco persistente exige revisão e autorização explícitas |
 | Redesign de UI | Manter visual atual, apenas refatorar código |
 | Test suite completo | Foco em correção, não em testes — defer para v2 |
-| Backup/restore, separação de banco dev/prod, versionamento AutomatizeMS, dedup dos notificadores Python, endurecimento de rede/secrets | Pertence ao workstream `server-hardening` no repo `/home/marce` (raiz do domínio), não a este repo `app-dev` — ver `docs/server/ARCH-REMEDIATION-PLAN.md` |
+| Política de backup/restore, versionamento AutomatizeMS, dedup dos notificadores Python, endurecimento de rede/secrets | Pertence ao workstream `server-hardening` no repo `/home/marce` (raiz do domínio), não a este repo `app-dev`; a aplicação não lê dumps nem altera manifests do backup |
 
 ## Traceability
 
@@ -174,6 +185,8 @@ do plano original), produto de revisão por 3 agentes de arquitetura em
 | UPG-01..UPG-05 | Phase 10: Major Upgrades |
 | SCHEMA-01..SCHEMA-03 | Phase 11: Unificação de Schema |
 | CODEDUP-01..CODEDUP-03 | Phase 12: Desduplicação de Código |
+| PERSIST-01 | ADR-0007 + guardas de configuração, Compose e CI |
 
 ---
-*Last updated: 2026-07-28 — SCHEMA-01..03 marcados complete (fechamento 2026-07-26); CODEDUP-01..03 já reconciliados.*
+*Last updated: 2026-08-03 — PERSIST-01 reconciliado com ADR-0007; referências
+históricas a `qlmed_dev` não foram reescritas.*

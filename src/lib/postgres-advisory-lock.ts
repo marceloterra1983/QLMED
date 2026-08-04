@@ -1,5 +1,6 @@
 import { Client } from 'pg';
 import type { Prisma } from '@prisma/client';
+import { getCanonicalDatabaseUrl } from '@/lib/database-config';
 
 export interface PostgresAdvisoryLock {
   release(): Promise<void>;
@@ -23,8 +24,7 @@ export async function acquirePostgresAdvisoryLock(
   key: string,
   options: { wait?: boolean } = {},
 ): Promise<PostgresAdvisoryLock | null> {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error('DATABASE_URL environment variable is required');
+  const connectionString = getCanonicalDatabaseUrl();
 
   const client = new Client({ connectionString });
   await client.connect();

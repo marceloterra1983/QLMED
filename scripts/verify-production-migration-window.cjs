@@ -4,6 +4,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { Client } = require('pg');
 
 const EXPECTED_MIGRATION = '20260713120500_baseline_satellite_tables_schema11';
@@ -18,6 +19,18 @@ const TABLES = [
 function fail(message) {
   process.stderr.write(`Production migration window refused: ${message}\n`);
   process.exit(78);
+}
+
+function verifyCanonicalDatabaseConfig() {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, 'validate-database-config.mjs')],
+    { stdio: 'inherit' },
+  );
+
+  if (result.error || result.status !== 0) {
+    fail('canonical DATABASE_URL validation failed');
+  }
 }
 
 function localMigrations() {
@@ -54,7 +67,7 @@ async function snapshot(client) {
 async function main() {
   const [mode, statePath] = process.argv.slice(2);
   if (!['before', 'after'].includes(mode) || !statePath) fail('usage: before|after STATE_PATH');
-  if (!process.env.DATABASE_URL) fail('DATABASE_URL missing');
+  verifyCanonicalDatabaseConfig();
   verifyExpectedSql();
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();

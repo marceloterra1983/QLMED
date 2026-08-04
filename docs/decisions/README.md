@@ -13,3 +13,7 @@ Statuses:
 Accepted records are historical. To change an outcome, add a new ADR and mark
 the old record as superseded.
 
+The current QLMED persistence boundary is [ADR-0007](./0007-single-canonical-database.md):
+one protected persistent `postgres` database through `DATABASE_URL`, with
+`qlmed_ci` reserved for disposable CI replay. Architecture and SPEC-002 should
+link to that record instead of duplicating the contract.

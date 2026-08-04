@@ -9,3 +9,8 @@
 - [x] T005 [US3] [AC-005/AC-006] Finalize expand/contract and rollback guidance.
 - [x] T006 [US1-US3] Run all QLMED quality and migration verification gates.
 - [ ] T007 [US3] Stop for explicit human authorization before production.
+- [x] T008 [US4] [FR-005/FR-006/AC-007/AC-008] Enforce and test the single
+  canonical database resolver across startup, Prisma, scripts, Compose and CI.
+- [x] T009 [US4] [AC-009] Reconcile ADR-0007, architecture docs, GSD state and
+  this SDD; preserve historical `qlmed_dev` plan evidence without treating it
+  as an operational instruction.

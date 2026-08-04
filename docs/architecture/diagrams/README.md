@@ -22,7 +22,7 @@ Fontes: SDD (`/home/marce/sdd-specs/server/…`), `docker-compose.yml`,
 | 03 | `app-modules` | Next.js painel, API, lib, Prisma |
 | 04 | `external-integrations` | SEFAZ, NSDocs, Receita, ANVISA, OneDrive, Evolution, n8n |
 | 05 | `deploy-pipeline` | CI → aprovação → runner → health/rollback |
-| 06 | `dev-prod-data` | checkout :3000 (`npm run dev`), `qlmed_dev` vs `postgres`, db-proxy |
+| 06 | `dev-prod-data` | `DATABASE_URL` único, PostgreSQL canônico, CI efêmero e receipt do backup `qlmed` |
 | 07 | `invoice-sync` | NF-e / CT-e DistDFe / NFS-e → ingest |
 | 08 | `notifications-whatsapp` | Outbox + worker + Evolution + n8n |
 | 09 | `backup-retention` | pg_dump local + GDrive |
@@ -39,3 +39,7 @@ Fontes: SDD (`/home/marce/sdd-specs/server/…`), `docker-compose.yml`,
 - **Cinza**: deferred / histórico
 
 *Diagramas descrevem o AS-IS documentado; validar com specs SDD se divergirem.*
+
+As fontes `.drawio` são canônicas. Os SVGs exportados são derivados e devem ser
+regenerados com draw.io quando a ferramenta estiver disponível; não use um SVG
+antigo como evidência de um segundo banco persistente.

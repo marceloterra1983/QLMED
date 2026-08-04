@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Remediação Pós-Revisão Arquitetural
 status: executing
-last_updated: "2026-07-26T00:00:00Z"
-last_activity: 2026-07-26
+last_updated: "2026-08-03T00:00:00Z"
+last_activity: 2026-08-03
 progress:
   total_phases: 12
   completed_phases: 12
@@ -18,14 +18,19 @@ progress:
 ## Project Reference
 
 **Core value:** Garantir que o QLMED em producao seja seguro, performatico e manutenivel
-**Current focus:** Phase 11 complete; remaining schema work is FKs and money precision
+**Current focus:** Phase 11 complete; canonical persistence boundary reconciled;
+remaining schema work is FKs and money precision
 
 ## Current Position
 
 Phase: 11 — Unificação de Schema
-Plan: 11-01 baseline done (prod+dev); 11-02 CnpjCache Prisma PoC verified; 11-03 expand/contract docs done
+Plan: 11-01 baseline, 11-02 CnpjCache Prisma PoC and 11-03 expand/contract
+docs complete; the plan files retain their historical execution wording
 Status: SCHEMA-01/02/03 closed 2026-07-26; all satellite stores use Prisma Client
-Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lookup Prisma; CLAUDE expand/contract; n8n 2.29.10
+Last activity: 2026-08-03 — ADR-0007 and the active docs/specs now define one
+protected persistent `postgres` database via `DATABASE_URL`, disposable
+`qlmed_ci` for CI, and no `qlmed_dev`; no live migration or runtime operation
+was executed by this reconciliation.
 
 ## Performance Metrics
 
@@ -89,6 +94,7 @@ Last activity: 2026-07-26 — human auth; migrate on qlmed_dev; verified cnpj-lo
 | legacy-peer-deps for nodemailer v8 | 02-01 | next-auth optional peer on nodemailer ^7 not used for email provider |
 | @@ignore stubs for schema visibility | 03-01 | Consistent with existing pattern (InvoiceTaxTotals, InvoiceItemTax, etc.) |
 | pino with browser disabled | 06-01 | Next.js server-only usage, avoids browser-side pino bundling issues |
+| Canonical persistent database | ADR-0007 | One protected `postgres` database through `DATABASE_URL`; CI uses disposable `qlmed_ci`; no `qlmed_dev` or URL aliases |
 
 ### Discovered TODOs
 
@@ -109,9 +115,10 @@ _(none yet)_
 
 ### Gotchas
 
-- Dev usa banco isolado `qlmed_dev` (server-hardening Phase 2, 2026-07-11).
-  `prisma db push` permanece o fluxo de dev; `migrate deploy` é o caminho de
-  produção. Ver CLAUDE.md (expand/contract).
+- O runtime persistente usa somente `DATABASE_URL` apontando para o banco
+  canônico `postgres`. CI/replay usa exclusivamente o banco efêmero `qlmed_ci`;
+  `qlmed_dev`, nomes arbitrários e aliases de URL são rejeitados. A conexão
+  local exige credencial protegida e `QLMED_DISABLE_BACKGROUND_SERVICES=true`.
 - node-forge update (Phase 2) precisa de teste cuidadoso com assinatura NF-e
 - PINs sao padrao da empresa — manter funcionalidade, proteger implementacao
 - Containers de produção usam os nomes estáveis do Compose (`qlmed-app`, `qlmed-db`, `qlmed-n8n` e serviços Evolution)
@@ -121,23 +128,29 @@ _(none yet)_
 - Escopo derivado de `docs/server/ARCH-REMEDIATION-PLAN.md` (revisão
   arquitetural de 2026-07-11), sem re-pesquisa — pesquisa já feita por 3
   agentes especializados na sessão de origem.
-- Dependência cruzada de repo: Phase 11 (schema) dependia de
-  `server-hardening` Phase 2 em `/home/marce` — **concluída 2026-07-11**.
-  SCHEMA-01..03 fechados 2026-07-26.
+- Dependência cruzada de repo: a antiga separação `qlmed_dev` do workstream
+  `server-hardening` é contexto histórico dos planos da Phase 11. O contrato
+  atual está em `docs/decisions/0007-single-canonical-database.md` e não cria
+  outro banco persistente. SCHEMA-01..03 fechados 2026-07-26.
 
 ## Session Continuity
 
 ### Last Session
 
 - **Date:** 2026-07-26
-- **What happened:** SCHEMA-01/02/03 closed (baseline, CnpjCache Prisma PoC, expand/contract policy); n8n 2.29.10.
-- **Where stopped:** Phase 11 and the remaining satellite-store migrations are complete; FKs and money precision remain.
+- **What happened:** SCHEMA-01/02/03 closed (baseline, CnpjCache Prisma PoC,
+  expand/contract policy); the single-database contract was reconciled in
+  ADR-0007 and the active SDD/docs.
+- **Where stopped:** Phase 11 and the remaining satellite-store migrations are
+  complete; FKs and money precision remain. No `qlmed_dev` was provisioned.
 
 ### Next Session Should
 
-1. Adicionar FKs/`@relation` onde ainda faltam.
+1. Adicionar FKs/`@relation` onde ainda faltam, sob plano separado.
 2. Planejar `Float`→`Decimal` com compatibilidade expand/contract.
-3. Manter CI Loop `schema-dual` / `money-float` verde a cada mudança.
+3. Manter o replay do CI em `qlmed_ci` e os gates de configuração canônica
+   verdes a cada mudança.
 
 ---
-*Last updated: 2026-07-28 — frontmatter reconciliado com Phase 11 closed 2026-07-26; blockers/session atualizados.*
+*Last updated: 2026-08-03 — contrato de persistência canônica reconciliado com
+ADR-0007; referências a `qlmed_dev` permanecem apenas como histórico dos planos.*

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "fuser -k 3000/tcp 2>/dev/null; sleep 0.5; next dev -H 0.0.0.0 -p 3000",
+    "dev": "fuser -k 3000/tcp 2>/dev/null; sleep 0.5; QLMED_DISABLE_BACKGROUND_SERVICES=${QLMED_DISABLE_BACKGROUND_SERVICES:-true} next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -20,6 +20,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:verify": "bash ./scripts/verify-migrations.sh",
     "db:reconcile:verify": "bash ./scripts/verify-reconciliation.sh",
+    "db:config:verify": "node ./scripts/validate-database-config.mjs",
     "db:generate": "prisma generate",
     "test": "vitest run",
     "test:integration": "RUN_DB_INTEGRATION_TESTS=1 QLMED_DISABLE_BACKGROUND_SERVICES=true vitest run src/lib/__tests__/*.integration.test.ts",

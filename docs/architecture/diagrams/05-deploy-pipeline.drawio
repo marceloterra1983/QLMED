@@ -32,7 +32,8 @@ qlmed-app:rollback-&lt;run_id&gt;
         <mxCell id="16" value="Política expand/contract:
 migrate deploy antes do app up;
 rollback de imagem ≠ rollback de schema.
-Dev: qlmed_dev isolado (mesmo PG)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="60" y="240" width="280" height="110" as="geometry"/></mxCell>
+Banco persistente: um único DATABASE_URL;
+CI usa qlmed_ci efêmero." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="60" y="240" width="280" height="110" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

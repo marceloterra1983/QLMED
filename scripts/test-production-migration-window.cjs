@@ -21,4 +21,9 @@ assert.match(
   /COPY --from=builder .*\/app\/scripts\/verify-production-migration-window\.cjs \.\/scripts\/verify-production-migration-window\.cjs/,
   'production runner image must contain the migration-window verifier invoked by deploy-production.yml',
 );
+assert.match(
+  dockerfile,
+  /COPY --from=builder .*\/app\/scripts\/validate-database-config\.mjs \.\/scripts\/validate-database-config\.mjs/,
+  'production runner image must contain the canonical DATABASE_URL validator',
+);
 process.stdout.write('Production migration window static contract passed.\n');
