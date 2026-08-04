@@ -1,0 +1,46 @@
+# O QLMED e editado tanto na workstation Windows quanto no servidor Linux.
+# Sem normalizacao, o mesmo arquivo alternava entre CRLF e LF e aparecia como
+# modificado no git status sem nenhuma mudanca de conteudo. Antes deste arquivo
+# havia 116 arquivos versionados com CRLF, varios com CRLF e LF misturados
+# dentro do mesmo arquivo.
+#
+# Regra geral: LF no repositorio e LF no checkout, em qualquer sistema.
+* text=auto eol=lf
+
+# ── Binarios ──────────────────────────────────────────────────────────────
+# A heuristica do text=auto erra em alguns destes: o GB-H.bcmap, por exemplo,
+# era detectado como texto e seria corrompido por uma renormalizacao.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.ttf    binary
+*.otf    binary
+*.woff   binary
+*.woff2  binary
+*.pfb    binary
+*.bcmap  binary
+*.XLSX   binary
+*.xlsx   binary
+*.ODS    binary
+*.ods    binary
+
+# ── Vendored ──────────────────────────────────────────────────────────────
+# O pdf.js entra como esta, sem conversao: e codigo de terceiros e o diff de
+# normalizacao nao teria valor de revisao.
+public/pdfjs/** -text
+
+# ── Migrations ────────────────────────────────────────────────────────────
+# Migration aplicada e registro historico e nao pode mudar um byte: o Prisma
+# guarda o checksum do arquivo, e `migrate deploy` passa a avisar "the
+# following migrations have been modified since they were applied". Ficam
+# congeladas como estao, com CRLF e tudo.
+prisma/migrations/** -text
+
+# ── Executaveis ───────────────────────────────────────────────────────────
+# LF obrigatorio: um CR no shebang faz o kernel procurar por "/bin/bash\r".
+*.sh          text eol=lf
+Dockerfile    text eol=lf
+*.dockerfile  text eol=lf
