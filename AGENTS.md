@@ -62,6 +62,15 @@ npm run db:reconcile:verify
 - An accepted ADR is historical. Supersede it with a new ADR instead of
   rewriting its outcome.
 
+## AI workflow posture
+
+- Work in the canonical checkout (`~/qlmed/app`) on a feature branch. Do not create
+  permanent sibling folders (`app-ai-governance` or similar).
+- `governance.yaml` pins Spec Kit; GSD is disabled unless re-enabled locally with a
+  pinned overlay and declared entrypoints.
+- Spec Kit remains the mandatory gate for behavior, contracts, data, security,
+  operations or architecture changes.
+
 ## Spec Kit and GSD
 
 - GSD owns phases, execution state, summaries and continuity.

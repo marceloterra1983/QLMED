@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "project_id": "qlmed",
+  "lifecycle": "managed",
+  "risk_tier": "high",
+  "implementation_authorized": true,
+  "spec_kit": {
+    "mode": "required",
+    "version": "0.14.2",
+    "feature_root": "specs/003-ai-workflow-governance",
+    "validator": "npm run docs:validate"
+  },
+  "gsd": {
+    "mode": "disabled"
+  },
+  "capability_profile": "speckit-only",
+  "worktree_policy": "recommended",
+  "runtime_effects": "privileged-gated"
+}
