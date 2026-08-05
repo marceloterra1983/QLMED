@@ -19,7 +19,8 @@
 
 ## Verification
 
-- [x] **T007 [US1-US3] [SC-001/SC-002]** Run focused Vitest (6/6 passed).
+- [x] **T007 [US1-US3] [SC-001/SC-002]** Run focused Vitest (9/9 tests passed,
+  covering 6/6 acceptance criteria).
 - [x] **T008 [US1-US3] [SC-003]** Run docs validation, typecheck, lint and full
   unit tests.
 - [x] **T009 [US1-US3] [SC-003/SC-004]** Run production build and verify that
