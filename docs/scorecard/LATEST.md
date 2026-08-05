@@ -1,11 +1,11 @@
-# QLMED Scorecard — 2026-07-30
+# QLMED Scorecard — 2026-08-05
 
 **Score de higiene:** 8.8/10
 
 ## Stack
-- Node `24.18.1` (pin 22)
-- Next `15.5.21` · React `^19.2.8` · Prisma `7.8.0`
-- Zod `^4.4.3` · NextAuth `4.24.15` · TS `^6.0.2`
+- Node `24.19.0` (pin 22)
+- Next `15.5.22` · React `^19.2.8` · Prisma `7.9.1`
+- Zod `^4.4.3` · NextAuth `4.24.15` · TS `^6.0.3`
 - Spec Kit projeto `0.14.2` / CLI `0.14.4`
 - n8n image `n8nio/n8n:2.29.10`
 
@@ -25,19 +25,15 @@
 
 ## Patch candidatos (auto PR, max 12)
 
-- `@tanstack/react-virtual` 3.14.8 → 3.14.9 (latest 3.14.9)
-- `@types/react` 19.2.17 → 19.2.18 (latest 19.2.18)
-- `@types/react-dom` 19.2.3 → 19.2.4 (latest 19.2.4)
-- `@vitejs/plugin-react` 6.0.4 → 6.0.5 (latest 6.0.5)
+- (nenhum)
 
 ## Major watch (manual)
 
 - `@types/node` 22.20.1 → 26.1.2
 - `eslint` 9.39.4 → 10.8.0
 - `eslint-config-next` 15.5.19 → 16.2.12
-- `next` 15.5.21 → 16.2.12
-- `puppeteer` 24.37.5 → 25.4.0
+- `next` 15.5.22 → 16.2.12
 - `tailwindcss` 3.4.19 → 4.3.3
-- `typescript` 6.0.2 → 7.0.2
+- `typescript` 6.0.3 → 7.0.2
 
-_Gerado por qlmed-app-ci-loop @ 2026-07-30T23:06:48Z_
+_Gerado por qlmed-app-ci-loop @ 2026-08-05T15:26:00Z_

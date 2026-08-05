@@ -1,16 +1,16 @@
 {
   "ok": true,
-  "day": "2026-07-30",
-  "checkedAt": "2026-07-30T23:06:48Z",
+  "day": "2026-08-05",
+  "checkedAt": "2026-08-05T15:26:00Z",
   "score": 8.8,
   "stack": {
-    "node": "24.18.1",
-    "next": "15.5.21",
+    "node": "24.19.0",
+    "next": "15.5.22",
     "react": "^19.2.8",
-    "prisma": "7.8.0",
+    "prisma": "7.9.1",
     "zod": "^4.4.3",
     "nextAuth": "4.24.15",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.10",
     "speckitProject": "0.14.2",
     "speckitCli": "0.14.4",
@@ -32,67 +32,9 @@
     "total": 0
   },
   "vulnHighOrCritical": 0,
-  "outdatedCount": 15,
-  "patchCandidates": [
-    {
-      "name": "@tanstack/react-virtual",
-      "current": "3.14.8",
-      "wanted": "3.14.9",
-      "latest": "3.14.9",
-      "type": null
-    },
-    {
-      "name": "@types/react",
-      "current": "19.2.17",
-      "wanted": "19.2.18",
-      "latest": "19.2.18",
-      "type": null
-    },
-    {
-      "name": "@types/react-dom",
-      "current": "19.2.3",
-      "wanted": "19.2.4",
-      "latest": "19.2.4",
-      "type": null
-    },
-    {
-      "name": "@vitejs/plugin-react",
-      "current": "6.0.4",
-      "wanted": "6.0.5",
-      "latest": "6.0.5",
-      "type": null
-    }
-  ],
-  "minorCandidates": [
-    {
-      "name": "@prisma/adapter-pg",
-      "current": "7.8.0",
-      "wanted": "7.8.0",
-      "latest": "7.9.1",
-      "type": null
-    },
-    {
-      "name": "@prisma/client",
-      "current": "7.8.0",
-      "wanted": "7.8.0",
-      "latest": "7.9.1",
-      "type": null
-    },
-    {
-      "name": "postcss",
-      "current": "8.5.23",
-      "wanted": "8.5.23",
-      "latest": "8.5.25",
-      "type": null
-    },
-    {
-      "name": "prisma",
-      "current": "7.8.0",
-      "wanted": "7.8.0",
-      "latest": "7.9.1",
-      "type": null
-    }
-  ],
+  "outdatedCount": 6,
+  "patchCandidates": [],
+  "minorCandidates": [],
   "majorWatch": [
     {
       "name": "@types/node",
@@ -117,16 +59,9 @@
     },
     {
       "name": "next",
-      "current": "15.5.21",
-      "wanted": "15.5.21",
+      "current": "15.5.22",
+      "wanted": "15.5.22",
       "latest": "16.2.12",
-      "type": null
-    },
-    {
-      "name": "puppeteer",
-      "current": "24.37.5",
-      "wanted": "24.43.1",
-      "latest": "25.4.0",
       "type": null
     },
     {
@@ -138,7 +73,7 @@
     },
     {
       "name": "typescript",
-      "current": "6.0.2",
+      "current": "6.0.3",
       "wanted": "6.0.3",
       "latest": "7.0.2",
       "type": null
@@ -191,7 +126,7 @@
   "prUrl": "",
   "prCreated": false,
   "issueUpdated": false,
-  "scorecardPath": "/home/marce/.local/state/qlmed-ci-loop/SCORECARD-2026-07-30.md",
-  "reportPath": "/home/marce/.local/state/qlmed-ci-loop/report-2026-07-30.json",
+  "scorecardPath": "/home/marce/.local/state/qlmed-ci-loop/SCORECARD-2026-08-05.md",
+  "reportPath": "/home/marce/.local/state/qlmed-ci-loop/report-2026-08-05.json",
   "notify": true
 }
