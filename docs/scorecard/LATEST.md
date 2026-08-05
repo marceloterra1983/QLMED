@@ -4,10 +4,10 @@
 
 ## Stack
 - Node `24.18.1` (pin 22)
-- Next `15.5.21` · React `^19.2.8` · Prisma `7.8.0`
+- Next `15.5.22` · React `^19.2.8` · Prisma `7.9.1`
 - Zod `^4.4.3` · NextAuth `4.24.15` · TS `^6.0.2`
 - Spec Kit projeto `0.14.2` / CLI `0.14.4`
-- n8n image `n8nio/n8n:2.29.10`
+- n8n image `n8nio/n8n:2.9.2`
 
 ## Segurança (npm audit, omit=dev)
 - critical/high: **0** · `{"info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 0, "total": 0}`
