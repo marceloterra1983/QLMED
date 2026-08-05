@@ -64,8 +64,8 @@ npm run db:reconcile:verify
 
 ## AI workflow posture
 
-- Work in the canonical checkout (`~/qlmed/app`) on a feature branch. Do not create
-  permanent sibling folders (`app-ai-governance` or similar).
+- Work in a task-specific worktree on a feature branch. Do not create permanent
+  sibling folders (`app-ai-governance` or similar).
 - `governance.yaml` pins Spec Kit; GSD is disabled unless re-enabled locally with a
   pinned overlay and declared entrypoints.
 - Spec Kit remains the mandatory gate for behavior, contracts, data, security,
