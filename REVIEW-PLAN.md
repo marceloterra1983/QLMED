@@ -127,10 +127,7 @@ P6-P9 são melhorias estruturais que podem ser feitas incrementalmente.
 - **Backfill**: Script para popular dados existentes
 
 ### 3.2 Persistir dados de duplicata na ingestão
-- **Problema**: `financeiro-duplicatas.ts:277-294` carrega TODO xmlContent para extrair vencimentos
-- **Solução**: Criar tabela `invoice_duplicata` (nDup, dVenc, vDup, invoiceId)
-- Extrair durante `parseInvoiceXml` e persistir
-- **Backfill**: Script para processar invoices existentes
+- **Status**: Implementado com agregação Prisma, tabela `invoiceDuplicata` e backfill lazy.
 
 ### 3.3 Eliminar xmlContent dos queries de contagem
 - **Problema**: `customers/route.ts:258-278` e `suppliers/route.ts:211-231` carregam XML completo só para contar produtos
