@@ -4,11 +4,11 @@
 
 ## Sequence
 
-1. Declare the project capability contract and exact toolchain pins.
+1. Declare the project capability contract and the exact Spec Kit pin.
 2. Make `AGENTS.md` canonical and keep `CLAUDE.md` as a thin adapter.
-3. Reconcile GSD to interactive, non-auto-advancing local operation.
-4. Materialize only the declared GSD entrypoints and support assets below the worktree.
-5. Validate documentation, manifest schema, local lock and workspace drift.
+3. Keep the repository in the declared Spec Kit-only profile with GSD disabled.
+4. Validate that versioned local capabilities remain limited to `.agents/skills` and `.claude/skills`, without repository-local GSD materialization or a GSD lock.
+5. Validate documentation, manifest schema and workspace drift.
 
 ## Constitution gates
 
@@ -22,6 +22,6 @@
 | Requirement / AC | Implementation | Evidence |
 |---|---|---|
 | FR-001/FR-002, AC-001/AC-002 | `governance.yaml`, `AGENTS.md`, `CLAUDE.md` | docs validator and server schema audit |
-| FR-003/NFR-002, AC-003/AC-004 | local `.claude`, `.codex`, `.ai/capabilities.lock.json` | Toolkit workspace diff |
+| FR-003/NFR-002, AC-003/AC-004 | `governance.yaml` with `gsd.mode: disabled` and `capability_profile: speckit-only`; versioned `.agents/skills` and `.claude/skills` | governance assertions and workspace drift audit |
 | FR-004–FR-006, AC-005/AC-006 | agent policy, GSD config and state reconciliation | configuration assertions and clean status |
 | NFR-001/NFR-003 | redacted evidence and server snapshot reference | server governance final report |
