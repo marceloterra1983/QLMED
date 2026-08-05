@@ -31,8 +31,8 @@ Modelo operacional do projeto:
   `DATABASE_URL` no `.env` protegido e conecta o app ao banco canônico. O
   `qlmed_ci` do CI continua efêmero e separado apenas para testes.
 - Antes de uma operação que possa alterar dados, confirme o receipt recente do
-  conjunto `qlmed` no projeto `server-backup`. O código não lê `.env` nem
-  backups; essa conferência pertence ao operador/CI.
+  conjunto `qlmed` no projeto `server-backup`. Apenas a configuração do Prisma
+  carrega o `.env` da raiz, sem imprimi-lo; o código não lê backups.
 
 ## Fonte de verdade
 
