@@ -97,6 +97,35 @@ unavailable second database and cannot silently select an arbitrary target.
 - **NFR-003 Observability**: Migration and application health evidence is
   recorded without sensitive row data.
 
+## Test strategy
+
+- **TEST-001**: Run `npm run docs:validate`, `npx tsc --noEmit` and
+  `npm run lint` for specification and implementation consistency.
+- **TEST-002**: Run focused satellite-store tests and the relevant integration
+  tests to prove existing persistence behavior and Prisma mappings remain
+  covered.
+- **TEST-003**: Run `npm run db:migrate:verify` and
+  `npm run db:reconcile:verify` to prove migration replay and drift detection
+  against the disposable CI database `qlmed_ci`.
+- **TEST-004**: Run `npm test`, `npm run test:integration` and `npm run build`
+  for the complete regression and runtime checks required for database work.
+
+## Failure cases
+
+- **FAIL-001**: Migration replay fails in the empty `qlmed_ci` database; the
+  rollout is stopped and the migration evidence is treated as unsuccessful.
+- **FAIL-002**: Reconciliation reports unexpected schema drift; the change is
+  not considered canonical and must not proceed to deployment.
+- **FAIL-003**: A database URL targets `qlmed_dev`, an arbitrary database or a
+  parallel alias; configuration fails closed without exposing credentials.
+- **FAIL-004**: A rollout is incompatible with the previous application
+  revision or rollback would require reversing a database migration; retain
+  the compatible state and follow the documented expand/contract or rollback
+  boundary.
+- **FAIL-005**: A focused persistence or integration test regresses; the
+  affected store change is not accepted until the behavior is restored and
+  covered by evidence.
+
 ## Out of scope
 
 - Executing production migrations during specification/planning.
