@@ -62,6 +62,42 @@ and production boundaries unless the applicable authority explicitly allows them
 - **NFR-003 Operability**: Rollback MUST remain available through the server Toolkit
   snapshot referenced by the server governance evidence.
 
+## Roles and ownership
+
+- **Maintainer** owns `AGENTS.md`, `governance.yaml` and the declared Spec Kit/GSD
+  pins and entrypoints.
+- **Feature owner (QLMED)** owns this specification and its acceptance criteria.
+- **AI clients and agents** MUST resolve policy from the canonical repository
+  sources and MUST NOT grant themselves repository, deployment or production
+  authority.
+- **Human reviewer** owns approval before merge; CI remains the authoritative
+  implementation gate.
+
+## Failure cases
+
+- If `governance.yaml` is missing, invalid, or contains a changed pin, the audit
+  MUST fail closed and identify the discrepancy.
+- If a declared GSD entrypoint or managed asset is missing or modified, the audit
+  MUST fail closed and identify the path.
+- If persistent auto-advance is enabled, or a runtime/deploy/migration effect is
+  requested without applicable authority, the workflow MUST stop without
+  performing that effect.
+- Governance evidence containing secrets or `.env` contents MUST be rejected and
+  MUST NOT be emitted in logs or reports.
+
+## Test strategy
+
+- Validate the specification and governance documentation with
+  `npm run docs:validate`.
+- Exercise the governance audit with fixtures for a valid pinned installation,
+  changed or missing pins, missing or modified entrypoints, and unauthorized
+  runtime/deploy/migration requests; each invalid fixture MUST be rejected.
+- Verify the repository quality gates with `npx tsc --noEmit`, `npm run lint`,
+  `npm test` and `npm run build`; record the actual results with the feature
+  evidence.
+- Confirm secret-containment behavior with a fixture containing secret-like and
+  `.env` content; the audit MUST reject it without printing the content.
+
 ## Out of scope
 
 - Application behavior, schema, deployment or production changes.

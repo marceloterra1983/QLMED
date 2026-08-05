@@ -129,6 +129,66 @@ describe('PATCH /api/users/:id security contract', () => {
     }));
   });
 
+  it('increments tokenVersion and audits a status change', async () => {
+    const response = await invokePatch('target-user', { status: 'inactive' });
+    await Promise.resolve();
+
+    expect(response.status).toBe(200);
+    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: {
+        status: 'inactive',
+        tokenVersion: { increment: 1 },
+      },
+    }));
+    expect(mocks.accessLogCreate).toHaveBeenCalledWith({
+      data: {
+        userId: 'admin-1',
+        action: 'status_changed',
+        path: 'from=active to=inactive',
+      },
+    });
+  });
+
+  it('increments tokenVersion and audits an allowed-pages change', async () => {
+    const response = await invokePatch('target-user', { allowedPages: ['/fiscal/invoices'] });
+    await Promise.resolve();
+
+    expect(response.status).toBe(200);
+    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: {
+        allowedPages: ['/fiscal/invoices'],
+        tokenVersion: { increment: 1 },
+      },
+    }));
+    expect(mocks.accessLogCreate).toHaveBeenCalledWith({
+      data: {
+        userId: 'admin-1',
+        action: 'pages_changed',
+        path: 'count=1',
+      },
+    });
+  });
+
+  it('increments tokenVersion and attributes a password change to the administrator', async () => {
+    const response = await invokePatch('target-user', { password: 'new-password' });
+    await Promise.resolve();
+
+    expect(response.status).toBe(200);
+    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        passwordHash: expect.any(String),
+        tokenVersion: { increment: 1 },
+      }),
+    }));
+    expect(mocks.accessLogCreate).toHaveBeenCalledWith({
+      data: {
+        userId: 'admin-1',
+        action: 'user_updated',
+        path: 'target=target-user by=admin-1',
+      },
+    });
+  });
+
   it('attributes sensitive-change audit events to the acting administrator', async () => {
     const response = await invokePatch('target-user', { role: 'editor' });
     await Promise.resolve();
@@ -150,4 +210,3 @@ describe('PATCH /api/users/:id security contract', () => {
     });
   });
 });
-
