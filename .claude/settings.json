@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/marce/.cache/uv/archive-v0/_fb3hfANn398QFpVEn_s6/bin/graphify hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/marce/.cache/uv/archive-v0/_fb3hfANn398QFpVEn_s6/bin/graphify hook-guard read"
+          }
+        ]
+      }
+    ]
+  }
+}
