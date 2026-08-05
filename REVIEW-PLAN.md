@@ -107,19 +107,12 @@ P6-P9 são melhorias estruturais que podem ser feitas incrementalmente.
 ```
 - **Arquivo**: `prisma/schema.prisma` modelo Invoice
 
-### 2.2 Adicionar @@ignore stubs para shadow tables
-- Adicionar model stubs no schema.prisma para:
-  - `product_registry`
-  - `stock_entry`
-  - `nfe_entry_item`
-  - `product_settings_catalog`
-  - `cnpj_cache`
-  - `cnpj_monitoring`
-- Cada um com `@@ignore` e `@@map("nome_tabela")`
+### 2.2 Modelos satélite já consolidados
+- Os modelos Prisma das tabelas satélite já existem em `prisma/schema.prisma`, sem `@@ignore`.
+- Não adicionar stubs nem usar DDL em runtime; manter o Prisma como fonte de verdade.
 
 ### 2.3 Aplicar mudanças
-- `npx prisma db push` (CUIDADO: DB compartilhado dev/prod)
-- Validar que indexes foram criados: `\d "Invoice"` no psql
+- Para novos indexes, criar uma migration Prisma versionada e validá-la pelos gates de migração do projeto.
 
 ---
 
