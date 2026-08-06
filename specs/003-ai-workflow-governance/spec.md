@@ -12,9 +12,10 @@ affected_modules:
 
 ## Problem
 
-QLMED already uses Spec Kit and GSD, but the server-wide baseline previously exposed
-GSD globally and the repository did not declare a machine-readable capability pin.
-That made workflow authority, automation level and drift difficult to audit.
+QLMED uses Spec Kit as the normative feature-governance engine. GSD is intentionally
+disabled (`gsd.mode=disabled`, `capability_profile: speckit-only`) unless re-enabled
+with a local version pin and declared entrypoints. Authority, automation level and
+drift must remain auditable from those declarations alone.
 
 ## User scenarios
 
@@ -26,15 +27,16 @@ active specification before changing behavior.
 - **AC-001**: `AGENTS.md` is canonical and provider adapters do not duplicate policy.
 - **AC-002**: `governance.yaml` identifies the pinned Spec Kit feature and validator.
 
-### US2 — Use GSD only when locally adopted (P1)
+### US2 — Keep GSD disabled unless locally re-enabled (P1)
 
-As an operator, I need GSD available for durable work without exposing its full
-workflow surface globally.
+As an operator, I need GSD off by default so its workflow surface is not required in
+this repository, while still allowing a controlled local re-enable.
 
-- **AC-003**: Only the declared GSD entrypoints and their local support assets are
-  installed below the QLMED repository.
-- **AC-004**: The workspace audit detects a changed pin, missing entrypoint or modified
-  managed asset.
+- **AC-003**: `governance.yaml` declares `gsd.mode=disabled` and
+  `capability_profile: speckit-only`; while disabled, no local GSD entrypoint set or
+  lock is required.
+- **AC-004**: If GSD is re-enabled, the workspace audit fails closed on a missing pin
+  (`1.41.2`), missing declared entrypoint, or modified managed asset.
 
 ### US3 — Keep automation fail-closed (P1)
 
@@ -49,7 +51,8 @@ and production boundaries unless the applicable authority explicitly allows them
 
 - **FR-001**: Spec Kit `0.14.2` MUST remain the normative feature-governance engine.
 - **FR-002**: The repository MUST expose one schema-valid root `governance.yaml`.
-- **FR-003**: GSD `1.41.2` MUST be local-only and limited to explicitly declared
+- **FR-003**: GSD MUST remain `mode: disabled` under `capability_profile: speckit-only`
+  unless re-enabled with pin `1.41.2`, local-only scope, and explicitly declared
   entrypoints.
 - **FR-004**: The global Superpowers-lite profile MAY supply engineering safeguards
   but MUST NOT grant scope or authorization.
@@ -57,15 +60,15 @@ and production boundaries unless the applicable authority explicitly allows them
 - **FR-006**: Completed GSD milestones MUST NOT remain marked as executing.
 - **NFR-001 Security**: Governance evidence MUST contain no secret values or `.env`
   contents.
-- **NFR-002 Reliability**: Local capability installation and diff MUST be deterministic
-  and fail closed on version skew.
+- **NFR-002 Reliability**: When GSD is enabled, local capability installation and
+  diff MUST be deterministic and fail closed on version skew.
 - **NFR-003 Operability**: Rollback MUST remain available through the server Toolkit
   snapshot referenced by the server governance evidence.
 
 ## Roles and ownership
 
-- **Maintainer** owns `AGENTS.md`, `governance.yaml` and the declared Spec Kit/GSD
-  pins and entrypoints.
+- **Maintainer** owns `AGENTS.md`, `governance.yaml`, the Spec Kit pin, and any GSD
+  pin/entrypoints if GSD is re-enabled.
 - **Feature owner (QLMED)** owns this specification and its acceptance criteria.
 - **AI clients and agents** MUST resolve policy from the canonical repository
   sources and MUST NOT grant themselves repository, deployment or production
@@ -75,10 +78,11 @@ and production boundaries unless the applicable authority explicitly allows them
 
 ## Failure cases
 
-- If `governance.yaml` is missing, invalid, or contains a changed pin, the audit
-  MUST fail closed and identify the discrepancy.
-- If a declared GSD entrypoint or managed asset is missing or modified, the audit
-  MUST fail closed and identify the path.
+- If `governance.yaml` is missing, invalid, or contains a changed Spec Kit pin, the
+  audit MUST fail closed and identify the discrepancy.
+- If GSD is enabled and a declared entrypoint or managed asset is missing or
+  modified (or the GSD pin is missing/changed), the audit MUST fail closed and
+  identify the path.
 - If persistent auto-advance is enabled, or a runtime/deploy/migration effect is
   requested without applicable authority, the workflow MUST stop without
   performing that effect.
