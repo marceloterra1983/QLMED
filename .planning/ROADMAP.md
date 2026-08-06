@@ -38,7 +38,7 @@ Continua a numeração de fases desta mesma milestone técnica (não reinicia em
   1. Login por PIN continua funcionando, mas PINs nao sao visiveis no codigo-fonte (movidos para env var ou DB)
   2. Tentativas de login alem de 5/min por IP sao bloqueadas com HTTP 429
   3. Qualquer rota API nao listada na allowlist publica retorna 401 sem sessao valida
-  4. Health endpoint retorna apenas status basico sem auth; detalhes (memory, uptime, commit) exigem auth
+  4. Health endpoint expõe `build` (incl. commitSha) na resposta pública; `memory`, `uptime` e `integrity` exigem auth
   5. Tentativas falhas de login/PIN sao registradas com IP e timestamp
 **Plans:** 1/3 plans executed
 Plans:
