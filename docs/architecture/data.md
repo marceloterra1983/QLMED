@@ -40,9 +40,10 @@ and its rollback image can run against the expanded schema:
    nullable or have a safe default, and a new table does not replace a table
    still read by either application revision.
 2. **Migrate and observe:** deploy the compatible application, verify migration
-   replay and drift, and observe at least one healthy deployment cycle. A store
-   may move from legacy runtime DDL/raw CRUD to typed Prisma access only after
-   the corresponding versioned table is proven.
+   replay and drift, and observe at least one healthy deployment cycle. Runtime
+   `ensure*Table` / raw DDL and untyped CRUD migration to Prisma is complete
+   (ADR-0005/0006); residual satellite work is FKs/`@relation` and Float→Decimal
+   for money fields, not further DDL or access-layer moves.
 3. **Contract:** remove or rename old structures only when neither the running
    image nor the retained `qlmed-app:previous` rollback image depends on them.
 
