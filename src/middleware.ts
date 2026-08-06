@@ -10,7 +10,7 @@ import { API_KEY_REQUEST_METHOD_HEADER, API_KEY_REQUEST_PATH_HEADER } from '@/li
  */
 const PUBLIC_API_ROUTES = [
   '/api/auth',           // NextAuth endpoints (login, callback, etc.) — except /api/auth/logout which requires auth
-  '/api/health',         // Basic health check (details require auth, handled in route)
+  '/api/health',         // Public: status/db/build; memory/uptime/integrity need session (route)
 ];
 
 /**
