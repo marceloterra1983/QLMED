@@ -20,7 +20,7 @@
 
 ## Milestone v2.0: Remediação Pós-Revisão Arquitetural (iniciada 2026-07-11)
 
-**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
+**Origem:** `/home/marce/docs/server/ARCH-REMEDIATION-PLAN.md` (artefato fora do repo), Fase 4 e Fase 5.1/5.3/5.4.
 Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
 
 - [x] **Phase 11: Unificação de Schema** - Baseline Prisma, stores satélite em
