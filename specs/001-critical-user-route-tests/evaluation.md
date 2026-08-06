@@ -8,7 +8,7 @@ GSD retained as the delivery orchestrator.
 | Measure | Result |
 |---------|--------|
 | Acceptance criteria | 6 defined, 6 covered |
-| New focused tests | 6 passed |
+| New focused tests | 9 passed |
 | Full unit suite | 125 passed, 3 skipped |
 | Test files | 16 passed, 2 skipped |
 | Documentation validation | 14 Markdown files, 2 IDs, passed |
