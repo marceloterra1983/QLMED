@@ -8,9 +8,9 @@ vi.mock('@/lib/product-aggregate-updater', () => ({
   scheduleNightlyRebuild: vi.fn(),
 }));
 
-vi.mock('@/lib/sync-strategies/sefaz', () => ({ sefazStrategy: {} }));
-vi.mock('@/lib/sync-strategies/nsdocs', () => ({ nsdocsStrategy: {} }));
-vi.mock('@/lib/sync-strategies/receita-nfse', () => ({ receitaNfseStrategy: {} }));
+vi.mock('@/lib/sync-strategies/sefaz', () => ({ syncViaSefaz: vi.fn() }));
+vi.mock('@/lib/sync-strategies/nsdocs', () => ({ syncViaNsdocs: vi.fn() }));
+vi.mock('@/lib/sync-strategies/receita-nfse', () => ({ syncViaReceitaNfse: vi.fn() }));
 
 describe('shouldRunScheduledSync', () => {
   beforeEach(() => {

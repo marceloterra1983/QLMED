@@ -6,8 +6,8 @@ import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import type { OneDriveItemEntry } from './sync-types';
 import { resolveConfiguredDir, isXmlFile, isPdfFile, shouldIgnoreByPath, getDelayUntilNextHalfHourMs } from './sync-utils';
+import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import {
-  ensureValidOneDriveAccessTokenLocal,
   listOneDriveChildrenAll,
   resolveOneDriveItemByPath,
   copyOneDriveXmlFileIfNeeded,
@@ -138,7 +138,7 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
   }
   warnedMissingOneDriveConnection = false;
 
-  const accessToken = await ensureValidOneDriveAccessTokenLocal(connection);
+  const accessToken = await ensureValidOneDriveAccessToken(connection);
   let xmlRootItem: OneDriveItemEntry;
   try {
     xmlRootItem = await resolveOneDriveItemByPath(accessToken, connection.driveId, ONEDRIVE_XML_ROOT_PATH);

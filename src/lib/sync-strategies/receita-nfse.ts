@@ -1,7 +1,6 @@
 import { syncReceitaNfseByNsu } from '../receita-nfse-sync';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
-import type { SyncStrategy } from './types';
 
 const log = createLogger('auto-sync');
 
@@ -103,14 +102,3 @@ export async function syncViaReceitaNfse(
   }
 }
 
-export const receitaNfseStrategy: SyncStrategy<ReceitaNfseSyncConfig> = {
-  method: 'receita_nfse',
-  run: (ctx, config) => syncViaReceitaNfse(
-    ctx.companyId,
-    ctx.cnpj,
-    ctx.razaoSocial,
-    config.receitaConfig,
-    config.certificateConfig,
-    ctx.existingSyncLogId,
-  ),
-};

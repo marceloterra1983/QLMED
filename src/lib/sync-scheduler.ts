@@ -1,9 +1,9 @@
 import { prisma } from './prisma';
 import { scheduleNightlyRebuild } from './product-aggregate-updater';
 import { createLogger } from '@/lib/logger';
-import { sefazStrategy } from './sync-strategies/sefaz';
-import { nsdocsStrategy } from './sync-strategies/nsdocs';
-import { receitaNfseStrategy } from './sync-strategies/receita-nfse';
+import { syncViaSefaz } from './sync-strategies/sefaz';
+import { syncViaNsdocs } from './sync-strategies/nsdocs';
+import { syncViaReceitaNfse } from './sync-strategies/receita-nfse';
 
 const log = createLogger('auto-sync');
 
@@ -276,7 +276,7 @@ async function runStartupSync() {
           }
 
           log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(sefazAge / 60000) }, 'Startup SEFAZ sync');
-          await sefazStrategy.run({ companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial }, {
+          await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
             id: cert.id,
             pfxData: cert.pfxData,
             pfxPassword: cert.pfxPassword,
@@ -318,7 +318,7 @@ async function runStartupSync() {
 
         if (nsdocsAge > 60 * 60 * 1000 && company.nsdocsConfig) {
           log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(nsdocsAge / 60000) }, 'Startup NSDocs sync');
-          await nsdocsStrategy.run({ companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial }, company.nsdocsConfig);
+          await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
         }
       } catch (error) {
         log.error({ err: error, company: config.company?.razaoSocial }, 'Startup NSDocs failed');
@@ -355,9 +355,12 @@ async function runStartupSync() {
 
         if (receitaAge > 60 * 60 * 1000) {
           log.info({ company: company.razaoSocial, lastSyncMinutes: Math.round(receitaAge / 60000) }, 'Startup Receita NFS-e sync');
-          await receitaNfseStrategy.run(
-            { companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial },
-            { receitaConfig: company.receitaNfseConfig, certificateConfig: company.certificateConfig },
+          await syncViaReceitaNfse(
+            company.id,
+            company.cnpj,
+            company.razaoSocial,
+            company.receitaNfseConfig,
+            company.certificateConfig,
           );
         }
       } catch (error) {
@@ -426,7 +429,7 @@ async function checkAndSync() {
           }
 
           log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${SEFAZ_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando SEFAZ');
-          await sefazStrategy.run({ companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial }, {
+          await syncViaSefaz(company.id, company.cnpj, company.razaoSocial, {
             id: cert.id,
             pfxData: cert.pfxData,
             pfxPassword: cert.pfxPassword,
@@ -488,7 +491,7 @@ async function checkAndSync() {
           if (!company.nsdocsConfig) continue;
 
           log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${NSDOCS_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando NSDocs');
-          await nsdocsStrategy.run({ companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial }, company.nsdocsConfig);
+          await syncViaNsdocs(company.id, company.cnpj, company.razaoSocial, company.nsdocsConfig);
         } catch (error) {
           log.error({ err: error, company: config.company?.razaoSocial }, 'Hourly NSDocs failed');
         }
@@ -540,9 +543,12 @@ async function checkAndSync() {
 
           log.info({ company: company.razaoSocial, cnpj: company.cnpj, slot: `${currentHourSlotKey}:${RECEITA_NFSE_AUTO_SYNC_MINUTE}`, tz: AUTO_SYNC_TIMEZONE }, 'Sincronizando Receita NFS-e');
 
-          await receitaNfseStrategy.run(
-            { companyId: company.id, cnpj: company.cnpj, razaoSocial: company.razaoSocial },
-            { receitaConfig: company.receitaNfseConfig, certificateConfig: company.certificateConfig },
+          await syncViaReceitaNfse(
+            company.id,
+            company.cnpj,
+            company.razaoSocial,
+            company.receitaNfseConfig,
+            company.certificateConfig,
           );
         } catch (error) {
           log.error({ err: error, company: config.company?.razaoSocial }, 'Hourly Receita NFS-e failed');

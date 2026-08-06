@@ -20,8 +20,3 @@ export {
   aggregateProductsFromInvoices,
   type AggregatedProduct,
 } from './aggregate';
-
-export {
-  buildProductsListPayload,
-  type ProductsListQueryParams,
-} from './list-payload';
