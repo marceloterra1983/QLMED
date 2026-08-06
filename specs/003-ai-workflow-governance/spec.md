@@ -12,9 +12,9 @@ affected_modules:
 
 ## Problem
 
-QLMED already uses Spec Kit and GSD, but the server-wide baseline previously exposed
-GSD globally and the repository did not declare a machine-readable capability pin.
-That made workflow authority, automation level and drift difficult to audit.
+QLMED uses Spec Kit as the normative feature-governance engine. GSD is intentionally
+disabled (`capability_profile: speckit-only`) so it is not exposed globally and does
+not require local entrypoints or a GSD capability lock unless explicitly re-enabled.
 
 ## User scenarios
 
@@ -26,15 +26,17 @@ active specification before changing behavior.
 - **AC-001**: `AGENTS.md` is canonical and provider adapters do not duplicate policy.
 - **AC-002**: `governance.yaml` identifies the pinned Spec Kit feature and validator.
 
-### US2 — Use GSD only when locally adopted (P1)
+### US2 — Keep GSD disabled unless locally re-enabled (P1)
 
-As an operator, I need GSD available for durable work without exposing its full
-workflow surface globally.
+As an operator, I need GSD off by default so Spec Kit alone governs behavior, with
+any future re-enable limited to a pinned, local-only overlay.
 
-- **AC-003**: Only the declared GSD entrypoints and their local support assets are
-  installed below the QLMED repository.
-- **AC-004**: The workspace audit detects a changed pin, missing entrypoint or modified
-  managed asset.
+- **AC-003**: With `gsd.mode: disabled` and `capability_profile: speckit-only`, the
+  repository MUST NOT require GSD entrypoints, local GSD support assets, or
+  `.ai/capabilities.lock.json`. Re-enabling GSD MUST add an explicit version pin
+  and only declared local entrypoints (no global install).
+- **AC-004**: The workspace audit detects GSD mode/pin drift (for example GSD
+  enabled without a version pin, or a changed Spec Kit pin), and fails closed.
 
 ### US3 — Keep automation fail-closed (P1)
 
@@ -49,8 +51,9 @@ and production boundaries unless the applicable authority explicitly allows them
 
 - **FR-001**: Spec Kit `0.14.2` MUST remain the normative feature-governance engine.
 - **FR-002**: The repository MUST expose one schema-valid root `governance.yaml`.
-- **FR-003**: GSD `1.41.2` MUST be local-only and limited to explicitly declared
-  entrypoints.
+- **FR-003**: GSD MUST remain `mode: disabled` under `capability_profile:
+  speckit-only`. Re-enabling GSD MUST pin an explicit version and limit use to
+  declared local-only entrypoints (no global install).
 - **FR-004**: The global Superpowers-lite profile MAY supply engineering safeguards
   but MUST NOT grant scope or authorization.
 - **FR-005**: Agents MUST work in task-specific worktrees and preserve unrelated work.
@@ -64,8 +67,8 @@ and production boundaries unless the applicable authority explicitly allows them
 
 ## Roles and ownership
 
-- **Maintainer** owns `AGENTS.md`, `governance.yaml` and the declared Spec Kit/GSD
-  pins and entrypoints.
+- **Maintainer** owns `AGENTS.md`, `governance.yaml`, the Spec Kit pin, and any
+  future GSD pin/entrypoints if GSD is re-enabled.
 - **Feature owner (QLMED)** owns this specification and its acceptance criteria.
 - **AI clients and agents** MUST resolve policy from the canonical repository
   sources and MUST NOT grant themselves repository, deployment or production
@@ -77,8 +80,9 @@ and production boundaries unless the applicable authority explicitly allows them
 
 - If `governance.yaml` is missing, invalid, or contains a changed pin, the audit
   MUST fail closed and identify the discrepancy.
-- If a declared GSD entrypoint or managed asset is missing or modified, the audit
-  MUST fail closed and identify the path.
+- If GSD is enabled without a version pin or declared entrypoints, or if a
+  declared GSD entrypoint or managed asset is missing or modified after
+  re-enable, the audit MUST fail closed and identify the path.
 - If persistent auto-advance is enabled, or a runtime/deploy/migration effect is
   requested without applicable authority, the workflow MUST stop without
   performing that effect.
@@ -89,9 +93,10 @@ and production boundaries unless the applicable authority explicitly allows them
 
 - Validate the specification and governance documentation with
   `npm run docs:validate`.
-- Exercise the governance audit with fixtures for a valid pinned installation,
-  changed or missing pins, missing or modified entrypoints, and unauthorized
-  runtime/deploy/migration requests; each invalid fixture MUST be rejected.
+- Exercise the governance audit with fixtures for a valid Spec Kit pin, GSD
+  disabled/speckit-only baseline, changed or missing pins, GSD enabled without
+  pin/entrypoints, and unauthorized runtime/deploy/migration requests; each
+  invalid fixture MUST be rejected.
 - Verify the repository quality gates with `npx tsc --noEmit`, `npm run lint`,
   `npm test` and `npm run build`; record the actual results with the feature
   evidence.
@@ -101,5 +106,6 @@ and production boundaries unless the applicable authority explicitly allows them
 ## Out of scope
 
 - Application behavior, schema, deployment or production changes.
-- Upgrading Spec Kit or GSD beyond the declared current pins.
+- Upgrading Spec Kit beyond the declared current pin, or enabling GSD without an
+  explicit pin and declared local entrypoints.
 - Enabling GSD or domain MCP servers globally.
