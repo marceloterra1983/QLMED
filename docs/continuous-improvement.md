@@ -71,4 +71,4 @@ Cada iteração do produto pode adicionar tracks (ex.: “zero Float em tax”, 
 - `product-aggregation` fatiado em módulos (barrel preservado)
 - Testes: money, ssl-verify, with-auth, mutation-roles, parse-invoice-tax
 
-Ainda manuais / fases seguintes: FKs, Float→Decimal no Prisma, disciplina expand/contract, Next 16 e Tailwind 4.
+Ainda manuais / fases seguintes: FKs, Float→Decimal no Prisma, Next 16 e Tailwind 4.
