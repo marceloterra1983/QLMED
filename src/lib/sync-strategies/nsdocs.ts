@@ -10,7 +10,6 @@ import { extractFirstCfop } from '../cfop';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
-import type { SyncStrategy } from './types';
 
 const log = createLogger('auto-sync');
 
@@ -205,7 +204,3 @@ export async function syncViaNsdocs(
   }
 }
 
-export const nsdocsStrategy: SyncStrategy<NsdocsSyncConfig> = {
-  method: 'nsdocs',
-  run: (ctx, config) => syncViaNsdocs(ctx.companyId, ctx.cnpj, ctx.razaoSocial, config, ctx.existingSyncLogId),
-};

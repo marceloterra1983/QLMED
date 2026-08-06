@@ -48,16 +48,6 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
     setOpen(false);
   };
 
-  const handleForward = () => {
-    toast.info('Funcionalidade de encaminhar em desenvolvimento');
-    setOpen(false);
-  };
-
-  const handleNotes = () => {
-    toast.info('Funcionalidade de anotações em desenvolvimento');
-    setOpen(false);
-  };
-
   const handleCopyKey = () => {
     if (accessKey) {
       if (navigator.clipboard) {
@@ -88,8 +78,6 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
     { label: 'Imprimir', icon: 'print', action: () => { handlePrint(); setOpen(false); } },
     { label: 'Salvar XML', icon: 'code', action: handleSaveXml },
     { label: 'Salvar PDF', icon: 'picture_as_pdf', action: handleSavePdf },
-    { label: 'Encaminhar', icon: 'forward_to_inbox', action: handleForward },
-    { label: 'Anotações', icon: 'edit_note', action: handleNotes },
     ...(onDelete ? [{ label: 'Excluir', icon: 'delete', action: () => { onDelete(invoiceId); setOpen(false); }, danger: true }] : []),
   ];
 

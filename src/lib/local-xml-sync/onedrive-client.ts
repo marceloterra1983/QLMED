@@ -1,44 +1,8 @@
-import { type OneDriveConnection } from '@prisma/client';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-import { decrypt, encrypt } from '../crypto';
-import { refreshOneDriveAccessToken } from '../onedrive-client';
-import { prisma } from '../prisma';
 import type { OneDriveItemEntry, OneDriveChildrenResponse } from './sync-types';
 import { isXmlFile, isPdfFile, normalizeOneDrivePath } from './sync-utils';
-
-const ONEDRIVE_TOKEN_REFRESH_WINDOW_MS = 2 * 60 * 1000;
-
-export async function ensureValidOneDriveAccessTokenLocal(connection: OneDriveConnection): Promise<string> {
-  const expiresSoon = connection.tokenExpiresAt.getTime() <= Date.now() + ONEDRIVE_TOKEN_REFRESH_WINDOW_MS;
-  const currentAccessToken = decrypt(connection.accessToken);
-
-  if (!expiresSoon) {
-    return currentAccessToken;
-  }
-
-  const currentRefreshToken = connection.refreshToken ? decrypt(connection.refreshToken) : null;
-  if (!currentRefreshToken) {
-    throw new Error('Token OneDrive expirado sem refresh token. Reconecte a conta.');
-  }
-
-  const refreshed = await refreshOneDriveAccessToken(currentRefreshToken);
-  const nextRefreshToken = refreshed.refresh_token || currentRefreshToken;
-  const nextExpiresAt = new Date(Date.now() + Math.max(refreshed.expires_in - 60, 1) * 1000);
-
-  await prisma.oneDriveConnection.update({
-    where: { id: connection.id },
-    data: {
-      accessToken: encrypt(refreshed.access_token),
-      refreshToken: encrypt(nextRefreshToken),
-      tokenExpiresAt: nextExpiresAt,
-      scope: refreshed.scope || connection.scope,
-    },
-  });
-
-  return refreshed.access_token;
-}
 
 export async function oneDriveGraphJsonRequest<T>(accessToken: string, resourcePath: string): Promise<T> {
   const endpoint = resourcePath.startsWith('http')

@@ -2,31 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildProductExportUrl, escapeCsvValue } from '../product-export';
 import { financeiroListQuerySchema } from '../schemas/financeiro';
 import { invoiceBulkDownloadSchema } from '../schemas/invoice';
-import { productsLegacyQuerySchema, productsListQuerySchema } from '../schemas/product';
+import { productsListQuerySchema } from '../schemas/product';
 
 describe('query schemas', () => {
-  it('validates and coerces legacy products query params', () => {
-    const parsed = productsLegacyQuerySchema.parse({
-      page: '2',
-      limit: '75',
-      sort: 'lastIssue',
-      order: 'asc',
-      exportAll: '1',
-      dateFrom: '2026-01-01',
-      dateTo: '2026-01-31',
-    });
-
-    expect(parsed.page).toBe(2);
-    expect(parsed.limit).toBe(75);
-    expect(parsed.exportAll).toBe(true);
-    expect(parsed.order).toBe('asc');
-  });
-
-  it('rejects invalid products sort and inverted date range', () => {
-    expect(productsLegacyQuerySchema.safeParse({ sort: 'random' }).success).toBe(false);
-    expect(productsLegacyQuerySchema.safeParse({ dateFrom: '2026-02-01', dateTo: '2026-01-01' }).success).toBe(false);
-  });
-
   it('validates products list query params', () => {
     const parsed = productsListQuerySchema.parse({
       sort: 'productType',

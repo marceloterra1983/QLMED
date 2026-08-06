@@ -29,8 +29,8 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
-    "@tanstack/react-virtual": "^3.14.9",
     "bcryptjs": "^3.0.3",
+
     "chokidar": "^5.0.0",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
@@ -44,13 +44,12 @@
     "puppeteer": "^25.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "recharts": "^3.10.0",
     "sharp": "^0.35.3",
     "sonner": "^2.0.7",
-    "xml-crypto": "^6.1.2",
     "xml2js": "^0.6.2",
     "zod": "^4.4.3"
   },
+
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@tailwindcss/forms": "^0.5.11",

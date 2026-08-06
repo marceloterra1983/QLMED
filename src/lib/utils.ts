@@ -75,10 +75,6 @@ export function formatAccessKey(key: string): string {
   return key.replace(/(.{4})/g, '$1 ').trim();
 }
 
-export function formatValue(value: number): string {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-}
-
 export type StatusColor = 'emerald' | 'red' | 'amber';
 
 export interface StatusDisplay {

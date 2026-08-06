@@ -10,7 +10,6 @@ import { prisma } from '../prisma';
 import { UF_TO_CODE } from '../constants';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
-import type { SyncStrategy } from './types';
 
 const log = createLogger('auto-sync');
 
@@ -204,7 +203,3 @@ export async function syncViaSefaz(
   }
 }
 
-export const sefazStrategy: SyncStrategy<SefazCertConfig> = {
-  method: 'sefaz',
-  run: (ctx, config) => syncViaSefaz(ctx.companyId, ctx.cnpj, ctx.razaoSocial, config, ctx.existingSyncLogId),
-};
