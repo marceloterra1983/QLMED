@@ -125,7 +125,7 @@ _(none yet)_
 
 ### Milestone v2.0 — Notas
 
-- Escopo derivado de `docs/server/ARCH-REMEDIATION-PLAN.md` (revisão
+- Escopo derivado de `/home/marce/docs/server/ARCH-REMEDIATION-PLAN.md` (artefato fora do repo; revisão
   arquitetural de 2026-07-11), sem re-pesquisa — pesquisa já feita por 3
   agentes especializados na sessão de origem.
 - Dependência cruzada de repo: a antiga separação `qlmed_dev` do workstream

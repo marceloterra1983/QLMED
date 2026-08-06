@@ -1,7 +1,12 @@
 # Pilot evaluation
 
-**Decision:** Adopt Spec Kit for behaviorally significant QLMED features, with
-GSD retained as the delivery orchestrator.
+**Decision (pilot, historical):** Adopt Spec Kit for behaviorally significant
+QLMED features; the pilot also retained GSD as the delivery orchestrator.
+
+**Superseded by:** SPEC-003 (`specs/003-ai-workflow-governance`) and
+`governance.yaml` (`gsd.mode: disabled`, `capability_profile: speckit-only`).
+Spec Kit is normative; GSD is historical continuity only and may be used only
+if re-enabled with pin and declared entrypoints.
 
 ## Evidence
 
@@ -27,13 +32,13 @@ Starting from `AGENTS.md`, an agent can locate:
 - durable constraints in `.specify/memory/constitution.md`;
 - current security boundaries in `docs/architecture/boundaries.md`;
 - executable evidence in `src/lib/__tests__/users-route.test.ts`;
-- delivery state in the GSD workstream under `/home/marce/.planning/`.
+- delivery state under `.planning/` when GSD is re-enabled; otherwise Spec Kit
+  feature artifacts under `specs/` are the execution trace.
 
 ## Friction and adjustments
 
-- GSD tasks and Spec Kit tasks can overlap. The adopted rule is that Spec Kit
-  tasks describe feature traceability while GSD records execution and
-  continuity; neither copies the other's narrative.
+- Spec Kit tasks own feature traceability. If GSD is re-enabled, it records
+  execution continuity only; neither copies the other's narrative.
 - Customized managed templates make `specify integration status` report a
   warning. This is accepted and documented; upgrades require a disposable
   branch and manual diff review.
@@ -47,9 +52,11 @@ Starting from `AGENTS.md`, an agent can locate:
 ## Adoption policy
 
 Use Spec Kit for observable behavior, contracts, permissions, persistence,
-integrations or significant non-functional requirements. Continue using a
-small GSD-only plan for localized maintenance with no behavioral or
-architectural effect. Create ADRs only for durable cross-feature choices.
+integrations or significant non-functional requirements. With GSD disabled
+(`capability_profile: speckit-only`), do not require a GSD plan; if GSD is
+locally re-enabled, a small GSD-only plan may cover localized maintenance with
+no behavioral or architectural effect. Create ADRs only for durable
+cross-feature choices.
 
 Do not add a multiagent framework, MCP, RAG or vector database at this stage.
 

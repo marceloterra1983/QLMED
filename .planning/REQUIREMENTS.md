@@ -8,7 +8,7 @@
 >
 > **Milestone v2.0 (iniciada 2026-07-11)**: ver seção "## Milestone v2.0"
 > mais abaixo — remediação pós-revisão arquitetural de 2026-07-11
-> (`docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4 do
+> (`/home/marce/docs/server/ARCH-REMEDIATION-PLAN.md`, artefato fora do repo; Fase 4 e Fase 5.1/5.3/5.4 do
 > plano original). Escopo deliberadamente separado do workstream
 > `server-hardening` em `/home/marce` (repo distinto) — ver lá para política de
 > backup/recuperação, versionamento AutomatizeMS, dedup dos notificadores Python
@@ -26,7 +26,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 - [x] **SEC-02**: Rate limiting em endpoints críticos (login max 5/min, upload max 10/min, webhooks max 60/min)
 - [x] **SEC-03**: Middleware expandido para cobrir todas as rotas API via catch-all com allowlist
 - [x] **SEC-04**: Endpoints que escrevem no DB exigem autenticação (/api/anvisa/validate, /api/anvisa/embed-status)
-- [x] **SEC-05**: Health endpoint retorna detalhes (memory, uptime, commit) apenas com auth
+- [x] **SEC-05**: Health endpoint expõe `build` (incl. commitSha) na resposta pública; `memory`, `uptime` e `integrity` apenas com auth
 - [x] **SEC-06**: Password policy consistente — Zod schema e runtime check ambos min(6)
 
 ### Dependencies
@@ -110,9 +110,9 @@ fase 03-01). O contrato atual, definido pelo ADR-0007, mantém um único banco
 persistente protegido (`postgres` via `DATABASE_URL`) e um banco efêmero
 `qlmed_ci` para replay/testes; não depende de provisionar `qlmed_dev`.
 
-**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md` (Fase 4 e Fase 5.1/5.3/5.4
-do plano original), produto de revisão por 3 agentes de arquitetura em
-2026-07-11.
+**Origem:** `/home/marce/docs/server/ARCH-REMEDIATION-PLAN.md` (artefato fora
+do repo; Fase 4 e Fase 5.1/5.3/5.4 do plano original), produto de revisão por
+3 agentes de arquitetura em 2026-07-11.
 
 ### Unificação de Schema (Fase 4 do plano original)
 

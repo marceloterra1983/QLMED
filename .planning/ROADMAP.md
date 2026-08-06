@@ -1,26 +1,26 @@
 # Roadmap: QLMED Correcao e Hardening
 
 **Milestone:** Correcao e Hardening Completo
-**Phases:** 10
+**Phases:** 12
 **Granularity:** Fine
 **Created:** 2026-04-10
 
 ## Phases
 
-- [ ] **Phase 1: Security Critical** - Proteger PINs, rate limiting, middleware catch-all, auth em endpoints desprotegidos
-- [ ] **Phase 2: Dependency Fixes** - Corrigir CVEs conhecidos (node-forge, nodemailer), substituir abandonware (xlsx), limpar deps
+- [x] **Phase 1: Security Critical** - Proteger PINs, rate limiting, middleware catch-all, auth em endpoints desprotegidos
+- [x] **Phase 2: Dependency Fixes** - Corrigir CVEs conhecidos (node-forge, nodemailer), substituir abandonware (xlsx), limpar deps
 - [x] **Phase 3: Database Schema Hardening** - Adicionar indexes faltantes e stubs para shadow tables
-- [ ] **Phase 4: XML Extraction Performance** - Persistir dados extraidos de XML na ingestao, eliminar parsing runtime
-- [ ] **Phase 5: Code Deduplication** - Centralizar funcoes duplicadas, unificar financeiro e contacts
-- [ ] **Phase 6: API Validation & Logging** - Zod schemas em todas as rotas, error handling padronizado, logger estruturado
-- [ ] **Phase 7: Type Safety** - Interfaces tipadas para XML, funcoes de parsing tipadas, eliminar 200+ any
-- [ ] **Phase 8: File Splitting** - Dividir arquivos >1000 linhas em modulos coesos
-- [ ] **Phase 9: Search & Pagination** - Busca DB-level, paginacao real, cache headers, server component layout
+- [x] **Phase 4: XML Extraction Performance** - Persistir dados extraidos de XML na ingestao, eliminar parsing runtime
+- [x] **Phase 5: Code Deduplication** - Centralizar funcoes duplicadas, unificar financeiro e contacts
+- [x] **Phase 6: API Validation & Logging** - Zod schemas em todas as rotas, error handling padronizado, logger estruturado
+- [x] **Phase 7: Type Safety** - Interfaces tipadas para XML, funcoes de parsing tipadas, eliminar 200+ any
+- [x] **Phase 8: File Splitting** - Dividir arquivos >1000 linhas em modulos coesos
+- [x] **Phase 9: Search & Pagination** - Busca DB-level, paginacao real, cache headers, server component layout
 - [x] **Phase 10: Major Upgrades** - Next.js 15, React 19, Prisma 7, ESLint 9, minor upgrades (completed 2026-04-10)
 
 ## Milestone v2.0: Remediação Pós-Revisão Arquitetural (iniciada 2026-07-11)
 
-**Origem:** `docs/server/ARCH-REMEDIATION-PLAN.md`, Fase 4 e Fase 5.1/5.3/5.4.
+**Origem:** `/home/marce/docs/server/ARCH-REMEDIATION-PLAN.md` (artefato fora do repo), Fase 4 e Fase 5.1/5.3/5.4.
 Continua a numeração de fases desta mesma milestone técnica (não reinicia em 1).
 
 - [x] **Phase 11: Unificação de Schema** - Baseline Prisma, stores satélite em
@@ -38,13 +38,13 @@ Continua a numeração de fases desta mesma milestone técnica (não reinicia em
   1. Login por PIN continua funcionando, mas PINs nao sao visiveis no codigo-fonte (movidos para env var ou DB)
   2. Tentativas de login alem de 5/min por IP sao bloqueadas com HTTP 429
   3. Qualquer rota API nao listada na allowlist publica retorna 401 sem sessao valida
-  4. Health endpoint retorna apenas status basico sem auth; detalhes (memory, uptime, commit) exigem auth
+  4. Health endpoint expõe `build` (incl. commitSha) na resposta pública; `memory`, `uptime` e `integrity` exigem auth
   5. Tentativas falhas de login/PIN sao registradas com IP e timestamp
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 01-PLAN-01.md — PIN protection: move PINs to env var, add failed login logging (SEC-01)
-- [ ] 01-PLAN-02.md — Rate limiting: create Edge-compatible rate limiter, integrate into middleware (SEC-02)
-- [ ] 01-PLAN-03.md — Middleware catch-all, ANVISA auth, health tiering, password policy fix (SEC-03, SEC-04, SEC-05, SEC-06)
+- [x] 01-PLAN-01.md — PIN protection: move PINs to env var, add failed login logging (SEC-01)
+- [x] 01-PLAN-02.md — Rate limiting: create Edge-compatible rate limiter, integrate into middleware (SEC-02)
+- [x] 01-PLAN-03.md — Middleware catch-all, ANVISA auth, health tiering, password policy fix (SEC-03, SEC-04, SEC-05, SEC-06)
 
 ### Phase 2: Dependency Fixes
 **Goal**: Zero CVEs conhecidos nas dependencias diretas e transitivas do projeto
@@ -189,46 +189,46 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
-| SEC-03 | Phase 1 | Pending |
-| SEC-04 | Phase 1 | Pending |
-| SEC-05 | Phase 1 | Pending |
-| SEC-06 | Phase 1 | Pending |
-| DEP-01 | Phase 2 | Pending |
-| DEP-02 | Phase 2 | Pending |
-| DEP-03 | Phase 2 | Pending |
-| DEP-04 | Phase 2 | Pending |
-| DEP-05 | Phase 2 | Pending |
-| DB-01 | Phase 3 | Pending |
-| DB-02 | Phase 3 | Pending |
-| PERF-01 | Phase 4 | Pending |
-| PERF-02 | Phase 4 | Pending |
-| PERF-03 | Phase 4 | Pending |
-| PERF-04 | Phase 4 | Pending |
-| PERF-05 | Phase 4 | Pending |
-| DUP-01 | Phase 5 | Pending |
-| DUP-02 | Phase 5 | Pending |
-| DUP-03 | Phase 5 | Pending |
-| API-01 | Phase 6 | Pending |
-| API-02 | Phase 6 | Pending |
-| API-03 | Phase 6 | Pending |
-| TYPE-01 | Phase 7 | Pending |
-| TYPE-02 | Phase 7 | Pending |
-| TYPE-03 | Phase 7 | Pending |
-| SPLIT-01 | Phase 8 | Pending |
-| SPLIT-02 | Phase 8 | Pending |
-| SPLIT-03 | Phase 8 | Pending |
-| SPLIT-04 | Phase 8 | Pending |
-| PERF-06 | Phase 9 | Pending |
-| PERF-07 | Phase 9 | Pending |
-| PERF-08 | Phase 9 | Pending |
-| PERF-09 | Phase 9 | Pending |
-| UPG-01 | Phase 10 | Pending |
-| UPG-02 | Phase 10 | Pending |
-| UPG-03 | Phase 10 | Pending |
-| UPG-04 | Phase 10 | Pending |
-| UPG-05 | Phase 10 | Pending |
+| SEC-01 | Phase 1 | Complete |
+| SEC-02 | Phase 1 | Complete |
+| SEC-03 | Phase 1 | Complete |
+| SEC-04 | Phase 1 | Complete |
+| SEC-05 | Phase 1 | Complete |
+| SEC-06 | Phase 1 | Complete |
+| DEP-01 | Phase 2 | Complete |
+| DEP-02 | Phase 2 | Complete |
+| DEP-03 | Phase 2 | Complete |
+| DEP-04 | Phase 2 | Complete |
+| DEP-05 | Phase 2 | Complete |
+| DB-01 | Phase 3 | Complete |
+| DB-02 | Phase 3 | Complete |
+| PERF-01 | Phase 4 | Complete |
+| PERF-02 | Phase 4 | Complete |
+| PERF-03 | Phase 4 | Complete |
+| PERF-04 | Phase 4 | Complete |
+| PERF-05 | Phase 4 | Complete |
+| DUP-01 | Phase 5 | Complete |
+| DUP-02 | Phase 5 | Complete |
+| DUP-03 | Phase 5 | Complete |
+| API-01 | Phase 6 | Complete |
+| API-02 | Phase 6 | Complete |
+| API-03 | Phase 6 | Complete |
+| TYPE-01 | Phase 7 | Complete |
+| TYPE-02 | Phase 7 | Complete |
+| TYPE-03 | Phase 7 | Complete |
+| SPLIT-01 | Phase 8 | Complete |
+| SPLIT-02 | Phase 8 | Complete |
+| SPLIT-03 | Phase 8 | Complete |
+| SPLIT-04 | Phase 8 | Complete |
+| PERF-06 | Phase 9 | Complete |
+| PERF-07 | Phase 9 | Complete |
+| PERF-08 | Phase 9 | Complete |
+| PERF-09 | Phase 9 | Complete |
+| UPG-01 | Phase 10 | Complete |
+| UPG-02 | Phase 10 | Complete |
+| UPG-03 | Phase 10 | Complete |
+| UPG-04 | Phase 10 | Complete |
+| UPG-05 | Phase 10 | Complete |
 
 **Total: 40/40 requirements mapped. Zero orphans.**
 
@@ -289,16 +289,16 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Critical | 1/3 | In Progress|  |
-| 2. Dependency Fixes | 0/2 | Planned | - |
+| 1. Security Critical | 3/3 | Complete | 2026-04-10 |
+| 2. Dependency Fixes | 2/2 | Complete | 2026-04-10 |
 | 3. Database Schema Hardening | 1/1 | Complete | 2026-04-10 |
-| 4. XML Extraction Performance | 0/5 | Planned | - |
-| 5. Code Deduplication | 0/3 | Planned | - |
-| 6. API Validation & Logging | 0/5 | Not started | - |
-| 7. Type Safety | 0/3 | Not started | - |
-| 8. File Splitting | 0/4 | Planned | - |
-| 9. Search & Pagination | 0/3 | Planned | - |
-| 10. Major Upgrades | 4/4 | Complete   | 2026-04-10 |
+| 4. XML Extraction Performance | 5/5 | Complete | 2026-04-10 |
+| 5. Code Deduplication | 3/3 | Complete | 2026-04-10 |
+| 6. API Validation & Logging | 5/5 | Complete | 2026-04-10 |
+| 7. Type Safety | 3/3 | Complete | 2026-04-10 |
+| 8. File Splitting | 4/4 | Complete | 2026-04-10 |
+| 9. Search & Pagination | 3/3 | Complete | 2026-04-10 |
+| 10. Major Upgrades | 4/4 | Complete | 2026-04-10 |
 | 11. Unificação de Schema | 3/3 | Complete (SCHEMA-01..03 closed) | 2026-07-26 |
 | 12. Desduplicação de Código | 3/3 | Complete | 2026-07-12 |
 

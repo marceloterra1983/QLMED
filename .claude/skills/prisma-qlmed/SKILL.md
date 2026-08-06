@@ -15,14 +15,14 @@ allowed-tools: Read, Grep, Bash, Glob, Edit, Write
 ## CLI Commands
 
 ```bash
-# Migrations
-npx prisma migrate dev --name <description>   # Create + apply migration
-npx prisma migrate deploy                      # Apply pending migrations (production)
+# Migrations (versioned files under prisma/migrations/ — source of truth)
+# Do NOT run migrate dev / migrate reset / db push against the canonical postgres DB
+npx prisma migrate deploy                      # Apply pending migrations (human-gated / deploy only)
 npx prisma migrate status                      # Check migration status
-npx prisma migrate reset                       # Reset DB (WARNING: drops data)
+npm run db:migrate:verify                      # CI replay on disposable qlmed_ci
+npm run db:reconcile:verify                    # Drift check (migrate diff)
 
 # Schema
-npx prisma db push                             # Push schema without migration file
 npx prisma generate                            # Regenerate Prisma Client
 npx prisma studio                              # Visual DB browser (port 5555)
 npx prisma validate                            # Validate schema syntax
@@ -107,9 +107,10 @@ await prisma.invoice.upsert({
 
 ## Migration Guidelines
 
-1. **Always run `npx prisma migrate dev`** - never `db push` in production
+1. **Versioned migrations only** — never `db push` or `migrate dev` on the canonical database (see `db-safety`)
 2. **Name migrations descriptively**: `add-contact-overrides`, `add-nfse-sync-config`
-3. **Test migration**: run `npx prisma migrate status` after creating
+3. **Prove migrations**: `npm run db:migrate:verify` and `npm run db:reconcile:verify` (CI / `qlmed_ci`)
 4. **After schema change**: always run `npx prisma generate` to update the client
 5. **New tables**: always include `companyId` + `@@index([companyId])` for multi-tenancy
 6. **New fields on Invoice**: consider adding compound indexes for common query patterns
+7. **`migrate deploy`** is human-gated (deploy/`start.sh`); agents must not apply it to the canonical DB

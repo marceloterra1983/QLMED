@@ -90,7 +90,7 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
   `postgres`, por `DATABASE_URL`; CI usa somente o banco efêmero `qlmed_ci`.
   `qlmed_dev` e aliases de URL não são suportados (ADR-0007).
 - **4 audits realizados** (2026-04-10): Security, Dependencies, Tech Debt, Performance
-- **Vulnerabilidades críticas**: node-forge (assinatura NF-e), PINs hardcoded, zero rate limiting
+- **Vulnerabilidades críticas restantes**: node-forge (assinatura NF-e). Phase 1: PINs só via `PIN_MAP_JSON` (env); rate limiting ativo (middleware + login 429)
 - **Performance**: rotas carregam xmlContent completo (50-200KB/invoice) para extrair dados via regex em runtime
 - **Tech debt**: 200+ `any`, 7 funções duplicadas 3-7x, 10 arquivos >1000 linhas, contas-pagar/receber 100% duplicados
 - **PINs são padrão da empresa** — manter funcionalidade, proteger implementação
@@ -111,8 +111,8 @@ Garantir que o QLMED em produção seja **seguro, performático e manutenível**
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Manter PINs como login | Padrão da empresa, todos os usuários usam | — Pending |
-| Mover PINs para env var | Proteger contra leak de código-fonte | — Pending |
+| Manter PINs como login | Padrão da empresa, todos os usuários usam | ✓ Accepted |
+| Mover PINs para env var | Proteger contra leak de código-fonte | ✓ Done (PIN_MAP_JSON) |
 | Substituir xlsx por exceljs | xlsx é abandonware com prototype pollution sem fix | — Pending |
 | Persistir dados XML na ingestão | Eliminar parsing runtime que carrega 100MB+ por request | — Pending |
 | Não migrar Tailwind 3→4 | Rewrite muito grande, baixo ROI para este milestone | — Pending |
