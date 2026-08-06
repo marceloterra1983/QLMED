@@ -26,7 +26,7 @@ Requirements para este milestone. Cada um mapeia para fases do roadmap.
 - [x] **SEC-02**: Rate limiting em endpoints críticos (login max 5/min, upload max 10/min, webhooks max 60/min)
 - [x] **SEC-03**: Middleware expandido para cobrir todas as rotas API via catch-all com allowlist
 - [x] **SEC-04**: Endpoints que escrevem no DB exigem autenticação (/api/anvisa/validate, /api/anvisa/embed-status)
-- [x] **SEC-05**: Health endpoint retorna detalhes (memory, uptime, commit) apenas com auth
+- [x] **SEC-05**: Health endpoint expõe `build` (incl. commitSha) na resposta pública; `memory`, `uptime` e `integrity` apenas com auth
 - [x] **SEC-06**: Password policy consistente — Zod schema e runtime check ambos min(6)
 
 ### Dependencies

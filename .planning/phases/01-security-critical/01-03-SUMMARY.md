@@ -50,7 +50,7 @@ Previously unprotected API routes now require authentication: `/api/estoque`, `/
 
 - **ANVISA validate** (`/api/anvisa/validate`): Added `requireAuth()` guard at top of GET handler before code parameter extraction.
 - **ANVISA embed-status** (`/api/anvisa/embed-status`): Added `requireAuth()` guard at top of GET handler.
-- **Health endpoint** (`/api/health`): Uses `getServerSession()` to check auth. Public response returns only `status`, `db.status`, `db.latencyMs`, `timestamp`. Authenticated response adds `build`, `uptime`, `memory`, `integrity`. Error responses also tiered.
+- **Health endpoint** (`/api/health`): Uses `getServerSession()` to check auth. Public response returns `status`, `db.status`, `db.latencyMs`, `build` (incl. commitSha), `timestamp`. Authenticated response adds `uptime`, `memory`, `integrity` (and outbox). Error responses also tiered (`build` only when authenticated on error paths).
 - **Password policy** (`/api/users/[id]`): Changed Zod schema from `min(4)` to `min(6)`, aligning with the runtime check at line 95.
 
 ## Deviations from Plan
