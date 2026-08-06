@@ -14,6 +14,6 @@
     "mode": "disabled"
   },
   "capability_profile": "speckit-only",
-  "worktree_policy": "recommended",
+  "worktree_policy": "required",
   "runtime_effects": "privileged-gated"
 }
