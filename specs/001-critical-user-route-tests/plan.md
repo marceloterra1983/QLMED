@@ -5,7 +5,7 @@
 ## Summary
 
 Add direct Vitest coverage for the existing `PATCH /api/users/:id` route using
-hoisted mocks for authentication, Prisma, bcrypt and logging. No production
+hoisted mocks for authentication, Prisma and logging. No production
 implementation change is planned.
 
 ## Technical context
