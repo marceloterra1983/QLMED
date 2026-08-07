@@ -97,6 +97,7 @@ integrationDescribe('product aggregate keyset pagination', () => {
       quantity: 1,
       unitPrice: 1,
       totalValue: 1,
+      cfop: null,
       batches: [],
     });
     const product = result.get(key);
