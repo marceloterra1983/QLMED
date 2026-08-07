@@ -111,6 +111,7 @@ export async function extractProductsFromXml(
         quantity,
         unitPrice: safeUnitPrice,
         totalValue,
+        cfop: cleanString(prod?.CFOP),
         batches: extractBatches(det, prod),
       };
     });

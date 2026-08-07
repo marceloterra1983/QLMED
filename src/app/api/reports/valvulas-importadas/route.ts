@@ -2,82 +2,17 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { isImportEntryCfop, getCfopTagByCode } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
-import { cleanString, ensureArray, toNumber } from '@/lib/utils';
-import { extractAnvisa } from '@/lib/product-aggregation';
+import { extractProductsFromXml, normalizeUnit } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('reports/valvulas-importadas');
-
-/* ── Inline helpers (same pattern as products/route.ts) ── */
 
 /* CNPJs that should be merged as the same customer. Key = secondary CNPJ, Value = primary CNPJ */
 const CNPJ_MERGE_MAP: Record<string, string> = {
   '60967551002790': '03604782000166', // Instituto Presbiteriano Mackenzie → Associação Beneficiente Douradense
 };
-
-const UNIT_ALIASES: Record<string, string> = {
-  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
-  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN', PECAS: 'UN', 'PEÇAS': 'UN',
-  CAIXA: 'CX', CAIXAS: 'CX',
-  KT: 'KIT', KITS: 'KIT',
-  PR: 'PAR', PARES: 'PAR',
-  LT: 'L', LITRO: 'L', LITROS: 'L',
-  ML: 'ML', MILILITRO: 'ML', MILILITROS: 'ML',
-  KG: 'KG', QUILO: 'KG', QUILOS: 'KG', QUILOGRAMA: 'KG',
-  GR: 'G', GRAMA: 'G', GRAMAS: 'G',
-  MT: 'M', METRO: 'M', METROS: 'M',
-};
-
-function normalizeUnit(raw: string | null | undefined): string {
-  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
-  return UNIT_ALIASES[upper] || upper || '-';
-}
-
-interface ProductFromXml {
-  code: string;
-  description: string;
-  unit: string;
-  anvisa: string | null;
-  quantity: number;
-  totalValue: number;
-  cfop: string | null;
-}
-
-async function extractProductsFromXml(xmlContent: string): Promise<ProductFromXml[]> {
-  try {
-    const parsed = await parseXmlSafe(xmlContent);
-    const nfeProc = parsed?.nfeProc || parsed?.NFe || parsed;
-    const nfe = nfeProc?.NFe || parsed?.NFe || nfeProc;
-    const infNFe = nfe?.infNFe || nfe;
-    const dets = ensureArray<any>(infNFe?.det);
-    return dets.map((det) => {
-      const prod = det?.prod || {};
-      return {
-        code: cleanString(prod?.cProd) || '-',
-        description: cleanString(prod?.xProd) || 'Item sem descrição',
-        unit: cleanString(prod?.uCom) || '-',
-        anvisa: extractAnvisa(det, prod),
-        quantity: toNumber(prod?.qCom),
-        totalValue: toNumber(prod?.vProd),
-        cfop: cleanString(prod?.CFOP),
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
-function normalizeDescriptionToken(value: string | null | undefined) {
-  return (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /* ── Types ── */
 
