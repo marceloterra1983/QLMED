@@ -10,11 +10,11 @@
 | File | Evidence |
 |------|----------|
 | `src/lib/cnpj-lookup.ts` | `prisma.cnpjCache.findUnique` / `upsert`; no `ensureCnpjCacheTable`; no raw SQL |
-| `src/lib/cnpj-monitor.ts` | `prisma.cnpjCache.findMany` for stale; no `ensureCnpjCacheTable` |
+| `src/lib/cnpj-monitor.ts` | `prisma.cnpjCache.findMany` for stale; `prisma.cnpjMonitoring` for monitoring; no `ensure*Table` / raw SQL |
 | `src/app/api/contacts/cnpj-status/route.ts` | `prisma.cnpjCache.findMany` |
 
-`ensureCnpjMonitoringTable` + raw SQL for `cnpj_monitoring` intentionally remain (out of PoC scope).
+At PoC time, `cnpj_monitoring` was out of scope. That residual is historical: post-migration the store uses Prisma Client only (`ensureCnpjMonitoringTable` and runtime DDL are gone). Final state of satellite stores is recorded in [ADR-0006](../../../docs/decisions/0006-satellite-stores-prisma-client.md).
 
-## Follow-up (not this plan)
+## Follow-up (historical — superseded by ADR-0006)
 
-Migrate remaining satellite stores store-a-store (tax, stock, etc.) in later plans.
+Satellite store → Prisma Client migration is complete. Remaining schema work is FKs/`@relation` and `Float`→`Decimal` per ADR-0006, not further raw-SQL store migration.
