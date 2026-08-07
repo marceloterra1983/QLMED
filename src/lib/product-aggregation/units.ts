@@ -19,6 +19,7 @@ export interface ProductFromXml {
   quantity: number;
   unitPrice: number;
   totalValue: number;
+  cfop: string | null;
   batches: ProductBatch[];
 }
 
