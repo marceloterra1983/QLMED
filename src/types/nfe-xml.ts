@@ -8,7 +8,7 @@
  * - src/lib/parse-invoice-xml.ts
  * - src/app/api/invoices/[id]/pdf/route.ts
  * - src/app/api/invoices/[id]/details/route.ts
- * - src/lib/product-aggregation.ts
+ * - src/lib/product-aggregation/
  */
 
 import type { XmlNode } from './xml-common';
