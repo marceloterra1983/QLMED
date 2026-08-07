@@ -44,10 +44,14 @@ cron schedules or real webhooks.
 
 ### VI. One canonical source per concern
 
-GSD owns roadmap, execution state and continuity. Spec Kit owns each feature's
-behavioral contract and technical plan. ADRs own durable decisions; architecture
-documents describe current boundaries; code, schema, tests and CI prove the
-implementation. Documents MUST link rather than duplicate canonical content.
+Spec Kit owns each feature's behavioral contract and technical plan and is the
+mandatory governance gate. GSD is disabled by default (`gsd.mode=disabled`,
+`capability_profile: speckit-only` in `governance.yaml`) unless re-enabled
+locally with a pinned overlay and declared entrypoints; when re-enabled, GSD
+may own roadmap, execution state and continuity only. ADRs own durable
+decisions; architecture documents describe current boundaries; code, schema,
+tests and CI prove the implementation. Documents MUST link rather than
+duplicate canonical content.
 
 ## Quality gates
 
@@ -66,13 +70,15 @@ that external effect is explicitly requested and separately reviewed.
 
 ## Development workflow
 
-1. GSD establishes the delivery phase and references the Spec Kit feature.
-2. The feature is specified and clarified before technical planning.
-3. The plan checks this constitution and references applicable ADRs.
-4. Tasks map to requirements and acceptance criteria with exact paths.
-5. Analysis verifies coverage before implementation.
-6. Implementation runs deterministic checks and records actual evidence.
-7. Human review is required before merge; existing CI remains authoritative.
+1. Spec Kit is the required entry: specify and clarify the feature before
+   technical planning. GSD does not establish the phase while disabled; if
+   re-enabled under a pinned overlay, it may track delivery phase and continuity
+   only, referencing the Spec Kit feature.
+2. The plan checks this constitution and references applicable ADRs.
+3. Tasks map to requirements and acceptance criteria with exact paths.
+4. Analysis verifies coverage before implementation.
+5. Implementation runs deterministic checks and records actual evidence.
+6. Human review is required before merge; existing CI remains authoritative.
 
 Durable cross-feature choices require an ADR. Accepted ADRs are superseded by a
 new record rather than rewritten. Local reversible implementation choices stay
@@ -99,4 +105,12 @@ the disposable CI database `qlmed_ci`; it does not authorize live migrations or
 alter the backup project. The affected specification, plan and task templates
 were reviewed together with this amendment.
 
-**Version**: 1.0.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-08-03
+### Amendment 1.0.2 — GSD optional / Spec Kit gate (2026-08-06)
+
+Principle VI and the development workflow previously treated GSD as the default
+delivery orchestrator. That contradicted `governance.yaml` (`gsd.mode=disabled`,
+`capability_profile: speckit-only`) and SPEC-003. Spec Kit is the mandatory
+gate; GSD remains off unless re-enabled with a pinned overlay. PATCH only;
+templates reviewed — no incompatible principle removed.
+
+**Version**: 1.0.2 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-08-06
