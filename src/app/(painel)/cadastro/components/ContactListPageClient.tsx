@@ -102,9 +102,9 @@ function formatDocument(document: string) {
   if (digits.length === 14) return formatCnpj(digits);
   if (digits.length === 11) {
     return digits
-      .replace(/^(\\d{3})(\\d)/, '$1.$2')
-      .replace(/^(\\d{3})\\.(\\d{3})(\\d)/, '$1.$2.$3')
-      .replace(/\\.(\\d{3})(\\d)/, '.$1-$2');
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1-$2');
   }
   return document || 'Sem documento';
 }
@@ -306,7 +306,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         return base;
       });
 
-      const csv = '\\uFEFF' + [headers.join(';'), ...csvRows.map((r: string[]) => r.join(';'))].join('\\n');
+      const csv = '\uFEFF' + [headers.join(';'), ...csvRows.map((r: string[]) => r.join(';'))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
       a.href = url; a.download = `${cfg.csvName}-${new Date().toISOString().split('T')[0]}.csv`; a.click();

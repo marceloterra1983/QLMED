@@ -93,8 +93,8 @@ export async function POST(req: Request) {
       let process = cleanString(product.anvisaProcess);
       let status = cleanString(product.anvisaStatus);
 
-      // Catalog lookup only when missing ANVISA (or mode=all re-resolves missing/empty).
-      if (!normalizedAnvisa) {
+      // missing: só preenche vazio. all: re-consulta o catálogo para corrigir divergências.
+      if (!normalizedAnvisa || mode === 'all') {
         try {
           const match = await resolveAnvisaByCodeAndName({
             code: product.code,
