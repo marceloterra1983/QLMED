@@ -16,7 +16,7 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 | **Deps** | Dependabot (seg) + CI Loop (propose patches seguros) |
 | **Quality tracks** | Metas permanentes (SCHEMA-02, Decimal/Float, god-files, testes, Zod) |
 | **Segurança** | `npm audit` no CI + no scorecard diário/semanal |
-| **Spec Kit** | Fluxo separado `speckitDailyUpdate01` (já ativo) |
+| **Spec Kit** | Ativo: `SpecKitAutoUpd01` (n8n Shared); `speckitDailyUpdate01` é cópia histórica/inativa |
 
 ## Componentes
 
