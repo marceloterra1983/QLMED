@@ -19,7 +19,7 @@ const path = require('path');
 
 const prisma = new PrismaClient();
 
-// Replicating the XML parser logic from src/lib/xml-parser.ts
+// Local XML parse (canonical app parsers: src/lib/safe-xml-parser.ts, parse-invoice-xml.ts)
 function parseXmlPromise(xml) {
   return new Promise((resolve, reject) => {
     parseString(xml, { explicitArray: false, trim: true }, (err, result) => {
