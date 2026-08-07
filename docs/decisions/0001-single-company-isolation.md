@@ -21,7 +21,9 @@ grave. A decisão vinha sendo aplicada em todo o código sem registro formal
 ## Decision drivers
 
 - Nenhum request pode escolher a empresa que enxerga (evitar IDOR).
-- A regra deve valer para o Prisma tipado e para o SQL cru das tabelas satélite.
+- A regra deve valer para todo acesso a dado tenant-scoped (Prisma Client é a
+  interface canônica de CRUD satélite — [ADR-0006]; SQL cru residual, se houver,
+  também filtra por companyId).
 - Auditoria de segurança precisa de um ponto único de verdade.
 
 ## Considered options
@@ -40,15 +42,15 @@ cada rota vira uma superfície de erro de autorização.
 
 **Option A.** O `companyId` é derivado exclusivamente do usuário autenticado
 através dos helpers canônicos; a autorização é sempre server-side (visibilidade
-de UI nunca é autorização). Toda query — Prisma ou SQL cru — filtra por esse
-companyId.
+de UI nunca é autorização). Toda query tenant-scoped filtra por esse companyId
+(Prisma Client nas stores satélite; qualquer SQL cru residual não isento).
 
 ## Consequences
 
 ### Positive
 
 - Vazamento cross-company exige burlar a autenticação, não uma única rota.
-- Regra uniforme entre Prisma e SQL cru.
+- Regra uniforme em todo acesso tenant-scoped, independente da API de dados.
 
 ### Negative
 
