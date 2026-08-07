@@ -18,7 +18,9 @@ affected_modules:
 Satellite tables used to be dual-sourced via `@@ignore` / runtime `ensure*Table`
 DDL alongside Prisma. Runtime DDL and `@@ignore` are already gone from `src/` and
 `prisma/schema.prisma`, and all satellite stores use Prisma Client for ordinary
-CRUD. Remaining work is FKs, money precision and expand/contract discipline.
+CRUD. Expand/contract rollout and rollback discipline are delivered in this
+SDD (plan + T005; see `docs/architecture/data.md`). Residual work is FKs /
+`@relation` on satellite models and `Float`→`Decimal` for money precision.
 GSD Phase 11 defines the completed delivery sequence; this spec is the
 behavioral and safety contract.
 
