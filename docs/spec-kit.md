@@ -18,11 +18,10 @@ installed skills are committed under `.specify/` and `.agents/skills/`.
 
 ## Host SDD (runtime specs)
 
-Specs operacionais do host (n8n, qlmed-app, networking, etc.) vivem em
-`/home/marce/specs` (alias de navegação:
-`/home/marce/domains/shared/specs`). Comece por `INDEX.md`. Spec Kit neste
-repo cobre features do app; SDD cobre a stack do servidor. Não duplicar
-conteúdo entre os dois.
+Specs operacionais do host (n8n, qlmed-app, networking, etc.) vivem no checkout
+canônico `/home/marce/specs`. Comece por `INDEX.md`. Spec Kit neste repo cobre
+features do app; SDD cobre a stack do servidor. Não duplicar conteúdo entre os
+dois.
 
 ## Upgrade policy
 
