@@ -1,0 +1,7 @@
+# public/ é a árvore de estáticos do Next: fontes, ícones e a biblioteca PDF.js
+# vendorizada (17 MB). O pdfjs sozinho responde por 1801 dos 2234 "símbolos
+# mortos" que o dead-code aponta, e nada ali é código nosso.
+public/
+
+# Spec Kit vendorizado — mesma razão dos repos ops e autofix.
+.specify/
