@@ -1,0 +1,23 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Login — página exibe formulário de acesso",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/login"
+    },
+    {
+      "type": "assertion",
+      "description": "The page shows an email input (placeholder or label mentioning email) and a password input"
+    },
+    {
+      "type": "assertion",
+      "description": "A visible button or submit control with the text 'Entrar' is present"
+    },
+    {
+      "type": "assertion",
+      "description": "The QLMED brand name or logo is visible on the login page"
+    }
+  ]
+}

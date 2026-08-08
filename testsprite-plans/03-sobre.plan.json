@@ -1,0 +1,19 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Sobre — página institucional pública carrega",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/sobre"
+    },
+    {
+      "type": "assertion",
+      "description": "The page HTTP content loads successfully and shows visible text related to QLMED or the company (heading or body)"
+    },
+    {
+      "type": "assertion",
+      "description": "The URL path remains '/sobre'"
+    }
+  ]
+}
