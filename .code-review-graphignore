@@ -1,7 +1,11 @@
-# public/ é a árvore de estáticos do Next: fontes, ícones e a biblioteca PDF.js
-# vendorizada (17 MB). O pdfjs sozinho responde por 1801 dos 2234 "símbolos
-# mortos" que o dead-code aponta, e nada ali é código nosso.
-public/
+# PDF.js vendorizado (17 MB): bundles minificados que sozinhos respondiam por
+# 73% dos nós do grafo. Escopo restrito à subárvore do fornecedor, espelhando o
+# que o .graphifyignore deste repo já fazia.
+#
+# public/ inteiro NÃO: public/sw.js é nosso — service worker com handlers de
+# install/activate/fetch, registrado por src/components/PWARegister.tsx:8.
+# Excluir a pasta toda tiraria mudanças dele do grafo e do raio de impacto.
+public/pdfjs/
 
 # Spec Kit vendorizado — mesma razão dos repos ops e autofix.
 .specify/
