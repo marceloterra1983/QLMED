@@ -1,0 +1,19 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Login — campos obrigatórios impedem envio vazio",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/login"
+    },
+    {
+      "type": "action",
+      "description": "Click the 'Entrar' button without filling email or password"
+    },
+    {
+      "type": "assertion",
+      "description": "The page remains on '/login' and does not navigate to '/fiscal/invoices'"
+    }
+  ]
+}

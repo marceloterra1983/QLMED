@@ -93,3 +93,7 @@ graphify-out/
 # Self-hosted Actions runner lives under /srv, never in app tree
 actions-runner-*/
 actions-runner-qlmed-prod
+
+# TestSprite — pin local; never commit API credentials
+.testsprite/*
+!.testsprite/config.json

@@ -1,0 +1,19 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Register — página de cadastro é acessível",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/register"
+    },
+    {
+      "type": "assertion",
+      "description": "A registration form is visible with at least one email or name input field"
+    },
+    {
+      "type": "assertion",
+      "description": "The URL path contains '/register'"
+    }
+  ]
+}

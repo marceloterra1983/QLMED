@@ -1,0 +1,31 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Login — credenciais inválidas mostram erro",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/login"
+    },
+    {
+      "type": "action",
+      "description": "Type 'usuario.inexistente@qlmed-test.invalid' into the email field"
+    },
+    {
+      "type": "action",
+      "description": "Type 'senha-errada-testsprite-001' into the password field"
+    },
+    {
+      "type": "action",
+      "description": "Click the 'Entrar' button"
+    },
+    {
+      "type": "assertion",
+      "description": "An error message is shown containing the text 'Email ou senha incorretos' or another visible login error"
+    },
+    {
+      "type": "assertion",
+      "description": "The browser URL still contains '/login' (user was not redirected into the painel)"
+    }
+  ]
+}

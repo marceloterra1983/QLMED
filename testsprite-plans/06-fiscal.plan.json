@@ -1,0 +1,19 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Fiscal — rota autenticada redireciona sem sessão",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/fiscal/invoices"
+    },
+    {
+      "type": "assertion",
+      "description": "The browser ends on a URL containing '/login'"
+    },
+    {
+      "type": "assertion",
+      "description": "The login email input is visible"
+    }
+  ]
+}

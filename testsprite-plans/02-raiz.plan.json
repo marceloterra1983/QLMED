@@ -1,0 +1,19 @@
+{
+  "projectId": "559c6045-5c5c-4522-bba6-ab843281faf9",
+  "type": "frontend",
+  "name": "Raiz — visitante não autenticado vai para /login",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to https://app.qlmed.com.br/"
+    },
+    {
+      "type": "assertion",
+      "description": "The browser URL contains '/login'"
+    },
+    {
+      "type": "assertion",
+      "description": "An email input field is visible on the page"
+    }
+  ]
+}
