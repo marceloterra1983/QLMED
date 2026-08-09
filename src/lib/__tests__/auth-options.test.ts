@@ -143,4 +143,35 @@ describe('NextAuth regressions', () => {
     expect(result).toEqual(token);
     expect(mocks.userFindUnique).not.toHaveBeenCalled();
   });
+
+  it('refuses session when tokenVersion diverges from DB (no rebind)', async () => {
+    mocks.userFindUnique.mockResolvedValue({
+      role: 'admin',
+      status: 'active',
+      allowedPages: ['/sistema/usuarios'],
+      tokenVersion: 9,
+    });
+
+    const jwtCallback = authOptions.callbacks?.jwt;
+    const result = await jwtCallback!({
+      token: {
+        id: 'user-1',
+        role: 'viewer',
+        status: 'active',
+        allowedPages: ['/fiscal/cte'],
+        tokenVersion: 2,
+        dbRefreshedAt: Date.now() - 10 * 60 * 1000,
+      },
+      user: undefined,
+      account: null,
+      profile: undefined,
+      trigger: undefined,
+      isNewUser: false,
+      session: undefined,
+    } as never);
+
+    expect(mocks.userFindUnique).toHaveBeenCalled();
+    expect(result).toEqual({});
+    expect(result).not.toMatchObject({ tokenVersion: 9 });
+  });
 });
