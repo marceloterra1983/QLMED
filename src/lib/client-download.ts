@@ -62,11 +62,3 @@ export async function downloadFileFromUrl(url: string, fallbackFilename?: string
   await downloadFileFromRequest(url, { method: 'GET' }, fallbackFilename);
 }
 
-export async function downloadManyFilesSequentially(urls: string[], pauseMs = 120): Promise<void> {
-  for (const url of urls) {
-    await downloadFileFromUrl(url);
-    if (pauseMs > 0) {
-      await new Promise((resolve) => window.setTimeout(resolve, pauseMs));
-    }
-  }
-}

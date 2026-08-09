@@ -4,21 +4,6 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('auto-sync');
 
-export interface ReceitaNfseSyncConfig {
-  receitaConfig: {
-    id: string;
-    apiToken: string | null;
-    lastNsu: string;
-    cnpjConsulta: string | null;
-    environment: string;
-    baseUrl: string | null;
-  };
-  certificateConfig: {
-    pfxData: Buffer | Uint8Array;
-    pfxPassword: string;
-  };
-}
-
 export async function syncViaReceitaNfse(
   companyId: string,
   cnpj: string,

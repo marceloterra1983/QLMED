@@ -140,10 +140,7 @@ describe('invoice-tax-store Prisma CRUD', () => {
     mocks.itemTaxDeleteMany.mockResolvedValue({ count: 0 });
     mocks.itemTaxCreateMany.mockResolvedValue({ count: 1 });
 
-    const { getTaxTotals, upsertItemTaxes, hasInvoiceTaxData } = await import('../invoice-tax-store');
-    await expect(getTaxTotals('inv-1')).resolves.toMatchObject({ invoiceId: 'inv-1', vbc: 10 });
-    await expect(hasInvoiceTaxData('inv-1')).resolves.toBe(true);
-
+    const { upsertItemTaxes } = await import('../invoice-tax-store');
     await upsertItemTaxes('inv-1', 'co-1', [
       {
         itemNumber: 1,
@@ -440,7 +437,7 @@ describe('ncm-lookup Prisma cache', () => {
 
 describe('stock-entry-store Prisma CRUD', () => {
   it('creates and updates stock entries through Prisma', async () => {
-    const { upsertStockEntry, getStockEntryByInvoiceId } = await import('../stock-entry-store');
+    const { upsertStockEntry } = await import('../stock-entry-store');
     const base = {
       id: 'se-1',
       companyId: 'co-1',
@@ -491,11 +488,5 @@ describe('stock-entry-store Prisma CRUD', () => {
         status: 'registered',
       }),
     ).resolves.toMatchObject({ status: 'registered', matchedItems: 2 });
-
-    mocks.stockEntryFindUnique.mockResolvedValueOnce(base);
-    await expect(getStockEntryByInvoiceId('co-1', 'inv-1')).resolves.toMatchObject({
-      invoiceId: 'inv-1',
-      totalItems: 2,
-    });
   });
 });

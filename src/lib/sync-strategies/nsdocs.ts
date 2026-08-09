@@ -13,12 +13,6 @@ import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 
 const log = createLogger('auto-sync');
 
-export interface NsdocsSyncConfig {
-  id: string;
-  apiToken: string;
-  lastSyncAt: Date | null;
-}
-
 export async function syncViaNsdocs(
   companyId: string,
   cnpj: string,

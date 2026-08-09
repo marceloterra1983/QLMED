@@ -50,7 +50,6 @@ export interface InvoiceItemTax {
   valorFcp: number | null;
 }
 
-
 // ── Upsert totals ──
 
 export async function upsertTaxTotals(data: {
@@ -155,69 +154,3 @@ export async function upsertItemTaxes(
 
 // ── Queries ──
 
-export async function getTaxTotals(invoiceId: string): Promise<InvoiceTaxTotals | null> {
-  const row = await prisma.invoiceTaxTotals.findUnique({
-    where: { invoiceId },
-  });
-  if (!row) return null;
-  return {
-    invoiceId: row.invoiceId,
-    companyId: row.companyId,
-    vbc: row.vbc,
-    vicms: row.vicms,
-    vpis: row.vpis,
-    vcofins: row.vcofins,
-    vipi: row.vipi,
-    vfrete: row.vfrete,
-    vseg: row.vseg,
-    vdesc: row.vdesc,
-    voutro: row.voutro,
-    vtottrib: row.vtottrib,
-    vfcp: row.vfcp,
-    vicmsSt: row.vicmsSt,
-    computedAt: row.computedAt ?? new Date(0),
-  };
-}
-
-export async function getItemTaxes(invoiceId: string): Promise<InvoiceItemTax[]> {
-  const rows = await prisma.invoiceItemTax.findMany({
-    where: { invoiceId },
-    orderBy: { itemNumber: 'asc' },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    invoiceId: r.invoiceId,
-    companyId: r.companyId,
-    itemNumber: r.itemNumber,
-    productCode: r.productCode,
-    productDescription: r.productDescription,
-    ncm: r.ncm,
-    cfop: r.cfop,
-    cest: r.cest,
-    origem: r.origem,
-    quantity: r.quantity,
-    unitPrice: r.unitPrice,
-    totalValue: r.totalValue,
-    cstIcms: r.cstIcms,
-    baseIcms: r.baseIcms,
-    aliqIcms: r.aliqIcms,
-    valorIcms: r.valorIcms,
-    cstPis: r.cstPis,
-    aliqPis: r.aliqPis,
-    valorPis: r.valorPis,
-    cstCofins: r.cstCofins,
-    aliqCofins: r.aliqCofins,
-    valorCofins: r.valorCofins,
-    aliqIpi: r.aliqIpi,
-    valorIpi: r.valorIpi,
-    valorFcp: r.valorFcp,
-  }));
-}
-
-export async function hasInvoiceTaxData(invoiceId: string): Promise<boolean> {
-  const row = await prisma.invoiceTaxTotals.findUnique({
-    where: { invoiceId },
-    select: { invoiceId: true },
-  });
-  return row != null;
-}

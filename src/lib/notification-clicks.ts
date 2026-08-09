@@ -22,10 +22,6 @@ export function normalizePublicBaseUrl(baseUrl: string | null | undefined): stri
   return value || 'https://app.qlmed.com.br';
 }
 
-export function buildTrackedNotificationUrl(baseUrl: string | null | undefined, deliveryId: string): string {
-  return `${normalizePublicBaseUrl(baseUrl)}/r/${encodeURIComponent(deliveryId)}`;
-}
-
 export function getClientIp(headers: Headers): string | null {
   const direct =
     headers.get('cf-connecting-ip') ||

@@ -41,15 +41,6 @@ export const tdCls = 'px-3 py-2';
 
 // --- Shared UI components ---
 
-export function InfoField({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
-    </div>
-  );
-}
-
 export function EditableField({ label, value, field, draft, onChange }: {
   label: string;
   value?: string | null;
