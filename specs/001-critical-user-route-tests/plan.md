@@ -32,7 +32,7 @@ implementation change is planned.
 | Prisma migration ownership | N/A — no schema change |
 | Route/shared module boundary | Pass — production route remains unchanged |
 | Secret/fiscal containment | Pass — synthetic IDs and mocked data only |
-| Canonical sources | Pass — behavior in spec, execution in GSD |
+| Canonical sources | Pass — behavior in spec, execution/traceability in Spec Kit tasks |
 
 ## Project structure
 

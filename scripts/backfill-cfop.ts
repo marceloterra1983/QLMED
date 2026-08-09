@@ -9,7 +9,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { getCanonicalDatabaseUrl } from '../src/lib/database-config';
 
+getCanonicalDatabaseUrl(); // FR-005 fail-closed before opening Prisma
 const prisma = new PrismaClient();
 const BATCH_SIZE = 100;
 
