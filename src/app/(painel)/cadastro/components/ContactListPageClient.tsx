@@ -7,10 +7,8 @@ import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 
-const CustomerDetailsModal = dynamic(() => import('@/components/CustomerDetailsModal'), { ssr: false });
-const CustomerPriceTableModal = dynamic(() => import('@/components/CustomerPriceTableModal'), { ssr: false });
-const SupplierDetailsModal = dynamic(() => import('@/components/SupplierDetailsModal'), { ssr: false });
-const SupplierPriceTableModal = dynamic(() => import('@/components/SupplierPriceTableModal'), { ssr: false });
+const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
+const ContactPriceTableModal = dynamic(() => import('@/components/ContactPriceTableModal'), { ssr: false });
 
 export type ContactListKind = 'customer' | 'supplier';
 
@@ -661,33 +659,18 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         </div>
       </div>
 
-      {kind === 'customer' ? (
-        <>
-          <CustomerDetailsModal
-            isOpen={isDetailsOpen}
-            onClose={() => setIsDetailsOpen(false)}
-            customer={selected ? { cnpj: selected.cnpj, name: selected.name } : null}
-          />
-          <CustomerPriceTableModal
-            isOpen={isPriceTableOpen}
-            onClose={() => setIsPriceTableOpen(false)}
-            customer={selectedPrice ? { cnpj: selectedPrice.cnpj, name: selectedPrice.name } : null}
-          />
-        </>
-      ) : (
-        <>
-          <SupplierDetailsModal
-            isOpen={isDetailsOpen}
-            onClose={() => setIsDetailsOpen(false)}
-            supplier={selected ? { cnpj: selected.cnpj, name: selected.name } : null}
-          />
-          <SupplierPriceTableModal
-            isOpen={isPriceTableOpen}
-            onClose={() => setIsPriceTableOpen(false)}
-            supplier={selectedPrice ? { cnpj: selectedPrice.cnpj, name: selectedPrice.name } : null}
-          />
-        </>
-      )}
+      <ContactDetailsModal
+        kind={kind}
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        contact={selected ? { cnpj: selected.cnpj, name: selected.name } : null}
+      />
+      <ContactPriceTableModal
+        kind={kind}
+        isOpen={isPriceTableOpen}
+        onClose={() => setIsPriceTableOpen(false)}
+        contact={selectedPrice ? { cnpj: selectedPrice.cnpj, name: selectedPrice.name } : null}
+      />
     </>
   );
 }

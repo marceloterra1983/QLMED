@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import CustomerDetailsModal from '@/components/CustomerDetailsModal';
+import ContactDetailsModal from '@/components/ContactDetailsModal';
 
 export default function CustomerDetailsClient() {
   const searchParams = useSearchParams();
@@ -37,7 +37,7 @@ export default function CustomerDetailsClient() {
           Cliente não informado. Abra esta página a partir da lista de clientes.
         </div>
       ) : (
-        <CustomerDetailsModal isOpen onClose={() => {}} customer={customer} inline />
+        <ContactDetailsModal kind="customer" isOpen onClose={() => {}} contact={customer} inline />
       )}
     </div>
   );
