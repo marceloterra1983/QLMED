@@ -90,16 +90,6 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
   return null;
 }
 
-/**
- * Thin wrapper preserving the pre-refactor signature. Returns the user id
- * associated with a valid api key, or null. Use `getApiKeyContext()` when
- * you need keyId/scopes for audit or scope checks.
- */
-export async function getApiKeyUserId(): Promise<string | null> {
-  const ctx = await getApiKeyContext();
-  return ctx?.userId ?? null;
-}
-
 export async function requireApiKeyScope(scope: string): Promise<ApiKeyContext> {
   const apiCtx = await getApiKeyContext();
   if (!apiCtx) throw new Error('NOT_AUTHENTICATED');
@@ -117,20 +107,6 @@ const ROLE_HIERARCHY: Record<string, number> = {
   editor: 2,
   viewer: 1,
 };
-
-export async function getSession() {
-  return await getServerSession(authOptions);
-}
-
-export async function getCurrentUser() {
-  const session = await getSession();
-  return session?.user;
-}
-
-export async function getAuthUserId(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  return session?.user?.id ?? null;
-}
 
 export async function requireAuth(options: { apiKeyScope?: string } = {}): Promise<string> {
   // API keys must be explicitly allowed by the route. This prevents a
