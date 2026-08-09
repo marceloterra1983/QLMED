@@ -8,7 +8,7 @@ const PUBLIC_OR_DISABLED_ROUTES = new Set([
 ]);
 
 const GUARD_PATTERN =
-  /\b(withAuth|requireAuth|requireRole|requireEditor|requireAdmin|requireSessionRole|requireSessionAdmin|requireApiKeyScope|validateApiKey|getServerSession|getApiKeyContext)\s*\(/;
+  /\b(requireAuth|requireRole|requireEditor|requireAdmin|requireSessionRole|requireSessionAdmin|requireApiKeyScope|validateApiKey|getServerSession|getApiKeyContext)\s*\(/;
 
 function collectRouteFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
