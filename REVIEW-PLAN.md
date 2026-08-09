@@ -1,9 +1,9 @@
 # QLMED — Plano de Correção Completa
 
 > **SUPERSEDED (2026-07-28).** Este plano de 2026-04 é histórico. A fonte de
-> verdade do roadmap, fases e estado é `.planning/` (`ROADMAP.md`, `STATE.md`,
-> `REQUIREMENTS.md`, `phases/`). Não usar este arquivo para priorizar trabalho
-> novo — consultar `.planning/` primeiro.
+> verdade é `specs/` (comportamento e critérios de aceite) e `docs/decisions/`
+> (decisões duráveis), conforme `AGENTS.md`. Não usar este arquivo para
+> priorizar trabalho novo.
 
 **Data**: 2026-04-10
 **Baseado em**: Security Audit, Deps Audit, Tech Debt Audit, Performance Audit
@@ -11,8 +11,9 @@
 
 ---
 
-> **SUPERSEDED (2026-07-30).** Plano de abr/2026 absorvido pelo roadmap GSD
-> (`.planning/`) e pelas fases 01–12. Manter só como arquivo histórico; não
+> **SUPERSEDED (2026-07-30).** Plano de abr/2026 absorvido pelo roadmap GSD e
+> pelas fases 01–12, ambos removidos com o GSD desativado
+> (`governance.yaml: gsd.mode=disabled`). Manter só como arquivo histórico; não
 > usar como checklist operacional.
 
 ## Visão Geral
