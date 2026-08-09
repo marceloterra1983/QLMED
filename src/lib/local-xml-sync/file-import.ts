@@ -155,7 +155,7 @@ export async function findFilesMissingInDatabase(filePaths: string[]): Promise<s
   });
 }
 
-export function rememberFileFingerprint(filePath: string, fingerprint: string): void {
+function rememberFileFingerprint(filePath: string, fingerprint: string): void {
   recentFileFingerprints.set(filePath, fingerprint);
 
   while (recentFileFingerprints.size > RECENT_FILE_CACHE_LIMIT) {
@@ -194,7 +194,7 @@ export async function copyXmlFileIfNeeded(sourceFilePath: string, targetFilePath
   return true;
 }
 
-export async function importXmlFile(filePath: string): Promise<void> {
+async function importXmlFile(filePath: string): Promise<void> {
   if (!isXmlFile(filePath)) return;
 
   const absolutePath = path.resolve(filePath);

@@ -31,7 +31,7 @@ export function getClientIp(headers: Headers): string | null {
   return first || null;
 }
 
-export function hashClickIp(ip: string | null): string | null {
+function hashClickIp(ip: string | null): string | null {
   if (!ip) return null;
   const salt = process.env.NOTIFICATION_CLICK_HASH_SALT || process.env.NEXTAUTH_SECRET || 'qlmed-notification-click';
   return createHash('sha256').update(`${salt}\0${ip}`, 'utf8').digest('hex');

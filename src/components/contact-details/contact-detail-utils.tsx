@@ -5,7 +5,7 @@ import type { AddressDivergence } from './contact-detail-types';
 
 // --- Shared utility functions ---
 
-export function normalizeForCompare(value: string | null | undefined): string {
+function normalizeForCompare(value: string | null | undefined): string {
   if (!value) return '';
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[.,\-\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
 }

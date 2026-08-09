@@ -13,7 +13,7 @@ function rejectDoctype(xmlContent: string): void {
 }
 
 /** Shared safe parser with size limit validation */
-export const safeXmlParser = new xml2js.Parser({
+const safeXmlParser = new xml2js.Parser({
   explicitArray: false,
   mergeAttrs: true,
   trim: true,
@@ -30,7 +30,7 @@ export async function parseXmlSafe(xmlContent: string) {
 }
 
 /** Parser variant without mergeAttrs (for NF-e extraction) */
-export const safeXmlParserNoMerge = new xml2js.Parser({
+const safeXmlParserNoMerge = new xml2js.Parser({
   explicitArray: false,
   ignoreAttrs: false,
   tagNameProcessors: [xml2js.processors.stripPrefix],

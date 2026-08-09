@@ -4,7 +4,7 @@ function normalizeDocument(value: string | null | undefined): string {
   return (value || '').replace(/\D/g, '');
 }
 
-export function getEmitterCnpjFromAccessKey(accessKey: string | null | undefined): string {
+function getEmitterCnpjFromAccessKey(accessKey: string | null | undefined): string {
   const keyDigits = normalizeDocument(accessKey);
   if (keyDigits.length < 20) return '';
   return keyDigits.slice(6, 20);

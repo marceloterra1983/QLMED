@@ -12,7 +12,7 @@ import {
 import { canAccessPage } from '@/lib/navigation';
 
 type TransactionClient = Prisma.TransactionClient;
-export const OUTBOX_EVENT_TYPE = 'invoice_received' as const;
+const OUTBOX_EVENT_TYPE = 'invoice_received' as const;
 export const DEFAULT_OUTBOX_LEASE_SECONDS = 15 * 60;
 export const MAX_OUTBOX_LEASE_SECONDS = 60 * 60;
 
@@ -27,9 +27,9 @@ export function isNotificationEligibleInvoice(
 // uma notificação, inundando os destinatários com CT-e/NF-e velhos. Documentos
 // mais antigos que a janela ainda são importados e ficam visíveis no sistema —
 // apenas não geram notificação. 0 (ou negativo) desliga a guarda.
-export const DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS = 5;
+const DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS = 5;
 
-export function getNotificationMaxInvoiceAgeDays(): number {
+function getNotificationMaxInvoiceAgeDays(): number {
   const raw = process.env.NOTIFICATION_MAX_INVOICE_AGE_DAYS;
   if (raw === undefined || raw.trim() === '') {
     return DEFAULT_NOTIFICATION_MAX_INVOICE_AGE_DAYS;
@@ -262,7 +262,7 @@ export interface OutboxDestination {
   recipient: string;
 }
 
-export function newOutboxLockToken(workerId: string): string {
+function newOutboxLockToken(workerId: string): string {
   return `${workerId}:${randomUUID()}`;
 }
 
