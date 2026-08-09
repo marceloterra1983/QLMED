@@ -2,8 +2,6 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
@@ -49,8 +47,8 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont
 
+# puppeteer-core nao baixa navegador: o binario vem do pacote chromium acima
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
