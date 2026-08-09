@@ -1,3 +1,4 @@
+require('./ensure-canonical-database-url.cjs'); // FR-005 fail-closed before Prisma
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs').promises;
 const path = require('path');

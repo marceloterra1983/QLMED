@@ -12,6 +12,7 @@ if (process.env.ALLOW_OUTBOX_BYPASS !== 'historical-import') {
   throw new Error('Set ALLOW_OUTBOX_BYPASS=historical-import to run this historical import without notifications.');
 }
 
+require('./ensure-canonical-database-url.cjs'); // FR-005 fail-closed before Prisma
 const { PrismaClient } = require('@prisma/client');
 const { parseString } = require('xml2js');
 const fs = require('fs');

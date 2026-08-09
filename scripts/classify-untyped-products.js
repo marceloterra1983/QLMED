@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./ensure-canonical-database-url.cjs'); // FR-005 fail-closed before Prisma
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 function hasMatch(value, regex) {
