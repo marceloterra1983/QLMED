@@ -3,10 +3,8 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { overrideSchema } from '@/lib/schemas/financeiro';
 
-const log = createLogger('financeiro/contas-pagar/override');
 
 function normalizeOptionalText(value: unknown, maxLen = 255): string | null {
   if (value == null) return null;

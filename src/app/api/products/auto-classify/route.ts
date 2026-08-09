@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
-import { apiError, apiValidationError } from '@/lib/api-error';
+import { apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { autoClassifySchema } from '@/lib/schemas/product';
 

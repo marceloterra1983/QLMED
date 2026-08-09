@@ -9,9 +9,6 @@ import {
   type Duplicata,
   parseCurrencyInput,
   roundMoney,
-  toCurrencyInput,
-  getNextDupNumero,
-  createEditRowId,
   getParcelaLabel,
   getNick,
 } from './financeiro-utils';

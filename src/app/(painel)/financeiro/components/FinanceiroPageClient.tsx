@@ -96,7 +96,6 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
   const [statusFilter, setStatusFilter] = useState(cfg.defaultStatusFilter);
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit] = useState(50);
   const [sortBy, setSortBy] = useState('vencimento');
@@ -154,7 +153,6 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
       setDuplicatas(loaded);
       setSummary(data.summary);
       setTotal(data.pagination.total);
-      setTotalPages(data.pagination.pages);
       if (!collapsedInitialized && loaded.length > 0) {
         const groupOrder: string[] = [];
         for (const d of loaded) {

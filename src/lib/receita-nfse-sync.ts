@@ -96,7 +96,6 @@ export interface ReceitaNfseSyncResult {
 
 export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Promise<ReceitaNfseSyncResult> {
   const {
-    prisma,
     companyId,
     companyCnpj,
     config,
@@ -194,7 +193,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
       const direction = resolveInvoiceDirection(companyCnpj, parsed.senderCnpj, parsed.accessKey);
       const cfop = extractFirstCfop(xmlContent);
 
-      const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
+      const { isNewInvoice } = await upsertInvoiceWithOutbox({
         where: { accessKey: parsed.accessKey },
         update: {
           type: parsed.type,

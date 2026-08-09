@@ -298,11 +298,6 @@ export async function GET(req: Request) {
     // Helper: check if product code belongs to the fixed list (direct or via supplier mapping)
     const isTargetProduct = (code: string): boolean => VALVULAS_CODES.has(code) || VALVULAS_CODES.has(resolveCode(code));
 
-    // Helper: match product to a target product by code (direct or via supplier mapping)
-    const matchToTarget = (code: string): ImportProduct | null => {
-      return importProductMap.get(code) || importProductMap.get(resolveCode(code)) || null;
-    };
-
     // Pre-create all 9 target products so received invoices can always match
     for (const code of Array.from(VALVULAS_CODES)) {
       getOrCreateImportProduct(code, code, 'UN', null);

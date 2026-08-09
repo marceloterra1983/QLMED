@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
-import type { NfeDetails, NfeProduto, EmitDestParty, NfeTotais, NfeTransporte, NfeCobranca, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, IcmsTaxFields, TaxFields } from '@/types/invoice-details';
+import type { NfeDetails, NfeProduto, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, TaxFields } from '@/types/invoice-details';
 
 interface NfeDetailsModalProps {
   isOpen: boolean;
@@ -592,7 +592,6 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
     }
   };
 
-  const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
     <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">

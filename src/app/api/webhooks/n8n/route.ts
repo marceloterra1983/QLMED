@@ -7,7 +7,6 @@ import { apiError, apiValidationError } from '@/lib/api-error';
 const log = createLogger('webhooks/n8n');
 
 const VALID_ACTIONS = ['sync-nfe', 'sync-cte', 'notify', 'process-xml', 'sync-ncm-bulk', 'backfill-tax-data', 'batch-cnpj-check'] as const;
-type Action = (typeof VALID_ACTIONS)[number];
 
 const n8nWebhookSchema = z.object({
   action: z.enum(VALID_ACTIONS, {

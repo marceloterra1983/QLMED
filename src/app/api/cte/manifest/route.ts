@@ -3,10 +3,8 @@ import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/au
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { z } from 'zod';
-import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 
-const log = createLogger('cte/manifest');
 
 const cteManifestSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Selecione ao menos um CT-e'),

@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
+import { apiError } from '@/lib/api-error';
 import { z } from 'zod';
 
-const log = createLogger('companies');
 
 export async function GET() {
   try {

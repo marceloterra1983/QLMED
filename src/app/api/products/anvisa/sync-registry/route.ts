@@ -3,7 +3,6 @@ import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/au
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getProductRegistryWithAnvisa, getProductRegistryByKeys, updateRegistryAnvisaData } from '@/lib/product-registry-store';
 import { fetchAnvisaData, type AnvisaRegistryData } from '@/lib/anvisa-api';
-import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { anvisaSyncRegistrySchema } from '@/lib/schemas/product';
 

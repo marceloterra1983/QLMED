@@ -6,10 +6,8 @@ import { listProductSettingsCatalogEntries, upsertProductSettingsCatalogEntry, t
 
 import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
 
-const log = createLogger('products/settings');
 const noBodySchema = z.object({}).optional();
 
 type LineNode = {

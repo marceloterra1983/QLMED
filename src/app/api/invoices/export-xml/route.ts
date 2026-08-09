@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { InvoiceType, InvoiceDirection } from '@prisma/client';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
@@ -9,9 +9,8 @@ const VALID_TYPES = new Set<string>(Object.values(InvoiceType));
 const VALID_DIRECTIONS = new Set<string>(Object.values(InvoiceDirection));
 
 export async function POST(request: NextRequest) {
-  let userId: string;
   try {
-    ({ userId } = await requireEditor());
+    await requireEditor();
   } catch (err) {
     if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();

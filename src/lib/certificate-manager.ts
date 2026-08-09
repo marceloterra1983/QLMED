@@ -1,5 +1,4 @@
 import forge from 'node-forge';
-import crypto from 'crypto';
 import { sefazRejectUnauthorized } from '@/lib/ssl-verify';
 
 // Metadata extracted from a PFX during upload validation.

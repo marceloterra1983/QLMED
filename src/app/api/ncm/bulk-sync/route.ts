@@ -40,9 +40,8 @@ export async function POST() {
     // safeParse para consistencia com padrao de validacao
     noBodySchema.safeParse({});
 
-    let _auth: { userId: string; role: string };
     try {
-      _auth = await requireEditor();
+      await requireEditor();
     } catch (error: unknown) {
       if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();

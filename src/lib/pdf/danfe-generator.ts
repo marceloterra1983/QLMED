@@ -1,7 +1,6 @@
 import { gv } from '@/lib/xml-helpers';
 import { ensureArray } from '@/lib/utils';
 import type { XmlNode } from '@/types/xml-common';
-import type { NFeImposto } from '@/types/nfe-xml';
 import type { DanfeData, DanfeProduct, DanfeParcela, PdfInvoiceView } from './pdf-types';
 import { esc, fmtCnpj, fmtCep, fmtFone, fmtNum, fmtCurrency, fmtKey, fmtNfNum, fmtDate, fmtTime, fmtDateTime, modFreteLabel, modFreteCode, getPdfFilename } from './pdf-utils';
 import { PDF_CSS } from './pdf-css';

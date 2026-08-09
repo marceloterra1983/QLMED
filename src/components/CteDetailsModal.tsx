@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
-import type { CteDetails, CteParty, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
+import type { CteDetails, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
 
 interface CteDetailsModalProps {
   isOpen: boolean;

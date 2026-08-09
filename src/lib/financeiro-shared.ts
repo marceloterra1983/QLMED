@@ -364,7 +364,6 @@ export async function handleContasGet(
   searchParams: URLSearchParams
 ): Promise<NextResponse> {
   try {
-    const config = DIRECTION_CONFIG[direction];
     const parsedQuery = financeiroListQuerySchema.safeParse(Object.fromEntries(searchParams));
     if (!parsedQuery.success) return apiValidationError(parsedQuery.error);
 

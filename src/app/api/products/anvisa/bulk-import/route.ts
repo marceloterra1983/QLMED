@@ -5,14 +5,11 @@ import { upsertProductRegistry, getProductRegistryByKeys } from '@/lib/product-r
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { anvisaBulkImportSchema } from '@/lib/schemas/product';
 
-const log = createLogger('products/anvisa/bulk-import');
 
 const MAX_INVOICES = 3000;
 const XML_BATCH_SIZE = 50;
-const MAX_ITEMS = 10000;
 
 function normalizeToken(s: string | null | undefined): string {
   return (s ?? '').replace(/[\s\-_./]/g, '').toUpperCase();

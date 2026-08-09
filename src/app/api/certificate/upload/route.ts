@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Salvar no banco
     const encryptedPassword = encrypt(password);
-    const certConfig = await prisma.certificateConfig.upsert({
+    await prisma.certificateConfig.upsert({
       where: { companyId },
       create: {
         companyId,

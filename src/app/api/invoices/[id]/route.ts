@@ -6,7 +6,6 @@ import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { invoiceUpdateStatusSchema } from '@/lib/schemas/invoice';
-import { idParamSchema } from '@/lib/schemas/common';
 import {
   acquirePostgresTransactionAdvisoryLock,
   productAggregateLockKey,
