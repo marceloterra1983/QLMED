@@ -6,19 +6,16 @@ import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate } from '@/lib/utils';
 import { formatPrice } from '@/lib/modal-helpers';
+import { CONTACT_KINDS, type ContactKind } from '@/components/contact-details/contact-kinds';
+import type { ContactRef } from '@/components/contact-details/contact-detail-types';
 
-interface CustomerRef {
-  cnpj: string;
-  name: string;
-}
-
-interface CustomerDetails {
+interface ContactHead {
   name: string;
   cnpj: string;
   fantasyName?: string | null;
 }
 
-interface CustomerPriceRow {
+interface PriceRow {
   code: string;
   description: string;
   shortName?: string | null;
@@ -27,25 +24,12 @@ interface CustomerPriceRow {
   lastIssueDate: string | null;
 }
 
-interface CustomerMeta {
-  totalPriceRows: number;
-  priceRowsLimited: boolean;
+interface PriceTableResponse {
+  customer?: ContactHead;
+  supplier?: ContactHead;
+  priceTable: PriceRow[];
+  meta: { totalPriceRows: number; priceRowsLimited: boolean };
 }
-
-interface CustomerDetailsResponse {
-  customer: CustomerDetails;
-  priceTable: CustomerPriceRow[];
-  meta: CustomerMeta;
-}
-
-interface CustomerPriceTableModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  customer: CustomerRef | null;
-}
-
-type PriceSortKey = 'description' | 'code' | 'lastPrice' | 'lastIssueDate';
-type SortDirection = 'asc' | 'desc';
 
 interface ProductRegistryData {
   lastPrice: number;
@@ -56,25 +40,147 @@ interface ProductRegistryData {
   fiscalFcp: number | null;
 }
 
-async function fetchCustomerDetails(targetCustomer: CustomerRef): Promise<CustomerDetailsResponse> {
-  const params = new URLSearchParams();
-  if (targetCustomer.cnpj) params.set('cnpj', targetCustomer.cnpj);
-  if (targetCustomer.name) params.set('name', targetCustomer.name);
+type PriceSortKey = 'description' | 'code' | 'lastPrice' | 'lastIssueDate';
+type SortDirection = 'asc' | 'desc';
 
-  const res = await fetch(`/api/customers/details?${params}`);
-  if (!res.ok) throw new Error('Falha ao carregar tabela de preço do cliente');
-  return res.json();
+interface ContactPriceTableModalProps {
+  kind: ContactKind;
+  isOpen: boolean;
+  onClose: () => void;
+  contact: ContactRef | null;
 }
 
-export default function CustomerPriceTableModal({ isOpen, onClose, customer }: CustomerPriceTableModalProps) {
+/**
+ * Painel de detalhe do fornecedor: unidade, último preço e data de compra.
+ */
+function SupplierRowDetail({ row, priceLabel, dateLabel }: { row: PriceRow; priceLabel: string; dateLabel: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
+      <div className="px-4 py-3">
+        <p className="text-[10px] font-mono text-slate-400 mb-0.5">{row.code}</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{row.shortName || row.description}</p>
+        {row.shortName && <p className="text-xs text-slate-400 mt-0.5">{row.description}</p>}
+      </div>
+      <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Unidade</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{row.unit || '-'}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{priceLabel}</p>
+          <p className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(row.lastPrice)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{dateLabel}</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Painel de detalhe do cliente: cruza o preço de venda com o custo cadastrado
+ * do produto e as alíquotas para mostrar lucro bruto e líquido.
+ */
+function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; registry: ProductRegistryData | null; loadingRegistry: boolean }) {
+  const salePrice = row.lastPrice;
+  const purchasePrice = registry?.lastPrice ?? 0;
+  const hasPurchase = purchasePrice > 0;
+
+  const icms = registry?.fiscalIcms ?? 0;
+  const pis = registry?.fiscalPis ?? 0;
+  const cofins = registry?.fiscalCofins ?? 0;
+  const ipi = registry?.fiscalIpi ?? 0;
+  const fcp = registry?.fiscalFcp ?? 0;
+  const totalTaxPct = icms + pis + cofins + ipi + fcp;
+
+  const grossProfit = hasPurchase ? salePrice - purchasePrice : null;
+  const grossMarginPct = grossProfit != null && salePrice > 0 ? (grossProfit / salePrice) * 100 : null;
+  const taxOnSale = salePrice * (totalTaxPct / 100);
+  const netProfit = grossProfit != null ? grossProfit - taxOnSale : null;
+  const netMarginPct = netProfit != null && salePrice > 0 ? (netProfit / salePrice) * 100 : null;
+
+  const pctLabel = (v: number | null) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '-');
+  const colorClass = (v: number | null) =>
+    v == null ? 'text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
+
+  const taxParts: string[] = [];
+  if (icms) taxParts.push(`ICMS ${icms}%`);
+  if (pis) taxParts.push(`PIS ${pis}%`);
+  if (cofins) taxParts.push(`COFINS ${cofins}%`);
+  if (ipi) taxParts.push(`IPI ${ipi}%`);
+  if (fcp) taxParts.push(`FCP ${fcp}%`);
+
+  return (
+    <>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
+        <p className="text-[10px] font-mono text-slate-400 mb-0.5">{row.code} · {row.unit}</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{row.shortName || row.description}</p>
+        {row.shortName && <p className="text-xs text-slate-400 mt-0.5">{row.description}</p>}
+      </div>
+
+      {loadingRegistry ? (
+        <Skeleton className="h-40 w-full" />
+      ) : (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Preço de Venda</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">{formatPrice(salePrice)}</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Valor de Compra</span>
+            <span className="text-xs font-semibold text-slate-900 dark:text-white">
+              {hasPurchase ? formatPrice(purchasePrice) : <span className="text-slate-400 italic">não cadastrado</span>}
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Bruto</span>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium ${colorClass(grossMarginPct)}`}>{pctLabel(grossMarginPct)}</span>
+              <span className={`text-xs font-bold ${colorClass(grossProfit)}`}>{grossProfit != null ? formatPrice(grossProfit) : '-'}</span>
+            </div>
+          </div>
+          <div className="flex items-start justify-between px-4 py-2.5">
+            <div className="min-w-0">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Impostos na Venda</span>
+              {taxParts.length > 0 && <p className="text-[10px] text-slate-400 mt-0.5">{taxParts.join(' + ')}</p>}
+              {taxParts.length === 0 && registry && <p className="text-[10px] text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>}
+            </div>
+            <div className="flex items-center gap-3 shrink-0 ml-3">
+              <span className="text-xs text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{totalTaxPct > 0 ? formatPrice(taxOnSale) : '-'}</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20 rounded-b-xl">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Líquido</span>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium ${colorClass(netMarginPct)}`}>{pctLabel(netMarginPct)}</span>
+              <span className={`text-xs font-bold ${colorClass(netProfit)}`}>{netProfit != null ? formatPrice(netProfit) : '-'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-slate-400 text-right">
+        Última venda: {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
+      </p>
+    </>
+  );
+}
+
+export default function ContactPriceTableModal({ kind, isOpen, onClose, contact }: ContactPriceTableModalProps) {
+  const cfg = CONTACT_KINDS[kind];
   const [loading, setLoading] = useState(false);
-  const [details, setDetails] = useState<CustomerDetailsResponse | null>(null);
+  const [details, setDetails] = useState<PriceTableResponse | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<PriceSortKey>('lastIssueDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [detailRow, setDetailRow] = useState<CustomerPriceRow | null>(null);
+  const [detailRow, setDetailRow] = useState<PriceRow | null>(null);
   const [productRegistry, setProductRegistry] = useState<ProductRegistryData | null>(null);
   const [loadingRegistry, setLoadingRegistry] = useState(false);
+
+  const head = details ? (details[cfg.responseKey] ?? null) : null;
 
   useEffect(() => {
     if (isOpen) {
@@ -86,10 +192,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
     }
   }, [isOpen]);
 
+  // O custo cadastrado só entra na análise de lucro do cliente.
   useEffect(() => {
-    if (!detailRow) { setProductRegistry(null); return; }
+    if (kind !== 'customer' || !detailRow) { setProductRegistry(null); return; }
     let cancelled = false;
-    const fetch_ = async () => {
+    const load = async () => {
       setLoadingRegistry(true);
       setProductRegistry(null);
       try {
@@ -108,18 +215,23 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
         if (!cancelled) setLoadingRegistry(false);
       }
     };
-    fetch_();
+    load();
     return () => { cancelled = true; };
-  }, [detailRow]);
+  }, [detailRow, kind]);
 
   useEffect(() => {
-    if (!isOpen || !customer) return;
+    if (!isOpen || !contact) return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       setDetails(null);
       try {
-        const data = await fetchCustomerDetails(customer);
+        const params = new URLSearchParams();
+        if (contact.cnpj) params.set('cnpj', contact.cnpj);
+        if (contact.name) params.set('name', contact.name);
+        const res = await fetch(`${cfg.detailsPath}?${params}`);
+        if (!res.ok) throw new Error(`Falha ao carregar tabela de preço do ${cfg.noun}`);
+        const data = await res.json();
         if (!cancelled) setDetails(data);
       } catch {
         if (!cancelled) toast.error('Erro ao carregar tabela de preço');
@@ -129,7 +241,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
     };
     load();
     return () => { cancelled = true; };
-  }, [isOpen, customer]);
+  }, [isOpen, contact, cfg.detailsPath, cfg.noun]);
 
   const filteredAndSortedRows = useMemo(() => {
     if (!details) return [];
@@ -173,10 +285,6 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
     return sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward';
   };
 
-  const customerDisplayName = details
-    ? (details.customer.fantasyName || details.customer.name)
-    : null;
-
   return (
     <Modal
       isOpen={isOpen}
@@ -191,16 +299,15 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
         </div>
       )}
 
-      {!loading && details && (
+      {!loading && details && head && (
         <div className="space-y-3">
           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/30 px-3 py-2">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">{customerDisplayName}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{head.fantasyName || head.name}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {formatCnpj((details.customer.cnpj || '').replace(/\D/g, '')) || details.customer.cnpj}
+              {formatCnpj((head.cnpj || '').replace(/\D/g, '')) || head.cnpj}
             </p>
           </div>
 
-          {/* Inline product detail view */}
           {detailRow ? (
             <div className="space-y-3">
               <button
@@ -210,113 +317,11 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                 <span className="material-symbols-outlined text-[14px]">arrow_back</span>
                 Voltar para lista
               </button>
-
-              {/* Product identity */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
-                <p className="text-[10px] font-mono text-slate-400 mb-0.5">{detailRow.code} · {detailRow.unit}</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
-                  {detailRow.shortName || detailRow.description}
-                </p>
-                {detailRow.shortName && (
-                  <p className="text-xs text-slate-400 mt-0.5">{detailRow.description}</p>
-                )}
-              </div>
-
-              {/* Profit analysis */}
-              {loadingRegistry ? (
-                <Skeleton className="h-40 w-full" />
-              ) : (() => {
-                const salePrice = detailRow.lastPrice;
-                const purchasePrice = productRegistry?.lastPrice ?? 0;
-                const hasPurchase = purchasePrice > 0;
-
-                const icms = (productRegistry?.fiscalIcms ?? 0);
-                const pis = (productRegistry?.fiscalPis ?? 0);
-                const cofins = (productRegistry?.fiscalCofins ?? 0);
-                const ipi = (productRegistry?.fiscalIpi ?? 0);
-                const fcp = (productRegistry?.fiscalFcp ?? 0);
-                const totalTaxPct = icms + pis + cofins + ipi + fcp;
-
-                const grossProfit = hasPurchase ? salePrice - purchasePrice : null;
-                const grossMarginPct = grossProfit != null && salePrice > 0 ? (grossProfit / salePrice) * 100 : null;
-                const taxOnSale = salePrice * (totalTaxPct / 100);
-                const netProfit = grossProfit != null ? grossProfit - taxOnSale : null;
-                const netMarginPct = netProfit != null && salePrice > 0 ? (netProfit / salePrice) * 100 : null;
-
-                const pctLabel = (v: number | null) =>
-                  v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '-';
-                const colorClass = (v: number | null) =>
-                  v == null ? 'text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
-
-                const taxParts: string[] = [];
-                if (icms) taxParts.push(`ICMS ${icms}%`);
-                if (pis) taxParts.push(`PIS ${pis}%`);
-                if (cofins) taxParts.push(`COFINS ${cofins}%`);
-                if (ipi) taxParts.push(`IPI ${ipi}%`);
-                if (fcp) taxParts.push(`FCP ${fcp}%`);
-
-                return (
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {/* Sale price row */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">Preço de Venda</span>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatPrice(salePrice)}</span>
-                    </div>
-                    {/* Purchase price row */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">Valor de Compra</span>
-                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                        {hasPurchase ? formatPrice(purchasePrice) : <span className="text-slate-400 italic">não cadastrado</span>}
-                      </span>
-                    </div>
-                    {/* Gross profit */}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20">
-                      <div>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Bruto</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-medium ${colorClass(grossMarginPct)}`}>{pctLabel(grossMarginPct)}</span>
-                        <span className={`text-xs font-bold ${colorClass(grossProfit)}`}>
-                          {grossProfit != null ? formatPrice(grossProfit) : '-'}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Taxes on sale */}
-                    <div className="flex items-start justify-between px-4 py-2.5">
-                      <div className="min-w-0">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Impostos na Venda</span>
-                        {taxParts.length > 0 && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">{taxParts.join(' + ')}</p>
-                        )}
-                        {taxParts.length === 0 && productRegistry && (
-                          <p className="text-[10px] text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-3">
-                        <span className="text-xs text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          {totalTaxPct > 0 ? formatPrice(taxOnSale) : '-'}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Net profit */}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20 rounded-b-xl">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lucro Líquido</span>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-medium ${colorClass(netMarginPct)}`}>{pctLabel(netMarginPct)}</span>
-                        <span className={`text-xs font-bold ${colorClass(netProfit)}`}>
-                          {netProfit != null ? formatPrice(netProfit) : '-'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Last sale info */}
-              <p className="text-[10px] text-slate-400 text-right">
-                Última venda: {detailRow.lastIssueDate ? formatDate(detailRow.lastIssueDate) : '-'}
-              </p>
+              {kind === 'customer' ? (
+                <CustomerRowDetail row={detailRow} registry={productRegistry} loadingRegistry={loadingRegistry} />
+              ) : (
+                <SupplierRowDetail row={detailRow} priceLabel={cfg.priceDetailPriceLabel} dateLabel={cfg.priceDetailDateLabel} />
+              )}
             </div>
           ) : (
             <>
@@ -389,7 +394,7 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
                               </th>
                               <th className="px-3 py-2">
                                 <button type="button" onClick={() => toggleSort('lastIssueDate')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
-                                  Última Venda
+                                  {cfg.priceColumnDateLabel}
                                   {getSortIcon('lastIssueDate') && <span className="material-symbols-outlined text-[14px]">{getSortIcon('lastIssueDate')}</span>}
                                 </button>
                               </th>
@@ -438,10 +443,10 @@ export default function CustomerPriceTableModal({ isOpen, onClose, customer }: C
         </div>
       )}
 
-      {!loading && !details && (
+      {!loading && !head && (
         <div className="py-10 text-center text-slate-400">
-          <span className="material-symbols-outlined text-[44px] opacity-40">group</span>
-          <p className="mt-2 text-sm font-medium">Sem dados para este cliente</p>
+          <span className="material-symbols-outlined text-[44px] opacity-40">{cfg.priceModalEmptyIcon}</span>
+          <p className="mt-2 text-sm font-medium">Sem dados para este {cfg.noun}</p>
         </div>
       )}
     </Modal>

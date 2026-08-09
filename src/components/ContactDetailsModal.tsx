@@ -11,9 +11,10 @@ import { formatDate, formatAmount } from '@/lib/utils';
 import { formatDocument, normalizeDateOnly } from '@/lib/modal-helpers';
 import { parseCnpjResponse, type CnpjData } from '@/lib/cnpj-utils';
 import type {
-  ContactDetails, ContactPriceRow, ContactInvoice, ContactDuplicate,
-  ContactMeta, ContactFiscalData, ContactOverrideData,
+  ContactRef, ContactDetails, ContactPurchases, ContactPriceRow, ContactInvoice,
+  ContactDuplicate, ContactMeta, ContactFiscalData, ContactOverrideData,
 } from '@/components/contact-details/contact-detail-types';
+import { CONTACT_KINDS, type ContactKind } from '@/components/contact-details/contact-kinds';
 import { SectionCard, StatCard } from '@/components/contact-details/contact-detail-utils';
 import ContactInfoSection from '@/components/contact-details/ContactInfoSection';
 import AddressSection from '@/components/contact-details/AddressSection';
@@ -21,52 +22,36 @@ import FiscalSection from '@/components/contact-details/FiscalSection';
 import PriceTableSection from '@/components/contact-details/PriceTableSection';
 import { InvoiceTable, MovimentacoesTable, DuplicatasTable } from '@/components/contact-details/InvoiceListSection';
 
-interface CustomerRef {
-  cnpj: string;
-  name: string;
-}
-
-interface CustomerDetailsResponse {
-  customer: ContactDetails;
+/**
+ * A rota devolve o contato sob `customer` ou `supplier` conforme o tipo;
+ * `productTypes` só vem na de fornecedor.
+ */
+interface ContactDetailsResponse {
+  customer?: ContactDetails;
+  supplier?: ContactDetails;
   contactFiscal: ContactFiscalData | null;
-  purchases: {
-    totalInvoices: number;
-    totalValue: number;
-    totalPurchasedItems: number;
-    totalProductsPurchased: number;
-    averageTicket: number;
-    firstIssueDate: string | null;
-    lastIssueDate: string | null;
-    confirmedInvoices: number;
-    pendingInvoices: number;
-    rejectedInvoices: number;
-  };
+  productTypes?: string[];
+  purchases: ContactPurchases;
   priceTable: ContactPriceRow[];
   invoices: ContactInvoice[];
   duplicates: ContactDuplicate[];
   meta: ContactMeta;
 }
 
-async function fetchCustomerDetails(targetCustomer: CustomerRef): Promise<CustomerDetailsResponse> {
-  const params = new URLSearchParams();
-  if (targetCustomer.cnpj) params.set('cnpj', targetCustomer.cnpj);
-  if (targetCustomer.name) params.set('name', targetCustomer.name);
-  const res = await fetch(`/api/customers/details?${params}`);
-  if (!res.ok) throw new Error('Falha ao carregar dados do cliente');
-  return res.json();
-}
-
-interface CustomerDetailsModalProps {
+interface ContactDetailsModalProps {
+  kind: ContactKind;
   isOpen: boolean;
   onClose: () => void;
-  customer: CustomerRef | null;
+  contact: ContactRef | null;
   inline?: boolean;
 }
 
-export default function CustomerDetailsModal({ isOpen, onClose, customer, inline = false }: CustomerDetailsModalProps) {
+export default function ContactDetailsModal({ kind, isOpen, onClose, contact, inline = false }: ContactDetailsModalProps) {
+  const cfg = CONTACT_KINDS[kind];
   useModalBackButton(isOpen && !inline, onClose);
+
   const [loading, setLoading] = useState(false);
-  const [details, setDetails] = useState<CustomerDetailsResponse | null>(null);
+  const [details, setDetails] = useState<ContactDetailsResponse | null>(null);
   const [shortName, setShortName] = useState('');
   const [shortNameDraft, setShortNameDraft] = useState('');
   const [savingShortName, setSavingShortName] = useState(false);
@@ -89,6 +74,17 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
   const [savingOverride, setSavingOverride] = useState(false);
   const [contactOverride, setContactOverride] = useState<ContactOverrideData | null>(null);
 
+  const fetchDetails = useCallback(async (target: ContactRef): Promise<ContactDetailsResponse> => {
+    const params = new URLSearchParams();
+    if (target.cnpj) params.set('cnpj', target.cnpj);
+    if (target.name) params.set('name', target.name);
+    const res = await fetch(`${cfg.detailsPath}?${params}`);
+    if (!res.ok) throw new Error(`Falha ao carregar dados do ${cfg.noun}`);
+    return res.json();
+  }, [cfg.detailsPath, cfg.noun]);
+
+  const contactData = details ? (details[cfg.responseKey] ?? null) : null;
+
   useEffect(() => {
     if (isOpen) {
       setShortName(''); setShortNameDraft(''); setSavingShortName(false);
@@ -104,32 +100,32 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !customer) return;
+    if (!isOpen || !contact) return;
     let cancelled = false;
 
-    const loadCustomerDetails = async () => {
+    const load = async () => {
       setDetails(null); setLoading(true);
       try {
-        const data = await fetchCustomerDetails(customer);
+        const data = await fetchDetails(contact);
         if (!cancelled) setDetails(data);
       } catch {
-        if (!cancelled) toast.error('Erro ao carregar detalhes do cliente');
+        if (!cancelled) toast.error(`Erro ao carregar detalhes do ${cfg.noun}`);
       } finally {
         if (!cancelled) setLoading(false);
       }
 
-      if (!cancelled && customer.cnpj) {
+      if (!cancelled && contact.cnpj) {
         try {
-          const nickRes = await fetch(`/api/contacts/nickname?cnpj=${encodeURIComponent(customer.cnpj)}`);
+          const nickRes = await fetch(`/api/contacts/nickname?cnpj=${encodeURIComponent(contact.cnpj)}`);
           if (!cancelled && nickRes.ok) { const nickData = await nickRes.json(); setShortName(nickData.shortName || ''); setShortNameDraft(nickData.shortName || ''); }
         } catch { /* ignore */ }
 
         try {
-          const ovRes = await fetch(`/api/contacts/override?cnpj=${encodeURIComponent(customer.cnpj)}`);
+          const ovRes = await fetch(`/api/contacts/override?cnpj=${encodeURIComponent(contact.cnpj)}`);
           if (!cancelled && ovRes.ok) { const ovData = await ovRes.json(); setContactOverride(ovData.override || null); }
         } catch { /* ignore */ }
 
-        const digits = customer.cnpj.replace(/\D/g, '');
+        const digits = contact.cnpj.replace(/\D/g, '');
         if (digits.length === 14) {
           setCnpjLoading(true);
           try {
@@ -141,9 +137,9 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
       }
     };
 
-    loadCustomerDetails();
+    load();
     return () => { cancelled = true; };
-  }, [isOpen, customer]);
+  }, [isOpen, contact, fetchDetails, cfg.noun]);
 
   useEffect(() => { if (!isOpen) setDetails(null); }, [isOpen]);
 
@@ -159,20 +155,20 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
       const data = await res.json();
       toast.success(`${data.deleted} nota(s) excluída(s) com sucesso`);
       setDeleteTargetId(null);
-      if (customer && isOpen) {
+      if (contact && isOpen) {
         setLoading(true);
-        try { const refreshedDetails = await fetchCustomerDetails(customer); setDetails(refreshedDetails); }
-        catch { toast.error('Erro ao atualizar dados do cliente'); }
+        try { setDetails(await fetchDetails(contact)); }
+        catch { toast.error(`Erro ao atualizar dados do ${cfg.noun}`); }
         finally { setLoading(false); }
       }
     } catch { toast.error('Erro de rede ao excluir'); }
   };
 
   const handleSaveShortName = async () => {
-    if (!customer?.cnpj) return;
+    if (!contact?.cnpj) return;
     setSavingShortName(true);
     try {
-      const res = await fetch('/api/contacts/nickname', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpj: customer.cnpj, shortName: shortNameDraft }) });
+      const res = await fetch('/api/contacts/nickname', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpj: contact.cnpj, shortName: shortNameDraft }) });
       if (res.ok) { const data = await res.json(); setShortName(data.shortName || ''); setShortNameDraft(data.shortName || ''); toast.success('Nome abreviado salvo com sucesso'); }
       else { toast.error('Erro ao salvar nome abreviado'); }
     } catch { toast.error('Erro de rede ao salvar nome abreviado'); }
@@ -184,13 +180,13 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
   }, []);
 
   const handleSaveOverride = async () => {
-    if (!customer?.cnpj || !details) return;
+    if (!contact?.cnpj || !contactData) return;
     setSavingOverride(true);
     try {
-      const d = details.customer;
+      const d = contactData;
       const ov = contactOverride;
       const payload = {
-        cnpj: customer.cnpj,
+        cnpj: contact.cnpj,
         phone: editDraft.phone ?? ov?.phone ?? d.phone ?? '',
         email: editDraft.email ?? ov?.email ?? d.email ?? '',
         street: editDraft.street ?? ov?.street ?? d.address.street ?? '',
@@ -210,8 +206,8 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
   };
 
   const handleSyncCnpj = async () => {
-    if (!customer?.cnpj) return;
-    const digits = customer.cnpj.replace(/\D/g, '');
+    if (!contact?.cnpj) return;
+    const digits = contact.cnpj.replace(/\D/g, '');
     if (digits.length !== 14) return;
     setCnpjLoading(true);
     try {
@@ -228,20 +224,19 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
   }, [contactOverride]);
 
   const handleToggleEdit = useCallback(() => {
-    if (isEditing) { setIsEditing(false); setEditDraft({}); }
-    else {
-      setIsEditing(true);
-      const ov = contactOverride;
-      const d = details!.customer;
-      setEditDraft({
-        phone: ov?.phone ?? d.phone ?? '', email: ov?.email ?? d.email ?? '',
-        street: ov?.street ?? d.address.street ?? '', number: ov?.number ?? d.address.number ?? '',
-        complement: ov?.complement ?? d.address.complement ?? '', district: ov?.district ?? d.address.district ?? '',
-        city: ov?.city ?? d.address.city ?? '', state: ov?.state ?? d.address.state ?? '',
-        zipCode: ov?.zipCode ?? d.address.zipCode ?? '', country: ov?.country ?? d.address.country ?? '',
-      });
-    }
-  }, [isEditing, contactOverride, details]);
+    if (isEditing) { setIsEditing(false); setEditDraft({}); return; }
+    const d = details?.[cfg.responseKey];
+    if (!d) return;
+    setIsEditing(true);
+    const ov = contactOverride;
+    setEditDraft({
+      phone: ov?.phone ?? d.phone ?? '', email: ov?.email ?? d.email ?? '',
+      street: ov?.street ?? d.address.street ?? '', number: ov?.number ?? d.address.number ?? '',
+      complement: ov?.complement ?? d.address.complement ?? '', district: ov?.district ?? d.address.district ?? '',
+      city: ov?.city ?? d.address.city ?? '', state: ov?.state ?? d.address.state ?? '',
+      zipCode: ov?.zipCode ?? d.address.zipCode ?? '', country: ov?.country ?? d.address.country ?? '',
+    });
+  }, [isEditing, contactOverride, details, cfg.responseKey]);
 
   const invoiceInstallmentsMap = useMemo(() => {
     const map = new Map<string, { totalInstallments: number; firstDueDate: Date | null }>();
@@ -258,17 +253,19 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
     return map;
   }, [details]);
 
-  const SALE_TAGS = new Set(['Venda', 'Bonificação']);
-  const saleInvoices = useMemo(() => {
-    if (!details) return [];
-    return details.invoices.filter((inv) => SALE_TAGS.has(inv.cfopTag));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details]);
-  const movimentacaoInvoices = useMemo(() => {
-    if (!details) return [];
-    return details.invoices.filter((inv) => !SALE_TAGS.has(inv.cfopTag));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details]);
+  const [primaryInvoices, movimentacaoInvoices] = useMemo(() => {
+    if (!details) return [[], []] as [ContactInvoice[], ContactInvoice[]];
+    const tags = new Set(cfg.primaryInvoiceTags);
+    const primary: ContactInvoice[] = [];
+    const movimentacoes: ContactInvoice[] = [];
+    for (const inv of details.invoices) (tags.has(inv.cfopTag) ? primary : movimentacoes).push(inv);
+    return [primary, movimentacoes];
+  }, [details, cfg.primaryInvoiceTags]);
+
+  const fiscalWarning = useMemo(() => {
+    if (!cnpjData || !details || !cfg.fiscalWarning) return null;
+    return cfg.fiscalWarning(cnpjData, details.productTypes || []);
+  }, [cnpjData, details, cfg]);
 
   const content = (
     <>
@@ -283,31 +280,28 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
         </div>
       )}
 
-      {!loading && details && (
+      {!loading && details && contactData && (
         <div className="flex flex-col gap-3">
-          {/* Dados de Cadastro */}
-          <SectionCard title="Dados de Cadastro" subtitle="Dados fiscais e endereço do destinatário" icon="badge" iconColor="text-indigo-500" open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
-            {/* Nome abreviado */}
+          <SectionCard title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" iconColor={cfg.shortNameIconClass} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
             <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span>
-              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder="Nome abreviado (ex: Farmácia ABC)..." maxLength={60} className="flex-1 px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all" />
-              <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className="flex items-center gap-1 px-2.5 py-1 text-[12px] font-bold bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-40 shrink-0">
+              <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
+              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className={`flex-1 px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${cfg.shortNameInputClass}`} />
+              <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-[12px] font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
                 {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
                 {savingShortName ? '...' : 'Salvar'}
               </button>
             </div>
 
-            <ContactInfoSection contact={details.customer} contactFiscal={details.contactFiscal} />
+            <ContactInfoSection contact={contactData} contactFiscal={details.contactFiscal} />
 
             <AddressSection
-              contact={details.customer} contactOverride={contactOverride} cnpjData={cnpjData}
+              contact={contactData} contactOverride={contactOverride} cnpjData={cnpjData}
               isEditing={isEditing} editDraft={editDraft} savingOverride={savingOverride}
-              accentColor="indigo" onToggleEdit={handleToggleEdit} onEditField={handleEditField}
+              accentColor={cfg.addressAccent} onToggleEdit={handleToggleEdit} onEditField={handleEditField}
               onSave={handleSaveOverride} onCancelEdit={() => { setIsEditing(false); setEditDraft({}); }}
               getField={getField}
             />
 
-            {/* Receita Federal */}
             {cnpjLoading && (
               <div className="mt-3 rounded-lg ring-1 ring-blue-200/60 dark:ring-blue-800/40 p-2.5 bg-blue-50/30 dark:bg-blue-900/10">
                 <div className="flex items-center gap-1.5">
@@ -317,9 +311,9 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
               </div>
             )}
             {!cnpjLoading && cnpjData && (
-              <FiscalSection cnpjData={cnpjData} cnpjLoading={cnpjLoading} onSync={handleSyncCnpj} />
+              <FiscalSection cnpjData={cnpjData} cnpjLoading={cnpjLoading} onSync={handleSyncCnpj} cnaeMismatchWarning={fiscalWarning} />
             )}
-            {!cnpjLoading && !cnpjData && customer?.cnpj && customer.cnpj.replace(/\D/g, '').length === 14 && (
+            {!cnpjLoading && !cnpjData && contact?.cnpj && contact.cnpj.replace(/\D/g, '').length === 14 && (
               <div className="mt-3 flex justify-center">
                 <button onClick={handleSyncCnpj} className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-blue-500 hover:text-blue-600 ring-1 ring-blue-200 dark:ring-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                   <span className="material-symbols-outlined text-[14px]">account_balance</span>
@@ -330,45 +324,41 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
           </SectionCard>
 
           <div className="order-first">
-            <SectionCard title="Dados Gerais" subtitle="Resumo consolidado das vendas" icon="analytics" iconColor="text-emerald-500" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
+            <SectionCard title="Dados Gerais" subtitle={cfg.generalSubtitle} icon="analytics" iconColor="text-emerald-500" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                <StatCard label="NF-e emitidas" value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color="primary" />
-                <StatCard label="Total vendido" value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
-                <StatCard label="Itens vendidos" value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} icon="shopping_cart" color="indigo" />
-                <StatCard label="Produtos vendidos" value={details.purchases.totalProductsPurchased.toLocaleString('pt-BR')} icon="inventory_2" color="amber" />
-                <StatCard label="Última venda" value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'} icon="event" color="teal" />
+                <StatCard label={cfg.statLabels[0]} value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color={cfg.firstStatColor} />
+                <StatCard label={cfg.statLabels[1]} value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
+                <StatCard label={cfg.statLabels[2]} value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} icon="shopping_cart" color="indigo" />
+                <StatCard label={cfg.statLabels[3]} value={details.purchases.totalProductsPurchased.toLocaleString('pt-BR')} icon="inventory_2" color="amber" />
+                <StatCard label={cfg.statLabels[4]} value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'} icon="event" color="teal" />
               </div>
             </SectionCard>
           </div>
 
-          {/* Tabela de Preco */}
-          <SectionCard title="Tabela de Preço" subtitle="Histórico por item com base nas NF-e emitidas" icon="table_chart" iconColor="text-teal-500" open={isPriceTableOpen} onToggle={() => setIsPriceTableOpen((prev) => !prev)} badge={details.priceTable.length || undefined}>
-            <PriceTableSection priceTable={details.priceTable} meta={details.meta} sortAccentColor="text-primary" />
+          <SectionCard title="Tabela de Preço" subtitle={cfg.priceTableSubtitle} icon="table_chart" iconColor="text-teal-500" open={isPriceTableOpen} onToggle={() => setIsPriceTableOpen((prev) => !prev)} badge={details.priceTable.length || undefined}>
+            <PriceTableSection priceTable={details.priceTable} meta={details.meta} sortAccentColor={cfg.sortAccentColor} />
           </SectionCard>
 
-          {/* Notas Fiscais - Vendas */}
-          <SectionCard title="Notas Fiscais" subtitle="Vendas e bonificações" icon="receipt_long" iconColor="text-primary" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={saleInvoices.length || undefined}>
-            <InvoiceTable invoices={saleInvoices} installmentsMap={invoiceInstallmentsMap} emptyLabel="Nenhuma nota de venda ou bonificação encontrada" onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
+          <SectionCard title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" iconColor="text-primary" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
+            <InvoiceTable invoices={primaryInvoices} installmentsMap={invoiceInstallmentsMap} emptyLabel={cfg.invoicesEmptyLabel} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
           </SectionCard>
 
-          {/* Movimentacoes */}
           <SectionCard title="Movimentações" subtitle="Consignação, demonstração, remessa e outros" icon="swap_horiz" iconColor="text-amber-500" open={isMovimentacoesOpen} onToggle={() => setIsMovimentacoesOpen((prev) => !prev)} badge={movimentacaoInvoices.length || undefined}>
             <MovimentacoesTable invoices={movimentacaoInvoices} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
           </SectionCard>
 
-          {/* Duplicatas */}
           <SectionCard title="Duplicatas" subtitle="Parcelas encontradas nas notas fiscais" icon="account_balance" iconColor="text-rose-500" open={isDuplicatesOpen} onToggle={() => setIsDuplicatesOpen((prev) => !prev)} badge={details.duplicates.length || undefined}>
             <DuplicatasTable duplicates={details.duplicates} />
           </SectionCard>
         </div>
       )}
 
-      {!loading && !details && (
+      {!loading && !contactData && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-            <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">person_off</span>
+            <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">{cfg.emptyIcon}</span>
           </div>
-          <p className="text-[13px] font-medium text-slate-400">Sem dados para este cliente</p>
+          <p className="text-[13px] font-medium text-slate-400">Sem dados para este {cfg.noun}</p>
         </div>
       )}
     </>
@@ -387,15 +377,15 @@ export default function CustomerDetailsModal({ isOpen, onClose, customer, inline
             <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
-                    <span className="material-symbols-outlined text-[22px] text-primary">person</span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0 hidden sm:flex ${cfg.headerAvatarClass}`}>
+                    <span className={`material-symbols-outlined text-[22px] ${cfg.headerIconClass}`}>{cfg.headerIcon}</span>
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight truncate">
-                      {details?.customer.name || customer?.name || 'Visualizar cliente'}
+                      {contactData?.name || contact?.name || cfg.titleFallback}
                     </h3>
-                    {details?.customer.cnpj && (
-                      <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">{formatDocument(details.customer.cnpj)}</span>
+                    {contactData?.cnpj && (
+                      <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">{formatDocument(contactData.cnpj)}</span>
                     )}
                   </div>
                 </div>

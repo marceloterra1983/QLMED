@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import SupplierDetailsModal from '@/components/SupplierDetailsModal';
+import ContactDetailsModal from '@/components/ContactDetailsModal';
 
 export default function SupplierDetailsClient() {
   const searchParams = useSearchParams();
@@ -37,7 +37,7 @@ export default function SupplierDetailsClient() {
           Fornecedor não informado. Abra esta página a partir da lista de fornecedores.
         </div>
       ) : (
-        <SupplierDetailsModal isOpen onClose={() => {}} supplier={supplier} inline />
+        <ContactDetailsModal kind="supplier" isOpen onClose={() => {}} contact={supplier} inline />
       )}
     </div>
   );

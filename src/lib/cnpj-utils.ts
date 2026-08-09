@@ -1,8 +1,8 @@
 /**
  * CNPJ data parsing utilities.
  *
- * Shared by SupplierDetailsModal and CustomerDetailsModal for normalizing
- * CNPJ API responses into a consistent interface.
+ * Shared by ContactDetailsModal for normalizing CNPJ API responses into a
+ * consistent interface.
  */
 
 export interface CnpjData {
