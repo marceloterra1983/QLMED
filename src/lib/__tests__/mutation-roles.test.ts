@@ -4,7 +4,6 @@ vi.mock('@/lib/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/auth')>();
   return {
     ...actual,
-    requireRole: vi.fn(),
     requireAuth: vi.fn(),
     requireEditor: vi.fn(),
   };
@@ -19,16 +18,16 @@ vi.mock('@/lib/cnpj-monitor', () => ({
   getRecentCnpjChanges: vi.fn(async () => []),
 }));
 
-import { requireRole } from '@/lib/auth';
+import { requireEditor } from '@/lib/auth';
 import { POST as cnpjMonitorPost } from '@/app/api/contacts/cnpj-monitor/route';
 
 describe('mutation roles', () => {
   beforeEach(() => {
-    vi.mocked(requireRole).mockReset();
+    vi.mocked(requireEditor).mockReset();
   });
 
   it('POST cnpj-monitor rejeita viewer (403)', async () => {
-    vi.mocked(requireRole).mockRejectedValue(new Error('FORBIDDEN'));
+    vi.mocked(requireEditor).mockRejectedValue(new Error('FORBIDDEN'));
     const res = await cnpjMonitorPost(
       new Request('http://localhost/api/contacts/cnpj-monitor', {
         method: 'POST',
@@ -40,7 +39,7 @@ describe('mutation roles', () => {
   });
 
   it('POST cnpj-monitor aceita editor', async () => {
-    vi.mocked(requireRole).mockResolvedValue({ userId: 'u1', role: 'editor' });
+    vi.mocked(requireEditor).mockResolvedValue({ userId: 'u1', role: 'editor' });
     const res = await cnpjMonitorPost(
       new Request('http://localhost/api/contacts/cnpj-monitor', {
         method: 'POST',
