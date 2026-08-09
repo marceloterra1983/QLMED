@@ -192,10 +192,19 @@ export const authOptions: AuthOptions = {
             select: { role: true, status: true, allowedPages: true, tokenVersion: true },
           });
           if (dbUser) {
+            // US3: never rebind tokenVersion from DB onto an existing JWT.
+            // Divergence means logout / sensitive change — force re-login.
+            if (hasTokenVersion && token.tokenVersion !== dbUser.tokenVersion) {
+              log.warn({ userId: token.id }, 'tokenVersion mismatch; refusing session');
+              return {} as typeof token;
+            }
             token.role = dbUser.role;
             token.status = dbUser.status;
             token.allowedPages = dbUser.allowedPages;
-            token.tokenVersion = dbUser.tokenVersion;
+            // Bootstrap only when the claim is missing (first post-login refresh).
+            if (!hasTokenVersion) {
+              token.tokenVersion = dbUser.tokenVersion;
+            }
             token.dbRefreshedAt = Date.now();
           }
         } catch (err) {

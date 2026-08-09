@@ -201,39 +201,51 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     });
     if (token) {
-      // Enforce allowedPages server-side. UI-only enforcement (SidebarNav/useRole)
-      // was bypassable by any authenticated user via direct API/page calls.
-      const role = typeof token.role === 'string' ? token.role : undefined;
-      const allowedPages = Array.isArray(token.allowedPages)
-        ? (token.allowedPages as string[])
-        : undefined;
-
-      if (isApiRoute) {
-        if (!canAccessApi(role, allowedPages, req.nextUrl.pathname)) {
-          console.warn('[Auth] API access denied by allowedPages', {
-            userId: token.id,
-            path: req.nextUrl.pathname,
-          });
-          return NextResponse.json({ error: 'Sem permissão para este recurso' }, { status: 403 });
-        }
-        return NextResponse.next();
-      }
-
-      // Panel page requests: check the matched page against allowedPages.
-      const pagePath = resolvePanelPagePath(req.nextUrl.pathname);
-      if (pagePath && !canAccessPage(role, allowedPages, pagePath)) {
-        console.warn('[Auth] Page access denied by allowedPages', {
+      // Fail closed: JWT must carry a numeric tokenVersion (set at login/bootstrap).
+      // Missing/invalid version = revoked or pre-version token → force re-login.
+      // Edge cannot compare to DB; jwt callback refuses rebind on divergence and
+      // empties the token so the next rewrite also fails this gate.
+      if (typeof token.tokenVersion !== 'number') {
+        console.warn('[Auth] Session rejected: missing tokenVersion', {
           userId: token.id,
           path: req.nextUrl.pathname,
         });
-        // Redirect to a safe default page the user is allowed to see.
-        const fallback = firstAllowedPage(role, allowedPages);
-        const target = req.nextUrl.clone();
-        target.pathname = fallback;
-        target.search = '';
-        return NextResponse.redirect(target);
+        // Fall through to 401 / login redirect with cookie clear.
+      } else {
+        // Enforce allowedPages server-side. UI-only enforcement (SidebarNav/useRole)
+        // was bypassable by any authenticated user via direct API/page calls.
+        const role = typeof token.role === 'string' ? token.role : undefined;
+        const allowedPages = Array.isArray(token.allowedPages)
+          ? (token.allowedPages as string[])
+          : undefined;
+
+        if (isApiRoute) {
+          if (!canAccessApi(role, allowedPages, req.nextUrl.pathname)) {
+            console.warn('[Auth] API access denied by allowedPages', {
+              userId: token.id,
+              path: req.nextUrl.pathname,
+            });
+            return NextResponse.json({ error: 'Sem permissão para este recurso' }, { status: 403 });
+          }
+          return NextResponse.next();
+        }
+
+        // Panel page requests: check the matched page against allowedPages.
+        const pagePath = resolvePanelPagePath(req.nextUrl.pathname);
+        if (pagePath && !canAccessPage(role, allowedPages, pagePath)) {
+          console.warn('[Auth] Page access denied by allowedPages', {
+            userId: token.id,
+            path: req.nextUrl.pathname,
+          });
+          // Redirect to a safe default page the user is allowed to see.
+          const fallback = firstAllowedPage(role, allowedPages);
+          const target = req.nextUrl.clone();
+          target.pathname = fallback;
+          target.search = '';
+          return NextResponse.redirect(target);
+        }
+        return NextResponse.next();
       }
-      return NextResponse.next();
     }
   } catch (error) {
     // Edge Runtime middleware — pino not available. Structured stderr log so
