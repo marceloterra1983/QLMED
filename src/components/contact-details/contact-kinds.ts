@@ -94,7 +94,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     headerIconClass: 'text-orange-500',
     headerAvatarClass:
       'bg-gradient-to-br from-orange-500/20 to-orange-500/5 dark:from-orange-500/30 dark:to-orange-500/10 ring-orange-500/20 dark:ring-orange-500/30',
-    emptyIcon: 'storefront_off',
+    emptyIcon: 'storefront',
     titleFallback: 'Visualizar fornecedor',
 
     registrationSubtitle: 'Dados fiscais e endereço do emitente',
