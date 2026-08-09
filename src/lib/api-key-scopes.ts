@@ -19,6 +19,10 @@ export const API_KEY_SCOPES = [
   'ncm:write',
   'anvisa:read',
   'anvisa:write',
+  // Worker de notificações: 'dispatch' cobre claim/ack/submitting do outbox,
+  // 'assets' cobre o PDF e o XML da nota que vão anexados na mensagem.
+  'notifications:dispatch',
+  'notifications:assets',
 ] as const;
 
 export const API_KEY_REQUEST_PATH_HEADER = 'x-qlmed-request-path';
