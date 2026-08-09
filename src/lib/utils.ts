@@ -6,11 +6,6 @@ export function normalizeForSearch(str: string): string {
     .toLowerCase();
 }
 
-/** Check if haystack contains needle in an accent- and case-insensitive way */
-export function flexMatch(haystack: string, needle: string): boolean {
-  return normalizeForSearch(haystack).includes(needle);
-}
-
 /** Check if ALL search words match across any of the given fields (accent- and case-insensitive) */
 export function flexMatchAll(fields: string[], normalizedSearchWords: string[]): boolean {
   const normalizedFields = fields.map(normalizeForSearch);
@@ -56,14 +51,6 @@ export function formatDateTime(dateStr: string): string {
   });
 }
 
-export function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: '2-digit',
-  });
-}
-
 export function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
@@ -73,54 +60,6 @@ export function formatTime(dateStr: string): string {
 
 export function formatAccessKey(key: string): string {
   return key.replace(/(.{4})/g, '$1 ').trim();
-}
-
-export type StatusColor = 'emerald' | 'red' | 'amber';
-
-export interface StatusDisplay {
-  label: string;
-  color: StatusColor;
-  icon: string;
-}
-
-export function getStatusDisplay(status: string): StatusDisplay {
-  switch (status) {
-    case 'confirmed':
-      return { label: 'Autorizada', color: 'emerald', icon: 'check_circle' };
-    case 'rejected':
-      return { label: 'Cancelada', color: 'red', icon: 'cancel' };
-    default:
-      return { label: 'Pendente', color: 'amber', icon: 'schedule' };
-  }
-}
-
-export const statusDotClasses: Record<StatusColor, { ping: string; dot: string }> = {
-  emerald: { ping: 'bg-emerald-400', dot: 'bg-emerald-500' },
-  red: { ping: 'bg-red-400', dot: 'bg-red-500' },
-  amber: { ping: 'bg-amber-400', dot: 'bg-amber-500' },
-};
-
-export function getManifestBadge(status: string) {
-  switch (status) {
-    case 'confirmed':
-      return {
-        label: 'Confirmada',
-        classes:
-          'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-800',
-      };
-    case 'rejected':
-      return {
-        label: 'Rejeitada',
-        classes:
-          'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800',
-      };
-    default:
-      return {
-        label: 'Pendente',
-        classes:
-          'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-800',
-      };
-  }
 }
 
 export function getDateGroupLabel(dateStr: string): string {
@@ -157,17 +96,6 @@ export function getDateGroupLabel(dateStr: string): string {
   if (day >= startOfLastMonth && day < startOfMonth) return 'Mês passado';
 
   return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-}
-
-export function getTypeBadge(type: string): string {
-  switch (type) {
-    case 'CTE':
-      return 'CT-e';
-    case 'NFSE':
-      return 'NFS-e';
-    default:
-      return 'NF-e';
-  }
 }
 
 // ── Shared XML / data-processing helpers ──

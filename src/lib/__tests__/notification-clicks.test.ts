@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildTrackedNotificationUrl,
   normalizePublicBaseUrl,
   resolveNotificationTargetPath,
   sanitizeRedirectPath,
@@ -19,9 +18,7 @@ describe('notification clicks', () => {
     expect(sanitizeRedirectPath('//evil.test/path')).toBe('/fiscal/invoices');
   });
 
-  it('builds the public tracked URL with an encoded delivery id', () => {
+  it('normalizes the public base URL', () => {
     expect(normalizePublicBaseUrl('https://app.qlmed.com.br/')).toBe('https://app.qlmed.com.br');
-    expect(buildTrackedNotificationUrl('https://app.qlmed.com.br/', 'delivery/1'))
-      .toBe('https://app.qlmed.com.br/r/delivery%2F1');
   });
 });

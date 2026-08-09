@@ -7,6 +7,3 @@ export function roundMoney(value: number): number {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
 
-export function sumMoney(values: number[]): number {
-  return roundMoney(values.reduce((acc, v) => acc + (Number(v) || 0), 0));
-}

@@ -112,17 +112,6 @@ export async function getContactFiscal(
   return row ? mapRow(row) : null;
 }
 
-export async function getContactFiscalBatch(
-  companyId: string,
-  cnpjs: string[],
-): Promise<ContactFiscalRow[]> {
-  if (cnpjs.length === 0) return [];
-  const rows = await prisma.contactFiscal.findMany({
-    where: { companyId, cnpj: { in: cnpjs } },
-  });
-  return rows.map(mapRow);
-}
-
 // ── City lookup for customers/suppliers routes ──
 
 export async function getCityByCnpjs(

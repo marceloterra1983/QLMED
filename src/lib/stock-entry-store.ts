@@ -73,16 +73,6 @@ function mapStockEntry(row: {
   };
 }
 
-export async function getStockEntryByInvoiceId(
-  companyId: string,
-  invoiceId: string,
-): Promise<StockEntryRow | null> {
-  const row = await prisma.stockEntry.findUnique({
-    where: { companyId_invoiceId: { companyId, invoiceId } },
-  });
-  return row ? mapStockEntry(row) : null;
-}
-
 export async function getStockEntriesByInvoiceIds(
   companyId: string,
   invoiceIds: string[],

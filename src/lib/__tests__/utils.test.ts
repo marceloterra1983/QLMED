@@ -4,12 +4,9 @@ import {
   ensureArray,
   toNumber,
   normalizeForSearch,
-  flexMatch,
   flexMatchAll,
   formatCnpj,
   formatAccessKey,
-  getStatusDisplay,
-  getTypeBadge,
   formatCurrencyShort,
 } from '../utils';
 
@@ -86,17 +83,6 @@ describe('normalizeForSearch', () => {
   });
 });
 
-describe('flexMatch', () => {
-  it('matches accent- and case-insensitively', () => {
-    expect(flexMatch('São Paulo', 'sao')).toBe(true);
-    expect(flexMatch('Distribuição', 'distribuicao')).toBe(true);
-  });
-
-  it('returns false when no match', () => {
-    expect(flexMatch('Hello', 'xyz')).toBe(false);
-  });
-});
-
 describe('flexMatchAll', () => {
   it('matches when all words are found across fields', () => {
     expect(flexMatchAll(['São Paulo', 'Brasil'], ['sao', 'brasil'])).toBe(true);
@@ -121,33 +107,6 @@ describe('formatCnpj', () => {
 describe('formatAccessKey', () => {
   it('inserts spaces every 4 characters', () => {
     expect(formatAccessKey('1234567890123456')).toBe('1234 5678 9012 3456');
-  });
-});
-
-describe('getStatusDisplay', () => {
-  it('returns correct display for confirmed', () => {
-    expect(getStatusDisplay('confirmed')).toEqual({
-      label: 'Autorizada',
-      color: 'emerald',
-      icon: 'check_circle',
-    });
-  });
-
-  it('returns correct display for rejected', () => {
-    expect(getStatusDisplay('rejected').label).toBe('Cancelada');
-  });
-
-  it('returns Pendente for unknown status', () => {
-    expect(getStatusDisplay('unknown').label).toBe('Pendente');
-  });
-});
-
-describe('getTypeBadge', () => {
-  it('maps types correctly', () => {
-    expect(getTypeBadge('CTE')).toBe('CT-e');
-    expect(getTypeBadge('NFSE')).toBe('NFS-e');
-    expect(getTypeBadge('NFE')).toBe('NF-e');
-    expect(getTypeBadge('anything')).toBe('NF-e');
   });
 });
 

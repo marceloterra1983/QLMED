@@ -25,15 +25,6 @@ function getUfCode(subject?: string | null): string {
   return (uf && UF_TO_CODE[uf]) ? UF_TO_CODE[uf] : '50';
 }
 
-export interface SefazCertConfig {
-  id: string;
-  pfxData: Buffer | Uint8Array;
-  pfxPassword: string;
-  lastNsu: string;
-  environment: string;
-  subject: string | null;
-}
-
 export async function syncViaSefaz(
   companyId: string,
   cnpj: string,
