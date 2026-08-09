@@ -3,7 +3,7 @@
  * Foco em operações comuns para distribuidora de materiais hospitalares.
  */
 
-export const CFOP_DESCRIPTIONS: Record<string, string> = {
+const CFOP_DESCRIPTIONS: Record<string, string> = {
   // ── Entradas / Aquisições dentro do estado (1xxx) ──
   '1101': 'Compra para industrialização',
   '1102': 'Compra para comercialização',

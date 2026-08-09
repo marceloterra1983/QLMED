@@ -86,7 +86,7 @@ export async function resolveOneDriveItemByPath(
   );
 }
 
-export async function copyOneDriveFileIfNeeded(
+async function copyOneDriveFileIfNeeded(
   accessToken: string,
   driveId: string,
   oneDriveItem: OneDriveItemEntry,

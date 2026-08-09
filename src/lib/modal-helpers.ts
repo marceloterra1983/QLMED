@@ -65,7 +65,7 @@ export function getDuplicateStatus(value: string | null): { label: 'A vencer' | 
   };
 }
 
-export function formatInstallmentCode(value: string): string {
+function formatInstallmentCode(value: string): string {
   const digits = (value || '').replace(/\D/g, '');
   if (!digits) return '001';
   return digits.slice(-3).padStart(3, '0');

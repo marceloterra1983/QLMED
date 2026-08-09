@@ -1,5 +1,5 @@
-export const ANVISA_SAUDE_URL = 'https://consultas.anvisa.gov.br/api/saude/equipamento/';
-export const ANVISA_MEDS_URL = 'https://consultas.anvisa.gov.br/api/consulta/medicamentos/registro/';
+const ANVISA_SAUDE_URL = 'https://consultas.anvisa.gov.br/api/saude/equipamento/';
+const ANVISA_MEDS_URL = 'https://consultas.anvisa.gov.br/api/consulta/medicamentos/registro/';
 
 export interface AnvisaRegistryData {
   nomeProduto: string | null;

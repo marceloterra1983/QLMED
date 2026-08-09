@@ -127,7 +127,7 @@ async function extractDuplicatasFallback(xmlContent: string): Promise<ParsedXmlD
   return parsed;
 }
 
-export async function extractDuplicatasFromXml(xmlContent: string): Promise<ParsedXmlDuplicata[]> {
+async function extractDuplicatasFromXml(xmlContent: string): Promise<ParsedXmlDuplicata[]> {
   const fastResult = extractDuplicatasFast(xmlContent);
   if (fastResult.duplicatas.length > 0 || !fastResult.hasDupTag) {
     return fastResult.duplicatas;

@@ -328,7 +328,7 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
   return result;
 }
 
-export async function searchNcm(term: string, limit = 20): Promise<NcmSearchItem[]> {
+async function searchNcm(term: string, limit = 20): Promise<NcmSearchItem[]> {
   const cleaned = term.trim();
   if (cleaned.length < 2) return [];
 

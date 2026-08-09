@@ -1,4 +1,4 @@
-export const CACHE_PROFILES = {
+const CACHE_PROFILES = {
   dashboard: 'private, max-age=30',           // Dashboard stats refresh every 30s
   list: 'private, max-age=10',                 // Lists refresh every 10s
   lookup: 'public, max-age=3600',              // NCM, CNPJ lookups cache 1 hour

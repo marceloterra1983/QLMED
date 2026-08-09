@@ -103,7 +103,7 @@ export async function saveXmlToFile(
   }
 }
 
-export async function savePdfToMonthFolder(
+async function savePdfToMonthFolder(
   monthFolder: string,
   fileName: string,
   pdfContent: Buffer | Uint8Array,
@@ -144,7 +144,7 @@ export async function readIssuedPdfFromFile(
   }
 }
 
-export function getXmlFilePath(
+function getXmlFilePath(
   accessKey: string,
   type: string,
   issueDate: Date | string | null,
@@ -155,7 +155,7 @@ export function getXmlFilePath(
 }
 
 /** Lê XML do filesystem (Phase 11 — fonte preferida quando existir). */
-export async function readXmlFromFile(
+async function readXmlFromFile(
   accessKey: string,
   type: string,
   issueDate: Date | string | null,
