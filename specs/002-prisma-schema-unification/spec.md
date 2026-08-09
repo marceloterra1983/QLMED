@@ -140,6 +140,13 @@ unavailable second database and cannot silently select an arbitrary target.
 
 ## Related delivery plan
 
-- `.planning/phases/11-unifica-o-de-schema/11-01-PLAN.md`
-- `.planning/phases/11-unifica-o-de-schema/11-02-PLAN.md`
-- `.planning/phases/11-unifica-o-de-schema/11-03-PLAN.md`
+The GSD delivery plans for this spec (`.planning/phases/11-unifica-o-de-schema/`)
+were removed once `governance.yaml` set `gsd.mode=disabled`. Task traceability
+lives in `specs/002-prisma-schema-unification/tasks.md`. To read the original
+sequence, resolve the removing commit by path so the reference survives any
+rebase:
+
+```bash
+P=.planning/phases/11-unifica-o-de-schema/11-01-PLAN.md
+git show "$(git log --diff-filter=D --format=%H -1 -- "$P")^:$P"
+```

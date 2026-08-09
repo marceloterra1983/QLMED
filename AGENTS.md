@@ -2,7 +2,6 @@
 
 ## Sources of truth
 
-- Delivery roadmap and execution state: `.planning/`
 - Feature behavior and acceptance criteria: `specs/`
 - Project principles: `.specify/memory/constitution.md`
 - Current architecture: `docs/architecture/`
@@ -16,7 +15,7 @@ canonical document instead.
 
 ## Required workflow
 
-1. Read the relevant GSD phase and feature specification.
+1. Read the relevant feature specification.
 2. Read applicable architecture documents and accepted ADRs.
 3. Resolve material ambiguity before implementation.
 4. Add or update tests for behavioral changes.
@@ -71,9 +70,8 @@ npm run db:reconcile:verify
 - Spec Kit remains the mandatory gate for behavior, contracts, data, security,
   operations or architecture changes.
 
-## Spec Kit and GSD
+## Spec Kit
 
-- GSD owns phases, execution state, summaries and continuity.
 - Spec Kit owns the behavioral contract, technical feature plan and task
   traceability.
 - Use a full specification for observable behavior, contracts, permissions,
