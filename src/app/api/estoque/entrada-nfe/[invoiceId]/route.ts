@@ -6,11 +6,8 @@ import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { entradaNfeUpdateLotSchema, entradaNfeCloneBatchSchema } from '@/lib/schemas/estoque';
-import { idParamSchema } from '@/lib/schemas/common';
 
-const log = createLogger('estoque/entrada-nfe/:invoiceId');
 
 export async function GET(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
   try {

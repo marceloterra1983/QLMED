@@ -1,6 +1,6 @@
 'use client';
 
-import type { ContactDetails, ContactOverrideData, AddressDivergence } from './contact-detail-types';
+import type { ContactDetails, ContactOverrideData } from './contact-detail-types';
 import { EditableField } from './contact-detail-utils';
 import { compareAddressFields } from './contact-detail-utils';
 import type { CnpjData } from '@/lib/cnpj-utils';

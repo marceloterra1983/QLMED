@@ -4,10 +4,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { upsertProductRegistry } from '@/lib/product-registry-store';
 import { cleanString } from '@/lib/utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { anvisaPatchSchema } from '@/lib/schemas/product';
 
-const log = createLogger('products/anvisa');
 
 function normalizeAnvisaCode(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');

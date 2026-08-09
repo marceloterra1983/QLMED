@@ -3,11 +3,9 @@ import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 
-const log = createLogger('dashboard');
 
 const dashboardQuerySchema = z.object({
   period: z.enum(['month', 'quarter', 'year']).default('month'),

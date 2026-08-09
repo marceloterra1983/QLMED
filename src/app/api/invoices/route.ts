@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { normalizeForSearch } from '@/lib/utils';
-import { extractFirstCfop, getCfopTagByCode, getCfopCodesByTag } from '@/lib/cfop';
+import { getCfopCodesByTag } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';

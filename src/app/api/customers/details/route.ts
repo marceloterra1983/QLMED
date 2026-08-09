@@ -1,11 +1,8 @@
-import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { handleContactDetails } from '@/lib/contact-details-shared';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
 
-const log = createLogger('customers/details');
 
 export async function GET(req: Request) {
   try {

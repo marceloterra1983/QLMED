@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { lookupNcm } from '@/lib/ncm-lookup';
-import { createLogger } from '@/lib/logger';
 import { apiError } from '@/lib/api-error';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 
-const log = createLogger('ncm/:code');
 
 const ncmCodeParamSchema = z.object({
   code: z.preprocess(

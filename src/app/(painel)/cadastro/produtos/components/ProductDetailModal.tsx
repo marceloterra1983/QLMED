@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import { formatCurrency, formatAmount } from '@/lib/utils';
+import { formatAmount } from '@/lib/utils';
 import type { ProductRow } from '../types';
 import { DetailSectionCard, DetailField } from './DetailSectionCard';
 import { DETAIL_INPUT_CLS, formatQuantity, formatDate } from './product-utils';
@@ -40,8 +40,6 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
   const [detailNcm, setDetailNcm] = useState('');
   const [detailNcmInfo, setDetailNcmInfo] = useState<{ hierarchy: Array<{ codigo: string; descricao: string }>; fullDescription: string } | null>(null);
   const [detailNcmExpanded, setDetailNcmExpanded] = useState(false);
-  const [ncmSuggestions, setNcmSuggestions] = useState<Array<{ codigo: string; descricao: string; fullDescription: string }>>([]);
-  const ncmInputRef = useRef<HTMLInputElement>(null);
   const [detailType, setDetailType] = useState('');
   const [detailSubtype, setDetailSubtype] = useState('');
   const [detailSubgroup, setDetailSubgroup] = useState('');
@@ -196,7 +194,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
   // NCM description lookup with debounce
   useEffect(() => {
     const digits = detailNcm.replace(/\D/g, '');
-    if (digits.length < 4) { setDetailNcmInfo(null); setNcmSuggestions([]); setDetailNcmExpanded(false); return; }
+    if (digits.length < 4) { setDetailNcmInfo(null); setDetailNcmExpanded(false); return; }
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/ncm/${digits}`);
@@ -206,17 +204,8 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
         } else {
           setDetailNcmInfo(null);
         }
-        if (digits.length < 8) {
-          const sRes = await fetch(`/api/ncm/search?q=${digits}&limit=8`);
-          if (sRes.ok) {
-            setNcmSuggestions(await sRes.json());
-          }
-        } else {
-          setNcmSuggestions([]);
-        }
       } catch {
         setDetailNcmInfo(null);
-        setNcmSuggestions([]);
       }
     }, 400);
     return () => clearTimeout(timer);

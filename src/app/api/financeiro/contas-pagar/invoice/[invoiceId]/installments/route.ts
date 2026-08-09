@@ -1,7 +1,7 @@
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { handleInstallmentsPut } from '@/lib/financeiro-shared';
-import { apiError, apiValidationError } from '@/lib/api-error';
+import { apiValidationError } from '@/lib/api-error';
 import { installmentsSchema } from '@/lib/schemas/financeiro';
 import { idParamSchema } from '@/lib/schemas/common';
 

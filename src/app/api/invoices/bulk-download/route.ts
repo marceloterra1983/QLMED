@@ -5,11 +5,9 @@ import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/au
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { GET as getInvoicePdfDownload } from '@/app/api/invoices/[id]/pdf/route';
-import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { invoiceBulkDownloadSchema } from '@/lib/schemas/invoice';
 
-const log = createLogger('invoices/bulk-download');
 
 const MAX_BULK_XML_ITEMS = 200;
 const MAX_BULK_PDF_ITEMS = 25;
@@ -51,26 +49,6 @@ function buildZipFilename(format: BulkDownloadFormat): string {
   return `documentos_${format}_${yyyy}${mm}${dd}_${hh}${mi}${ss}.zip`;
 }
 
-function parseRequestBody(body: unknown): { ids: string[]; format: BulkDownloadFormat } | null {
-  if (!body || typeof body !== 'object') return null;
-  const payload = body as { ids?: unknown; format?: unknown };
-  if (!Array.isArray(payload.ids)) return null;
-
-  const ids = Array.from(
-    new Set(
-      payload.ids
-        .map((id) => String(id || '').trim())
-        .filter(Boolean),
-    ),
-  );
-
-  if (ids.length === 0) return null;
-
-  const format = payload.format === 'pdf' ? 'pdf' : payload.format === 'xml' ? 'xml' : null;
-  if (!format) return null;
-
-  return { ids, format };
-}
 
 export async function POST(req: Request) {
   try {

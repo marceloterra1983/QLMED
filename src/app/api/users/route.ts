@@ -4,10 +4,8 @@ import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/aut
 import prisma from '@/lib/prisma';
 import { VALID_PAGE_PATHS } from '@/lib/navigation';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { createUserSchema } from '@/lib/schemas/user';
 
-const log = createLogger('users');
 
 export async function GET() {
   try {

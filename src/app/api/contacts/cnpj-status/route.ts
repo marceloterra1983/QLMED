@@ -10,9 +10,8 @@ import { cacheHeaders } from '@/lib/cache-headers';
  */
 export async function GET(req: Request) {
   try {
-    let userId: string;
     try {
-      userId = await requireAuth();
+      await requireAuth();
     } catch {
       return unauthorizedResponse();
     }

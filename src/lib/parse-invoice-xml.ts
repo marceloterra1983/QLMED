@@ -1,6 +1,6 @@
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import type { XmlNode } from '@/types/xml-common';
-import type { NFeProc, NFeDoc, NFeInfNFe } from '@/types/nfe-xml';
+import type { NFeProc, NFeDoc } from '@/types/nfe-xml';
 import type { CTeProc, CTeDoc, CTeInfCte, CTeToma4 } from '@/types/cte-xml';
 import type {
   NFSeCompNfse, NFSeNfse, NFSeInfNfse, NFSeConsultarResposta,

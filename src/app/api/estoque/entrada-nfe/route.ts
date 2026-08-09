@@ -6,10 +6,8 @@ import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import { getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry, LotOverride } from '@/lib/register-entry';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { createLogger } from '@/lib/logger';
 import { entradaNfeSchema } from '@/lib/schemas/estoque';
 
-const log = createLogger('estoque/entrada-nfe');
 
 export async function GET(req: Request) {
   try {

@@ -4,7 +4,7 @@ import React from 'react';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
-import { formatQuantity, formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
+import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
 
 interface ProductTableProps {
   products: ProductRow[];

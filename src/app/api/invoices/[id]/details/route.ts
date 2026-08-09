@@ -4,15 +4,13 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val } from '@/lib/xml-helpers';
-import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { idParamSchema } from '@/lib/schemas/common';
 import type { XmlNode } from '@/types/xml-common';
-import type { NFeInfNFe, NFeDet, NFeImposto, NFeTaxGroup } from '@/types/nfe-xml';
-import type { CTeInfCte, CTeProc, CTeInfQ, CTeInfNFe as CTeDocNFe, CTeComp } from '@/types/cte-xml';
+import type { NFeDet, NFeImposto, NFeTaxGroup } from '@/types/nfe-xml';
+import type { CTeInfCte } from '@/types/cte-xml';
 import type { NFSeNacionalInfNFSe, NFSeInfNfse } from '@/types/nfse-xml';
 
-const log = createLogger('invoices/:id/details');
 
 function parseEmitDest(node: XmlNode | null | undefined) {
   if (!node) return null;

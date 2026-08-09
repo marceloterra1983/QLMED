@@ -2,15 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import Skeleton from '@/components/ui/Skeleton';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { formatCurrency, formatAmount } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import SettingsModal from './SettingsModal';
 import type { ProductRow, ProductsSummary, ProductsResponse, SortField } from './types';
-import { normalizeSearch, formatQuantity, formatDate, getAnvisaExpirationBadge, formatOptional, highlightMatch } from './components/product-utils';
 import type { HierOptions } from './components/product-utils';
 import ProductFilters from './components/ProductFilters';
 import ProductDetailModal from './components/ProductDetailModal';
@@ -43,7 +39,6 @@ export default function ProdutosPage() {
 
   // --- filter/sort state ---
   const [search, setSearch] = useState('');
-  const [onlyMissing, setOnlyMissing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [subtypeFilter, setSubtypeFilter] = useState<string>('');
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
@@ -63,19 +58,10 @@ export default function ProdutosPage() {
   const filtered = products;
 
   // --- action states ---
-  const [isSyncingAnvisa, setIsSyncingAnvisa] = useState(false);
-  const [isExportingMissing, setIsExportingMissing] = useState(false);
-  const [isImportingXls, setIsImportingXls] = useState(false);
-  const [isImportingOpenData, setIsImportingOpenData] = useState(false);
-  const [isImportingTypes, setIsImportingTypes] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editingAnvisaKey, setEditingAnvisaKey] = useState<string | null>(null);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
   const [autoClassifyPreview, setAutoClassifyPreview] = useState<any>(null);
-  const xlsInputRef = useRef<HTMLInputElement>(null);
-  const openDataInputRef = useRef<HTMLInputElement>(null);
-  const typesInputRef = useRef<HTMLInputElement>(null);
 
   // --- group collapsing ---
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -180,8 +166,7 @@ export default function ProdutosPage() {
     productType: typeFilter,
     productSubtype: subtypeFilter,
     productSubgroup: subgroupFilter,
-    onlyMissingAnvisa: onlyMissing,
-  }), [debouncedSearch, serverSortField, sortOrder, lineStatusFilter, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
+  }), [debouncedSearch, serverSortField, sortOrder, lineStatusFilter, typeFilter, subtypeFilter, subgroupFilter]);
 
   // ---- load products ----
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -205,7 +190,6 @@ export default function ProdutosPage() {
       if (typeFilter) params.set('productType', typeFilter);
       if (subtypeFilter) params.set('productSubtype', subtypeFilter);
       if (subgroupFilter) params.set('productSubgroup', subgroupFilter);
-      if (onlyMissing) params.set('onlyMissingAnvisa', '1');
       const res = await fetch(`/api/products/list?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Falha ao carregar produtos');
       const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
@@ -235,11 +219,11 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing, pagination.page, pagination.limit]);
+  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
 
   useEffect(() => {
     setPagination((current) => current.page === 1 ? current : { ...current, page: 1 });
-  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, onlyMissing]);
+  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter]);
 
   useEffect(() => { loadProducts(); loadSettingsHierarchy(); }, [loadProducts]);
 
