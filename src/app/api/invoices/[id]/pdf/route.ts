@@ -2,7 +2,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOriginalIssuedPdf } from '@/lib/original-issued-pdf';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import puppeteer from 'puppeteer';
+import { renderHtmlToPdf } from '@/lib/pdf/render';
 import { createLogger } from '@/lib/logger';
 import type { PdfInvoiceView } from '@/lib/pdf/pdf-types';
 import { parseXml, getPdfFilename } from '@/lib/pdf/pdf-utils';
@@ -106,32 +106,21 @@ export async function GET(
       const fallbackFilename = filename.replace(/[\\/]/g, '_');
       const encodedFilename = encodeURIComponent(filename);
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+      const pdfBuffer = await renderHtmlToPdf(html, {
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' },
       });
-      try {
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'load' });
-        const pdfBuffer = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' },
-        });
 
-        return new Response(Buffer.from(pdfBuffer), {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${fallbackFilename}"; filename*=UTF-8''${encodedFilename}`,
-            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-            Pragma: 'no-cache',
-            Expires: '0',
-          },
-        });
-      } finally {
-        await browser.close();
-      }
+      return new Response(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${fallbackFilename}"; filename*=UTF-8''${encodedFilename}`,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      });
     }
 
     return new Response(html, {

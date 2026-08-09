@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbiddenResponse, requireAuth, requireSessionAdmin, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import puppeteer from 'puppeteer';
+import { renderHtmlToPdf } from '@/lib/pdf/render';
 import nodemailer from 'nodemailer';
 import { apiError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
@@ -216,26 +216,12 @@ ${kpis.map(k => `
 /* ── Generate PDF buffer ── */
 
 async function generatePdf(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  return renderHtmlToPdf(html, {
+    format: 'A4',
+    landscape: true,
+    printBackground: true,
+    margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
   });
-  try {
-    const page = await browser.newPage();
-    // O HTML é autocontido (CSS inline, fontes do sistema, sem imagens nem
-    // scripts), então o 'load' padrão já basta. `networkidle0` nunca valeu aqui:
-    // setContent não o suporta, e o puppeteer 25 passou a rejeitá-lo no tipo.
-    await page.setContent(html);
-    const pdf = await page.pdf({
-      format: 'A4',
-      landscape: true,
-      printBackground: true,
-      margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
-    });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
-  }
 }
 
 /* ── Send email ── */
