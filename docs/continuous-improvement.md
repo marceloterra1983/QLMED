@@ -64,11 +64,11 @@ Cada iteração do produto pode adicionar tracks (ex.: “zero Float em tax”, 
 
 ## Entregue em `chore/quality-hardening` (2026-07-26)
 
-- `withAuth`, `money.roundMoney`, `sefazRejectUnauthorized` (SSL default on)
+- Guards canônicos `requireAuth`/`requireRole`/`requireAdmin` (em `src/lib/auth.ts`; checados por `api-route-guards`), `money.roundMoney`, `sefazRejectUnauthorized` (SSL default on)
 - Roles: `cnpj-monitor` POST, export-xml, bulk-download → editor
 - access-log auth→401/403 corretos; OneDrive sem leak de `error.message`
 - Removidos dead deps `effect` / `fast-check`
 - `product-aggregation` fatiado em módulos (barrel preservado)
-- Testes: money, ssl-verify, with-auth, mutation-roles, parse-invoice-tax
+- Testes: money, ssl-verify, api-route-guards, mutation-roles, parse-invoice-tax
 
 Ainda manuais / fases seguintes: FKs, Float→Decimal no Prisma, Next 16 e Tailwind 4.
