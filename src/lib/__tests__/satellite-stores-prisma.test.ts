@@ -28,6 +28,9 @@ const mocks = vi.hoisted(() => ({
   stockEntryFindUnique: vi.fn(),
   stockEntryCreate: vi.fn(),
   stockEntryUpdate: vi.fn(),
+  // product-settings-catalog
+  catalogFindMany: vi.fn(),
+  catalogUpsert: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -65,6 +68,10 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: mocks.stockEntryFindUnique,
       create: mocks.stockEntryCreate,
       update: mocks.stockEntryUpdate,
+    },
+    productSettingsCatalog: {
+      findMany: mocks.catalogFindMany,
+      upsert: mocks.catalogUpsert,
     },
     $transaction: mocks.$transaction,
   },
@@ -488,5 +495,83 @@ describe('stock-entry-store Prisma CRUD', () => {
         status: 'registered',
       }),
     ).resolves.toMatchObject({ status: 'registered', matchedItems: 2 });
+  });
+});
+
+describe('product-settings-catalog Prisma CRUD', () => {
+  it('lists catalog entries via productSettingsCatalog.findMany', async () => {
+    const now = new Date('2026-01-01');
+    mocks.catalogFindMany.mockResolvedValue([
+      {
+        id: 'cat-1',
+        companyId: 'co-1',
+        section: 'line',
+        value: 'Linha A',
+        parentValue: null,
+        parentSecondaryValue: null,
+        extraValue: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+    const { listProductSettingsCatalogEntries } = await import('../product-settings-catalog');
+    await expect(listProductSettingsCatalogEntries('co-1')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'cat-1',
+        companyId: 'co-1',
+        section: 'line',
+        value: 'Linha A',
+      }),
+    ]);
+    expect(mocks.catalogFindMany).toHaveBeenCalledWith({
+      where: { companyId: 'co-1' },
+      orderBy: [{ section: 'asc' }, { value: 'asc' }],
+    });
+  });
+
+  it('upserts catalog entry via productSettingsCatalog.upsert and skips empty value', async () => {
+    mocks.catalogUpsert.mockResolvedValue({});
+    const { upsertProductSettingsCatalogEntry } = await import('../product-settings-catalog');
+
+    await upsertProductSettingsCatalogEntry({
+      companyId: 'co-1',
+      section: 'group',
+      value: '  Grupo X  ',
+      parentValue: 'Linha A',
+      parentSecondaryValue: null,
+      extraValue: '  extra  ',
+    });
+    expect(mocks.catalogUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          companyId_section_value_parentValueKey_parentSecondaryValueKey: {
+            companyId: 'co-1',
+            section: 'group',
+            value: 'Grupo X',
+            parentValueKey: 'Linha A',
+            parentSecondaryValueKey: '',
+          },
+        },
+        create: expect.objectContaining({
+          companyId: 'co-1',
+          section: 'group',
+          value: 'Grupo X',
+          parentValue: 'Linha A',
+          parentSecondaryValue: null,
+          parentValueKey: 'Linha A',
+          parentSecondaryValueKey: '',
+          extraValue: 'extra',
+        }),
+        update: expect.objectContaining({ extraValue: 'extra' }),
+      }),
+    );
+
+    mocks.catalogUpsert.mockClear();
+    await upsertProductSettingsCatalogEntry({
+      companyId: 'co-1',
+      section: 'line',
+      value: '   ',
+    });
+    expect(mocks.catalogUpsert).not.toHaveBeenCalled();
   });
 });
