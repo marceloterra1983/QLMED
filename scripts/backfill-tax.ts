@@ -4,11 +4,13 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { getCanonicalDatabaseUrl } from '../src/lib/database-config';
 import { extractAllTaxData } from '../src/lib/parse-invoice-tax';
 
-getCanonicalDatabaseUrl(); // FR-005 fail-closed before opening Prisma
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(getCanonicalDatabaseUrl()),
+});
 const BATCH_SIZE = 200;
 
 async function upsertTotals(data: {

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 require('./ensure-canonical-database-url.cjs'); // FR-005 fail-closed before Prisma
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaPg } = require('@prisma/adapter-pg');
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(process.env.DATABASE_URL),
+});
 function hasMatch(value, regex) {
   if (!value) return false;
   return regex.test(value);

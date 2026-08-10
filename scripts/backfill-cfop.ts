@@ -9,10 +9,12 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { getCanonicalDatabaseUrl } from '../src/lib/database-config';
 
-getCanonicalDatabaseUrl(); // FR-005 fail-closed before opening Prisma
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(getCanonicalDatabaseUrl()),
+});
 const BATCH_SIZE = 100;
 
 function extractFirstCfop(xmlContent: string): string | null {
