@@ -15,7 +15,7 @@ Activate when the user mentions Sefaz errors, NF-e rejection codes, SOAP faults,
 - `src/lib/receita-nfse-client.ts` — Receita Federal NFS-e API
 - `src/lib/receita-nfse-sync.ts` — NFS-e sync logic
 - `src/lib/certificate-manager.ts` — PFX certificate handling (node-forge)
-- `src/lib/auto-sync.ts` — Automatic sync orchestration
+- `src/lib/sync-scheduler.ts` — Automatic sync orchestration (`startAutoSync`)
 - `src/lib/sync-recovery.ts` — Sync error recovery
 - `src/lib/parse-invoice-xml.ts` — XML parsing for NF-e/CT-e/NFS-e
 

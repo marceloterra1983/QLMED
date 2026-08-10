@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { getCanonicalDatabaseUrl } from '../src/lib/database-config';
 
-getCanonicalDatabaseUrl(); // FR-005 fail-closed before opening Prisma
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(getCanonicalDatabaseUrl()),
+});
 
 async function main() {
   const company = await prisma.company.findFirst({
