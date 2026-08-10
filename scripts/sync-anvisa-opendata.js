@@ -14,22 +14,20 @@
  *   • anvisa_synced_at             = NOW()
  *
  * Uso:
- *   cd ~/qlmed/app-dev && node scripts/sync-anvisa-opendata.js [--apply]
+ *   DATABASE_URL=… COMPANY_ID=… node scripts/sync-anvisa-opendata.js [--apply]
  *
  * Arquivo CSV salvo em /tmp/anvisa-opendata.csv (reusado se < 7 dias)
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
 const https = require('https');
 
-const COMPANY_ID   = 'cmlrdunyx0002zthpl4jo7dld';
-const DB_CONTAINER = 'ssksgwgo40gcok4s44gc0cgw';
-const CSV_PATH     = '/tmp/anvisa-opendata.csv';
-const CSV_URL      = 'https://dados.anvisa.gov.br/dados/TA_PRODUTO_SAUDE_SITE.csv';
-const CSV_MAX_AGE  = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
-const SQL_OUT      = '/tmp/sync-anvisa-opendata.sql';
+const CSV_PATH    = '/tmp/anvisa-opendata.csv';
+const CSV_URL     = 'https://dados.anvisa.gov.br/dados/TA_PRODUTO_SAUDE_SITE.csv';
+const CSV_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
+const SQL_OUT     = '/tmp/sync-anvisa-opendata.sql';
 
 const args    = process.argv.slice(2);
 const DRY_RUN = !args.includes('--apply');
@@ -131,6 +129,14 @@ function q(v) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function main() {
+  const { getCanonicalDatabaseUrl } = await import('../src/lib/database-config.ts');
+  const DATABASE_URL = getCanonicalDatabaseUrl(); // FR-005 fail-closed
+  const COMPANY_ID = (process.env.COMPANY_ID || '').trim();
+  if (!COMPANY_ID) {
+    console.error('[QLMED] COMPANY_ID is required');
+    process.exit(1);
+  }
+
   console.log('\n🔄 sync-anvisa-opendata.js\n');
 
   // 1. Download CSV
@@ -142,10 +148,13 @@ async function main() {
   console.log(` ${byCode.size.toLocaleString()} registros únicos`);
 
   // 3. Fetch products with anvisa_code (excluding N/A)
-  const csv = execSync(
-    `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -t -A -F'|' -c ` +
-    `"SELECT id, codigo, anvisa_code FROM product_registry ` +
-    `WHERE company_id='${COMPANY_ID}' AND anvisa_code IS NOT NULL AND anvisa_code != '' AND anvisa_code != 'N/A'"`,
+  const csv = execFileSync(
+    'psql',
+    [
+      DATABASE_URL, '-t', '-A', '-F|', '-c',
+      `SELECT id, codigo, anvisa_code FROM product_registry ` +
+      `WHERE company_id='${COMPANY_ID}' AND anvisa_code IS NOT NULL AND anvisa_code != '' AND anvisa_code != 'N/A'`,
+    ],
     { encoding: 'utf8' }
   );
 
@@ -197,18 +206,22 @@ async function main() {
     console.log('⚠️  Dry-run. Para aplicar: node scripts/sync-anvisa-opendata.js --apply\n');
   } else {
     console.log('🚀 Aplicando...');
-    execSync(
-      `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -v ON_ERROR_STOP=1 < ${SQL_OUT}`,
+    execFileSync(
+      'psql',
+      [DATABASE_URL, '-v', 'ON_ERROR_STOP=1', '-f', SQL_OUT],
       { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
     );
     console.log('✅ Aplicado!\n');
 
     // Show status breakdown
-    const stats = execSync(
-      `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -t -A -F'|' -c ` +
-      `"SELECT anvisa_status, count(*) FROM product_registry ` +
-      `WHERE company_id='${COMPANY_ID}' AND anvisa_status IS NOT NULL ` +
-      `GROUP BY 1 ORDER BY 2 DESC"`,
+    const stats = execFileSync(
+      'psql',
+      [
+        DATABASE_URL, '-t', '-A', '-F|', '-c',
+        `SELECT anvisa_status, count(*) FROM product_registry ` +
+        `WHERE company_id='${COMPANY_ID}' AND anvisa_status IS NOT NULL ` +
+        `GROUP BY 1 ORDER BY 2 DESC`,
+      ],
       { encoding: 'utf8' }
     );
     console.log('   Status ANVISA no banco:');

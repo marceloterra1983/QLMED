@@ -11,16 +11,14 @@
  *   • out_of_line segue o campo "tipo" da planilha (tipo = "FORA DE LINHA" → true)
  *
  * Uso:
- *   cd ~/qlmed/app-dev && node scripts/import-planilha.js [--apply]
+ *   DATABASE_URL=… COMPANY_ID=… node scripts/import-planilha.js [--apply]
  */
 
-const XLSX         = require('xlsx');
-const fs           = require('fs');
-const { execSync } = require('child_process');
+const XLSX             = require('xlsx');
+const fs                = require('fs');
+const { execFileSync }  = require('child_process');
 
-const COMPANY_ID   = 'cmlrdunyx0002zthpl4jo7dld';
-const SQL_OUT      = '/tmp/import-planilha.sql';
-const DB_CONTAINER = 'ssksgwgo40gcok4s44gc0cgw';
+const SQL_OUT = '/tmp/import-planilha.sql';
 
 const args    = process.argv.slice(2);
 const DRY_RUN = !args.includes('--apply');
@@ -38,6 +36,14 @@ function sqlBool(v) { return v ? 'true' : 'false'; }
 
 // ─── Load planilha ─────────────────────────────────────────────────────────────
 async function main() {
+  const { getCanonicalDatabaseUrl } = await import('../src/lib/database-config.ts');
+  const DATABASE_URL = getCanonicalDatabaseUrl(); // FR-005 fail-closed
+  const COMPANY_ID = (process.env.COMPANY_ID || '').trim();
+  if (!COMPANY_ID) {
+    console.error('[QLMED] COMPANY_ID is required');
+    process.exit(1);
+  }
+
   const wb = XLSX.readFile('List_Produtos_Cad_20260227_144022.XLSX');
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
@@ -180,8 +186,9 @@ async function main() {
   } else {
     console.log('\n🚀 Aplicando...');
     try {
-      execSync(
-        `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -v ON_ERROR_STOP=1 < ${SQL_OUT}`,
+      execFileSync(
+        'psql',
+        [DATABASE_URL, '-v', 'ON_ERROR_STOP=1', '-f', SQL_OUT],
         { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] }
       );
       console.log('✅ Aplicado!');

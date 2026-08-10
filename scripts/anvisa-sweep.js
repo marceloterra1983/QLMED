@@ -8,39 +8,15 @@
  *   3. Gera SQL com UPDATE (anvisa_code = 'N/A' ou o registro encontrado)
  *
  * Uso:
- *   cd ~/qlmed/app-dev && node scripts/anvisa-sweep.js [--apply]
+ *   DATABASE_URL=… COMPANY_ID=… node scripts/anvisa-sweep.js [--apply]
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
-const COMPANY_ID   = 'cmlrdunyx0002zthpl4jo7dld';
-const SQL_OUT      = '/tmp/anvisa-sweep.sql';
-const DB_CONTAINER = 'ssksgwgo40gcok4s44gc0cgw';
-const args         = process.argv.slice(2);
-const DRY_RUN      = !args.includes('--apply');
-
-// ─── Fetch DB rows ──────────────────────────────────────────────────────────
-const csv = execSync(
-  `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -t -A -F'|' -c ` +
-  `"SELECT codigo, code, description, product_type, product_subtype, manufacturer_short_name ` +
-  `FROM product_registry ` +
-  `WHERE company_id='${COMPANY_ID}' ` +
-  `AND (anvisa_code IS NULL OR anvisa_code='') ` +
-  `AND out_of_line=false ` +
-  `ORDER BY product_subtype, codigo"`,
-  { encoding: 'utf8' }
-);
-const products = csv.trim().split('\n').filter(Boolean).map(l => {
-  const p = l.split('|');
-  return {
-    codigo: p[0], code: (p[1]||'').trim(),
-    desc: (p[2]||'').trim(), tipo: (p[3]||'').trim(),
-    sub: (p[4]||'').trim(), fab: (p[5]||'').trim(),
-  };
-});
-
-console.log(`\n📋 Produtos em linha sem ANVISA: ${products.length}`);
+const SQL_OUT = '/tmp/anvisa-sweep.sql';
+const args    = process.argv.slice(2);
+const DRY_RUN = !args.includes('--apply');
 
 // ─── N/A classification ─────────────────────────────────────────────────────
 // Keywords na descrição que indicam instrumental/acessório sem necessidade de RVS
@@ -82,12 +58,6 @@ function isNA(r) {
   }
   return false;
 }
-
-const naProducts   = products.filter(r => isNA(r));
-const toSearch     = products.filter(r => !isNA(r));
-
-console.log(`   → N/A (instrumental/equip/veículo): ${naProducts.length}`);
-console.log(`   → Busca ANVISA necessária:           ${toSearch.length}`);
 
 // ─── ANVISA API search ──────────────────────────────────────────────────────
 function norm(s) {
@@ -151,6 +121,45 @@ async function searchAnvisa(r) {
 
 // ─── Main async ─────────────────────────────────────────────────────────────
 async function main() {
+  const { getCanonicalDatabaseUrl } = await import('../src/lib/database-config.ts');
+  const DATABASE_URL = getCanonicalDatabaseUrl(); // FR-005 fail-closed
+  const COMPANY_ID = (process.env.COMPANY_ID || '').trim();
+  if (!COMPANY_ID) {
+    console.error('[QLMED] COMPANY_ID is required');
+    process.exit(1);
+  }
+
+  // ─── Fetch DB rows ──────────────────────────────────────────────────────────
+  const csv = execFileSync(
+    'psql',
+    [
+      DATABASE_URL, '-t', '-A', '-F|', '-c',
+      `SELECT codigo, code, description, product_type, product_subtype, manufacturer_short_name ` +
+      `FROM product_registry ` +
+      `WHERE company_id='${COMPANY_ID}' ` +
+      `AND (anvisa_code IS NULL OR anvisa_code='') ` +
+      `AND out_of_line=false ` +
+      `ORDER BY product_subtype, codigo`,
+    ],
+    { encoding: 'utf8' }
+  );
+  const products = csv.trim().split('\n').filter(Boolean).map(l => {
+    const p = l.split('|');
+    return {
+      codigo: p[0], code: (p[1]||'').trim(),
+      desc: (p[2]||'').trim(), tipo: (p[3]||'').trim(),
+      sub: (p[4]||'').trim(), fab: (p[5]||'').trim(),
+    };
+  });
+
+  console.log(`\n📋 Produtos em linha sem ANVISA: ${products.length}`);
+
+  const naProducts = products.filter(r => isNA(r));
+  const toSearch   = products.filter(r => !isNA(r));
+
+  console.log(`   → N/A (instrumental/equip/veículo): ${naProducts.length}`);
+  console.log(`   → Busca ANVISA necessária:           ${toSearch.length}`);
+
   console.log('\n🔍 Buscando ANVISA para', toSearch.length, 'produtos...\n');
 
   const found    = []; // { r, anvisa, name, score }
@@ -228,8 +237,9 @@ async function main() {
   } else {
     console.log('🚀 Aplicando...');
     try {
-      execSync(
-        `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -v ON_ERROR_STOP=1 < ${SQL_OUT}`,
+      execFileSync(
+        'psql',
+        [DATABASE_URL, '-v', 'ON_ERROR_STOP=1', '-f', SQL_OUT],
         { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 }
       );
       console.log('✅ Aplicado!');
