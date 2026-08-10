@@ -5,8 +5,8 @@ export {};
  *
  * Imported lazily (dynamic import) from prisma.ts so that:
  *   1. prisma.ts has zero side-effects at import time
- *   2. auto-sync and local-xml-sync share the single PrismaClient from prisma.ts
- *   3. No circular dependency: prisma.ts ➜ (dynamic) bootstrap.ts ➜ auto-sync / local-xml-sync ➜ prisma.ts
+ *   2. sync-scheduler and local-xml-sync share the single PrismaClient from prisma.ts
+ *   3. No circular dependency: prisma.ts ➜ (dynamic) bootstrap.ts ➜ sync-scheduler / local-xml-sync ➜ prisma.ts
  */
 
 import { createLogger } from '@/lib/logger';
