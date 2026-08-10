@@ -1,9 +1,12 @@
 require('./ensure-canonical-database-url.cjs'); // FR-005 fail-closed before Prisma
 const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const fs = require('fs').promises;
 const path = require('path');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(process.env.DATABASE_URL),
+});
 const XML_BACKUP_DIR = path.join(process.cwd(), 'xml_backup');
 const TYPE_SUFFIX = { NFE: 'nfe', CTE: 'cte', NFSE: 'nfse' };
 
