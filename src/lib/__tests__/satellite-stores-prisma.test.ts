@@ -31,6 +31,14 @@ const mocks = vi.hoisted(() => ({
   // product-settings-catalog
   catalogFindMany: vi.fn(),
   catalogUpsert: vi.fn(),
+  // cnpj-monitor
+  invoiceFindMany: vi.fn(),
+  cnpjMonitoringFindMany: vi.fn(),
+  cnpjMonitoringFindUnique: vi.fn(),
+  cnpjMonitoringCreate: vi.fn(),
+  cnpjMonitoringUpdate: vi.fn(),
+  cnpjCacheFindMany: vi.fn(),
+  lookupCnpj: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -73,12 +81,28 @@ vi.mock('@/lib/prisma', () => ({
       findMany: mocks.catalogFindMany,
       upsert: mocks.catalogUpsert,
     },
+    invoice: {
+      findMany: mocks.invoiceFindMany,
+    },
+    cnpjMonitoring: {
+      findMany: mocks.cnpjMonitoringFindMany,
+      findUnique: mocks.cnpjMonitoringFindUnique,
+      create: mocks.cnpjMonitoringCreate,
+      update: mocks.cnpjMonitoringUpdate,
+    },
+    cnpjCache: {
+      findMany: mocks.cnpjCacheFindMany,
+    },
     $transaction: mocks.$transaction,
   },
 }));
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
+}));
+
+vi.mock('@/lib/cnpj-lookup', () => ({
+  lookupCnpj: (...args: unknown[]) => mocks.lookupCnpj(...args),
 }));
 
 beforeEach(() => {
@@ -573,5 +597,99 @@ describe('product-settings-catalog Prisma CRUD', () => {
       value: '   ',
     });
     expect(mocks.catalogUpsert).not.toHaveBeenCalled();
+  });
+});
+
+describe('cnpj-monitor Prisma CRUD', () => {
+  it('lists recent changes via cnpjMonitoring.findMany', async () => {
+    const changedAt = new Date('2026-01-15');
+    mocks.cnpjMonitoringFindMany.mockResolvedValue([
+      {
+        cnpj: '11222333000181',
+        contactName: 'Fornecedor',
+        previousStatus: 'ATIVA',
+        currentStatus: 'SUSPENSA',
+        changedAt,
+      },
+    ]);
+    const { getRecentCnpjChanges } = await import('../cnpj-monitor');
+    await expect(getRecentCnpjChanges('co-1', 10)).resolves.toEqual([
+      {
+        cnpj: '11222333000181',
+        name: 'Fornecedor',
+        previousStatus: 'ATIVA',
+        currentStatus: 'SUSPENSA',
+        changedAt,
+      },
+    ]);
+    expect(mocks.cnpjMonitoringFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          companyId: 'co-1',
+          changedAt: expect.objectContaining({ not: null }),
+        }),
+        orderBy: { changedAt: 'desc' },
+        take: 10,
+      }),
+    );
+  });
+
+  it('creates monitoring row on first batch check and updates when status changes', async () => {
+    mocks.invoiceFindMany
+      .mockResolvedValueOnce([{ senderCnpj: '11.222.333/0001-81', senderName: 'ACME' }])
+      .mockResolvedValueOnce([]);
+    mocks.cnpjMonitoringFindMany.mockResolvedValue([]);
+    mocks.cnpjCacheFindMany.mockResolvedValue([{ cnpj: '11222333000181' }]);
+    mocks.lookupCnpj.mockResolvedValue({ situacaoCadastral: 'ATIVA' });
+    mocks.cnpjMonitoringFindUnique.mockResolvedValue(null);
+    mocks.cnpjMonitoringCreate.mockResolvedValue({});
+
+    const { runBatchCnpjCheck } = await import('../cnpj-monitor');
+    await expect(runBatchCnpjCheck('co-1', 10, 0)).resolves.toEqual({
+      checked: 1,
+      changed: 0,
+      errors: 0,
+    });
+    expect(mocks.cnpjMonitoringCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          companyId: 'co-1',
+          cnpj: '11222333000181',
+          contactName: 'ACME',
+          currentStatus: 'ATIVA',
+        }),
+      }),
+    );
+
+    mocks.invoiceFindMany
+      .mockResolvedValueOnce([{ senderCnpj: '11222333000181', senderName: 'ACME' }])
+      .mockResolvedValueOnce([]);
+    mocks.cnpjMonitoringFindMany.mockResolvedValue([
+      { cnpj: '11222333000181', currentStatus: 'ATIVA' },
+    ]);
+    mocks.cnpjCacheFindMany.mockResolvedValue([{ cnpj: '11222333000181' }]);
+    mocks.lookupCnpj.mockResolvedValue({ situacaoCadastral: 'BAIXADA' });
+    mocks.cnpjMonitoringFindUnique.mockResolvedValue({
+      id: 'mon-1',
+      currentStatus: 'ATIVA',
+      contactName: 'ACME',
+      changedAt: null,
+    });
+    mocks.cnpjMonitoringUpdate.mockResolvedValue({});
+
+    await expect(runBatchCnpjCheck('co-1', 10, 0)).resolves.toEqual({
+      checked: 1,
+      changed: 1,
+      errors: 0,
+    });
+    expect(mocks.cnpjMonitoringUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mon-1' },
+        data: expect.objectContaining({
+          previousStatus: 'ATIVA',
+          currentStatus: 'BAIXADA',
+        }),
+      }),
+    );
   });
 });
