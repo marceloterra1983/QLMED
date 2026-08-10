@@ -23,7 +23,7 @@ services:
           - qlmed-app
 
   n8n:
-    image: n8nio/n8n:2.9.2
+    image: n8nio/n8n:2.29.10
     restart: unless-stopped
     mem_limit: 1g
     ports:
