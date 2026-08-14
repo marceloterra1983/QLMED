@@ -97,3 +97,6 @@ actions-runner-qlmed-prod
 # TestSprite — pin local; never commit API credentials
 .testsprite/*
 !.testsprite/config.json
+
+# Local Claude Code permissions — machine-specific
+.claude/settings.local.json
