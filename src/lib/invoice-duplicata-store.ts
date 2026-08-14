@@ -1,8 +1,14 @@
 import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val, num } from '@/lib/xml-helpers';
 import { resolveInvoiceXmlContent } from '@/lib/xml-file-store';
+import { roundMoney } from '@/lib/money';
+
+function toMoneyDecimal(value: number): Prisma.Decimal {
+  return new Prisma.Decimal(roundMoney(value).toFixed(2));
+}
 
 // ── Types ──
 
@@ -160,9 +166,12 @@ export async function upsertDuplicatas(
         dupNumero: dup.dupNumero,
         dupVencimento: dup.dupVencimento,
         dupValor: dup.dupValor,
+        dupValorDecimal: toMoneyDecimal(dup.dupValor),
         faturaNumero: dup.faturaNumero,
         faturaValorOriginal: dup.faturaValorOriginal,
+        faturaValorOriginalDecimal: toMoneyDecimal(dup.faturaValorOriginal),
         faturaValorLiquido: dup.faturaValorLiquido,
+        faturaValorLiquidoDecimal: toMoneyDecimal(dup.faturaValorLiquido),
       })),
     });
   });
@@ -239,9 +248,12 @@ export async function backfillInvoiceDuplicatas(companyId: string): Promise<Back
               dupNumero: '__NONE__',
               dupVencimento: '__NONE__',
               dupValor: 0,
+              dupValorDecimal: toMoneyDecimal(0),
               faturaNumero: '',
               faturaValorOriginal: 0,
+              faturaValorOriginalDecimal: toMoneyDecimal(0),
               faturaValorLiquido: 0,
+              faturaValorLiquidoDecimal: toMoneyDecimal(0),
             },
           ],
           skipDuplicates: true,

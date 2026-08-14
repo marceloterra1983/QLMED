@@ -329,6 +329,11 @@ describe('invoice-duplicata-store', () => {
         data: [expect.objectContaining({ invoiceId: 'inv-1', companyId: 'co-1', dupNumero: '001' })],
       }),
     );
+    const persisted = mocks.duplicataCreateMany.mock.calls[0][0].data[0];
+    expect(persisted.dupValor).toBe(90);
+    expect(persisted.dupValorDecimal.toFixed(2)).toBe('90.00');
+    expect(persisted.faturaValorOriginalDecimal.toFixed(2)).toBe('100.00');
+    expect(persisted.faturaValorLiquidoDecimal.toFixed(2)).toBe('90.00');
   });
 });
 
