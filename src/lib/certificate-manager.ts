@@ -1,5 +1,4 @@
 import forge from 'node-forge';
-import { sefazRejectUnauthorized } from '@/lib/ssl-verify';
 
 // Metadata extracted from a PFX during upload validation.
 // Intentionally does NOT carry pfxData/pfxPassword back out: the caller already
@@ -76,18 +75,6 @@ export class CertificateManager {
       validFrom,
       validTo,
       cnpj,
-    };
-  }
-
-  /**
-   * Retorna um SecureContext (ou opções https) para mTLS
-   */
-  static getHttpsOptions(pfxData: Buffer | Uint8Array, passphrase: string) {
-    return {
-      pfx: pfxData,
-      passphrase,
-      // Default on; set SEFAZ_VERIFY_SSL=false only for broken SEFAZ chains.
-      rejectUnauthorized: sefazRejectUnauthorized(),
     };
   }
 

@@ -3,12 +3,12 @@
 import type { ContactDetails, ContactOverrideData } from './contact-detail-types';
 import { EditableField } from './contact-detail-utils';
 import { compareAddressFields } from './contact-detail-utils';
-import type { CnpjData } from '@/lib/cnpj-utils';
+import type { CnpjResult } from '@/lib/cnpj-lookup';
 
 interface AddressSectionProps {
   contact: ContactDetails;
   contactOverride: ContactOverrideData | null;
-  cnpjData: CnpjData | null;
+  cnpjData: CnpjResult | null;
   isEditing: boolean;
   editDraft: Record<string, string>;
   savingOverride: boolean;

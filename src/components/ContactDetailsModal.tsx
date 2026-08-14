@@ -9,7 +9,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
 import { formatDate, formatAmount } from '@/lib/utils';
 import { formatDocument, normalizeDateOnly } from '@/lib/modal-helpers';
-import { parseCnpjResponse, type CnpjData } from '@/lib/cnpj-utils';
+import { parseCnpjResponse, type CnpjResult } from '@/lib/cnpj-lookup';
 import type {
   ContactRef, ContactDetails, ContactPurchases, ContactPriceRow, ContactInvoice,
   ContactDuplicate, ContactMeta, ContactFiscalData, ContactOverrideData,
@@ -55,7 +55,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
   const [shortName, setShortName] = useState('');
   const [shortNameDraft, setShortNameDraft] = useState('');
   const [savingShortName, setSavingShortName] = useState(false);
-  const [cnpjData, setCnpjData] = useState<CnpjData | null>(null);
+  const [cnpjData, setCnpjData] = useState<CnpjResult | null>(null);
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [isGeneralOpen, setIsGeneralOpen] = useState(false);

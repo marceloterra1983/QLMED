@@ -5,18 +5,9 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getCfopTagByCode, isImportEntryCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { createLogger } from '@/lib/logger';
+import { normalizeUnit } from '@/lib/product-aggregation';
 
 const log = createLogger('products/history');
-
-const UNIT_ALIASES: Record<string, string> = {
-  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
-  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
-  CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
-};
-function normalizeUnit(raw: string | null | undefined): string {
-  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
-  return UNIT_ALIASES[upper] || upper || '-';
-}
 
 /**
  * GET /api/products/history?code=XXX&unit=YYY&direction=received|issued

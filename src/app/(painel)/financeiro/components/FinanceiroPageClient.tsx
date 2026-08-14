@@ -7,14 +7,13 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCurrency, formatAmount, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
-import { addMoney, sumMoney } from '@/lib/money';
+import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
   type Duplicata,
   type InvoiceHeader,
   type DuplicataEditForm,
   type Summary,
   parseCurrencyInput,
-  roundMoney,
   toCurrencyInput,
   getNextDupNumero,
   createEditRowId,
