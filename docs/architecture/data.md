@@ -11,16 +11,9 @@ products, inventory and financial data.
   constraints defined by the schema.
 - Migrations follow expand/contract when compatibility across releases matters.
 - An application rollback does not automatically reverse a database migration.
-- QLMED has one persistent canonical database (`postgres`) configured by
-  `DATABASE_URL`; no persistent `qlmed_dev` database, arbitrary database name
-  or parallel database URL is supported.
-- CI uses a disposable `qlmed_ci` PostgreSQL service for replay and tests. It is
-  not part of the runtime data model.
-- Local development against the canonical database requires protected
-  credentials, `QLMED_DISABLE_BACKGROUND_SERVICES=true`, and a current
-  `server-backup` receipt for the `qlmed` set.
-- The repository `docker-compose.yml` consumes that protected `DATABASE_URL`
-  and deliberately does not provision a second PostgreSQL volume.
+- Persistence boundary: one canonical `postgres` database through `DATABASE_URL`
+  and disposable CI `qlmed_ci` — see
+  [ADR-0007](../decisions/0007-single-canonical-database.md).
 - Fiscal XML may contain sensitive business data and must not be logged in full.
 - A derived or shadow table extracted from existing records must ship with a
   backfill wired to run automatically (lazily on first access or via a
@@ -56,11 +49,9 @@ reviewed data-recovery procedure explicitly says otherwise.
 
 ## Backup contract
 
-The canonical database is the `qlmed` target of the `server-backup` project.
-Backup freshness, restoreability and off-site replication are operational
-gates, not application settings. Do not create a second database to satisfy a
-verification command, and do not place a database URL or backup content in the
-repository; application code never reads backup files or backup credentials.
+Recovery gates live in [ADR-0007](../decisions/0007-single-canonical-database.md).
+Do not place a database URL or backup content in the repository; application
+code never reads backup files or backup credentials.
 
 ## Prisma 7 runtime
 

@@ -1,6 +1,11 @@
-# QLMED Scorecard — 2026-08-05
+# QLMED Scorecard — snapshot 2026-08-05
 
-**Score de higiene:** 8.8/10
+> Snapshot from 2026-08-05. The CI Loop listener is inactive (see
+> [docs/continuous-improvement.md](../continuous-improvement.md)); regenerate
+> before trusting these numbers. The 32-file and 79/89 figures below are
+> historical snapshot values. This page is not live hygiene.
+
+**Score de higiene (snapshot):** 8.8/10
 
 ## Stack
 - Node `24.19.0` (pin 22)

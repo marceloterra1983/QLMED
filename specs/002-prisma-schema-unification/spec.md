@@ -21,8 +21,9 @@ DDL alongside Prisma. Runtime DDL and `@@ignore` are already gone from `src/` an
 CRUD. Expand/contract rollout and rollback discipline are delivered in this
 SDD (plan + T005; see `docs/architecture/data.md`). Residual work is FKs /
 `@relation` on satellite models and `Float`→`Decimal` for money precision.
-GSD Phase 11 defines the completed delivery sequence; this spec is the
-behavioral and safety contract.
+The completed sequence lives in
+[`specs/002-prisma-schema-unification/tasks.md`](./tasks.md) and
+[`plan.md`](./plan.md); this spec is the behavioral and safety contract.
 
 ## User scenarios
 

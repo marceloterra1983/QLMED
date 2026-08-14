@@ -1,9 +1,11 @@
 /**
- * Aritmética monetária na borda (JS number).
- * Preferir Prisma.Decimal nos caminhos de persistência tipados;
- * esta helper unifica arredondamento HALF-UP em 2 casas para UI/stores legados.
+ * IEEE-754 + EPSILON não é half-up — sobretudo em negativos (ex.: -4.995 → -4.99).
+ * Decimal (client-safe) aplica ROUND_HALF_UP em 2 casas; não importar o runtime Node do Prisma.
  */
-export function roundMoney(value: number): number {
-  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-}
+import { Decimal } from '@prisma/client-runtime-utils';
 
+export function roundMoney(value: number): number {
+  return new Decimal(value)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+    .toNumber();
+}
