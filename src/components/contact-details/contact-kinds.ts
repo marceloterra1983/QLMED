@@ -1,4 +1,4 @@
-import type { CnpjResult } from '@/lib/cnpj-lookup';
+import type { CnpjResult } from '@/lib/cnpj-result';
 import { checkCnaeMismatch } from './cnae-mismatch';
 
 export type ContactKind = 'customer' | 'supplier';

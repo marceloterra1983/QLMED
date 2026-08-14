@@ -1,6 +1,6 @@
 'use client';
 
-import type { CnpjResult } from '@/lib/cnpj-lookup';
+import type { CnpjResult } from '@/lib/cnpj-result';
 
 interface FiscalSectionProps {
   cnpjData: CnpjResult;

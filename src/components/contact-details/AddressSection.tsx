@@ -3,7 +3,7 @@
 import type { ContactDetails, ContactOverrideData } from './contact-detail-types';
 import { EditableField } from './contact-detail-utils';
 import { compareAddressFields } from './contact-detail-utils';
-import type { CnpjResult } from '@/lib/cnpj-lookup';
+import type { CnpjResult } from '@/lib/cnpj-result';
 
 interface AddressSectionProps {
   contact: ContactDetails;

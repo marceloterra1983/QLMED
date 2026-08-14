@@ -9,7 +9,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
 import { formatDate, formatAmount } from '@/lib/utils';
 import { formatDocument, normalizeDateOnly } from '@/lib/modal-helpers';
-import { parseCnpjResponse, type CnpjResult } from '@/lib/cnpj-lookup';
+import { parseCnpjResponse, type CnpjResult } from '@/lib/cnpj-result';
 import type {
   ContactRef, ContactDetails, ContactPurchases, ContactPriceRow, ContactInvoice,
   ContactDuplicate, ContactMeta, ContactFiscalData, ContactOverrideData,
