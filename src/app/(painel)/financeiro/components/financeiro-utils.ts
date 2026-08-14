@@ -1,8 +1,6 @@
 import { formatCurrency } from '@/lib/utils';
 import { roundMoney } from '@/lib/money';
 
-export { roundMoney };
-
 export interface Duplicata {
   invoiceId: string;
   accessKey: string;

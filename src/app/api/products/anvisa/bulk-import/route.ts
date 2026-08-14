@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { anvisaBulkImportSchema } from '@/lib/schemas/product';
+import { normalizeUnit } from '@/lib/product-aggregation';
 
 
 const MAX_INVOICES = 3000;
@@ -13,16 +14,6 @@ const XML_BATCH_SIZE = 50;
 
 function normalizeToken(s: string | null | undefined): string {
   return (s ?? '').replace(/[\s\-_./]/g, '').toUpperCase();
-}
-
-const UNIT_ALIASES: Record<string, string> = {
-  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
-  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
-  CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
-};
-function normalizeUnit(raw: string | null | undefined): string {
-  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
-  return UNIT_ALIASES[upper] || upper || '-';
 }
 
 function buildProductKey(code: string | null, unit: string | null, ean: string | null): string {

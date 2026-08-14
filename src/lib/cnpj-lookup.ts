@@ -1,32 +1,12 @@
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
+import type { CnpjResult } from '@/lib/cnpj-result';
+
+export type { CnpjResult } from '@/lib/cnpj-result';
+export { parseCnpjResponse } from '@/lib/cnpj-result';
 
 const log = createLogger('cnpj-lookup');
-
-export interface CnpjResult {
-  cnpj: string;
-  razaoSocial: string;
-  nomeFantasia: string | null;
-  situacaoCadastral: string | null;
-  descSituacao: string | null;
-  cnaePrincipal: { codigo: string; descricao: string } | null;
-  porte: string | null;
-  naturezaJuridica: string | null;
-  endereco: {
-    logradouro: string | null;
-    numero: string | null;
-    bairro: string | null;
-    municipio: string | null;
-    uf: string | null;
-    cep: string | null;
-  };
-  telefone: string | null;
-  email: string | null;
-  capitalSocial: number | null;
-  simplesNacional: boolean | null;
-  mei: boolean | null;
-}
 
 const globalForCnpj = globalThis as unknown as {
   cnpjMemoryCache?: Map<string, { result: CnpjResult | null; at: number }>;

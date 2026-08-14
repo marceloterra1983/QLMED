@@ -8,6 +8,7 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { getContactFiscal } from '@/lib/contact-fiscal-store';
 import { getCfopTagByCode } from '@/lib/cfop';
 import { cleanString, ensureArray, toNumber } from '@/lib/utils';
+import { normalizeUnit } from '@/lib/product-aggregation';
 import type { Prisma } from '@prisma/client';
 import type { ContactType } from '@/lib/contact-shared';
 
@@ -30,12 +31,6 @@ interface InvoiceMetaRow {
 const MAX_INVOICES = 500;
 const MAX_PRICE_ROWS = 300;
 const XML_BATCH_SIZE = 50;
-
-const UNIT_ALIASES: Record<string, string> = {
-  UNID: 'UN', UND: 'UN', UNIDADE: 'UN', UNIDADES: 'UN',
-  PC: 'UN', 'PÇ': 'UN', PECA: 'UN', 'PEÇA': 'UN', PCS: 'UN',
-  CAIXA: 'CX', KT: 'KIT', PR: 'PAR',
-};
 
 // ---------------------------------------------------------------------------
 // Config
@@ -73,11 +68,6 @@ const DETAILS_CONFIG = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function normalizeUnit(raw: string | null | undefined): string {
-  const upper = (raw || '').trim().toUpperCase().replace(/\./g, '');
-  return UNIT_ALIASES[upper] || upper || '-';
-}
 
 function normalizeDocument(value: string | null | undefined): string {
   return (value || '').replace(/\D/g, '');

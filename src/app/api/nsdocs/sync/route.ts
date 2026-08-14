@@ -5,7 +5,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getSefazCooldown } from '@/lib/sync-scheduler';
 import { syncViaSefaz } from '@/lib/sync-strategies/sefaz';
 import { syncViaNsdocs } from '@/lib/sync-strategies/nsdocs';
-import { syncViaReceitaNfse } from '@/lib/sync-strategies/receita-nfse';
+import { syncViaReceitaNfse } from '@/lib/receita-nfse-sync';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { nsdocsSyncSchema } from '@/lib/schemas/nsdocs';

@@ -1,9 +1,9 @@
 'use client';
 
-import type { CnpjData } from '@/lib/cnpj-utils';
+import type { CnpjResult } from '@/lib/cnpj-result';
 
 interface FiscalSectionProps {
-  cnpjData: CnpjData;
+  cnpjData: CnpjResult;
   cnpjLoading: boolean;
   onSync: () => void;
   /** Optional CNAE mismatch warning (supplier-only) */

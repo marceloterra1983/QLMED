@@ -1,22 +1,12 @@
-/**
- * CNPJ data parsing utilities.
- *
- * Shared by ContactDetailsModal for normalizing CNPJ API responses into a
- * consistent interface.
- */
-
-export interface CnpjData {
-  razaoSocial: string | null;
+export interface CnpjResult {
+  cnpj: string;
+  razaoSocial: string;
   nomeFantasia: string | null;
   situacaoCadastral: string | null;
+  descSituacao: string | null;
   cnaePrincipal: { codigo: string; descricao: string } | null;
   porte: string | null;
   naturezaJuridica: string | null;
-  capitalSocial: number | null;
-  simplesNacional: boolean | null;
-  mei: boolean | null;
-  telefone: string | null;
-  email: string | null;
   endereco: {
     logradouro: string | null;
     numero: string | null;
@@ -24,11 +14,16 @@ export interface CnpjData {
     municipio: string | null;
     uf: string | null;
     cep: string | null;
-  } | null;
+  };
+  telefone: string | null;
+  email: string | null;
+  capitalSocial: number | null;
+  simplesNacional: boolean | null;
+  mei: boolean | null;
 }
 
-/** Raw shape from CNPJ API (BrasilAPI / ReceitaWS) before normalization. */
 interface CnpjApiResponse {
+  cnpj?: string;
   razaoSocial?: string;
   nomeFantasia?: string;
   situacaoCadastral?: string;
@@ -41,15 +36,26 @@ interface CnpjApiResponse {
   mei?: boolean | null;
   telefone?: string;
   email?: string;
-  endereco?: CnpjData['endereco'];
+  endereco?: CnpjResult['endereco'];
 }
 
-/** Map a CNPJ API response to a normalized CnpjData object */
-export function parseCnpjResponse(data: CnpjApiResponse): CnpjData {
+const EMPTY_ENDERECO: CnpjResult['endereco'] = {
+  logradouro: null,
+  numero: null,
+  bairro: null,
+  municipio: null,
+  uf: null,
+  cep: null,
+};
+
+/** Map a CNPJ API response to a normalized CnpjResult. Safe for client bundles. */
+export function parseCnpjResponse(data: CnpjApiResponse): CnpjResult {
   return {
-    razaoSocial: data.razaoSocial || null,
+    cnpj: data.cnpj ?? '',
+    razaoSocial: data.razaoSocial || '',
     nomeFantasia: data.nomeFantasia || null,
     situacaoCadastral: data.situacaoCadastral || data.descSituacao || null,
+    descSituacao: data.descSituacao || null,
     cnaePrincipal: data.cnaePrincipal || null,
     porte: data.porte || null,
     naturezaJuridica: data.naturezaJuridica || null,
@@ -58,6 +64,6 @@ export function parseCnpjResponse(data: CnpjApiResponse): CnpjData {
     mei: data.mei ?? null,
     telefone: data.telefone || null,
     email: data.email || null,
-    endereco: data.endereco || null,
+    endereco: data.endereco ?? EMPTY_ENDERECO,
   };
 }

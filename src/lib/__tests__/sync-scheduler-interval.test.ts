@@ -10,7 +10,7 @@ vi.mock('@/lib/product-aggregate-updater', () => ({
 
 vi.mock('@/lib/sync-strategies/sefaz', () => ({ syncViaSefaz: vi.fn() }));
 vi.mock('@/lib/sync-strategies/nsdocs', () => ({ syncViaNsdocs: vi.fn() }));
-vi.mock('@/lib/sync-strategies/receita-nfse', () => ({ syncViaReceitaNfse: vi.fn() }));
+vi.mock('@/lib/receita-nfse-sync', () => ({ syncViaReceitaNfse: vi.fn() }));
 
 describe('shouldRunScheduledSync', () => {
   beforeEach(() => {

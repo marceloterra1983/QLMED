@@ -3,7 +3,7 @@ import { scheduleNightlyRebuild } from './product-aggregate-updater';
 import { createLogger } from '@/lib/logger';
 import { syncViaSefaz } from './sync-strategies/sefaz';
 import { syncViaNsdocs } from './sync-strategies/nsdocs';
-import { syncViaReceitaNfse } from './sync-strategies/receita-nfse';
+import { syncViaReceitaNfse } from './receita-nfse-sync';
 
 const log = createLogger('auto-sync');
 

@@ -1,4 +1,4 @@
-import type { CnpjData } from '@/lib/cnpj-utils';
+import type { CnpjResult } from '@/lib/cnpj-result';
 import { checkCnaeMismatch } from './cnae-mismatch';
 
 export type ContactKind = 'customer' | 'supplier';
@@ -40,7 +40,7 @@ export interface ContactKindConfig {
   invoicesEmptyLabel: string;
 
   /** só o fornecedor cruza CNAE com tipos de produto */
-  fiscalWarning?: (cnpjData: CnpjData, productTypes: string[]) => string | null;
+  fiscalWarning?: (cnpjData: CnpjResult, productTypes: string[]) => string | null;
 
   priceModalEmptyIcon: string;
   priceDetailPriceLabel: string;
