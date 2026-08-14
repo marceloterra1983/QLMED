@@ -24,7 +24,7 @@
   `npm run db:reconcile:verify` on `qlmed_ci`.
 - [ ] T008 [US3] [ROLE-001/AC-006] **STOP.** Do not `migrate deploy` to
   production or the canonical database. Contract + remaining 77 columns are
-  later PRs. Scorecard remains FAIL (80→77, max 5).
+  later PRs. Scorecard remains FAIL (80 Floats until contract, max 5).
 
 ## Later PRs (not this cycle)
 

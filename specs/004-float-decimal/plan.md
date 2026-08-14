@@ -76,4 +76,4 @@ src/lib/__tests__/satellite-stores-prisma.test.ts
 | FR-002/AC-003/AC-005 | versioned expand migration + `qlmed_ci` verify |
 | FR-003/AC-007/AC-008 | store dual-write + focused tests |
 | ROLE-001/AC-006 | no prod deploy in this cycle; human stop |
-| FR-005/AC-009 | scorecard still FAIL at 77 Floats |
+| FR-005/AC-009 | scorecard still FAIL at 80 Floats until contract |

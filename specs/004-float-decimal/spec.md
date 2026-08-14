@@ -71,7 +71,8 @@ and dual-write them from the store.
   Float values.
 - **AC-008**: Focused tests cover the dual-write. HTTP/API money on the
   border may remain `number` until a later contract PR.
-- **AC-009**: After this slice the scorecard still FAILs (`80` → `77`, max 5).
+- **AC-009**: After this expand the scorecard still FAILs: Float count stays 80
+  (sidecars are extra Decimal columns). It drops only at contract (max 5).
 
 ## Requirements
 
