@@ -3,12 +3,12 @@
 import React from 'react';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCnpj, formatDate } from '@/lib/utils';
+import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
   type DuplicataEditForm,
   type InvoiceHeader,
   type Duplicata,
   parseCurrencyInput,
-  roundMoney,
   getParcelaLabel,
   getNick,
 } from './financeiro-utils';
@@ -65,19 +65,19 @@ export default function DuplicataEditPanel({
   const hasInvalidEditingValue = parsedEditingValues.some((value) => !Number.isFinite(value) || value < 0)
     || parsedEditingDiscounts.some((value) => !Number.isFinite(value) || value < 0)
     || parsedEditingValues.some((value, idx) => Number.isFinite(value) && Number.isFinite(parsedEditingDiscounts[idx]) && parsedEditingDiscounts[idx] > value);
-  const totalParcelasEdicao = roundMoney(
-    parsedEditingValues.reduce((sum, value, idx) => {
+  const totalParcelasEdicao = sumMoney(
+    parsedEditingValues.map((value, idx) => {
       const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
       const discount = parsedEditingDiscounts[idx];
       const safeDiscount = Number.isFinite(discount) ? Math.max(0, discount) : 0;
-      return sum + Math.max(0, safeValue - safeDiscount);
-    }, 0)
+      return Math.max(0, addMoney(safeValue, -safeDiscount));
+    }),
   );
-  const totalDescontoEdicao = roundMoney(
-    parsedEditingDiscounts.reduce((sum, value) => sum + (Number.isFinite(value) ? Math.max(0, value) : 0), 0)
+  const totalDescontoEdicao = sumMoney(
+    parsedEditingDiscounts.map((value) => (Number.isFinite(value) ? Math.max(0, value) : 0)),
   );
   const totalNotaEdicao = roundMoney(invoiceHeader?.totalValue || selectedDuplicata?.nfValorTotal || 0);
-  const diferencaEdicao = roundMoney(totalNotaEdicao - totalParcelasEdicao);
+  const diferencaEdicao = addMoney(totalNotaEdicao, -totalParcelasEdicao);
   const parcelasConferem = Math.abs(diferencaEdicao) <= 0.01;
   const totaisValidos = parcelasConferem && !hasInvalidEditingValue;
   const canSaveDetails = !savingDetails && !loadingDetails && editingDuplicatas.length > 0 && totaisValidos;
@@ -195,7 +195,7 @@ export default function DuplicataEditPanel({
                             type="button"
                             onClick={() => onRemoveInstallment(idx)}
                             disabled={editingDuplicatas.length <= 1 || savingDetails}
-                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-red-700 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
                             title="Remover parcela"
                           >
                             <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -301,7 +301,7 @@ export default function DuplicataEditPanel({
                               type="button"
                               onClick={() => onRemoveInstallment(idx)}
                               disabled={editingDuplicatas.length <= 1 || savingDetails}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-700 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
                               title="Remover parcela"
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>

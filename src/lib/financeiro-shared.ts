@@ -9,7 +9,7 @@ import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
 import { financeiroListQuerySchema } from '@/lib/schemas/financeiro';
-import { roundMoney } from '@/lib/money';
+import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 
 const log = createLogger('financeiro-shared');
 
@@ -109,7 +109,7 @@ const DIRECTION_CONFIG = {
 // ---------------------------------------------------------------------------
 
 function getNetInstallmentValue(valor: number, desconto: number): number {
-  return roundMoney(Math.max(0, valor - desconto));
+  return Math.max(0, addMoney(valor, -desconto));
 }
 
 function toEpochDay(dateKey: string): number {
@@ -844,15 +844,13 @@ export async function handleInstallmentsPut(
       };
     });
 
-    const totalParcelas = roundMoney(
-      installments.reduce(
-        (sum: number, item: { dupValor: number; dupDesconto: number }) =>
-          sum + getNetInstallmentValue(item.dupValor, item.dupDesconto),
-        0
-      )
+    const totalParcelas = sumMoney(
+      installments.map((item: { dupValor: number; dupDesconto: number }) =>
+        getNetInstallmentValue(item.dupValor, item.dupDesconto),
+      ),
     );
     const totalNota = roundMoney(Number(invoice.totalValue) || 0);
-    const diff = roundMoney(totalNota - totalParcelas);
+    const diff = addMoney(totalNota, -totalParcelas);
     if (Math.abs(diff) > 0.01) {
       return NextResponse.json(
         {

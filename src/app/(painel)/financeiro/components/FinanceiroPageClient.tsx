@@ -7,6 +7,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCurrency, formatAmount, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import { addMoney, sumMoney } from '@/lib/money';
 import {
   type Duplicata,
   type InvoiceHeader,
@@ -327,9 +328,11 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
       installmentsPayload.push({ dupNumero, dupVencimento: row.dupVencimento, dupValor: roundMoney(parsedValue), dupDesconto: roundMoney(parsedDiscount) });
     }
 
-    const totalParcelas = roundMoney(installmentsPayload.reduce((sum, item) => sum + Math.max(0, item.dupValor - item.dupDesconto), 0));
+    const totalParcelas = sumMoney(
+      installmentsPayload.map((item) => Math.max(0, addMoney(item.dupValor, -item.dupDesconto))),
+    );
     const totalNota = roundMoney(invoiceHeader.totalValue || 0);
-    const diffTotal = roundMoney(totalNota - totalParcelas);
+    const diffTotal = addMoney(totalNota, -totalParcelas);
     if (Math.abs(diffTotal) > 0.01) {
       toast.error(`A soma das parcelas (${formatCurrency(totalParcelas)}) deve bater com o valor da nota (${formatCurrency(totalNota)}).`);
       return;
