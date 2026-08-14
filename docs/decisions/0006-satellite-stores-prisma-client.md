@@ -5,6 +5,7 @@ date: 2026-07-31
 supersedes: ADR-0005
 related_specs:
   - SPEC-002
+  - SPEC-004
 ---
 
 # Stores satélite usam Prisma Client; restam FKs e precisão monetária

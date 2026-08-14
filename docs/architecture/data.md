@@ -36,7 +36,7 @@ and its rollback image can run against the expanded schema:
    replay and drift, and observe at least one healthy deployment cycle. Runtime
    `ensure*Table` / raw DDL and untyped CRUD migration to Prisma is complete
    (ADR-0005/0006); residual satellite work is FKs/`@relation` and Float→Decimal
-   for money fields, not further DDL or access-layer moves.
+   for money fields ([SPEC-004](../../specs/004-float-decimal/spec.md)), not further DDL or access-layer moves.
 3. **Contract:** remove or rename old structures only when neither the running
    image nor the retained `qlmed-app:previous` rollback image depends on them.
 

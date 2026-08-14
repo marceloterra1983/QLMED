@@ -2,7 +2,7 @@
 
 **Status:** Satellite-store migrations are complete (see [`tasks.md`](./tasks.md)). Remaining:
 residual FKs and `Float`→`Decimal` under a separately authorized plan
-(ADR-0006). The current persistence boundary is ADR-0007: one protected
+(ADR-0006, [SPEC-004](../004-float-decimal/spec.md)). The current persistence boundary is ADR-0007: one protected
 persistent `postgres` database through `DATABASE_URL`, with `qlmed_ci` reserved
 for disposable CI replay and tests.
 

@@ -133,7 +133,7 @@ unavailable second database and cannot silently select an arbitrary target.
 
 - Executing production migrations during specification/planning.
 - Adding residual FKs or converting `Float` money fields to `Decimal` in this
-  documentation-only reconciliation.
+  documentation-only reconciliation. Float→Decimal is [SPEC-004](../004-float-decimal/spec.md).
 - Destructive column/table removal before an observation window.
 - Modifying production backup policy.
 - Creating a second persistent QLMED database or migrating historical records
