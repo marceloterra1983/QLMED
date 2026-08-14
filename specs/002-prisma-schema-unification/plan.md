@@ -1,6 +1,6 @@
 # Implementation Plan: Prisma schema unification
 
-**Status:** Phase 11 and the satellite-store migrations are complete. Remaining:
+**Status:** Satellite-store migrations are complete (see [`tasks.md`](./tasks.md)). Remaining:
 residual FKs and `Float`→`Decimal` under a separately authorized plan
 (ADR-0006). The current persistence boundary is ADR-0007: one protected
 persistent `postgres` database through `DATABASE_URL`, with `qlmed_ci` reserved

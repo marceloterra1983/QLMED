@@ -33,21 +33,9 @@ integration behavior belongs in `src/lib`, not duplicated across route files.
 
 ## Persistence boundary
 
-The persistent QLMED runtime has one canonical PostgreSQL database. Every
-application process receives its connection through the single protected
-`DATABASE_URL` variable; the application rejects `qlmed_dev` and parallel URL
-aliases so that environments cannot silently drift to different schemas. In
-the production Compose contract the database name is `postgres`.
-
-CI creates a disposable `qlmed_ci` PostgreSQL service for migration replay and
-tests. It is not a second persistent QLMED environment and is destroyed with
-the job. Local work must disable background services and must not run deploy or
-production migration commands as part of ordinary verification.
-
-The `server-backup` project owns the recovery contract for the canonical
-database through its `qlmed` backup set. A recent backup receipt is a
-precondition for data-changing maintenance; the application never reads backup
-files or backup credentials itself.
+QLMED has one persistent canonical PostgreSQL database (`postgres`) through
+`DATABASE_URL`, plus disposable CI `qlmed_ci`. See
+[ADR-0007](../decisions/0007-single-canonical-database.md).
 
 Production deployment remains driven by the GitHub Actions workflow after CI
 succeeds on `main`.

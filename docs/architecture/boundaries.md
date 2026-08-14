@@ -18,12 +18,9 @@ Prisma schema and migrations are the database source of truth. New tables or
 columns require a migration and migration verification. Raw SQL is reserved for
 cases Prisma cannot express adequately and must remain parameterized.
 
-The runtime has one persistent database boundary: the canonical `postgres`
-database through `DATABASE_URL`. Do not add arbitrary database names,
-environment-specific URL aliases or code paths for `qlmed_dev`; the only
-additional database allowed by the repository contract is the disposable
-`qlmed_ci` service created by CI. Backup and restore decisions belong to the
-`server-backup` project and are checked before data-changing maintenance.
+Persistence boundary: one canonical `postgres` database through `DATABASE_URL`
+and disposable CI `qlmed_ci` — see
+[ADR-0007](../decisions/0007-single-canonical-database.md).
 
 ## Integrations
 

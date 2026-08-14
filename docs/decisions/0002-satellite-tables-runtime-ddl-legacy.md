@@ -7,7 +7,11 @@ related_specs: []
 ---
 
 > **Superseded by [ADR-0005](0005-satellite-runtime-ddl-eliminated.md)** (2026-07-30):
-> runtime DDL/`ensure*Table` already removed from `src/`. Keep this record for
+> the decision below is historical. AS-IS is
+> [ADR-0005](0005-satellite-runtime-ddl-eliminated.md) /
+> [ADR-0006](0006-satellite-stores-prisma-client.md); tests use `qlmed_ci`, not
+> `qlmed_dev` ([ADR-0007](0007-single-canonical-database.md)). Runtime
+> DDL/`ensure*Table` already removed from `src/`. Keep this record for
 > history; do not treat “Option A as current legacy” as the AS-IS.
 
 # Tabelas satélite com DDL em runtime são legado a consolidar em Prisma

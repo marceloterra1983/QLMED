@@ -47,3 +47,6 @@ Adotar o **CI Loop** (`qlmed-app-ci-loop`):
 - Patches deixam de depender só do Dependabot
 - Dívida arquitetural vira track mensurável (não só documento)
 - Risco controlado: sem auto-merge, sem majors automáticos
+- **Implementation status:** decision accepted; the listener and n8n workflow
+  are inactive. Operational status lives in
+  [`docs/continuous-improvement.md`](../continuous-improvement.md).
