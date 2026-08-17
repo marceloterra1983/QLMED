@@ -4,7 +4,8 @@ export {};
  * bootstrap.ts — starts background services once on the server.
  *
  * Imported lazily (dynamic import) from prisma.ts so that:
- *   1. prisma.ts has zero side-effects at import time
+ *   1. prisma.ts kicks off this module at import time only when DATABASE_URL is set
+ *      and QLMED_DISABLE_BACKGROUND_SERVICES is not 'true'
  *   2. sync-scheduler and local-xml-sync share the single PrismaClient from prisma.ts
  *   3. No circular dependency: prisma.ts ➜ (dynamic) bootstrap.ts ➜ sync-scheduler / local-xml-sync ➜ prisma.ts
  */
