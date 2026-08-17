@@ -31,3 +31,13 @@ export const API_KEY_REQUEST_METHOD_HEADER = 'x-qlmed-request-method';
 export function normalizeApiKeyScopes(scopes: string[]) {
   return Array.from(new Set(scopes.map((scope) => scope.trim()).filter(Boolean)));
 }
+
+export function effectiveApiKeyScopes(
+  scopes: string[],
+  creatorRole: string,
+  creatorStatus: string,
+): string[] {
+  if (creatorStatus !== 'active') return [];
+  if (creatorRole === 'admin') return scopes;
+  return scopes.filter((scope) => scope !== 'admin');
+}
