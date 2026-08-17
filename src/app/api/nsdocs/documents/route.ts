@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { NsdocsClient } from '@/lib/nsdocs-client';
+import { isSafeNsdocsDocumentId, NsdocsClient } from '@/lib/nsdocs-client';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { decrypt } from '@/lib/crypto';
 import { apiError } from '@/lib/api-error';
@@ -35,6 +35,10 @@ export async function GET(request: NextRequest) {
 
     // Baixar XML ou PDF de um documento específico
     if (documentId && format) {
+      if (!isSafeNsdocsDocumentId(documentId)) {
+        return NextResponse.json({ error: 'documentId inválido' }, { status: 400 });
+      }
+
       if (format === 'xml') {
         const xml = await client.recuperarXml(documentId);
         return new NextResponse(xml, {
