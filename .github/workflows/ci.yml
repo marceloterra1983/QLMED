@@ -16,11 +16,7 @@ concurrency:
 jobs:
   changes:
     name: changes
-    # Self-hosted: GitHub-hosted minutes blocked by account billing/spending limit
-    # after recovery (2026-07-30). Keep label aligned with production runner.
-    runs-on:
-      - self-hosted
-      - qlmed-prod
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       # Push to main always runs the full app job (CI verification on main).
@@ -62,9 +58,7 @@ jobs:
     name: docs
     needs: changes
     if: needs.changes.outputs.app != 'true'
-    runs-on:
-      - self-hosted
-      - qlmed-prod
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -88,13 +82,11 @@ jobs:
     name: app
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on:
-      - self-hosted
-      - qlmed-prod
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: qlmed_ci
@@ -115,6 +107,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify CI hardening policy
+        run: npm run ci:verify
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -152,7 +147,7 @@ jobs:
         run: npm run db:reconcile:verify
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
@@ -174,9 +169,7 @@ jobs:
     name: quality
     needs: [changes, docs, app]
     if: always() && needs.changes.result == 'success'
-    runs-on:
-      - self-hosted
-      - qlmed-prod
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Gate required status check
