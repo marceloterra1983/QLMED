@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { z } from 'zod';
-import { authOptions } from '@/lib/auth-options';
+import { requireAuth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +31,7 @@ function firstBuildValue(...values: Array<string | undefined>): string | null {
 export async function GET() {
   noBodySchema.safeParse({});
   const start = Date.now();
+  let authenticated = false;
   const requireNonEmptyDb = (process.env.QLMED_REQUIRE_NONEMPTY_DB || 'false').toLowerCase() === 'true';
   const commitSha = firstBuildValue(
     process.env.QLMED_BUILD_COMMIT_SHA,
@@ -75,8 +75,13 @@ export async function GET() {
         })()
       : null;
 
-    // Check if authenticated — details only available with valid session
-    const session = await getServerSession(authOptions);
+    // Details require the same active-user and tokenVersion checks as protected routes.
+    try {
+      await requireAuth();
+      authenticated = true;
+    } catch {
+      authenticated = false;
+    }
 
     if (integrity && !integrity.healthy) {
       const errorResponse: Record<string, unknown> = {
@@ -84,7 +89,7 @@ export async function GET() {
         db: { status: 'connected', latencyMs: dbLatency },
         timestamp: new Date().toISOString(),
       };
-      if (session) {
+      if (authenticated) {
         errorResponse.build = build;
         errorResponse.integrity = integrity;
         errorResponse.error = 'Banco sem dados obrigatórios de produção';
@@ -100,7 +105,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     };
 
-    if (session) {
+    if (authenticated) {
       // Authenticated response: add uptime, memory, integrity
       const [outboxCounts, oldestPending] = await Promise.all([
         prisma.notificationDelivery.groupBy({
@@ -127,13 +132,12 @@ export async function GET() {
 
     return NextResponse.json(publicResponse);
   } catch (error) {
-    const session = await getServerSession(authOptions).catch(() => null);
     const errorResponse: Record<string, unknown> = {
       status: 'error',
       db: { status: 'disconnected' },
       timestamp: new Date().toISOString(),
     };
-    if (session) {
+    if (authenticated) {
       errorResponse.build = build;
       errorResponse.error = error instanceof Error ? error.message : 'Unknown';
     }
