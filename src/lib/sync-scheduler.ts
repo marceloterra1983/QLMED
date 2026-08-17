@@ -4,6 +4,11 @@ import { createLogger } from '@/lib/logger';
 import { syncViaSefaz } from './sync-strategies/sefaz';
 import { syncViaNsdocs } from './sync-strategies/nsdocs';
 import { syncViaReceitaNfse } from './receita-nfse-sync';
+import {
+  markBackgroundServiceError,
+  markBackgroundServiceHeartbeat,
+  markBackgroundServiceStarted,
+} from './background-service-health';
 
 const log = createLogger('auto-sync');
 
@@ -190,6 +195,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
 export function startAutoSync() {
   if (started) return;
   started = true;
+  markBackgroundServiceStarted('auto-sync');
 
   log.info('Scheduler iniciado - verificando a cada 60s');
 
@@ -375,6 +381,7 @@ async function runStartupSync() {
 }
 
 async function checkAndSync() {
+  markBackgroundServiceHeartbeat('auto-sync');
   try {
     // Recover any syncLogs stuck in 'running' for over 30 minutes
     await recoverStuckSyncLogs();
@@ -556,6 +563,7 @@ async function checkAndSync() {
       }
     }
   } catch (error) {
+    markBackgroundServiceError('auto-sync', error);
     log.error({ err: error }, 'Erro no check');
   }
 }

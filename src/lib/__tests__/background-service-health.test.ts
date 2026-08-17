@@ -19,6 +19,6 @@ describe('background service health', () => {
         status: 'running',
       },
     });
-    expect(getBackgroundServiceHealth()['auto-sync'].lastHeartbeatAt).toEqual(expect.any(String));
+    expect(getBackgroundServiceHealth()['auto-sync']?.lastHeartbeatAt).toEqual(expect.any(String));
   });
 });

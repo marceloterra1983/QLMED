@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { getBackgroundServiceHealth } from '@/lib/background-service-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +125,7 @@ export async function GET() {
         counts: Object.fromEntries(outboxCounts.map((row) => [row.status, row._count._all])),
         oldestPendingAt: oldestPending?.createdAt.toISOString() || null,
       };
+      publicResponse.backgroundServices = getBackgroundServiceHealth();
       publicResponse.memory = {
         rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
         heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),

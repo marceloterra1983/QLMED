@@ -24,6 +24,11 @@ import {
   enqueueImport,
   drainImportQueue,
 } from './file-import';
+import {
+  markBackgroundServiceError,
+  markBackgroundServiceHeartbeat,
+  markBackgroundServiceStarted,
+} from '@/lib/background-service-health';
 
 const log = createLogger('local-xml-sync:scheduler');
 
@@ -458,6 +463,8 @@ async function startWatchers(forceReconcile = true): Promise<void> {
 export function startLocalXmlSync(): void {
   if (started) return;
   started = true;
+  const hasCopySource = COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED;
+  markBackgroundServiceStarted('local-xml-sync', { enabled: localXmlWatchEnabled || hasCopySource });
 
   // OneDrive/source copy runs independently of local filesystem watching,
   // so emitted invoices sync even when LOCAL_XML_WATCH_ENABLED=false (production).
@@ -467,6 +474,7 @@ export function startLocalXmlSync(): void {
 
     if (!copyFromSourceTimer) {
       copyFromSourceTimer = setInterval(() => {
+        markBackgroundServiceHeartbeat('local-xml-sync');
         void runCopyFromSource('interval');
       }, COPY_FROM_SOURCE_INTERVAL_MS);
     }
@@ -483,13 +491,15 @@ export function startLocalXmlSync(): void {
 
   if (!rescanTimer) {
     rescanTimer = setInterval(() => {
-      void startWatchers(true);
+      markBackgroundServiceHeartbeat('local-xml-sync');
+      void startWatchers(true).catch((error) => markBackgroundServiceError('local-xml-sync', error));
     }, RESCAN_INTERVAL_MS);
   }
 
   if (!bootstrapTimer) {
     bootstrapTimer = setInterval(() => {
-      void startWatchers(true);
+      markBackgroundServiceHeartbeat('local-xml-sync');
+      void startWatchers(true).catch((error) => markBackgroundServiceError('local-xml-sync', error));
     }, BOOTSTRAP_RETRY_INTERVAL_MS);
   }
 
