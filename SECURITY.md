@@ -15,8 +15,8 @@ _Nenhuma aceitação de risco ativa no momento._
 - **Severity:** moderate
 - **Former affected path:** `postcss@8.4.31` bundled by older Next releases
   (documented against `next@15.5.19`).
-- **Remediation:** `package.json` override `postcss@8.5.25` (resolved
-  `>=8.5.10`) with `next@15.5.22`. Meets the stated remediation trigger.
+- **Remediation:** `package.json` override `postcss@8.5.26` (resolved
+  `>=8.5.10`) with `next@15.5.23`. Meets the stated remediation trigger.
 - **Release decision:** acceptance closed; HIGH and CRITICAL findings remain
   release-blocking.
 
