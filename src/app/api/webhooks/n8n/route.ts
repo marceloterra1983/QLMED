@@ -45,6 +45,14 @@ function getInternalBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
+async function forwardResponse(action: string, response: Response): Promise<NextResponse> {
+  const result = await response.json().catch(() => ({ error: 'Downstream response was not valid JSON' }));
+  return NextResponse.json(
+    { ok: response.ok, action, result },
+    { status: response.ok ? 200 : response.status },
+  );
+}
+
 export async function POST(req: NextRequest) {
   if (!validateApiKey(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -70,20 +78,18 @@ export async function POST(req: NextRequest) {
         const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
-          body: JSON.stringify(payload || {}),
+          body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'sync-cte': {
-        const res = await fetch(`${baseUrl}/api/cte/sync`, {
+        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
-          body: JSON.stringify(payload || {}),
+          body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'process-xml': {
@@ -99,14 +105,13 @@ export async function POST(req: NextRequest) {
         }
         const formData = new FormData();
         const buffer = Buffer.from(payload.xml, 'base64');
-        formData.append('file', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
+        formData.append('files', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
         const res = await fetch(`${baseUrl}/api/invoices/upload`, {
           method: 'POST',
           headers: { 'x-api-key': getApiKey() },
           body: formData,
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'sync-ncm-bulk': {
@@ -115,8 +120,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'backfill-tax-data': {
@@ -124,8 +128,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'batch-cnpj-check': {
@@ -134,8 +137,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'notify': {
