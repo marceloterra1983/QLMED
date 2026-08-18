@@ -1,8 +1,8 @@
 # Implementation Plan: Float→Decimal (expand/contract)
 
-**Status:** First expand implemented (`InvoiceDuplicata`); disposable-database
-verification remains pending. Production deploy is not authorized by this
-agent session.
+**Status:** First expand implemented (`InvoiceDuplicata`) and verified by
+replay/reconciliation on disposable `qlmed_ci`. Production deploy is not
+authorized by this agent session.
 
 **Branch**: `feat/004-float-decimal` | **Spec**: [spec.md](./spec.md)
 
@@ -42,7 +42,7 @@ the previous application image.
 1. Land this spec (contract, inventory, ROLE-001, out of scope).
 2. Expand `InvoiceDuplicata` with three nullable Decimal sidecars. **Done.**
 3. Dual-write from `invoice-duplicata-store` with tests. **Done.**
-4. Prove replay/drift on `qlmed_ci` when a disposable `DATABASE_URL` is available.
+4. Prove replay/drift on `qlmed_ci`. **Done.**
 5. **Stop for human authorization** before any production apply.
 6. Later PRs: remaining 77 columns, then contract, then HTTP types.
 

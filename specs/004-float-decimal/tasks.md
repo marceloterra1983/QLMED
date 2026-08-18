@@ -20,12 +20,12 @@
   `src/lib/invoice-duplicata-store.ts`.
 - [x] T006 [US4] [AC-008/TEST-002] Extend
   `src/lib/__tests__/satellite-stores-prisma.test.ts` for dual-write.
-- [ ] T007 [US3] [AC-005/TEST-003] Prove `npm run db:migrate:verify` and
-  `npm run db:reconcile:verify` on `qlmed_ci` (blocked in this session because
-  no disposable `DATABASE_URL` was provided; do not substitute the canonical DB).
-- [ ] T008 [US3] [ROLE-001/AC-006] **STOP.** Do not `migrate deploy` to
-  production or the canonical database. Contract + remaining 77 columns are
-  later PRs. Scorecard remains FAIL (80 Floats until contract, max 5).
+- [x] T007 [US3] [AC-005/TEST-003] Prove `npm run db:migrate:verify` and
+  `npm run db:reconcile:verify` on `qlmed_ci`.
+- [x] T008 [US3] [ROLE-001/AC-006] **STOP recorded.** No `migrate deploy` was
+  run against production or the canonical database. Contract + remaining 77
+  columns are later PRs. Scorecard remains FAIL (80 Floats until contract,
+  max 5).
 
 ## Later PRs (not this cycle)
 
