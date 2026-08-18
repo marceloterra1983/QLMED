@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { listProductSettingsCatalogEntries, upsertProductSettingsCatalogEntry, type ProductSettingsCatalogSection, type ProductSettingsCatalogEntry } from '@/lib/product-settings-catalog';
@@ -8,7 +7,6 @@ import { getCfopDescription } from '@/lib/cfop-descriptions';
 import prisma from '@/lib/prisma';
 import { apiError } from '@/lib/api-error';
 
-const noBodySchema = z.object({}).optional();
 
 type LineNode = {
   name: string;
@@ -53,7 +51,6 @@ function clean(value: unknown): string | null {
 }
 
 export async function GET() {
-  noBodySchema.safeParse({});
   try {
     let auth: { userId: string; role: string };
     try {

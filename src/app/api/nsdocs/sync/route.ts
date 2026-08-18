@@ -9,8 +9,25 @@ import { syncViaReceitaNfse } from '@/lib/receita-nfse-sync';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { nsdocsSyncSchema } from '@/lib/schemas/nsdocs';
+import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('nsdocs/sync');
+
+async function syncAlreadyRunningResponse(companyId: string) {
+  const runningSync = await prisma.syncLog.findFirst({
+    where: { companyId, status: 'running' },
+    orderBy: { startedAt: 'desc' },
+  });
+  return NextResponse.json(
+    {
+      error: 'Já existe uma sincronização em andamento',
+      syncMethod: runningSync?.syncMethod,
+      syncLogId: runningSync?.id,
+      startedAt: runningSync?.startedAt,
+    },
+    { status: 409 },
+  );
+}
 
 export async function POST(request: NextRequest) {
   let userId: string;
@@ -57,25 +74,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Certificado digital não configurado para integrar com Receita NFS-e' }, { status: 400 });
     }
 
-    // Guard against concurrent syncs: the auto-sync scheduler (sync-scheduler.ts)
-    // checks for 'running' syncLogs before starting; the manual endpoint must do the same
-    // or two overlapping runs race on `lastSyncAt` / `lastNsu` cursors.
-    const runningSync = await prisma.syncLog.findFirst({
-      where: { companyId, status: 'running' },
-      orderBy: { startedAt: 'desc' },
-    });
-    if (runningSync) {
-      return NextResponse.json(
-        {
-          error: 'Já existe uma sincronização em andamento',
-          syncMethod: runningSync.syncMethod,
-          syncLogId: runningSync.id,
-          startedAt: runningSync.startedAt,
-        },
-        { status: 409 },
-      );
-    }
-
     // SEFAZ: se method='sefaz' explícito OU fallback automático (sem method)
     if ((method === 'sefaz' || !method) && company.certificateConfig) {
       const cooldown = await getSefazCooldown(companyId);
@@ -93,14 +91,8 @@ export async function POST(request: NextRequest) {
       } else {
         const cert = company.certificateConfig;
 
-        const syncLog = await prisma.syncLog.create({
-          data: {
-            companyId,
-            syncMethod: 'sefaz',
-            status: 'running',
-            errorMessage: null
-          }
-        });
+        const syncLog = await createSyncLogIfIdle(companyId, 'sefaz');
+        if (!syncLog) return syncAlreadyRunningResponse(companyId);
 
         // Processamento Assíncrono (Fire and forget para não bloquear request)
         syncViaSefaz(companyId, company.cnpj, company.razaoSocial, {
@@ -124,13 +116,8 @@ export async function POST(request: NextRequest) {
 
     // NSDocs: se method='nsdocs' explícito OU fallback automático (sem method)
     if ((method === 'nsdocs' || !method) && company.nsdocsConfig) {
-      const syncLog = await prisma.syncLog.create({
-        data: {
-          companyId,
-          syncMethod: 'nsdocs',
-          status: 'running'
-        }
-      });
+      const syncLog = await createSyncLogIfIdle(companyId, 'nsdocs');
+      if (!syncLog) return syncAlreadyRunningResponse(companyId);
 
       // Fire-and-forget: delegate to shared sync function
       syncViaNsdocs(companyId, company.cnpj, company.razaoSocial, company.nsdocsConfig, syncLog.id).catch((err) => {
@@ -146,13 +133,8 @@ export async function POST(request: NextRequest) {
 
     // Receita NFS-e (ADN): apenas quando solicitado explicitamente.
     if (method === 'receita_nfse' && company.receitaNfseConfig && company.certificateConfig) {
-      const syncLog = await prisma.syncLog.create({
-        data: {
-          companyId,
-          syncMethod: 'receita_nfse',
-          status: 'running'
-        }
-      });
+      const syncLog = await createSyncLogIfIdle(companyId, 'receita_nfse');
+      if (!syncLog) return syncAlreadyRunningResponse(companyId);
 
       // Fire-and-forget: delegate to shared sync function
       syncViaReceitaNfse(

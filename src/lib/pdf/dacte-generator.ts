@@ -224,6 +224,10 @@ export function extractCteData(parsed: XmlNode, invoice: PdfInvoiceView): CteDat
 
   const idAttr = gv(infCte, '$', 'Id');
   const idKey = idAttr ? idAttr.replace(/^CTe/, '') : '';
+  const normalizeAccessKey = (value: unknown): string => {
+    const key = String(value ?? '').trim();
+    return /^\d{44}$/.test(key) ? key : '';
+  };
   const tomadorBase = parseCteTomador(infCte as unknown as CTeInfCte);
   const toma4 = (ide?.toma4 || infCte?.toma4 || (infCte?.infCteNorm as XmlNode)?.toma4 || {}) as XmlNode;
   const toma3Raw = ide?.toma3 as XmlNode | string | undefined;
@@ -302,7 +306,9 @@ export function extractCteData(parsed: XmlNode, invoice: PdfInvoiceView): CteDat
   }
 
   return {
-    chCTe: gv(prot, 'chCTe') || idKey || invoice.accessKey,
+    chCTe: normalizeAccessKey(gv(prot, 'chCTe'))
+      || normalizeAccessKey(idKey)
+      || normalizeAccessKey(invoice.accessKey),
     nCT: gv(ide, 'nCT') || invoice.number,
     serie: gv(ide, 'serie') || invoice.series || '1',
     modelo: gv(ide, 'mod') || '57',
@@ -505,7 +511,7 @@ export function buildCteHtml(d: CteData, autoPrint: boolean): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${esc(title)}</title>
   <style>
     ${PDF_CSS}
     ${DACTE_CSS}

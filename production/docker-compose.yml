@@ -71,7 +71,6 @@ services:
       context: ./app
       network: host
       args:
-        QLMED_API_KEY: ${QLMED_API_KEY}
         QLMED_BUILD_COMMIT_SHA: ${QLMED_BUILD_COMMIT_SHA:-unknown}
         QLMED_BUILD_DEPLOYED_AT: ${QLMED_BUILD_DEPLOYED_AT:-}
         QLMED_BUILD_SOURCE: ${QLMED_BUILD_SOURCE:-manual}

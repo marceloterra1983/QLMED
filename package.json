@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "ci:verify": "bash ./scripts/verify-ci-hardening.sh",
     "docs:validate": "node ./scripts/validate-docs.mjs",
     "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "check:deploy": "bash ./scripts/check-deploy-alignment.sh",
@@ -68,12 +70,14 @@
     "vitest": "^4.1.10"
   },
   "overrides": {
+    "deepmerge-ts": "8.0.1",
     "uuid": "11.1.1",
     "postcss": "8.5.26",
     "brace-expansion": "5.0.9",
     "fast-uri": "3.1.5",
     "hono": "4.12.34",
     "ip-address": "10.3.1",
+    "js-yaml": "4.3.1",
     "@prisma/dev": {
       "@hono/node-server": "2.0.11",
       "valibot": "1.4.2"

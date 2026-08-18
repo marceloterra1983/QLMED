@@ -8,6 +8,7 @@ import { saveXmlToFile } from '@/lib/xml-file-store';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { prisma } from '@/lib/prisma';
+import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('receita-nfse-sync');
 
@@ -270,9 +271,9 @@ export async function syncViaReceitaNfse(
 ) {
   const syncLog = existingSyncLogId
     ? { id: existingSyncLogId }
-    : await prisma.syncLog.create({
-        data: { companyId, syncMethod: 'receita_nfse', status: 'running' },
-      });
+    : await createSyncLogIfIdle(companyId, 'receita_nfse');
+
+  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
 
   try {
     const result = await syncReceitaNfseByNsu({
