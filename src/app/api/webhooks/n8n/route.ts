@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import { consumeWebhookNonce, verifyWebhookSignature } from '@/lib/n8n-webhook-security';
 
 const log = createLogger('webhooks/n8n');
 
@@ -37,6 +38,18 @@ function validateApiKey(req: NextRequest): boolean {
   }
 }
 
+function validateWebhookSignature(req: NextRequest, body: string): boolean {
+  const secret = process.env.N8N_WEBHOOK_SECRET;
+  if (!secret) return true;
+
+  const timestamp = req.headers.get('x-qlmed-timestamp') || '';
+  const nonce = req.headers.get('x-qlmed-nonce') || '';
+  const signature = req.headers.get('x-qlmed-signature') || '';
+  if (!verifyWebhookSignature({ secret, timestamp, nonce, signature, body })) return false;
+
+  return consumeWebhookNonce(nonce);
+}
+
 function getInternalBaseUrl(): string {
   return (
     process.env.QLMED_INTERNAL_URL ||
@@ -58,14 +71,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let rawBody: unknown;
+  let rawBody: string;
   try {
-    rawBody = await req.json();
+    rawBody = await req.text();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const parsed = n8nWebhookSchema.safeParse(rawBody);
+  if (!validateWebhookSignature(req, rawBody)) {
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+  }
+
+  let payloadBody: unknown;
+  try {
+    payloadBody = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const parsed = n8nWebhookSchema.safeParse(payloadBody);
   if (!parsed.success) return apiValidationError(parsed.error);
 
   const { action, payload } = parsed.data;

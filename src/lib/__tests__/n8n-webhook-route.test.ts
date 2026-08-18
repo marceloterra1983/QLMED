@@ -1,15 +1,17 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/webhooks/n8n/route';
+import { createWebhookSignature } from '@/lib/n8n-webhook-security';
 
 const fetchMock = vi.fn();
 
-function request(body: unknown): NextRequest {
+function request(body: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost/api/webhooks/n8n', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-api-key': 'test-key',
+      ...headers,
     },
     body: JSON.stringify(body),
   });
@@ -24,7 +26,33 @@ describe('n8n webhook forwarding', () => {
 
   afterEach(() => {
     delete process.env.QLMED_API_KEY;
+    delete process.env.N8N_WEBHOOK_SECRET;
     vi.unstubAllGlobals();
+  });
+
+  it('requires a fresh HMAC signature when the webhook secret is configured', async () => {
+    process.env.N8N_WEBHOOK_SECRET = 'shared-secret';
+    const body = { action: 'notify', payload: { id: '1' } };
+    const rawBody = JSON.stringify(body);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const nonce = 'nonce-route-1';
+    const signature = createWebhookSignature(process.env.N8N_WEBHOOK_SECRET, timestamp, nonce, rawBody);
+
+    const response = await POST(request(body, {
+      'x-qlmed-timestamp': timestamp,
+      'x-qlmed-nonce': nonce,
+      'x-qlmed-signature': signature,
+    }));
+
+    expect(response.status).toBe(200);
+  });
+
+  it('rejects unsigned webhook requests when the secret is configured', async () => {
+    process.env.N8N_WEBHOOK_SECRET = 'shared-secret';
+
+    const response = await POST(request({ action: 'notify' }));
+
+    expect(response.status).toBe(401);
   });
 
   it('routes sync-cte through the NSDocs sync handler and preserves downstream errors', async () => {
