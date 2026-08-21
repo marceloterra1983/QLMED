@@ -57,6 +57,30 @@ async function recordFailedLogin(userId: string | null, email: string, type: 'pi
   }
 }
 
+async function findUserByPassword(password: string) {
+  const candidates = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+      name: true,
+      role: true,
+      status: true,
+      allowedPages: true,
+      failedAttempts: true,
+      lockedUntil: true,
+    },
+  });
+  const matches = [];
+  for (const candidate of candidates) {
+    if (await compare(password, candidate.passwordHash)) {
+      matches.push(candidate);
+    }
+  }
+  if (matches.length !== 1) return null;
+  return matches[0];
+}
+
 async function recordSuccessfulLogin(userId: string) {
   try {
     await prisma.user.update({
@@ -71,88 +95,75 @@ async function recordSuccessfulLogin(userId: string) {
   }
 }
 
+export async function authorizeCredentials(
+  credentials: Record<string, string> | undefined,
+) {
+  if (!credentials?.password) {
+    throw new Error('Senha é obrigatória');
+  }
+
+  // Identity is the access password from cadastro (or PIN_MAP_JSON).
+  // Email is not a login factor — bcrypt is not reversible, so we scan
+  // the small user table and require exactly one match.
+  const pinMap = getPinMap();
+  const pinEmail = pinMap[credentials.password]?.trim().toLowerCase();
+  const user = pinEmail
+    ? await prisma.user.findUnique({ where: { email: pinEmail } })
+    : await findUserByPassword(credentials.password);
+
+  if (!user) {
+    await recordFailedLogin(null, pinEmail || 'unknown', pinEmail ? 'pin' : 'password', 'user_not_found');
+    throw new Error('Senha inválida');
+  }
+
+  const accountLimit = checkRateLimit(`login-account:${user.id}`, RATE_LIMITS.loginAccount);
+  if (!accountLimit.allowed) {
+    log.warn({ userId: user.id, resetAt: accountLimit.resetAt }, 'Login account rate limited');
+    throw new Error('TOO_MANY_ATTEMPTS');
+  }
+
+  // Brute-force lockout gate. Permanent lock at MAX_FAILED_ATTEMPTS
+  // (admin must reset); intermediate soft-lock via lockedUntil prevents
+  // rapid enumeration between failures.
+  if (user.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+    log.warn({ userId: user.id, email: user.email }, 'Login attempt on locked account');
+    throw new Error('ACCOUNT_LOCKED');
+  }
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    log.warn({ userId: user.id, email: user.email, until: user.lockedUntil }, 'Login attempt during soft-lock');
+    throw new Error('ACCOUNT_LOCKED');
+  }
+
+  if (user.status === 'pending') {
+    throw new Error('ACCOUNT_PENDING');
+  }
+  if (user.status === 'rejected') {
+    throw new Error('ACCOUNT_REJECTED');
+  }
+  if (user.status === 'inactive') {
+    throw new Error('ACCOUNT_INACTIVE');
+  }
+
+  await recordSuccessfulLogin(user.id);
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    allowedPages: user.allowedPages,
+  };
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Senha', type: 'password' },
+        password: { label: 'Senha de acesso', type: 'password' },
       },
-      async authorize(credentials) {
-        if (!credentials?.password) {
-          throw new Error('Senha é obrigatória');
-        }
-        const submittedEmail = credentials.email?.trim().toLowerCase();
-        if (!submittedEmail) {
-          await recordFailedLogin(null, 'unknown', 'password', 'missing_email');
-          throw new Error('Email é obrigatório');
-        }
-
-        const accountLimit = checkRateLimit(`login-account:${submittedEmail}`, RATE_LIMITS.loginAccount);
-        if (!accountLimit.allowed) {
-          log.warn({ email: submittedEmail, resetAt: accountLimit.resetAt }, 'Login account rate limited');
-          throw new Error('TOO_MANY_ATTEMPTS');
-        }
-
-        // PINs are only accepted when the submitted email matches the PIN owner.
-        const pinMap = getPinMap();
-        const pinEmail = pinMap[credentials.password]?.trim().toLowerCase();
-        const isPinLogin = Boolean(pinEmail);
-
-        const user = await prisma.user.findUnique({
-          where: { email: submittedEmail },
-        });
-
-        if (!user) {
-          await recordFailedLogin(null, submittedEmail, isPinLogin ? 'pin' : 'password', 'user_not_found');
-          throw new Error('Senha inválida');
-        }
-
-        // Brute-force lockout gate. Permanent lock at MAX_FAILED_ATTEMPTS
-        // (admin must reset); intermediate soft-lock via lockedUntil prevents
-        // rapid enumeration between failures.
-        if (user.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-          log.warn({ userId: user.id, email: submittedEmail }, 'Login attempt on locked account');
-          throw new Error('ACCOUNT_LOCKED');
-        }
-        if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-          log.warn({ userId: user.id, email: submittedEmail, until: user.lockedUntil }, 'Login attempt during soft-lock');
-          throw new Error('ACCOUNT_LOCKED');
-        }
-
-        if (isPinLogin && pinEmail !== submittedEmail) {
-          await recordFailedLogin(user.id, submittedEmail, 'pin', 'pin_email_mismatch');
-          throw new Error('Email ou senha inválidos');
-        }
-
-        // If not a PIN login, verify bcrypt password.
-        if (!isPinLogin && !(await compare(credentials.password, user.passwordHash))) {
-          await recordFailedLogin(user.id, submittedEmail, 'password', 'bcrypt_mismatch');
-          throw new Error('Email ou senha inválidos');
-        }
-
-        if (user.status === 'pending') {
-          throw new Error('ACCOUNT_PENDING');
-        }
-        if (user.status === 'rejected') {
-          throw new Error('ACCOUNT_REJECTED');
-        }
-        if (user.status === 'inactive') {
-          throw new Error('ACCOUNT_INACTIVE');
-        }
-
-        await recordSuccessfulLogin(user.id);
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          allowedPages: user.allowedPages,
-        };
-      },
+      authorize: authorizeCredentials,
     }),
   ],
   session: {
