@@ -11,7 +11,10 @@ specify --version
 
 O CLI no host pode estar à frente do pin do projeto. O updater diário mantém o
 CLI atual, mas não altera automaticamente a integração versionada do projeto;
-esse upgrade continua sujeito à política manual abaixo.
+esse upgrade continua sujeito à política manual abaixo. Cursor e CI obrigam o
+uso do pin atual: [ADR-0009](./decisions/0009-ai-tooling-auto-refresh.md),
+`npm run ai-tooling:check`, rules em `.cursor/rules/` e skills em
+`.cursor/skills/speckit-*`.
 
 The project uses the `codex` integration in skills mode. Configuration and
 installed skills are committed under `.specify/` and `.agents/skills/`.
@@ -74,4 +77,10 @@ Validação local de docs do app:
 ```bash
 npm run docs:validate
 npm run docs:validate:test
+npm run ai-tooling:check
+npm run ai-tooling:check:test
 ```
+
+O workflow semanal `.github/workflows/ai-tooling-drift.yml` compara o pin e o
+CLI Graphify com o latest público e abre ou atualiza a issue `[ai-tooling-drift]`.
+Ele não altera constituição, templates nem o pin.

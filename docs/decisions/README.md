@@ -17,3 +17,7 @@ The current QLMED persistence boundary is [ADR-0007](./0007-single-canonical-dat
 one protected persistent `postgres` database through `DATABASE_URL`, with
 `qlmed_ci` reserved for disposable CI replay. Architecture and SPEC-002 should
 link to that record instead of duplicating the contract.
+
+AI clients must use Spec Kit and Graphify as [ADR-0009](./0009-ai-tooling-auto-refresh.md):
+always-on Cursor rules/hooks, fail-closed `npm run ai-tooling:check`, automatic
+CLI/graph refresh, and pin upgrades only by PR.
