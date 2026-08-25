@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/session-start.mjs"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/post-edit-graphify.mjs",
+        "matcher": "Write|StrReplace|EditNotebook"
+      }
+    ]
+  }
+}

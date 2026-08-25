@@ -77,6 +77,8 @@ jobs:
         run: |
           npm run docs:validate:test
           npm run docs:validate
+          npm run ai-tooling:check:test
+          npm run ai-tooling:check
 
   app:
     name: app
@@ -139,6 +141,8 @@ jobs:
         run: |
           npm run docs:validate:test
           npm run docs:validate
+          npm run ai-tooling:check:test
+          npm run ai-tooling:check
 
       - name: Replay and verify migration history
         run: bash ./scripts/verify-migrations.sh
