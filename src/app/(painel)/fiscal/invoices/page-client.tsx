@@ -9,7 +9,7 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatAmount } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -357,19 +357,19 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Emitente</label>
-            <input type="text" placeholder="ex: 00.000.000/0001-91" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+            <input type="text" placeholder="ex: 00.000.000/0001-91" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tipo de NF-e</label>
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all">
+            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={FILTER_INPUT_CLS}>
               <option value="">Todos</option>
               {getCfopTagOptions().map((tag) => <option key={tag} value={tag}>{getReceivedTagLabel(tag)}</option>)}
             </select>

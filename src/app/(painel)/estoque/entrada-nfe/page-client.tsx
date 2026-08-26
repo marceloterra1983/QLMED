@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
-import { formatDate, formatAmount } from '@/lib/utils';
+import { formatDate, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
 const LotEditModal = dynamic(() => import('@/components/LotEditModal'), { ssr: false });
@@ -964,11 +964,11 @@ export default function EntradaNfePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fornecedor / Número</label>
-            <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+            <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_INPUT_CLS}>
               <option value="">Todas</option>
               <option value="pending">Pendentes</option>
               <option value="partial">Parciais</option>
@@ -978,11 +978,11 @@ export default function EntradaNfePage() {
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
             </div>
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
             </div>
           </div>
           <div>

@@ -15,6 +15,7 @@ module.exports = {
         'background-light': '#f8fafc',
         'background-dark': '#0f172a',
         'card-dark': '#1e293b',
+        'surface-sunken': '#1a1e2e',
       },
       fontFamily: {
         display: ['var(--font-manrope)', 'sans-serif'],

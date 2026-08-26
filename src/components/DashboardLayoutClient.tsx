@@ -49,6 +49,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
       <AccessLogTracker />
       <Sidebar
         pathname={pathname}
@@ -61,7 +62,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
         onMouseDown={handleMouseDown}
         onCloseMobile={() => setSidebarOpen(false)}
       />
-      <main id="main-content" className="flex-1 min-w-0 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 flex flex-col h-full relative bg-background-light dark:bg-background-dark">
         <header className="h-14 flex items-center gap-4 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex-shrink-0 z-20 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menu de navegação" className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white">
             <span className="material-symbols-outlined">menu</span>
@@ -72,7 +73,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
               <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{page.label}</span>
             </div>
           ) : (
-            <button onClick={() => { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light'); }} className="relative w-[100px] h-[30px] cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Alternar tema claro/escuro">
+            <button onClick={() => { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('qlmed-theme', isDark ? 'dark' : 'light'); }} className="relative w-[100px] h-[30px] cursor-pointer transition-transform hover:scale-105 active:scale-95" title="Alternar tema claro/escuro" aria-label="Alternar tema claro ou escuro">
               <Image src="/logo.png" alt="QL MED" fill sizes="100px" className="object-contain dark:brightness-0 dark:invert" />
             </button>
           )}
