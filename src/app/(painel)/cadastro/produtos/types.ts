@@ -56,7 +56,6 @@ export interface ProductsSummary {
   totalProducts: number;
   productsWithAnvisa: number;
   totalQuantity: number;
-  invoicesProcessed: number;
 }
 
 export interface ProductsResponse {

@@ -16,8 +16,13 @@ import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
 
 /**
- * Cards de resumo do cadastro. Os quatro números já vinham prontos da API
+ * Cards de resumo do cadastro. Estes três números já vinham prontos da API
  * (`ProductsSummary`) e ficavam apenas no estado, sem nunca chegar à tela.
+ *
+ * Eram QUATRO. `invoicesProcessed` foi removido daqui e da API: valia 0 fixo em
+ * products/list/route.ts e nunca foi calculado. Exibi-lo teria transformado um
+ * campo morto e inofensivo numa métrica operacional errada — o defeito que esta
+ * própria mudança existe para corrigir em outras telas.
  *
  * Classes de cor literais por card — classe montada por template string não é
  * enxergada pelo Tailwind no build e sai sem cor.
@@ -31,12 +36,11 @@ const SUMMARY_CARDS: Array<{
   { key: 'totalProducts', label: 'Total de Produtos', icon: 'inventory_2', iconClasses: 'bg-primary/10 text-primary' },
   { key: 'productsWithAnvisa', label: 'Com ANVISA', icon: 'medication', iconClasses: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' },
   { key: 'totalQuantity', label: 'Quantidade Total', icon: 'inventory', iconClasses: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  { key: 'invoicesProcessed', label: 'NF-e Processadas', icon: 'receipt_long', iconClasses: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
 ];
 
 function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
       {SUMMARY_CARDS.map(({ key, label, icon, iconClasses }) => (
         <div
           key={key}
@@ -64,7 +68,7 @@ export default function ProdutosPage() {
 
   // --- server-paginated data ---
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [summary, setSummary] = useState<ProductsSummary>({ totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
+  const [summary, setSummary] = useState<ProductsSummary>({ totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [meta, setMeta] = useState<ProductsResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,7 +242,7 @@ export default function ProdutosPage() {
       if (!res.ok) throw new Error('Falha ao carregar produtos');
       const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
       setProducts(data.products || []);
-      setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
+      setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
       setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
       setMeta(data.meta || null);
       if (data.needsRebuild && !rebuiltOnceRef.current) {
@@ -250,7 +254,7 @@ export default function ProdutosPage() {
             setIsRebuilding(false);
             fetch(`/api/products/list?${params}`).then((r) => r.json()).then((d: ProductsResponse) => {
               setProducts(d.products || []);
-              setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0, invoicesProcessed: 0 });
+              setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
               setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
               setMeta(d.meta || null);
             }).catch(() => {});
