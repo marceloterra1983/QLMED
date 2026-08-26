@@ -82,7 +82,13 @@ As constantes e o bloco de bloqueio deixam de ser inalcançáveis, então perman
 
 `MAX_FAILED_ATTEMPTS = 10` é bloqueio permanente até intervenção. Com 8 usuários e um deles sendo o dono, bloquear a própria conta sem caminho de saída é risco real.
 
-[NEEDS CLARIFICATION: a recuperação deve ser (a) admin destravando em Sistema › Usuários, (b) expiração automática após período maior, ou (c) as duas? A opção (a) falha se a conta bloqueada for a única admin.]
+**Decidido pelo dono em 2026-08-26: (c), as duas.**
+
+Admin destrava em Sistema › Usuários, **e** o bloqueio permanente expira sozinho após período longo. As duas juntas porque cada uma cobre a falha da outra: destravar por admin é imediato mas inalcançável se a conta trancada for a única admin; a expiração sempre existe mas é lenta demais para uso corrente.
+
+Consequência aceita: `MAX_FAILED_ATTEMPTS` deixa de ser bloqueio *permanente* e passa a ser bloqueio *longo*. O comentário atual do arquivo diz "Permanent account lock" e precisa mudar junto, senão volta a haver documentação que mente.
+
+[NEEDS CLARIFICATION: a duração da expiração longa. 24h é o palpite razoável; é número a calibrar, não decisão estrutural.]
 
 ## Estratégia de testes
 
