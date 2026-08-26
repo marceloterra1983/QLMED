@@ -146,6 +146,6 @@ A sexta é a que protege a feature no futuro: sem ela, um tipo novo entra no enu
 ## Fora deste modelo
 
 - **Preferência por canal** (e-mail sim, WhatsApp não): a spec trata preferência por evento. Exigiria `channel` na chave única — expansão futura, não omissão.
-- **Histórico de mudanças**: `updatedAt` diz quando mudou, não para quê. Auditoria completa é FR-009, que grava em `AccessLog`, e cujo valor de `AccessLogAction` continua em aberto.
+- **Histórico de mudanças**: `updatedAt` diz quando mudou, não para quê nem por quem. A trilha é FR-009, gravada em `AccessLog` com a ação `user_updated` e o tipo alterado no `path` — tabela existente, sem histórico próprio aqui.
 - **Preferência por empresa**: ver "Ausência de `companyId`".
 - **Preferência de administrador sobre outro usuário**: FR-005 restringe cada um às próprias.

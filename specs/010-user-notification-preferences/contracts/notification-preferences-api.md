@@ -110,11 +110,23 @@ O `500` nunca expõe a mensagem interna: `apiError` registra por Pino e devolve 
 
 ## Registro em log de acesso
 
-FR-009 pede registro da alteração. **Bloqueado por decisão em aberto**: qual valor de `AccessLogAction` usar.
+FR-009 pede registro da alteração. **Decidido**: reusar `user_updated`, valor já existente de `AccessLogAction` (dono, 2026-08-26).
 
-O enum tem hoje `user_updated`, que descreve administrador alterando usuário — semanticamente diferente de usuário mudando a própria preferência. Um valor próprio auditaria melhor, mas mexe num enum compartilhado.
+Consequência para esta rota: `user_updated` passa a cobrir dois eventos distintos — administrador alterando um usuário, e usuário alterando a própria preferência. O `path` é o que os separa, seguindo o precedente de `requireSessionRole`, que qualifica `permission_denied` com `path: "required=session:${minRole}"` (`auth.ts:224`).
 
-Registrado como pendência do dono no plano. A rota deve escrever no `AccessLog` **assim que o valor for decidido**; até lá, não inventar um.
+O `PUT` grava, portanto:
+
+```ts
+{ userId, action: 'user_updated', path: 'notification-preferences:invoice_received' }
+```
+
+Regras do registro:
+
+- Só o `PUT` grava. `GET` não é alteração.
+- Um registro por requisição, listando os tipos alterados no `path` — não um por item.
+- Gravação **não bloqueante**: falha ao escrever o log não pode derrubar a gravação da preferência. Segue o padrão já usado em `auth.ts:123-125` e `:216-224`, onde o `create` leva `.catch` com `log.warn`.
+- `PUT` que não muda nada (mesmo valor) **também** registra. O log é de intenção, não de diferença.
+- O `path` nunca carrega valor de preferência, só o tipo — não há segredo aqui, mas o log não é lugar de estado.
 
 ## Contratos verificáveis
 

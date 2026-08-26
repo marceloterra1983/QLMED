@@ -165,9 +165,22 @@ Explícito, conforme exigência da constituição para specs:
 - **Interface de administrador para editar preferência alheia**: FR-005 restringe cada usuário às próprias.
 - **Migração de dados históricos**: desnecessária por construção (ausência = padrão).
 
-## Ambiguidades que continuam em aberto
+## Ambiguidades resolvidas
 
-Herdadas da spec, precisam de decisão do dono antes da Fase 2. Nenhuma bloqueia a Fase 1.
+Ambas decididas pelo dono em 2026-08-26. Nenhuma pendência bloqueia a Fase 2.
 
-- **FR-009 — registro em log de acesso**: reusar um valor existente de `AccessLogAction` (como `user_updated`) ou criar um próprio para alteração de preferência. Criar um próprio é mais limpo de auditar, mas mexe num enum compartilhado.
-- **Padrão para usuários futuros**: este plano preserva o padrão atual (`invoice_received` ligado). Se a intenção for que novos usuários entrem sem notificação por omissão, é decisão de produto, não técnica.
+### A1 — Log de acesso reusa `user_updated`
+
+FR-009 grava com a ação **`user_updated`**, já existente em `AccessLogAction`. Não se cria valor novo: o enum é compartilhado, e ampliá-lo por uma feature obrigaria todo consumidor de log a lidar com um valor a mais.
+
+Custo aceito e mitigado: `user_updated` passa a cobrir dois eventos distintos — administrador alterando um usuário, e usuário alterando a própria preferência. Quem auditar precisa distinguir os dois. O campo `path` de `AccessLog` (`String?`) faz isso, e é o mesmo recurso que `requireSessionRole` já usa para qualificar `permission_denied` (`path: "required=session:${minRole}"`, `auth.ts:224`).
+
+Convenção adotada, seguindo esse precedente: `path` recebe `"notification-preferences"` mais os tipos alterados. Sem o `path`, os dois eventos ficariam indistinguíveis no log — que é exatamente o risco de reusar um valor de enum.
+
+### A2 — Usuário novo nasce ligado
+
+Usuários criados depois desta feature seguem o mesmo padrão dos existentes: **ligado** para `invoice_received`, sem linha gravada.
+
+Isso simplifica a implementação de forma relevante: a criação de usuário **não** precisa ser tocada. Nenhum gancho no fluxo de registro, nenhuma linha semeada, nenhum caminho novo que possa falhar pela metade. A regra é uma só — ausência significa o padrão — e vale para todo usuário, de qualquer época.
+
+Se a decisão tivesse sido "nasce desligado", seria preciso semear linhas na criação, e passaria a existir a possibilidade de um usuário sem linha por falha de semeadura, indistinguível de um usuário legítimo sem linha.

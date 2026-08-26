@@ -119,19 +119,19 @@ Um usuário recebe, uma vez por semana, um e-mail com as principais movimentaç�
 
 - **FR-001**: O sistema MUST persistir, por usuário, o estado de cada preferência de notificação, sobrevivendo a recarga de página, novo login e troca de dispositivo.
 - **FR-002**: O sistema MUST aplicar a preferência "novas notas recebidas" no momento de montar os destinatários de `invoice_received`, excluindo do envio o usuário que a desligou.
-- **FR-003**: O sistema MUST tratar preferência ausente como o padrão que preserva o comportamento atual: novas notas **ligado**, erros de sync **ligado**, resumo semanal **desligado** — os mesmos valores hoje codificados em `PreferencesSection.tsx:12-14`.
+- **FR-003**: O sistema MUST tratar preferência ausente como o padrão que preserva o comportamento atual: novas notas **ligado**, erros de sync **ligado**, resumo semanal **desligado** — os mesmos valores hoje codificados em `PreferencesSection.tsx:12-14`. Isso vale igualmente para usuários criados depois desta feature: nascem **ligados** para `invoice_received`, sem linha gravada. Decidido pelo dono em 2026-08-26.
 - **FR-004**: A interface MUST refletir apenas estado confirmado pelo servidor. Se a gravação falhar, o interruptor volta ao valor anterior e o erro é comunicado ao usuário. Nunca repetir o defeito atual, em que o controle muda de aparência sem nada ter sido salvo.
 - **FR-005**: O sistema MUST permitir que um usuário leia e altere **apenas as próprias** preferências. Autorização verificada no servidor, nunca por visibilidade de interface.
 - **FR-006**: O envio institucional (`NOTIFICATION_ALWAYS_EMAIL`) MUST permanecer fora do alcance das preferências individuais.
 - **FR-007**: O sistema MUST manter as preferências ainda sem produtor (P2, P3) invisíveis ou explicitamente marcadas como indisponíveis até que seu evento exista — um interruptor que salva mas nunca surte efeito é o mesmo defeito com outra roupa.
 - **FR-008**: A exclusão de um usuário MUST remover suas preferências.
-- **FR-009**: Alterar uma preferência MUST ser registrado no log de acesso, na mesma linha do que já é registrado para mudanças de perfil. [NEEDS CLARIFICATION: `AccessLogAction` tem valores como `user_updated`; convém um valor próprio ou reusar?]
+- **FR-009**: Alterar uma preferência MUST ser registrado no log de acesso com a ação `user_updated`, reusando o valor já existente de `AccessLogAction`. Decidido pelo dono em 2026-08-26: não se cria valor novo no enum. O `path` do registro MUST distinguir a alteração de preferência das demais mudanças de perfil que compartilham a mesma ação.
 
 ### Key Entities
 
 - **Preferência de notificação**: pertence a um usuário e a um tipo de notificação; guarda se aquele usuário quer receber aquele tipo. Some com o usuário. O conjunto de tipos precisa acompanhar `NotificationEventType`, de modo que um tipo novo não nasça sem preferência correspondente nem uma preferência sobreviva a um tipo removido.
 
-  [NEEDS CLARIFICATION: uma linha por (usuário, tipo), ou uma coluna estruturada por usuário? A primeira acomoda tipos futuros sem migração de esquema a cada tipo novo; a segunda é mais simples de ler. Decisão pertence ao plan.]
+  **Resolvido no plano (D1)**: uma linha por (usuário, tipo), chaveada ao enum `NotificationEventType`. O motivo decisivo não foi normalização — é que assim uma preferência para tipo sem produtor fica irrepresentável, e o FR-007 passa a ser propriedade do esquema em vez de regra policiada em revisão. Ver [plan.md](./plan.md) e [data-model.md](./data-model.md).
 
 ## Success Criteria
 
