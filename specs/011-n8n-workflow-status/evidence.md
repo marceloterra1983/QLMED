@@ -117,10 +117,18 @@ Restrições verificadas antes de começar:
   EXPECT: /^0$/m
   EVIDENCE: 0
 
-- [x] G21: a tela ainda NÃO foi tocada (Fase F fica para depois da chave)
-  CHECK: git diff --name-only HEAD -- "src/app/(painel)/sistema/automacoes" | wc -l
-  EXPECT: /^0$/m
-  EVIDENCE: 0
+- [x] G21: Fase F concluída — a tela consome a rota e não declara workflow algum
+  (Gate reescrito: na rodada anterior ele afirmava o oposto, que a tela ainda
+  NÃO fora tocada, porque a Fase F dependia da chave. A chave chegou.)
+  CHECK: npx vitest run src/lib/__tests__/automacoes-no-fabricated-data.test.ts 2>&1 | grep -E "^ +Tests"
+  EXPECT: passed
+  EVIDENCE: Tests  12 passed (12)
+
+- [x] G23: T022 — reversão final da Fase F
+  EVIDENCE: renderizando a lista fora do ramo `ok` (trocando `status?.state === 'ok'` por `status`), o teste "só renderiza a lista dentro do ramo ok" reprova: "Tests 1 failed | 11 passed (12)". Restaurado: 12 passed. É a prova de que falha do n8n não pode virar tela vazia de aparência saudável.
+
+- [x] G24: T013/T014 — schema contra formato observado, não de memória
+  EVIDENCE: substituindo `status: z.string()` por `z.enum(['success','error'])` — exatamente o erro que escrever de memória produziria, já que só esses dois apareceram em 17 execuções — 2 testes reprovam: "o schema ACEITA status desconhecido" e "status desconhecido não invalida a resposta". Restaurado: 36 passed.
 
 - [x] G22: D4 — papel exigido na rota de status
   EVIDENCE: DECIDIDO pelo dono em 26/08: `viewer`. REQUIRED_ROLE em status/route.ts vale 'viewer', o piso da hierarquia — ninguém perde acesso que tinha, e a verificação passa a existir no servidor, onde o Princípio II a exige. Gravar a credencial continua exigindo admin em config/route.ts: proteger a chave e proteger o resultado dela são perguntas distintas. Consequência registrada no código e no plano: com viewer no piso o ramo FORBIDDEN fica inalcançável, e um teste que esperasse 403 reprovaria contra um servidor correto — mesma armadilha já documentada no contrato da SPEC-010. Pendências D4 removidas de spec.md, plan.md e tasks.md.

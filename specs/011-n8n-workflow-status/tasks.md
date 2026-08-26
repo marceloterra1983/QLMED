@@ -80,10 +80,10 @@ Já verificado por sondagem, sem credencial (ver plano): a API pública está ha
 
 ## Fase F — Tela
 
-- [ ] **T019** Reescrever `src/app/(painel)/sistema/automacoes/page-client.tsx` para consumir a rota, renderizando os três estados. Remover a lista estática e o aviso provisório que a acompanha — a moldura honesta foi paliativo até esta tarefa existir.
+- [x] **T019** ✅ Reescrito. `src/app/(painel)/sistema/automacoes/page-client.tsx` para consumir a rota, renderizando os três estados. Remover a lista estática e o aviso provisório que a acompanha — a moldura honesta foi paliativo até esta tarefa existir.
   Remover também a inferência de endereço por substituição de `app.` por `n8n.` (linhas 5-7): o servidor passa a usar só o endereço configurado. Derivar destino a partir do host da requisição é padrão de SSRF (D5). `NEXT_PUBLIC_N8N_URL` permanece **apenas** para o link de navegação no navegador.
 
-- [ ] **T020** Teste de ausência de dado inventado: nenhuma das strings da lista fixa atual ("Sync NF-e/CT-e", "Alertas Financeiros", "Captura de Email", "Notificações") sobrevive no componente. É a prova mecânica de SC-003.
+- [x] **T020** ✅ `src/lib/__tests__/automacoes-no-fabricated-data.test.ts`, 12 casos. Teste de ausência de dado inventado: nenhuma das strings da lista fixa atual ("Sync NF-e/CT-e", "Alertas Financeiros", "Captura de Email", "Notificações") sobrevive no componente. É a prova mecânica de SC-003.
 
 ## Fase G — Portões
 
@@ -94,7 +94,7 @@ Já verificado por sondagem, sem credencial (ver plano): a API pública está ha
   ```
   Os dois últimos precisam de `DATABASE_URL` e rodam `migrate deploy` — passo humano, como registrado na SPEC-010.
 
-- [ ] **T022** **Reversão final** sobre o conjunto: com o n8n simulado como fora do ar, a tela não pode renderizar cartão de workflow algum. Desfazer esse tratamento deve deixar a suíte vermelha.
+- [x] **T022** ✅ Exercitada: renderizando a lista fora do ramo `ok`, o teste "só renderiza a lista dentro do ramo ok" reprova. **Reversão final** sobre o conjunto: com o n8n simulado como fora do ar, a tela não pode renderizar cartão de workflow algum. Desfazer esse tratamento deve deixar a suíte vermelha.
 
 - [ ] **T023** Verificação manual, uma vez, contra a instância real, ao configurar a chave. Não entra na suíte: dependeria de credencial e de instância no ar, e o CI usa só recursos descartáveis.
 
