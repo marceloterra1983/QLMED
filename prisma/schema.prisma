@@ -158,6 +158,7 @@ model Company {
   contactOverrides    ContactOverride[]
   nsdocsConfig        NsdocsConfig?
   receitaNfseConfig   ReceitaNfseConfig?
+  n8nConfig           N8nIntegrationConfig?
   certificateConfig   CertificateConfig?
   oneDriveConnections OneDriveConnection[]
   syncLogs            SyncLog[]
@@ -180,6 +181,25 @@ model NsdocsConfig {
   lastSyncAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+/// Configuracao da integracao de LEITURA com o n8n (QLMED -> n8n).
+/// Nao confundir com o webhook de ENTRADA em src/app/api/webhooks/n8n, que e o
+/// sentido oposto e usa QLMED_API_KEY. Sao credenciais e direcoes distintas.
+///
+/// apiToken guarda a chave do cabecalho X-N8N-API-KEY, cifrada por lib/crypto,
+/// e nunca sai em claro: a rota de config devolve mascarado, como NsdocsConfig.
+/// Ver specs/011-n8n-workflow-status/
+model N8nIntegrationConfig {
+  id        String   @id @default(cuid())
+  companyId String   @unique
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  baseUrl   String
+  apiToken  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model ReceitaNfseConfig {
