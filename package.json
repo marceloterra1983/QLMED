@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "ci:verify": "bash ./scripts/verify-ci-hardening.sh",
+    "ci:verify": "bash ./scripts/verify-ci-hardening.sh && bash ./scripts/test-ci-hardening.sh",
     "docs:validate": "node ./scripts/validate-docs.mjs",
     "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "ai-tooling:check": "node ./scripts/check-ai-tooling.mjs",
@@ -32,7 +32,6 @@
     "@prisma/client": "7.9.1",
     "@prisma/client-runtime-utils": "7.9.1",
     "bcryptjs": "^3.0.3",
-
     "chokidar": "^5.0.0",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
@@ -51,7 +50,6 @@
     "xml2js": "^0.6.2",
     "zod": "^4.4.3"
   },
-
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@tailwindcss/forms": "^0.5.11",
@@ -87,3 +85,5 @@
     "sharp": "^0.35.3"
   }
 }
+
+
