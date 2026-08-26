@@ -11,12 +11,22 @@ permissions:
 
 concurrency:
   group: qlmed-ci-${{ github.workflow }}-${{ github.ref }}
+  # Há UM runner com o label qlmed-prod, então docs/app/quality passam a
+  # serializar em vez de rodar em paralelo como nos runners do GitHub. A
+  # troca é deliberada: alguns minutos a mais por execução, em vez de zero
+  # execuções quando a cobrança do Actions trava.
   cancel-in-progress: true
 
 jobs:
   changes:
     name: changes
-    runs-on: ubuntu-24.04
+    # Runner próprio: não consome minutos faturáveis do GitHub, e foi o
+    # bloqueio de billing de 21/08 que deixou o CI inteiro sem rodar por dias.
+    # O runner qlmed-prod é serviço systemd rodando como `marce` no host, com
+    # acesso a Docker — então `services:` (postgres do job app) continua
+    # funcionando, ao contrário dos runners containerizados deste servidor,
+    # que não têm docker.sock montado.
+    runs-on: [self-hosted, Linux, X64, qlmed-prod]
     timeout-minutes: 5
     outputs:
       # Push to main always runs the full app job (CI verification on main).
@@ -58,7 +68,13 @@ jobs:
     name: docs
     needs: changes
     if: needs.changes.outputs.app != 'true'
-    runs-on: ubuntu-24.04
+    # Runner próprio: não consome minutos faturáveis do GitHub, e foi o
+    # bloqueio de billing de 21/08 que deixou o CI inteiro sem rodar por dias.
+    # O runner qlmed-prod é serviço systemd rodando como `marce` no host, com
+    # acesso a Docker — então `services:` (postgres do job app) continua
+    # funcionando, ao contrário dos runners containerizados deste servidor,
+    # que não têm docker.sock montado.
+    runs-on: [self-hosted, Linux, X64, qlmed-prod]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -84,7 +100,13 @@ jobs:
     name: app
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-24.04
+    # Runner próprio: não consome minutos faturáveis do GitHub, e foi o
+    # bloqueio de billing de 21/08 que deixou o CI inteiro sem rodar por dias.
+    # O runner qlmed-prod é serviço systemd rodando como `marce` no host, com
+    # acesso a Docker — então `services:` (postgres do job app) continua
+    # funcionando, ao contrário dos runners containerizados deste servidor,
+    # que não têm docker.sock montado.
+    runs-on: [self-hosted, Linux, X64, qlmed-prod]
     timeout-minutes: 30
     services:
       postgres:
@@ -173,7 +195,13 @@ jobs:
     name: quality
     needs: [changes, docs, app]
     if: always() && needs.changes.result == 'success'
-    runs-on: ubuntu-24.04
+    # Runner próprio: não consome minutos faturáveis do GitHub, e foi o
+    # bloqueio de billing de 21/08 que deixou o CI inteiro sem rodar por dias.
+    # O runner qlmed-prod é serviço systemd rodando como `marce` no host, com
+    # acesso a Docker — então `services:` (postgres do job app) continua
+    # funcionando, ao contrário dos runners containerizados deste servidor,
+    # que não têm docker.sock montado.
+    runs-on: [self-hosted, Linux, X64, qlmed-prod]
     timeout-minutes: 5
     steps:
       - name: Gate required status check
