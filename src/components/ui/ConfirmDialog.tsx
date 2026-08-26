@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 
 interface ConfirmDialogProps {
@@ -27,6 +27,10 @@ export default function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   useModalBackButton(isOpen, onClose);
+  const titleId = useId();
+  const messageId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,6 +46,19 @@ export default function ConfirmDialog({
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const timer = setTimeout(() => {
+      dialogRef.current?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      previousFocusRef.current?.focus?.();
+      previousFocusRef.current = null;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -61,10 +78,14 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
       <div
-        className="absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-[#1e2235] sm:rounded-2xl sm:shadow-2xl sm:max-w-sm sm:w-full overflow-hidden sm:ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in zoom-in-95 duration-200 flex flex-col"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-card-dark sm:rounded-2xl sm:shadow-2xl sm:max-w-sm sm:w-full overflow-hidden sm:ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in zoom-in-95 duration-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
       >
         {/* Body */}
         <div className="flex-1 flex items-center justify-center px-6 pt-6 pb-5">
@@ -72,8 +93,8 @@ export default function ConfirmDialog({
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${iconBg}`}>
               <span className={`material-symbols-outlined text-[28px] ${iconColor}`}>{iconName}</span>
             </div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{title}</h3>
-            <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px]">{message}</p>
+            <h3 id={titleId} className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{title}</h3>
+            <p id={messageId} className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px]">{message}</p>
           </div>
         </div>
 

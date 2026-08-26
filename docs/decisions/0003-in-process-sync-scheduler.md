@@ -1,6 +1,6 @@
 ---
 id: ADR-0003
-status: accepted
+status: superseded
 date: 2026-07-22
 supersedes: null
 related_specs: []

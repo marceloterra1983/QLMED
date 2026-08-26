@@ -3,7 +3,6 @@ import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } fr
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
-import { z } from 'zod';
 
 
 export async function GET() {
@@ -27,12 +26,8 @@ export async function GET() {
   }
 }
 
-// Rota modo empresa unica — safeParse para consistencia com padrao de validacao
-const companyPostSchema = z.object({}).optional();
-
 export async function POST(_request: NextRequest) {
   try {
-    companyPostSchema.safeParse({});
     let userId: string;
     try {
       const auth = await requireAdmin();

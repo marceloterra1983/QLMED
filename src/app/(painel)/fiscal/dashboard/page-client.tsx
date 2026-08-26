@@ -61,6 +61,36 @@ function formatCurrencyShort(value: number): string {
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+/**
+ * Trimestres como mês-âncora. O backend deriva o trimestre de `month`
+ * (Math.ceil(month / 3)), então escolher T3 equivale a mandar month = 7.
+ */
+const QUARTERS = [
+  { value: 1, label: '1º trim. (jan–mar)' },
+  { value: 4, label: '2º trim. (abr–jun)' },
+  { value: 7, label: '3º trim. (jul–set)' },
+  { value: 10, label: '4º trim. (out–dez)' },
+];
+
+/** Rótulo do intervalo ativo, para o cabeçalho dos painéis. */
+function periodRangeLabel(period: Period, year: number, month: number): string {
+  if (period === 'month') return `${MONTH_NAMES[month - 1].toLowerCase()} ${year}`;
+  if (period === 'quarter') {
+    const first = (Math.ceil(month / 3) - 1) * 3;
+    return `${MONTH_NAMES[first].toLowerCase()}–${MONTH_NAMES[first + 2].toLowerCase()} ${year}`;
+  }
+  return `jan–dez ${year}`;
+}
+
+function PeriodBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+      <span className="material-symbols-outlined text-[12px]">date_range</span>
+      {label}
+    </span>
+  );
+}
+
 function StatCard({ label, value, icon, color }: { label: string; value: number; icon: string; color: string }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
@@ -100,7 +130,7 @@ export default function FiscalDashboardPage() {
   useEffect(() => {
     loadCfop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year]);
+  }, [period, year, month]);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -124,7 +154,8 @@ export default function FiscalDashboardPage() {
   const loadCfop = async () => {
     setCfopLoading(true);
     try {
-      const res = await fetch(`/api/fiscal/by-cfop?year=${year}`);
+      const params = new URLSearchParams({ period, year: String(year), month: String(month) });
+      const res = await fetch(`/api/fiscal/by-cfop?${params}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setCfopData(data.byCfop || []);
@@ -168,6 +199,7 @@ export default function FiscalDashboardPage() {
   const hasData = totals && totals.invoiceCount > 0;
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  const rangeLabel = periodRangeLabel(period, year, month);
 
   return (
     <div className="space-y-6">
@@ -189,9 +221,20 @@ export default function FiscalDashboardPage() {
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
+              aria-label="Mês"
               className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-300"
             >
               {MONTH_NAMES.map((name, i) => <option key={i} value={i + 1}>{name}</option>)}
+            </select>
+          )}
+          {period === 'quarter' && (
+            <select
+              value={(Math.ceil(month / 3) - 1) * 3 + 1}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              aria-label="Trimestre"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              {QUARTERS.map((q) => <option key={q.value} value={q.value}>{q.label}</option>)}
             </select>
           )}
           <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -271,8 +314,9 @@ export default function FiscalDashboardPage() {
       {/* Monthly Table */}
       {!loading && monthly.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Impostos por Mes</h2>
+            <PeriodBadge label={rangeLabel} />
           </div>
           {/* Mobile Cards */}
           <div className="sm:hidden p-3 space-y-1.5">
@@ -327,8 +371,9 @@ export default function FiscalDashboardPage() {
       {/* CFOP Table */}
       {!cfopLoading && cfopData.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Por CFOP</h2>
+            <PeriodBadge label={rangeLabel} />
           </div>
           {/* Mobile Cards */}
           <div className="sm:hidden p-3 space-y-1.5">
@@ -399,8 +444,9 @@ export default function FiscalDashboardPage() {
       {/* Top Suppliers */}
       {!loading && topSuppliers.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Top 10 Fornecedores por Imposto</h2>
+            <PeriodBadge label={rangeLabel} />
           </div>
           {/* Mobile Cards */}
           <div className="sm:hidden p-3 space-y-1.5">

@@ -9,7 +9,7 @@ const CteDetailsModal = dynamic(() => import('@/components/CteDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatAmount, getDateGroupLabel } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
@@ -454,7 +454,7 @@ export default function CtePage() {
               placeholder="ex: 00.000.000/0001-91"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             />
           </div>
           <div>
@@ -463,7 +463,7 @@ export default function CtePage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             />
           </div>
           <div>
@@ -472,7 +472,7 @@ export default function CtePage() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             />
           </div>
           <div>
@@ -480,7 +480,7 @@ export default function CtePage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             >
               <option value="">Todos</option>
               <option value="received">Sem manifestação</option>

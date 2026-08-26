@@ -4,18 +4,13 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { refreshNcmCache } from '@/lib/ncm-lookup';
 import prisma from '@/lib/prisma';
 import { apiError } from '@/lib/api-error';
-import { z } from 'zod';
 
 /**
  * POST /api/ncm/refresh
  * Refreshes NCM descriptions from BrasilAPI for all NCMs used in product_registry.
  */
-const noBodySchema = z.object({}).optional();
-
 export async function POST() {
   try {
-    noBodySchema.safeParse({});
-
     let auth: { userId: string; role: string };
     try {
       auth = await requireEditor();

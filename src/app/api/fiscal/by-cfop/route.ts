@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import { fiscalPeriodQuerySchema, getFiscalPeriodRange } from '@/lib/fiscal-period';
 
-const byCfopQuerySchema = z.object({
-  year: z.coerce.number().int().default(new Date().getFullYear()),
-});
+const byCfopQuerySchema = fiscalPeriodQuerySchema;
 
 export async function GET(req: Request) {
   let userId: string;
@@ -21,10 +19,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const parsed = byCfopQuerySchema.safeParse(Object.fromEntries(searchParams));
   if (!parsed.success) return apiValidationError(parsed.error);
-  const { year } = parsed.data;
+  const { period, year, month } = parsed.data;
 
-  const startDate = new Date(Date.UTC(year, 0, 1));
-  const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+  const { startDate, endDate } = getFiscalPeriodRange(period, year, month);
 
   try {
     const invoices = await prisma.invoice.findMany({
@@ -37,7 +34,7 @@ export async function GET(req: Request) {
     const invoiceIds = invoices.map((i) => i.id);
 
     if (invoiceIds.length === 0) {
-      return NextResponse.json({ year, byCfop: [] });
+      return NextResponse.json({ period: { type: period, year, month, startDate, endDate }, byCfop: [] });
     }
 
     const items = await prisma.invoiceItemTax.findMany({
@@ -86,7 +83,7 @@ export async function GET(req: Request) {
     const rows = Array.from(byCfop.values()).sort((a, b) => b.totalValue - a.totalValue);
 
     return NextResponse.json({
-      year,
+      period: { type: period, year, month, startDate, endDate },
       byCfop: rows.map((r) => ({
         cfop: r.cfop,
         direction:

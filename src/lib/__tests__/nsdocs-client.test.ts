@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NsdocsClient, NsdocsTransientError, NsdocsPaginationError } from '../nsdocs-client';
+import {
+  isSafeNsdocsDocumentId,
+  NsdocsClient,
+  NsdocsTransientError,
+  NsdocsPaginationError,
+} from '../nsdocs-client';
 
 function mockResponse(body: unknown, init: { status?: number; headers?: Record<string, string> } = {}): Response {
   const status = init.status ?? 200;
@@ -61,6 +66,25 @@ describe('NsdocsClient', () => {
   });
 
   describe('retry + backoff', () => {
+    it('accepts the documented identifier shape and rejects path separators', () => {
+      expect(isSafeNsdocsDocumentId('doc-123_01.2')).toBe(true);
+      expect(isSafeNsdocsDocumentId('../etc/passwd')).toBe(false);
+      expect(isSafeNsdocsDocumentId('')).toBe(false);
+    });
+
+    it('URL-encodes document IDs before requesting XML', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(mockResponse('<xml/>'));
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new NsdocsClient('tok');
+
+      await client.recuperarXml('doc id');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.nsdocs.com.br/v2/documentos/doc%20id/xml',
+        expect.anything(),
+      );
+    });
+
     it('retries on 429 and succeeds when a later attempt returns 200', async () => {
       const fetchMock = vi.fn()
         .mockResolvedValueOnce(mockResponse('slow down', { status: 429, headers: { 'retry-after': '0' } }))

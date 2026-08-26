@@ -1,0 +1,20 @@
+---
+description: Spec Kit is mandatory for QLMED behavior, contracts and governance
+alwaysApply: true
+---
+
+# Spec Kit
+
+QLMED uses Spec Kit as the only feature-governance engine. GSD stays disabled.
+
+**Before changing behavior, contracts, permissions, persistence, integrations or architecture:**
+
+1. Read `governance.yaml` for the pinned version and validator.
+2. Read `.specify/memory/constitution.md`.
+3. Read or create the feature under `specs/`.
+4. Use the project skills in `.cursor/skills/speckit-*` (same content as `.agents/skills/speckit-*`).
+5. Do not bump the Spec Kit pin on `main`. Upgrade only on a disposable branch, keep QLMED customizations, then `npm run docs:validate`.
+
+Work in a task-specific git worktree. Do not edit an unrelated dirty checkout.
+
+If this worktree has no `graphify-out/graph.json`, query the canonical checkout graph with `--graph ../app/graphify-out/graph.json` or `--graph ../app-dev/graphify-out/graph.json` before exploring code.

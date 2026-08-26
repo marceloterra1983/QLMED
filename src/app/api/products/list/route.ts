@@ -216,7 +216,11 @@ export async function GET(req: Request) {
       totalProducts: total,
       productsWithAnvisa: withAnvisa,
       totalQuantity: Number(qtyAgg._sum.aggTotalQuantity || 0),
-      invoicesProcessed: 0,
+      // invoicesProcessed foi removido: era 0 fixo, nunca calculado. Contar
+      // notas distintas do conjunto FILTRADO exigiria uma ligação
+      // produto->nota que nao existe no schema, e somar aggInvoiceCount
+      // contaria em dobro toda nota com mais de um produto. Numero errado e
+      // pior que numero ausente.
     };
 
     return NextResponse.json(

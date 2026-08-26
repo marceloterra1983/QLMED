@@ -7,8 +7,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { Client } = require('pg');
 
-const EXPECTED_MIGRATION = '20260713120500_baseline_satellite_tables_schema11';
-const EXPECTED_SQL_SHA256 = 'fce2dfa888178b4d5280ac06d2b878d924a3ebee2632dc649636069b7afef4f5';
+const EXPECTED_MIGRATION = '20260826140000_add_notification_preferences_and_n8n_config';
+const EXPECTED_SQL_SHA256 = '7f3e8dba535303f7c2956b045aa6f0758bf398d8580d870d8734c3333b7ec837';
 const TABLES = [
   'invoice_tax_totals', 'invoice_item_tax', 'contact_fiscal',
   'invoice_duplicata', 'ncm_cache', 'product_registry', 'stock_entry',
@@ -45,8 +45,6 @@ function verifyExpectedSql() {
   const sql = fs.readFileSync(sqlPath);
   const digest = crypto.createHash('sha256').update(sql).digest('hex');
   if (digest !== EXPECTED_SQL_SHA256) fail('expected migration SQL hash drift');
-  const executable = sql.toString('utf8').replace(/^\s*--.*$/gm, '').trim();
-  if (executable !== '') fail('release migration is no longer metadata-only');
 }
 
 function migrationState(pending) {
@@ -99,9 +97,9 @@ async function main() {
       || before.migration !== EXPECTED_MIGRATION
       || !['pending', 'already-applied'].includes(before.migrationStatus)
     ) fail('pre-migration state binding invalid');
-    // The approved migration is comment-only. Equality therefore proves that
-    // the migration path itself performed no table-row writes; normal traffic
-    // must be quiesced by the environment approval window for this comparison.
+    // The approved expand adds sidecars and backfills them. Stable row counts
+    // prove that the migration path did not create or delete business rows;
+    // normal traffic must be quiesced by the environment approval window.
     if (JSON.stringify(before.counts) !== JSON.stringify(counts)) fail('satellite table counts changed in migration window');
     process.stdout.write(JSON.stringify({ status: 'PASSED', stage: mode, pending: 0, countsEqual: true, tables: TABLES.length }) + '\n');
   } finally {

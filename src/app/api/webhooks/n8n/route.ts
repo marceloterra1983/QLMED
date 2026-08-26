@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import { consumeWebhookNonce, verifyWebhookSignature } from '@/lib/n8n-webhook-security';
 
 const log = createLogger('webhooks/n8n');
 
@@ -37,6 +38,18 @@ function validateApiKey(req: NextRequest): boolean {
   }
 }
 
+function validateWebhookSignature(req: NextRequest, body: string): boolean {
+  const secret = process.env.N8N_WEBHOOK_SECRET;
+  if (!secret) return true;
+
+  const timestamp = req.headers.get('x-qlmed-timestamp') || '';
+  const nonce = req.headers.get('x-qlmed-nonce') || '';
+  const signature = req.headers.get('x-qlmed-signature') || '';
+  if (!verifyWebhookSignature({ secret, timestamp, nonce, signature, body })) return false;
+
+  return consumeWebhookNonce(nonce);
+}
+
 function getInternalBaseUrl(): string {
   return (
     process.env.QLMED_INTERNAL_URL ||
@@ -45,19 +58,38 @@ function getInternalBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
+async function forwardResponse(action: string, response: Response): Promise<NextResponse> {
+  const result = await response.json().catch(() => ({ error: 'Downstream response was not valid JSON' }));
+  return NextResponse.json(
+    { ok: response.ok, action, result },
+    { status: response.ok ? 200 : response.status },
+  );
+}
+
 export async function POST(req: NextRequest) {
   if (!validateApiKey(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let rawBody: unknown;
+  let rawBody: string;
   try {
-    rawBody = await req.json();
+    rawBody = await req.text();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const parsed = n8nWebhookSchema.safeParse(rawBody);
+  if (!validateWebhookSignature(req, rawBody)) {
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+  }
+
+  let payloadBody: unknown;
+  try {
+    payloadBody = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const parsed = n8nWebhookSchema.safeParse(payloadBody);
   if (!parsed.success) return apiValidationError(parsed.error);
 
   const { action, payload } = parsed.data;
@@ -70,20 +102,18 @@ export async function POST(req: NextRequest) {
         const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
-          body: JSON.stringify(payload || {}),
+          body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'sync-cte': {
-        const res = await fetch(`${baseUrl}/api/cte/sync`, {
+        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
-          body: JSON.stringify(payload || {}),
+          body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'process-xml': {
@@ -99,14 +129,13 @@ export async function POST(req: NextRequest) {
         }
         const formData = new FormData();
         const buffer = Buffer.from(payload.xml, 'base64');
-        formData.append('file', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
+        formData.append('files', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
         const res = await fetch(`${baseUrl}/api/invoices/upload`, {
           method: 'POST',
           headers: { 'x-api-key': getApiKey() },
           body: formData,
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'sync-ncm-bulk': {
@@ -115,8 +144,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'backfill-tax-data': {
@@ -124,8 +152,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'batch-cnpj-check': {
@@ -134,8 +161,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
         });
-        const data = await res.json();
-        return NextResponse.json({ ok: true, action, result: data });
+        return forwardResponse(action, res);
       }
 
       case 'notify': {

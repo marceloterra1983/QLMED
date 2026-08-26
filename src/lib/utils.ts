@@ -120,3 +120,7 @@ export function toNumber(value: unknown): number {
   const number = parseFloat(normalized);
   return Number.isFinite(number) ? number : 0;
 }
+
+/** Filtro de listagem fiscal/cadastro (py-2.5). Não unificar com DETAIL_INPUT_CLS. */
+export const FILTER_INPUT_CLS =
+  'block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all';

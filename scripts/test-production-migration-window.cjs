@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const gate = require('./verify-production-migration-window.cjs');
 
 assert.equal(gate.TABLES.length, 11);
-assert.match(gate.EXPECTED_MIGRATION, /^20260713120500_/);
+assert.match(gate.EXPECTED_MIGRATION, /^20260826140000_/);
 assert.match(gate.EXPECTED_SQL_SHA256, /^[0-9a-f]{64}$/);
 assert.deepEqual(
   gate.localMigrations().filter((name) => name === gate.EXPECTED_MIGRATION),

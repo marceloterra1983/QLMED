@@ -15,3 +15,16 @@ Every integration must define:
 Development automations must use manual triggers and must not activate real
 production cron or webhook ownership.
 
+## n8n webhook
+
+`POST /api/webhooks/n8n` always requires `x-api-key`. When
+`N8N_WEBHOOK_SECRET` is configured, the producer must also send:
+
+- `x-qlmed-timestamp`: Unix seconds, within five minutes of the server clock;
+- `x-qlmed-nonce`: unique request token;
+- `x-qlmed-signature`: lowercase or uppercase HMAC-SHA256 hex of
+  `timestamp.nonce.raw_request_body`.
+
+The nonce cache is process-local. A shared cache is required before scaling the
+webhook consumer horizontally. Configure the secret only after the active n8n
+workflow has been updated and tested with the same secret.

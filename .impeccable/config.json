@@ -1,0 +1,71 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "src/app/(painel)/cadastro/produtos/SettingsModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/BulkEditModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/ProductDetailModal.tsx",
+          "src/components/CteDetailsModal.tsx",
+          "src/components/InvoiceDetailsModal.tsx",
+          "src/components/NfeDetailsModal.tsx",
+          "src/components/NfseDetailsModal.tsx"
+        ],
+        "createdAt": "2026-08-26T20:01:52.809Z",
+        "reason": "Incumbent fiscal chrome; S1 token rename must keep pixels"
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "src/app/(painel)/cadastro/produtos/SettingsModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/BulkEditModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/ProductDetailModal.tsx",
+          "src/components/CteDetailsModal.tsx",
+          "src/components/InvoiceDetailsModal.tsx",
+          "src/components/NfeDetailsModal.tsx",
+          "src/components/NfseDetailsModal.tsx"
+        ],
+        "createdAt": "2026-08-26T20:01:52.924Z",
+        "reason": "Incumbent fiscal chrome; S1 token rename must keep pixels"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/(painel)/cadastro/produtos/SettingsModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/BulkEditModal.tsx",
+          "src/app/(painel)/cadastro/produtos/components/ProductDetailModal.tsx",
+          "src/components/CteDetailsModal.tsx",
+          "src/components/InvoiceDetailsModal.tsx",
+          "src/components/NfeDetailsModal.tsx",
+          "src/components/NfseDetailsModal.tsx"
+        ],
+        "createdAt": "2026-08-26T20:01:53.030Z",
+        "reason": "Incumbent fiscal chrome; S1 token rename must keep pixels"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/components/SidebarNav.tsx"
+        ],
+        "createdAt": "2026-08-26T20:02:33.641Z",
+        "reason": "Incumbent nav active indicator; S1 only adds aria-label"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/(painel)/estoque/entrada-nfe/page-client.tsx"
+        ],
+        "createdAt": "2026-08-26T20:02:33.723Z",
+        "reason": "Incumbent status chips; S2 only extracts FILTER_INPUT_CLS"
+      }
+    ]
+  }
+}

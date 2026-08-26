@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
@@ -376,7 +376,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               placeholder="ex: 00.000.000/0001-91"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             />
           </div>
           <div>
@@ -389,7 +389,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 setSortOrder(next === 'name' || next === 'city' ? 'asc' : 'desc');
                 setPage(1);
               }}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className={FILTER_INPUT_CLS}
             >
               <option value="name">Nome</option>
               {cfg.showCity && <option value="city">Cidade</option>}

@@ -5,17 +5,12 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
 import { createLogger } from '@/lib/logger';
-import { z } from 'zod';
 
 const log = createLogger('invoices/backfill-tax');
 
 const BATCH_SIZE = 200;
 
-const noBodySchema = z.object({}).optional();
-
 export async function POST(req: NextRequest) {
-  noBodySchema.safeParse({});
-
   let userId: string;
   try {
     ({ userId } = await requireEditor());

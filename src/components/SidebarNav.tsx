@@ -142,6 +142,7 @@ export default function SidebarNav({
             }}
             className="relative w-[28px] h-[28px] flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
             title="Alternar tema claro/escuro"
+            aria-label="Alternar tema claro ou escuro"
           >
             <Image src="/logo.png" alt="QL MED" fill sizes="28px" className="object-contain dark:brightness-0 dark:invert" />
           </button>
@@ -153,6 +154,7 @@ export default function SidebarNav({
             }}
             className="relative w-[110px] h-[34px] flex-shrink-0 cursor-pointer transition-transform hover:scale-105 active:scale-95"
             title="Alternar tema claro/escuro"
+            aria-label="Alternar tema claro ou escuro"
           >
             <Image src="/logo.png" alt="QL MED" fill sizes="110px" className="object-contain dark:brightness-0 dark:invert" />
           </button>

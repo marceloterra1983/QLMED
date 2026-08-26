@@ -644,7 +644,7 @@ export function buildFallbackHtml(invoice: PdfInvoiceView, autoPrint: boolean): 
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>${title}</title>
+  <title>${esc(title)}</title>
   <style>
     ${PDF_CSS}
     .simple-header { background: #333; color: #fff; padding: 15px 20px; }

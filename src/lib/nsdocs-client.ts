@@ -4,8 +4,13 @@ const NSDOCS_API_BASE = 'https://api.nsdocs.com.br/v2';
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 500;
+const NSDOCS_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 const log = createLogger('nsdocs-client');
+
+export function isSafeNsdocsDocumentId(value: string): boolean {
+  return NSDOCS_DOCUMENT_ID_PATTERN.test(value);
+}
 
 interface NsdocsRequestOptions {
   method?: string;
@@ -299,7 +304,7 @@ export class NsdocsClient {
    * Recupera o XML de um documento
    */
   async recuperarXml(documentoId: string): Promise<string> {
-    const url = `${NSDOCS_API_BASE}/documentos/${documentoId}/xml`;
+    const url = `${NSDOCS_API_BASE}/documentos/${encodeURIComponent(documentoId)}/xml`;
     const response = await this.fetchWithRetry(
       url,
       {
@@ -324,7 +329,7 @@ export class NsdocsClient {
    * Recupera o PDF (DANFE) de um documento
    */
   async recuperarPdf(documentoId: string): Promise<ArrayBuffer> {
-    const url = `${NSDOCS_API_BASE}/documentos/${documentoId}/pdf`;
+    const url = `${NSDOCS_API_BASE}/documentos/${encodeURIComponent(documentoId)}/pdf`;
     const response = await this.fetchWithRetry(
       url,
       {

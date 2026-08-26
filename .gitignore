@@ -100,3 +100,6 @@ actions-runner-qlmed-prod
 
 # Local Claude Code permissions — machine-specific
 .claude/settings.local.json
+
+# Impeccable hook session cache — pin the shared detector config
+.impeccable/hook.cache.json

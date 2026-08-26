@@ -57,9 +57,3 @@ export function extractAccessKeyFromFilePath(filePath: string): string | null {
   const match = fileName.match(/(?:^|\D)(\d{50}|\d{44})(?=\D|$)/);
   return match?.[1] || null;
 }
-
-export function normalizeOneDrivePath(rawPath: string): string {
-  const trimmed = rawPath.trim().replace(/\\/g, '/');
-  if (!trimmed) return '/';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}

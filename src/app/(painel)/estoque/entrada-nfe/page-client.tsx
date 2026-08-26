@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
-import { formatDate, formatAmount } from '@/lib/utils';
+import Modal from '@/components/ui/Modal';
+import { formatDate, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 
 const LotEditModal = dynamic(() => import('@/components/LotEditModal'), { ssr: false });
@@ -963,11 +964,11 @@ export default function EntradaNfePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div className="lg:col-span-2">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fornecedor / Número</label>
-            <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+            <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_INPUT_CLS}>
               <option value="">Todas</option>
               <option value="pending">Pendentes</option>
               <option value="partial">Parciais</option>
@@ -977,11 +978,11 @@ export default function EntradaNfePage() {
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
             </div>
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all" />
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
             </div>
           </div>
           <div>
@@ -1104,55 +1105,54 @@ export default function EntradaNfePage() {
       </div>
 
       {/* E509 Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (!importing) { setShowImportModal(false); setImportFile(null); } }}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Importar E509</h3>
-              <button onClick={() => { if (!importing) { setShowImportModal(false); setImportFile(null); } }} className="text-slate-400 hover:text-slate-600">
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Selecione o arquivo E509 (.ods ou .xlsx) exportado do sistema legado. Os lotes serão preenchidos nas notas já registradas.
-            </p>
-            <div className="mb-4">
-              <input
-                type="file"
-                accept=".ods,.xlsx,.xls"
-                onChange={e => setImportFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-              />
-            </div>
-            {importFile && (
-              <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-                Arquivo: <span className="font-medium">{importFile.name}</span> ({(importFile.size / 1024).toFixed(0)} KB)
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => { setShowImportModal(false); setImportFile(null); }}
-                disabled={importing}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleImportE509}
-                disabled={!importFile || importing}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              >
-                {importing ? (
-                  <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                ) : (
-                  <span className="material-symbols-outlined text-[16px]">upload</span>
-                )}
-                {importing ? 'Importando...' : 'Importar'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => { if (!importing) { setShowImportModal(false); setImportFile(null); } }}
+        title="Importar E509"
+        width="max-w-md"
+      >
+        <p className="text-xs text-slate-500 mb-4">
+          Selecione o arquivo E509 (.ods ou .xlsx) exportado do sistema legado. Os lotes serão preenchidos nas notas já registradas.
+        </p>
+        <div className="mb-4">
+          <label htmlFor="e509-file" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-2">
+            Arquivo E509
+          </label>
+          <input
+            id="e509-file"
+            type="file"
+            accept=".ods,.xlsx,.xls"
+            onChange={e => setImportFile(e.target.files?.[0] || null)}
+            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+          />
         </div>
-      )}
+        {importFile && (
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+            Arquivo: <span className="font-medium">{importFile.name}</span> ({(importFile.size / 1024).toFixed(0)} KB)
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => { setShowImportModal(false); setImportFile(null); }}
+            disabled={importing}
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleImportE509}
+            disabled={!importFile || importing}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {importing ? (
+              <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined text-[16px]">upload</span>
+            )}
+            {importing ? 'Importando...' : 'Importar'}
+          </button>
+        </div>
+      </Modal>
 
       {/* Lot Edit Modal */}
       <LotEditModal

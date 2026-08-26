@@ -8,6 +8,7 @@ import {
   formatCnpj,
   formatAccessKey,
   formatCurrencyShort,
+  FILTER_INPUT_CLS,
 } from '../utils';
 
 describe('cleanString', () => {
@@ -117,5 +118,14 @@ describe('formatCurrencyShort', () => {
 
   it('formats thousands', () => {
     expect(formatCurrencyShort(45000)).toBe('R$ 45k');
+  });
+});
+
+describe('FILTER_INPUT_CLS', () => {
+  it('keeps the fiscal filter contract', () => {
+    expect(FILTER_INPUT_CLS).toContain('py-2.5');
+    expect(FILTER_INPUT_CLS).toContain('rounded-lg');
+    expect(FILTER_INPUT_CLS).toContain('focus:ring-primary/50');
+    expect(FILTER_INPUT_CLS).toContain('placeholder-slate-400');
   });
 });
