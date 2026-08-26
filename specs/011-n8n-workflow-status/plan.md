@@ -54,13 +54,13 @@ Continua **não verificado**: a versão do n8n (o `/rest/settings` deste build n
 | Princípio | Situação | Como este plano atende |
 |---|---|---|
 | **I. Evidência executável obrigatória** | Atende | Testes com resposta do n8n simulada, incluindo os caminhos de falha, que são o coração da User Story 2. Verificação por reversão: removido o tratamento de indisponibilidade, o teste que exige "nenhum cartão de status quando a fonte caiu" deve reprovar. |
-| **II. Autorização é do servidor** | **Atende com mudança de comportamento** | A rota de status exige papel no servidor. Hoje `/sistema/automacoes` não tem verificação alguma — ver D4, que é decisão do dono, não minha. |
+| **II. Autorização é do servidor** | Atende | A rota de status verifica papel no servidor, e não por ausência de botão. Papel decidido em D4: `viewer`, que preserva quem enxerga a tela hoje. |
 | **III. Migrations Prisma donas do esquema** | Atende | Tabela nova, aditiva, para a configuração da integração. Sem DDL em runtime. Rollback trivial: sem a tabela, a tela cai em "não configurado". |
 | **IV. Rotas adaptam; `src/lib` implementa** | Atende | Cliente do n8n, cache e agregação em `src/lib/n8n-client.ts`. A rota autentica, valida e delega. O princípio exige explicitamente "integration clients require bounded failure behavior, safe logs" — é o que D2 detalha. |
 | **V. Segredos contidos** | Atende | Chave cifrada no banco, devolvida **mascarada** como em `src/app/api/nsdocs/config/route.ts:10`. Nunca em log, nunca em resposta. `NEXT_PUBLIC_N8N_URL` continua só link de navegação e não vira caminho de credencial. |
 | **VI. Uma fonte canônica por assunto** | Atende | O endereço do n8n passa a ter um dono só. Hoje há duas fontes divergentes: `NEXT_PUBLIC_N8N_URL` e a inferência por substituição de `app.` por `n8n.` em `page-client.tsx:5-7`. Ver D5. |
 
-**Violações**: nenhuma que exija justificativa técnica. A única mudança de postura é a exigência de papel (D4), que é decisão de produto.
+**Violações**: nenhuma.
 
 ## Decisões de projeto
 
@@ -94,11 +94,15 @@ Consequência aceita e declarada: em cenário multiprocesso, cada processo tem s
 
 Se a consulta falhar tendo cache anterior, a spec (User Story 2, cenário 3) permite exibir o antigo **desde que a idade seja declarada**. O plano escolhe o caminho mais conservador: em falha, `unavailable`, sem exibir o antigo. Menos código, e nenhum risco de dado velho parecer atual. Reavaliar só se o dono pedir.
 
-### D4 — A tela passa a exigir papel
+### D4 — Papel exigido: `viewer` (decidido)
 
-`src/app/(painel)/sistema/automacoes/page-client.tsx` hoje não verifica papel algum. A rota nova exigirá, porque serve estado operacional e existe por causa de uma credencial.
+`src/app/(painel)/sistema/automacoes/page-client.tsx` nunca verificou papel algum. A rota nova verifica, porque pelo Princípio II a autorização tem de estar no servidor — restringir só a tela não seria autorização, seria decoração.
 
-Isso **muda quem enxerga a tela hoje**, e por isso é decisão do dono, não minha — está em "Ambiguidades em aberto". Notar que restringir só a tela não bastaria: pelo Princípio II, a autorização tem de estar na rota, e é lá que este plano a coloca.
+**Decidido pelo dono em 2026-08-26: `viewer`**, o piso da hierarquia. Ninguém perde acesso que tinha, e a verificação passa a existir onde deve.
+
+A escolha separa duas perguntas que é fácil confundir. O que precisa de proteção forte é a **credencial**, não o status: gravar a chave exige `admin` (`config/route.ts`), e ela é decifrada e usada só dentro da rota, sem nunca aparecer na resposta. Ler o resultado da automação é outra pergunta, e é a que o dono decidiu manter aberta a todos.
+
+Consequência registrada: com `viewer` no piso, o ramo `FORBIDDEN` da rota fica inalcançável, porque `requireSessionRole` só o lança quando o papel está **abaixo** do mínimo. Mantido no código de propósito, para seguir correto caso a constante suba — é o único ponto que precisaria mudar.
 
 ### D5 — Um dono só para o endereço do n8n
 
@@ -197,7 +201,6 @@ npm run db:reconcile:verify    # idem
 
 Precisam do dono antes da Fase 2. Nenhuma bloqueia a Fase 1.
 
-- **D4 — qual papel exigido.** Restringir a administradores muda quem enxerga a tela hoje, que não tem verificação nenhuma. Decisão de produto.
 - **Versão do n8n e formato das respostas.** A sondagem provou que a API existe e como autentica, mas não o formato de `/api/v1/workflows` e `/api/v1/executions` — isso exige uma chave. **O schema Zod só deve ser escrito depois de observar uma resposta real**; escrevê-lo de memória é como este projeto já se queimou antes. Passo do dono: gerar a chave no n8n e fornecê-la pelo canal protegido.
 - **Duração da janela de cache** (D3): número a calibrar. Quanto mais curta, mais fresco e mais carga.
 - **Critério de "última execução"** com execuções concorrentes: a que iniciou por último ou a que terminou por último (edge case herdado da spec).

@@ -72,11 +72,11 @@ Já verificado por sondagem, sem credencial (ver plano): a API pública está ha
 
 - [ ] **T015** Criar `src/lib/n8n-status-cache.ts`: janela curta, compartilhada entre pedidos do mesmo processo, com o instante da obtenção no resultado. Em falha, **não** servir o valor antigo (escolha conservadora de D3).
 
-- [ ] **T016** Criar `src/app/api/integrations/n8n/status/route.ts`: autentica, exige papel, delega ao cliente. **Autorização no servidor**, não por ausência de botão (Princípio II). O papel exigido é a pendência D4 — decisão do dono; não inventar.
+- [ ] **T016** Criar `src/app/api/integrations/n8n/status/route.ts`: autentica, exige papel, delega ao cliente. **Autorização no servidor**, não por ausência de botão (Princípio II). Papel exigido: `viewer`, decidido em D4 — preserva quem enxerga a tela hoje e move a verificação para o servidor.
 
 - [ ] **T017** Teste do cache: N pedidos dentro da janela resultam em **uma** chamada ao n8n; passada a janela, nova chamada. É a prova de FR-005 e não precisa de n8n real.
 
-- [ ] **T018** Teste de autorização: usuário sem o papel exigido recebe 403 da rota, verificado no servidor.
+- [ ] **T018** Teste de autorização, verificado no servidor. Atenção ao que `viewer` implica: sendo o piso da hierarquia, o ramo `FORBIDDEN` fica **inalcançável**, e um teste que espere 403 reprovaria contra um servidor correto — a mesma armadilha já documentada no contrato da SPEC-010. O que se afirma aqui é: sem sessão devolve 401; a rota usa `requireSessionRole` e não `requireAuth` (chave de API não lê estado operacional); e gravar credencial continua exigindo `admin`.
 
 ## Fase F — Tela
 

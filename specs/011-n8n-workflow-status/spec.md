@@ -121,7 +121,7 @@ O administrador vê há quanto tempo o status foi consultado e pode forçar uma 
 - **FR-004**: A consulta ao n8n MUST ter tempo limite explícito e tratamento de erro, conforme a regra de integrações externas em `CLAUDE.md`. Falha de consulta MUST NOT derrubar a página.
 - **FR-005**: O sistema MUST limitar a frequência de consultas ao n8n, de modo que o número de administradores com a tela aberta não determine a carga sobre o n8n.
 - **FR-006**: A credencial de acesso à API do n8n MUST ser guardada cifrada e MUST NOT ser devolvida em claro a nenhum cliente, seguindo o padrão já usado em `src/app/api/nsdocs/config/route.ts:10` (valor mascarado).
-- **FR-007**: O acesso ao status MUST ser autorizado no servidor. [NEEDS CLARIFICATION: a tela Automações hoje não tem verificação de papel; status operacional e credenciais sugerem restringir a administradores, mas isso muda quem enxerga a tela hoje.]
+- **FR-007**: O acesso ao status MUST ser autorizado no servidor, com papel mínimo `viewer` (decidido pelo dono em 2026-08-26). Preserva quem enxerga a tela hoje — ela nunca verificou papel — enquanto move a verificação para onde o Princípio II a exige. Gravar a credencial continua exigindo `admin`: proteger a chave e proteger o resultado dela são perguntas distintas.
 - **FR-008**: Registros e mensagens de erro MUST NOT conter a credencial do n8n nem conteúdo de execução, conforme a regra de log seguro do projeto.
 - **FR-009**: O sistema MUST NOT permitir, nesta feature, disparar, pausar ou editar workflows a partir do QLMED. Escopo é leitura. Escrita é decisão separada, com consequência operacional real.
 
@@ -143,7 +143,8 @@ O administrador vê há quanto tempo o status foi consultado e pode forçar uma 
 
 ## Assumptions
 
-- O n8n expõe API de consulta de workflows e execuções autenticada por credencial própria. [NEEDS CLARIFICATION: confirmar a versão em uso e se a API está habilitada na instância de produção — o QLMED nunca consumiu essa API, então isso não está verificado no código.]
+- **Verificado, não mais suposto**: o n8n expõe a API de consulta autenticada por credencial própria, e ela está **habilitada em dev e em produção**. Sondagem somente-leitura em 2026-08-26, do próprio servidor: `/healthz` responde 200 nas duas, e `/api/v1/workflows` sem chave responde **401** com `'X-N8N-API-KEY' header required` — instância com a API desligada devolveria 404, não 401. Ver a tabela em [plan.md](./plan.md).
+- Continua sem verificação a **versão** do n8n (o `/rest/settings` deste build não a expõe) e, por consequência, o formato exato das respostas. Isso exige uma chave e é o que as tarefas T012–T014 resolvem.
 - A instância de produção é alcançável pelo servidor do QLMED. Hoje só o navegador do usuário fala com o n8n, pelo link; a rota servidor→n8n não foi exercitada.
 - Somente leitura nesta feature. Disparo manual de workflow, se desejado, é spec separada.
 - As correções de dark mode e de ícone da mesma tela seguem por fora, sem depender desta spec.

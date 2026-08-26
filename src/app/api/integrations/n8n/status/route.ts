@@ -10,15 +10,21 @@ import { getCachedN8nStatus } from '@/lib/n8n-status-cache';
 /**
  * Papel exigido para ler o status das automações.
  *
- * PENDÊNCIA D4 DA SPEC-011, decisão do dono. Adotado aqui o default
- * conservador: 'admin'. A tela hoje não verifica papel algum, então isto MUDA
- * quem a enxerga — mas afrouxar depois é trivial, e apertar depois que as
- * pessoas passaram a depender do acesso, não. O status é estado operacional
- * atrelado a uma credencial.
+ * D4 da SPEC-011, DECIDIDO pelo dono em 2026-08-26: `viewer`, o piso da
+ * hierarquia. Preserva quem enxerga a tela hoje — ela nunca verificou papel —
+ * enquanto move a autorização para o servidor, onde o Princípio II a exige.
  *
- * Trocar aqui é uma linha. Só não fica implícito.
+ * O que está protegido não é o status em si, e sim a CREDENCIAL: ela é lida,
+ * decifrada e usada só dentro desta rota, e nunca sai na resposta. Gravar a
+ * chave continua exigindo admin, em config/route.ts — ler o resultado dela é
+ * outra pergunta, e é a que o dono decidiu abrir.
+ *
+ * Consequência: com `viewer` no piso, o ramo de FORBIDDEN abaixo é
+ * inalcançável — requireSessionRole só lança FORBIDDEN quando o papel fica
+ * ABAIXO do mínimo. Mantido de propósito, para continuar correto se esta
+ * constante subir; é o único ponto que precisaria mudar.
  */
-const REQUIRED_ROLE = 'admin' as const;
+const REQUIRED_ROLE = 'viewer' as const;
 
 /**
  * GET — status agregado dos workflows.

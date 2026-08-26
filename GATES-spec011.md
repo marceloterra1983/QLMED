@@ -123,4 +123,4 @@ Restrições verificadas antes de começar:
   EVIDENCE: 0
 
 - [x] G22: D4 — papel exigido na rota de status
-  EVIDENCE: adotado o default conservador 'admin' em status/route.ts, isolado na constante REQUIRED_ROLE com comentário apontando a pendência. Justificativa: a tela hoje não verifica papel nenhum, então isto MUDA quem a enxerga; afrouxar depois é uma linha, apertar depois que as pessoas dependem do acesso não é. DECISÃO DO DONO AINDA PENDENTE — se a intenção for manter o acesso atual, trocar REQUIRED_ROLE para 'viewer'.
+  EVIDENCE: DECIDIDO pelo dono em 26/08: `viewer`. REQUIRED_ROLE em status/route.ts vale 'viewer', o piso da hierarquia — ninguém perde acesso que tinha, e a verificação passa a existir no servidor, onde o Princípio II a exige. Gravar a credencial continua exigindo admin em config/route.ts: proteger a chave e proteger o resultado dela são perguntas distintas. Consequência registrada no código e no plano: com viewer no piso o ramo FORBIDDEN fica inalcançável, e um teste que esperasse 403 reprovaria contra um servidor correto — mesma armadilha já documentada no contrato da SPEC-010. Pendências D4 removidas de spec.md, plan.md e tasks.md.
