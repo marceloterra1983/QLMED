@@ -97,6 +97,7 @@ export default function LoginPage() {
             onClick={toggleTheme}
             className="relative w-[240px] h-[73px] mx-auto mb-4 block cursor-pointer transition-transform hover:scale-105 active:scale-95"
             title="Alternar tema claro/escuro"
+            aria-label="Alternar tema claro ou escuro"
           >
             <Image
               src="/logo.png"
