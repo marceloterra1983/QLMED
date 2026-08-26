@@ -110,6 +110,7 @@ model User {
   companies      Company[]
   accessLogs     AccessLog[]
   apiKeys        ApiKey[]    @relation("ApiKeyCreator")
+  notificationPreferences UserNotificationPreference[]
 }
 
 // Named API keys used by external integrations (n8n, scripts). Each row
@@ -293,6 +294,24 @@ model Invoice {
   @@index([senderName])
   @@index([recipientCnpj])
   @@index([companyId, recipientCnpj])
+}
+
+/// Preferencia de notificacao de um usuario para um tipo de evento.
+/// Ausencia de linha significa o padrao do tipo, declarado em
+/// src/lib/notification-preferences.ts — nunca "desligado".
+/// Sem companyId de proposito: pertence a uma identidade, nao a um tenant,
+/// como AccessLog e ApiKey. Ver specs/010-user-notification-preferences/data-model.md
+model UserNotificationPreference {
+  id        String                @id @default(cuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType NotificationEventType
+  enabled   Boolean
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@unique([userId, eventType])
+  @@index([eventType, enabled])
 }
 
 model NotificationOutboxEvent {
