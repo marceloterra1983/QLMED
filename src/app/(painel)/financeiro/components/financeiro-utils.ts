@@ -67,6 +67,24 @@ export interface Summary {
   aVencerValor: number;
 }
 
+/**
+ * Cor do VALOR de uma duplicata, pelo sentido do fluxo de caixa.
+ *
+ * Pagar = dinheiro saindo (vermelho). Receber = dinheiro entrando (verde).
+ *
+ * Não confundir com `statusConfig` logo abaixo, que colore o PRAZO
+ * (vencida / vence hoje / próxima / a vencer). São dimensões independentes:
+ * uma duplicata a receber e vencida tem valor verde e status vermelho.
+ *
+ * Classes literais de propósito — o Tailwind não enxerga classe montada por
+ * template string, e o arquivo está sob `src/app/`, que os globs já cobrem.
+ */
+export function getValorColor(direction: 'pagar' | 'receber'): string {
+  return direction === 'pagar'
+    ? 'text-red-600 dark:text-red-400'
+    : 'text-emerald-600 dark:text-emerald-400';
+}
+
 export const statusConfig: Record<string, { label: string; classes: string; icon: string; dotClass?: string }> = {
   overdue: {
     label: 'Vencida',

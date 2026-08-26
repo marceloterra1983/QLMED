@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type {
   Invoice,
   NotificationChannel,
+  NotificationEventType,
   Prisma,
 } from '@prisma/client';
 import prisma from '@/lib/prisma';
@@ -10,6 +11,7 @@ import {
   productAggregateLockKey,
 } from '@/lib/postgres-advisory-lock';
 import { canAccessPage } from '@/lib/navigation';
+import { wantsNotification } from '@/lib/notification-preferences';
 
 type TransactionClient = Prisma.TransactionClient;
 const OUTBOX_EVENT_TYPE = 'invoice_received' as const;
@@ -61,6 +63,33 @@ export function canReceiveInvoiceNotifications(user: {
 }, invoiceType: Pick<Invoice, 'type'>['type']): boolean {
   const requiredPage = invoiceType === 'CTE' ? '/fiscal/cte' : '/fiscal/invoices';
   return canAccessPage(user.role, user.allowedPages, requiredPage);
+}
+
+/**
+ * Quem, entre os usuários ativos, recebe notificação desta nota.
+ *
+ * Compõe as DUAS perguntas independentes (decisão D2 da SPEC-010):
+ * canReceiveInvoiceNotifications responde PERMISSÃO (pode ver esta nota),
+ * wantsNotification responde VONTADE (quer ser avisado). Fundi-las faria um
+ * defeito de preferência virar vazamento de autorização.
+ *
+ * Pura e exportada de propósito: a composição precisa ser exercitável sem
+ * banco. O teste de integração que cobriria isso depende de
+ * RUN_DB_INTEGRATION_TESTS e fica `skipped` na suíte padrão — sem esta função
+ * a remoção da preferência do filtro passaria despercebida com a suíte verde.
+ */
+export function selectNotifiableUsers<
+  T extends {
+    role: string;
+    allowedPages: string[];
+    notificationPreferences?: ReadonlyArray<{ eventType: NotificationEventType; enabled: boolean }> | null;
+  },
+>(users: readonly T[], invoiceType: Pick<Invoice, 'type'>['type']): T[] {
+  return users.filter(
+    (user) =>
+      canReceiveInvoiceNotifications(user, invoiceType) &&
+      wantsNotification(user, 'invoice_received'),
+  );
 }
 
 export function normalizeNotificationRecipient(
@@ -167,7 +196,20 @@ async function enqueueInvoiceEvent(
         status: 'active',
         ...(companyCount > 1 ? { companies: { some: { id: invoice.companyId } } } : {}),
       },
-      select: { email: true, phone: true, role: true, allowedPages: true },
+      select: {
+        email: true,
+        phone: true,
+        role: true,
+        allowedPages: true,
+        // Carregado no mesmo select de propósito: a montagem de destinatários
+        // roda dentro da transação que cria a nota e não pode ganhar uma ida
+        // extra ao banco. Array vazio (usuário que nunca escolheu) resolve
+        // para o padrão em wantsNotification.
+        notificationPreferences: {
+          where: { eventType: 'invoice_received' },
+          select: { eventType: true, enabled: true },
+        },
+      },
     }),
   ]);
   const alwaysEmail =
@@ -176,7 +218,7 @@ async function enqueueInvoiceEvent(
     'faturamento@qlmed.com.br';
   const destinations = buildInvoiceNotificationDestinations(
     invoice.type,
-    users.filter((user) => canReceiveInvoiceNotifications(user, invoice.type)),
+    selectNotifiableUsers(users, invoice.type),
     alwaysEmail,
   );
 

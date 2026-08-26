@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import { fiscalPeriodQuerySchema, getFiscalPeriodRange } from '@/lib/fiscal-period';
 
-const fiscalDashboardQuerySchema = z.object({
-  period: z.enum(['month', 'quarter', 'year']).default('year'),
-  year: z.coerce.number().int().min(2000).max(2100).default(new Date().getFullYear()),
-  month: z.coerce.number().int().min(1).max(12).default(new Date().getMonth() + 1),
-});
+const fiscalDashboardQuerySchema = fiscalPeriodQuerySchema;
 
 export async function GET(req: Request) {
   let userId: string;
@@ -25,20 +21,7 @@ export async function GET(req: Request) {
   if (!parsed.success) return apiValidationError(parsed.error);
   const { period, year, month } = parsed.data;
 
-  let startDate: Date;
-  let endDate: Date;
-
-  if (period === 'month') {
-    startDate = new Date(Date.UTC(year, month - 1, 1));
-    endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
-  } else if (period === 'quarter') {
-    const q = Math.ceil(month / 3);
-    startDate = new Date(Date.UTC(year, (q - 1) * 3, 1));
-    endDate = new Date(Date.UTC(year, q * 3, 0, 23, 59, 59));
-  } else {
-    startDate = new Date(Date.UTC(year, 0, 1));
-    endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
-  }
+  const { startDate, endDate } = getFiscalPeriodRange(period, year, month);
 
   try {
     const invoices = await prisma.invoice.findMany({

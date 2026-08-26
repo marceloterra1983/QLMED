@@ -1,17 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
 type Theme = 'light' | 'dark' | 'system';
 
+interface EffectivePreference {
+  eventType: string;
+  enabled: boolean;
+  isDefault: boolean;
+}
+
+/** Rótulos por tipo de evento. Só tipos com produtor aparecem (SPEC-010 D3). */
+const PREFERENCE_LABELS: Record<string, { title: string; description: string }> = {
+  invoice_received: {
+    title: 'Notificar novas notas recebidas',
+    description: 'Receba uma notificação quando novas NF-e forem importadas.',
+  },
+};
+
 export default function PreferencesSection() {
   const { data: session } = useSession();
   const [theme, setTheme] = useState<Theme>('system');
-  const [notifyNewInvoices, setNotifyNewInvoices] = useState(true);
-  const [notifySyncErrors, setNotifySyncErrors] = useState(true);
-  const [weeklyEmail, setWeeklyEmail] = useState(false);
+  const [preferences, setPreferences] = useState<EffectivePreference[]>([]);
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const [savingType, setSavingType] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('qlmed-theme') as Theme | null;
@@ -41,6 +56,48 @@ export default function PreferencesSection() {
     localStorage.setItem('qlmed-theme', value);
     applyTheme(value);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/users/me/notification-preferences')
+      .then((res) => {
+        if (!res.ok) throw new Error('Falha ao carregar preferências');
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setPreferences(data.preferences || []);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Não foi possível carregar suas preferências de notificação');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPreferences(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  /**
+   * O interruptor só muda de aparência com a resposta do servidor (FR-004).
+   * O defeito que esta feature corrige era exatamente o contrário: o controle
+   * mudava de cor sem nada ter sido salvo.
+   */
+  const togglePreference = useCallback(async (eventType: string, next: boolean) => {
+    setSavingType(eventType);
+    try {
+      const res = await fetch('/api/users/me/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: [{ eventType, enabled: next }] }),
+      });
+      if (!res.ok) throw new Error('Falha ao salvar');
+      const data = await res.json();
+      setPreferences(data.preferences || []);
+    } catch {
+      toast.error('Não foi possível salvar. A preferência continua como estava.');
+    } finally {
+      setSavingType(null);
+    }
+  }, []);
 
   return (
     <>
@@ -93,67 +150,49 @@ export default function PreferencesSection() {
 
       {/* Notificações */}
       <CollapsibleCard icon="notifications" title="Notificações">
-        <div className="space-y-1">
-          <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white text-sm">Notificar novas notas recebidas</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Receba uma notificação quando novas NF-e forem importadas.</p>
-            </div>
-            <button
-              onClick={() => setNotifyNewInvoices(!notifyNewInvoices)}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                notifyNewInvoices ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-              role="switch"
-              aria-checked={notifyNewInvoices}
-              aria-label="Notificar novas notas recebidas"
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                notifyNewInvoices ? 'translate-x-6' : 'translate-x-0'
-              }`} />
-            </button>
+        {loadingPreferences ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400 p-3">Carregando preferências...</p>
+        ) : preferences.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400 p-3">
+            Nenhuma preferência de notificação disponível.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {preferences.map((pref) => {
+              const label = PREFERENCE_LABELS[pref.eventType];
+              if (!label) return null;
+              const saving = savingType === pref.eventType;
+              return (
+                <div
+                  key={pref.eventType}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-900 dark:text-white text-sm">{label.title}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{label.description}</p>
+                  </div>
+                  <button
+                    onClick={() => togglePreference(pref.eventType, !pref.enabled)}
+                    disabled={saving}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 disabled:opacity-60 ${
+                      pref.enabled ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                    role="switch"
+                    aria-checked={pref.enabled}
+                    aria-label={label.title}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      pref.enabled ? 'translate-x-6' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              );
+            })}
+            <p className="text-xs text-slate-400 dark:text-slate-500 px-3 pt-2">
+              Alterações são salvas automaticamente.
+            </p>
           </div>
-
-          <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white text-sm">Notificar erros de sincronização</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Seja avisado quando houver falhas na sincronização com a SEFAZ.</p>
-            </div>
-            <button
-              onClick={() => setNotifySyncErrors(!notifySyncErrors)}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                notifySyncErrors ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-              role="switch"
-              aria-checked={notifySyncErrors}
-              aria-label="Notificar erros de sincronização"
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                notifySyncErrors ? 'translate-x-6' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white text-sm">Resumo semanal por e-mail</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Receba um resumo semanal com as principais movimentações fiscais.</p>
-            </div>
-            <button
-              onClick={() => setWeeklyEmail(!weeklyEmail)}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                weeklyEmail ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-              role="switch"
-              aria-checked={weeklyEmail}
-              aria-label="Resumo semanal por e-mail"
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                weeklyEmail ? 'translate-x-6' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        </div>
+        )}
       </CollapsibleCard>
 
       {/* Perfil */}

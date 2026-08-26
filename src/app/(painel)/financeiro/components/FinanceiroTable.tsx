@@ -9,6 +9,7 @@ import {
   formatVencimento,
   formatParcela,
   getNick,
+  getValorColor,
 } from './financeiro-utils';
 
 interface FinanceiroTableProps {
@@ -52,6 +53,7 @@ export default function FinanceiroTable({
   onOpenDetails,
 }: FinanceiroTableProps) {
   const entityLabel = direction === 'pagar' ? 'Fornecedor' : 'Cliente';
+  const valorColor = getValorColor(direction);
   const emptyIcon = 'payments';
   const emptyMsg = search || statusFilter
     ? 'Nenhuma duplicata encontrada com os filtros aplicados.'
@@ -138,7 +140,7 @@ export default function FinanceiroTable({
                               <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</span>
                             </td>
                             <td className="px-3 py-2 text-right whitespace-nowrap">
-                              <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{formatAmount(dup.dupValor)}</span>
+                              <span className={`text-sm font-bold font-mono ${valorColor}`}>{formatAmount(dup.dupValor)}</span>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <span className="text-sm font-mono text-slate-600 dark:text-slate-400">{formatParcela(dup)}</span>
@@ -190,7 +192,7 @@ export default function FinanceiroTable({
                         <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
                           <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                          <span className="text-xs font-bold text-red-500 dark:text-red-400 ml-auto">{formatAmount(groupTotals.get(group) || 0)}</span>
+                          <span className={`text-xs font-bold ml-auto ${valorColor}`}>{formatAmount(groupTotals.get(group) || 0)}</span>
                         </div>
                       </div>
                     )}
@@ -210,7 +212,7 @@ export default function FinanceiroTable({
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{n.display}</p>
                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold font-mono text-red-500 dark:text-red-400">{formatAmount(dup.dupValor)}</span>
+                            <span className={`text-sm font-bold font-mono ${valorColor}`}>{formatAmount(dup.dupValor)}</span>
                             <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
                           </div>
                           <div className="flex items-center gap-2">
