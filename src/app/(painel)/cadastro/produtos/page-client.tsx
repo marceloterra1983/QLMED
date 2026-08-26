@@ -15,6 +15,50 @@ import ExportCSVButton from './components/ExportCSVButton';
 import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
 
+/**
+ * Cards de resumo do cadastro. Os quatro números já vinham prontos da API
+ * (`ProductsSummary`) e ficavam apenas no estado, sem nunca chegar à tela.
+ *
+ * Classes de cor literais por card — classe montada por template string não é
+ * enxergada pelo Tailwind no build e sai sem cor.
+ */
+const SUMMARY_CARDS: Array<{
+  key: keyof ProductsSummary;
+  label: string;
+  icon: string;
+  iconClasses: string;
+}> = [
+  { key: 'totalProducts', label: 'Total de Produtos', icon: 'inventory_2', iconClasses: 'bg-primary/10 text-primary' },
+  { key: 'productsWithAnvisa', label: 'Com ANVISA', icon: 'medication', iconClasses: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' },
+  { key: 'totalQuantity', label: 'Quantidade Total', icon: 'inventory', iconClasses: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  { key: 'invoicesProcessed', label: 'NF-e Processadas', icon: 'receipt_long', iconClasses: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+];
+
+function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      {SUMMARY_CARDS.map(({ key, label, icon, iconClasses }) => (
+        <div
+          key={key}
+          className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden"
+        >
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 ${iconClasses}`}>
+              <span className="material-symbols-outlined text-[20px]">{icon}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
+              <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate">
+                {summary[key].toLocaleString('pt-BR')}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProdutosPage() {
   const { canWrite } = useRole();
 
@@ -316,6 +360,9 @@ export default function ProdutosPage() {
           <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
         </div>
       </div>
+
+      {/* Resumo do cadastro — escondido durante o load para nao piscar zeros */}
+      {!loading && <ProductsSummaryCards summary={summary} />}
 
       {/* Search + filters */}
       <ProductFilters
