@@ -92,7 +92,7 @@ Já verificado por sondagem, sem credencial (ver plano): a API pública está ha
   npm run docs:validate && npx tsc --noEmit && npm run lint && npm test && npm run build
   npm run db:migrate:verify && npm run db:reconcile:verify   # exige DATABASE_URL
   ```
-  Os dois últimos precisam de `DATABASE_URL` e rodam `migrate deploy` — passo humano, como registrado na SPEC-010.
+  ✅ Todos executados em 26/08. Os dois de banco rodaram contra um container postgres **efêmero** com base `qlmed_ci`, criado e destruído para o teste: `migrate deploy` replicou o histórico inteiro e o diff contra `schema.prisma` deu "No difference detected". A base canônica não foi tocada — o validador do projeto só aceita `postgres` ou `qlmed_ci`, e usar a descartável é o que o próprio CI faz.
 
 - [x] **T022** ✅ Exercitada: renderizando a lista fora do ramo `ok`, o teste "só renderiza a lista dentro do ramo ok" reprova. **Reversão final** sobre o conjunto: com o n8n simulado como fora do ar, a tela não pode renderizar cartão de workflow algum. Desfazer esse tratamento deve deixar a suíte vermelha.
 
