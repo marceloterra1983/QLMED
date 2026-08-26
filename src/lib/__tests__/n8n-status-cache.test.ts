@@ -8,8 +8,9 @@ import type { N8nStatusResult } from '@/lib/n8n-client';
 
 const OK: N8nStatusResult = {
   state: 'ok',
-  workflows: [{ id: '1', name: 'Sync NF-e', active: true }],
+  workflows: [{ id: '1', name: 'Sync NF-e', active: true, lastExecution: null }],
   fetchedAt: '2026-08-26T12:00:00.000Z',
+  truncated: false,
 };
 const FORA: N8nStatusResult = { state: 'unavailable', reason: 'network' };
 

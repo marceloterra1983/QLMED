@@ -64,9 +64,9 @@ Já verificado por sondagem, sem credencial (ver plano): a API pública está ha
 
 - [x] **T012** ✅ Feito em 26/08 contra `n8n.qlmed.com.br` (n8n 2.29.10). Formato registrado em [contracts/n8n-api-observed.md](./contracts/n8n-api-observed.md). Confirmou `id`/`name`/`active` como o parser provisório já assumia, e revelou três coisas que T013 precisa tratar: `nextCursor` é paginação real e hoje é ignorada em silêncio; a resposta pesa ~15 KB por workflow por trazer `nodes`/`staticData`; e só `success` e `error` apareceram em 17 execuções, então o enum de status **não** pode ser fechado nesses dois.
 
-- [ ] **T013** 🔑 Escrever o schema Zod contra o formato **observado**, e o mapeamento para o modelo agregado da tela (workflow, estado, última execução, desfecho). Incluir o caso "nunca executou", que não é sucesso nem falha.
+- [x] **T013** ✅ `src/lib/n8n-schema.ts`, escrito contra o formato observado. `status` é `z.string()` e **não** enum fechado — o achado central de T012. `buildWorkflowStatuses` casa workflow com a execução de `startedAt` maior, e "nunca executou" é `lastExecution: null`, resolvido pela ausência. O cliente passou a seguir `nextCursor` com teto de páginas e a declarar `truncated`, fechando o defeito latente que a observação revelou.
 
-- [ ] **T014** 🔑 Teste do mapeamento com a resposta real como fixture — anonimizada, sem token e sem conteúdo de execução (Princípio V).
+- [x] **T014** ✅ `src/lib/__tests__/n8n-schema.test.ts`, 16 casos com fixtures da forma real, anonimizadas. Portão de reversão exercitado: trocando `status` por enum fechado nos dois valores observados, 2 testes reprovam — exatamente o erro que escrever de memória teria produzido.
 
 ## Fase E — Rota e cache (sem chave)
 

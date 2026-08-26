@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fetchN8nWorkflows, parseWorkflows } from '@/lib/n8n-client';
+import { fetchN8nWorkflows } from '@/lib/n8n-client';
 
 const CONN = { baseUrl: 'https://n8n.example', apiToken: 'chave-de-teste' };
 
@@ -93,18 +93,97 @@ describe('fetchN8nWorkflows — falhas', () => {
   });
 });
 
+/**
+ * O cliente faz DUAS chamadas: workflows e execuções. Este auxiliar responde a
+ * cada uma pela URL, para os testes de sucesso refletirem o fluxo real.
+ */
+function routedFetch(
+  workflowsBody: unknown,
+  executionsBody: unknown,
+  onCall?: (url: string) => void,
+): typeof fetch {
+  return ((url: string) => {
+    onCall?.(url);
+    const body = url.includes('/executions') ? executionsBody : workflowsBody;
+    return Promise.resolve(jsonResponse(body));
+  }) as unknown as typeof fetch;
+}
+
 describe('fetchN8nWorkflows — sucesso', () => {
-  it('resposta válida devolve ok com os workflows e o instante da consulta', async () => {
-    const body = { data: [{ id: '1', name: 'Sync NF-e', active: true }] };
-    const r = await fetchN8nWorkflows(CONN, (() => Promise.resolve(jsonResponse(body))) as unknown as typeof fetch);
+  it('casa workflow com sua última execução', async () => {
+    const r = await fetchN8nWorkflows(
+      CONN,
+      routedFetch(
+        { data: [{ id: '1', name: 'Sync NF-e', active: true }] },
+        { data: [{ id: '99', workflowId: '1', status: 'success', startedAt: '2026-08-26T10:00:00Z', stoppedAt: '2026-08-26T10:00:05Z' }] },
+      ),
+    );
     expect(r.state).toBe('ok');
     if (r.state === 'ok') {
-      expect(r.workflows).toEqual([{ id: '1', name: 'Sync NF-e', active: true }]);
+      expect(r.workflows[0].lastExecution?.outcome).toBe('success');
+      expect(r.workflows[0].lastExecution?.id).toBe('99');
       expect(r.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     }
   });
 
-  it('manda a chave no cabeçalho X-N8N-API-KEY, verificado por sondagem da API real', async () => {
+  it('workflow sem execução alguma tem lastExecution null — nunca executado', async () => {
+    const r = await fetchN8nWorkflows(
+      CONN,
+      routedFetch({ data: [{ id: '1', name: 'Novo', active: true }] }, { data: [] }),
+    );
+    expect(r.state).toBe('ok');
+    if (r.state === 'ok') expect(r.workflows[0].lastExecution).toBeNull();
+  });
+
+  it('escolhe a execução de startedAt mais recente, não a primeira da lista', async () => {
+    const r = await fetchN8nWorkflows(
+      CONN,
+      routedFetch(
+        { data: [{ id: '1', name: 'W', active: true }] },
+        { data: [
+          { id: 'antiga', workflowId: '1', status: 'success', startedAt: '2026-08-20T10:00:00Z' },
+          { id: 'nova', workflowId: '1', status: 'error', startedAt: '2026-08-26T10:00:00Z' },
+        ] },
+      ),
+    );
+    if (r.state === 'ok') {
+      expect(r.workflows[0].lastExecution?.id).toBe('nova');
+      expect(r.workflows[0].lastExecution?.outcome).toBe('failure');
+    }
+  });
+
+  // O achado de T012: só success e error foram observados, mas o n8n emite
+  // outros. Um status novo NÃO pode derrubar a consulta.
+  it('status desconhecido não invalida a resposta — degrada para unknown', async () => {
+    const r = await fetchN8nWorkflows(
+      CONN,
+      routedFetch(
+        { data: [{ id: '1', name: 'W', active: true }] },
+        { data: [{ id: '5', workflowId: '1', status: 'status_que_nao_existia_ainda', startedAt: '2026-08-26T10:00:00Z' }] },
+      ),
+    );
+    expect(r.state).toBe('ok');
+    if (r.state === 'ok') {
+      expect(r.workflows[0].lastExecution?.outcome).toBe('unknown');
+      expect(r.workflows[0].lastExecution?.rawStatus).toBe('status_que_nao_existia_ainda');
+    }
+  });
+
+  it('ignora campos pesados que a API traz e a tela não usa', async () => {
+    const r = await fetchN8nWorkflows(
+      CONN,
+      routedFetch(
+        { data: [{ id: '1', name: 'W', active: true, nodes: [{}, {}], staticData: { x: 1 }, connections: {} }] },
+        { data: [] },
+      ),
+    );
+    if (r.state === 'ok') {
+      expect(r.workflows[0]).not.toHaveProperty('nodes');
+      expect(r.workflows[0]).not.toHaveProperty('staticData');
+    }
+  });
+
+  it('manda a chave no cabeçalho X-N8N-API-KEY, confirmado contra a API real', async () => {
     const spy = vi.fn(() => Promise.resolve(jsonResponse({ data: [] })));
     await fetchN8nWorkflows(CONN, spy as unknown as typeof fetch);
     const [, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
@@ -112,25 +191,68 @@ describe('fetchN8nWorkflows — sucesso', () => {
   });
 });
 
-describe('parseWorkflows', () => {
-  it('lista vazia é resultado válido, não erro', () => {
-    expect(parseWorkflows({ data: [] })).toEqual([]);
+// ---------------------------------------------------------------------------
+// Paginação: o defeito latente que T012 revelou. nextCursor é paginação REAL e
+// a primeira versão do cliente a ignorava, o que produziria lista incompleta
+// sem sinal nenhum de estar incompleta.
+// ---------------------------------------------------------------------------
+describe('fetchN8nWorkflows — paginação', () => {
+  it('segue nextCursor até o fim e junta as páginas', async () => {
+    let call = 0;
+    const impl = ((url: string) => {
+      if (url.includes('/executions')) return Promise.resolve(jsonResponse({ data: [] }));
+      call++;
+      return Promise.resolve(jsonResponse(
+        call === 1
+          ? { data: [{ id: '1', name: 'A', active: true }], nextCursor: 'c2' }
+          : { data: [{ id: '2', name: 'B', active: false }], nextCursor: null },
+      ));
+    }) as unknown as typeof fetch;
+
+    const r = await fetchN8nWorkflows(CONN, impl);
+    expect(r.state).toBe('ok');
+    if (r.state === 'ok') {
+      expect(r.workflows.map((w) => w.id)).toEqual(['1', '2']);
+      expect(r.truncated).toBe(false);
+    }
   });
 
-  it('recusa a resposta inteira se UM item estiver malformado — nunca lista parcial', () => {
-    const payload = { data: [{ id: '1', name: 'ok', active: true }, { id: '2', name: 'sem active' }] };
-    expect(parseWorkflows(payload)).toBeNull();
+  it('repassa o cursor recebido na requisição seguinte', async () => {
+    const urls: string[] = [];
+    let call = 0;
+    const impl = ((url: string) => {
+      urls.push(url);
+      if (url.includes('/executions')) return Promise.resolve(jsonResponse({ data: [] }));
+      call++;
+      return Promise.resolve(jsonResponse(
+        call === 1 ? { data: [], nextCursor: 'CURSOR_ESPERADO' } : { data: [], nextCursor: null },
+      ));
+    }) as unknown as typeof fetch;
+
+    await fetchN8nWorkflows(CONN, impl);
+    expect(urls.some((u) => u.includes('cursor=CURSOR_ESPERADO'))).toBe(true);
   });
 
-  it('recusa payload sem envelope data', () => {
-    expect(parseWorkflows({ workflows: [] })).toBeNull();
-    expect(parseWorkflows(null)).toBeNull();
-    expect(parseWorkflows('texto')).toBeNull();
+  it('atingido o teto de páginas, declara truncated — nunca incompleto em silêncio', async () => {
+    const impl = ((url: string) => Promise.resolve(jsonResponse(
+      url.includes('/executions')
+        ? { data: [], nextCursor: null }
+        : { data: [{ id: 'x', name: 'W', active: true }], nextCursor: 'sempre-tem-mais' },
+    ))) as unknown as typeof fetch;
+
+    const r = await fetchN8nWorkflows(CONN, impl);
+    expect(r.state).toBe('ok');
+    if (r.state === 'ok') expect(r.truncated).toBe(true);
   });
 
-  it('aceita id numérico, normalizando para string', () => {
-    expect(parseWorkflows({ data: [{ id: 7, name: 'n', active: false }] })).toEqual([
-      { id: '7', name: 'n', active: false },
-    ]);
+  it('falha na segunda chamada (execuções) derruba tudo para unavailable', async () => {
+    const impl = ((url: string) => {
+      if (url.includes('/executions')) return Promise.resolve(jsonResponse({}, 500));
+      return Promise.resolve(jsonResponse({ data: [{ id: '1', name: 'W', active: true }] }));
+    }) as unknown as typeof fetch;
+
+    const r = await fetchN8nWorkflows(CONN, impl);
+    expect(r.state).toBe('unavailable');
+    expect(r).not.toHaveProperty('workflows');
   });
 });
