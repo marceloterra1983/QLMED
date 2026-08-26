@@ -9,7 +9,7 @@
 - [x] T002 [US1] [AC-002] Slice the 80 `Float` columns (28 money, 33 tax,
   13 rate, 5 quantity, 1 confidence) in plan/tasks.
 
-## Phase 2: Expand InvoiceDuplicata (US2/US4) — next PR
+## Phase 2: Expand InvoiceDuplicata (US2/US4)
 
 - [x] T003 [US2] [FR-002/AC-003] Add nullable Decimal sidecar columns beside
   `dupValor`, `faturaValorOriginal`, `faturaValorLiquido` in
@@ -38,5 +38,6 @@
 
 ## Checkpoint
 
-After T008 the program is specified and the first expand is a separate PR.
-Human operator owns production apply.
+The first InvoiceDuplicata expand (T003–T006) is already in this checkout.
+After T008, remaining columns and contract stay later PRs. Human operator
+owns production apply.
