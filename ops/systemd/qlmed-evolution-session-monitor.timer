@@ -1,0 +1,11 @@
+[Unit]
+Description=Run QLMED Evolution session monitor every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=qlmed-evolution-session-monitor.service
+
+[Install]
+WantedBy=timers.target

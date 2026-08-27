@@ -1,0 +1,13 @@
+[Unit]
+Description=QLMED daily summary catch-up after boot and every 15 minutes
+
+[Timer]
+# Cobre PC desligado às 18h: ao voltar, tenta em ~2 min e segue até haver success do dia.
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+RandomizedDelaySec=30
+Unit=qlmed-daily-summary-catchup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Alert on QLMED n8n stuck watchdog failure
+
+[Service]
+Type=oneshot
+User=marce
+Group=marce
+ExecStart=/bin/bash -ec 'source /home/marce/ops/lib/lib-ops.sh; logger -p auth.alert -t qlmed-n8n-stuck-watchdog "watchdog failure detected"; email_send "ALERTA: falha no watchdog n8n (QLMED)" "O timer qlmed-n8n-stuck-watchdog.service falhou. Verifique journalctl -u qlmed-n8n-stuck-watchdog.service."'

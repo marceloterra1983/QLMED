@@ -1,0 +1,26 @@
+[Unit]
+Description=QLMED CT-e DistDFe sync (SEFAZ AN)
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=marce
+Group=marce
+StateDirectory=qlmed-cte-dist-sync
+StateDirectoryMode=0700
+Environment=STATE_DIRECTORY=/var/lib/qlmed-cte-dist-sync
+Environment=CTE_SYNC_SCRIPT=/home/marce/qlmed/ops/scripts/qlmed-cte-dist-sync.js
+Environment=CTE_NSU_STATE_HOST=/srv/qlmed/ops/state/cte-last-nsu
+Environment=CTE_SYNC_LOG_DIR=/srv/qlmed/ops/logs
+# Offset from NFe DistDFe / NSDocs to reduce SEFAZ 656 collisions
+ExecStart=/home/marce/qlmed/ops/scripts/qlmed-cte-dist-sync.sh
+TimeoutStartSec=15min
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/qlmed-cte-dist-sync /srv/qlmed/ops/state /srv/qlmed/ops/logs /home/marce/qlmed/ops/evidence
+ReadOnlyPaths=/home/marce/qlmed/ops/scripts /usr/bin/docker /var/run/docker.sock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

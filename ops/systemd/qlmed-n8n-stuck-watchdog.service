@@ -1,0 +1,24 @@
+[Unit]
+OnFailure=qlmed-n8n-stuck-watchdog-alert.service
+Description=QLMED n8n stuck execution watchdog
+After=network-online.target
+
+[Service]
+TimeoutStartSec=90
+Type=oneshot
+# Roda como marce (precisa de lib.sh / secrets / send_whatsapp no alert outbox)
+User=marce
+Group=marce
+StateDirectory=qlmed-n8n-watchdog
+StateDirectoryMode=0700
+EnvironmentFile=/etc/qlmed/n8n-watchdog.env
+Environment=STATE_DIRECTORY=/var/lib/qlmed-n8n-watchdog
+Environment=N8N_API_KEY_FILE=/srv/qlmed/n8n/secrets/api-key
+ExecStart=/srv/qlmed/ops/scripts/qlmed-n8n-stuck-watchdog.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/qlmed-n8n-watchdog
+ReadOnlyPaths=/srv/qlmed/n8n/secrets/api-key /srv/qlmed/ops /home/marce/qlmed/ops /home/marce/ops /home/marce/.claude/secrets.env /etc/qlmed
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
