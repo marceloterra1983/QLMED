@@ -199,6 +199,18 @@ def send_email(config: dict[str, str], delivery: dict, invoice: dict, pdf: bytes
     return message["Message-ID"]
 
 
+def send_push(base_url: str, api_key: str, delivery: dict) -> tuple[str, str | None]:
+    """Despacha o toque no PWA. Nao baixa XML/PDF (SPEC-016 FR-009)."""
+    payload = request_json(
+        f"{base_url}/api/notifications/outbox/push",
+        api_key,
+        {"id": delivery["id"], "lockToken": delivery["lockToken"]},
+    )
+    outcome = str(payload.get("outcome") or "failed")
+    provider_id = payload.get("providerMessageId")
+    return outcome, str(provider_id) if provider_id else None
+
+
 def send_whatsapp(config: dict[str, str], delivery: dict, invoice: dict, pdf: bytes) -> str | None:
     link = build_delivery_link(config, delivery, invoice, tracked=True)
     body = {
@@ -293,6 +305,27 @@ def main() -> int:
 
     for delivery in claim.get("deliveries", []):
         invoice = delivery["event"]["invoice"]
+        if delivery.get("channel") == "push":
+            try:
+                mark_submitting(base_url, api_key, delivery)
+            except Exception as error:
+                ack(base_url, api_key, delivery, "retry", error=f"Could not enter provider submission phase: {error!r}")
+                continue
+            try:
+                outcome, provider_id = send_push(base_url, api_key, delivery)
+                if outcome == "sent":
+                    ack(base_url, api_key, delivery, "sent", providerMessageId=provider_id)
+                elif outcome == "gone":
+                    ack(base_url, api_key, delivery, "dead", error="Push subscription gone")
+                else:
+                    ack(base_url, api_key, delivery, "uncertain", error=f"Push outcome {outcome}")
+            except urllib.error.HTTPError as error:
+                outcome = "dead" if error.code in {400, 401, 403, 404, 405, 410, 413, 415, 422} else "uncertain"
+                ack(base_url, api_key, delivery, outcome, error=f"Provider HTTP {error.code}")
+            except Exception as error:
+                ack(base_url, api_key, delivery, "uncertain", error=f"Provider outcome unknown: {error!r}")
+            continue
+
         try:
             pdf, xml = fetch_assets(base_url, api_key, invoice)
         except Exception as error:
@@ -308,8 +341,10 @@ def main() -> int:
         try:
             if delivery["channel"] == "email":
                 provider_id = send_email(config, delivery, invoice, pdf, xml)
-            else:
+            elif delivery["channel"] == "whatsapp":
                 provider_id = send_whatsapp(config, delivery, invoice, pdf)
+            else:
+                raise RuntimeError(f"Unsupported notification channel: {delivery.get('channel')}")
             ack(base_url, api_key, delivery, "sent", providerMessageId=provider_id)
         except urllib.error.HTTPError as error:
             # Once submission began, every non-definitive result is ambiguous.

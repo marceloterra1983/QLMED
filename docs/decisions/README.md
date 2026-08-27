@@ -24,3 +24,6 @@ CLI/graph refresh, and pin upgrades only by PR.
 
 WhatsApp fiscal (notas recebidas e resumo diário) envia a um grupo único quando
 o JID está configurado: [ADR-0010](./0010-whatsapp-group-destination.md).
+
+Toque no celular de nota recebida é Web Push do PWA, canal pessoal `push`:
+[ADR-0011](./0011-pwa-web-push-invoice.md).

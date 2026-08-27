@@ -21,6 +21,11 @@ contém um JID `…@g.us`. Sem o valor, permanece o fan-out por telefone.
 Ver [ADR-0010](../decisions/0010-whatsapp-group-destination.md) e
 [SPEC-015](../../specs/015-whatsapp-group-destination/spec.md).
 
+Nota recebida também pode tocar o PWA (Web Push, canal `push`) quando o
+usuário autoriza o aparelho e o VAPID está configurado.
+Ver [ADR-0011](../decisions/0011-pwa-web-push-invoice.md) e
+[SPEC-016](../../specs/016-pwa-invoice-push/spec.md).
+
 ## n8n webhook
 
 `POST /api/webhooks/n8n` always requires `x-api-key`. When
