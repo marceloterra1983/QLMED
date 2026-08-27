@@ -1,0 +1,27 @@
+[Unit]
+Description=QLMED daily summary catch-up (missed 18h Resumo Diário)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=marce
+Group=marce
+SupplementaryGroups=docker
+StateDirectory=qlmed-daily-summary-catchup
+StateDirectoryMode=0700
+Environment=STATE_DIRECTORY=/var/lib/qlmed-daily-summary-catchup
+Environment=N8N_BASE_URL=http://127.0.0.1:5678
+Environment=CF_QLMED_ENV_FILE=/srv/qlmed/env/n8n-legacy.env
+Environment=OPS_SAFE_ENV=/home/marce/ops/lib/safe-env.py
+Environment=DAILY_SUMMARY_CATCHUP_LOG=/srv/qlmed/ops/logs/qlmed-daily-summary-catchup.log
+ExecStart=/home/marce/qlmed/ops/scripts/qlmed-daily-summary-catchup.sh
+TimeoutStartSec=3min
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/qlmed-daily-summary-catchup /srv/qlmed/ops/logs
+ReadOnlyPaths=/home/marce/ops /srv/qlmed/env /usr/bin/docker /var/run/docker.sock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

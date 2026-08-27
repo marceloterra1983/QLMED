@@ -1,0 +1,19 @@
+name: qlmed-db-proxy
+services:
+  proxy:
+    image: alpine/socat@sha256:d85531a29ef5ba99dfb4717485c239307e2902d522a1bc010992a2728c92cfad
+    container_name: qlmed-db-proxy
+    restart: unless-stopped
+    command: TCP-LISTEN:5432,fork,reuseaddr TCP:qlmed-db:5432
+    ports:
+    - 127.0.0.1:5432:5432
+    networks: []
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - nc -z 127.0.0.1 5432 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+networks: {}

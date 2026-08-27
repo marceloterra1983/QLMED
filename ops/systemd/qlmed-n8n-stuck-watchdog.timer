@@ -1,0 +1,12 @@
+[Unit]
+Description=Run QLMED n8n stuck watchdog every two minutes
+
+[Timer]
+OnBootSec=2min
+OnActiveSec=2min
+OnUnitActiveSec=2min
+Persistent=true
+Unit=qlmed-n8n-stuck-watchdog.service
+
+[Install]
+WantedBy=timers.target

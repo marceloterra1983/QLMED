@@ -1,0 +1,11 @@
+[Unit]
+Description=Run QLMED CT-e DistDFe sync hourly (offset :17)
+
+[Timer]
+OnCalendar=*-*-* *:17:00
+Persistent=true
+RandomizedDelaySec=90
+Unit=qlmed-cte-dist-sync.service
+
+[Install]
+WantedBy=timers.target

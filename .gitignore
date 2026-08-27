@@ -103,3 +103,7 @@ actions-runner-qlmed-prod
 
 # Impeccable hook session cache — pin the shared detector config
 .impeccable/hook.cache.json
+
+# Python bytecode cache
+__pycache__/
+*.pyc
