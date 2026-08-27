@@ -11,6 +11,7 @@ export default function LoginPage() {
   const { status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,7 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
+        email,
         password,
         redirect: false,
       });
@@ -63,7 +65,7 @@ export default function LoginPage() {
         } else if (result.error.includes('ACCOUNT_LOCKED') || result.error.includes('TOO_MANY_ATTEMPTS')) {
           setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
         } else {
-          setError('Senha inválida');
+          setError('Email ou senha inválidos');
         }
       } else {
         router.push('/fiscal/invoices');
@@ -128,6 +130,21 @@ export default function LoginPage() {
             )}
 
             <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                autoComplete="email"
+                required
+                autoFocus
+                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Senha de acesso</label>
               <input
                 type="password"
@@ -137,7 +154,6 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
-                autoFocus
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
               />
             </div>

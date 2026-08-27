@@ -25,4 +25,11 @@ export const updateUserSchema = z.object({
   phone: z.string().nullable().optional(),
   allowedPages: z.array(z.string()).optional(),
   password: z.string().min(6).optional(),
+  /**
+   * SPEC-014, D5(c): a segunda saída do bloqueio por força bruta — a
+   * primeira é a expiração automática do próprio `lockedUntil`. Zera
+   * `failedAttempts` e `lockedUntil` sem mexer em mais nada; não é uma
+   * mudança sensível (não força re-login), só reverte contadores.
+   */
+  unlockAccount: z.boolean().optional(),
 });

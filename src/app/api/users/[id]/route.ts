@@ -28,7 +28,7 @@ export async function PATCH(
     const parsed = updateUserSchema.safeParse(body);
     if (!parsed.success) return apiValidationError(parsed.error);
 
-    const { name, email, role, status, phone, allowedPages, password } = parsed.data;
+    const { name, email, role, status, phone, allowedPages, password, unlockAccount } = parsed.data;
 
     // Self-protection: admin cannot demote or deactivate themselves
     if (id === admin.userId) {
@@ -87,6 +87,14 @@ export async function PATCH(
       updateData.passwordHash = await hash(password, 12);
     }
 
+    // SPEC-014, D5(c): destravamento manual pelo admin. Não entra em
+    // sensitiveChange abaixo — não altera privilégio, então não força
+    // logout em outros dispositivos daquele usuário.
+    if (unlockAccount) {
+      (updateData as Record<string, unknown>).failedAttempts = 0;
+      (updateData as Record<string, unknown>).lockedUntil = null;
+    }
+
     // Auth-sensitive mutations (role, status, allowedPages, password) force
     // an immediate JWT invalidation across all devices: increment tokenVersion
     // so the target's next request fails the session check in requireAuth
@@ -108,6 +116,11 @@ export async function PATCH(
     }
     if (allowedPages !== undefined) {
       auditEvents.push({ action: 'pages_changed', path: `count=${allowedPages.length}` });
+    }
+    if (unlockAccount) {
+      // Reusa a ação genérica em vez de estender o enum AccessLogAction por
+      // um único caso de uso (T007) — o `path` já diz o que aconteceu.
+      auditEvents.push({ action: 'user_updated', path: `target=${id} account_unlocked by=${admin.userId}` });
     }
     // Always write a generic user_updated for admin traceability, tagged with
     // the acting admin's id so the audit log attributes the change correctly.
