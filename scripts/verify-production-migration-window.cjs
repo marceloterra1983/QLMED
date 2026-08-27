@@ -7,8 +7,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { Client } = require('pg');
 
-const EXPECTED_MIGRATION = '20260826140000_add_notification_preferences_and_n8n_config';
-const EXPECTED_SQL_SHA256 = '7f3e8dba535303f7c2956b045aa6f0758bf398d8580d870d8734c3333b7ec837';
+const EXPECTED_MIGRATION = '20260827180000_add_web_push_subscriptions';
+const EXPECTED_SQL_SHA256 = '0b7e2ce10023dd89a74a48bd1f24aeb6c42d45cd66bdb5eeab1a485e5f16f9c2';
 const TABLES = [
   'invoice_tax_totals', 'invoice_item_tax', 'contact_fiscal',
   'invoice_duplicata', 'ncm_cache', 'product_registry', 'stock_entry',
