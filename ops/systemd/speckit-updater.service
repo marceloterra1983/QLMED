@@ -1,0 +1,29 @@
+[Unit]
+Description=QLMED Spec Kit updater bridge for n8n
+# docker0 (default SPECKIT_HOST=172.17.0.1) must exist before bind.
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=marce
+Group=marce
+Environment=HOME=/home/marce
+Environment=PIP_NO_CACHE_DIR=1
+# Optional: SPECKIT_HOST (default 172.17.0.1), SPECKIT_PORT (default 8765).
+# Required in EnvironmentFile: SPECKIT_WEBHOOK_SECRET (>=32 chars).
+# Health: curl -fsS http://172.17.0.1:8765/healthz  (not 127.0.0.1)
+EnvironmentFile=/etc/qlmed/speckit-updater.env
+ExecStart=/usr/bin/python3 /home/marce/qlmed/ops/scripts/speckit-updater.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/marce/.local/share/specify-cli
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
