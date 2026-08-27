@@ -20,6 +20,8 @@ grupo quando `NOTIFICATION_WHATSAPP_GROUP` ou `QLMED_WHATSAPP_GROUP_JID`
 contém um JID `…@g.us`. Sem o valor, permanece o fan-out por telefone.
 Ver [ADR-0010](../decisions/0010-whatsapp-group-destination.md) e
 [SPEC-015](../../specs/015-whatsapp-group-destination/spec.md).
+O texto WhatsApp de CT-e recebido é curto (marca, origem, destino, valor;
+sem chave). Ver [SPEC-017](../../specs/017-cte-whatsapp-caption/spec.md).
 
 Nota recebida também pode tocar o PWA (Web Push, canal `push`) quando o
 usuário autoriza o aparelho e o VAPID está configurado.

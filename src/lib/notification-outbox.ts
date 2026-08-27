@@ -14,6 +14,7 @@ import { canAccessPage } from '@/lib/navigation';
 import { wantsNotification } from '@/lib/notification-preferences';
 import { normalizePushEndpoint } from '@/lib/push-subscriptions';
 import { isWebPushConfigured } from '@/lib/web-push';
+import { decorateClaimInvoice } from '@/lib/cte-whatsapp-caption';
 
 type TransactionClient = Prisma.TransactionClient;
 const OUTBOX_EVENT_TYPE = 'invoice_received' as const;
@@ -443,7 +444,7 @@ export async function claimNotificationDeliveries(options: {
       if (result.count === 1) claimedIds.push(candidate.id);
     }
 
-    return tx.notificationDelivery.findMany({
+    const rows = await tx.notificationDelivery.findMany({
       where: { id: { in: claimedIds } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: {
@@ -471,12 +472,20 @@ export async function claimNotificationDeliveries(options: {
                 recipientName: true,
                 totalValue: true,
                 createdAt: true,
+                xmlContent: true,
               },
             },
           },
         },
       },
     });
+    return rows.map((delivery) => ({
+      ...delivery,
+      event: {
+        ...delivery.event,
+        invoice: decorateClaimInvoice(delivery.event.invoice),
+      },
+    }));
   });
 }
 

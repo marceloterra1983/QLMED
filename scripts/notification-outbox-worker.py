@@ -110,6 +110,13 @@ def build_text(invoice: dict, link: str) -> str:
     )
 
 
+def build_whatsapp_text(invoice: dict, link: str) -> str:
+    caption = invoice.get("whatsappCaption")
+    if invoice.get("type") == "CTE" and isinstance(caption, str) and caption.strip():
+        return f"{caption.rstrip()}\n\n{link}"
+    return build_text(invoice, link)
+
+
 def build_html(invoice: dict, link: str) -> str:
     return "<pre style=\"font-family:Arial,sans-serif\">" + html.escape(build_text(invoice, link)) + "</pre>"
 
@@ -219,7 +226,7 @@ def send_whatsapp(config: dict[str, str], delivery: dict, invoice: dict, pdf: by
         "media": base64.b64encode(pdf).decode("ascii"),
         "mimetype": "application/pdf",
         "fileName": f"{invoice['type']}_{invoice['number']}.pdf",
-        "caption": build_text(invoice, link),
+        "caption": build_whatsapp_text(invoice, link),
     }
     data = json.dumps(body).encode("utf-8")
     request = urllib.request.Request(
