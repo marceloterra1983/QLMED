@@ -31,20 +31,20 @@ a equipe usa para reconhecer o frete.
 
 ### User Story 1 — Ler o frete de relance (Priority: P1)
 
-Como operador no grupo WhatsApp, ao chegar um CT-e recebido vejo número, nome
-curto da transportadora, origem, destino e valor. Não vejo a chave.
+Como operador no grupo WhatsApp, ao chegar um CT-e recebido vejo nome curto
+da transportadora, origem, destino e valor. Não vejo número nem chave.
 
 **Independent Test**: Montar o texto do WhatsApp com emitente Azul, origem
 Campo Grande, destino São Paulo e valor 325,63; o texto contém AZUL, C.G.,
-ícone de caminhão e São Paulo; não contém a chave de 44 dígitos.
+caminhão apontando à direita e São Paulo; não contém número nem a chave.
 
 **Acceptance Scenarios**:
 
 1. **AC-001** — Given um CT-e da Azul Linhas Aéreas com origem Campo Grande,
    when o WhatsApp é montado, then o nome exibido é `AZUL` e a origem é `C.G.`.
 2. **AC-002** — Given o mesmo CT-e, when o WhatsApp é montado, then o texto
-   contém ícone de caminhão e a cidade de destino, e MUST NOT conter a chave
-   de acesso nem o rótulo `Chave:`.
+   contém caminhão apontando à direita e a cidade de destino, e MUST NOT
+   conter número do documento, `Nº`, a chave de acesso nem o rótulo `Chave:`.
 3. **AC-003** — Given um CT-e da Pantanal, when o WhatsApp é montado, then o
    nome exibido é `PANTANAL`.
 
@@ -66,8 +66,7 @@ incluem número, emitente completo, valor e chave.
 ### User Story 3 — Sem rota no XML (Priority: P2)
 
 Como operador, se o XML do CT-e não tiver município de início ou fim, a
-mensagem ainda sai com número, transportadora curta e valor, sem inventar
-cidade.
+mensagem ainda sai com transportadora curta e valor, sem inventar cidade.
 
 **Independent Test**: Caption sem `xMunIni`/`xMunFim` omite a linha da rota
 e não inventa C.G.
@@ -87,15 +86,17 @@ e não inventa C.G.
 - **FR-002**: Campo Grande (qualquer capitalização) MUST aparecer como `C.G.`.
   Outras cidades MUST aparecer pelo nome do município, sem inventar sigla.
 - **FR-003**: Quando origem e destino existirem, o caption MUST mostrar
-  origem, ícone de caminhão e destino na mesma linha.
+  origem, caminhão apontando à direita (destino) e destino na mesma linha.
 - **FR-004**: O caption WhatsApp de CT-e MUST NOT incluir a chave de acesso
   nem o rótulo `Chave:`.
+- **FR-008**: O caption WhatsApp de CT-e MUST NOT incluir o número do
+  documento nem o rótulo `Nº`.
 - **FR-005**: E-mail (CT-e e NF-e) e WhatsApp de NF-e MUST permanecer com o
   texto atual (número, emitente/transportadora por extenso, valor, chave).
 - **FR-006**: Sem município de início ou fim no documento, o sistema MUST
   omitir a linha da rota; MUST NOT inventar cidade.
 - **FR-007**: O XML completo MUST NOT ser enviado ao worker; só campos já
-  necessários ao texto (nome curto, cidades, valor, número, caption).
+  necessários ao texto (nome curto, cidades, valor, caption).
 
 ### Failure cases
 
@@ -119,8 +120,8 @@ e não inventa C.G.
 
 ## Key entities
 
-- **Caption WhatsApp de CT-e**: texto curto (número, marca, rota, valor) +
-  link rastreado. Sem chave.
+- **Caption WhatsApp de CT-e**: texto curto (marca, rota, valor) +
+  link rastreado. Sem número e sem chave.
 - **Nome curto da transportadora**: uma palavra reconhecível da razão social.
 
 ## Success Criteria
@@ -135,7 +136,7 @@ e não inventa C.G.
 ## Assumptions
 
 - Só Campo Grande tem sigla pedida (`C.G.`).
-- Ícone de caminhão é o emoji 🚚.
-- Número e valor continuam no WhatsApp; só a chave some.
+- Rota usa 🚛➡️: 🚚 sozinho aponta para a esquerda no iPhone/WhatsApp.
+- Valor continua no WhatsApp; número e chave não.
 - Destino e origem vêm de `xMunIni` e `xMunFim` do CT-e (início/fim da
   prestação), não da cidade de emissão.

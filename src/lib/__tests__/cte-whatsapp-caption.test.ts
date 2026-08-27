@@ -72,11 +72,14 @@ describe('buildCteWhatsappCaption', () => {
       [
         'CT-e Recebido',
         '',
-        'Nº 133497 · AZUL',
-        'C.G. 🚚 São Paulo',
+        'AZUL',
+        'C.G. 🚛➡️ São Paulo',
         'R$ 325,63',
       ].join('\n'),
     );
+    expect(caption).not.toContain('Nº');
+    expect(caption).not.toContain('133497');
+    expect(caption).not.toContain('🚚');
     expect(caption).not.toContain('Chave');
     expect(caption).not.toContain(ACCESS_KEY);
   });
@@ -90,8 +93,10 @@ describe('buildCteWhatsappCaption', () => {
       totalValue: 1,
     });
 
-    expect(caption).toContain('Nº 10 · PANTANAL');
-    expect(caption).not.toContain('🚚');
+    expect(caption).toContain('PANTANAL');
+    expect(caption).not.toContain('Nº');
+    expect(caption).not.toContain('10');
+    expect(caption).not.toContain('🚛');
     expect(caption).not.toContain('C.G.');
   });
 });
@@ -110,7 +115,9 @@ describe('decorateClaimInvoice', () => {
 
     expect(decorated).not.toHaveProperty('xmlContent');
     expect(decorated.whatsappCaption).toContain('AZUL');
-    expect(decorated.whatsappCaption).toContain('C.G. 🚚 São Paulo');
+    expect(decorated.whatsappCaption).toContain('C.G. 🚛➡️ São Paulo');
+    expect(decorated.whatsappCaption).not.toContain('Nº');
+    expect(decorated.whatsappCaption).not.toContain('133497');
     expect(decorated.whatsappCaption).not.toContain(ACCESS_KEY);
     expect(JSON.stringify(decorated)).not.toContain('xmlContent');
     expect(JSON.stringify(decorated)).not.toContain('<cteProc');

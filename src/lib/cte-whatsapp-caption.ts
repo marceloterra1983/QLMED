@@ -115,6 +115,9 @@ export function formatCaptionBrl(value: unknown): string {
   return `R$ ${withDots},${frac}`;
 }
 
+/** 🚚 sozinho aponta à esquerda no iPhone; 🚛➡️ lê origem → destino. */
+export const CTE_ROUTE_MARKER = '🚛➡️';
+
 export function buildCteWhatsappCaption(input: {
   number: string | null;
   senderName: string | null;
@@ -123,11 +126,10 @@ export function buildCteWhatsappCaption(input: {
   totalValue: unknown;
 }): string {
   const carrier = shortCarrierName(input.senderName);
-  const number = (input.number || '').trim() || '-';
-  const lines = ['CT-e Recebido', '', `Nº ${number} · ${carrier}`];
+  const lines = ['CT-e Recebido', '', carrier];
   const origin = input.originCity ? abbreviateCity(input.originCity) : '';
   const dest = input.destCity ? abbreviateCity(input.destCity) : '';
-  if (origin && dest) lines.push(`${origin} 🚚 ${dest}`);
+  if (origin && dest) lines.push(`${origin} ${CTE_ROUTE_MARKER} ${dest}`);
   lines.push(formatCaptionBrl(input.totalValue));
   return lines.join('\n');
 }

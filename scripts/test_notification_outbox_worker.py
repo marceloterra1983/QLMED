@@ -28,12 +28,14 @@ class WorkerCaptionTests(unittest.TestCase):
             "totalValue": 325.63,
             "accessKey": ACCESS_KEY,
             "whatsappCaption": (
-                "CT-e Recebido\n\nNº 133497 · AZUL\nC.G. 🚚 São Paulo\nR$ 325,63"
+                "CT-e Recebido\n\nAZUL\nC.G. 🚛➡️ São Paulo\nR$ 325,63"
             ),
         }
         text = WORKER.build_whatsapp_text(invoice, LINK)
         self.assertIn("AZUL", text)
-        self.assertIn("C.G. 🚚 São Paulo", text)
+        self.assertIn("C.G. 🚛➡️ São Paulo", text)
+        self.assertNotIn("Nº", text)
+        self.assertNotIn("133497", text)
         self.assertIn(LINK, text)
         self.assertNotIn("Chave", text)
         self.assertNotIn(ACCESS_KEY, text)

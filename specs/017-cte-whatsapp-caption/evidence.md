@@ -4,7 +4,7 @@ Scope: executar `specs/017-cte-whatsapp-caption/tasks.md`.
 
 ## Checks (re-medidos)
 
-- `npx vitest run src/lib/__tests__/cte-whatsapp-caption.test.ts` — 1 file passed (18:54:23)
+- `npx vitest run src/lib/__tests__/cte-whatsapp-caption.test.ts` — 10 passed (sem Nº; rota 🚛➡️)
 - `python3 -m unittest -v scripts/test_notification_outbox_worker.py` — 3 tests, OK
 - `npm test` — 51 passed | 3 skipped; 359 passed | 4 skipped
 - `npx tsc --noEmit` — exit 0
