@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { normalizeForSearch } from '@/lib/utils';
-import { getCfopCodesByTag } from '@/lib/cfop';
+import { getCfopCodesByTag, getCfopTagByCode } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
@@ -205,6 +205,7 @@ export async function GET(req: Request) {
       baseInvoices: T[]
     ): Promise<Array<T & {
       cfop: string | null;
+      cfopTag: string | null;
       cteRemetenteName: string | null;
       cteRecebedorName: string | null;
       cteRemetenteCnpj: string | null;
@@ -230,6 +231,7 @@ export async function GET(req: Request) {
           ...invoice,
           totalValue: Number(invoice.totalValue),
           cfop: invoice.cfop || null,
+          cfopTag: getCfopTagByCode(invoice.cfop),
           cteRemetenteName: xml?.type === 'CTE' ? extractCteRemetenteName(xml.xmlContent) : null,
           cteRecebedorName: xml?.type === 'CTE' ? extractCteRecebedorName(xml.xmlContent) : null,
           cteRemetenteCnpj: xml?.type === 'CTE' ? extractCteRemetenteCnpj(xml.xmlContent) : null,

@@ -7,6 +7,7 @@ export interface Invoice {
   direction: InvoiceDirection;
   number: string;
   cfop?: string | null;
+  cfopTag?: string | null;
   cteRemetenteName?: string | null;
   cteRecebedorName?: string | null;
   cteRemetenteCnpj?: string | null;
