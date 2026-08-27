@@ -12,6 +12,8 @@ import {
 } from '@/lib/postgres-advisory-lock';
 import { canAccessPage } from '@/lib/navigation';
 import { wantsNotification } from '@/lib/notification-preferences';
+import { normalizePushEndpoint } from '@/lib/push-subscriptions';
+import { isWebPushConfigured } from '@/lib/web-push';
 
 type TransactionClient = Prisma.TransactionClient;
 const OUTBOX_EVENT_TYPE = 'invoice_received' as const;
@@ -101,6 +103,8 @@ export function normalizeNotificationRecipient(
   let normalized: string;
   if (channel === 'email') {
     normalized = recipient.trim().toLowerCase();
+  } else if (channel === 'push') {
+    normalized = normalizePushEndpoint(recipient);
   } else {
     const trimmed = recipient.trim();
     const group = trimmed.match(WHATSAPP_GROUP_JID);
@@ -159,9 +163,14 @@ export function getRetryDelaySeconds(attempts: number): number {
 
 export function buildInvoiceNotificationDestinations(
   invoiceType: Invoice['type'],
-  users: Array<{ email: string; phone: string | null }>,
+  users: Array<{
+    email: string;
+    phone: string | null;
+    pushEndpoints?: readonly string[];
+  }>,
   alwaysEmail: string,
   whatsappGroup: string | null | undefined = undefined,
+  pushEnabled = false,
 ): OutboxDestination[] {
   const destinations = new Map<string, OutboxDestination>();
   const add = (channel: NotificationChannel, recipient: string) => {
@@ -183,6 +192,15 @@ export function buildInvoiceNotificationDestinations(
     }
     if (phone && !group) add('whatsapp', phone);
     if (invoiceType === 'NFE' || phone) add('email', user.email);
+    if (pushEnabled) {
+      for (const endpoint of user.pushEndpoints ?? []) {
+        try {
+          add('push', endpoint);
+        } catch {
+          // Inscrição inválida não entra no outbox e não derruba e-mail/WhatsApp.
+        }
+      }
+    }
   }
 
   return Array.from(destinations.values());
@@ -216,6 +234,7 @@ async function enqueueInvoiceEvent(
   }
 
   const companyCount = await tx.company.count();
+  const pushEnabled = isWebPushConfigured();
   const [event, users] = await Promise.all([
     tx.notificationOutboxEvent.findUniqueOrThrow({
       where: { eventKey },
@@ -239,6 +258,9 @@ async function enqueueInvoiceEvent(
           where: { eventType: 'invoice_received' },
           select: { eventType: true, enabled: true },
         },
+        ...(pushEnabled
+          ? { pushSubscriptions: { select: { endpoint: true } } }
+          : {}),
       },
     }),
   ]);
@@ -248,9 +270,16 @@ async function enqueueInvoiceEvent(
     'faturamento@qlmed.com.br';
   const destinations = buildInvoiceNotificationDestinations(
     invoice.type,
-    selectNotifiableUsers(users, invoice.type),
+    selectNotifiableUsers(users, invoice.type).map((user) => ({
+      email: user.email,
+      phone: user.phone,
+      pushEndpoints: 'pushSubscriptions' in user
+        ? user.pushSubscriptions.map((row) => row.endpoint)
+        : [],
+    })),
     alwaysEmail,
     getConfiguredWhatsAppGroup(),
+    pushEnabled,
   );
 
   await tx.notificationDelivery.createMany({

@@ -138,4 +138,63 @@ describe('notification outbox', () => {
     );
     expect(cte).toContainEqual({ channel: 'whatsapp', recipient: '5567999990000' });
   });
+
+  it('normalizes HTTPS push endpoints for the delivery key', () => {
+    const eventKey = buildNotificationEventKey('invoice-push');
+    expect(normalizeNotificationRecipient('push', ' https://fcm.googleapis.com/fcm/send/abc '))
+      .toBe('https://fcm.googleapis.com/fcm/send/abc');
+    expect(buildDeliveryIdempotencyKey(eventKey, 'push', 'https://fcm.googleapis.com/fcm/send/abc'))
+      .toBe(buildDeliveryIdempotencyKey(eventKey, 'push', ' https://fcm.googleapis.com/fcm/send/abc '));
+    expect(() => normalizeNotificationRecipient('push', 'http://insecure.example/push')).toThrow(/HTTPS/i);
+  });
+
+  it('queues one push destination per subscribed device when VAPID is on', () => {
+    const users = [
+      {
+        email: 'with-phone@qlmed.com.br',
+        phone: '(67) 99999-0000',
+        pushEndpoints: [
+          'https://fcm.googleapis.com/fcm/send/device-a',
+          'https://fcm.googleapis.com/fcm/send/device-b',
+        ],
+      },
+    ];
+
+    const withPush = buildInvoiceNotificationDestinations(
+      'NFE',
+      users,
+      'faturamento@qlmed.com.br',
+      '120363024812345678@g.us',
+      true,
+    );
+    expect(withPush.filter((destination) => destination.channel === 'push')).toEqual([
+      { channel: 'push', recipient: 'https://fcm.googleapis.com/fcm/send/device-a' },
+      { channel: 'push', recipient: 'https://fcm.googleapis.com/fcm/send/device-b' },
+    ]);
+    expect(withPush).toContainEqual({ channel: 'email', recipient: 'faturamento@qlmed.com.br' });
+    expect(withPush).toContainEqual({
+      channel: 'whatsapp',
+      recipient: '120363024812345678@g.us',
+    });
+
+    const withoutVapid = buildInvoiceNotificationDestinations(
+      'NFE',
+      users,
+      'faturamento@qlmed.com.br',
+      '120363024812345678@g.us',
+      false,
+    );
+    expect(withoutVapid.filter((destination) => destination.channel === 'push')).toEqual([]);
+  });
+
+  it('does not invent a group-wide push destination', () => {
+    const destinations = buildInvoiceNotificationDestinations(
+      'NFE',
+      [],
+      'faturamento@qlmed.com.br',
+      '120363024812345678@g.us',
+      true,
+    );
+    expect(destinations.filter((destination) => destination.channel === 'push')).toEqual([]);
+  });
 });

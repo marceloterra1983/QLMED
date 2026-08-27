@@ -7,6 +7,7 @@ import { useRole } from '@/hooks/useRole';
 import CertificateSection from './components/CertificateSection';
 import IntegrationsSection from './components/IntegrationsSection';
 import PreferencesSection from './components/PreferencesSection';
+import { PushDeviceToggle } from '@/components/PushDeviceToggle';
 
 interface Company {
   id: string;
@@ -63,6 +64,7 @@ export default function SettingsPage() {
       <CertificateSection company={company} canManageSettings={canManageSettings} />
       <IntegrationsSection company={company} canManageSettings={canManageSettings} />
       <PreferencesSection />
+      <PushDeviceToggle />
     </div>
   );
 }

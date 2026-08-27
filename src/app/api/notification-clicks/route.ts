@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
-  channel: z.enum(['email', 'whatsapp']).optional(),
+  channel: z.enum(['email', 'whatsapp', 'push']).optional(),
   recipient: z.string().trim().min(1).max(120).optional(),
 });
 

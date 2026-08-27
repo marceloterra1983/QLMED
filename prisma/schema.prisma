@@ -75,6 +75,7 @@ enum NotificationEventType {
 enum NotificationChannel {
   email
   whatsapp
+  push
 }
 
 enum NotificationDeliveryStatus {
@@ -111,6 +112,7 @@ model User {
   accessLogs     AccessLog[]
   apiKeys        ApiKey[]    @relation("ApiKeyCreator")
   notificationPreferences UserNotificationPreference[]
+  pushSubscriptions       PushSubscription[]
 }
 
 // Named API keys used by external integrations (n8n, scripts). Each row
@@ -332,6 +334,21 @@ model UserNotificationPreference {
 
   @@unique([userId, eventType])
   @@index([eventType, enabled])
+}
+
+/// Inscricao Web Push de um aparelho. Sem companyId: pertence a identidade,
+/// como UserNotificationPreference (SPEC-016 / ADR-0011).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model NotificationOutboxEvent {
