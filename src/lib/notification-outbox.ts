@@ -92,6 +92,8 @@ export function selectNotifiableUsers<
   );
 }
 
+const WHATSAPP_GROUP_JID = /^(\d{6,32})@g\.us$/i;
+
 export function normalizeNotificationRecipient(
   channel: NotificationChannel,
   recipient: string,
@@ -100,12 +102,22 @@ export function normalizeNotificationRecipient(
   if (channel === 'email') {
     normalized = recipient.trim().toLowerCase();
   } else {
-    const digits = recipient.replace(/\D/g, '');
-    normalized = digits.startsWith('55') || ![10, 11].includes(digits.length)
-      ? digits
-      : `55${digits}`;
-    if (![12, 13].includes(normalized.length)) {
-      throw new Error('WhatsApp recipient must include a valid Brazilian phone number');
+    const trimmed = recipient.trim();
+    const group = trimmed.match(WHATSAPP_GROUP_JID);
+    if (group) {
+      normalized = `${group[1]}@g.us`;
+    } else {
+      const digits = trimmed.replace(/\D/g, '');
+      normalized = digits.startsWith('55') || ![10, 11].includes(digits.length)
+        ? digits
+        : `55${digits}`;
+      if (![12, 13].includes(normalized.length)) {
+        throw new Error(
+          trimmed.toLowerCase().includes('@g.us')
+            ? 'WhatsApp group JID is invalid'
+            : 'WhatsApp recipient must include a valid Brazilian phone number',
+        );
+      }
     }
   }
 
@@ -114,6 +126,20 @@ export function normalizeNotificationRecipient(
   }
 
   return normalized;
+}
+
+export function getConfiguredWhatsAppGroup(
+  raw: string | null | undefined = process.env.NOTIFICATION_WHATSAPP_GROUP
+    ?? process.env.QLMED_WHATSAPP_GROUP_JID
+    ?? null,
+): string | null {
+  if (!raw?.trim()) return null;
+  try {
+    const normalized = normalizeNotificationRecipient('whatsapp', raw);
+    return normalized.endsWith('@g.us') ? normalized : null;
+  } catch {
+    return null;
+  }
 }
 
 export function buildDeliveryIdempotencyKey(
@@ -135,6 +161,7 @@ export function buildInvoiceNotificationDestinations(
   invoiceType: Invoice['type'],
   users: Array<{ email: string; phone: string | null }>,
   alwaysEmail: string,
+  whatsappGroup: string | null | undefined = undefined,
 ): OutboxDestination[] {
   const destinations = new Map<string, OutboxDestination>();
   const add = (channel: NotificationChannel, recipient: string) => {
@@ -144,6 +171,9 @@ export function buildInvoiceNotificationDestinations(
 
   if (alwaysEmail.trim()) add('email', alwaysEmail);
 
+  const group = getConfiguredWhatsAppGroup(whatsappGroup);
+  if (group) add('whatsapp', group);
+
   for (const user of users) {
     let phone = '';
     try {
@@ -151,7 +181,7 @@ export function buildInvoiceNotificationDestinations(
     } catch {
       phone = '';
     }
-    if (phone) add('whatsapp', phone);
+    if (phone && !group) add('whatsapp', phone);
     if (invoiceType === 'NFE' || phone) add('email', user.email);
   }
 
@@ -220,6 +250,7 @@ async function enqueueInvoiceEvent(
     invoice.type,
     selectNotifiableUsers(users, invoice.type),
     alwaysEmail,
+    getConfiguredWhatsAppGroup(),
   );
 
   await tx.notificationDelivery.createMany({
