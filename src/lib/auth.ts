@@ -5,6 +5,7 @@ import { timingSafeEqual, createHash } from 'crypto';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { effectiveApiKeyScopes } from '@/lib/api-key-scopes';
 
 const log = createLogger('auth');
 
@@ -63,14 +64,16 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
         createdById: true,
         scopes: true,
         revokedAt: true,
-        createdBy: { select: { status: true } },
+        createdBy: { select: { role: true, status: true } },
       },
     });
-    if (row && !row.revokedAt && row.createdBy.status === 'active') {
+    if (row && !row.revokedAt) {
+      const scopes = effectiveApiKeyScopes(row.scopes, row.createdBy.role, row.createdBy.status);
+      if (scopes.length === 0) return null;
       prisma.apiKey
         .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
         .catch((err) => log.warn({ err, keyId: row.id }, 'ApiKey lastUsedAt update failed'));
-      return { keyId: row.id, userId: row.createdById, scopes: row.scopes };
+      return { keyId: row.id, userId: row.createdById, scopes };
     }
   } catch (err) {
     log.error({ err }, 'ApiKey lookup failed');

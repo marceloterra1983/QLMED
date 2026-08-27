@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import {
+  consumeWebhookNonce,
+  DEFAULT_WEBHOOK_MAX_SKEW_SECONDS,
+  verifyWebhookSignature,
+} from '@/lib/n8n-webhook-security';
 
 const log = createLogger('webhooks/n8n');
 
@@ -19,6 +24,7 @@ const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 // Base64 expands by ~4/3; cap at 7MB so the decoded buffer cannot exceed the
 // downstream 5MB per-file limit. Reject early before Buffer.from allocates.
 const MAX_BASE64_XML_LENGTH = 7 * 1024 * 1024;
+const usedNonces = new Map<string, number>();
 
 function getApiKey(): string {
   const k = process.env.QLMED_API_KEY;
@@ -37,6 +43,35 @@ function validateApiKey(req: NextRequest): boolean {
   }
 }
 
+function getWebhookMaxSkewSeconds(): number {
+  const configured = Number(process.env.QLMED_WEBHOOK_MAX_SKEW_SECONDS);
+  return Number.isSafeInteger(configured) && configured >= 30 && configured <= 15 * 60
+    ? configured
+    : DEFAULT_WEBHOOK_MAX_SKEW_SECONDS;
+}
+
+function validateSignedRequest(req: NextRequest, body: string): boolean {
+  const timestamp = req.headers.get('x-qlmed-timestamp') || '';
+  const nonce = req.headers.get('x-qlmed-nonce') || '';
+  const signature = req.headers.get('x-qlmed-signature') || '';
+  const maxSkewSeconds = getWebhookMaxSkewSeconds();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (!verifyWebhookSignature({
+    secret: getApiKey(),
+    timestamp,
+    nonce,
+    signature,
+    body,
+    nowSeconds,
+    maxSkewSeconds,
+  })) {
+    return false;
+  }
+
+  return consumeWebhookNonce(usedNonces, nonce, nowSeconds, maxSkewSeconds);
+}
+
 function getInternalBaseUrl(): string {
   return (
     process.env.QLMED_INTERNAL_URL ||
@@ -50,9 +85,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let rawBodyText: string;
+  try {
+    rawBodyText = await req.text();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  if (!validateSignedRequest(req, rawBodyText)) {
+    return NextResponse.json({ error: 'Invalid, expired, or replayed webhook signature' }, { status: 401 });
+  }
+
   let rawBody: unknown;
   try {
-    rawBody = await req.json();
+    rawBody = JSON.parse(rawBodyText);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

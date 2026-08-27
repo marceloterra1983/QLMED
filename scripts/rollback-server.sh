@@ -88,6 +88,14 @@ if [[ "$target" == "latest" ]]; then
   fi
 fi
 
+# Keep the release identifier as data when it crosses the SSH boundary. This
+# script is an operator tool, but a tampered backup directory name must not be
+# able to terminate the quoted assignment in the remote shell command.
+if [[ ! "$target" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+  echo "Invalid rollback release name: only letters, numbers, dot, underscore and hyphen are allowed." >&2
+  exit 1
+fi
+
 echo "Rolling back production app to backup: $target"
 
 ssh "$DEPLOY_HOST" \

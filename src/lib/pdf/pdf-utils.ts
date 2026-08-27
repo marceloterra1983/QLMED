@@ -15,20 +15,20 @@ export function fmtCnpj(v: string): string {
   const d = (v || '').replace(/\D/g, '');
   if (d.length === 14) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
   if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-  return v || '';
+  return esc(v);
 }
 
 export function fmtCep(v: string): string {
   const d = (v || '').replace(/\D/g, '');
   if (d.length === 8) return `${d.slice(0, 5)}-${d.slice(5)}`;
-  return v || '';
+  return esc(v);
 }
 
 export function fmtFone(v: string): string {
   const d = (v || '').replace(/\D/g, '');
   if (d.length === 10) return `(${d.slice(0, 2)})${d.slice(2, 6)}-${d.slice(6)}`;
   if (d.length === 11) return `(${d.slice(0, 2)})${d.slice(2, 7)}-${d.slice(7)}`;
-  return v || '';
+  return esc(v);
 }
 
 export function fmtNum(v: string | number | null | undefined, dec: number = 2): string {
@@ -52,7 +52,11 @@ export function fmtNfNum(n: string): string {
 
 export function fmtDate(v: string): string {
   if (!v) return '';
-  try { return new Date(v).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return v; }
+  try {
+    const date = new Date(v);
+    if (Number.isNaN(date.getTime())) return esc(v);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  } catch { return esc(v); }
 }
 
 export function fmtTime(v: string): string {
@@ -85,7 +89,7 @@ export function modFreteCode(m: string): string {
     '4': '4 - DESTINATARIO',
     '9': '9 - SEM FRETE',
   };
-  return map[m] || m || '';
+  return map[m] || esc(m);
 }
 
 export function getPdfFilename(invoice: PdfInvoiceView): string {

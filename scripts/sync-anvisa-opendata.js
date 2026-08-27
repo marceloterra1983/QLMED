@@ -46,7 +46,7 @@ async function downloadCsv() {
   console.log(`   ⬇  Baixando CSV da ANVISA...`);
   await new Promise((resolve, reject) => {
     const file = fs.createWriteStream(CSV_PATH);
-    const req = https.get(CSV_URL, { rejectUnauthorized: false }, (res) => {
+    const req = https.get(CSV_URL, { rejectUnauthorized: true }, (res) => {
       if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
       const total = parseInt(res.headers['content-length'] || '0');
       let received = 0;
@@ -153,7 +153,7 @@ async function main() {
     [
       DATABASE_URL, '-t', '-A', '-F|', '-c',
       `SELECT id, codigo, anvisa_code FROM product_registry ` +
-      `WHERE company_id='${COMPANY_ID}' AND anvisa_code IS NOT NULL AND anvisa_code != '' AND anvisa_code != 'N/A'`,
+      `WHERE company_id=${q(COMPANY_ID)} AND anvisa_code IS NOT NULL AND anvisa_code != '' AND anvisa_code != 'N/A'`,
     ],
     { encoding: 'utf8' }
   );
@@ -219,7 +219,7 @@ async function main() {
       [
         DATABASE_URL, '-t', '-A', '-F|', '-c',
         `SELECT anvisa_status, count(*) FROM product_registry ` +
-        `WHERE company_id='${COMPANY_ID}' AND anvisa_status IS NOT NULL ` +
+        `WHERE company_id=${q(COMPANY_ID)} AND anvisa_status IS NOT NULL ` +
         `GROUP BY 1 ORDER BY 2 DESC`,
       ],
       { encoding: 'utf8' }

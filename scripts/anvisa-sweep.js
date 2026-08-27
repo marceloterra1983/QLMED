@@ -18,6 +18,11 @@ const SQL_OUT = '/tmp/anvisa-sweep.sql';
 const args    = process.argv.slice(2);
 const DRY_RUN = !args.includes('--apply');
 
+function q(value) {
+  if (value == null) return 'NULL';
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 // ─── N/A classification ─────────────────────────────────────────────────────
 // Keywords na descrição que indicam instrumental/acessório sem necessidade de RVS
 const NA_DESC_KEYWORDS = [
@@ -136,7 +141,7 @@ async function main() {
       DATABASE_URL, '-t', '-A', '-F|', '-c',
       `SELECT codigo, code, description, product_type, product_subtype, manufacturer_short_name ` +
       `FROM product_registry ` +
-      `WHERE company_id='${COMPANY_ID}' ` +
+      `WHERE company_id=${q(COMPANY_ID)} ` +
       `AND (anvisa_code IS NULL OR anvisa_code='') ` +
       `AND out_of_line=false ` +
       `ORDER BY product_subtype, codigo`,
@@ -204,9 +209,9 @@ async function main() {
   // N/A updates
   if (naProducts.length) {
     lines.push(`-- ══ N/A: instrumentais, equipamentos, veículos (${naProducts.length} itens) ══`);
-    const naList = naProducts.map(r => `'${r.codigo}'`).join(', ');
+    const naList = naProducts.map(r => q(r.codigo)).join(', ');
     lines.push(`UPDATE product_registry SET anvisa_code = 'N/A', updated_at = NOW()`);
-    lines.push(`WHERE company_id = '${COMPANY_ID}' AND codigo IN (${naList});`);
+    lines.push(`WHERE company_id = ${q(COMPANY_ID)} AND codigo IN (${naList});`);
     lines.push('');
   }
 
@@ -215,8 +220,8 @@ async function main() {
     lines.push(`-- ══ ANVISA encontrado via API (${found.length} itens) ══`);
     for (const { r, anvisa, name, score } of found) {
       lines.push(`-- ${r.codigo} ${r.code} | "${r.desc?.substring(0,50)}" → ${anvisa} (${(score*100).toFixed(0)}%) "${name?.substring(0,50)}"`);
-      lines.push(`UPDATE product_registry SET anvisa_code = '${anvisa}', anvisa_source = 'api_sweep', updated_at = NOW()`);
-      lines.push(`WHERE company_id = '${COMPANY_ID}' AND codigo = '${r.codigo}';`);
+      lines.push(`UPDATE product_registry SET anvisa_code = ${q(anvisa)}, anvisa_source = 'api_sweep', updated_at = NOW()`);
+      lines.push(`WHERE company_id = ${q(COMPANY_ID)} AND codigo = ${q(r.codigo)};`);
     }
     lines.push('');
   }

@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import type { Prisma } from '@prisma/client';
 import { getCanonicalDatabaseUrl } from '@/lib/database-config';
+import prisma from './prisma';
 
 export interface PostgresAdvisoryLock {
   release(): Promise<void>;
@@ -8,6 +9,10 @@ export interface PostgresAdvisoryLock {
 
 export function productAggregateLockKey(companyId: string): string {
   return `product-aggregate-rebuild:${companyId}`;
+}
+
+export function syncLogLockKey(companyId: string): string {
+  return `sync-log-start:${companyId}`;
 }
 
 export async function acquirePostgresTransactionAdvisoryLock(
@@ -18,6 +23,27 @@ export async function acquirePostgresTransactionAdvisoryLock(
     SELECT TRUE AS acquired
     FROM (SELECT pg_advisory_xact_lock(hashtext(${key})::bigint)) AS lock
   `;
+}
+
+export type SyncMethod = 'sefaz' | 'nsdocs' | 'receita_nfse';
+
+/** Atomically refuse a second sync for the same company. */
+export async function createSyncLogIfIdle(
+  companyId: string,
+  syncMethod: SyncMethod,
+): Promise<{ id: string } | null> {
+  return prisma.$transaction(async (tx) => {
+    await acquirePostgresTransactionAdvisoryLock(tx, syncLogLockKey(companyId));
+    const running = await tx.syncLog.findFirst({
+      where: { companyId, status: 'running' },
+      select: { id: true },
+    });
+    if (running) return null;
+    return tx.syncLog.create({
+      data: { companyId, syncMethod, status: 'running' },
+      select: { id: true },
+    });
+  });
 }
 
 export async function acquirePostgresAdvisoryLock(

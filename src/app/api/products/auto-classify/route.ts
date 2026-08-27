@@ -7,6 +7,7 @@ import { createLogger } from '@/lib/logger';
 import { autoClassifySchema } from '@/lib/schemas/product';
 
 const log = createLogger('products/auto-classify');
+const MAX_PRODUCTS_FOR_AUTO_CLASSIFY = 2_000;
 
 /* ── helpers ── */
 
@@ -128,6 +129,7 @@ export async function POST(req: Request) {
 
     const registryRows = await prisma.productRegistry.findMany({
       where: { companyId: company.id },
+      take: MAX_PRODUCTS_FOR_AUTO_CLASSIFY + 1,
       select: {
         id: true,
         productKey: true,
@@ -144,6 +146,12 @@ export async function POST(req: Request) {
         anvisaManufacturer: true,
       },
     });
+
+    if (registryRows.length > MAX_PRODUCTS_FOR_AUTO_CLASSIFY) {
+      return NextResponse.json({
+        error: `Classificação limitada a ${MAX_PRODUCTS_FOR_AUTO_CLASSIFY.toLocaleString('pt-BR')} produtos por execução`,
+      }, { status: 413 });
+    }
 
     // ── Build supplier map from invoices ──
     // Maps product code (uppercase) → { supplierCnpj, supplierName } from most recent invoice

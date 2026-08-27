@@ -44,7 +44,7 @@ describe('requireAuth API key scopes', () => {
       createdById: 'user-1',
       scopes: ['notifications:dispatch'],
       revokedAt: null,
-      createdBy: { status: 'active' },
+      createdBy: { role: 'viewer', status: 'active' },
     });
   });
 
@@ -63,7 +63,7 @@ describe('requireAuth API key scopes', () => {
       createdById: 'admin-1',
       scopes: ['admin'],
       revokedAt: null,
-      createdBy: { status: 'active' },
+      createdBy: { role: 'admin', status: 'active' },
     });
 
     await expect(requireAuth()).resolves.toBe('admin-1');

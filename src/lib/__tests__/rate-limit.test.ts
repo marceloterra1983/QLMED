@@ -27,12 +27,15 @@ describe('rate limit helpers', () => {
     expect(getRateLimitConfig('/api/auth/csrf')).toBeNull();
   });
 
-  it('uses the last valid forwarded IP and can ignore proxy headers by env', () => {
+  it('ignores proxy headers by default and only trusts them when explicitly enabled', () => {
     const headers = new Headers({
       'x-forwarded-for': '198.51.100.10, 203.0.113.20',
       'x-real-ip': '192.0.2.30',
     });
 
+    expect(getClientIp(headers)).toBe('untrusted-proxy');
+
+    vi.stubEnv('TRUST_PROXY_HEADERS', 'true');
     expect(getClientIp(headers)).toBe('203.0.113.20');
 
     vi.stubEnv('TRUST_PROXY_HEADERS', 'false');

@@ -1,6 +1,7 @@
 import { syncReceitaNfseByNsu } from '../receita-nfse-sync';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
+import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('auto-sync');
 
@@ -24,9 +25,9 @@ export async function syncViaReceitaNfse(
 ) {
   const syncLog = existingSyncLogId
     ? { id: existingSyncLogId }
-    : await prisma.syncLog.create({
-        data: { companyId, syncMethod: 'receita_nfse', status: 'running' },
-      });
+    : await createSyncLogIfIdle(companyId, 'receita_nfse');
+
+  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
 
   try {
     const result = await syncReceitaNfseByNsu({
@@ -86,4 +87,3 @@ export async function syncViaReceitaNfse(
     }
   }
 }
-

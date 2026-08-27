@@ -9,7 +9,7 @@ import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 import { apiError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
-import { createInvoiceWithOutbox } from '@/lib/notification-outbox';
+import { createHistoricalInvoiceWithoutOutbox } from '@/lib/notification-outbox';
 
 const log = createLogger('invoices/upload');
 
@@ -84,7 +84,10 @@ export async function POST(req: Request) {
         // Determinar direção: emitida ou recebida
         const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
 
-        const { invoice: savedInvoice } = await createInvoiceWithOutbox({
+        // A manually supplied XML is not evidence that the document was delivered
+        // by SEFAZ/NSDocs. Persist it for review, but never turn it into an
+        // outbound notification event that could be forged by an editor.
+        const savedInvoice = await createHistoricalInvoiceWithoutOutbox({
           data: {
             accessKey: parsed.accessKey,
             type: parsed.type,

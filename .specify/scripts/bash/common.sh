@@ -181,23 +181,27 @@ get_feature_paths() {
     #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
     #   2. .specify/feature.json "feature_directory" key (persisted by specify command)
     #   3. Error — no feature context available
-    local feature_dir
+    local feature_dir raw_feature_dir
     if [[ -n "${SPECIFY_FEATURE_DIRECTORY:-}" ]]; then
-        feature_dir="$SPECIFY_FEATURE_DIRECTORY"
-        # Normalize relative paths to absolute under repo root
-        [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
+        raw_feature_dir="$SPECIFY_FEATURE_DIRECTORY"
+        feature_dir=$(_safe_feature_directory "$repo_root" "$raw_feature_dir") || {
+            echo "ERROR: Feature directory must be a repository-relative path without traversal or symlinks." >&2
+            return 1
+        }
         # Persist to feature.json so future sessions without the env var still
         # work — unless the caller opted out for read-only resolution (#3025).
         if [[ "$no_persist" != true ]]; then
-            _persist_feature_json "$repo_root" "$SPECIFY_FEATURE_DIRECTORY"
+            _persist_feature_json "$repo_root" "$raw_feature_dir"
         fi
     elif [[ -f "$repo_root/.specify/feature.json" ]]; then
         local _fd
         _fd=$(read_feature_json_feature_directory "$repo_root")
         if [[ -n "$_fd" ]]; then
-            feature_dir="$_fd"
-            # Normalize relative paths to absolute under repo root
-            [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
+            raw_feature_dir="$_fd"
+            feature_dir=$(_safe_feature_directory "$repo_root" "$raw_feature_dir") || {
+                echo "ERROR: .specify/feature.json contains an unsafe feature_directory." >&2
+                return 1
+            }
         else
             echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or ensure .specify/feature.json contains feature_directory." >&2
             return 1
@@ -231,6 +235,35 @@ get_feature_paths() {
 }
 
 # Check if jq is available for safe JSON construction
+
+# Resolve a repository-controlled feature directory without allowing absolute
+# paths, traversal, or symlink components to redirect generated writes.
+_safe_feature_directory() {
+    local repo_root="$1"
+    local raw="$2"
+    local candidate resolved cursor part
+    local -a parts=()
+
+    [[ -n "$raw" && "$raw" != /* ]] || return 1
+    case "/$raw/" in
+        */../*|*/./*) return 1 ;;
+    esac
+    candidate="$repo_root/$raw"
+    resolved=$(realpath -m -- "$candidate" 2>/dev/null) || return 1
+    case "$resolved" in
+        "$repo_root"/*) ;;
+        *) return 1 ;;
+    esac
+
+    cursor="$repo_root"
+    IFS='/' read -r -a parts <<< "$raw"
+    for part in "${parts[@]}"; do
+        [[ -n "$part" ]] || continue
+        cursor="$cursor/$part"
+        [[ ! -L "$cursor" ]] || return 1
+    done
+    printf '%s\n' "$resolved"
+}
 has_jq() {
     command -v jq >/dev/null 2>&1
 }
@@ -398,6 +431,18 @@ json_escape() {
 check_file() { [[ -f "$1" ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
 check_dir() { [[ -d "$1" && -n $(ls -A "$1" 2>/dev/null) ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
 
+# Resolve an existing preset path while rejecting traversal and symlink escapes.
+_safe_preset_file() {
+    local presets_root="$1"
+    local candidate="$2"
+    local full
+    full=$(realpath -e -- "$candidate" 2>/dev/null) || return 1
+    case "$full" in
+        "$presets_root"/*) printf '%s\n' "$full" ;;
+        *) return 1 ;;
+    esac
+}
+
 # Resolve a template name to a file path using the priority stack:
 #   1. .specify/templates/overrides/
 #   2. .specify/presets/<preset-id>/templates/ (sorted by priority from .registry)
@@ -436,7 +481,9 @@ except Exception:
                 if [ -n "$sorted_presets" ]; then
                     # python3 succeeded and returned preset IDs — search in priority order
                     while IFS= read -r preset_id; do
-                        local candidate="$presets_dir/$preset_id/templates/${template_name}.md"
+                        local candidate
+                        candidate=$(_safe_preset_file "$presets_dir" \
+                            "$presets_dir/$preset_id/templates/${template_name}.md") || continue
                         [ -f "$candidate" ] && echo "$candidate" && return 0
                     done <<< "$sorted_presets"
                 fi
@@ -445,7 +492,9 @@ except Exception:
                 # python3 failed (missing, or registry parse error) — fall back to unordered directory scan
                 for preset in "$presets_dir"/*/; do
                     [ -d "$preset" ] || continue
-                    local candidate="$preset/templates/${template_name}.md"
+                    local candidate
+                    candidate=$(_safe_preset_file "$presets_dir" \
+                        "$preset/templates/${template_name}.md") || continue
                     [ -f "$candidate" ] && echo "$candidate" && return 0
                 done
             fi
@@ -453,7 +502,9 @@ except Exception:
             # Fallback: alphabetical directory order (no python3 available)
             for preset in "$presets_dir"/*/; do
                 [ -d "$preset" ] || continue
-                local candidate="$preset/templates/${template_name}.md"
+                local candidate
+                candidate=$(_safe_preset_file "$presets_dir" \
+                    "$preset/templates/${template_name}.md") || continue
                 [ -f "$candidate" ] && echo "$candidate" && return 0
             done
         fi
@@ -528,7 +579,13 @@ except Exception:
                         local strategy="replace"
                         local manifest_file=""
                         local manifest="$presets_dir/$preset_id/preset.yml"
-                        if [ -f "$manifest" ] && command -v python3 >/dev/null 2>&1; then
+                        local safe_manifest
+                        if safe_manifest=$(_safe_preset_file "$presets_dir" "$manifest"); then
+                            manifest="$safe_manifest"
+                        else
+                            manifest=""
+                        fi
+                        if [ -n "$manifest" ] && [ -f "$manifest" ] && command -v python3 >/dev/null 2>&1; then
                             # Requires PyYAML; falls back to replace/convention if unavailable
                             local result
                             local py_stderr
@@ -573,11 +630,17 @@ except Exception:
                         fi
                         if [ -n "$manifest_file" ]; then
                             local mf="$presets_dir/$preset_id/$manifest_file"
-                            [ -f "$mf" ] && candidate="$mf"
+                            local safe_mf
+                            if safe_mf=$(_safe_preset_file "$presets_dir" "$mf"); then
+                                [ -f "$safe_mf" ] && candidate="$safe_mf"
+                            fi
                         fi
                         if [ -z "$candidate" ]; then
                             local cf="$presets_dir/$preset_id/templates/${template_name}.md"
-                            [ -f "$cf" ] && candidate="$cf"
+                            local safe_cf
+                            if safe_cf=$(_safe_preset_file "$presets_dir" "$cf"); then
+                                [ -f "$safe_cf" ] && candidate="$safe_cf"
+                            fi
                         fi
                         if [ -n "$candidate" ]; then
                             layer_paths+=("$candidate")
@@ -589,7 +652,9 @@ except Exception:
                 # python3 failed — fall back to unordered directory scan (replace only)
                 for preset in "$presets_dir"/*/; do
                     [ -d "$preset" ] || continue
-                    local candidate="$preset/templates/${template_name}.md"
+                    local candidate
+                    candidate=$(_safe_preset_file "$presets_dir" \
+                        "$preset/templates/${template_name}.md") || continue
                     if [ -f "$candidate" ]; then
                         layer_paths+=("$candidate")
                         layer_strategies+=("replace")
@@ -600,7 +665,9 @@ except Exception:
             # No python3 or registry — fall back to unordered directory scan (replace only)
             for preset in "$presets_dir"/*/; do
                 [ -d "$preset" ] || continue
-                local candidate="$preset/templates/${template_name}.md"
+                local candidate
+                candidate=$(_safe_preset_file "$presets_dir" \
+                    "$preset/templates/${template_name}.md") || continue
                 if [ -f "$candidate" ]; then
                     layer_paths+=("$candidate")
                     layer_strategies+=("replace")

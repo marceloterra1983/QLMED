@@ -102,7 +102,7 @@ function isValidHeaderIp(value: string) {
 }
 
 export function getClientIp(headers: Headers) {
-  if (process.env.TRUST_PROXY_HEADERS === 'false') return 'untrusted-proxy';
+  if (process.env.TRUST_PROXY_HEADERS !== 'true') return 'untrusted-proxy';
 
   const forwardedFor = headers.get('x-forwarded-for');
   if (forwardedFor) {

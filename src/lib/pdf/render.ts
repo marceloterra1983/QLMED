@@ -1,5 +1,7 @@
 import puppeteer, { type PDFOptions } from 'puppeteer-core';
 
+const PDF_RENDER_TIMEOUT_MS = 30_000;
+
 /**
  * O pacote `puppeteer` completo baixa um Chromium próprio e resolve
  * PUPPETEER_EXECUTABLE_PATH sozinho (em getConfiguration.ts). O
@@ -18,6 +20,16 @@ function resolveExecutablePath(): string {
   return executablePath;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('PDF rendering timed out')), timeoutMs);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error: unknown) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 /**
  * Renderiza HTML autocontido (CSS inline, sem imagens ou scripts remotos) em
  * PDF. `setContent` espera o evento `load` por padrão, que é o suficiente aqui.
@@ -29,12 +41,14 @@ export async function renderHtmlToPdf(html: string, options: PDFOptions): Promis
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: resolveExecutablePath(),
+    protocolTimeout: PDF_RENDER_TIMEOUT_MS,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load' });
-    return Buffer.from(await page.pdf(options));
+    await page.setContent(html, { waitUntil: 'load', timeout: PDF_RENDER_TIMEOUT_MS });
+    const pdf = await withTimeout(page.pdf(options), PDF_RENDER_TIMEOUT_MS);
+    return Buffer.from(pdf);
   } finally {
     await browser.close();
   }

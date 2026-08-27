@@ -10,6 +10,7 @@ import { prisma } from '../prisma';
 import { UF_TO_CODE } from '../constants';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
+import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('auto-sync');
 
@@ -41,9 +42,9 @@ export async function syncViaSefaz(
 ) {
   const syncLog = existingSyncLogId
     ? { id: existingSyncLogId }
-    : await prisma.syncLog.create({
-        data: { companyId, syncMethod: 'sefaz', status: 'running' },
-      });
+    : await createSyncLogIfIdle(companyId, 'sefaz');
+
+  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
 
   let ultNSU = cert.lastNsu || '0';
 
@@ -193,4 +194,3 @@ export async function syncViaSefaz(
     }
   }
 }
-

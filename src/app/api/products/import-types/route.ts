@@ -5,6 +5,10 @@ import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { z } from 'zod';
 
+const MAX_WORKBOOK_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_WORKSHEET_ROWS = 10_000;
+const MAX_WORKSHEET_COLUMNS = 100;
+
 export async function POST(req: Request) {
   try {
     let userId: string;
@@ -22,12 +26,18 @@ export async function POST(req: Request) {
     const fileSchema = z.object({ file: z.instanceof(File, { message: 'Arquivo nao enviado' }) });
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
+    if (fileParsed.data.file.size > MAX_WORKBOOK_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Arquivo excede o limite de 10MB' }, { status: 413 });
+    }
 
     const buf = await fileParsed.data.file.arrayBuffer();
     const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
     const worksheet = workbook.worksheets[0];
+    if (!worksheet || worksheet.rowCount > MAX_WORKSHEET_ROWS || worksheet.columnCount > MAX_WORKSHEET_COLUMNS) {
+      return NextResponse.json({ error: 'Planilha excede o limite de linhas ou colunas' }, { status: 413 });
+    }
 
     const allRows: string[][] = [];
     worksheet.eachRow({ includeEmpty: true }, (row) => {

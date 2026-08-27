@@ -103,6 +103,15 @@ describe('ExcelJS import route regressions', () => {
     });
   });
 
+  it('rejects an oversized workbook before ExcelJS parses it', async () => {
+    const oversized = new File([new Uint8Array(11 * 1024 * 1024)], 'too-large.xlsx');
+
+    const response = await importTypes(requestWithFile(oversized));
+
+    expect(response.status).toBe(413);
+    expect(mocks.productRegistryFindMany).not.toHaveBeenCalled();
+  });
+
   it('round-trips extended conditional formatting through the ExcelJS UUID path', async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Formatacao');

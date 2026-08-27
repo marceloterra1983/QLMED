@@ -10,6 +10,7 @@ import { extractFirstCfop } from '../cfop';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
+import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('auto-sync');
 
@@ -22,9 +23,9 @@ export async function syncViaNsdocs(
 ) {
   const syncLog = existingSyncLogId
     ? { id: existingSyncLogId }
-    : await prisma.syncLog.create({
-        data: { companyId, syncMethod: 'nsdocs', status: 'running' },
-      });
+    : await createSyncLogIfIdle(companyId, 'nsdocs');
+
+  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
 
   try {
     const client = new NsdocsClient(decrypt(nsdocsConfig.apiToken));
@@ -197,4 +198,3 @@ export async function syncViaNsdocs(
     }
   }
 }
-
