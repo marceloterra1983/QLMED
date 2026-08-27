@@ -13,7 +13,7 @@
     },
     {
       "type": "assertion",
-      "description": "An email input field is visible on the page"
+      "description": "A password input labeled 'Senha de acesso' is visible and no email input is present (ADR-0012)"
     }
   ]
 }

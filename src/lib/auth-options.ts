@@ -29,13 +29,11 @@ const MAX_FAILED_ATTEMPTS = 10;
 const LONG_LOCKOUT_MS = 24 * 60 * 60 * 1000; // 24h — número a calibrar, não estrutural
 
 /**
- * Mensagem única para credencial ausente, e-mail inexistente E senha errada
- * (D2). Nunca diferenciar: um atacante que veja mensagens distintas usa o
- * login como oráculo para descobrir quais e-mails existem antes de atacar
- * senha. O pré-21/08 já cometia esse erro (`'Senha inválida'` só para e-mail
- * inexistente, `'Email ou senha inválidos'` para o resto) — corrigido aqui.
+ * ADR-0012 / SPEC-018: e-mail não é fator. A recusa é sempre a mesma
+ * (“Senha inválida”) para senha errada, colisão ou PIN sem dono — sem
+ * oráculo de conta.
  */
-const INVALID_CREDENTIALS_MESSAGE = 'Email ou senha inválidos';
+const INVALID_CREDENTIALS_MESSAGE = 'Senha inválida';
 
 function getPinMap(): Record<string, string> {
   const raw = process.env.PIN_MAP_JSON;
@@ -95,14 +93,34 @@ async function recordSuccessfulLogin(userId: string) {
   }
 }
 
+async function findUserByPassword(password: string) {
+  const candidates = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+      name: true,
+      role: true,
+      status: true,
+      allowedPages: true,
+      failedAttempts: true,
+      lockedUntil: true,
+    },
+  });
+  const matches = [];
+  for (const candidate of candidates) {
+    if (await compare(password, candidate.passwordHash)) {
+      matches.push(candidate);
+    }
+  }
+  if (matches.length !== 1) return null;
+  return matches[0];
+}
+
 /**
- * SPEC-014, alternativa C: e-mail volta a ser fator de autenticação.
- *
- * O modelo "senha é a identidade" (5327d9b, 21/08) tornou o contador de
- * força bruta por conta inatingível por construção — sem e-mail não há
- * usuário conhecido antes de a senha casar, e senha errada não casa com
- * ninguém. Restaurado: busca por e-mail primeiro, compara senha depois. É o
- * que devolve `user.id` a tempo de `recordFailedLogin` poder contar.
+ * ADR-0012 / SPEC-018: a senha é a identidade. `credentials.email` é
+ * ignorado de propósito. NÃO restaurar busca por e-mail para “consertar”
+ * força bruta — isso já foi revertido pelo dono.
  */
 export async function authorizeCredentials(
   credentials: Record<string, string> | undefined,
@@ -111,46 +129,26 @@ export async function authorizeCredentials(
     throw new Error('Senha é obrigatória');
   }
 
-  const submittedEmail = credentials.email?.trim().toLowerCase();
-  if (!submittedEmail) {
-    await recordFailedLogin(null, 'unknown', 'password', 'missing_email');
+  const pinMap = getPinMap();
+  const pinEmail = pinMap[credentials.password]?.trim().toLowerCase();
+  const user = pinEmail
+    ? await prisma.user.findUnique({ where: { email: pinEmail } })
+    : await findUserByPassword(credentials.password);
+
+  if (!user) {
+    await recordFailedLogin(null, pinEmail || 'unknown', pinEmail ? 'pin' : 'password', 'user_not_found');
     throw new Error(INVALID_CREDENTIALS_MESSAGE);
   }
 
-  const accountLimit = checkRateLimit(`login-account:${submittedEmail}`, RATE_LIMITS.loginAccount);
+  const accountLimit = checkRateLimit(`login-account:${user.id}`, RATE_LIMITS.loginAccount);
   if (!accountLimit.allowed) {
-    log.warn({ email: submittedEmail, resetAt: accountLimit.resetAt }, 'Login account rate limited');
+    log.warn({ userId: user.id, resetAt: accountLimit.resetAt }, 'Login account rate limited');
     throw new Error('TOO_MANY_ATTEMPTS');
   }
 
-  // PINs só são aceitos quando o e-mail enviado bate com o dono do PIN.
-  const pinMap = getPinMap();
-  const pinEmail = pinMap[credentials.password]?.trim().toLowerCase();
-  const isPinLogin = Boolean(pinEmail);
-
-  const user = await prisma.user.findUnique({ where: { email: submittedEmail } });
-
-  if (!user) {
-    // D2: mesmo desfecho de senha errada — nunca confirmar que o e-mail não existe.
-    await recordFailedLogin(null, submittedEmail, isPinLogin ? 'pin' : 'password', 'user_not_found');
-    throw new Error(INVALID_CREDENTIALS_MESSAGE);
-  }
-
-  // Gate de bloqueio ANTES de qualquer comparação de senha: uma conta
-  // bloqueada nunca gera nova tentativa contabilizada, então o temporizador
-  // de LONG_LOCKOUT_MS não é reiniciado por quem insiste durante o bloqueio.
   if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-    log.warn({ userId: user.id, email: submittedEmail, until: user.lockedUntil }, 'Login attempt while locked');
+    log.warn({ userId: user.id, email: user.email, until: user.lockedUntil }, 'Login attempt while locked');
     throw new Error('ACCOUNT_LOCKED');
-  }
-
-  if (isPinLogin && pinEmail !== submittedEmail) {
-    await recordFailedLogin(user.id, submittedEmail, 'pin', 'pin_email_mismatch');
-    throw new Error(INVALID_CREDENTIALS_MESSAGE);
-  }
-  if (!isPinLogin && !(await compare(credentials.password, user.passwordHash))) {
-    await recordFailedLogin(user.id, submittedEmail, 'password', 'bcrypt_mismatch');
-    throw new Error(INVALID_CREDENTIALS_MESSAGE);
   }
 
   if (user.status === 'pending') {
@@ -180,7 +178,6 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
         password: { label: 'Senha de acesso', type: 'password' },
       },
       authorize: authorizeCredentials,

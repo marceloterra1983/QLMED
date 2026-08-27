@@ -9,7 +9,7 @@
     },
     {
       "type": "assertion",
-      "description": "The page shows an email input (placeholder or label mentioning email) and a password input"
+      "description": "The page shows a password input labeled 'Senha de acesso' and MUST NOT show an email input (ADR-0012)"
     },
     {
       "type": "assertion",

@@ -6,6 +6,11 @@ Protected server routes obtain the current identity through the canonical auth
 helpers. Roles are `admin`, `editor` and `viewer`. Mutating operations must
 enforce their required role on the server.
 
+Login identity is the access password only. The login screen MUST NOT ask for
+email. Canonical decision:
+[ADR-0012](../decisions/0012-password-identity-login.md). Do not restore an
+email field to “fix” brute-force checklists.
+
 ## Company isolation
 
 QLMED currently operates in single-company mode. Company context is resolved

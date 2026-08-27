@@ -9,10 +9,6 @@
     },
     {
       "type": "action",
-      "description": "Type 'usuario.inexistente@qlmed-test.invalid' into the email field"
-    },
-    {
-      "type": "action",
       "description": "Type 'senha-errada-testsprite-001' into the password field"
     },
     {
@@ -21,7 +17,7 @@
     },
     {
       "type": "assertion",
-      "description": "An error message is shown containing the text 'Email ou senha incorretos' or another visible login error"
+      "description": "An error message is shown containing the text 'Senha inválida' or another visible login error"
     },
     {
       "type": "assertion",
