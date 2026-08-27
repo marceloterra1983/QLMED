@@ -7,5 +7,5 @@
 # Excluir a pasta toda tiraria mudanças dele do grafo e do raio de impacto.
 public/pdfjs/
 
-# Spec Kit vendorizado — mesma razão dos repos ops e autofix.
+# Spec Kit vendorizado — mesma razão do repo ops.
 .specify/
