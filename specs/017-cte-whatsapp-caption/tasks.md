@@ -8,3 +8,4 @@
 - [x] T004 Worker usa `whatsappCaption` só no WhatsApp de CT-e
 - [x] T005 Unittest do worker (CT-e sem chave; NF-e e e-mail iguais)
 - [x] T006 docs:validate, tsc, lint, testes
+- [x] T007 Parte não-QL entre parênteses ao lado da cidade (AC-007..009)

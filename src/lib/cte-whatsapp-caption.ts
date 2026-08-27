@@ -1,3 +1,10 @@
+import {
+  extractCteRecebedorCnpj,
+  extractCteRecebedorName,
+  extractCteRemetenteCnpj,
+  extractCteRemetenteName,
+} from '@/lib/cte-party-extractors';
+
 const BRANDS = [
   'AZUL',
   'PANTANAL',
@@ -43,6 +50,10 @@ const SKIP_TOKENS = new Set([
   'COMPANHIA',
   'E',
 ]);
+
+const QL_CNPJ = (process.env.SINGLE_COMPANY_CNPJ || '07832309000197').replace(/\D/g, '');
+
+const PARTY_SKIP = new Set(['SA', 'S.A', 'S.A.', 'S/A', 'LTDA', 'LTDA.', 'EIRELI', 'ME', 'EPP']);
 
 const CITY_DISPLAY: Record<string, string> = {
   'CAMPO GRANDE': 'C.G.',
@@ -97,6 +108,41 @@ function xmlTag(xml: string, tag: string): string | null {
   return value || null;
 }
 
+export function isQlParty(name?: string | null, cnpj?: string | null): boolean {
+  const digits = (cnpj || '').replace(/\D/g, '');
+  if (digits && digits === QL_CNPJ) return true;
+  return /\bQL\s*MED\b/i.test((name || '').trim());
+}
+
+export function shortPartyName(raw: string | null | undefined): string {
+  const tokens = (raw || '')
+    .trim()
+    .split(/[\s,./]+/)
+    .filter(Boolean)
+    .filter((token) => {
+      const key = foldName(token);
+      return !PARTY_SKIP.has(key) && !PARTY_SKIP.has(key.replace(/\./g, ''));
+    });
+  if (tokens.length === 0) return '';
+  return tokens
+    .map((part, index) => {
+      const folded = foldName(part);
+      if (index > 0 && SMALL_WORDS.has(folded)) return part.toLowerCase();
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function cityWithParty(
+  city: string,
+  name?: string | null,
+  cnpj?: string | null,
+): string {
+  if (isQlParty(name, cnpj)) return city;
+  const party = shortPartyName(name);
+  return party ? `${city} (${party})` : city;
+}
+
 export function extractCteRouteCities(xml: string): {
   originCity: string | null;
   destCity: string | null;
@@ -124,12 +170,20 @@ export function buildCteWhatsappCaption(input: {
   originCity: string | null;
   destCity: string | null;
   totalValue: unknown;
+  originPartyName?: string | null;
+  originPartyCnpj?: string | null;
+  destPartyName?: string | null;
+  destPartyCnpj?: string | null;
 }): string {
   const carrier = shortCarrierName(input.senderName);
   const lines = ['CT-e Recebido', '', carrier];
   const origin = input.originCity ? abbreviateCity(input.originCity) : '';
   const dest = input.destCity ? abbreviateCity(input.destCity) : '';
-  if (origin && dest) lines.push(`${origin} ${CTE_ROUTE_MARKER} ${dest}`);
+  if (origin && dest) {
+    lines.push(
+      `${cityWithParty(origin, input.originPartyName, input.originPartyCnpj)} ${CTE_ROUTE_MARKER} ${cityWithParty(dest, input.destPartyName, input.destPartyCnpj)}`,
+    );
+  }
   lines.push(formatCaptionBrl(input.totalValue));
   return lines.join('\n');
 }
@@ -154,7 +208,8 @@ export function decorateClaimInvoice<T extends ClaimInvoiceInput>(
 ): DecoratedClaimInvoice<T> {
   const { xmlContent, ...rest } = invoice;
   if (invoice.type !== 'CTE') return rest;
-  const route = extractCteRouteCities(xmlContent || '');
+  const xml = xmlContent || '';
+  const route = extractCteRouteCities(xml);
   return {
     ...rest,
     originCity: route.originCity,
@@ -166,6 +221,10 @@ export function decorateClaimInvoice<T extends ClaimInvoiceInput>(
       originCity: route.originCity,
       destCity: route.destCity,
       totalValue: invoice.totalValue,
+      originPartyName: extractCteRemetenteName(xml),
+      originPartyCnpj: extractCteRemetenteCnpj(xml),
+      destPartyName: extractCteRecebedorName(xml),
+      destPartyCnpj: extractCteRecebedorCnpj(xml),
     }),
   };
 }
