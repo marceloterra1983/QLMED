@@ -36,15 +36,15 @@ da transportadora, origem, destino e valor. Não vejo número nem chave.
 
 **Independent Test**: Montar o texto do WhatsApp com emitente Azul, origem
 Campo Grande, destino São Paulo e valor 325,63; o texto contém AZUL, C.G.,
-caminhão apontando à direita e São Paulo; não contém número nem a chave.
+seta à direita e São Paulo; não contém caminhão, número nem a chave.
 
 **Acceptance Scenarios**:
 
 1. **AC-001** — Given um CT-e da Azul Linhas Aéreas com origem Campo Grande,
    when o WhatsApp é montado, then o nome exibido é `AZUL` e a origem é `C.G.`.
 2. **AC-002** — Given o mesmo CT-e, when o WhatsApp é montado, then o texto
-   contém caminhão apontando à direita e a cidade de destino, e MUST NOT
-   conter número do documento, `Nº`, a chave de acesso nem o rótulo `Chave:`.
+   contém seta à direita e a cidade de destino, e MUST NOT conter caminhão,
+   número do documento, `Nº`, a chave de acesso nem o rótulo `Chave:`.
 3. **AC-003** — Given um CT-e da Pantanal, when o WhatsApp é montado, then o
    nome exibido é `PANTANAL`.
 
@@ -86,7 +86,7 @@ e não inventa C.G.
 - **FR-002**: Campo Grande (qualquer capitalização) MUST aparecer como `C.G.`.
   Outras cidades MUST aparecer pelo nome do município, sem inventar sigla.
 - **FR-003**: Quando origem e destino existirem, o caption MUST mostrar
-  origem, caminhão apontando à direita (destino) e destino na mesma linha.
+  origem, seta à direita e destino na mesma linha, sem ícone de caminhão.
 - **FR-004**: O caption WhatsApp de CT-e MUST NOT incluir a chave de acesso
   nem o rótulo `Chave:`.
 - **FR-008**: O caption WhatsApp de CT-e MUST NOT incluir o número do
@@ -136,7 +136,7 @@ e não inventa C.G.
 ## Assumptions
 
 - Só Campo Grande tem sigla pedida (`C.G.`).
-- Rota usa 🚛➡️: 🚚 sozinho aponta para a esquerda no iPhone/WhatsApp.
+- Rota usa só ➡️. Caminhão (🚚/🚛) aponta para o lado errado no iPhone.
 - Valor continua no WhatsApp; número e chave não.
 - Destino e origem vêm de `xMunIni` e `xMunFim` do CT-e (início/fim da
   prestação), não da cidade de emissão.

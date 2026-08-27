@@ -115,8 +115,8 @@ export function formatCaptionBrl(value: unknown): string {
   return `R$ ${withDots},${frac}`;
 }
 
-/** 🚚 sozinho aponta à esquerda no iPhone; 🚛➡️ lê origem → destino. */
-export const CTE_ROUTE_MARKER = '🚛➡️';
+/** Só a seta: caminhão no WhatsApp aponta para o lado errado no iPhone. */
+export const CTE_ROUTE_MARKER = '➡️';
 
 export function buildCteWhatsappCaption(input: {
   number: string | null;
