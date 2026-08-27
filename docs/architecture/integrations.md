@@ -15,6 +15,12 @@ Every integration must define:
 Development automations must use manual triggers and must not activate real
 production cron or webhook ownership.
 
+WhatsApp fiscal (notas recebidas e resumo diário de emitidas) envia a um
+grupo quando `NOTIFICATION_WHATSAPP_GROUP` ou `QLMED_WHATSAPP_GROUP_JID`
+contém um JID `…@g.us`. Sem o valor, permanece o fan-out por telefone.
+Ver [ADR-0010](../decisions/0010-whatsapp-group-destination.md) e
+[SPEC-015](../../specs/015-whatsapp-group-destination/spec.md).
+
 ## n8n webhook
 
 `POST /api/webhooks/n8n` always requires `x-api-key`. When

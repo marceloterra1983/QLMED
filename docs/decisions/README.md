@@ -21,3 +21,6 @@ link to that record instead of duplicating the contract.
 AI clients must use Spec Kit and Graphify as [ADR-0009](./0009-ai-tooling-auto-refresh.md):
 always-on Cursor rules/hooks, fail-closed `npm run ai-tooling:check`, automatic
 CLI/graph refresh, and pin upgrades only by PR.
+
+WhatsApp fiscal (notas recebidas e resumo diário) envia a um grupo único quando
+o JID está configurado: [ADR-0010](./0010-whatsapp-group-destination.md).
