@@ -11,7 +11,6 @@ export default function LoginPage() {
   const { status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +49,6 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
         password,
         redirect: false,
       });
@@ -65,7 +63,7 @@ export default function LoginPage() {
         } else if (result.error.includes('ACCOUNT_LOCKED') || result.error.includes('TOO_MANY_ATTEMPTS')) {
           setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
         } else {
-          setError('Email ou senha inválidos');
+          setError('Senha inválida');
         }
       } else {
         router.push('/fiscal/invoices');
@@ -121,6 +119,7 @@ export default function LoginPage() {
             <span className="material-symbols-outlined text-[18px]">info</span>
             Mesma senha do Joinner
           </div>
+          {/* ADR-0012: NÃO adicionar campo de e-mail. A senha identifica o usuário. */}
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm font-medium">
@@ -128,21 +127,6 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                autoComplete="email"
-                required
-                autoFocus
-                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
-              />
-            </div>
 
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Senha de acesso</label>
@@ -154,6 +138,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
+                autoFocus
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
               />
             </div>

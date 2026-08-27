@@ -13,7 +13,7 @@
     },
     {
       "type": "assertion",
-      "description": "The login email input is visible"
+      "description": "The login password input is visible and no email input is present (ADR-0012)"
     }
   ]
 }

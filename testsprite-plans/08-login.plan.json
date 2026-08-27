@@ -9,7 +9,7 @@
     },
     {
       "type": "action",
-      "description": "Click the 'Entrar' button without filling email or password"
+      "description": "Click the 'Entrar' button without filling the password"
     },
     {
       "type": "assertion",

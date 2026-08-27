@@ -27,3 +27,7 @@ o JID está configurado: [ADR-0010](./0010-whatsapp-group-destination.md).
 
 Toque no celular de nota recebida é Web Push do PWA, canal pessoal `push`:
 [ADR-0011](./0011-pwa-web-push-invoice.md).
+
+Login identifica o usuário só pela senha; a tela MUST NOT pedir e-mail.
+Auditoria não recoloca o campo sem substituir
+[ADR-0012](./0012-password-identity-login.md).

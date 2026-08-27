@@ -1,6 +1,6 @@
 ---
 id: SPEC-014
-status: draft
+status: superseded
 owner: QLMED
 affected_modules:
   - auth
@@ -13,7 +13,12 @@ affected_modules:
 
 **Created**: 2026-08-26
 
-**Status**: Draft — decisão de rumo pendente do dono
+**Status**: Superseded — em 27/08/2026 o dono reverteu a alternativa C
+(e-mail como fator de login). Identidade no login é só a senha:
+[ADR-0012](../../docs/decisions/0012-password-identity-login.md),
+[SPEC-019](../019-password-identity-login/spec.md). O mecanismo de
+bloqueio (temporizadores, desbloqueio admin, log sem senha) permanece
+como histórico; não usar esta spec para recolocar e-mail na tela.
 
 **Input**: Revisão de segurança automática sinalizou "Broken Brute-Force Protection" em `src/lib/auth-options.ts`. Investigado e **confirmado**: o mecanismo de bloqueio por conta é código morto desde 21/08/2026.
 
