@@ -5,7 +5,8 @@
 ## Summary
 
 Montar o caption WhatsApp de CT-e em TypeScript (nome curto, C.G., rota ➡️,
-sem número, sem chave, sem caminhão) e anexá-lo no claim do outbox. O worker Python só concatena o
+parte não-QL entre parênteses ao lado da cidade, sem número, sem chave, sem
+caminhão) e anexá-lo no claim do outbox. O worker Python só concatena o
 link. E-mail e NF-e continuam com `build_text` atual.
 
 ## Technical Context

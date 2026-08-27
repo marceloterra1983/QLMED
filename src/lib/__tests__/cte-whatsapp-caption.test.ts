@@ -8,7 +8,22 @@ import {
   shortCarrierName,
 } from '@/lib/cte-whatsapp-caption';
 
-const AZUL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+const QL_CNPJ = '07832309000197';
+const QL_NAME = 'QL MED MATERIAIS HOSPITALARES LTDA';
+
+function cteXml(parties: {
+  remName?: string;
+  remCnpj?: string;
+  destName?: string;
+  destCnpj?: string;
+} = {}): string {
+  const rem = parties.remName
+    ? `<rem><CNPJ>${parties.remCnpj || '11111111000191'}</CNPJ><xNome>${parties.remName}</xNome></rem>`
+    : '';
+  const dest = parties.destName
+    ? `<dest><CNPJ>${parties.destCnpj || '22222222000182'}</CNPJ><xNome>${parties.destName}</xNome></dest>`
+    : '';
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <cteProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
   <CTe>
     <infCte>
@@ -16,9 +31,14 @@ const AZUL_XML = `<?xml version="1.0" encoding="UTF-8"?>
         <xMunIni>Campo Grande</xMunIni>
         <xMunFim>SAO PAULO</xMunFim>
       </ide>
+      ${rem}
+      ${dest}
     </infCte>
   </CTe>
 </cteProc>`;
+}
+
+const AZUL_XML = cteXml();
 
 const ACCESS_KEY = '50260809296295001727570030001334971511477148';
 
@@ -100,9 +120,92 @@ describe('buildCteWhatsappCaption', () => {
     expect(caption).not.toContain('➡️');
     expect(caption).not.toContain('C.G.');
   });
+
+  it('coloca destinatário que não é QL ao lado da cidade de destino (AC-007)', () => {
+    const caption = buildCteWhatsappCaption({
+      number: '133497',
+      senderName: 'AZUL LINHAS AEREAS BRASILEIRAS SA',
+      originCity: 'Campo Grande',
+      destCity: 'SAO PAULO',
+      totalValue: 325.63,
+      originPartyName: QL_NAME,
+      originPartyCnpj: QL_CNPJ,
+      destPartyName: 'HOSPITAL SIRIO LIBANES LTDA',
+      destPartyCnpj: '60950025000107',
+    });
+
+    expect(caption).toContain('C.G. ➡️ São Paulo (Hospital Sirio Libanes)');
+    expect(caption).not.toContain('C.G. (');
+    expect(caption).not.toMatch(/\bQL\b/);
+  });
+
+  it('coloca remetente que não é QL ao lado da cidade de origem (AC-008)', () => {
+    const caption = buildCteWhatsappCaption({
+      number: '10',
+      senderName: 'PANTANAL TRANSPORTES',
+      originCity: 'Campo Grande',
+      destCity: 'SAO PAULO',
+      totalValue: 1,
+      originPartyName: 'SANTA CASA DE MISERICORDIA',
+      originPartyCnpj: '33333333000173',
+      destPartyName: QL_NAME,
+      destPartyCnpj: QL_CNPJ,
+    });
+
+    expect(caption).toContain('C.G. (Santa Casa de Misericordia) ➡️ São Paulo');
+    expect(caption).not.toContain('São Paulo (');
+    expect(caption).not.toMatch(/\bQL\b/);
+  });
+
+  it('omite QL e nome ausente — sem parênteses (AC-009)', () => {
+    const bothQl = buildCteWhatsappCaption({
+      number: '1',
+      senderName: 'AZUL',
+      originCity: 'Campo Grande',
+      destCity: 'SAO PAULO',
+      totalValue: 1,
+      originPartyName: QL_NAME,
+      originPartyCnpj: QL_CNPJ,
+      destPartyName: 'QLMED',
+      destPartyCnpj: QL_CNPJ,
+    });
+    expect(bothQl).toContain('C.G. ➡️ São Paulo');
+    expect(bothQl).not.toContain('(');
+
+    const missing = buildCteWhatsappCaption({
+      number: '1',
+      senderName: 'AZUL',
+      originCity: 'Campo Grande',
+      destCity: 'SAO PAULO',
+      totalValue: 1,
+    });
+    expect(missing).toContain('C.G. ➡️ São Paulo');
+    expect(missing).not.toContain('(');
+  });
 });
 
 describe('decorateClaimInvoice', () => {
+  it('lê remetente e destinatário do XML e omite QL na rota', () => {
+    const decorated = decorateClaimInvoice({
+      id: 'inv-party',
+      accessKey: ACCESS_KEY,
+      type: 'CTE',
+      number: '133497',
+      senderName: 'AZUL LINHAS AEREAS BRASILEIRAS SA',
+      totalValue: 325.63,
+      xmlContent: cteXml({
+        remName: QL_NAME,
+        remCnpj: QL_CNPJ,
+        destName: 'HOSPITAL SIRIO LIBANES LTDA',
+        destCnpj: '60950025000107',
+      }),
+    });
+
+    expect(decorated.whatsappCaption).toContain('C.G. ➡️ São Paulo (Hospital Sirio Libanes)');
+    expect(decorated.whatsappCaption).not.toMatch(/\bQL\b/);
+    expect(JSON.stringify(decorated)).not.toContain('<cteProc');
+  });
+
   it('omits xmlContent and adds WhatsApp caption for CT-e', () => {
     const decorated = decorateClaimInvoice({
       id: 'inv-1',

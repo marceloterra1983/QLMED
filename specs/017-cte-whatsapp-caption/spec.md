@@ -18,7 +18,8 @@ affected_modules:
 **Input**: A mensagem de CT-e recebido no WhatsApp hoje lista emitente por
 extenso, valor e chave de 44 dígitos. O operador pediu texto curto: nome da
 transportadora em uma palavra, cidade de origem (Campo Grande como C.G.),
-ícone de caminhão e cidade de destino. Sem chave.
+cidade de destino e, ao lado da cidade, o nome do remetente ou destinatário
+quando essa parte não for a QL. Sem chave e sem caminhão.
 
 ## Problem
 
@@ -76,6 +77,27 @@ e não inventa C.G.
 1. **AC-006** — Given um CT-e sem municípios de prestação, when o WhatsApp é
    montado, then não há linha de rota e o restante do texto segue válido.
 
+### User Story 4 — Quem não é QL na rota (Priority: P1)
+
+Como operador, ao lado da cidade vejo entre parênteses o nome do remetente
+(origem) ou do destinatário (destino) só quando essa parte não for a QL.
+QL, QL MED e a razão social da empresa não aparecem.
+
+**Independent Test**: CT-e com remetente QL e destinatário Hospital Sírio
+Libanês em São Paulo; a linha da rota contém `São Paulo (Hospital Sirio
+Libanes)` e não contém `QL`.
+
+**Acceptance Scenarios**:
+
+1. **AC-007** — Given remetente QL e destinatário que não é QL, when o
+   WhatsApp é montado, then o nome do destinatário aparece entre parênteses
+   ao lado da cidade de destino e a origem não tem parênteses.
+2. **AC-008** — Given destinatário QL e remetente que não é QL, when o
+   WhatsApp é montado, then o nome do remetente aparece entre parênteses ao
+   lado da cidade de origem e o destino não tem parênteses.
+3. **AC-009** — Given ambas as partes QL, ou nome ausente no XML, when o
+   WhatsApp é montado, then a linha da rota não tem parênteses.
+
 ## Requirements
 
 ### Functional requirements
@@ -97,12 +119,18 @@ e não inventa C.G.
   omitir a linha da rota; MUST NOT inventar cidade.
 - **FR-007**: O XML completo MUST NOT ser enviado ao worker; só campos já
   necessários ao texto (nome curto, cidades, valor, caption).
+- **FR-009**: Quando houver rota, o caption MUST mostrar ao lado da cidade,
+  entre parênteses, o nome curto do remetente na origem e do destinatário
+  no destino, somente se essa parte não for a QL.
+- **FR-010**: O caption MUST NOT mostrar `QL`, `QL MED`, `QLMED` nem a razão
+  social da empresa entre parênteses ao lado da cidade.
 
 ### Failure cases
 
 - **FAIL-001**: XML sem `xMunIni`/`xMunFim` — caption sem rota; envio segue.
 - **FAIL-002**: Razão social vazia — exibe `-` no lugar do nome curto.
 - **FAIL-003**: Valor ausente — exibe `R$ 0,00` (mesmo critério do texto atual).
+- **FAIL-004**: Parte sem nome, ou parte QL — cidade sem parênteses.
 
 ### Non-functional
 
@@ -120,9 +148,11 @@ e não inventa C.G.
 
 ## Key entities
 
-- **Caption WhatsApp de CT-e**: texto curto (marca, rota, valor) +
-  link rastreado. Sem número e sem chave.
+- **Caption WhatsApp de CT-e**: texto curto (marca, rota com parte opcional,
+  valor) + link rastreado. Sem número e sem chave.
 - **Nome curto da transportadora**: uma palavra reconhecível da razão social.
+- **Parte da rota**: remetente na origem e destinatário no destino; omitida
+  quando for a QL.
 
 ## Success Criteria
 
@@ -140,3 +170,5 @@ e não inventa C.G.
 - Valor continua no WhatsApp; número e chave não.
 - Destino e origem vêm de `xMunIni` e `xMunFim` do CT-e (início/fim da
   prestação), não da cidade de emissão.
+- Remetente e destinatário vêm dos blocos do CT-e (`rem`/`exped` e
+  `receb`/`dest`). QL é a empresa única (CNPJ ou nome QL MED).

@@ -20,8 +20,9 @@ grupo quando `NOTIFICATION_WHATSAPP_GROUP` ou `QLMED_WHATSAPP_GROUP_JID`
 contém um JID `…@g.us`. Sem o valor, permanece o fan-out por telefone.
 Ver [ADR-0010](../decisions/0010-whatsapp-group-destination.md) e
 [SPEC-015](../../specs/015-whatsapp-group-destination/spec.md).
-O texto WhatsApp de CT-e recebido é curto (marca, origem ➡️ destino, valor;
-sem número e sem chave). Ver [SPEC-017](../../specs/017-cte-whatsapp-caption/spec.md).
+O texto WhatsApp de CT-e recebido é curto (marca, origem ➡️ destino, parte
+não-QL entre parênteses ao lado da cidade, valor; sem número e sem chave).
+Ver [SPEC-017](../../specs/017-cte-whatsapp-caption/spec.md).
 No resumo diário de emitidas, nota que não é venda leva `(CONSIG.)` depois
 do valor. Ver [SPEC-018](../../specs/018-daily-summary-consig/spec.md).
 
