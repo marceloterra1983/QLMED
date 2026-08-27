@@ -7,7 +7,7 @@
   "spec_kit": {
     "mode": "required",
     "version": "0.14.2",
-    "feature_root": "specs/018-password-identity-login",
+    "feature_root": "specs/019-password-identity-login",
     "validator": "npm run docs:validate"
   },
   "gsd": {

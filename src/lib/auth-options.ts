@@ -29,7 +29,7 @@ const MAX_FAILED_ATTEMPTS = 10;
 const LONG_LOCKOUT_MS = 24 * 60 * 60 * 1000; // 24h — número a calibrar, não estrutural
 
 /**
- * ADR-0012 / SPEC-018: e-mail não é fator. A recusa é sempre a mesma
+ * ADR-0012 / SPEC-019: e-mail não é fator. A recusa é sempre a mesma
  * (“Senha inválida”) para senha errada, colisão ou PIN sem dono — sem
  * oráculo de conta.
  */
@@ -118,7 +118,7 @@ async function findUserByPassword(password: string) {
 }
 
 /**
- * ADR-0012 / SPEC-018: a senha é a identidade. `credentials.email` é
+ * ADR-0012 / SPEC-019: a senha é a identidade. `credentials.email` é
  * ignorado de propósito. NÃO restaurar busca por e-mail para “consertar”
  * força bruta — isso já foi revertido pelo dono.
  */

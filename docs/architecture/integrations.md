@@ -22,6 +22,8 @@ Ver [ADR-0010](../decisions/0010-whatsapp-group-destination.md) e
 [SPEC-015](../../specs/015-whatsapp-group-destination/spec.md).
 O texto WhatsApp de CT-e recebido é curto (marca, origem ➡️ destino, valor;
 sem número e sem chave). Ver [SPEC-017](../../specs/017-cte-whatsapp-caption/spec.md).
+No resumo diário de emitidas, nota que não é venda leva `(CONSIG.)` depois
+do valor. Ver [SPEC-018](../../specs/018-daily-summary-consig/spec.md).
 
 Nota recebida também pode tocar o PWA (Web Push, canal `push`) quando o
 usuário autoriza o aparelho e o VAPID está configurado.

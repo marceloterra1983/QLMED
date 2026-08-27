@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Login só com senha de acesso
+# Specification Quality Checklist: Marca de consignação no resumo do dia
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-27
@@ -31,5 +31,5 @@
 
 ## Notes
 
-Checklist validado na escrita da SPEC-018. bcrypt, NextAuth e scan de
-tabela ficam no plano, não no contrato de negócio.
+Checklist validado na escrita da SPEC-018. CFOP e o nome do workflow n8n
+ficam no plano técnico, não no contrato de negócio.

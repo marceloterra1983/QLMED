@@ -207,7 +207,7 @@ function sampleUser(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('password-only login (ADR-0012 / SPEC-018)', () => {
+describe('password-only login (ADR-0012 / SPEC-019)', () => {
   it('identifies the user from the access password without email', async () => {
     const passwordHash = await hash('senha-joinner', 4);
     mocks.userFindMany.mockResolvedValue([sampleUser({ passwordHash })]);

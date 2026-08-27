@@ -3,7 +3,7 @@ id: ADR-0012
 status: accepted
 date: 2026-08-27
 supersedes: null
-related_specs: [SPEC-018, SPEC-014]
+related_specs: [SPEC-019, SPEC-014]
 ---
 
 # Login identifica o usuário só pela senha — e-mail não volta à tela

@@ -4,7 +4,7 @@
 
 ## Phase 1: Contrato e decisão
 
-- [x] T001 Escrever SPEC-018 e checklist em `specs/018-password-identity-login/`
+- [x] T001 Escrever SPEC-019 e checklist em `specs/019-password-identity-login/`
 - [x] T002 Escrever ADR-0012 em `docs/decisions/0012-password-identity-login.md`
 - [x] T003 Apontar ADR no README e em `docs/architecture/boundaries.md`
 - [x] T004 Marcar SPEC-014 como `superseded`

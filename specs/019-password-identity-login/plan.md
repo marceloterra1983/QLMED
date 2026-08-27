@@ -48,7 +48,7 @@ negócio para ficar verde.
 ## Project Structure
 
 ```text
-specs/018-password-identity-login/
+specs/019-password-identity-login/
 ├── spec.md
 ├── plan.md
 ├── research.md

@@ -9,7 +9,7 @@ const loginPage = readFileSync(
 );
 
 /**
- * ADR-0012 / SPEC-018: trava anti-auditoria.
+ * ADR-0012 / SPEC-019: trava anti-auditoria.
  * Se uma revisão recolocar e-mail no login, este teste quebra de propósito.
  * Não “corrigir” o teste — substituir a ADR com o dono.
  */
