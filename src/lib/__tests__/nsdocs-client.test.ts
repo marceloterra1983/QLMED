@@ -4,6 +4,7 @@ import {
   NsdocsClient,
   NsdocsTransientError,
   NsdocsPaginationError,
+  NSDOCS_DOCUMENT_CAMPOS,
 } from '../nsdocs-client';
 
 function mockResponse(body: unknown, init: { status?: number; headers?: Record<string, string> } = {}): Response {
@@ -62,6 +63,23 @@ describe('NsdocsClient', () => {
       const client = new NsdocsClient('tok');
       await expect(client.listarTodosDocumentos()).rejects.toBeInstanceOf(NsdocsPaginationError);
       expect(fetchMock).toHaveBeenCalledTimes(50); // hits cap exactly
+    });
+  });
+
+  describe('document list fields', () => {
+    it('asks NSDocs for situacao and chave_acesso on every list page', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(mockResponse([{ id: '1', chave_acesso: '', situacao: 'Cancelado' }]));
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new NsdocsClient('tok');
+
+      await client.listarDocumentos({ dtInicial: '2026-08-01' });
+
+      const url = String(fetchMock.mock.calls[0]?.[0]);
+      expect(url).toContain('campos=');
+      expect(decodeURIComponent(url)).toContain('situacao');
+      expect(decodeURIComponent(url)).toContain('chave_acesso');
+      expect(url).toContain('dtInicial=2026-08-01');
+      expect(NSDOCS_DOCUMENT_CAMPOS).toContain('situacao');
     });
   });
 

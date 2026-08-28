@@ -13,6 +13,7 @@ import {
   productAggregateLockKey,
 } from '@/lib/postgres-advisory-lock';
 import type { TargetCompany } from './sync-types';
+import { applyLocalXmlCancellation } from './apply-event-xml';
 import { isXmlFile, getErrorCode, chunkArray, extractAccessKeyFromFilePath } from './sync-utils';
 
 const log = createLogger('local-xml-sync:file-import');
@@ -217,6 +218,13 @@ async function importXmlFile(filePath: string): Promise<void> {
     const xmlContent = await fs.readFile(absolutePath, 'utf-8');
     const parsed = await parseInvoiceXml(xmlContent);
     if (!parsed) {
+      const cancelled = await applyLocalXmlCancellation(xmlContent, absolutePath);
+      if (cancelled) {
+        rememberFileFingerprint(absolutePath, fingerprint);
+        parseFailureCooldown.delete(absolutePath);
+        log.info({ file: path.basename(absolutePath) }, 'Cancelamento aplicado a partir de XML de evento');
+        return;
+      }
       parseFailureCooldown.set(absolutePath, {
         fingerprint,
         retryAtMs: Date.now() + PARSE_RETRY_COOLDOWN_MS,

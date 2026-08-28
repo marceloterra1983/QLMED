@@ -91,6 +91,16 @@ describe('detectNfeCancellation', () => {
     expect(hit.cancelledAt).toBeInstanceOf(Date);
   });
 
+  it('marca cancelada pela situacao NSDocs Cancelado', async () => {
+    const hit = await detectNfeCancellation({
+      documentType: 'NFE',
+      providerStatus: 'Cancelado',
+      accessKey: CHAVE,
+    });
+    expect(hit.cancelled).toBe(true);
+    expect(hit.accessKey).toBe(CHAVE);
+  });
+
   it('nao cancela carta de correcao 110110', async () => {
     const hit = await detectNfeCancellation({ xml: procEvento('110110', '135') });
     expect(hit.cancelled).toBe(false);
