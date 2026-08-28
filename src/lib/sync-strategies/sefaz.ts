@@ -11,6 +11,7 @@ import { UF_TO_CODE } from '../constants';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
+import { applyNfeCancellation } from '@/lib/nfe-cancellation';
 
 const log = createLogger('auto-sync');
 
@@ -92,8 +93,16 @@ export async function syncViaSefaz(
         try {
           if (!doc.chave || doc.chave.length < 44 || !doc.xml) continue;
 
+          if (doc.tipo === 'evento') {
+            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            continue;
+          }
+
           const parsed = await parseInvoiceXml(doc.xml);
-          if (!parsed) continue;
+          if (!parsed) {
+            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            continue;
+          }
 
           const accessKey = parsed.accessKey || doc.chave;
           const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, accessKey);

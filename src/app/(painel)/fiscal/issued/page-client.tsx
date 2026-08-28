@@ -14,6 +14,7 @@ import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
+import { issuedCancelTagLabel } from '@/lib/nfe-cancellation-label';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import type { Invoice } from '@/types';
 import { useRole } from '@/hooks/useRole';
@@ -270,6 +271,7 @@ export default function IssuedInvoicesPage() {
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
             {cfopTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
+            {issuedCancelTagLabel(invoice.cancelledAt) && <span className="mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">Cancelado</span>}
           </div>
         </td>
         <td className="px-2 py-1.5 text-right whitespace-nowrap">
@@ -304,6 +306,7 @@ export default function IssuedInvoicesPage() {
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             {invoice.number}
             {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag === 'Consignação' ? 'Consig.' : cfopTag}</span>}
+            {issuedCancelTagLabel(invoice.cancelledAt) && <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">Cancelado</span>}
           </span>
           <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
         </div>
