@@ -37,6 +37,21 @@ updates:
       # Reavaliar quando typescript-eslint publicar suporte a TS 7.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # ESLint 10: eslint-plugin-react (dependencia transitiva do
+      # eslint-config-next) ainda chama a API de contexto legada
+      # (context.getFilename()) que o ESLint 10 removeu — peer cap em ^9.7,
+      # sem beta/next compativel. eslint-config-next 16.x tambem quebra
+      # sozinho (mesmo com eslint 9.x): o pacote passou a exportar flat
+      # config nativo em next/core-web-vitals, e o eslint.config.mjs atual
+      # usa FlatCompat.extends(), que nao aceita esse formato ("Converting
+      # circular structure to JSON"). Reavaliar os dois juntos quando
+      # eslint-plugin-react publicar suporte a ESLint 10 (checar `npm view
+      # eslint-plugin-react@latest peerDependencies`) — nessa hora tambem
+      # trocar o import de eslint.config.mjs pro subpath nativo.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include: "scope"

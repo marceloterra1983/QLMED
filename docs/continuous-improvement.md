@@ -23,7 +23,7 @@ produto. Humanos aprovam merge/deploy; o loop nunca altera `main` sozinho.
 | Peça | Path |
 |------|------|
 | Policy | `.ci-loop/policy.json` |
-| Script | `~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh` (execução manual, com `QLMED_APP_DEV=~/qlmed/app`) |
+| Script | `~/qlmed/ops/scripts/qlmed-app-ci-loop.sh` (execução manual, com `QLMED_APP_DEV=~/qlmed/app`) |
 | Listener | **não instalado/ativo** (`:18645` e `qlmed-ci-loop-listener.service` são planejados) |
 | Workflow n8n | `n8n/workflows/qlmedCiLoop01.json` (fonte versionada, inativo) |
 | Estado local | `~/.local/state/qlmed-ci-loop/` |
@@ -38,7 +38,7 @@ Execução manual do script (sem listener):
 
 ```bash
 QLMED_APP_DEV=~/qlmed/app \
-  ~/ops/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
+  ~/qlmed/ops/scripts/qlmed-app-ci-loop.sh --mode audit --json
 ```
 
 Não há endpoint local `:18645` para chamar até que o listener seja
