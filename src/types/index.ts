@@ -21,6 +21,7 @@ export interface Invoice {
   recipientName: string | null;
   totalValue: number;
   status: InvoiceStatus;
+  cancelledAt?: string | null;
   createdAt?: string;
   xmlContent?: string;
   company?: { razaoSocial: string; cnpj: string };

@@ -16,9 +16,8 @@ no texto enviado; o JSON do workflow **não** está no git do produto.
 
 **Primary Dependencies**: nenhum pacote novo; `sumMoney` em `src/lib/money.ts`
 
-**Storage**: sem schema novo. `Invoice.cancelledAt` ainda não está em
-`main` (SPEC-020 em `feat/nfe-cancelado-tag`). A função aceita o campo
-opcional e exclui se presente.
+**Storage**: sem schema novo. Reusa `Invoice.cancelledAt` da SPEC-020
+(já em `main`); item cancelado não entra no cabeçalho.
 
 **Testing**: Vitest em `src/lib/__tests__/daily-issued-summary.test.ts`
 (TDD: testes do cabeçalho falham antes da implementação)

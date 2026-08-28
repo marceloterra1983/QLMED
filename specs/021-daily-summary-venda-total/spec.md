@@ -123,13 +123,9 @@ notas com `(CONSIG.)`.
 ### Out of scope
 
 - Mostrar dois totais lado a lado (venda e consignação).
-- Relabelar a tela `/fiscal/issued`.
+- Relabelar a tela `/fiscal/issued` (SPEC-020 cuida da tag Cancelado).
 - Reenviar o resumo já entregue hoje.
 - Mudar destinatário do grupo (SPEC-015 / ADR-0010).
-- Tag **Cancelado** e persistência de cancelamento (SPEC-020, em curso):
-  quando a nota cancelada estiver identificada no item da lista, ela
-  MUST sair da soma de venda; até lá, o follow-up fica explícito — esta
-  spec não bloqueia.
 
 ## Key entities
 
@@ -155,6 +151,5 @@ notas com `(CONSIG.)`.
 - Contagem e soma do cabeçalho ficam **as duas** só de venda, para o
   grupo não ler “3 notas / R$ X de venda” quando X exclui consignação.
 - O resumo continua no mesmo grupo e no mesmo horário.
-- NF-e cancelada: se o item ainda não expõe cancelamento, a exclusão
-  fica como follow-up da SPEC-020; a regra canônica já recusa item
-  marcado como cancelado, quando o campo existir.
+- NF-e cancelada (SPEC-020, já em `main`): item com `cancelledAt`
+  preenchido não entra na contagem nem na soma de venda.

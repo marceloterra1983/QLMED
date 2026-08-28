@@ -24,14 +24,13 @@
 - **Alternatives considered**: Endpoint que devolve o texto pronto —
   escopo maior, sem pedido. Importar TS no n8n — inviável.
 
-## Decision: `cancelledAt` opcional, sem bloquear
+## Decision: `cancelledAt` exclui da soma
 
-- **Decision**: Se o item tiver `cancelledAt` truthy, não entra na soma.
-  SPEC-020 ainda não está em `main`; follow-up até a lista expor o campo
-  e o n8n-promote posterior.
-- **Rationale**: Pedido explícito de não bloquear nesta spec.
-- **Alternatives considered**: Esperar o merge da 020 — atraso do total
-  de venda sem necessidade.
+- **Decision**: Se o item tiver `cancelledAt` truthy, não entra no
+  cabeçalho. SPEC-020 já está em `main` e a lista devolve o campo.
+- **Rationale**: Nota cancelada não é venda vigente.
+- **Alternatives considered**: Esperar outro PR — desnecessário após o
+  merge da 020.
 
 ## Decision: Rótulos do cabeçalho
 
