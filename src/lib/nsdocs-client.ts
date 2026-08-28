@@ -102,6 +102,14 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Sem `campos`, GET /documentos devolve só `{ id }` e o detector da SPEC-020 fica cego. */
+export const NSDOCS_DOCUMENT_CAMPOS =
+  'id,chave_acesso,situacao,tipo,numero,cnpj_emitente,cnpj_destinatario,data_emissao';
+
+function withDocumentCampos(filtros?: Record<string, string>): Record<string, string> {
+  return { campos: NSDOCS_DOCUMENT_CAMPOS, ...(filtros || {}) };
+}
+
 export class NsdocsClient {
   private apiToken: string;
 
@@ -240,7 +248,7 @@ export class NsdocsClient {
    * Lista documentos armazenados no NSDocs (página única)
    */
   async listarDocumentos(filtros?: Record<string, string>): Promise<NsdocsDocumento[]> {
-    const params = filtros ? '?' + new URLSearchParams(filtros).toString() : '';
+    const params = '?' + new URLSearchParams(withDocumentCampos(filtros)).toString();
     const docs = await this.request<NsdocsDocumento[]>(`/documentos${params}`);
     if (!Array.isArray(docs)) {
       throw new NsdocsPaginationError(`NSDocs /documentos returned non-array payload: ${redactForLog(JSON.stringify(docs))}`);
@@ -267,7 +275,7 @@ export class NsdocsClient {
     while (safetyCounter < maxPages) {
       safetyCounter++;
       const paginatedFilters: Record<string, string> = {
-        ...(filtros || {}),
+        ...withDocumentCampos(filtros),
         quantidade: String(pageSize),
         deslocamento: String(deslocamento),
       };
