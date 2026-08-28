@@ -50,7 +50,7 @@ houver atualização ou erro). A cópia que existia no n8n QLMED foi removida em
 | Peça | Path |
 |------|------|
 | Workflow | `~/ops/n8n/workflows-snapshot/SpecKitAutoUpd01.json` (id `SpecKitAutoUpd01`, n8n Shared) |
-| Script | `~/ops/qlmed/ops/scripts/speckit-updater.py` |
+| Script | `~/qlmed/ops/scripts/speckit-updater.py` |
 | Segredo | `/etc/qlmed/speckit-updater.env` → env `SPECKIT_WEBHOOK_SECRET` no serviço e no n8n Shared |
 | systemd | `/etc/systemd/system/speckit-updater.service` (porta 8765) |
 

@@ -28,7 +28,7 @@ para uma eventual reimplantação, que exige decisão e nova validação.
 
 O workflow ativo é `SpecKitAutoUpd01` no n8n Shared. O bridge host é o serviço
 `speckit-updater.service` (systemd do sistema), script em
-`~/ops/qlmed/ops/scripts/speckit-updater.py`, porta `127.0.0.1:8765`.
+`~/qlmed/ops/scripts/speckit-updater.py`, porta `127.0.0.1:8765`.
 Validação read-only:
 
 ```bash

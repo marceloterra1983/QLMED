@@ -49,9 +49,9 @@ npm run db:reconcile:verify
   disposable `qlmed_ci` service. Local development against the canonical
   database is allowed only with protected credentials, background services
   disabled, and a current backup receipt.
-- `~/qlmed/ops/scripts/qlmed-dev-reseed.sh` still exists on disk (fisicamente em
-  `ops/qlmed/ops/scripts/`) and targets `qlmed_dev`, which no longer exists —
-  do not run it without reviewing first.
+- `ops/scripts/qlmed-dev-reseed.sh` still exists on disk and targets
+  `qlmed_dev`, which no longer exists — do not run it without reviewing
+  first.
 - Do not run deploy, publish, migration deploy or production scripts unless the
   user explicitly requests that external effect.
 - Schema changes use versioned Prisma migrations. Runtime DDL is legacy and
@@ -120,6 +120,11 @@ futuro; até lá, este é o ambiente real.
     `127.0.0.1:5432` diretamente)
   - `npm run dev` usa a porta **3000**; a porta 3001 está reservada pelo Uptime Kuma
     do host — não suba o compose de dev nela sem resolver o conflito
+  - `ops/` — scripts, unidades systemd, compose e evidence operacionais
+    (watchdogs, backups, sync CT-e, resumo diário, speckit-updater). Migrado
+    de `ops/qlmed/` em 27/08/2026; os symlinks vivos em
+    `/etc/systemd/system/` apontam pra cá. Atalho de conveniência:
+    `/home/marce/qlmed/ops` → `/home/marce/qlmed/app/ops`.
 - `/srv/qlmed/` — raiz de deploy de produção (`/home/marce/qlmed/production` é
   symlink de compatibilidade)
   - `app/` — código-fonte deployado por GitHub Actions, **não é um repo Git**
