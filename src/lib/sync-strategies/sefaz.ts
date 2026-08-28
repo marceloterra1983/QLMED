@@ -91,12 +91,14 @@ export async function syncViaSefaz(
 
       for (const doc of response.docs) {
         try {
-          if (!doc.chave || doc.chave.length < 44 || !doc.xml) continue;
+          if (!doc.xml) continue;
 
           if (doc.tipo === 'evento') {
             await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
             continue;
           }
+
+          if (!doc.chave || doc.chave.length < 44) continue;
 
           const parsed = await parseInvoiceXml(doc.xml);
           if (!parsed) {

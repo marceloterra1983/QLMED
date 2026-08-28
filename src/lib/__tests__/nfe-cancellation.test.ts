@@ -1,10 +1,21 @@
-import { describe, expect, it } from 'vitest';
-import { detectNfeCancellation } from '../nfe-cancellation';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { applyNfeCancellation, detectNfeCancellation } from '../nfe-cancellation';
 import { issuedCancelTagLabel } from '../nfe-cancellation-label';
 
 const CHAVE = '35241012345678000199550010000012341123456789';
 
-function procEvento(tpEvento: string, cStat: string, dhReg = '2026-08-20T14:30:00-03:00'): string {
+const { updateMany } = vi.hoisted(() => ({
+  updateMany: vi.fn(),
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    invoice: { updateMany },
+  },
+}));
+
+function procEvento(tpEvento: string, cStat: string | null, dhReg = '2026-08-20T14:30:00-03:00'): string {
+  const cStatXml = cStat == null ? '' : `<cStat>${cStat}</cStat>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <procEventoNFe versao="1.00">
   <evento versao="1.00">
@@ -22,7 +33,7 @@ function procEvento(tpEvento: string, cStat: string, dhReg = '2026-08-20T14:30:0
     <infEvento>
       <tpEvento>${tpEvento}</tpEvento>
       <chNFe>${CHAVE}</chNFe>
-      <cStat>${cStat}</cStat>
+      ${cStatXml}
       <dhRegEvento>${dhReg}</dhRegEvento>
     </infEvento>
   </retEvento>
@@ -86,6 +97,13 @@ describe('detectNfeCancellation', () => {
     expect(hit.cancelledAt).toBeNull();
   });
 
+
+  it('nao cancela procEventoNFe 110111 sem cStat de aceite', async () => {
+    const hit = await detectNfeCancellation({ xml: procEvento('110111', null) });
+    expect(hit.cancelled).toBe(false);
+    expect(hit.cancelledAt).toBeNull();
+  });
+
   it('nao cancela evento 110111 rejeitado (cStat 215)', async () => {
     const hit = await detectNfeCancellation({ xml: procEvento('110111', '215') });
     expect(hit.cancelled).toBe(false);
@@ -122,5 +140,46 @@ describe('issuedCancelTagLabel', () => {
   it('nao devolve tag quando vigente', () => {
     expect(issuedCancelTagLabel(null)).toBeNull();
     expect(issuedCancelTagLabel(undefined)).toBeNull();
+  });
+});
+
+describe('applyNfeCancellation', () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+    updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('marca cancelledAt na nota existente sem sobrescrever xmlContent', async () => {
+    const applied = await applyNfeCancellation({ xml: procEvento('110111', '135') });
+    expect(applied).toBe(true);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    const arg = updateMany.mock.calls[0][0] as {
+      where: { accessKey: string; cancelledAt: null };
+      data: Record<string, unknown>;
+    };
+    expect(arg.where).toEqual({ accessKey: CHAVE, cancelledAt: null });
+    expect(arg.data.cancelledAt).toBeInstanceOf(Date);
+    expect(arg.data).not.toHaveProperty('xmlContent');
+  });
+
+  it('usa chNFe do XML quando accessKey de entrada falta', async () => {
+    const applied = await applyNfeCancellation({ xml: procEvento('110111', '155') });
+    expect(applied).toBe(true);
+    const arg = updateMany.mock.calls[0][0] as { where: { accessKey: string } };
+    expect(arg.where.accessKey).toBe(CHAVE);
+  });
+
+  it('nao aplica procEventoNFe sem cStat 135/155', async () => {
+    const applied = await applyNfeCancellation({ xml: procEvento('110111', null) });
+    expect(applied).toBe(false);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('nao cria invoice quando o evento nao tem chave', async () => {
+    const applied = await applyNfeCancellation({
+      xml: '<?xml version="1.0"?><procEventoNFe><evento><infEvento><tpEvento>110111</tpEvento></infEvento></evento><retEvento><infEvento><tpEvento>110111</tpEvento><cStat>135</cStat></infEvento></retEvento></procEventoNFe>',
+    });
+    expect(applied).toBe(false);
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });

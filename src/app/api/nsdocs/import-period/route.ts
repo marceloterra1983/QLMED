@@ -6,7 +6,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { decrypt } from '@/lib/crypto';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { mapSourceStatusToInvoiceStatus } from '@/lib/source-status';
-import { cancelledAtWrite, detectNfeCancellation } from '@/lib/nfe-cancellation';
+import { applyNfeCancellation } from '@/lib/nfe-cancellation';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { extractFirstCfop } from '@/lib/cfop';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
@@ -107,12 +107,6 @@ export async function POST(request: NextRequest) {
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(company.cnpj, parsed.senderCnpj, parsed.accessKey);
         const cfop = extractFirstCfop(xmlContent);
-        const cancelWrite = cancelledAtWrite(await detectNfeCancellation({
-          xml: xmlContent,
-          providerStatus: doc.situacao,
-          documentType: parsed.type,
-          accessKey: parsed.accessKey,
-        }));
         const exists = await prisma.invoice.findUnique({
           where: { accessKey: parsed.accessKey },
           select: { id: true, status: true },
@@ -136,9 +130,14 @@ export async function POST(request: NextRequest) {
                 status: mappedStatus,
                 cfop,
                 xmlContent,
-                ...cancelWrite,
               },
             });
+          });
+          await applyNfeCancellation({
+            xml: xmlContent,
+            providerStatus: doc.situacao,
+            documentType: parsed.type,
+            accessKey: parsed.accessKey,
           });
           skipped++;
           continue;
@@ -163,7 +162,6 @@ export async function POST(request: NextRequest) {
              status: mappedStatus,
              cfop,
              xmlContent,
-             ...cancelWrite,
           }
         });
 
@@ -182,6 +180,12 @@ export async function POST(request: NextRequest) {
           }).catch(() => {});
         }
 
+        await applyNfeCancellation({
+          xml: xmlContent,
+          providerStatus: doc.situacao,
+          documentType: parsed.type,
+          accessKey: parsed.accessKey,
+        });
         imported++;
       } catch (err: unknown) {
         log.error({ err: err }, '[Import] Falha no documento ID ${doc.id}');

@@ -73,7 +73,7 @@ function fromEventNodes(root: Record<string, unknown>, fallbackKey: string | nul
     const tpEvento = asText(infRet?.tpEvento || infEvento?.tpEvento);
     if (tpEvento !== CANCEL_EVENT) return null;
     const cStat = asText(infRet?.cStat);
-    if (cStat && !ACCEPTED_EVENT_STATS.has(cStat)) return null;
+    if (!ACCEPTED_EVENT_STATS.has(cStat)) return null;
     const accessKey = pickAccessKey(asText(infRet?.chNFe), asText(infEvento?.chNFe), fallbackKey);
     const cancelledAt = parseDate(asText(infRet?.dhRegEvento))
       || parseDate(asText(infEvento?.dhEvento))
