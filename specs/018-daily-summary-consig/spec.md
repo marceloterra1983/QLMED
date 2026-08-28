@@ -8,6 +8,10 @@ affected_modules:
   - n8n-daily-summary
 ---
 
+> **Cabeçalho supersedido.** AC-003, FR-004 e SC-003 (contagem e total de
+> **todas** as emitidas) foram substituídos pela [SPEC-021](../021-daily-summary-venda-total/spec.md).
+> O sufixo `(CONSIG.)` por linha permanece.
+
 # Feature Specification: Marca de consignação no resumo do dia
 
 **Feature Branch**: `feat/daily-summary-consig`
@@ -45,9 +49,10 @@ termina com `(CONSIG.)`; a segunda não.
 2. **AC-002** — Given uma NF-e emitida que não é venda (devolução de
    consignação ou outra operação que não venda), when o resumo é montado,
    then o valor é seguido de ` (CONSIG.)`.
-3. **AC-003** — Given o cabeçalho do resumo, when a mensagem é montada,
-   then a contagem de notas e o valor total continuam incluindo todas as
-   emitidas do dia; só a linha individual ganha o sufixo.
+3. **AC-003** — *(supersedido pela SPEC-021)* Given o cabeçalho do
+   resumo, when a mensagem é montada, then a contagem e o valor passam
+   a ser só das vendas; a linha individual de não-venda continua com o
+   sufixo. Registro histórico: a 018 pedia incluir todas as emitidas.
 
 ### User Story 2 — Lista do app expõe a classificação (Priority: P1)
 
@@ -75,8 +80,8 @@ da operação usada para decidir o sufixo.
   sem o sufixo.
 - **FR-003**: A decisão venda / não-venda MUST usar a classificação fiscal
   já existente da nota (primeiro CFOP persistido), não o nome do cliente.
-- **FR-004**: Contagem e valor total do cabeçalho MUST continuar somando
-  todas as emitidas do dia.
+- **FR-004**: *(supersedido pela SPEC-021)* Contagem e valor total do
+  cabeçalho MUST somar somente as notas de venda.
 - **FR-005**: A lista de notas MUST devolver a etiqueta da operação para
   cada item, para o resumo não reclassificar no escuro.
 
@@ -94,10 +99,11 @@ da operação usada para decidir o sufixo.
 
 ### Out of scope
 
-- Separar o valor total em venda vs consignação.
 - Relabelar a tela `/fiscal/issued`.
 - Reenviar o resumo já entregue hoje.
 - Mudar destinatário do grupo (SPEC-015).
+- Dois totais no cabeçalho (venda e consignação): a SPEC-021 substitui
+  o cabeçalho por um único total de venda.
 
 ## Key entities
 
@@ -112,8 +118,8 @@ da operação usada para decidir o sufixo.
   do resumo não são venda.
 - **SC-002**: 100% das linhas de teste de não-venda contém `(CONSIG.)`
   depois do valor; 100% das linhas de venda não contém.
-- **SC-003**: Cabeçalho (quantidade e total) permanece o de antes desta
-  mudança.
+- **SC-003**: *(supersedido pela SPEC-021)* Cabeçalho (quantidade e
+  total) é o das vendas do dia, não o de todas as emitidas.
 
 ## Assumptions
 
