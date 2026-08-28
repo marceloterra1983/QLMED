@@ -197,6 +197,7 @@ export async function GET(req: Request) {
       recipientName: true,
       totalValue: true,
       status: true,
+      cancelledAt: true,
       cfop: true,
       createdAt: true,
     };

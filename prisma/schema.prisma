@@ -295,6 +295,7 @@ model Invoice {
   recipientName      String?
   totalValue         Decimal
   status             InvoiceStatus                          @default(received)
+  cancelledAt        DateTime?
   cfop               String?
   xmlContent         String
   companyId          String
