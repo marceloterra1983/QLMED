@@ -3,7 +3,7 @@ import { decrypt } from '../crypto';
 import { parseInvoiceXml } from '../parse-invoice-xml';
 import { getNsdocsSyncWindow } from '../nsdocs-sync-window';
 import { mapSourceStatusToInvoiceStatus } from '../source-status';
-import { cancelledAtWrite, detectNfeCancellation } from '../nfe-cancellation';
+import { applyNfeCancellation } from '../nfe-cancellation';
 import { resolveInvoiceDirection } from '../invoice-direction';
 import { updateProductAggregatesForInvoice } from '../product-aggregate-updater';
 import { saveXmlToFile } from '../xml-file-store';
@@ -84,13 +84,6 @@ export async function syncViaNsdocs(
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
         const cfop = extractFirstCfop(xmlContent);
-        const cancelWrite = cancelledAtWrite(await detectNfeCancellation({
-          xml: xmlContent,
-          providerStatus: doc.situacao,
-          documentType: parsed.type,
-          accessKey: parsed.accessKey,
-        }));
-
         const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
           where: { accessKey: parsed.accessKey },
           update: {
@@ -107,7 +100,6 @@ export async function syncViaNsdocs(
             status: mappedStatus,
             cfop,
             xmlContent,
-            ...cancelWrite,
           },
           create: {
             companyId,
@@ -125,8 +117,13 @@ export async function syncViaNsdocs(
             status: mappedStatus,
             cfop,
             xmlContent,
-            ...cancelWrite,
           },
+        });
+        await applyNfeCancellation({
+          xml: xmlContent,
+          providerStatus: doc.situacao,
+          documentType: parsed.type,
+          accessKey: parsed.accessKey,
         });
         if (isNewInvoice) {
           totalNovos++;

@@ -258,6 +258,7 @@ export default function IssuedInvoicesPage() {
   const renderInvoiceRow = (invoice: Invoice) => {
     const cfopTag = getCfopTagByCode(invoice.cfop);
     const highlightRow = !isVendaTag(cfopTag);
+    const cancelTag = issuedCancelTagLabel(invoice.cancelledAt);
     return (
       <tr key={invoice.id} className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
         <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
@@ -271,7 +272,7 @@ export default function IssuedInvoicesPage() {
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
             {cfopTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
-            {issuedCancelTagLabel(invoice.cancelledAt) && <span className="mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">Cancelado</span>}
+            {cancelTag && <span className="mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">{cancelTag}</span>}
           </div>
         </td>
         <td className="px-2 py-1.5 text-right whitespace-nowrap">
@@ -300,13 +301,14 @@ export default function IssuedInvoicesPage() {
   const renderMobileCard = (invoice: Invoice) => {
     const cfopTag = getCfopTagByCode(invoice.cfop);
     const highlightRow = !isVendaTag(cfopTag);
+    const cancelTag = issuedCancelTagLabel(invoice.cancelledAt);
     return (
       <div key={invoice.id} onClick={() => openProducts(invoice.id)} className={`border rounded-xl p-3 cursor-pointer ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             {invoice.number}
             {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag === 'Consignação' ? 'Consig.' : cfopTag}</span>}
-            {issuedCancelTagLabel(invoice.cancelledAt) && <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">Cancelado</span>}
+            {cancelTag && <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">{cancelTag}</span>}
           </span>
           <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
         </div>
