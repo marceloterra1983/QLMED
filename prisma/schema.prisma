@@ -172,6 +172,7 @@ model Company {
   cassemsAuthorizations CassemsAuthorization[]
   cassemsSourceMessages CassemsSourceMessage[]
   cassemsIngestState    CassemsIngestState?
+  invoiceEmissions      InvoiceEmission[]
   createdAt           DateTime                               @default(now())
   updatedAt           DateTime                               @updatedAt
 
@@ -985,4 +986,40 @@ model CassemsIngestState {
   backfillCompletedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+enum InvoiceEmissionStatus {
+  draft
+  submitted
+  authorized
+  rejected
+}
+
+/// Rascunho e trilha de emissão de NF-e pelo QLMED. Não misturar com Invoice
+/// (que exige chave e XML autorizado). Ver specs/025-emissao-nota-fiscal.
+model InvoiceEmission {
+  id              String                @id @default(cuid())
+  companyId       String
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status          InvoiceEmissionStatus @default(draft)
+  series          String
+  number          String?
+  natureza        String
+  cfop            String
+  destCnpj        String
+  destName        String
+  payload         Json
+  totalValue      Decimal               @default(0)
+  accessKey       String?               @unique
+  sefazStat       String?
+  sefazMotivo     String?
+  signedXml       String?
+  protocolXml     String?
+  invoiceId       String?               @unique
+  createdByUserId String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, destCnpj])
 }

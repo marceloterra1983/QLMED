@@ -86,6 +86,7 @@ export const VALID_PAGE_PATHS = new Set(ALL_PAGES.map((p) => p.path));
 const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Fiscal
   { prefix: '/api/invoices', pages: ['/fiscal/invoices', '/fiscal/dashboard', '/fiscal/cte', '/fiscal/issued', '/fiscal/nfse-recebidas'] },
+  { prefix: '/api/nfe-emissions', pages: ['/fiscal/issued'] },
   { prefix: '/api/fiscal',   pages: ['/fiscal/dashboard', '/fiscal/invoices', '/fiscal/cte', '/fiscal/issued', '/fiscal/nfse-recebidas'] },
   { prefix: '/api/cte',      pages: ['/fiscal/cte'] },
   { prefix: '/api/dashboard',pages: ['/fiscal/dashboard'] },
