@@ -140,6 +140,36 @@ TOTAL R$ 12.550,00
     expect(parsed.parseStatus).toBe('ok');
   });
 
+  it('usa a data de fechamento, não a da OBS de urgência (ofício 16404)', () => {
+    const parsed = parseOficio(`
+INSTITUTO MUNICIPAL DE PREVIDENCIA DE CAMPO GRANDE
+ORDEM DE FORNECIMENTO N 16404
+PACIENTE: MARA MARCIA FERNANDES DE MORAES
+MEDICO: CLAUDIO ALBERNAZ CESAR
+CRM: 3947
+PROCEDIMENTO: REVASCULARIZACAO DO MIOCARDIO
+LOCAL DE ENTREGA: HOSPITAL CLINICA CAMPO GRANDE
+KIT TESTE MARCA REF 1 3.350,00 3.350,00
+TOTAL GERAL: 3.350,00
+OBS: PROCEDIMENTO REALIZADO NA URGENCIA EM 18/12/2025
+Campo Grande, 22 de janeiro de 2026.
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2026-01-22');
+  });
+
+  it('lê Campo Grande (MS), DD/MM/AAAA depois do timbre', () => {
+    const parsed = parseOficio(`
+IMPCG CAMPO GRANDE
+ORDEM DE FORNECIMENTO N 17742
+PACIENTE: LURDES DA SILVA CACERES
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL GERAL: 10,00
+OBS: PROCEDIMENTO REALIZADO NA URGENCIA EM 22/06/2026.
+Campo Grande (MS), 21/08/2026
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2026-08-21');
+  });
+
   it('lê data por extenso (Campo Grande, 10 de agosto de 2023)', () => {
     const parsed = parseOficio(`
 ORDEM DE FORNECIMENTO N 17673

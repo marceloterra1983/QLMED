@@ -95,6 +95,7 @@ function memoryStore(): ImpcgStorePort {
       });
       return { id };
     },
+    async persistIssuedAt() {},
     async persistUpgrade(input: PersistArgs & { authorizationId: string }) {
       const row = memory.authorizations.find((item) => item.id === input.authorizationId);
       if (!row) throw new Error('authorization missing');

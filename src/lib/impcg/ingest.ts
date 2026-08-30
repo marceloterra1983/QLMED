@@ -68,6 +68,7 @@ export type ImpcgStorePort = {
   findByOficioNumber(companyId: string, oficioNumber: string): Promise<ImpcgAuthorizationRow | null>;
   persistConfirmed(input: PersistArgs): Promise<{ id: string }>;
   persistUpgrade(input: PersistArgs & { authorizationId: string }): Promise<void>;
+  persistIssuedAt(authorizationId: string, issuedAt: Date): Promise<void>;
   persistSourceOnly(input: {
     companyId: string;
     authorizationId: string;

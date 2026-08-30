@@ -124,8 +124,10 @@ centavos iguais aos do documento.
    then MUST extrair paciente, médico, CRM, procedimento, hospital,
    itens (registro, descrição, marca, referência, quantidade,
    unitário, total da linha) e total geral, com dinheiro em
-   centavos. Data MUST ser lida de `DATA:`, da linha
-   “Campo Grande…”, de hífen/ponto e de OCR com `O`/`0`.
+   centavos. Data MUST ser a do fechamento (“Campo Grande…”,
+   inclusive `Campo Grande (MS), DD/MM/AAAA` e data por extenso),
+   não a data de urgência na OBS. Também MUST ler `DATA:` no
+   rótulo da linha, hífen/ponto e OCR com `O`/`0`.
    Se a data (ou outro campo) continuar vazia, a linha fica
    parcial e o editor MAY completar na tela (AC-016).
 5. **AC-009** — Given o paciente só no assunto ou só no documento,
