@@ -8,3 +8,7 @@ import { z } from 'zod';
 export const certificateUploadFieldsSchema = z.object({
   password: z.string().min(1, 'Senha do certificado e obrigatoria'),
 });
+
+export const certificateEnvironmentSchema = z.object({
+  environment: z.enum(['homologation', 'production']),
+});

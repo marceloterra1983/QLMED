@@ -13,3 +13,9 @@ Rascunho e trilha de autorização. Não substitui `Invoice`.
 | invoiceId | liga à `Invoice` issued após cStat 100/150 |
 
 Company via `companyId` do usuário autenticado.
+
+## CertificateConfig.environment
+
+`homologation` | `production`. Admin altera sem reenviar o PFX.
+A emissão e o teste de conexão leem este campo. DistDFe operacional
+não segue homologação (NSU distinto).

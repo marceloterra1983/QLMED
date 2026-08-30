@@ -17,6 +17,9 @@
 3. Destinatário: cliente PJ extraído das emitidas + endereço do cadastro/XML.
 4. Emitente: última NF-e issued da empresa.
 5. Página `/fiscal/issued/nova` (ACL da lista de emitidas).
+6. Admin grava `CertificateConfig.environment` sem reenviar PFX.
+   Teste de conexão: `NFeStatusServico4` (MS). DistDFe operacional
+   permanece em produção para não misturar NSU.
 
 ## ADRs
 

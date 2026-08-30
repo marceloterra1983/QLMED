@@ -16,6 +16,7 @@ import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
 import { nfeEmissionPayloadSchema } from './schema';
 import { buildUnsignedNfeXml, draftDocumentTotal } from './xml-builder';
 import { signNfeXml } from './xml-sign';
+import { resolveEmissionEnvironment } from './environment';
 import type { NfeEmissionItem } from './types';
 
 const log = createLogger('nfe-emission');
@@ -67,7 +68,7 @@ export async function authorizeInvoiceEmission(
   }
   const password = decrypt(cert.pfxPassword);
   const pems = CertificateManager.extractPems(Buffer.from(cert.pfxData), password);
-  const environment = cert.environment === 'homologation' ? 'homologation' : 'production';
+  const environment = resolveEmissionEnvironment(cert.environment);
   const tpAmb = environment === 'production' ? '1' : '2';
   const cUf = UF_TO_CODE[emit.ender.UF];
   if (!cUf) throw new Error('UF do emitente sem código');
