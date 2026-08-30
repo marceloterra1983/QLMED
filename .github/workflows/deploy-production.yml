@@ -281,6 +281,7 @@ jobs:
           done
 
       - name: Verify public endpoints
+        id: app_verified
         run: |
           for url in \
             https://app.qlmed.com.br/
@@ -303,9 +304,19 @@ jobs:
           # do deploy (auditoria 2026-07-21) — evita escalada gh-runner→marce
           # via script que o próprio deploy poderia sobrescrever. Atualizar via:
           #   sudo install -o root -g root -m 755 <fonte> /usr/local/lib/qlmed/
-          sudo -n -u marce -- \
-            /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh \
-            /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
+          # Smoke 401 intermitente logo após o up não deve derrubar o app:
+          # o hook é independente do container já verificado.
+          for attempt in 1 2 3 4 5; do
+            if sudo -n -u marce -- \
+              /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh \
+              /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
+            then
+              exit 0
+            fi
+            echo "Worker install attempt ${attempt} failed; retrying in 5s" >&2
+            sleep 5
+          done
+          exit 1
 
       - name: Preserve and verify manual rollback tag
         if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
@@ -333,7 +344,7 @@ jobs:
           docker rmi "qlmed-app:rollback-${GITHUB_RUN_ID}" >/dev/null 2>&1 || true
 
       - name: Roll back failed deployment
-        if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
+        if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' && steps.app_verified.outcome != 'success' }}
         run: |
           # Este rollback reverte apenas a imagem do qlmed-app; não desfaz migração
           # de banco que já tenha sido aplicada. A imagem anterior deve permanecer
@@ -343,7 +354,7 @@ jobs:
             --env-file /home/marce/qlmed/production/.env \
             -f /home/marce/qlmed/production/docker-compose.yml \
             up -d --no-build --force-recreate qlmed-app
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:13000/api/health >/dev/null; then
               exit 0
             fi
