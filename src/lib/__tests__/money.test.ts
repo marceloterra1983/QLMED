@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMoney, roundMoney, sumMoney } from '@/lib/money';
+import { addMoney, centsToDecimal, decimalToCents, formatMoneyDecimal, roundMoney, sumMoney } from '@/lib/money';
 
 describe('money', () => {
   it('roundMoney arredonda half-up em 2 casas', () => {
@@ -21,5 +21,11 @@ describe('money', () => {
     expect(sumMoney([0.1, 0.2, 0.3])).toBe(0.6);
     expect(sumMoney([12542.83, 12542.83])).toBe(25085.66);
     expect(addMoney(25085.66, -sumMoney([12542.83, 12542.83]))).toBe(0);
+  });
+
+  it('centsToDecimal persiste 1255000 centavos como 12550.00', () => {
+    const value = centsToDecimal(1_255_000);
+    expect(formatMoneyDecimal(value)).toBe('12550.00');
+    expect(decimalToCents(value)).toBe(1_255_000);
   });
 });

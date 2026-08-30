@@ -1,0 +1,54 @@
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('impcg/extract-pdf');
+
+function run(command: string, args: string[]): { stdout: string; status: number | null } {
+  const result = spawnSync(command, args, { encoding: 'utf8', timeout: 60_000 });
+  return { stdout: result.stdout || '', status: result.status };
+}
+
+function commandExists(command: string): boolean {
+  const result = spawnSync('which', [command], { encoding: 'utf8' });
+  return result.status === 0;
+}
+
+/**
+ * 1) pdftotext. 2) se vazio e os binários existirem, pdftoppm + tesseract -l por.
+ * Sem tesseract/poppler (CI enxuto) devolve string vazia — o parser testa texto injetado.
+ */
+export async function extractPdfText(pdf: Buffer): Promise<string> {
+  if (pdf.length === 0) return '';
+
+  const dir = mkdtempSync(join(tmpdir(), 'impcg-ocr-'));
+  const pdfPath = join(dir, 'oficio.pdf');
+  writeFileSync(pdfPath, pdf);
+
+  try {
+    if (commandExists('pdftotext')) {
+      const text = run('pdftotext', ['-layout', '-enc', 'UTF-8', pdfPath, '-']);
+      if (text.stdout.trim()) return text.stdout;
+    }
+
+    if (!commandExists('pdftoppm') || !commandExists('tesseract')) {
+      log.warn('ocr_binaries_missing');
+      return '';
+    }
+
+    const prefix = join(dir, 'page');
+    run('pdftoppm', ['-png', '-r', '200', pdfPath, prefix]);
+    const pagePath = `${prefix}-1.png`;
+    try {
+      readFileSync(pagePath);
+    } catch {
+      return '';
+    }
+    const ocr = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1']);
+    return ocr.stdout.trim();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}

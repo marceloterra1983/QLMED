@@ -17,6 +17,7 @@ const log = createLogger('bootstrap');
 const globalForBootstrap = globalThis as unknown as {
   __autoSyncStarted?: boolean;
   __localXmlSyncStarted?: boolean;
+  __impcgIngestStarted?: boolean;
 };
 
 if (!globalForBootstrap.__autoSyncStarted) {
@@ -35,4 +36,13 @@ if (!globalForBootstrap.__localXmlSyncStarted) {
       .then((m) => m.startLocalXmlSync())
       .catch((err) => log.error({ err }, 'LocalXmlSync falha ao iniciar'));
   }, 12_000);
+}
+
+if (!globalForBootstrap.__impcgIngestStarted) {
+  globalForBootstrap.__impcgIngestStarted = true;
+  setTimeout(() => {
+    import('./impcg/ingest')
+      .then((m) => m.startImpcgMailIngest())
+      .catch((err) => log.error({ err }, 'ImpcgMailIngest falha ao iniciar'));
+  }, 14_000);
 }

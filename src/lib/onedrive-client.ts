@@ -217,3 +217,133 @@ export async function listOneDriveChildren(
   const response = await graphRequest<OneDriveChildrenResponse>(path, accessToken);
   return response.value || [];
 }
+
+function graphTimeoutMs(): number {
+  return Number(process.env.ONEDRIVE_TIMEOUT_MS) || 30_000;
+}
+
+async function graphWrite<T>(
+  accessToken: string,
+  resourcePath: string,
+  init: RequestInit,
+): Promise<T> {
+  const response = await fetch(`https://graph.microsoft.com/v1.0${resourcePath}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      ...(init.headers || {}),
+    },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(graphTimeoutMs()),
+  });
+  const payload = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    const detail = parseErrorDetails(payload, `${response.status} ${response.statusText}`);
+    throw new Error(`Falha na API do OneDrive: ${detail}`);
+  }
+  return payload as T;
+}
+
+export async function ensureOneDriveFolder(
+  accessToken: string,
+  driveId: string,
+  folderPath: string,
+): Promise<{ id: string }> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const segments = folderPath.split('/').map((part) => part.trim()).filter(Boolean);
+  let parentId = 'root';
+  let walked = '';
+
+  for (const segment of segments) {
+    walked = walked ? `${walked}/${segment}` : segment;
+    const existing = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/root:/${encodeURI(walked)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(graphTimeoutMs()),
+      },
+    );
+    if (existing.ok) {
+      const item = (await existing.json()) as OneDriveItem;
+      parentId = item.id;
+      continue;
+    }
+    if (existing.status !== 404) {
+      const payload = await existing.json().catch(() => null);
+      throw new Error(`Falha na API do OneDrive: ${parseErrorDetails(payload, String(existing.status))}`);
+    }
+
+    const created = await graphWrite<OneDriveItem>(
+      accessToken,
+      parentId === 'root'
+        ? `/drives/${encodedDriveId}/root/children`
+        : `/drives/${encodedDriveId}/items/${encodeURIComponent(parentId)}/children`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: segment,
+          folder: {},
+          '@microsoft.graph.conflictBehavior': 'fail',
+        }),
+      },
+    );
+    parentId = created.id;
+  }
+
+  return { id: parentId };
+}
+
+export async function uploadOneDriveFile(
+  accessToken: string,
+  driveId: string,
+  folderPath: string,
+  fileName: string,
+  content: Buffer,
+): Promise<{ id: string; name: string }> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const remotePath = `${folderPath.replace(/\/$/, '')}/${fileName}`.replace(/^\/+/, '');
+  const response = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/root:/${encodeURI(remotePath)}:/content`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/pdf',
+      },
+      body: new Uint8Array(content),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(graphTimeoutMs()),
+    },
+  );
+  const payload = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    throw new Error(`Falha na API do OneDrive: ${parseErrorDetails(payload, `${response.status}`)}`);
+  }
+  const item = payload as OneDriveItem;
+  return { id: item.id, name: item.name };
+}
+
+export async function downloadOneDriveItemContent(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+): Promise<Buffer> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const encodedItemId = encodeURIComponent(itemId);
+  const response = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedItemId}/content`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(graphTimeoutMs()),
+    },
+  );
+  if (!response.ok) {
+    const detail = await response.text().catch(() => `${response.status}`);
+    throw new Error(`Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`);
+  }
+  return Buffer.from(await response.arrayBuffer());
+}

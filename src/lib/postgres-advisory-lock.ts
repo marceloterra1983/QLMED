@@ -15,6 +15,10 @@ export function syncLogLockKey(companyId: string): string {
   return `sync-log-start:${companyId}`;
 }
 
+export function impcgMailIngestLockKey(companyId: string): string {
+  return `impcg-mail-ingest:${companyId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,

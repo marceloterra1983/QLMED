@@ -43,7 +43,10 @@ RUN apk add --no-cache \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-data-por
 
 # puppeteer-core nao baixa navegador: o binario vem do pacote chromium acima
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
