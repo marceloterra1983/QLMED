@@ -70,6 +70,8 @@ recusa na API.
 1. **AC-001** — Given um operador autenticado com a página
    `/gestao/impcg`, when abre Gestão → IMPCG, then MUST ver a lista
    ordenada por data do ofício decrescente e, em empate, pelo número.
+   No card compacto/celular MUST aparecer paciente, local (hospital)
+   e médico; MUST NOT mostrar o valor.
 2. **AC-002** — Given uma autorização com arquivo gravado, when o
    operador abre a linha ou o ícone do arquivo, then MUST abrir o
    popup com título `Ordem {número} — {paciente}`, a **data do
@@ -224,7 +226,9 @@ importa o arquivo da pasta.
   decimal de dinheiro), nunca fração binária. Documento ilegível
   segue FAIL-003 — não inventar campo.
 - **FR-007**: A lista MUST mostrar data, número, paciente, médico,
-  hospital, total em reais e ação de arquivo. Itens e PDF no popup.
+  hospital, total em reais e ação de arquivo. No card
+  compacto/celular MUST mostrar paciente, local e médico e MUST NOT
+  mostrar o valor. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
   linha sem impedir abrir o PDF. Parcial MUST mostrar, na lista e
   no cabeçalho do popup, o que faltou (campos vazios ou soma das
