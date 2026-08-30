@@ -41,6 +41,19 @@ export function formatDate(dateStr: string): string {
   });
 }
 
+/** Data de documento gravada em UTC meia-noite — não deslocar para o fuso local. */
+export function formatDocumentDate(issuedAt: string | Date | null | undefined): string {
+  if (issuedAt == null || issuedAt === '') return '—';
+  const date = issuedAt instanceof Date ? issuedAt : new Date(issuedAt);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 export function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('pt-BR', {
     day: '2-digit',

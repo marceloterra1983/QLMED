@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
-import { formatDate, formatDateTime } from '@/lib/utils';
+import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
 
@@ -228,7 +228,7 @@ export default function CassemsPageClient() {
                     Autorização {item.oficioNumber}
                   </span>
                   <span className="text-xs text-slate-500">
-                    {item.issuedAt ? formatDate(item.issuedAt) : '—'}
+                    {formatDocumentDate(item.issuedAt)}
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate mt-1">
@@ -265,7 +265,7 @@ export default function CassemsPageClient() {
                       className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
                     >
                       <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        {item.issuedAt ? formatDate(item.issuedAt) : '—'}
+                        {formatDocumentDate(item.issuedAt)}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold">
                         <span className="inline-flex items-center gap-2">
@@ -318,6 +318,10 @@ export default function CassemsPageClient() {
         {detail && (
           <div className="space-y-5">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Data</dt>
+                <dd>{formatDocumentDate(detail.issuedAt)}</dd>
+              </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Paciente</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">{detail.patientName}</dd>
