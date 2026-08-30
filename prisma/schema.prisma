@@ -166,9 +166,12 @@ model Company {
   syncLogs            SyncLog[]
   notificationEvents  NotificationOutboxEvent[]
   productRebuildState ProductAggregateRebuildState?
-  impcgAuthorizations ImpcgAuthorization[]
-  impcgSourceMessages ImpcgSourceMessage[]
-  impcgIngestState    ImpcgIngestState?
+  impcgAuthorizations   ImpcgAuthorization[]
+  impcgSourceMessages   ImpcgSourceMessage[]
+  impcgIngestState      ImpcgIngestState?
+  cassemsAuthorizations CassemsAuthorization[]
+  cassemsSourceMessages CassemsSourceMessage[]
+  cassemsIngestState    CassemsIngestState?
   createdAt           DateTime                               @default(now())
   updatedAt           DateTime                               @updatedAt
 
@@ -832,6 +835,12 @@ enum ImpcgParseStatus {
   falha
 }
 
+enum CassemsParseStatus {
+  ok
+  parcial
+  falha
+}
+
 model ImpcgAuthorization {
   id              String                   @id @default(cuid())
   companyId       String
@@ -894,6 +903,78 @@ model ImpcgSourceMessage {
 }
 
 model ImpcgIngestState {
+  companyId           String    @id
+  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lastSuccessAt       DateTime?
+  lastError           String?
+  lastErrorAt         DateTime?
+  backfillCompletedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model CassemsAuthorization {
+  id              String                     @id @default(cuid())
+  companyId       String
+  company         Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  oficioNumber    String
+  issuedAt        DateTime?
+  patientName     String
+  patientRegistry String?
+  doctorName      String?
+  doctorCrm       String?
+  procedureName   String?
+  hospitalName    String?
+  totalAmount     Decimal
+  oneDriveItemId  String
+  fileName        String
+  parseStatus     CassemsParseStatus
+  receivedAt      DateTime
+  items           CassemsAuthorizationItem[]
+  sourceMessages  CassemsSourceMessage[]
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@unique([companyId, oficioNumber])
+  @@index([companyId])
+  @@index([companyId, issuedAt(sort: Desc)])
+}
+
+model CassemsAuthorizationItem {
+  id              String               @id @default(cuid())
+  authorizationId String
+  authorization   CassemsAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  anvisaCode      String?
+  description     String
+  brand           String?
+  reference       String?
+  quantity        Decimal
+  unitAmount      Decimal
+  lineTotal       Decimal
+  sortOrder       Int
+  createdAt       DateTime             @default(now())
+
+  @@index([authorizationId, sortOrder])
+}
+
+model CassemsSourceMessage {
+  id                String                @id @default(cuid())
+  companyId         String
+  company           Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  authorizationId   String?
+  authorization     CassemsAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  createdAt         DateTime              @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([authorizationId])
+}
+
+model CassemsIngestState {
   companyId           String    @id
   company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lastSuccessAt       DateTime?

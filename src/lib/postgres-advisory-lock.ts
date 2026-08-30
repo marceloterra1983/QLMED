@@ -19,6 +19,10 @@ export function impcgMailIngestLockKey(companyId: string): string {
   return `impcg-mail-ingest:${companyId}`;
 }
 
+export function cassemsMailIngestLockKey(companyId: string): string {
+  return `cassems-mail-ingest:${companyId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,
