@@ -174,10 +174,12 @@ inicia.
   concluída.
 - **FR-005**: Deduplicação MUST usar o identificador da mensagem e o
   número da ordem de fornecimento, por empresa.
-- **FR-006**: A leitura MUST obter data do ofício, número, paciente,
-  matrícula se houver, médico, CRM se houver, procedimento, hospital
-  (local de entrega), itens aprovados e totais. Dinheiro MUST ser
-  inteiro em centavos (ou decimal de dinheiro), nunca fração binária.
+- **FR-006**: Quando o documento for legível, a leitura MUST obter
+  data do ofício, número, paciente, matrícula se houver, médico, CRM
+  se houver, procedimento, hospital (local de entrega), itens
+  aprovados e totais. Dinheiro MUST ser inteiro em centavos (ou
+  decimal de dinheiro), nunca fração binária. Documento ilegível
+  segue FAIL-003 — não inventar campo.
 - **FR-007**: A lista MUST mostrar data, número, paciente, médico,
   hospital, total em reais e ação de arquivo. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
