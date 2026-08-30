@@ -293,8 +293,13 @@ export default function ImpcgPageClient() {
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate mt-1">
                   {item.patientName}
                 </p>
-                <div className="flex items-center justify-between mt-2 gap-2">
-                  <span className="text-sm font-bold font-mono">{formatBrl(item.totalAmount)}</span>
+                <p className="text-xs text-slate-500 truncate mt-1">
+                  {item.hospitalName || '—'}
+                </p>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className="text-xs text-slate-500 truncate">
+                    {item.doctorName || '—'}
+                  </p>
                   <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
                 </div>
               </button>
