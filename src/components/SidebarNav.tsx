@@ -63,7 +63,6 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
         { label: 'Produtos', icon: 'inventory_2', href: '/cadastro/produtos' },
         { label: 'Clientes', icon: 'group', href: '/cadastro/clientes' },
         { label: 'Fornecedores', icon: 'storefront', href: '/cadastro/fornecedores' },
-        { label: 'ANVISA', icon: 'medication', href: '/cadastro/anvisa' },
       ],
     },
     {

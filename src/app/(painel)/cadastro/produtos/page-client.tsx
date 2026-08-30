@@ -14,6 +14,7 @@ import BulkEditModal from './components/BulkEditModal';
 import ExportCSVButton from './components/ExportCSVButton';
 import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
+import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
 
 /**
  * Cards de resumo do cadastro. Estes três números já vinham prontos da API
@@ -361,6 +362,16 @@ export default function ProdutosPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <a
+            href={ANVISA_PRODUTOS_SAUDE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Abrir consulta de Produtos para Saúde no site da ANVISA"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+            Consulta ANVISA
+          </a>
           <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
         </div>
       </div>

@@ -13,7 +13,6 @@ export const PAGE_GROUPS: PageGroup[] = [
     section: 'Cadastros',
     pages: [
       { label: 'Produtos', path: '/cadastro/produtos' },
-      { label: 'ANVISA', path: '/cadastro/anvisa' },
       { label: 'Clientes', path: '/cadastro/clientes' },
       { label: 'Fornecedores', path: '/cadastro/fornecedores' },
     ],
@@ -93,7 +92,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Cadastros
   { prefix: '/api/products',  pages: ['/cadastro/produtos'] },
   { prefix: '/api/ncm',       pages: ['/cadastro/produtos'] },
-  { prefix: '/api/anvisa',    pages: ['/cadastro/anvisa'] },
+  { prefix: '/api/anvisa',    pages: ['/cadastro/produtos'] },
   { prefix: '/api/suppliers', pages: ['/cadastro/fornecedores'] },
   { prefix: '/api/customers', pages: ['/cadastro/clientes'] },
   { prefix: '/api/contacts',  pages: ['/cadastro/fornecedores', '/cadastro/clientes'] },

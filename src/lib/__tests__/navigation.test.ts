@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   canAccessApi,
   canAccessPage,
+  PAGE_GROUPS,
   requiredPagesForApi,
   VALID_PAGE_PATHS,
 } from '../navigation';
@@ -73,12 +74,25 @@ describe('navigation ACL helpers', () => {
 
     it('every mapped page appears in VALID_PAGE_PATHS', () => {
       const allMappedPages = new Set<string>();
-      for (const p of ['/api/invoices', '/api/financeiro', '/api/users', '/api/products', '/api/estoque', '/api/reports'].flatMap(requiredPagesForApi)) {
+      for (const p of ['/api/invoices', '/api/financeiro', '/api/users', '/api/products', '/api/anvisa', '/api/estoque', '/api/reports'].flatMap(requiredPagesForApi)) {
         allMappedPages.add(p);
       }
       for (const page of allMappedPages) {
         expect(VALID_PAGE_PATHS.has(page)).toBe(true);
       }
+    });
+
+    it('anvisa APIs are gated by produtos, not a standalone page', () => {
+      expect(VALID_PAGE_PATHS.has('/cadastro/anvisa')).toBe(false);
+      expect(PAGE_GROUPS.find((g) => g.section === 'Cadastros')?.pages.map((p) => p.path)).toEqual([
+        '/cadastro/produtos',
+        '/cadastro/clientes',
+        '/cadastro/fornecedores',
+      ]);
+      expect(requiredPagesForApi('/api/anvisa')).toEqual(['/cadastro/produtos']);
+      expect(requiredPagesForApi('/api/anvisa/validate')).toEqual(['/cadastro/produtos']);
+      expect(canAccessApi('viewer', ['/cadastro/produtos'], '/api/anvisa/validate')).toBe(true);
+      expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/anvisa/validate')).toBe(false);
     });
   });
 });

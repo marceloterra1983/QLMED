@@ -7,7 +7,7 @@
   "spec_kit": {
     "mode": "required",
     "version": "0.14.2",
-    "feature_root": "specs/025-emissao-nota-fiscal",
+    "feature_root": "specs/026-anvisa-consulta-produtos",
     "validator": "npm run docs:validate"
   },
   "gsd": {
