@@ -69,14 +69,74 @@ function extractOficioNumber(text: string, subject: string): string | null {
   return normalizeOficioNumber(fromSubject?.[1] ?? null);
 }
 
+const PT_MONTHS: Record<string, number> = {
+  janeiro: 1,
+  fevereiro: 2,
+  marco: 3,
+  abril: 4,
+  maio: 5,
+  junho: 6,
+  julho: 7,
+  agosto: 8,
+  setembro: 9,
+  outubro: 10,
+  novembro: 11,
+  dezembro: 12,
+};
+
+function ocrDigits(raw: string): string {
+  return raw.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
+}
+
+function utcDate(day: number, month: number, year: number): Date | null {
+  if (year < 1990 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return date;
+}
+
+function parseDateChunk(chunk: string): Date | null {
+  const numeric = ocrDigits(chunk.replace(/[–—]/g, '-'));
+  const slash = /\b(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})\b/.exec(numeric);
+  if (slash) {
+    const parsed = utcDate(
+      Number.parseInt(slash[1], 10),
+      Number.parseInt(slash[2], 10),
+      Number.parseInt(slash[3], 10),
+    );
+    if (parsed) return parsed;
+  }
+
+  const extenso = /(\d{1,2})\s+de\s+([A-Za-zÀ-ÿ]+)\s+de\s+(\d{4})/i.exec(chunk);
+  if (extenso) {
+    const monthKey = extenso[2]
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const month = PT_MONTHS[monthKey];
+    const day = Number.parseInt(ocrDigits(extenso[1]), 10);
+    const year = Number.parseInt(ocrDigits(extenso[3]), 10);
+    if (month) return utcDate(day, month, year);
+  }
+  return null;
+}
+
 function extractIssuedAt(text: string): Date | null {
-  const match = /\b(\d{2})\/(\d{2})\/(\d{4})\b/.exec(text);
-  if (!match) return null;
-  const day = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  const year = Number.parseInt(match[3], 10);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return new Date(Date.UTC(year, month - 1, day));
+  const labeled = /data\s*[:\-]?\s*([^\n]+)/i.exec(text);
+  if (labeled?.[1]) {
+    const fromLabel = parseDateChunk(labeled[1]);
+    if (fromLabel) return fromLabel;
+  }
+  const campoGrande = /campo\s+grande[^\n]{0,80}/i.exec(text);
+  if (campoGrande?.[0]) {
+    const fromCity = parseDateChunk(campoGrande[0]);
+    if (fromCity) return fromCity;
+  }
+  return parseDateChunk(text);
 }
 
 function extractPatientFromSubject(subject: string): string | null {
@@ -136,7 +196,7 @@ function parseItems(text: string): ParsedImpcgItem[] {
   return items;
 }
 
-function resolveStatus(parsed: Omit<ParsedImpcgOficio, 'parseStatus'>): ImpcgParseStatus {
+export function computeImpcgParseStatus(parsed: Omit<ParsedImpcgOficio, 'parseStatus'>): ImpcgParseStatus {
   const documentEmpty = parsed.items.length === 0
     && parsed.totalCents === null
     && !parsed.issuedAt
@@ -159,6 +219,48 @@ function resolveStatus(parsed: Omit<ParsedImpcgOficio, 'parseStatus'>): ImpcgPar
   const totalsMatch = parsed.totalCents !== null && itemSum === parsed.totalCents;
   if (headerComplete && totalsMatch) return 'ok';
   return 'parcial';
+}
+
+export type ImpcgParseGapInput = {
+  parseStatus: ImpcgParseStatus;
+  oficioNumber: string | null;
+  issuedAt: Date | string | null;
+  patientName: string;
+  doctorName: string | null;
+  doctorCrm: string | null;
+  procedureName: string | null;
+  hospitalName: string | null;
+  totalCents: number | null;
+  items: Array<{ lineCents: number }>;
+};
+
+/** Texto pt-BR do que faltou. Derivado só dos nulos/inconsistências — sem campo inventado. */
+export function describeImpcgParseGap(input: ImpcgParseGapInput): string | null {
+  if (input.parseStatus === 'ok') return null;
+  if (input.parseStatus === 'falha') return 'Não foi possível ler o documento';
+
+  const missing: string[] = [];
+  const patient = input.patientName.trim();
+  if (!patient || patient.toUpperCase() === 'PACIENTE') missing.push('paciente');
+  if (!input.doctorName) missing.push('médico');
+  if (!input.doctorCrm) missing.push('CRM');
+  if (!input.procedureName) missing.push('procedimento');
+  if (!input.hospitalName) missing.push('hospital');
+  if (!input.issuedAt) missing.push('data');
+  if (!input.oficioNumber) missing.push('número');
+  if (input.items.length === 0) missing.push('nenhum item');
+
+  const itemSum = input.items.reduce((sum, item) => sum + item.lineCents, 0);
+  if (
+    input.totalCents !== null
+    && input.items.length > 0
+    && itemSum !== input.totalCents
+  ) {
+    missing.push('soma dos itens ≠ total');
+  }
+
+  if (missing.length === 0) return null;
+  return `Faltou: ${missing.join(', ')}`;
 }
 
 export function parseRank(status: ImpcgParseStatus): number {
@@ -200,7 +302,7 @@ export function parseOficio(text: string, subject = ''): ParsedImpcgOficio {
     items,
   };
 
-  return { ...parsed, parseStatus: resolveStatus(parsed) };
+  return { ...parsed, parseStatus: computeImpcgParseStatus(parsed) };
 }
 
 export function buildImpcgFileName(oficioNumber: string, patientName: string): string {

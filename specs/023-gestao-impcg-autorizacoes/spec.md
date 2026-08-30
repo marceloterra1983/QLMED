@@ -41,7 +41,7 @@ linhas. O arquivo precisa ficar na pasta já usada pelo faturamento
 - **Operador (viewer) com a página Gestão/IMPCG**: lista e abre o
   documento. Não dispara coleta.
 - **Editor ou admin com a página**: além de ver, pode pedir atualização
-  imediata da coleta.
+  imediata da coleta e completar na tela só os campos ainda vazios.
 - **Admin**: vê a página mesmo sem ela na lista explícita (bypass
   atual do menu).
 - **Coleta automática (sistema)**: lê as caixas da empresa, grava o
@@ -81,6 +81,10 @@ recusa na API.
 4. **AC-004** — Given nenhuma autorização, when o operador abre a
    página, then MUST ver o estado vazio “Nenhuma autorização IMPCG.”
    sem linhas inventadas.
+5. **AC-016** — Given uma autorização parcial com data vazia, when
+   um editor preenche a data no popup, then MUST persistir só esse
+   campo, recalcular o estado de leitura e MUST NOT alterar campos
+   já lidos. Viewer MUST receber 403.
 
 ### User Story 2 — E-mail vira arquivo e linha (Priority: P1)
 
@@ -116,7 +120,10 @@ centavos iguais aos do documento.
    then MUST extrair paciente, médico, CRM, procedimento, hospital,
    itens (registro, descrição, marca, referência, quantidade,
    unitário, total da linha) e total geral, com dinheiro em
-   centavos.
+   centavos. Data MUST ser lida de `DATA:`, da linha
+   “Campo Grande…”, de hífen/ponto e de OCR com `O`/`0`.
+   Se a data (ou outro campo) continuar vazia, a linha fica
+   parcial e o editor MAY completar na tela (AC-016).
 5. **AC-009** — Given o paciente só no assunto ou só no documento,
    when a coleta lê, then o nome do paciente MUST ser o do
    documento se existir, senão o do assunto.
@@ -217,7 +224,11 @@ importa o arquivo da pasta.
 - **FR-007**: A lista MUST mostrar data, número, paciente, médico,
   hospital, total em reais e ação de arquivo. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
-  linha sem impedir abrir o PDF.
+  linha sem impedir abrir o PDF. Parcial MUST mostrar, na lista e
+  no cabeçalho do popup, o que faltou (campos vazios ou soma das
+  linhas ≠ total), derivado dos dados já persistidos — sem coluna
+  nova. Falha MUST dizer que não foi possível ler o documento.
+  Ok MUST NOT exibir texto de falta.
 - **FR-009**: Viewer MUST NOT disparar coleta. Editor ou admin com a
   página MAY disparar a mesma coleta da rotina.
 - **FR-010**: A primeira execução MUST varrer o histórico das duas
@@ -225,8 +236,12 @@ importa o arquivo da pasta.
 - **FR-011**: A coleta MUST varrer os PDFs da pasta IMPCG do
   arquivo da empresa mesmo quando as caixas Graph falharem.
   Arquivo já na pasta MUST ser associado pelo itemId, sem
-  reenvio. Oficio já cadastrado (exceto `falha` com arquivo novo)
-  MUST ser ignorado.
+  reenvio. Oficio `ok` MUST ser ignorado. Oficio `parcial` MAY
+  ser relido para preencher data/campos que o OCR perdeu.
+- **FR-012**: Editor ou admin com a página MAY completar na tela
+  só os campos ainda vazios (data, paciente, médico, CRM,
+  procedimento, hospital). Viewer MUST NOT editar. Depois do
+  preenchimento o estado de leitura MUST ser recalculado.
 
 ### Failure cases
 
@@ -254,7 +269,7 @@ importa o arquivo da pasta.
 ### Out of scope
 
 - Outros clientes além da IMPCG.
-- Editar ou apagar ofício na tela.
+- Apagar ofício na tela. Editar campo que a leitura já preencheu.
 - Gerar financeiro, estoque ou NF-e a partir do ofício.
 - Consentimento de leitura de e-mail em todo o tenant (o recorte é
   só as duas caixas).

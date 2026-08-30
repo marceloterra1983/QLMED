@@ -5,6 +5,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  subtitle?: string;
   children: React.ReactNode;
   width?: string;
 }
@@ -12,7 +13,7 @@ interface ModalProps {
 const focusableSelector =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export default function Modal({ isOpen, onClose, title, children, width = 'max-w-3xl' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, subtitle, children, width = 'max-w-3xl' }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -120,12 +121,19 @@ export default function Modal({ isOpen, onClose, title, children, width = 'max-w
       >
         {/* Header - 3D raised effect on mobile */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
-          <h3
-            id={titleId}
-            className="text-lg font-bold text-slate-900 dark:text-white truncate"
-          >
-            {title}
-          </h3>
+          <div className="min-w-0 flex-1 pr-2">
+            <h3
+              id={titleId}
+              className="text-lg font-bold text-slate-900 dark:text-white truncate"
+            >
+              {title}
+            </h3>
+            {subtitle ? (
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mt-0.5">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
           <button
             onClick={onClose}
             aria-label="Fechar modal"

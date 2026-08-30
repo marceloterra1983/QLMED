@@ -36,11 +36,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }),
 }));
 
-import {
-  formatImpcgMoney,
-  GET,
-  sortImpcgListItems,
-} from '@/app/api/gestao/impcg/route';
+import { formatImpcgMoney, sortImpcgListItems } from '@/lib/impcg/access';
+import { GET } from '@/app/api/gestao/impcg/route';
 
 describe('IMPCG list contract (AC-001, AC-004)', () => {
   beforeEach(() => {
@@ -81,6 +78,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
     expect(body.lastCollectedAt).toBeNull();
     expect(body.lastError).toBeNull();
     expect(body.canSync).toBe(true);
+    expect(body.canEdit).toBe(true);
     expect(body).not.toHaveProperty('companyId');
     expect(JSON.stringify(body)).not.toContain('companyId');
   });
@@ -97,6 +95,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
         totalAmount: '12550.00',
         fileName: 'OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR.pdf',
         parseStatus: 'ok',
+        parseMissingReason: null,
       },
     ]);
     mocks.getImpcgIngestState.mockResolvedValue({
@@ -113,6 +112,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
     expect(typeof body.items[0].totalAmount).toBe('string');
     expect(body.items[0]).not.toHaveProperty('companyId');
     expect(body.items[0].oficioNumber).toBe('17673');
+    expect(body.items[0].parseMissingReason).toBeNull();
     expect(mocks.getOrCreateSingleCompany).toHaveBeenCalledWith('user-1');
     expect(mocks.listImpcgAuthorizations).toHaveBeenCalledWith('company-1');
   });

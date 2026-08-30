@@ -36,11 +36,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }),
 }));
 
-import {
-  formatCassemsMoney,
-  GET,
-  sortCassemsListItems,
-} from '@/app/api/gestao/cassems/route';
+import { formatCassemsMoney, sortCassemsListItems } from '@/lib/cassems/access';
+import { GET } from '@/app/api/gestao/cassems/route';
 
 describe('CASSEMS list contract (AC-001, AC-004)', () => {
   beforeEach(() => {
@@ -94,6 +91,7 @@ describe('CASSEMS list contract (AC-001, AC-004)', () => {
         totalAmount: '4760.00',
         fileName: 'CASSEMS001 - Oficio de materiais OPME autorizados 28-08-2026-133128021.pdf',
         parseStatus: 'ok',
+        parseMissingReason: null,
       },
     ]);
     mocks.getCassemsIngestState.mockResolvedValue({
@@ -108,6 +106,7 @@ describe('CASSEMS list contract (AC-001, AC-004)', () => {
     expect(body.items[0].totalAmount).toBe('4760.00');
     expect(typeof body.items[0].totalAmount).toBe('string');
     expect(body.items[0]).not.toHaveProperty('companyId');
+    expect(body.items[0].parseMissingReason).toBeNull();
     expect(mocks.getOrCreateSingleCompany).toHaveBeenCalledWith('user-1');
   });
 });

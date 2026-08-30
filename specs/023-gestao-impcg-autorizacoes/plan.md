@@ -119,6 +119,12 @@ Dockerfile                          # poppler + tesseract-por
 **Structure Decision**: mesmo app Next.js. Domínio em `src/lib/impcg`.
 UI no grupo `(painel)/gestao`. Sem worker container extra.
 
+## Nota (2026-08-30) — motivo do parse parcial
+
+`describeImpcgParseGap` deriva o texto pt-BR dos nulos e da soma
+das linhas versus `totalAmount` (FAIL-004). Sem coluna/`parseNotes`.
+A API devolve `parseMissingReason` calculado na listagem e no detalhe.
+
 ## Complexity Tracking
 
 Nenhuma violação constitucional. OCR por binário da imagem em vez de

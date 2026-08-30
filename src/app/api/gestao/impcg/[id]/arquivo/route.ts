@@ -8,7 +8,7 @@ import { downloadOneDriveItemContent } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { requireImpcgPage } from '../../route';
+import { requireImpcgPage } from '@/lib/impcg/access';
 
 const log = createLogger('gestao/impcg/:id/arquivo');
 

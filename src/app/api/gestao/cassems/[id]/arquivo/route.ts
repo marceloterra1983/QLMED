@@ -8,7 +8,7 @@ import { downloadOneDriveItemContent } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { requireCassemsPage } from '../../route';
+import { requireCassemsPage } from '@/lib/cassems/access';
 
 const log = createLogger('gestao/cassems/:id/arquivo');
 

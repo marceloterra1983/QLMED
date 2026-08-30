@@ -27,6 +27,7 @@ type AuthRow = {
   parseStatus: 'ok' | 'parcial' | 'falha';
   patientName: string;
   oneDriveItemId: string;
+  issuedAt: Date | null;
   totalCents: number;
   itemCount: number;
 };
@@ -71,6 +72,7 @@ function memoryStore(): ImpcgStorePort {
         parseStatus: input.parseStatus,
         patientName: input.patientName,
         oneDriveItemId: input.oneDriveItemId,
+        issuedAt: input.issuedAt,
         totalCents: input.totalCents,
         itemCount: input.items.length,
       });
@@ -82,6 +84,7 @@ function memoryStore(): ImpcgStorePort {
       row.parseStatus = input.parseStatus;
       row.patientName = input.patientName;
       row.oneDriveItemId = input.oneDriveItemId;
+      row.issuedAt = input.issuedAt;
       row.totalCents = input.totalCents;
       row.itemCount = input.items.length;
     },
@@ -170,6 +173,28 @@ describe('ingest IMPCG — varredura da pasta OneDrive', () => {
     expect(ports.uploadPdf).not.toHaveBeenCalled();
     expect(result.ok).toBe(true);
     expect(result.processed).toBe(1);
+  });
+
+  it('parcial sem data é relido e preenche issuedAt', async () => {
+    memory.authorizations.push({
+      id: 'auth-parcial',
+      oficioNumber: '17673',
+      parseStatus: 'parcial',
+      patientName: 'PLINIO ANTONIO ARANHA JUNIOR',
+      oneDriveItemId: 'od-folder-17673',
+      issuedAt: null,
+      totalCents: 1255000,
+      itemCount: 3,
+    });
+
+    const { runImpcgIngest } = await import('@/lib/impcg/ingest');
+    const result = await runImpcgIngest('co1', deps());
+
+    expect(memory.authorizations).toHaveLength(1);
+    expect(memory.authorizations[0]?.parseStatus).toBe('ok');
+    expect(memory.authorizations[0]?.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
+    expect(result.processed).toBe(1);
+    expect(ports.uploadPdf).not.toHaveBeenCalled();
   });
 
   it('OCR vazio não inventa itens — persiste falha com número do arquivo', async () => {

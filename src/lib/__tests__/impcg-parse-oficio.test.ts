@@ -1,6 +1,6 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import { describe, expect, it } from 'vitest';
-import { parseOficio } from '@/lib/impcg/parse-oficio';
+import { describeImpcgParseGap, parseOficio } from '@/lib/impcg/parse-oficio';
 
 /** Texto injetado no formato do OCR da ordem 17673 (scan Brother). */
 export const OFICIO_17673_TEXT = `
@@ -65,6 +65,7 @@ describe('parseOficio fixture 17673', () => {
     const itemSum = parsed.items.reduce((sum, item) => sum + item.lineCents, 0);
     expect(itemSum).toBe(1255000);
     expect(parsed.parseStatus).toBe('ok');
+    expect(describeImpcgParseGap(parsed)).toBeNull();
     expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('12550.00');
     expect(typeof parsed.totalCents).toBe('number');
     expect(Number.isInteger(parsed.totalCents)).toBe(true);
@@ -88,6 +89,7 @@ describe('parseOficio fixture 17673', () => {
     expect(parsed.items).toEqual([]);
     expect(parsed.parseStatus).toBe('falha');
     expect(parsed.patientName).toBe('PACIENTE');
+    expect(describeImpcgParseGap(parsed)).toBe('Não foi possível ler o documento');
   });
 
   it('lê o OCR real do scan 17673 (TOTAL R$, R$ nas linhas, médico+CRM)', () => {
@@ -114,6 +116,45 @@ TOTAL R$ 12.550,00)
     expect(parsed.items).toHaveLength(3);
     expect(parsed.items.map((item) => item.lineCents)).toEqual([650000, 550000, 55000]);
     expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('12550.00');
+    expect(parsed.issuedAt).toBeNull();
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: data');
+  });
+
+  it('lê a data mesmo com OCR trocando O/0 e hífen', () => {
+    const ocr = `
+ORDEM DE FORNECIMENTO Nº 17673
+DATA: 1O/O8/2O23
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MEDICO: RODRIGO LUIZ ROCHA CARDOSO
+CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+KIT VALVULA AORTICA MECANICA SORIN A5 1 6.500,00 6.500,00
+KIT CEC EUROSETS AG5214 1 5.500,00 5.500,00
+KIT CANULAS BIOMEDICAL KITPER 1 550,00 550,00
+TOTAL R$ 12.550,00
+`.trim();
+    const parsed = parseOficio(ocr);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
+    expect(parsed.parseStatus).toBe('ok');
+  });
+
+  it('lê data por extenso (Campo Grande, 10 de agosto de 2023)', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 17673
+Campo Grande, 10 de agosto de 2023
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MEDICO: RODRIGO LUIZ ROCHA CARDOSO
+CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+KIT VALVULA AORTICA MECANICA SORIN A5 1 6.500,00 6.500,00
+KIT CEC EUROSETS AG5214 1 5.500,00 5.500,00
+KIT CANULAS BIOMEDICAL KITPER 1 550,00 550,00
+TOTAL GERAL: 12.550,00
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
   });
 
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {
@@ -126,5 +167,36 @@ TOTAL GERAL: 20,00
     expect(parsed.totalCents).toBe(2000);
     expect(parsed.items[0]?.lineCents).toBe(1000);
     expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toContain('soma dos itens ≠ total');
+  });
+
+  it('lista os campos vazios no texto de parcial', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 100
+DATA: 10/08/2023
+PACIENTE: JOAO SILVA
+CRM: 12345
+PROCEDIMENTO: EXAME
+KIT TESTE  MARCA  REF  1  10,00  10,00
+TOTAL GERAL: 10,00
+`);
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: médico, hospital');
+  });
+
+  it('menciona só os totais quando o cabeçalho está completo (FAIL-004)', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 99
+DATA: 10/08/2023
+PACIENTE: JOAO SILVA
+MEDICO: DR TESTE
+CRM: 123
+PROCEDIMENTO: EXAME
+LOCAL DE ENTREGA: HOSPITAL X
+KIT TESTE  MARCA  REF  1  10,00  10,00
+TOTAL GERAL: 20,00
+`);
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: soma dos itens ≠ total');
   });
 });

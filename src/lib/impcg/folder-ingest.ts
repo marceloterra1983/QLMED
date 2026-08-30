@@ -46,6 +46,7 @@ export type ImpcgFolderStore = {
     id: string;
     parseStatus: 'ok' | 'parcial' | 'falha';
     oneDriveItemId: string;
+    issuedAt?: Date | null;
   } | null>;
   persistConfirmed(input: ImpcgFolderPersist): Promise<{ id: string }>;
   persistUpgrade(input: ImpcgFolderPersist & { authorizationId: string }): Promise<void>;
@@ -120,7 +121,8 @@ export async function ingestImpcgFolder(input: {
     const guessed = oficioFromFileName(file.name);
     if (guessed) {
       const existing = await input.store.findByOficioNumber(input.companyId, guessed);
-      if (existing && existing.parseStatus !== 'falha') {
+      // ok não relê. parcial relê — o OCR da data costuma falhar na 1ª passagem.
+      if (existing?.parseStatus === 'ok') {
         skipped += 1;
         continue;
       }
@@ -163,8 +165,10 @@ export async function ingestImpcgFolder(input: {
       continue;
     }
 
+    const fillsDate = existing.parseStatus === 'parcial' && !existing.issuedAt && Boolean(parsed.issuedAt);
     if (
       shouldUpgrade(existing.parseStatus, parsed.parseStatus)
+      || fillsDate
       || (existing.parseStatus === 'falha' && existing.oneDriveItemId !== file.itemId)
     ) {
       await input.store.persistUpgrade({ ...persistBase, authorizationId: existing.id });
