@@ -89,8 +89,8 @@ function memoryStore(): ImpcgStorePort {
       });
       memory.sources.push({
         id: `src-${memory.seq++}`,
-        internetMessageId: input.internetMessageId,
-        mailbox: input.mailbox,
+        internetMessageId: input.internetMessageId ?? '',
+        mailbox: input.mailbox ?? '',
         authorizationId: id,
       });
       return { id };
@@ -104,8 +104,8 @@ function memoryStore(): ImpcgStorePort {
       row.totalCents = input.totalCents;
       memory.sources.push({
         id: `src-${memory.seq++}`,
-        internetMessageId: input.internetMessageId,
-        mailbox: input.mailbox,
+        internetMessageId: input.internetMessageId ?? '',
+        mailbox: input.mailbox ?? '',
         authorizationId: input.authorizationId,
       });
     },

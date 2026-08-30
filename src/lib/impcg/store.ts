@@ -137,9 +137,9 @@ export type PersistConfirmedInput = {
   oneDriveItemId: string;
   receivedAt: Date;
   items: ParsedImpcgItem[];
-  internetMessageId: string;
-  mailbox: string;
-  graphMessageId: string;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
 };
 
 export async function persistConfirmedAuthorization(input: PersistConfirmedInput): Promise<{ id: string }> {
@@ -166,16 +166,18 @@ export async function persistConfirmedAuthorization(input: PersistConfirmedInput
     if (input.items.length > 0) {
       await tx.impcgAuthorizationItem.createMany({ data: itemRows(created.id, input.items) });
     }
-    await tx.impcgSourceMessage.create({
-      data: {
-        companyId: input.companyId,
-        authorizationId: created.id,
-        mailbox: input.mailbox,
-        graphMessageId: input.graphMessageId,
-        internetMessageId: input.internetMessageId,
-        receivedAt: input.receivedAt,
-      },
-    });
+    if (input.internetMessageId && input.mailbox && input.graphMessageId) {
+      await tx.impcgSourceMessage.create({
+        data: {
+          companyId: input.companyId,
+          authorizationId: created.id,
+          mailbox: input.mailbox,
+          graphMessageId: input.graphMessageId,
+          internetMessageId: input.internetMessageId,
+          receivedAt: input.receivedAt,
+        },
+      });
+    }
     return created;
   });
 }
@@ -204,16 +206,18 @@ export async function persistUpgradeAuthorization(
     if (input.items.length > 0) {
       await tx.impcgAuthorizationItem.createMany({ data: itemRows(input.authorizationId, input.items) });
     }
-    await tx.impcgSourceMessage.create({
-      data: {
-        companyId: input.companyId,
-        authorizationId: input.authorizationId,
-        mailbox: input.mailbox,
-        graphMessageId: input.graphMessageId,
-        internetMessageId: input.internetMessageId,
-        receivedAt: input.receivedAt,
-      },
-    });
+    if (input.internetMessageId && input.mailbox && input.graphMessageId) {
+      await tx.impcgSourceMessage.create({
+        data: {
+          companyId: input.companyId,
+          authorizationId: input.authorizationId,
+          mailbox: input.mailbox,
+          graphMessageId: input.graphMessageId,
+          internetMessageId: input.internetMessageId,
+          receivedAt: input.receivedAt,
+        },
+      });
+    }
   });
 }
 

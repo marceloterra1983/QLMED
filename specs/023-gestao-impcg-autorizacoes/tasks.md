@@ -124,6 +124,15 @@ POST; cabeçalho mostra `lastCollectedAt`
 
 ---
 
+## Phase 7: Backfill da pasta OneDrive (AC-013 / AC-014)
+
+- [x] T035 [P] Folder scan tests in `src/lib/__tests__/impcg-folder-backfill.test.ts` (17673 → 1 row, second run no dup, mail 403 still imports)
+- [x] T036 [US4] Folder ingest without re-upload in `src/lib/impcg/folder-ingest.ts`, wired from `runImpcgIngest` / POST sync
+- [x] T037 [US4] Persist folder row without inventing `ImpcgSourceMessage` in `src/lib/impcg/store.ts`
+- [x] T038 Worker company via `getSingleCompany()` in `src/lib/single-company.ts`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

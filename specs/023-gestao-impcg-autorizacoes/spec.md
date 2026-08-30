@@ -146,6 +146,33 @@ inicia.
 3. **AC-012** — Given um viewer com a página, when abre IMPCG, then
    MUST NOT ver ação de disparar coleta.
 
+### User Story 4 — Pasta IMPCG sem Graph Mail (Priority: P1)
+
+Como sistema, se as caixas Exchange estiverem indisponíveis
+(dehydrated / 403) mas o PDF já estiver na pasta IMPCG do arquivo
+da empresa, eu leio o arquivo que já está lá, extraio o ofício e
+crio a linha. Não reenvio o PDF. A lista continua lendo só o
+Postgres — o arquivo sozinho não cria linha.
+
+**Why this priority**: o único ofício conhecido (17673) já está na
+pasta; sem varredura da pasta a tela fica vazia.
+
+**Independent Test**: mock da pasta com `OFICIO 17673 ….pdf` cria
+uma linha; segunda varredura não duplica; Graph Mail 403 ainda
+importa o arquivo da pasta.
+
+**Acceptance Scenarios**:
+
+1. **AC-013** — Given um PDF já na pasta
+   `1 - DOCUMENTOS/0 - AUTORIZACOES/IMPCG` cujo número de ordem
+   ainda não existe no cadastro, when a coleta roda (worker ou
+   “Atualizar agora”), then MUST criar exatamente uma autorização
+   com o `oneDriveItemId` já conhecido e MUST NOT reenviar o
+   arquivo (FAIL-002 não se aplica a arquivo já na pasta).
+2. **AC-014** — Given a autorização 17673 já gravada, when a
+   varredura da pasta roda de novo, then MUST NOT criar segunda
+   linha. Graph Mail 403 MUST NOT impedir a varredura da pasta.
+
 ### Edge cases
 
 - Uma caixa responde e a outra falha: processa a que respondeu;
@@ -159,7 +186,11 @@ inicia.
   autorização; tenta de novo. Sem arquivo na pasta, não há linha
   concluída.
 - Coleta da caixa falha (sem permissão, tempo esgotado): registra
-  erro; não apaga linhas já gravadas.
+  erro; não apaga linhas já gravadas; MUST ainda varrer a pasta
+  IMPCG.
+- PDF já na pasta: MUST NOT reenviar; usa o itemId existente.
+  Sem número de ofício no texto nem no nome do arquivo, MUST NOT
+  criar linha nem inventar itens.
 
 ## Requirements
 
@@ -191,13 +222,19 @@ inicia.
   página MAY disparar a mesma coleta da rotina.
 - **FR-010**: A primeira execução MUST varrer o histórico das duas
   caixas, não só a caixa de entrada recente.
+- **FR-011**: A coleta MUST varrer os PDFs da pasta IMPCG do
+  arquivo da empresa mesmo quando as caixas Graph falharem.
+  Arquivo já na pasta MUST ser associado pelo itemId, sem
+  reenvio. Oficio já cadastrado (exceto `falha` com arquivo novo)
+  MUST ser ignorado.
 
 ### Failure cases
 
 - **FAIL-001**: Falha ao ler uma caixa — não abortar a outra; não
   apagar cadastro existente.
 - **FAIL-002**: Falha ao gravar o arquivo na pasta IMPCG — não
-  confirmar autorização nova.
+  confirmar autorização nova. Não se aplica quando o PDF já está
+  na pasta (backfill por itemId conhecido).
 - **FAIL-003**: Falha ao ler o documento — gravar arquivo; linha com
   falha; não inventar itens nem totais.
 - **FAIL-004**: Totais inconsistentes no documento — persistir
@@ -231,8 +268,10 @@ inicia.
 - Dedup: mesma mensagem em duas caixas → 1 linha; mesmo número → 1
   linha.
 - ACL: viewer sem página → 403.
-- Pasta: falha ao gravar arquivo → nenhuma autorização nova
-  confirmada.
+- Pasta: falha ao gravar arquivo (origem e-mail) → nenhuma
+  autorização nova confirmada. PDF já na pasta → uma linha sem
+  reenvio; segunda varredura não duplica; Graph 403 ainda importa
+  o arquivo da pasta.
 - Validação do repositório: `docs:validate`, verificação de tipos,
   lint e testes automatizados.
 
