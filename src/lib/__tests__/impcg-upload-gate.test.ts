@@ -51,6 +51,7 @@ function memoryStore(): ImpcgStorePort {
     async persistUpgrade(input: PersistArgs & { authorizationId: string }) {
       memory.persistUpgrade(input);
     },
+    async persistIssuedAt() {},
     async persistSourceOnly() {},
     async loadIngestState() {
       return null;

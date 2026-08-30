@@ -50,6 +50,7 @@ export type ImpcgFolderStore = {
   } | null>;
   persistConfirmed(input: ImpcgFolderPersist): Promise<{ id: string }>;
   persistUpgrade(input: ImpcgFolderPersist & { authorizationId: string }): Promise<void>;
+  persistIssuedAt(authorizationId: string, issuedAt: Date): Promise<void>;
 };
 
 export async function resolveImpcgOneDrive(companyId: string): Promise<{
@@ -121,11 +122,6 @@ export async function ingestImpcgFolder(input: {
     const guessed = oficioFromFileName(file.name);
     if (guessed) {
       const existing = await input.store.findByOficioNumber(input.companyId, guessed);
-      // ok não relê. parcial relê — o OCR da data costuma falhar na 1ª passagem.
-      if (existing?.parseStatus === 'ok') {
-        skipped += 1;
-        continue;
-      }
       if (existing && existing.parseStatus === 'falha' && existing.oneDriveItemId === file.itemId) {
         skipped += 1;
         continue;
@@ -166,12 +162,19 @@ export async function ingestImpcgFolder(input: {
     }
 
     const fillsDate = existing.parseStatus === 'parcial' && !existing.issuedAt && Boolean(parsed.issuedAt);
+    const dateChanged = Boolean(parsed.issuedAt)
+      && existing.issuedAt?.getTime() !== parsed.issuedAt?.getTime();
     if (
       shouldUpgrade(existing.parseStatus, parsed.parseStatus)
       || fillsDate
       || (existing.parseStatus === 'falha' && existing.oneDriveItemId !== file.itemId)
     ) {
       await input.store.persistUpgrade({ ...persistBase, authorizationId: existing.id });
+      processed += 1;
+      continue;
+    }
+    if (dateChanged && parsed.issuedAt) {
+      await input.store.persistIssuedAt(existing.id, parsed.issuedAt);
       processed += 1;
       continue;
     }

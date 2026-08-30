@@ -125,16 +125,26 @@ function parseDateChunk(chunk: string): Date | null {
   return null;
 }
 
+function lastCampoGrandeDate(text: string): Date | null {
+  const cityLine = /campo\s+grande[^\n]{0,120}/gi;
+  let last: Date | null = null;
+  let match = cityLine.exec(text);
+  while (match) {
+    const parsed = parseDateChunk(match[0]);
+    if (parsed) last = parsed;
+    match = cityLine.exec(text);
+  }
+  return last;
+}
+
 function extractIssuedAt(text: string): Date | null {
-  const labeled = /data\s*[:\-]?\s*([^\n]+)/i.exec(text);
+  const fromCity = lastCampoGrandeDate(text);
+  if (fromCity) return fromCity;
+
+  const labeled = /(?:^|\n)\s*data\s*[:\-]\s*([^\n]+)/i.exec(text);
   if (labeled?.[1]) {
     const fromLabel = parseDateChunk(labeled[1]);
     if (fromLabel) return fromLabel;
-  }
-  const campoGrande = /campo\s+grande[^\n]{0,80}/i.exec(text);
-  if (campoGrande?.[0]) {
-    const fromCity = parseDateChunk(campoGrande[0]);
-    if (fromCity) return fromCity;
   }
   return parseDateChunk(text);
 }

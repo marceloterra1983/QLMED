@@ -342,6 +342,16 @@ export async function persistUpgradeAuthorization(
   });
 }
 
+export async function persistIssuedAt(
+  authorizationId: string,
+  issuedAt: Date,
+): Promise<void> {
+  await prisma.impcgAuthorization.update({
+    where: { id: authorizationId },
+    data: { issuedAt },
+  });
+}
+
 export async function persistSourceOnly(input: {
   companyId: string;
   authorizationId: string;
@@ -388,6 +398,7 @@ export const prismaImpcgStore = {
   },
   persistConfirmed: persistConfirmedAuthorization,
   persistUpgrade: persistUpgradeAuthorization,
+  persistIssuedAt,
   persistSourceOnly,
   async loadIngestState(companyId: string) {
     const row = await prisma.impcgIngestState.findUnique({ where: { companyId } });

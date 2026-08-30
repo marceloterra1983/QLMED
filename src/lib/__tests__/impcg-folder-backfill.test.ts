@@ -88,6 +88,11 @@ function memoryStore(): ImpcgStorePort {
       row.totalCents = input.totalCents;
       row.itemCount = input.items.length;
     },
+    async persistIssuedAt(authorizationId: string, issuedAt: Date) {
+      const row = memory.authorizations.find((item) => item.id === authorizationId);
+      if (!row) throw new Error('authorization missing');
+      row.issuedAt = issuedAt;
+    },
     async persistSourceOnly() {},
     async loadIngestState() {
       return null;
@@ -172,6 +177,44 @@ describe('ingest IMPCG — varredura da pasta OneDrive', () => {
     expect(memory.authorizations[0]?.oficioNumber).toBe('17673');
     expect(ports.uploadPdf).not.toHaveBeenCalled();
     expect(result.ok).toBe(true);
+    expect(result.processed).toBe(1);
+  });
+
+  it('ok com data da OBS é corrigido para o fechamento Campo Grande', async () => {
+    memory.authorizations.push({
+      id: 'auth-mara',
+      oficioNumber: '16404',
+      parseStatus: 'ok',
+      patientName: 'MARA MARCIA FERNANDES DE MORAES',
+      oneDriveItemId: 'od-folder-16404',
+      issuedAt: new Date('2025-12-18T00:00:00.000Z'),
+      totalCents: 335000,
+      itemCount: 2,
+    });
+    ports.listPdfs.mockResolvedValue([{
+      itemId: 'od-folder-16404',
+      name: 'OFICIO 16404 MARA MARCIA FERNANDES DE MORAES.pdf',
+      lastModifiedAt: new Date('2026-01-23T14:48:00.000Z'),
+    }]);
+    ports.extractText.mockResolvedValue(`
+INSTITUTO MUNICIPAL DE PREVIDENCIA DE CAMPO GRANDE
+ORDEM DE FORNECIMENTO N 16404
+PACIENTE: MARA MARCIA FERNANDES DE MORAES
+MEDICO: CLAUDIO ALBERNAZ CESAR
+CRM: 3947
+PROCEDIMENTO: REVASCULARIZACAO
+LOCAL DE ENTREGA: HOSPITAL CLINICA CAMPO GRANDE
+KIT TESTE MARCA REF 1 3.350,00 3.350,00
+TOTAL GERAL: 3.350,00
+OBS: PROCEDIMENTO REALIZADO NA URGENCIA EM 18/12/2025
+Campo Grande, 22 de janeiro de 2026.
+`);
+
+    const { runImpcgIngest } = await import('@/lib/impcg/ingest');
+    const result = await runImpcgIngest('co1', deps());
+
+    expect(memory.authorizations).toHaveLength(1);
+    expect(memory.authorizations[0]?.issuedAt?.toISOString().slice(0, 10)).toBe('2026-01-22');
     expect(result.processed).toBe(1);
   });
 
