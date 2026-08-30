@@ -26,7 +26,8 @@ O handler MUST chamar `requireAuth(` literal.
       "hospitalName": "HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE",
       "totalAmount": "4760.00",
       "fileName": "CASSEMS001 - Oficio de materiais OPME autorizados 28-08-2026-133128021.pdf",
-      "parseStatus": "ok"
+      "parseStatus": "ok",
+      "parseMissingReason": null
     }
   ]
 }
@@ -35,6 +36,8 @@ O handler MUST chamar `requireAuth(` literal.
 Ordem: `issuedAt` desc, empate `oficioNumber` desc.
 `canSync`: true se editor ou admin.
 `totalAmount`: string decimal (não number).
+`parseMissingReason`: texto pt-BR derivado (`Faltou: …` / falha /
+`null` se `ok`). Sem coluna nova.
 Estado vazio: `items: []` (AC-004).
 
 **401** não autenticado. **403** sem a página (AC-003).
@@ -59,6 +62,7 @@ Estado vazio: `items: []` (AC-004).
   "totalAmount": "4760.00",
   "fileName": "CASSEMS001 - Oficio de materiais OPME autorizados 28-08-2026-133128021.pdf",
   "parseStatus": "ok",
+  "parseMissingReason": null,
   "items": [
     {
       "anvisaCode": "10166360035",

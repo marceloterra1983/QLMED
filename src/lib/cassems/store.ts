@@ -1,9 +1,9 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import type { CassemsParseStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { centsToDecimal, formatMoneyDecimal } from '@/lib/money';
+import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money';
 import type { CassemsParseStatus as DomainParseStatus } from './constants';
-import type { ParsedCassemsItem } from './parse-oficio';
+import { describeCassemsParseGap, type ParsedCassemsItem } from './parse-oficio';
 
 export type CassemsListItem = {
   id: string;
@@ -15,6 +15,7 @@ export type CassemsListItem = {
   totalAmount: string;
   fileName: string;
   parseStatus: CassemsParseStatus;
+  parseMissingReason: string | null;
 };
 
 export type CassemsDetailItem = CassemsListItem & {
@@ -37,6 +38,32 @@ function moneyString(value: Decimal): string {
   return formatMoneyDecimal(value);
 }
 
+function parseGapFromRow(row: {
+  parseStatus: CassemsParseStatus;
+  oficioNumber: string;
+  issuedAt: Date | null;
+  patientName: string;
+  doctorName: string | null;
+  doctorCrm: string | null;
+  procedureName: string | null;
+  hospitalName: string | null;
+  totalAmount: Decimal;
+  items: Array<{ lineTotal: Decimal }>;
+}): string | null {
+  return describeCassemsParseGap({
+    parseStatus: row.parseStatus,
+    oficioNumber: row.oficioNumber,
+    issuedAt: row.issuedAt,
+    patientName: row.patientName,
+    doctorName: row.doctorName,
+    doctorCrm: row.doctorCrm,
+    procedureName: row.procedureName,
+    hospitalName: row.hospitalName,
+    totalCents: decimalToCents(row.totalAmount),
+    items: row.items.map((item) => ({ lineCents: decimalToCents(item.lineTotal) })),
+  });
+}
+
 export async function listCassemsAuthorizations(companyId: string): Promise<CassemsListItem[]> {
   const rows = await prisma.cassemsAuthorization.findMany({
     where: { companyId },
@@ -47,10 +74,13 @@ export async function listCassemsAuthorizations(companyId: string): Promise<Cass
       oficioNumber: true,
       patientName: true,
       doctorName: true,
+      doctorCrm: true,
+      procedureName: true,
       hospitalName: true,
       totalAmount: true,
       fileName: true,
       parseStatus: true,
+      items: { select: { lineTotal: true } },
     },
   });
 
@@ -64,6 +94,7 @@ export async function listCassemsAuthorizations(companyId: string): Promise<Cass
     totalAmount: moneyString(row.totalAmount),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
+    parseMissingReason: parseGapFromRow(row),
   }));
 }
 
@@ -91,6 +122,7 @@ export async function getCassemsAuthorization(
     fileName: row.fileName,
     oneDriveItemId: row.oneDriveItemId,
     parseStatus: row.parseStatus,
+    parseMissingReason: parseGapFromRow(row),
     items: row.items.map((item) => ({
       anvisaCode: item.anvisaCode,
       description: item.description,

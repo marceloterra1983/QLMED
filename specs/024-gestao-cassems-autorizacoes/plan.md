@@ -119,6 +119,11 @@ scripts/test-production-migration-window.cjs
 **Structure Decision**: espelho `src/lib/cassems`, não framework
 genérico. Sem tocar `src/lib/impcg/*`.
 
+## Nota (2026-08-30) — motivo do parse parcial
+
+`describeCassemsParseGap` deriva o texto pt-BR (espelho IMPCG) dos
+nulos e da soma das linhas versus `totalAmount`. Sem coluna nova.
+
 ## Complexity Tracking
 
 Nenhuma violação constitucional. RBAC Exchange pode falhar
