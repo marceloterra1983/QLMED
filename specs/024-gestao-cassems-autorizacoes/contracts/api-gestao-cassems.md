@@ -78,6 +78,17 @@ Estado vazio: `items: []` (AC-004).
 ```
 
 **404** id de outra empresa ou inexistente (mesmo 404, sem vazar).
+GET inclui `canEdit` e `editedFields`.
+
+## PATCH `/api/gestao/cassems/:id`
+
+**Auth**: editor ou admin + página. Viewer → **403**.
+
+Corrige os campos enviados e os marca em `editedFields`.
+`issuedAt` no body: `YYYY-MM-DD` (UTC).
+
+**200** — mesmo JSON do GET detalhe, com `canEdit: true`.
+**400** body inválido. **404** id inexistente / outra empresa.
 
 ## GET `/api/gestao/cassems/:id/arquivo`
 

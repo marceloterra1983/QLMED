@@ -3,7 +3,12 @@ import type { CassemsParseStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money';
 import type { CassemsParseStatus as DomainParseStatus } from './constants';
-import { describeCassemsParseGap, type ParsedCassemsItem } from './parse-oficio';
+import {
+  computeCassemsParseStatus,
+  describeCassemsParseGap,
+  type ParsedCassemsItem,
+} from './parse-oficio';
+import { mergeEditedFields, type OficioEditableField } from '@/lib/gestao-oficio-edits';
 
 export type CassemsListItem = {
   id: string;
@@ -23,6 +28,7 @@ export type CassemsDetailItem = CassemsListItem & {
   doctorCrm: string | null;
   procedureName: string | null;
   oneDriveItemId: string;
+  editedFields: string[];
   items: Array<{
     anvisaCode: string | null;
     description: string;
@@ -123,6 +129,7 @@ export async function getCassemsAuthorization(
     oneDriveItemId: row.oneDriveItemId,
     parseStatus: row.parseStatus,
     parseMissingReason: parseGapFromRow(row),
+    editedFields: row.editedFields,
     items: row.items.map((item) => ({
       anvisaCode: item.anvisaCode,
       description: item.description,
@@ -137,6 +144,97 @@ export async function getCassemsAuthorization(
 
 export async function getCassemsIngestState(companyId: string) {
   return prisma.cassemsIngestState.findUnique({ where: { companyId } });
+}
+
+export type CassemsReadFieldsPatch = {
+  issuedAt?: Date;
+  patientName?: string;
+  patientRegistry?: string | null;
+  doctorName?: string | null;
+  doctorCrm?: string | null;
+  procedureName?: string | null;
+  hospitalName?: string | null;
+};
+
+export async function updateCassemsReadFields(
+  companyId: string,
+  id: string,
+  patch: CassemsReadFieldsPatch,
+): Promise<CassemsDetailItem | null> {
+  const row = await prisma.cassemsAuthorization.findFirst({
+    where: { id, companyId },
+    include: { items: { orderBy: { sortOrder: 'asc' } } },
+  });
+  if (!row) return null;
+
+  const next = {
+    oficioNumber: row.oficioNumber,
+    issuedAt: row.issuedAt,
+    patientName: row.patientName,
+    patientRegistry: row.patientRegistry,
+    doctorName: row.doctorName,
+    doctorCrm: row.doctorCrm,
+    procedureName: row.procedureName,
+    hospitalName: row.hospitalName,
+    totalCents: decimalToCents(row.totalAmount),
+    items: row.items.map((item) => ({
+      anvisaCode: item.anvisaCode,
+      description: item.description,
+      brand: item.brand,
+      reference: item.reference,
+      quantity: new Decimal(item.quantity).toFixed(),
+      unitCents: decimalToCents(item.unitAmount),
+      lineCents: decimalToCents(item.lineTotal),
+    })),
+  };
+  const touched: OficioEditableField[] = [];
+
+  if (patch.issuedAt) {
+    next.issuedAt = patch.issuedAt;
+    touched.push('issuedAt');
+  }
+  if (patch.patientName?.trim()) {
+    next.patientName = patch.patientName.trim().toUpperCase();
+    touched.push('patientName');
+  }
+  if (patch.patientRegistry !== undefined) {
+    next.patientRegistry = patch.patientRegistry?.trim() || null;
+    touched.push('patientRegistry');
+  }
+  if (patch.doctorName?.trim()) {
+    next.doctorName = patch.doctorName.trim().toUpperCase();
+    touched.push('doctorName');
+  }
+  if (patch.doctorCrm !== undefined) {
+    next.doctorCrm = patch.doctorCrm?.replace(/\D/g, '') || null;
+    touched.push('doctorCrm');
+  }
+  if (patch.procedureName?.trim()) {
+    next.procedureName = patch.procedureName.trim().toUpperCase();
+    touched.push('procedureName');
+  }
+  if (patch.hospitalName?.trim()) {
+    next.hospitalName = patch.hospitalName.trim().toUpperCase();
+    touched.push('hospitalName');
+  }
+
+  const parseStatus = computeCassemsParseStatus(next);
+  await prisma.cassemsAuthorization.update({
+    where: { id: row.id },
+    data: {
+      issuedAt: next.issuedAt,
+      patientName: next.patientName,
+      patientRegistry: next.patientRegistry,
+      doctorName: next.doctorName,
+      doctorCrm: next.doctorCrm,
+      procedureName: next.procedureName,
+      hospitalName: next.hospitalName,
+      parseStatus,
+      editedFields: mergeEditedFields(row.editedFields, touched),
+    },
+  });
+
+  return getCassemsAuthorization(companyId, id);
 }
 
 function itemRows(authorizationId: string, items: ParsedCassemsItem[]) {
@@ -218,16 +316,30 @@ export async function persistUpgradeAuthorization(
   input: PersistConfirmedInput & { authorizationId: string },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const current = await tx.cassemsAuthorization.findUnique({
+      where: { id: input.authorizationId },
+      select: {
+        editedFields: true,
+        issuedAt: true,
+        patientName: true,
+        patientRegistry: true,
+        doctorName: true,
+        doctorCrm: true,
+        procedureName: true,
+        hospitalName: true,
+      },
+    });
+    const edited = current?.editedFields ?? [];
     await tx.cassemsAuthorization.update({
       where: { id: input.authorizationId },
       data: {
-        issuedAt: input.issuedAt,
-        patientName: input.patientName,
-        patientRegistry: input.patientRegistry,
-        doctorName: input.doctorName,
-        doctorCrm: input.doctorCrm,
-        procedureName: input.procedureName,
-        hospitalName: input.hospitalName,
+        issuedAt: edited.includes('issuedAt') ? current?.issuedAt : input.issuedAt,
+        patientName: edited.includes('patientName') ? current?.patientName ?? input.patientName : input.patientName,
+        patientRegistry: edited.includes('patientRegistry') ? current?.patientRegistry : input.patientRegistry,
+        doctorName: edited.includes('doctorName') ? current?.doctorName : input.doctorName,
+        doctorCrm: edited.includes('doctorCrm') ? current?.doctorCrm : input.doctorCrm,
+        procedureName: edited.includes('procedureName') ? current?.procedureName : input.procedureName,
+        hospitalName: edited.includes('hospitalName') ? current?.hospitalName : input.hospitalName,
         totalAmount: centsToDecimal(input.totalCents),
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,

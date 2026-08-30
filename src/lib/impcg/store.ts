@@ -8,6 +8,7 @@ import {
   describeImpcgParseGap,
   type ParsedImpcgItem,
 } from './parse-oficio';
+import { mergeEditedFields, type OficioEditableField } from '@/lib/gestao-oficio-edits';
 
 export type ImpcgListItem = {
   id: string;
@@ -27,6 +28,7 @@ export type ImpcgDetailItem = ImpcgListItem & {
   doctorCrm: string | null;
   procedureName: string | null;
   oneDriveItemId: string;
+  editedFields: string[];
   items: Array<{
     anvisaCode: string | null;
     description: string;
@@ -127,6 +129,7 @@ export async function getImpcgAuthorization(
     oneDriveItemId: row.oneDriveItemId,
     parseStatus: row.parseStatus,
     parseMissingReason: parseGapFromRow(row),
+    editedFields: row.editedFields,
     items: row.items.map((item) => ({
       anvisaCode: item.anvisaCode,
       description: item.description,
@@ -143,10 +146,6 @@ export async function getImpcgIngestState(companyId: string) {
   return prisma.impcgIngestState.findUnique({ where: { companyId } });
 }
 
-function isBlankPatient(name: string): boolean {
-  return !name.trim() || name.trim().toUpperCase() === 'PACIENTE';
-}
-
 export type ImpcgMissingFieldsPatch = {
   issuedAt?: Date;
   patientName?: string;
@@ -157,7 +156,7 @@ export type ImpcgMissingFieldsPatch = {
   hospitalName?: string | null;
 };
 
-/** Só preenche campo ainda vazio — não sobrescreve leitura ok. */
+/** Editor corrige o campo lido. Marca como editado para a coleta não sobrescrever. */
 export async function updateImpcgMissingFields(
   companyId: string,
   id: string,
@@ -189,25 +188,36 @@ export async function updateImpcgMissingFields(
       lineCents: decimalToCents(item.lineTotal),
     })),
   };
+  const touched: OficioEditableField[] = [];
 
-  if (!row.issuedAt && patch.issuedAt) next.issuedAt = patch.issuedAt;
-  if (isBlankPatient(row.patientName) && patch.patientName?.trim()) {
+  if (patch.issuedAt) {
+    next.issuedAt = patch.issuedAt;
+    touched.push('issuedAt');
+  }
+  if (patch.patientName?.trim()) {
     next.patientName = patch.patientName.trim().toUpperCase();
+    touched.push('patientName');
   }
-  if (!row.patientRegistry && patch.patientRegistry?.trim()) {
-    next.patientRegistry = patch.patientRegistry.trim();
+  if (patch.patientRegistry !== undefined) {
+    const registry = patch.patientRegistry?.trim() || null;
+    next.patientRegistry = registry;
+    touched.push('patientRegistry');
   }
-  if (!row.doctorName && patch.doctorName?.trim()) {
+  if (patch.doctorName?.trim()) {
     next.doctorName = patch.doctorName.trim().toUpperCase();
+    touched.push('doctorName');
   }
-  if (!row.doctorCrm && patch.doctorCrm?.trim()) {
-    next.doctorCrm = patch.doctorCrm.replace(/\D/g, '') || null;
+  if (patch.doctorCrm !== undefined) {
+    next.doctorCrm = patch.doctorCrm?.replace(/\D/g, '') || null;
+    touched.push('doctorCrm');
   }
-  if (!row.procedureName && patch.procedureName?.trim()) {
+  if (patch.procedureName?.trim()) {
     next.procedureName = patch.procedureName.trim().toUpperCase();
+    touched.push('procedureName');
   }
-  if (!row.hospitalName && patch.hospitalName?.trim()) {
+  if (patch.hospitalName?.trim()) {
     next.hospitalName = patch.hospitalName.trim().toUpperCase();
+    touched.push('hospitalName');
   }
 
   const parseStatus = computeImpcgParseStatus(next);
@@ -222,6 +232,7 @@ export async function updateImpcgMissingFields(
       procedureName: next.procedureName,
       hospitalName: next.hospitalName,
       parseStatus,
+      editedFields: mergeEditedFields(row.editedFields, touched),
     },
   });
 
@@ -307,16 +318,30 @@ export async function persistUpgradeAuthorization(
   input: PersistConfirmedInput & { authorizationId: string },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const current = await tx.impcgAuthorization.findUnique({
+      where: { id: input.authorizationId },
+      select: {
+        editedFields: true,
+        issuedAt: true,
+        patientName: true,
+        patientRegistry: true,
+        doctorName: true,
+        doctorCrm: true,
+        procedureName: true,
+        hospitalName: true,
+      },
+    });
+    const edited = current?.editedFields ?? [];
     await tx.impcgAuthorization.update({
       where: { id: input.authorizationId },
       data: {
-        issuedAt: input.issuedAt,
-        patientName: input.patientName,
-        patientRegistry: input.patientRegistry,
-        doctorName: input.doctorName,
-        doctorCrm: input.doctorCrm,
-        procedureName: input.procedureName,
-        hospitalName: input.hospitalName,
+        issuedAt: edited.includes('issuedAt') ? current?.issuedAt : input.issuedAt,
+        patientName: edited.includes('patientName') ? current?.patientName ?? input.patientName : input.patientName,
+        patientRegistry: edited.includes('patientRegistry') ? current?.patientRegistry : input.patientRegistry,
+        doctorName: edited.includes('doctorName') ? current?.doctorName : input.doctorName,
+        doctorCrm: edited.includes('doctorCrm') ? current?.doctorCrm : input.doctorCrm,
+        procedureName: edited.includes('procedureName') ? current?.procedureName : input.procedureName,
+        hospitalName: edited.includes('hospitalName') ? current?.hospitalName : input.hospitalName,
         totalAmount: centsToDecimal(input.totalCents),
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
@@ -346,6 +371,11 @@ export async function persistIssuedAt(
   authorizationId: string,
   issuedAt: Date,
 ): Promise<void> {
+  const row = await prisma.impcgAuthorization.findUnique({
+    where: { id: authorizationId },
+    select: { editedFields: true },
+  });
+  if (row?.editedFields.includes('issuedAt')) return;
   await prisma.impcgAuthorization.update({
     where: { id: authorizationId },
     data: { issuedAt },
@@ -393,6 +423,7 @@ export const prismaImpcgStore = {
         patientName: true,
         oneDriveItemId: true,
         issuedAt: true,
+        editedFields: true,
       },
     });
   },

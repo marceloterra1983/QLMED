@@ -85,10 +85,12 @@ recusa na API.
 4. **AC-004** — Given nenhuma autorização, when o operador abre a
    página, then MUST ver o estado vazio “Nenhuma autorização IMPCG.”
    sem linhas inventadas.
-5. **AC-016** — Given uma autorização parcial com data vazia, when
-   um editor preenche a data no popup, then MUST persistir só esse
-   campo, recalcular o estado de leitura e MUST NOT alterar campos
-   já lidos. Viewer MUST receber 403.
+5. **AC-016** — Given o popup de uma autorização, when o editor
+   clica no lápis sutil de um campo do cabeçalho, then MAY
+   corrigir o valor lido (mesmo se já preenchido). After save,
+   MUST persistir, marcar o campo como **editado** e MUST NOT
+   deixar a coleta subsequente sobrescrever esse campo. Viewer
+   MUST receber 403 e MUST NOT ver o lápis.
 
 ### User Story 2 — E-mail vira arquivo e linha (Priority: P1)
 
@@ -128,6 +130,8 @@ centavos iguais aos do documento.
    inclusive `Campo Grande (MS), DD/MM/AAAA` e data por extenso),
    não a data de urgência na OBS. Também MUST ler `DATA:` no
    rótulo da linha, hífen/ponto e OCR com `O`/`0`.
+   MUST NOT inventar data a partir de OBS ou outra `DD/MM/AAAA`
+   solta. Sem fechamento e sem `DATA:`, `issuedAt` fica vazio.
    Se a data (ou outro campo) continuar vazia, a linha fica
    parcial e o editor MAY completar na tela (AC-016).
 5. **AC-009** — Given o paciente só no assunto ou só no documento,
@@ -244,12 +248,14 @@ importa o arquivo da pasta.
 - **FR-011**: A coleta MUST varrer os PDFs da pasta IMPCG do
   arquivo da empresa mesmo quando as caixas Graph falharem.
   Arquivo já na pasta MUST ser associado pelo itemId, sem
-  reenvio. Oficio `ok` MUST ser ignorado. Oficio `parcial` MAY
-  ser relido para preencher data/campos que o OCR perdeu.
-- **FR-012**: Editor ou admin com a página MAY completar na tela
-  só os campos ainda vazios (data, paciente, médico, CRM,
-  procedimento, hospital). Viewer MUST NOT editar. Depois do
-  preenchimento o estado de leitura MUST ser recalculado.
+  reenvio. Oficio `ok` MAY ser relido só para corrigir `issuedAt`
+  se o fechamento Campo Grande divergir e o campo NÃO foi
+  editado à mão.
+- **FR-012**: Editor ou admin com a página MAY corrigir no popup
+  qualquer campo do cabeçalho (lápis sutil). After save MUST
+  marcar **editado**. Viewer MUST NOT editar. Coleta MUST NOT
+  sobrescrever campo editado. Estado de leitura MUST ser
+  recalculado.
 
 ### Failure cases
 

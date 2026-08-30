@@ -151,7 +151,9 @@ function parseItems(text: string): ParsedCassemsItem[] {
   return items;
 }
 
-function resolveStatus(parsed: Omit<ParsedCassemsOficio, 'parseStatus'>): CassemsParseStatus {
+export function computeCassemsParseStatus(
+  parsed: Omit<ParsedCassemsOficio, 'parseStatus'>,
+): CassemsParseStatus {
   const documentEmpty = parsed.items.length === 0
     && parsed.totalCents === null
     && !parsed.issuedAt
@@ -266,7 +268,7 @@ export function parseOficio(text: string, subject = ''): ParsedCassemsOficio {
     items,
   };
 
-  return { ...parsed, parseStatus: resolveStatus(parsed) };
+  return { ...parsed, parseStatus: computeCassemsParseStatus(parsed) };
 }
 
 export function buildCassemsFileName(oficioNumber: string, patientName: string): string {

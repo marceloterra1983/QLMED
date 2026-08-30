@@ -86,6 +86,11 @@ recusa na API.
 4. **AC-004** — Given nenhuma autorização, when o operador abre a
    página, then MUST ver o estado vazio “Nenhuma autorização CASSEMS.”
    sem linhas inventadas.
+5. **AC-016** — Given o popup de uma autorização, when o editor
+   clica no lápis sutil de um campo do cabeçalho, then MAY
+   corrigir o valor lido. After save MUST marcar **editado** e
+   MUST NOT deixar a coleta sobrescrever esse campo. Viewer MUST
+   receber 403.
 
 ### User Story 2 — E-mail vira arquivo e linha (Priority: P1)
 
@@ -241,7 +246,12 @@ importa o arquivo da pasta.
   arquivo da empresa mesmo quando a caixa Graph falhar. Arquivo
   já na pasta MUST ser associado pelo itemId, sem reenvio.
   Autorização já cadastrada (exceto `falha` com arquivo novo)
-  MUST ser ignorada.
+  MUST ser ignorada, salvo campo do cabeçalho ainda não editado
+  à mão.
+- **FR-012**: Editor ou admin MAY corrigir no popup qualquer
+  campo do cabeçalho (lápis sutil). After save MUST marcar
+  **editado**. Viewer MUST NOT editar. Coleta MUST NOT
+  sobrescrever campo editado.
 
 ### Failure cases
 

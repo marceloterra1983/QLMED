@@ -857,6 +857,7 @@ model ImpcgAuthorization {
   oneDriveItemId  String
   fileName        String
   parseStatus     ImpcgParseStatus
+  editedFields    String[]                 @default([])
   receivedAt      DateTime
   items           ImpcgAuthorizationItem[]
   sourceMessages  ImpcgSourceMessage[]
@@ -929,6 +930,7 @@ model CassemsAuthorization {
   oneDriveItemId  String
   fileName        String
   parseStatus     CassemsParseStatus
+  editedFields    String[]                   @default([])
   receivedAt      DateTime
   items           CassemsAuthorizationItem[]
   sourceMessages  CassemsSourceMessage[]

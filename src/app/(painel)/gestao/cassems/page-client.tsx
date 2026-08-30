@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
+import ReadFieldEditor, { readFieldInputClass } from '@/components/gestao/ReadFieldEditor';
 import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
+import { isOficioFieldEdited } from '@/lib/gestao-oficio-edits';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
@@ -27,6 +29,8 @@ type CassemsDetail = CassemsListItem & {
   patientRegistry: string | null;
   doctorCrm: string | null;
   procedureName: string | null;
+  canEdit?: boolean;
+  editedFields?: string[];
   items: Array<{
     anvisaCode: string | null;
     description: string;
@@ -88,6 +92,14 @@ export default function CassemsPageClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CassemsDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [issuedAtDraft, setIssuedAtDraft] = useState('');
+  const [patientDraft, setPatientDraft] = useState('');
+  const [doctorDraft, setDoctorDraft] = useState('');
+  const [crmDraft, setCrmDraft] = useState('');
+  const [procedureDraft, setProcedureDraft] = useState('');
+  const [hospitalDraft, setHospitalDraft] = useState('');
+  const [registryDraft, setRegistryDraft] = useState('');
 
   const loadList = useCallback(async () => {
     const res = await fetch('/api/gestao/cassems');
@@ -123,7 +135,16 @@ export default function CassemsPageClient() {
         return res.json();
       })
       .then((payload: CassemsDetail) => {
-        if (!cancelled) setDetail(payload);
+        if (!cancelled) {
+          setDetail(payload);
+          setIssuedAtDraft(payload.issuedAt ? payload.issuedAt.slice(0, 10) : '');
+          setPatientDraft(payload.patientName === 'PACIENTE' ? '' : payload.patientName);
+          setDoctorDraft(payload.doctorName ?? '');
+          setCrmDraft(payload.doctorCrm ?? '');
+          setProcedureDraft(payload.procedureName ?? '');
+          setHospitalDraft(payload.hospitalName ?? '');
+          setRegistryDraft(payload.patientRegistry ?? '');
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error('Erro ao abrir a autorização');
@@ -135,6 +156,34 @@ export default function CassemsPageClient() {
       cancelled = true;
     };
   }, [selectedId]);
+
+  async function savePatch(body: Record<string, string>) {
+    if (!detail?.canEdit || !selectedId) return;
+    if (Object.keys(body).length === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/gestao/cassems/${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 403) {
+        toast.error('Sem permissão para editar');
+        return;
+      }
+      if (!res.ok) {
+        toast.error('Não foi possível salvar');
+        return;
+      }
+      const payload = (await res.json()) as CassemsDetail;
+      setDetail(payload);
+      await loadList();
+    } catch {
+      toast.error('Erro de rede ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSync() {
     if (!data?.canSync) return;
@@ -324,29 +373,115 @@ export default function CassemsPageClient() {
         {detail && (
           <div className="space-y-5">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Data</dt>
-                <dd>{formatDocumentDate(detail.issuedAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Paciente</dt>
-                <dd className="font-semibold text-slate-900 dark:text-white">{detail.patientName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Matrícula</dt>
-                <dd>{detail.patientRegistry || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Prestador</dt>
-                <dd>{detail.doctorName || '—'}{detail.doctorCrm ? ` · CRM ${detail.doctorCrm}` : ''}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Local de execução</dt>
-                <dd>{detail.hospitalName || '—'}</dd>
-              </div>
+              <ReadFieldEditor
+                label="Data"
+                display={formatDocumentDate(detail.issuedAt)}
+                edited={isOficioFieldEdited(detail.editedFields, 'issuedAt')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (issuedAtDraft) void savePatch({ issuedAt: issuedAtDraft });
+                }}
+              >
+                <input
+                  type="date"
+                  value={issuedAtDraft}
+                  onChange={(event) => setIssuedAtDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Paciente"
+                display={<span className="font-semibold text-slate-900 dark:text-white">{detail.patientName}</span>}
+                edited={isOficioFieldEdited(detail.editedFields, 'patientName')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (patientDraft.trim()) void savePatch({ patientName: patientDraft.trim() });
+                }}
+              >
+                <input
+                  value={patientDraft}
+                  onChange={(event) => setPatientDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Matrícula"
+                display={detail.patientRegistry || '—'}
+                edited={isOficioFieldEdited(detail.editedFields, 'patientRegistry')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => void savePatch({ patientRegistry: registryDraft.trim() })}
+              >
+                <input
+                  value={registryDraft}
+                  onChange={(event) => setRegistryDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Prestador"
+                display={`${detail.doctorName || '—'}${detail.doctorCrm ? ` · CRM ${detail.doctorCrm}` : ''}`}
+                edited={
+                  isOficioFieldEdited(detail.editedFields, 'doctorName')
+                  || isOficioFieldEdited(detail.editedFields, 'doctorCrm')
+                }
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  const body: Record<string, string> = {};
+                  if (doctorDraft.trim()) body.doctorName = doctorDraft.trim();
+                  body.doctorCrm = crmDraft.trim();
+                  void savePatch(body);
+                }}
+              >
+                <input
+                  value={doctorDraft}
+                  onChange={(event) => setDoctorDraft(event.target.value)}
+                  className={readFieldInputClass}
+                  placeholder="Nome"
+                />
+                <input
+                  value={crmDraft}
+                  onChange={(event) => setCrmDraft(event.target.value)}
+                  className={`${readFieldInputClass} max-w-24`}
+                  placeholder="CRM"
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Local de execução"
+                display={detail.hospitalName || '—'}
+                edited={isOficioFieldEdited(detail.editedFields, 'hospitalName')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (hospitalDraft.trim()) void savePatch({ hospitalName: hospitalDraft.trim() });
+                }}
+              >
+                <input
+                  value={hospitalDraft}
+                  onChange={(event) => setHospitalDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
               <div className="sm:col-span-2">
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Procedimento</dt>
-                <dd>{detail.procedureName || '—'}</dd>
+                <ReadFieldEditor
+                  label="Procedimento"
+                  display={detail.procedureName || '—'}
+                  edited={isOficioFieldEdited(detail.editedFields, 'procedureName')}
+                  canEdit={detail.canEdit}
+                  saving={saving}
+                  onSave={() => {
+                    if (procedureDraft.trim()) void savePatch({ procedureName: procedureDraft.trim() });
+                  }}
+                >
+                  <input
+                    value={procedureDraft}
+                    onChange={(event) => setProcedureDraft(event.target.value)}
+                    className={readFieldInputClass}
+                  />
+                </ReadFieldEditor>
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Total</dt>

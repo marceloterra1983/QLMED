@@ -146,7 +146,7 @@ function extractIssuedAt(text: string): Date | null {
     const fromLabel = parseDateChunk(labeled[1]);
     if (fromLabel) return fromLabel;
   }
-  return parseDateChunk(text);
+  return null;
 }
 
 function extractPatientFromSubject(subject: string): string | null {
