@@ -47,12 +47,36 @@ export type NfeEmissionItem = {
   cstCofins?: string | null;
 };
 
+export type NfePagamento = {
+  indPag: '0' | '1';
+  tPag: string;
+  vPag?: string;
+};
+
+export type NfeTransportadora = {
+  cnpj?: string;
+  xNome?: string;
+  ie?: string;
+  xEnder?: string;
+  xMun?: string;
+  UF?: string;
+};
+
+export type NfeVolume = {
+  qVol?: string;
+  esp?: string;
+  marca?: string;
+  pesoL?: string;
+  pesoB?: string;
+};
+
 export type NfeEmissionDraft = {
   natureza: string;
   cfop: string;
   series: string;
   number: string;
   issueDate: Date;
+  finNFe: '1' | '2' | '3' | '4';
   indFinal: '0' | '1';
   indPres: string;
   tpAmb: '1' | '2';
@@ -60,7 +84,15 @@ export type NfeEmissionDraft = {
   emit: NfeEmitente;
   dest: NfeDestinatario;
   items: NfeEmissionItem[];
+  modFrete: string;
+  vFrete?: string;
+  vSeg?: string;
+  vOutro?: string;
+  transporta?: NfeTransportadora;
+  volume?: NfeVolume;
+  pag?: NfePagamento;
   infCpl?: string;
+  infAdFisco?: string;
 };
 
 export function assertDestinatarioClientePj(cnpj: string, clientes: Iterable<string>): void {

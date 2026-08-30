@@ -30,6 +30,18 @@ export function draftTotalValue(items: NfeEmissionItem[]): string {
   return formatMoneyDecimal(new Decimal(sumMoney(items.map(itemGross))));
 }
 
+export function draftDocumentTotal(
+  items: NfeEmissionItem[],
+  extras: { vFrete?: string; vSeg?: string; vOutro?: string } = {},
+): string {
+  return formatMoneyDecimal(
+    new Decimal(draftTotalValue(items))
+      .plus(extras.vFrete || 0)
+      .plus(extras.vSeg || 0)
+      .plus(extras.vOutro || 0),
+  );
+}
+
 function isoOffset(date: Date): string {
   const tz = -date.getTimezoneOffset();
   const sign = tz >= 0 ? '+' : '-';
@@ -77,13 +89,43 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): string {
   return `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pisCofins(item)}</imposto></det>`;
 }
 
+function transpXml(draft: NfeEmissionDraft): string {
+  const mod = draft.modFrete || '9';
+  const t = draft.transporta;
+  const transporta = t?.xNome
+    ? `<transporta>${t.cnpj ? `<CNPJ>${esc(t.cnpj.replace(/\D/g, ''))}</CNPJ>` : ''}<xNome>${esc(t.xNome)}</xNome>${t.ie ? `<IE>${esc(t.ie)}</IE>` : ''}${t.xEnder ? `<xEnder>${esc(t.xEnder)}</xEnder>` : ''}${t.xMun ? `<xMun>${esc(t.xMun)}</xMun>` : ''}${t.UF ? `<UF>${esc(t.UF)}</UF>` : ''}</transporta>`
+    : '';
+  const v = draft.volume;
+  const vol = v && (v.qVol || v.esp || v.pesoB)
+    ? `<vol>${v.qVol ? `<qVol>${esc(v.qVol)}</qVol>` : ''}${v.esp ? `<esp>${esc(v.esp)}</esp>` : ''}${v.marca ? `<marca>${esc(v.marca)}</marca>` : ''}${v.pesoL ? `<pesoL>${qty(v.pesoL)}</pesoL>` : ''}${v.pesoB ? `<pesoB>${qty(v.pesoB)}</pesoB>` : ''}</vol>`
+    : '';
+  return `<transp><modFrete>${esc(mod)}</modFrete>${transporta}${vol}</transp>`;
+}
+
+function pagXml(draft: NfeEmissionDraft, vNf: string): string {
+  const tPag = draft.pag?.tPag || (draft.finNFe === '3' || draft.finNFe === '4' ? '90' : '17');
+  const vPag = tPag === '90' ? '0.00' : money(draft.pag?.vPag || vNf);
+  const indPag = draft.pag?.indPag || '0';
+  return `<pag><detPag><indPag>${indPag}</indPag><tPag>${esc(tPag)}</tPag><vPag>${vPag}</vPag></detPag></pag>`;
+}
+
+function infAdicXml(draft: NfeEmissionDraft): string {
+  if (!draft.infCpl && !draft.infAdFisco) return '';
+  const fisco = draft.infAdFisco ? `<infAdFisco>${esc(draft.infAdFisco)}</infAdFisco>` : '';
+  const cpl = draft.infCpl ? `<infCpl>${esc(draft.infCpl)}</infCpl>` : '';
+  return `<infAdic>${fisco}${cpl}</infAdic>`;
+}
+
 export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   if (draft.items.length === 0) throw new Error('A nota precisa de pelo menos um item');
   const cUf = UF_TO_CODE[draft.emit.ender.UF];
   if (!cUf) throw new Error('UF do emitente sem código IBGE');
   const vProd = draft.items.reduce((sum, item) => addMoney(sum, Number(money(new Decimal(item.qCom).mul(item.vUnCom).toNumber()))), 0);
   const vDesc = draft.items.reduce((sum, item) => addMoney(sum, item.vDesc ? Number(money(item.vDesc)) : 0), 0);
-  const vNf = money(addMoney(vProd, -vDesc));
+  const vFrete = money(draft.vFrete || 0);
+  const vSeg = money(draft.vSeg || 0);
+  const vOutro = money(draft.vOutro || 0);
+  const vNf = money(addMoney(addMoney(addMoney(addMoney(vProd, -vDesc), Number(vFrete)), Number(vSeg)), Number(vOutro)));
   const dhEmi = isoOffset(draft.issueDate);
   const destNome = draft.tpAmb === '2'
     ? 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
@@ -92,11 +134,7 @@ export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
     ? `<IE>${esc(draft.dest.ie.replace(/\D/g, ''))}</IE>`
     : '';
   const dets = draft.items.map((item, i) => detXml({ ...item, cfop: item.cfop || draft.cfop }, i + 1, draft.emit.crt)).join('');
-  const tPag = draft.cfop.endsWith('102') || draft.cfop === '5405' || draft.cfop === '6101' || draft.cfop === '6108'
-    ? '15'
-    : '90';
-  const vPag = tPag === '90' ? '0.00' : vNf;
-  const infCpl = draft.infCpl ? `<infAdic><infCpl>${esc(draft.infCpl)}</infCpl></infAdic>` : '';
-  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>1</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>${vNf}</vNF></ICMSTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>${tPag}</tPag><vPag>${vPag}</vPag></detPag></pag>${infCpl}</infNFe>`;
+  const finNFe = draft.finNFe || '1';
+  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${pagXml(draft, vNf)}${infAdicXml(draft)}</infNFe>`;
   return `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">${infNFe}</NFe>`;
 }
