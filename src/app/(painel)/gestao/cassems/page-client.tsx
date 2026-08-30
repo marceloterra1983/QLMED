@@ -228,7 +228,7 @@ export default function CassemsPageClient() {
                     Autorização {item.oficioNumber}
                   </span>
                   <span className="text-xs text-slate-500">
-                    {item.issuedAt ? formatDate(item.issuedAt) : '—'}
+                    {formatDocumentDate(item.issuedAt)}
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate mt-1">

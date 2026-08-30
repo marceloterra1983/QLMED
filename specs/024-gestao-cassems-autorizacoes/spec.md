@@ -74,9 +74,10 @@ recusa na API.
    número da autorização.
 2. **AC-002** — Given uma autorização com arquivo gravado, when o
    operador abre a linha ou o ícone do arquivo, then MUST abrir o
-   popup com título `Autorização {número} — {paciente}`, os dados
-   do cabeçalho, a tabela de itens e o PDF; Esc e o voltar do
-   aparelho fecham.
+   popup com título `Autorização {número} — {paciente}`, a **data
+   do ofício** no cabeçalho (mesmo se vazia, como `—`), os demais
+   dados, a tabela de itens e o PDF; Esc e o voltar do aparelho
+   fecham.
 3. **AC-003** — Given um usuário autenticado sem a página e sem ser
    admin, when chama a API da lista ou do arquivo, then MUST receber
    403 e MUST NOT ver o item no menu.
