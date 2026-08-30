@@ -36,11 +36,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }),
 }));
 
-import {
-  formatCassemsMoney,
-  GET,
-  sortCassemsListItems,
-} from '@/app/api/gestao/cassems/route';
+import { formatCassemsMoney, sortCassemsListItems } from '@/lib/cassems/access';
+import { GET } from '@/app/api/gestao/cassems/route';
 
 describe('CASSEMS list contract (AC-001, AC-004)', () => {
   beforeEach(() => {

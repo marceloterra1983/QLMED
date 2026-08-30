@@ -36,11 +36,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }),
 }));
 
-import {
-  formatImpcgMoney,
-  GET,
-  sortImpcgListItems,
-} from '@/app/api/gestao/impcg/route';
+import { formatImpcgMoney, sortImpcgListItems } from '@/lib/impcg/access';
+import { GET } from '@/app/api/gestao/impcg/route';
 
 describe('IMPCG list contract (AC-001, AC-004)', () => {
   beforeEach(() => {

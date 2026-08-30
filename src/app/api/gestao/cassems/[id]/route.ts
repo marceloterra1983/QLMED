@@ -4,7 +4,7 @@ import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getCassemsAuthorization } from '@/lib/cassems/store';
 import { createLogger } from '@/lib/logger';
-import { formatCassemsMoney, requireCassemsPage } from '../route';
+import { formatCassemsMoney, requireCassemsPage } from '@/lib/cassems/access';
 
 const log = createLogger('gestao/cassems/:id');
 
