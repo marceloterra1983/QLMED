@@ -42,6 +42,12 @@ export const PAGE_GROUPS: PageGroup[] = [
     ],
   },
   {
+    section: 'Gestão',
+    pages: [
+      { label: 'IMPCG', path: '/gestao/impcg' },
+    ],
+  },
+  {
     section: 'Relatórios',
     pages: [
       { label: 'Válvulas Mecânicas Corcym', path: '/relatorios/valvulas-importadas' },
@@ -95,6 +101,8 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   { prefix: '/api/estoque',   pages: ['/estoque/entrada-nfe'] },
   // Financeiro
   { prefix: '/api/financeiro',pages: ['/financeiro/contas-pagar', '/financeiro/contas-receber'] },
+  // Gestão
+  { prefix: '/api/gestao',    pages: ['/gestao/impcg'] },
   // Relatórios
   { prefix: '/api/reports',   pages: ['/relatorios/valvulas-importadas'] },
   // Sistema

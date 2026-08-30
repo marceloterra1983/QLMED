@@ -278,6 +278,7 @@ export const config = {
     '/financeiro/:path*',
     '/sistema/:path*',
     '/estoque/:path*',
+    '/gestao/:path*',
     '/relatorios/:path*',
     '/visaogeral/:path*',
     // Protect ALL API routes — public ones are handled by allowlist inside middleware

@@ -17,6 +17,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/fiscal/dashboard': { label: 'Impostos', icon: 'monitoring' },
   '/financeiro/contas-pagar': { label: 'Contas a Pagar', icon: 'payments' },
   '/financeiro/contas-receber': { label: 'Contas a Receber', icon: 'request_quote' },
+  '/gestao/impcg': { label: 'IMPCG', icon: 'assignment' },
   '/relatorios/valvulas-importadas': { label: 'Válvulas Mecânicas Corcym', icon: 'bar_chart' },
   '/sistema/sync': { label: 'Sincronizar', icon: 'cloud_sync' },
   '/sistema/errors': { label: 'Erros', icon: 'warning' },
@@ -85,6 +86,12 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
         { label: 'Impostos', icon: 'monitoring', href: '/fiscal/dashboard' },
         { label: 'Contas a Pagar', icon: 'payments', href: '/financeiro/contas-pagar' },
         { label: 'Contas a Receber', icon: 'request_quote', href: '/financeiro/contas-receber' },
+      ],
+    },
+    {
+      section: 'Gestão',
+      items: [
+        { label: 'IMPCG', icon: 'assignment', href: '/gestao/impcg' },
       ],
     },
     {
