@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Decimal } from '@prisma/client-runtime-utils';
 import { describe, expect, it } from 'vitest';
-import { oficioFromFileName, parseOficio } from '@/lib/cassems/parse-oficio';
+import { describeCassemsParseGap, oficioFromFileName, parseOficio } from '@/lib/cassems/parse-oficio';
 
 /** Texto real do pdftotext -layout do ofício modelo (autorização 2479325231). */
 export const OFICIO_2479325231_TEXT = `
@@ -87,6 +87,7 @@ describe('parseOficio fixture 2479325231 (PDF real CASSEMS)', () => {
     const itemSum = parsed.items.reduce((sum, item) => sum + item.lineCents, 0);
     expect(itemSum).toBe(476000);
     expect(parsed.parseStatus).toBe('ok');
+    expect(describeCassemsParseGap(parsed)).toBeNull();
     expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('4760.00');
     expect(Number.isInteger(parsed.totalCents)).toBe(true);
   });
@@ -120,6 +121,7 @@ describe('parseOficio fixture 2479325231 (PDF real CASSEMS)', () => {
     expect(parsed.items).toEqual([]);
     expect(parsed.parseStatus).toBe('falha');
     expect(parsed.patientName).toBe('PACIENTE');
+    expect(describeCassemsParseGap(parsed)).toBe('Não foi possível ler o documento');
   });
 
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {
@@ -132,6 +134,37 @@ Valor total com desconto    R$ 9.999,00
     expect(parsed.totalCents).toBe(999900);
     expect(parsed.items[0]?.lineCents).toBe(156000);
     expect(parsed.parseStatus).toBe('parcial');
+    expect(describeCassemsParseGap(parsed)).toContain('soma dos itens ≠ total');
+  });
+
+  it('lista os campos vazios no texto de parcial', () => {
+    expect(describeCassemsParseGap({
+      parseStatus: 'parcial',
+      oficioNumber: '2479000002',
+      issuedAt: new Date('2026-08-28T00:00:00.000Z'),
+      patientName: 'JOAO SILVA',
+      doctorName: null,
+      doctorCrm: '12345',
+      procedureName: 'EXAME',
+      hospitalName: null,
+      totalCents: 1000,
+      items: [{ lineCents: 1000 }],
+    })).toBe('Faltou: médico, hospital');
+  });
+
+  it('menciona só os totais quando o cabeçalho está completo (FAIL-004)', () => {
+    expect(describeCassemsParseGap({
+      parseStatus: 'parcial',
+      oficioNumber: '2479000003',
+      issuedAt: new Date('2026-08-28T00:00:00.000Z'),
+      patientName: 'JOAO SILVA',
+      doctorName: 'DR TESTE',
+      doctorCrm: '123',
+      procedureName: 'EXAME',
+      hospitalName: 'HOSPITAL X',
+      totalCents: 2000,
+      items: [{ lineCents: 1000 }],
+    })).toBe('Faltou: soma dos itens ≠ total');
   });
 
   it('lê o texto extraído do PDF em /tmp quando o arquivo existir', () => {

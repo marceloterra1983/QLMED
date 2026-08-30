@@ -94,6 +94,7 @@ describe('CASSEMS list contract (AC-001, AC-004)', () => {
         totalAmount: '4760.00',
         fileName: 'CASSEMS001 - Oficio de materiais OPME autorizados 28-08-2026-133128021.pdf',
         parseStatus: 'ok',
+        parseMissingReason: null,
       },
     ]);
     mocks.getCassemsIngestState.mockResolvedValue({
@@ -108,6 +109,7 @@ describe('CASSEMS list contract (AC-001, AC-004)', () => {
     expect(body.items[0].totalAmount).toBe('4760.00');
     expect(typeof body.items[0].totalAmount).toBe('string');
     expect(body.items[0]).not.toHaveProperty('companyId');
+    expect(body.items[0].parseMissingReason).toBeNull();
     expect(mocks.getOrCreateSingleCompany).toHaveBeenCalledWith('user-1');
   });
 });

@@ -93,6 +93,7 @@ export async function GET(_req?: Request) {
       totalAmount: formatCassemsMoney(row.totalAmount),
       fileName: row.fileName,
       parseStatus: row.parseStatus,
+      parseMissingReason: row.parseMissingReason ?? null,
     }));
 
     return NextResponse.json({
