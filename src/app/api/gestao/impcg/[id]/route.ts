@@ -5,7 +5,7 @@ import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getImpcgAuthorization, updateImpcgMissingFields } from '@/lib/impcg/store';
 import { createLogger } from '@/lib/logger';
-import { formatImpcgMoney, requireImpcgPage } from '../route';
+import { formatImpcgMoney, requireImpcgPage } from '@/lib/impcg/access';
 
 const optionalText = z.string().trim().max(200).optional();
 
