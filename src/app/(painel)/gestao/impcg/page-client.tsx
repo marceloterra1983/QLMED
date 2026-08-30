@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
+import ReadFieldEditor, { readFieldInputClass } from '@/components/gestao/ReadFieldEditor';
 import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
+import { isOficioFieldEdited } from '@/lib/gestao-oficio-edits';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
@@ -28,6 +30,7 @@ type ImpcgDetail = ImpcgListItem & {
   doctorCrm: string | null;
   procedureName: string | null;
   canEdit?: boolean;
+  editedFields?: string[];
   items: Array<{
     anvisaCode: string | null;
     description: string;
@@ -97,6 +100,7 @@ export default function ImpcgPageClient() {
   const [crmDraft, setCrmDraft] = useState('');
   const [procedureDraft, setProcedureDraft] = useState('');
   const [hospitalDraft, setHospitalDraft] = useState('');
+  const [registryDraft, setRegistryDraft] = useState('');
 
   const loadList = useCallback(async () => {
     const res = await fetch('/api/gestao/impcg');
@@ -134,12 +138,13 @@ export default function ImpcgPageClient() {
       .then((payload: ImpcgDetail) => {
         if (!cancelled) {
           setDetail(payload);
-          setIssuedAtDraft('');
-          setPatientDraft('');
-          setDoctorDraft('');
-          setCrmDraft('');
-          setProcedureDraft('');
-          setHospitalDraft('');
+          setIssuedAtDraft(payload.issuedAt ? payload.issuedAt.slice(0, 10) : '');
+          setPatientDraft(payload.patientName === 'PACIENTE' ? '' : payload.patientName);
+          setDoctorDraft(payload.doctorName ?? '');
+          setCrmDraft(payload.doctorCrm ?? '');
+          setProcedureDraft(payload.procedureName ?? '');
+          setHospitalDraft(payload.hospitalName ?? '');
+          setRegistryDraft(payload.patientRegistry ?? '');
         }
       })
       .catch(() => {
@@ -153,21 +158,9 @@ export default function ImpcgPageClient() {
     };
   }, [selectedId]);
 
-  async function handleSaveMissing() {
+  async function savePatch(body: Record<string, string>) {
     if (!detail?.canEdit || !selectedId) return;
-    const body: Record<string, string> = {};
-    if (!detail.issuedAt && issuedAtDraft) body.issuedAt = issuedAtDraft;
-    if ((!detail.patientName || detail.patientName === 'PACIENTE') && patientDraft.trim()) {
-      body.patientName = patientDraft.trim();
-    }
-    if (!detail.doctorName && doctorDraft.trim()) body.doctorName = doctorDraft.trim();
-    if (!detail.doctorCrm && crmDraft.trim()) body.doctorCrm = crmDraft.trim();
-    if (!detail.procedureName && procedureDraft.trim()) body.procedureName = procedureDraft.trim();
-    if (!detail.hospitalName && hospitalDraft.trim()) body.hospitalName = hospitalDraft.trim();
-    if (Object.keys(body).length === 0) {
-      toast.error('Preencha ao menos um campo que faltou');
-      return;
-    }
+    if (Object.keys(body).length === 0) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/gestao/impcg/${selectedId}`, {
@@ -186,7 +179,6 @@ export default function ImpcgPageClient() {
       const payload = (await res.json()) as ImpcgDetail;
       setDetail(payload);
       await loadList();
-      toast.success('Campos atualizados');
     } catch {
       toast.error('Erro de rede ao salvar');
     } finally {
@@ -382,29 +374,115 @@ export default function ImpcgPageClient() {
         {detail && (
           <div className="space-y-5">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Data</dt>
-                <dd>{formatDocumentDate(detail.issuedAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Paciente</dt>
-                <dd className="font-semibold text-slate-900 dark:text-white">{detail.patientName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Matrícula</dt>
-                <dd>{detail.patientRegistry || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Médico</dt>
-                <dd>{detail.doctorName || '—'}{detail.doctorCrm ? ` · CRM ${detail.doctorCrm}` : ''}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Hospital</dt>
-                <dd>{detail.hospitalName || '—'}</dd>
-              </div>
+              <ReadFieldEditor
+                label="Data"
+                display={formatDocumentDate(detail.issuedAt)}
+                edited={isOficioFieldEdited(detail.editedFields, 'issuedAt')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (issuedAtDraft) void savePatch({ issuedAt: issuedAtDraft });
+                }}
+              >
+                <input
+                  type="date"
+                  value={issuedAtDraft}
+                  onChange={(event) => setIssuedAtDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Paciente"
+                display={<span className="font-semibold text-slate-900 dark:text-white">{detail.patientName}</span>}
+                edited={isOficioFieldEdited(detail.editedFields, 'patientName')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (patientDraft.trim()) void savePatch({ patientName: patientDraft.trim() });
+                }}
+              >
+                <input
+                  value={patientDraft}
+                  onChange={(event) => setPatientDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Matrícula"
+                display={detail.patientRegistry || '—'}
+                edited={isOficioFieldEdited(detail.editedFields, 'patientRegistry')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => void savePatch({ patientRegistry: registryDraft.trim() })}
+              >
+                <input
+                  value={registryDraft}
+                  onChange={(event) => setRegistryDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Médico"
+                display={`${detail.doctorName || '—'}${detail.doctorCrm ? ` · CRM ${detail.doctorCrm}` : ''}`}
+                edited={
+                  isOficioFieldEdited(detail.editedFields, 'doctorName')
+                  || isOficioFieldEdited(detail.editedFields, 'doctorCrm')
+                }
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  const body: Record<string, string> = {};
+                  if (doctorDraft.trim()) body.doctorName = doctorDraft.trim();
+                  body.doctorCrm = crmDraft.trim();
+                  void savePatch(body);
+                }}
+              >
+                <input
+                  value={doctorDraft}
+                  onChange={(event) => setDoctorDraft(event.target.value)}
+                  className={readFieldInputClass}
+                  placeholder="Nome"
+                />
+                <input
+                  value={crmDraft}
+                  onChange={(event) => setCrmDraft(event.target.value)}
+                  className={`${readFieldInputClass} max-w-24`}
+                  placeholder="CRM"
+                />
+              </ReadFieldEditor>
+              <ReadFieldEditor
+                label="Hospital"
+                display={detail.hospitalName || '—'}
+                edited={isOficioFieldEdited(detail.editedFields, 'hospitalName')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (hospitalDraft.trim()) void savePatch({ hospitalName: hospitalDraft.trim() });
+                }}
+              >
+                <input
+                  value={hospitalDraft}
+                  onChange={(event) => setHospitalDraft(event.target.value)}
+                  className={readFieldInputClass}
+                />
+              </ReadFieldEditor>
               <div className="sm:col-span-2">
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Procedimento</dt>
-                <dd>{detail.procedureName || '—'}</dd>
+                <ReadFieldEditor
+                  label="Procedimento"
+                  display={detail.procedureName || '—'}
+                  edited={isOficioFieldEdited(detail.editedFields, 'procedureName')}
+                  canEdit={detail.canEdit}
+                  saving={saving}
+                  onSave={() => {
+                    if (procedureDraft.trim()) void savePatch({ procedureName: procedureDraft.trim() });
+                  }}
+                >
+                  <input
+                    value={procedureDraft}
+                    onChange={(event) => setProcedureDraft(event.target.value)}
+                    className={readFieldInputClass}
+                  />
+                </ReadFieldEditor>
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Total</dt>
@@ -421,98 +499,6 @@ export default function ImpcgPageClient() {
                 </dd>
               </div>
             </dl>
-
-            {detail.canEdit && detail.parseStatus !== 'ok' && (
-              !detail.issuedAt
-              || !detail.patientName
-              || detail.patientName === 'PACIENTE'
-              || !detail.doctorName
-              || !detail.doctorCrm
-              || !detail.procedureName
-              || !detail.hospitalName
-            ) && (
-              <form
-                className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSaveMissing();
-                }}
-              >
-                <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                  Completar o que faltou
-                </p>
-                {!detail.issuedAt && (
-                  <label className="text-sm">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Data</span>
-                    <input
-                      type="date"
-                      value={issuedAtDraft}
-                      onChange={(event) => setIssuedAtDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                {(!detail.patientName || detail.patientName === 'PACIENTE') && (
-                  <label className="text-sm">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Paciente</span>
-                    <input
-                      value={patientDraft}
-                      onChange={(event) => setPatientDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                {!detail.doctorName && (
-                  <label className="text-sm">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Médico</span>
-                    <input
-                      value={doctorDraft}
-                      onChange={(event) => setDoctorDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                {!detail.doctorCrm && (
-                  <label className="text-sm">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">CRM</span>
-                    <input
-                      value={crmDraft}
-                      onChange={(event) => setCrmDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                {!detail.procedureName && (
-                  <label className="text-sm sm:col-span-2">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Procedimento</span>
-                    <input
-                      value={procedureDraft}
-                      onChange={(event) => setProcedureDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                {!detail.hospitalName && (
-                  <label className="text-sm">
-                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Hospital</span>
-                    <input
-                      value={hospitalDraft}
-                      onChange={(event) => setHospitalDraft(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
-                    />
-                  </label>
-                )}
-                <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-50"
-                  >
-                    {saving ? 'Salvando…' : 'Salvar campos'}
-                  </button>
-                </div>
-              </form>
-            )}
 
             <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
               <table className="w-full text-left text-sm">

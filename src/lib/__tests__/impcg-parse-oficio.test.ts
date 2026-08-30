@@ -140,6 +140,22 @@ TOTAL R$ 12.550,00
     expect(parsed.parseStatus).toBe('ok');
   });
 
+  it('não inventa data a partir da OBS quando não há fechamento nem DATA:', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 15987
+PACIENTE: AGNALDO RODRIGUES DE SANTANA
+MEDICO: JOAO
+CRM: 1234
+PROCEDIMENTO: EXAME
+LOCAL DE ENTREGA: SANTA CASA
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL GERAL: 10,00
+OBS: PROCEDIMENTO REALIZADO NA URGENCIA DIA 22/10/2025
+`);
+    expect(parsed.issuedAt).toBeNull();
+    expect(parsed.parseStatus).toBe('parcial');
+  });
+
   it('usa a data de fechamento, não a da OBS de urgência (ofício 16404)', () => {
     const parsed = parseOficio(`
 INSTITUTO MUNICIPAL DE PREVIDENCIA DE CAMPO GRANDE

@@ -41,6 +41,7 @@ export async function GET(_req: Request) {
       lastCollectedAt: ingest?.lastSuccessAt ? ingest.lastSuccessAt.toISOString() : null,
       lastError: ingest?.lastError ?? null,
       canSync: access.canSync,
+      canEdit: access.canSync,
       items,
     });
   } catch (error) {

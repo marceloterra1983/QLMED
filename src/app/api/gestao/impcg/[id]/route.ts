@@ -59,6 +59,7 @@ export async function GET(
       fileName: row.fileName,
       parseStatus: row.parseStatus,
       parseMissingReason: row.parseMissingReason ?? null,
+      editedFields: row.editedFields,
       canEdit: access.canSync,
       items: row.items.map((item) => ({
         anvisaCode: item.anvisaCode,
@@ -133,6 +134,7 @@ export async function PATCH(
       fileName: row.fileName,
       parseStatus: row.parseStatus,
       parseMissingReason: row.parseMissingReason,
+      editedFields: row.editedFields,
       canEdit: true,
       items: row.items,
     });

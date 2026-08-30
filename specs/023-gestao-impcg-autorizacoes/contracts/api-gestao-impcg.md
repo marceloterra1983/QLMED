@@ -84,11 +84,13 @@ Estado vazio: `items: []` (AC-004).
 
 **Auth**: editor ou admin + página. Viewer → **403**.
 
-Completa **só** campos ainda vazios. Campo já lido é ignorado.
-`issuedAt` no body: `YYYY-MM-DD` (UTC). Estado de leitura é
-recalculado.
+Corrige os campos enviados (mesmo se já lidos) e os marca em
+`editedFields`. `issuedAt` no body: `YYYY-MM-DD` (UTC). Estado
+de leitura é recalculado. Coleta posterior não sobrescreve
+campo em `editedFields`.
 
-**200** — mesmo JSON do GET detalhe, com `canEdit: true`.
+**200** — mesmo JSON do GET detalhe, com `canEdit: true` e
+`editedFields`.
 **400** body inválido. **404** id inexistente / outra empresa.
 
 ## GET `/api/gestao/impcg/:id/arquivo`
