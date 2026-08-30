@@ -1,20 +1,14 @@
-# Gates: data fiel + edição sutil no popup
+# Gates: hospital abaixo do paciente na lista Gestão
 
-Scope: OCR não inventa data (só Campo Grande ou DATA:).
-Popup tem lápis sutil; campo corrigido fica marcado “editado”.
-Viewer não edita. Coleta não sobrescreve campo editado.
+Scope: Tabelas IMPCG e CASSEMS mostram o hospital sob o
+paciente, com texto mais claro. Sem coluna Hospital à parte.
 
-- [x] G1: Parser não usa a primeira data solta do texto
-  CHECK: cd /home/marce/qlmed/app/.worktrees/feat-gestao-editar-campos-lidos && npx vitest run src/lib/__tests__/impcg-parse-oficio.test.ts --reporter=dot
+- [x] G1: As duas listas usam GestaoPatientHospital e não têm th Hospital
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-gestao-tabela-paciente-hospital && npx vitest run src/lib/__tests__/gestao-mobile-card.test.ts --reporter=dot
   EXPECT: Tests
-  EVIDENCE: Start at  14:16:43 | Duration  132ms (transform 32ms, setup 0ms, import 45ms, tests 8ms, environment 0ms)
+  EVIDENCE: Start at  16:50:03 | Duration  105ms (transform 15ms, setup 0ms, import 22ms, tests 3ms, environment 0ms)
 
-- [x] G2: editedFields e PATCH de overwrite
-  CHECK: cd /home/marce/qlmed/app/.worktrees/feat-gestao-editar-campos-lidos && npx vitest run src/lib/__tests__/gestao-oficio-edits.test.ts src/lib/__tests__/impcg-acl.test.ts --reporter=dot
-  EXPECT: Tests
-  EVIDENCE: Start at  14:16:44 | Duration  243ms (transform 108ms, setup 0ms, import 182ms, tests 21ms, environment 0ms)
-
-- [x] G3: Typecheck
-  CHECK: cd /home/marce/qlmed/app/.worktrees/feat-gestao-editar-campos-lidos && npx tsc --noEmit && echo tsc_ok
+- [x] G2: Typecheck
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-gestao-tabela-paciente-hospital && npx tsc --noEmit && echo tsc_ok
   EXPECT: tsc_ok
   EVIDENCE: tsc_ok
