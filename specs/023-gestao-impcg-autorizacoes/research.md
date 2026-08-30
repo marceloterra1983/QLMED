@@ -114,6 +114,25 @@ aparece no picker. Middleware já resolve path via `PAGE_GROUPS`.
 Viewer: GET. Editor/admin: POST sync. Admin bypass existente.
 `allowedPages` vazio = legado com acesso total.
 
+## 7. Backfill da pasta OneDrive
+
+**Decision**: além das caixas Graph, a coleta lista os filhos da
+pasta `1 - DOCUMENTOS/0 - AUTORIZACOES/IMPCG` via cliente OneDrive
+já autenticado (`ensureValidOneDriveAccessToken` +
+`listOneDriveChildren`). PDF já no arquivo é baixado, lido e
+persistido com o `itemId` conhecido — sem `uploadOneDriveFile`.
+Roda depois das caixas, inclusive se ambas falharem (403
+dehydrated). Dedup por `oficioNumber`.
+
+**Rationale**: Exchange pode estar dehydrated; o PDF 17673 já está
+na pasta. A lista lê Postgres — arquivo sozinho não cria linha.
+
+**Alternatives considered**:
+
+1. Só e-mail — bloqueado sem Graph Mail.
+2. Reenviar o PDF — desnecessário e esbarra em FAIL-002.
+3. Inventar itens se OCR falhar — proibido (FAIL-003).
+
 ## Fontes
 
 - [RBAC for Applications](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac)

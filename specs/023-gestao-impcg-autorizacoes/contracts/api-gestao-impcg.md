@@ -89,8 +89,10 @@ Não redirecionar para URL assinada do SharePoint no browser
 
 **Auth**: editor ou admin + página.
 
-Dispara a mesma função do worker. Resposta após o ciclo (ou se o
-lock estiver ocupado).
+Dispara a mesma função do worker: caixas Graph **e** varredura
+da pasta IMPCG (PDFs já no arquivo da empresa, sem reenvio).
+Resposta após o ciclo (ou se o lock estiver ocupado). Caixa 403
+não cancela a varredura da pasta.
 
 **200**
 

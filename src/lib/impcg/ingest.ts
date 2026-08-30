@@ -1,6 +1,4 @@
-import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
   ensureOneDriveFolder,
@@ -19,14 +17,20 @@ import {
   markBackgroundServiceHeartbeat,
   markBackgroundServiceStarted,
 } from '@/lib/background-service-health';
+import { getSingleCompany } from '@/lib/single-company';
 import {
   IMPCG_INGEST_INTERVAL_MS,
   IMPCG_MAILBOX_TIMEOUT_MS,
   IMPCG_MAILBOXES,
-  IMPCG_ONEDRIVE_ACCOUNT,
   IMPCG_ONEDRIVE_FOLDER,
 } from './constants';
 import { extractPdfText } from './extract-pdf-text';
+import {
+  defaultImpcgFolderPort,
+  ingestImpcgFolder,
+  resolveImpcgOneDrive,
+  type ImpcgFolderPort,
+} from './folder-ingest';
 import { buildImpcgFileName, parseOficio, shouldUpgrade, type ParsedImpcgItem } from './parse-oficio';
 import { prismaImpcgStore } from './store';
 
@@ -44,6 +48,8 @@ export type ImpcgMailPort = {
 export type ImpcgDrivePort = {
   uploadPdf(input: { fileName: string; content: Buffer }): Promise<{ itemId: string }>;
 };
+
+export type { ImpcgFolderPort };
 
 export type ImpcgAuthorizationRow = {
   id: string;
@@ -96,9 +102,9 @@ export type PersistArgs = {
   oneDriveItemId: string;
   receivedAt: Date;
   items: ParsedImpcgItem[];
-  internetMessageId: string;
-  mailbox: string;
-  graphMessageId: string;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
 };
 
 export type ImpcgIngestResult = {
@@ -114,6 +120,7 @@ export type ImpcgIngestResult = {
 export type ImpcgIngestDeps = {
   mail: ImpcgMailPort;
   drive: ImpcgDrivePort;
+  folder?: ImpcgFolderPort | null;
   extractText: (pdf: Buffer) => Promise<string>;
   store: ImpcgStorePort;
 };
@@ -140,22 +147,13 @@ function defaultMailPort(): ImpcgMailPort {
 }
 
 async function defaultDrivePort(companyId: string): Promise<ImpcgDrivePort> {
-  const connection = await prisma.oneDriveConnection.findFirst({
-    where: { companyId, accountEmail: IMPCG_ONEDRIVE_ACCOUNT },
-  }) ?? await prisma.oneDriveConnection.findFirst({
-    where: { companyId },
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!connection) {
-    throw new Error('conta de arquivo nao conectada');
-  }
-  const accessToken = await ensureValidOneDriveAccessToken(connection);
-  await ensureOneDriveFolder(accessToken, connection.driveId, IMPCG_ONEDRIVE_FOLDER);
+  const { accessToken, driveId } = await resolveImpcgOneDrive(companyId);
+  await ensureOneDriveFolder(accessToken, driveId, IMPCG_ONEDRIVE_FOLDER);
   return {
     async uploadPdf(input) {
       const uploaded = await uploadOneDriveFile(
         accessToken,
-        connection.driveId,
+        driveId,
         IMPCG_ONEDRIVE_FOLDER,
         input.fileName,
         input.content,
@@ -166,23 +164,15 @@ async function defaultDrivePort(companyId: string): Promise<ImpcgDrivePort> {
 }
 
 export async function downloadImpcgPdf(companyId: string, itemId: string): Promise<Buffer> {
-  const connection = await prisma.oneDriveConnection.findFirst({
-    where: { companyId, accountEmail: IMPCG_ONEDRIVE_ACCOUNT },
-  }) ?? await prisma.oneDriveConnection.findFirst({
-    where: { companyId },
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!connection) {
-    throw new Error('conta de arquivo nao conectada');
-  }
-  const accessToken = await ensureValidOneDriveAccessToken(connection);
-  return downloadOneDriveItemContent(accessToken, connection.driveId, itemId);
+  const { accessToken, driveId } = await resolveImpcgOneDrive(companyId);
+  return downloadOneDriveItemContent(accessToken, driveId, itemId);
 }
 
 export async function createDefaultImpcgDeps(companyId: string): Promise<ImpcgIngestDeps> {
   return {
     mail: defaultMailPort(),
     drive: await defaultDrivePort(companyId),
+    folder: await defaultImpcgFolderPort(companyId),
     extractText: extractPdfText,
     store: prismaImpcgStore,
   };
@@ -268,6 +258,15 @@ function drivePortFromOptions(options: ImpcgRunOptions, companyId: string): Impc
   return defaultDrivePort(companyId);
 }
 
+function folderPortFromOptions(
+  options: ImpcgRunOptions,
+  companyId: string,
+): ImpcgFolderPort | Promise<ImpcgFolderPort> | null {
+  if (options.folder) return options.folder;
+  if (options.mail || options.drive || options.store || options.extractText) return null;
+  return defaultImpcgFolderPort(companyId);
+}
+
 export async function runImpcgIngest(
   input: string | ImpcgRunOptions,
   deps?: Partial<ImpcgIngestDeps>,
@@ -293,6 +292,7 @@ export async function runImpcgIngest(
   const resolved: ImpcgIngestDeps = {
     mail: mailPortFromOptions(options),
     drive: await drivePortFromOptions(options, companyId),
+    folder: await folderPortFromOptions(options, companyId),
     extractText: options.extractText ?? extractPdfText,
     store: options.store ?? prismaImpcgStore,
   };
@@ -408,6 +408,22 @@ export async function runImpcgIngest(
       }
     }
 
+    if (resolved.folder) {
+      try {
+        const folderResult = await ingestImpcgFolder({
+          companyId,
+          folder: resolved.folder,
+          extractText: resolved.extractText,
+          store: resolved.store,
+        });
+        processed += folderResult.processed;
+        skipped += folderResult.skipped;
+      } catch (error) {
+        errors.push(sanitizeError(error instanceof Error ? error.message : 'pasta IMPCG'));
+        log.warn('impcg_folder_failed');
+      }
+    }
+
     const now = new Date();
     const previous = await resolved.store.loadIngestState(companyId);
     await resolved.store.saveIngestState(companyId, {
@@ -437,7 +453,7 @@ export async function startImpcgMailIngest(): Promise<void> {
   const tick = async () => {
     markBackgroundServiceHeartbeat('impcg-mail-ingest');
     try {
-      const company = await prisma.company.findFirst({ orderBy: { createdAt: 'asc' }, select: { id: true } });
+      const company = await getSingleCompany();
       if (!company) return;
       await runImpcgIngest(company.id);
     } catch (error) {
