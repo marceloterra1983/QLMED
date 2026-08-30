@@ -18,6 +18,7 @@ const globalForBootstrap = globalThis as unknown as {
   __autoSyncStarted?: boolean;
   __localXmlSyncStarted?: boolean;
   __impcgIngestStarted?: boolean;
+  __cassemsIngestStarted?: boolean;
 };
 
 if (!globalForBootstrap.__autoSyncStarted) {
@@ -45,4 +46,13 @@ if (!globalForBootstrap.__impcgIngestStarted) {
       .then((m) => m.startImpcgMailIngest())
       .catch((err) => log.error({ err }, 'ImpcgMailIngest falha ao iniciar'));
   }, 14_000);
+}
+
+if (!globalForBootstrap.__cassemsIngestStarted) {
+  globalForBootstrap.__cassemsIngestStarted = true;
+  setTimeout(() => {
+    import('./cassems/ingest')
+      .then((m) => m.startCassemsMailIngest())
+      .catch((err) => log.error({ err }, 'CassemsMailIngest falha ao iniciar'));
+  }, 16_000);
 }

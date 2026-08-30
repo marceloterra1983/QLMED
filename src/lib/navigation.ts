@@ -45,6 +45,7 @@ export const PAGE_GROUPS: PageGroup[] = [
     section: 'Gestão',
     pages: [
       { label: 'IMPCG', path: '/gestao/impcg' },
+      { label: 'CASSEMS', path: '/gestao/cassems' },
     ],
   },
   {
@@ -102,7 +103,8 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Financeiro
   { prefix: '/api/financeiro',pages: ['/financeiro/contas-pagar', '/financeiro/contas-receber'] },
   // Gestão
-  { prefix: '/api/gestao',    pages: ['/gestao/impcg'] },
+  { prefix: '/api/gestao/cassems', pages: ['/gestao/cassems'] },
+  { prefix: '/api/gestao/impcg',   pages: ['/gestao/impcg'] },
   // Relatórios
   { prefix: '/api/reports',   pages: ['/relatorios/valvulas-importadas'] },
   // Sistema

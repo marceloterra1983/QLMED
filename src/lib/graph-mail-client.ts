@@ -105,12 +105,13 @@ async function graphJson<T>(
   return { status: response.status, body };
 }
 
-export async function listImpcgMailboxMessages(
+export async function listMailboxMessagesBySender(
   mailbox: string,
+  senderEmail: string,
   options: { signal: AbortSignal },
 ): Promise<ImpcgMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
-  const filter = `hasAttachments eq true and from/emailAddress/address eq '${IMPCG_SENDER_EMAIL}'`;
+  const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
   const select = 'id,subject,receivedDateTime,from,hasAttachments,internetMessageId';
   let next: string | null =
     `/users/${encodeURIComponent(mailbox)}/messages?$select=${select}&$filter=${encodeURIComponent(filter)}&$top=50`;
@@ -155,6 +156,13 @@ export async function listImpcgMailboxMessages(
 
   messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   return messages;
+}
+
+export async function listImpcgMailboxMessages(
+  mailbox: string,
+  options: { signal: AbortSignal },
+): Promise<ImpcgMailMessage[]> {
+  return listMailboxMessagesBySender(mailbox, IMPCG_SENDER_EMAIL, options);
 }
 
 export async function listImpcgPdfAttachments(
