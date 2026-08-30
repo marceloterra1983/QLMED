@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
+import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
@@ -546,9 +547,10 @@ export default function ImpcgPageClient() {
 
             <div className="w-full h-[70vh] bg-slate-200 dark:bg-slate-900 rounded-lg overflow-hidden">
               <iframe
-                src={`/api/gestao/impcg/${detail.id}/arquivo`}
+                src={embeddedPdfViewerSrc(`/api/gestao/impcg/${detail.id}/arquivo`)}
                 className="w-full h-full border-0"
                 title={`PDF da ordem ${detail.oficioNumber}`}
+                onLoad={(event) => closeEmbeddedPdfSidebar(event.currentTarget)}
               />
             </div>
           </div>

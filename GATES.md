@@ -1,20 +1,19 @@
-# Gates: data do ofício no popup IMPCG
+# Gates: PDF do ofício sem painel de miniaturas
 
-Scope: O popup de Gestão → IMPCG mostra a data do ofício no
-cabeçalho (não só na tabela). Data UTC meia-noite não vira o dia
-anterior no fuso de Brasília.
+Scope: O popup IMPCG/CASSEMS abre o PDF no pdf.js já vendorado,
+sem a faixa de thumbnails à esquerda do Chrome. Sem pacote novo.
 
-- [x] G1: Popup IMPCG tem o campo Data no cabeçalho
-  CHECK: rg -n "tracking-wider text-slate-400\">Data</dt>" /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data/src/app/\(painel\)/gestao/impcg/page-client.tsx
-  EXPECT: Data</dt>
-  EVIDENCE: 380:                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Data</dt>
+- [x] G1: URL do viewer fecha o painel (`pagemode=none`)
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-gestao-pdf-sem-sidebar && npx vitest run src/lib/__tests__/embedded-pdf-src.test.ts --reporter=dot
+  EXPECT: Tests  2 passed
+  EVIDENCE: Start at  12:39:35 | Duration  105ms (transform 18ms, setup 0ms, import 25ms, tests 2ms, environment 0ms)
 
-- [x] G2: formatDocumentDate formata 2023-08-10T00:00:00.000Z como 10/08/2023
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data && npx vitest run src/lib/__tests__/format-document-date.test.ts --reporter=dot
-  EXPECT: Tests  3 passed
-  EVIDENCE: Start at  12:24:15 | Duration  125ms (transform 22ms, setup 0ms, import 29ms, tests 10ms, environment 0ms)
+- [x] G2: Iframes IMPCG e CASSEMS usam o helper
+  CHECK: rg -n "embeddedPdfViewerSrc" /home/marce/qlmed/app/.worktrees/fix-gestao-pdf-sem-sidebar/src/app/\(painel\)/gestao/impcg/page-client.tsx /home/marce/qlmed/app/.worktrees/fix-gestao-pdf-sem-sidebar/src/app/\(painel\)/gestao/cassems/page-client.tsx
+  EXPECT: embeddedPdfViewerSrc
+  EVIDENCE: /home/marce/qlmed/app/.worktrees/fix-gestao-pdf-sem-sidebar/src/app/(painel)/gestao/impcg/page-client.tsx:8:import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src'; | /h
 
 - [x] G3: Typecheck
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data && npx tsc --noEmit && echo tsc_ok
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-gestao-pdf-sem-sidebar && npx tsc --noEmit && echo tsc_ok
   EXPECT: tsc_ok
   EVIDENCE: tsc_ok

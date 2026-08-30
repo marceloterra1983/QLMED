@@ -74,7 +74,8 @@ recusa na API.
    operador abre a linha ou o ícone do arquivo, then MUST abrir o
    popup com título `Ordem {número} — {paciente}`, a **data do
    ofício** no cabeçalho (mesmo se vazia, como `—`), os demais
-   dados, a tabela de itens e o PDF; Esc e o voltar do aparelho
+   dados, a tabela de itens e o PDF no viewer do site **sem o
+   painel de miniaturas à esquerda**; Esc e o voltar do aparelho
    fecham.
 3. **AC-003** — Given um usuário autenticado sem a página e sem ser
    admin, when chama a API da lista ou do arquivo, then MUST receber
