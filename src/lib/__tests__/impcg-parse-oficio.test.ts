@@ -90,6 +90,32 @@ describe('parseOficio fixture 17673', () => {
     expect(parsed.patientName).toBe('PACIENTE');
   });
 
+  it('lê o OCR real do scan 17673 (TOTAL R$, R$ nas linhas, médico+CRM)', () => {
+    const ocr = `
+ORDEM DE FORNECIMENTO Nº 17673
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MATRÍCULA: 66429737-4
+MÉDICO : RODRIGO LUIZ ROCHA CARDOSO CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+1 80102510935 |KIT VALVULA AORTICA MECANICA SORIN As 1 R$ 6.500,00 R$ 6.500,00
+8138739901 |KIT CEC EUROSETS AGS214 1 | R$5.500,00 R$ 5.500,00
+3 | 10196320037 |KIT CANULAS ARTERIAL E VENOSA BIOMEDICAL KITPER 1 R$ 550,00 R$ 550,00
+TOTAL R$ 12.550,00)
+`.trim();
+    const parsed = parseOficio(ocr, 'OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR');
+    expect(parsed.oficioNumber).toBe('17673');
+    expect(parsed.patientName).toBe('PLINIO ANTONIO ARANHA JUNIOR');
+    expect(parsed.doctorName).toBe('RODRIGO LUIZ ROCHA CARDOSO');
+    expect(parsed.doctorCrm).toBe('13716');
+    expect(parsed.procedureName).toBe('TROCA VALVAR');
+    expect(parsed.hospitalName).toBe('HOSPITAL PRONCOR');
+    expect(parsed.totalCents).toBe(1255000);
+    expect(parsed.items).toHaveLength(3);
+    expect(parsed.items.map((item) => item.lineCents)).toEqual([650000, 550000, 55000]);
+    expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('12550.00');
+  });
+
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {
     const parsed = parseOficio(`
 ORDEM DE FORNECIMENTO N 99
