@@ -67,6 +67,8 @@ mostrar CNPJ/razão; completar cadastro fiscal do emitente é fatia seguinte.
 
 `CertificateConfig` já guarda A1 (`pfxData`, senha cifrada, validade, CNPJ do
 certificado). Serve depois para assinar; **não** usar no browser.
+`environment` controla autorização e `NFeStatusServico4`. DistDFe
+operacional permanece em produção: NSU de homologação é outra série.
 
 ### Destinatário
 

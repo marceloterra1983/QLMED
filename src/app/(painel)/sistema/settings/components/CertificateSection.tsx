@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import CertificateSefazPanel from './CertificateSefazPanel';
 
 interface Company {
   id: string;
@@ -218,10 +219,18 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                     <span className="block text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-semibold">CNPJ no Certificado</span>
                     <p className="font-mono text-slate-800 dark:text-slate-200 text-sm">{certInfo.cnpjCertificate || 'Não detectado'}</p>
                   </div>
-                  <div>
-                    <span className="block text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-semibold">Ambiente</span>
-                    <p className="text-slate-800 dark:text-slate-200 capitalize text-sm">{certInfo.environment === 'production' ? 'Produção' : 'Homologação'}</p>
-                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <CertificateSefazPanel
+                    environment={certInfo.environment}
+                    expired={certInfo.isExpired}
+                    canManage={canManageSettings}
+                    busy={certLoading}
+                    onEnvironmentSaved={(environment) => {
+                      setCertInfo((prev) => (prev ? { ...prev, environment } : prev));
+                    }}
+                  />
                 </div>
 
                 <button

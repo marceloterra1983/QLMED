@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
-import { apiError } from '@/lib/api-error';
+import { apiError, apiValidationError } from '@/lib/api-error';
+import { certificateEnvironmentSchema } from '@/lib/schemas/certificate';
+import { resolveEmissionEnvironment } from '@/lib/nfe-emission/environment';
 
 
 export async function GET(_request: NextRequest) {
@@ -48,6 +50,39 @@ export async function GET(_request: NextRequest) {
       isExpired
     }
   });
+}
+
+export async function PATCH(request: NextRequest) {
+  let userId: string;
+  try {
+    const auth = await requireAdmin();
+    userId = auth.userId;
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
+  try {
+    const parsed = certificateEnvironmentSchema.safeParse(await request.json());
+    if (!parsed.success) return apiValidationError(parsed.error);
+    const environment = resolveEmissionEnvironment(parsed.data.environment);
+    const company = await getOrCreateSingleCompany(userId);
+    const existing = await prisma.certificateConfig.findUnique({
+      where: { companyId: company.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Certificado digital não configurado' }, { status: 400 });
+    }
+    const updated = await prisma.certificateConfig.update({
+      where: { companyId: company.id },
+      data: { environment },
+      select: { environment: true },
+    });
+    return NextResponse.json({ success: true, environment: updated.environment });
+  } catch (error) {
+    return apiError(error, 'PATCH /api/certificate/info');
+  }
 }
 
 export async function DELETE(_request: NextRequest) {

@@ -12,6 +12,7 @@ import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
 import { applyNfeCancellation } from '@/lib/nfe-cancellation';
+import { distDfeIsProduction } from '@/lib/nfe-emission/environment';
 
 const log = createLogger('auto-sync');
 
@@ -57,7 +58,7 @@ export async function syncViaSefaz(
       certPem,
       key,
       cnpj,
-      cert.environment === 'production',
+      distDfeIsProduction(),
       getUfCode(cert.subject),
     );
 

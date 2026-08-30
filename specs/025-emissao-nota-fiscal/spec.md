@@ -137,6 +137,31 @@ Quem só lê não dispara autorização.
 1. **AC-010** — Given um viewer, when abre Nova NF-e, then não vê
    ação de enviar, e o servidor recusa o envio.
 
+### User Story 6 — Ambiente e teste de conexão (Priority: P1)
+
+Como admin, escolho Homologação ou Produção no certificado A1 já
+instalado, sem reenviar o PFX. Testo a conexão com a SEFAZ só
+consultando se o serviço está no ar — sem autorizar NF-e.
+
+**Why this priority**: Sem o seletor, o certificado fica em
+produção e qualquer envio tem valor fiscal. O teste de conexão
+precisa existir antes da primeira nota.
+
+**Independent Test**: Trocar o ambiente persiste; o teste devolve
+status do serviço e não cria nota emitida.
+
+**Acceptance Scenarios**:
+
+1. **AC-013** — Given um certificado instalado, when o admin
+   escolhe Homologação e grava, then o ambiente persistido passa a
+   ser homologação e a próxima emissão usa esse ambiente.
+2. **AC-014** — Given certificado válido, when o admin testa a
+   conexão, then o sistema consulta só o status do serviço na SEFAZ
+   e mostra o código e o motivo; não autoriza NF-e e não grava
+   Invoice.
+3. **AC-015** — Given certificado ausente ou vencido, when tenta
+   testar a conexão, then o servidor recusa sem chamar a SEFAZ.
+
 ## Requirements
 
 ### Functional requirements
@@ -172,6 +197,17 @@ Quem só lê não dispara autorização.
   transporte (`modFrete`, volumes, transportadora), pagamento
   (`tPag`/`indPag`) e informações adicionais, persistidos no
   rascunho e emitidos no XML.
+- **FR-012**: Admin MUST poder gravar o ambiente do certificado
+  (`homologation` ou `production`) sem reenviar o PFX. Viewer e
+  editor MUST NÃO alterar o ambiente. O ambiente da emissão MUST
+  ser o persistido no certificado, não um valor enviado no request
+  de autorização.
+- **FR-013**: Testar conexão MUST consultar só o status do serviço
+  da SEFAZ no ambiente do certificado. MUST NÃO montar nem enviar
+  lote de autorização. MUST NÃO criar rascunho nem Invoice.
+- **FR-014**: A sincronização operacional DistDFe MUST permanecer
+  em produção mesmo quando o certificado está em homologação, para
+  não misturar NSU de teste com documentos reais.
 
 ### Failure cases
 
@@ -181,6 +217,10 @@ Quem só lê não dispara autorização.
 - **FAIL-004**: Timeout ou HTTP da SEFAZ — falha explícita; não
   inventar autorização.
 - **FAIL-005**: CFOP incompatível com UF — recusar antes do envio.
+- **FAIL-006**: Teste de conexão sem certificado ou com certificado
+  vencido — recusar sem chamar a SEFAZ.
+- **FAIL-007**: Status do serviço indisponível ou rejeição da
+  consulta — mostrar o motivo; não inventar sucesso.
 
 ### Non-functional
 
@@ -219,14 +259,17 @@ Quem só lê não dispara autorização.
 - **SC-003**: Nota autorizada aparece em NF-e Emitidas na mesma
   sessão de trabalho após o retorno da SEFAZ.
 - **SC-004**: Viewer não consegue autorizar pelo servidor.
+- **SC-005**: Admin grava Homologação sem reenviar o PFX e o teste
+  de conexão devolve status do serviço sem criar NF-e.
 
 ## Assumptions
 
 - A empresa já emite NF-e modelo 55 e tem certificado A1 no
   QLMED; o emitente (IE, CRT, endereço) sai da última NF-e emitida
   sincronizada.
-- Ambiente (homologação/produção) é o do certificado já
-  configurado.
+- Ambiente de emissão (homologação/produção) é o do certificado e
+  o admin pode trocá-lo sem reenviar o A1. DistDFe operacional
+  continua em produção.
 - Homologação usa o destinatário-padrão exigido pela SEFAZ nesse
   ambiente.
 - Numeração oficial é por série, sequencial, persistida só quando

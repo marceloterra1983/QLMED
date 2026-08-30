@@ -1,33 +1,43 @@
-# Gates: tela profissional de emissão NF-e
+# Gates: seletor de ambiente SEFAZ + StatusServico
 
-Scope: reformar /fiscal/issued/nova no padrão Bling/Conta Azul + grupos MOC 7.0.
+Scope: Admin escolhe Homologação/Produção no certificado e testa conexão com NFeStatusServico4, sem autorizar NF-e.
 
-- [x] G1: Página de emissão tem seções Dados, Itens, Transporte, Pagamento, Complementos e painel de totais
-  CHECK: rg -n "modFrete|tPag|Complementos" "src/app/(painel)/fiscal/issued/nova/page-client.tsx"
-  EXPECT: /modFrete/
-  EVIDENCE: 581:                  <select value={tPag} onChange={(e) => setTPag(e.target.value)} className={FILTER_INPUT_CLS}> | 587:                Valor a informar no XML: <span className="font-bold tabular-num
+- [x] G1: Spec 025 descreve seletor de ambiente e teste sem autorização
+  CHECK: rg -n "AC-013|FR-012|StatusServico|sem autorizar" specs/025-emissao-nota-fiscal/spec.md
+  EXPECT: /AC-013/
+  EVIDENCE: 155:1. **AC-013** — Given um certificado instalado, when o admin | 200:- **FR-012**: Admin MUST poder gravar o ambiente do certificado
 
-- [x] G2: XML de emissão inclui transp, pag e infAdic quando preenchidos
-  CHECK: rg -n "modFrete|detPag|infCpl" src/lib/nfe-emission/xml-builder.ts
-  EXPECT: /modFrete/
-  EVIDENCE: 113:  if (!draft.infCpl && !draft.infAdFisco) return ''; | 115:  const cpl = draft.infCpl ? `<infCpl>${esc(draft.infCpl)}</infCpl>` : '';
+- [x] G2: Mapa MS expõe NFeStatusServico4 em homologação e produção
+  CHECK: npx vitest run src/lib/__tests__/nfe-status-servico.test.ts
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  20:04:16 | Duration  219ms (transform 63ms, setup 0ms, import 118ms, tests 8ms, environment 0ms)
 
-- [x] G3: Schema Zod aceita finalidade, presença, pagamento e transporte
-  CHECK: rg -n "finNFe|indPres|tPag|modFrete" src/lib/nfe-emission/schema.ts
-  EXPECT: /finNFe/
-  EVIDENCE: 37:  modFrete: z.enum(['0', '1', '2', '3', '4', '9']).default('9'), | 58:    tPag: z.string().regex(/^\d{2}$/),
-
-- [x] G4: Testes de XML cobrem pagamento PIX e frete
-  CHECK: npx vitest run src/lib/__tests__/nfe-emission-xml.test.ts --reporter=dot
-  EXPECT: /passed/
-  EVIDENCE: Start at  18:18:23 | Duration  181ms (transform 46ms, setup 0ms, import 74ms, tests 26ms, environment 0ms)
-
-- [x] G5: Typecheck limpo
+- [x] G3: Typecheck
   CHECK: npx tsc --noEmit && echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK
 
-- [x] G6: Suite de testes do repo
-  CHECK: npm test
-  EXPECT: /513 passed/
-  EVIDENCE: Start at  18:18:25 | Duration  2.27s (transform 1.95s, setup 0ms, import 3.78s, tests 4.05s, environment 4ms)
+- [x] G4: Lint
+  CHECK: npm run lint && echo LINT_OK
+  EXPECT: LINT_OK
+  EVIDENCE: > eslint . | LINT_OK
+
+- [x] G5: Validação Spec Kit
+  CHECK: npm run docs:validate && echo DOCS_OK
+  EXPECT: DOCS_OK
+  EVIDENCE: Documentation validation passed (130 Markdown files, 34 IDs). | DOCS_OK
+
+- [x] G6: UI do certificado tem Homologação e Testar conexão
+  CHECK: rg -n "Homologação|Testar conexão" "src/app/(painel)/sistema/settings/components/CertificateSefazPanel.tsx"
+  EXPECT: /Testar conexão/
+  EVIDENCE: 122:        {statusLoading ? 'Consultando SEFAZ...' : 'Testar conexão'} | 144:        message="Produção autoriza NF-e com valor fiscal. Homologação é o ambiente certo para testar a conexão."
+
+- [x] G7: Cliente de status não monta enviNFe nem chama Autorizacao
+  CHECK: bash -c 'rg -n "enviNFe|NFeAutorizacao|authorizeInvoiceEmission" src/lib/nfe-emission/status-servico-client.ts src/app/api/certificate/status-servico/route.ts; test $? -eq 1' && echo NO_AUTORIZACAO
+  EXPECT: NO_AUTORIZACAO
+  EVIDENCE: NO_AUTORIZACAO
+
+- [x] G8: Suite unitária relevante
+  CHECK: npm test -- src/lib/__tests__/nfe-status-servico.test.ts src/lib/__tests__/api-route-guards.test.ts
+  EXPECT: Test Files  2 passed
+  EVIDENCE: Start at  20:04:23 | Duration  181ms (transform 59ms, setup 0ms, import 113ms, tests 14ms, environment 0ms)
