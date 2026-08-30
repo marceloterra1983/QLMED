@@ -3,7 +3,11 @@ import type { ImpcgParseStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money';
 import type { ImpcgParseStatus as DomainParseStatus } from './constants';
-import { describeImpcgParseGap, type ParsedImpcgItem } from './parse-oficio';
+import {
+  computeImpcgParseStatus,
+  describeImpcgParseGap,
+  type ParsedImpcgItem,
+} from './parse-oficio';
 
 export type ImpcgListItem = {
   id: string;
@@ -137,6 +141,91 @@ export async function getImpcgAuthorization(
 
 export async function getImpcgIngestState(companyId: string) {
   return prisma.impcgIngestState.findUnique({ where: { companyId } });
+}
+
+function isBlankPatient(name: string): boolean {
+  return !name.trim() || name.trim().toUpperCase() === 'PACIENTE';
+}
+
+export type ImpcgMissingFieldsPatch = {
+  issuedAt?: Date;
+  patientName?: string;
+  patientRegistry?: string | null;
+  doctorName?: string | null;
+  doctorCrm?: string | null;
+  procedureName?: string | null;
+  hospitalName?: string | null;
+};
+
+/** Só preenche campo ainda vazio — não sobrescreve leitura ok. */
+export async function updateImpcgMissingFields(
+  companyId: string,
+  id: string,
+  patch: ImpcgMissingFieldsPatch,
+): Promise<ImpcgDetailItem | null> {
+  const row = await prisma.impcgAuthorization.findFirst({
+    where: { id, companyId },
+    include: { items: { orderBy: { sortOrder: 'asc' } } },
+  });
+  if (!row) return null;
+
+  const next = {
+    oficioNumber: row.oficioNumber,
+    issuedAt: row.issuedAt,
+    patientName: row.patientName,
+    patientRegistry: row.patientRegistry,
+    doctorName: row.doctorName,
+    doctorCrm: row.doctorCrm,
+    procedureName: row.procedureName,
+    hospitalName: row.hospitalName,
+    totalCents: decimalToCents(row.totalAmount),
+    items: row.items.map((item) => ({
+      anvisaCode: item.anvisaCode,
+      description: item.description,
+      brand: item.brand,
+      reference: item.reference,
+      quantity: new Decimal(item.quantity).toFixed(),
+      unitCents: decimalToCents(item.unitAmount),
+      lineCents: decimalToCents(item.lineTotal),
+    })),
+  };
+
+  if (!row.issuedAt && patch.issuedAt) next.issuedAt = patch.issuedAt;
+  if (isBlankPatient(row.patientName) && patch.patientName?.trim()) {
+    next.patientName = patch.patientName.trim().toUpperCase();
+  }
+  if (!row.patientRegistry && patch.patientRegistry?.trim()) {
+    next.patientRegistry = patch.patientRegistry.trim();
+  }
+  if (!row.doctorName && patch.doctorName?.trim()) {
+    next.doctorName = patch.doctorName.trim().toUpperCase();
+  }
+  if (!row.doctorCrm && patch.doctorCrm?.trim()) {
+    next.doctorCrm = patch.doctorCrm.replace(/\D/g, '') || null;
+  }
+  if (!row.procedureName && patch.procedureName?.trim()) {
+    next.procedureName = patch.procedureName.trim().toUpperCase();
+  }
+  if (!row.hospitalName && patch.hospitalName?.trim()) {
+    next.hospitalName = patch.hospitalName.trim().toUpperCase();
+  }
+
+  const parseStatus = computeImpcgParseStatus(next);
+  await prisma.impcgAuthorization.update({
+    where: { id: row.id },
+    data: {
+      issuedAt: next.issuedAt,
+      patientName: next.patientName,
+      patientRegistry: next.patientRegistry,
+      doctorName: next.doctorName,
+      doctorCrm: next.doctorCrm,
+      procedureName: next.procedureName,
+      hospitalName: next.hospitalName,
+      parseStatus,
+    },
+  });
+
+  return getImpcgAuthorization(companyId, id);
 }
 
 function itemRows(authorizationId: string, items: ParsedImpcgItem[]) {
@@ -287,7 +376,14 @@ export const prismaImpcgStore = {
   async findByOficioNumber(companyId: string, oficioNumber: string) {
     return prisma.impcgAuthorization.findUnique({
       where: { companyId_oficioNumber: { companyId, oficioNumber } },
-      select: { id: true, oficioNumber: true, parseStatus: true, patientName: true, oneDriveItemId: true },
+      select: {
+        id: true,
+        oficioNumber: true,
+        parseStatus: true,
+        patientName: true,
+        oneDriveItemId: true,
+        issuedAt: true,
+      },
     });
   },
   persistConfirmed: persistConfirmedAuthorization,

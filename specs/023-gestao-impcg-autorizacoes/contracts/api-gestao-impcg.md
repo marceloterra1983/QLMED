@@ -15,6 +15,7 @@ Empresa: `getOrCreateSingleCompany(userId)` — nunca do body/query.
   "lastCollectedAt": "2026-08-30T13:00:00.000Z",
   "lastError": null,
   "canSync": false,
+  "canEdit": false,
   "items": [
     {
       "id": "clx...",
@@ -33,7 +34,7 @@ Empresa: `getOrCreateSingleCompany(userId)` — nunca do body/query.
 ```
 
 Ordem: `issuedAt` desc, empate `oficioNumber` desc.
-`canSync`: true se editor ou admin.
+`canSync` e `canEdit`: true se editor ou admin.
 `totalAmount`: string decimal (não number).
 `parseMissingReason`: texto pt-BR derivado (`Faltou: …` / falha /
 `null` se `ok`). Sem coluna nova.
@@ -62,6 +63,7 @@ Estado vazio: `items: []` (AC-004).
   "fileName": "OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR.pdf",
   "parseStatus": "ok",
   "parseMissingReason": null,
+  "canEdit": false,
   "items": [
     {
       "anvisaCode": null,
@@ -77,6 +79,17 @@ Estado vazio: `items: []` (AC-004).
 ```
 
 **404** id de outra empresa ou inexistente (mesmo 404, sem vazar).
+
+## PATCH `/api/gestao/impcg/:id`
+
+**Auth**: editor ou admin + página. Viewer → **403**.
+
+Completa **só** campos ainda vazios. Campo já lido é ignorado.
+`issuedAt` no body: `YYYY-MM-DD` (UTC). Estado de leitura é
+recalculado.
+
+**200** — mesmo JSON do GET detalhe, com `canEdit: true`.
+**400** body inválido. **404** id inexistente / outra empresa.
 
 ## GET `/api/gestao/impcg/:id/arquivo`
 

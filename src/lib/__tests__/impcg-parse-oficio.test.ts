@@ -116,6 +116,45 @@ TOTAL R$ 12.550,00)
     expect(parsed.items).toHaveLength(3);
     expect(parsed.items.map((item) => item.lineCents)).toEqual([650000, 550000, 55000]);
     expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('12550.00');
+    expect(parsed.issuedAt).toBeNull();
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: data');
+  });
+
+  it('lê a data mesmo com OCR trocando O/0 e hífen', () => {
+    const ocr = `
+ORDEM DE FORNECIMENTO Nº 17673
+DATA: 1O/O8/2O23
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MEDICO: RODRIGO LUIZ ROCHA CARDOSO
+CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+KIT VALVULA AORTICA MECANICA SORIN A5 1 6.500,00 6.500,00
+KIT CEC EUROSETS AG5214 1 5.500,00 5.500,00
+KIT CANULAS BIOMEDICAL KITPER 1 550,00 550,00
+TOTAL R$ 12.550,00
+`.trim();
+    const parsed = parseOficio(ocr);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
+    expect(parsed.parseStatus).toBe('ok');
+  });
+
+  it('lê data por extenso (Campo Grande, 10 de agosto de 2023)', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 17673
+Campo Grande, 10 de agosto de 2023
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MEDICO: RODRIGO LUIZ ROCHA CARDOSO
+CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+KIT VALVULA AORTICA MECANICA SORIN A5 1 6.500,00 6.500,00
+KIT CEC EUROSETS AG5214 1 5.500,00 5.500,00
+KIT CANULAS BIOMEDICAL KITPER 1 550,00 550,00
+TOTAL GERAL: 12.550,00
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
   });
 
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {

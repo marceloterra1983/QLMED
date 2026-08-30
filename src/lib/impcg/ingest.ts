@@ -57,6 +57,7 @@ export type ImpcgAuthorizationRow = {
   parseStatus: 'ok' | 'parcial' | 'falha';
   patientName: string;
   oneDriveItemId: string;
+  issuedAt?: Date | null;
 };
 
 export type ImpcgStorePort = {

@@ -39,15 +39,22 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
     }
 
     const prefix = join(dir, 'page');
-    run('pdftoppm', ['-png', '-r', '200', pdfPath, prefix]);
+    // 300 dpi + PSM 6: a data do cabeçalho some em 200 dpi / layout automático.
+    run('pdftoppm', ['-png', '-r', '300', pdfPath, prefix]);
     const pagePath = `${prefix}-1.png`;
     try {
       readFileSync(pagePath);
     } catch {
       return '';
     }
-    const ocr = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1']);
-    return ocr.stdout.trim();
+    const primary = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '6']);
+    const text = primary.stdout.trim();
+    if (/data\s*[:\-]/i.test(text) || /\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{4}/.test(text)) {
+      return text;
+    }
+    const fallback = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '4']);
+    const extra = fallback.stdout.trim();
+    return extra && extra.length > text.length ? `${text}\n${extra}` : text || extra;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

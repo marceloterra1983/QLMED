@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   listImpcgAuthorizations: vi.fn(),
   getImpcgAuthorization: vi.fn(),
+  updateImpcgMissingFields: vi.fn(),
   getImpcgIngestState: vi.fn(),
   oneDriveFindFirst: vi.fn(),
   downloadOneDriveItemContent: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/impcg/store', () => ({
   listImpcgAuthorizations: mocks.listImpcgAuthorizations,
   getImpcgAuthorization: mocks.getImpcgAuthorization,
+  updateImpcgMissingFields: mocks.updateImpcgMissingFields,
   getImpcgIngestState: mocks.getImpcgIngestState,
 }));
 
@@ -66,7 +68,7 @@ vi.mock('@/lib/impcg/ingest', () => ({
 }));
 
 import { GET as getList } from '@/app/api/gestao/impcg/route';
-import { GET as getDetail } from '@/app/api/gestao/impcg/[id]/route';
+import { GET as getDetail, PATCH as patchDetail } from '@/app/api/gestao/impcg/[id]/route';
 import { GET as getArquivo } from '@/app/api/gestao/impcg/[id]/arquivo/route';
 
 const PAGE = '/gestao/impcg';
@@ -163,6 +165,7 @@ describe('IMPCG ACL (AC-003, AC-012)', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.canSync).toBe(true);
+      expect(body.canEdit).toBe(true);
       expect(body.items).toEqual([]);
     });
 
@@ -222,6 +225,67 @@ describe('IMPCG ACL (AC-003, AC-012)', () => {
       const res = await POST();
       expect(res.status).toBe(200);
       expect(mocks.runImpcgIngest).toHaveBeenCalledWith('company-1');
+    });
+  });
+
+  describe('PATCH missing fields', () => {
+    function invokePatch(id: string, body: Record<string, string>) {
+      return patchDetail(
+        new Request(`http://localhost/api/gestao/impcg/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+        { params: Promise.resolve({ id }) },
+      );
+    }
+
+    it('forbids viewer PATCH', async () => {
+      mocks.requireAuth.mockResolvedValue('user-viewer');
+      mocks.userFindUnique.mockResolvedValue({
+        role: 'viewer',
+        allowedPages: [PAGE],
+      });
+
+      const res = await invokePatch('clx1', { issuedAt: '2023-08-10' });
+      expect(res.status).toBe(403);
+      expect(mocks.updateImpcgMissingFields).not.toHaveBeenCalled();
+    });
+
+    it('lets editor fill the missing date', async () => {
+      mocks.requireAuth.mockResolvedValue('user-editor');
+      mocks.userFindUnique.mockResolvedValue({
+        role: 'editor',
+        allowedPages: [PAGE],
+      });
+      mocks.updateImpcgMissingFields.mockResolvedValue({
+        id: 'clx1',
+        issuedAt: '2023-08-10T00:00:00.000Z',
+        oficioNumber: '17673',
+        patientName: 'PLINIO ANTONIO ARANHA JUNIOR',
+        patientRegistry: '66429737-4',
+        doctorName: 'RODRIGO LUIZ ROCHA CARDOSO',
+        doctorCrm: '13716',
+        procedureName: 'TROCA VALVAR',
+        hospitalName: 'HOSPITAL PRONCOR',
+        totalAmount: '12550.00',
+        fileName: 'OFICIO 17673.pdf',
+        parseStatus: 'ok',
+        parseMissingReason: null,
+        oneDriveItemId: 'item-1',
+        items: [],
+      });
+
+      const res = await invokePatch('clx1', { issuedAt: '2023-08-10' });
+      expect(res.status).toBe(200);
+      const payload = await res.json();
+      expect(payload.parseStatus).toBe('ok');
+      expect(payload.issuedAt).toBe('2023-08-10T00:00:00.000Z');
+      expect(mocks.updateImpcgMissingFields).toHaveBeenCalledWith(
+        'company-1',
+        'clx1',
+        expect.objectContaining({ issuedAt: new Date('2023-08-10T00:00:00.000Z') }),
+      );
     });
   });
 });

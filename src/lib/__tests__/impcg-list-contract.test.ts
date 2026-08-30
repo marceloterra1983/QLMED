@@ -81,6 +81,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
     expect(body.lastCollectedAt).toBeNull();
     expect(body.lastError).toBeNull();
     expect(body.canSync).toBe(true);
+    expect(body.canEdit).toBe(true);
     expect(body).not.toHaveProperty('companyId');
     expect(JSON.stringify(body)).not.toContain('companyId');
   });

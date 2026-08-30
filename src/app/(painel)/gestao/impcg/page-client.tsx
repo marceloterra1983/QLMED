@@ -26,6 +26,7 @@ type ImpcgDetail = ImpcgListItem & {
   patientRegistry: string | null;
   doctorCrm: string | null;
   procedureName: string | null;
+  canEdit?: boolean;
   items: Array<{
     anvisaCode: string | null;
     description: string;
@@ -41,6 +42,7 @@ type ListPayload = {
   lastCollectedAt: string | null;
   lastError: string | null;
   canSync: boolean;
+  canEdit?: boolean;
   items: ImpcgListItem[];
 };
 
@@ -87,6 +89,13 @@ export default function ImpcgPageClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ImpcgDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [issuedAtDraft, setIssuedAtDraft] = useState('');
+  const [patientDraft, setPatientDraft] = useState('');
+  const [doctorDraft, setDoctorDraft] = useState('');
+  const [crmDraft, setCrmDraft] = useState('');
+  const [procedureDraft, setProcedureDraft] = useState('');
+  const [hospitalDraft, setHospitalDraft] = useState('');
 
   const loadList = useCallback(async () => {
     const res = await fetch('/api/gestao/impcg');
@@ -122,7 +131,15 @@ export default function ImpcgPageClient() {
         return res.json();
       })
       .then((payload: ImpcgDetail) => {
-        if (!cancelled) setDetail(payload);
+        if (!cancelled) {
+          setDetail(payload);
+          setIssuedAtDraft('');
+          setPatientDraft('');
+          setDoctorDraft('');
+          setCrmDraft('');
+          setProcedureDraft('');
+          setHospitalDraft('');
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error('Erro ao abrir a autorização');
@@ -134,6 +151,47 @@ export default function ImpcgPageClient() {
       cancelled = true;
     };
   }, [selectedId]);
+
+  async function handleSaveMissing() {
+    if (!detail?.canEdit || !selectedId) return;
+    const body: Record<string, string> = {};
+    if (!detail.issuedAt && issuedAtDraft) body.issuedAt = issuedAtDraft;
+    if ((!detail.patientName || detail.patientName === 'PACIENTE') && patientDraft.trim()) {
+      body.patientName = patientDraft.trim();
+    }
+    if (!detail.doctorName && doctorDraft.trim()) body.doctorName = doctorDraft.trim();
+    if (!detail.doctorCrm && crmDraft.trim()) body.doctorCrm = crmDraft.trim();
+    if (!detail.procedureName && procedureDraft.trim()) body.procedureName = procedureDraft.trim();
+    if (!detail.hospitalName && hospitalDraft.trim()) body.hospitalName = hospitalDraft.trim();
+    if (Object.keys(body).length === 0) {
+      toast.error('Preencha ao menos um campo que faltou');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/gestao/impcg/${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 403) {
+        toast.error('Sem permissão para editar');
+        return;
+      }
+      if (!res.ok) {
+        toast.error('Não foi possível salvar');
+        return;
+      }
+      const payload = (await res.json()) as ImpcgDetail;
+      setDetail(payload);
+      await loadList();
+      toast.success('Campos atualizados');
+    } catch {
+      toast.error('Erro de rede ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSync() {
     if (!data?.canSync) return;
@@ -353,6 +411,98 @@ export default function ImpcgPageClient() {
                 </dd>
               </div>
             </dl>
+
+            {detail.canEdit && detail.parseStatus !== 'ok' && (
+              !detail.issuedAt
+              || !detail.patientName
+              || detail.patientName === 'PACIENTE'
+              || !detail.doctorName
+              || !detail.doctorCrm
+              || !detail.procedureName
+              || !detail.hospitalName
+            ) && (
+              <form
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSaveMissing();
+                }}
+              >
+                <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Completar o que faltou
+                </p>
+                {!detail.issuedAt && (
+                  <label className="text-sm">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Data</span>
+                    <input
+                      type="date"
+                      value={issuedAtDraft}
+                      onChange={(event) => setIssuedAtDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                {(!detail.patientName || detail.patientName === 'PACIENTE') && (
+                  <label className="text-sm">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Paciente</span>
+                    <input
+                      value={patientDraft}
+                      onChange={(event) => setPatientDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                {!detail.doctorName && (
+                  <label className="text-sm">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Médico</span>
+                    <input
+                      value={doctorDraft}
+                      onChange={(event) => setDoctorDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                {!detail.doctorCrm && (
+                  <label className="text-sm">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">CRM</span>
+                    <input
+                      value={crmDraft}
+                      onChange={(event) => setCrmDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                {!detail.procedureName && (
+                  <label className="text-sm sm:col-span-2">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Procedimento</span>
+                    <input
+                      value={procedureDraft}
+                      onChange={(event) => setProcedureDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                {!detail.hospitalName && (
+                  <label className="text-sm">
+                    <span className="block text-xs font-bold uppercase text-slate-400 mb-1">Hospital</span>
+                    <input
+                      value={hospitalDraft}
+                      onChange={(event) => setHospitalDraft(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                    />
+                  </label>
+                )}
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-50"
+                  >
+                    {saving ? 'Salvando…' : 'Salvar campos'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
               <table className="w-full text-left text-sm">
