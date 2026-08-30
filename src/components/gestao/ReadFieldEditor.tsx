@@ -25,7 +25,7 @@ export default function ReadFieldEditor({
 
   return (
     <div>
-      <dt className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <dt className="flex items-center gap-0.5 text-xs font-bold uppercase tracking-wider text-slate-400">
         <span>{label}</span>
         {edited ? (
           <span className="normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
@@ -36,11 +36,16 @@ export default function ReadFieldEditor({
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
-            className="p-0.5 rounded text-slate-300/70 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+            className="inline-flex items-center p-0 rounded text-slate-300/60 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
             aria-label={`Editar ${label}`}
             title={`Editar ${label}`}
           >
-            <span className="material-symbols-outlined text-[13px] leading-none">edit</span>
+            <span
+              className="material-symbols-outlined leading-none"
+              style={{ fontSize: 11, width: 11, height: 11 }}
+            >
+              edit
+            </span>
           </button>
         ) : null}
       </dt>
