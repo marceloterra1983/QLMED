@@ -1,6 +1,6 @@
 ---
 id: SPEC-023
-status: planned
+status: implemented
 owner: QLMED
 related_decisions:
   - ADR-0001
@@ -18,7 +18,7 @@ affected_modules:
 
 **Created**: 2026-08-30
 
-**Status**: Planned
+**Status**: Implemented
 
 **Input**: Novo grupo **Gestão** no menu, página **IMPCG**. O cliente
 Instituto Municipal de Previdência de Campo Grande envia ordem de

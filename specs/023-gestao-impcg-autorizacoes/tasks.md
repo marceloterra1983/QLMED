@@ -116,8 +116,10 @@ POST; cabeçalho mostra `lastCollectedAt`
 
 ## Phase 6: Polish
 
-- [ ] T032 Run `npm run docs:validate`, `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run db:migrate:verify`, `npm run db:reconcile:verify` and record evidence
-- [ ] T033 [P] `graphify update` on the worktree after code changes
+- [x] T032 Run `npm run docs:validate`, `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run db:migrate:verify`, `npm run db:reconcile:verify` and record evidence
+  Evidence 2026-08-30: docs 117 files/32 IDs; tsc-ok; eslint exit 0; vitest 60 passed / 3 skipped, 418 passed / 4 skipped (2.28s); migrate verify applied `20260830120000_add_impcg_authorization` then “No difference detected”; reconcile verify “No difference detected”. SHA migration.sql = `9fd07f6790362c64811f87d35ac5c5d36a60b7491b2666414332612bb7d55933`.
+- [x] T033 [P] `graphify update` on the worktree after code changes
+  Evidence 2026-08-30: `graphify update .` no worktree → 4306 nodes, 8784 edges, 364 communities.
 - [ ] T034 Confirm quickstart.md scenarios against the running app (lista, popup, 403)
 
 ---
