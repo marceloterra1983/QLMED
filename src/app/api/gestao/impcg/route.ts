@@ -7,7 +7,7 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('gestao/impcg');
 
-export async function GET(_req?: Request) {
+export async function GET(_req: Request) {
   try {
     await requireAuth();
   } catch (error) {
