@@ -227,10 +227,10 @@ importa o arquivo da pasta.
   local de execução, itens aprovados e valor total com desconto.
   Dinheiro MUST ser inteiro em centavos (ou decimal de dinheiro),
   nunca fração binária. Documento ilegível segue FAIL-003.
-- **FR-007**: A lista MUST mostrar data, número, paciente,
-  prestador, hospital, total em reais e ação de arquivo. No card
-  compacto/celular MUST mostrar paciente, local e médico e MUST NOT
-  mostrar o valor. Itens e PDF no popup.
+- **FR-007**: A lista MUST mostrar data, número, paciente (com o
+  hospital embaixo, contraste sutil), prestador, total em reais e
+  ação de arquivo. No card compacto/celular MUST mostrar paciente,
+  local e médico e MUST NOT mostrar o valor. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
   linha sem impedir abrir o PDF. Parcial MUST mostrar, na lista e
   no cabeçalho do popup, o que faltou (campos vazios ou soma das

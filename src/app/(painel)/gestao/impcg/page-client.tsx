@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
+import GestaoPatientHospital from '@/components/gestao/GestaoPatientHospital';
 import ReadFieldEditor, { readFieldInputClass } from '@/components/gestao/ReadFieldEditor';
 import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { isOficioFieldEdited } from '@/lib/gestao-oficio-edits';
@@ -282,12 +283,12 @@ export default function ImpcgPageClient() {
                     {formatDocumentDate(item.issuedAt)}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate mt-1">
-                  {item.patientName}
-                </p>
-                <p className="text-xs text-slate-500 truncate mt-1">
-                  {item.hospitalName || '—'}
-                </p>
+                <div className="mt-1">
+                  <GestaoPatientHospital
+                    patientName={item.patientName}
+                    hospitalName={item.hospitalName}
+                  />
+                </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <p className="text-xs text-slate-500 truncate">
                     {item.doctorName || '—'}
@@ -308,7 +309,6 @@ export default function ImpcgPageClient() {
                     <th className="px-4 py-3">Nº</th>
                     <th className="px-4 py-3">Paciente</th>
                     <th className="px-4 py-3">Médico</th>
-                    <th className="px-4 py-3">Hospital</th>
                     <th className="px-4 py-3 text-right">Total</th>
                     <th className="px-4 py-3 text-center">Arquivo</th>
                   </tr>
@@ -329,9 +329,13 @@ export default function ImpcgPageClient() {
                           <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm">{item.patientName}</td>
+                      <td className="px-4 py-3">
+                        <GestaoPatientHospital
+                          patientName={item.patientName}
+                          hospitalName={item.hospitalName}
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm">{item.doctorName || '—'}</td>
-                      <td className="px-4 py-3 text-sm">{item.hospitalName || '—'}</td>
                       <td className="px-4 py-3 text-sm font-mono font-bold text-right">
                         {formatBrl(item.totalAmount)}
                       </td>
