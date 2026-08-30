@@ -111,6 +111,23 @@ autoriza ou devolve o motivo da rejeição na própria tela.
    o rascunho permanece editável e o número oficial não é
    consumido se a SEFAZ não autorizou a numeração.
 
+### User Story 5 — Tela completa no padrão de emissor (Priority: P1)
+
+Como editor, preencho a nota em seções (dados, itens, transporte,
+pagamento e complementos) com painel de totais e pendências, no
+mesmo recorte que Bling/Conta Azul e os grupos do MOC 7.0
+(`ide`, `dest`, `det`, `transp`, `pag`, `total`, `infAdic`).
+
+**Acceptance Scenarios**:
+
+1. **AC-011** — Given a tela Nova NF-e, when o operador navega,
+   then vê abas Dados, Itens, Transporte, Pagamento e Complementos
+   e um resumo com produtos, desconto, frete, seguro, outras e
+   total.
+2. **AC-012** — Given frete, PIX e texto complementar preenchidos,
+   when o XML é gerado, then constam `modFrete`, `tPag`, `vFrete`
+   e `infCpl` / `infAdFisco`.
+
 ### User Story 4 — Viewer não envia (Priority: P2)
 
 Quem só lê não dispara autorização.
@@ -151,6 +168,10 @@ Quem só lê não dispara autorização.
 - **FR-010**: Sem certificado válido, emitente incompleto ou
   endereço do destinatário incompleto, o envio MUST falhar com
   mensagem acionável, sem chamar a SEFAZ.
+- **FR-011**: O formulário MUST cobrir finalidade, presença,
+  transporte (`modFrete`, volumes, transportadora), pagamento
+  (`tPag`/`indPag`) e informações adicionais, persistidos no
+  rascunho e emitidos no XML.
 
 ### Failure cases
 

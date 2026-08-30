@@ -30,9 +30,11 @@ function sampleDraft(over: Partial<NfeEmissionDraft> = {}): NfeEmissionDraft {
     series: '1',
     number: '8',
     issueDate,
+    finNFe: '1',
     indFinal: '1',
     indPres: '1',
     tpAmb: '2',
+    modFrete: '9',
     accessKey,
     emit: {
       cnpj: '12345678000199',
@@ -72,6 +74,21 @@ describe('nfe xml builder', () => {
     expect(xml).toContain('NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO');
     expect(xml).toContain('<vNF>20.01</vNF>');
     expect(xml).toContain('<mod>55</mod>');
+    expect(xml).toContain('<modFrete>9</modFrete>');
+  });
+
+  it('grava pagamento PIX, frete e informações complementares', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      vFrete: '5.00',
+      pag: { indPag: '0', tPag: '17', vPag: '25.01' },
+      infCpl: 'Pedido 88',
+      infAdFisco: 'Texto fisco',
+    }));
+    expect(xml).toContain('<tPag>17</tPag>');
+    expect(xml).toContain('<vFrete>5.00</vFrete>');
+    expect(xml).toContain('<vNF>25.01</vNF>');
+    expect(xml).toContain('<infCpl>Pedido 88</infCpl>');
+    expect(xml).toContain('<infAdFisco>Texto fisco</infAdFisco>');
   });
 
   it('assina o XML com A1 de teste', () => {

@@ -14,7 +14,7 @@ import { emitenteFromIssuedXml } from './emitente';
 import { destinatarioFromIssuedXml, mergeDestinatario } from './destinatario';
 import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
 import { nfeEmissionPayloadSchema } from './schema';
-import { buildUnsignedNfeXml, draftTotalValue } from './xml-builder';
+import { buildUnsignedNfeXml, draftDocumentTotal } from './xml-builder';
 import { signNfeXml } from './xml-sign';
 import type { NfeEmissionItem } from './types';
 
@@ -79,6 +79,7 @@ export async function authorizeInvoiceEmission(
 
   const issueDate = new Date();
   const op = getSaidaOperation(payload.cfop);
+  const extras = { vFrete: payload.vFrete, vSeg: payload.vSeg, vOutro: payload.vOutro };
   const numbered = await prisma.$transaction(async (tx) => {
     await acquirePostgresTransactionAdvisoryLock(tx, nfeEmissionLockKey(companyId));
     const existing = await tx.invoice.findMany({
@@ -106,6 +107,7 @@ export async function authorizeInvoiceEmission(
       series: payload.series,
       number,
       issueDate,
+      finNFe: payload.finNFe,
       indFinal: payload.indFinal,
       indPres: payload.indPres,
       tpAmb,
@@ -113,7 +115,15 @@ export async function authorizeInvoiceEmission(
       emit,
       dest,
       items,
-      infCpl: op?.tag,
+      modFrete: payload.modFrete,
+      vFrete: payload.vFrete,
+      vSeg: payload.vSeg,
+      vOutro: payload.vOutro,
+      transporta: payload.transporta,
+      volume: payload.volume,
+      pag: payload.pag,
+      infCpl: [payload.infCpl, op?.tag].filter(Boolean).join(' — ') || undefined,
+      infAdFisco: payload.infAdFisco,
     });
     const signed = signNfeXml(unsigned, pems.key, pems.cert);
     await tx.invoiceEmission.update({
@@ -124,7 +134,7 @@ export async function authorizeInvoiceEmission(
         accessKey,
         destName: dest.xNome,
         destCnpj,
-        totalValue: new Prisma.Decimal(draftTotalValue(items)),
+        totalValue: new Prisma.Decimal(draftDocumentTotal(items, extras)),
         signedXml: signed,
       },
     });
@@ -182,7 +192,7 @@ export async function authorizeInvoiceEmission(
       senderName: emit.xNome,
       recipientCnpj: dest.cnpj,
       recipientName: dest.xNome,
-      totalValue: new Prisma.Decimal(draftTotalValue(items)),
+      totalValue: new Prisma.Decimal(draftDocumentTotal(items, extras)),
       status: 'received',
       cfop: payload.cfop,
       xmlContent: xml,

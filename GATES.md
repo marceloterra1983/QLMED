@@ -1,33 +1,33 @@
-# Gates: emissão manual NF-e com envio SEFAZ
+# Gates: tela profissional de emissão NF-e
 
-Scope: Página de emissão com todas as operações de saída, destinatário só cliente PJ cadastrado, e envio à SEFAZ na primeira entrega.
+Scope: reformar /fiscal/issued/nova no padrão Bling/Conta Azul + grupos MOC 7.0.
 
-- [x] G1: SPEC-025 descreve todas as saídas, PJ cadastrado e envio SEFAZ
-  CHECK: rg -q "FR-001" specs/025-emissao-nota-fiscal/spec.md && rg -q "cliente PJ" specs/025-emissao-nota-fiscal/spec.md && rg -q "SEFAZ" specs/025-emissao-nota-fiscal/spec.md && echo SPEC-025
-  EXPECT: SPEC-025
-  EVIDENCE: SPEC-025
+- [x] G1: Página de emissão tem seções Dados, Itens, Transporte, Pagamento, Complementos e painel de totais
+  CHECK: rg -n "modFrete|tPag|Complementos" "src/app/(painel)/fiscal/issued/nova/page-client.tsx"
+  EXPECT: /modFrete/
+  EVIDENCE: 581:                  <select value={tPag} onChange={(e) => setTPag(e.target.value)} className={FILTER_INPUT_CLS}> | 587:                Valor a informar no XML: <span className="font-bold tabular-num
 
-- [x] G2: Testes de chave, XML, destinatário PJ e CFOP de saída passam
-  CHECK: npx vitest run src/lib/__tests__/nfe-emission-access-key.test.ts src/lib/__tests__/nfe-emission-xml.test.ts src/lib/__tests__/nfe-emission-authorize.test.ts src/lib/__tests__/nfe-emission-operations.test.ts
-  EXPECT: Test Files  4 passed
-  EVIDENCE: Start at  17:48:29 | Duration  208ms (transform 141ms, setup 0ms, import 253ms, tests 41ms, environment 1ms)
+- [x] G2: XML de emissão inclui transp, pag e infAdic quando preenchidos
+  CHECK: rg -n "modFrete|detPag|infCpl" src/lib/nfe-emission/xml-builder.ts
+  EXPECT: /modFrete/
+  EVIDENCE: 113:  if (!draft.infCpl && !draft.infAdFisco) return ''; | 115:  const cpl = draft.infCpl ? `<infCpl>${esc(draft.infCpl)}</infCpl>` : '';
 
-- [x] G3: Typecheck
-  CHECK: npx tsc --noEmit
-  EXPECT: /.*/
-  EVIDENCE: (no output)
+- [x] G3: Schema Zod aceita finalidade, presença, pagamento e transporte
+  CHECK: rg -n "finNFe|indPres|tPag|modFrete" src/lib/nfe-emission/schema.ts
+  EXPECT: /finNFe/
+  EVIDENCE: 37:  modFrete: z.enum(['0', '1', '2', '3', '4', '9']).default('9'), | 58:    tPag: z.string().regex(/^\d{2}$/),
 
-- [x] G4: Lint
-  CHECK: npm run lint
-  EXPECT: /.*/
-  EVIDENCE: > qlmed@0.1.0 lint | > eslint .
+- [x] G4: Testes de XML cobrem pagamento PIX e frete
+  CHECK: npx vitest run src/lib/__tests__/nfe-emission-xml.test.ts --reporter=dot
+  EXPECT: /passed/
+  EVIDENCE: Start at  18:18:23 | Duration  181ms (transform 46ms, setup 0ms, import 74ms, tests 26ms, environment 0ms)
 
-- [x] G5: Página /fiscal/issued/nova e rota de autorização existem
-  CHECK: test -f src/app/\(painel\)/fiscal/issued/nova/page-client.tsx && test -f src/app/api/nfe-emissions/\[id\]/authorize/route.ts && echo routes-ok
-  EXPECT: routes-ok
-  EVIDENCE: routes-ok
+- [x] G5: Typecheck limpo
+  CHECK: npx tsc --noEmit && echo TSC_OK
+  EXPECT: TSC_OK
+  EVIDENCE: TSC_OK
 
-- [x] G6: docs:validate
-  CHECK: npm run docs:validate
-  EXPECT: /valid|ok|passed|0 error/i
-  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (130 Markdown files, 34 IDs).
+- [x] G6: Suite de testes do repo
+  CHECK: npm test
+  EXPECT: /513 passed/
+  EVIDENCE: Start at  18:18:25 | Duration  2.27s (transform 1.95s, setup 0ms, import 3.78s, tests 4.05s, environment 4ms)
