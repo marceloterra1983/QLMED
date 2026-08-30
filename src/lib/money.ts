@@ -20,3 +20,23 @@ export function addMoney(a: number, b: number): number {
 export function sumMoney(values: number[]): number {
   return values.reduce((sum, value) => addMoney(sum, value), 0);
 }
+
+/** Parser IMPCG trabalha em centavos inteiros; persistência é Decimal. */
+export function centsToDecimal(cents: number): Decimal {
+  if (!Number.isInteger(cents)) {
+    throw new Error('cents must be an integer');
+  }
+  return new Decimal(cents).dividedBy(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+}
+
+export function formatMoneyDecimal(value: Decimal): string {
+  return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+}
+
+export function decimalToCents(value: Decimal): number {
+  return new Decimal(value)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+    .mul(100)
+    .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+    .toNumber();
+}

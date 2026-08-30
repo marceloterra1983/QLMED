@@ -1,4 +1,4 @@
-export type BackgroundServiceName = 'auto-sync' | 'local-xml-sync';
+export type BackgroundServiceName = 'auto-sync' | 'local-xml-sync' | 'impcg-mail-ingest';
 
 export interface BackgroundServiceStatus {
   status: 'running' | 'disabled' | 'error';
