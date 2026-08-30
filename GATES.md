@@ -1,24 +1,20 @@
-# Gates: IMPCG data OCR + edição de campos faltantes
+# Gates: data do ofício no popup IMPCG
 
-Scope: Ler a data do ofício mesmo com OCR ruidoso; se o campo
-continuar vazio, editor preenche na tela. Motivo do parcial já na frente.
+Scope: O popup de Gestão → IMPCG mostra a data do ofício no
+cabeçalho (não só na tabela). Data UTC meia-noite não vira o dia
+anterior no fuso de Brasília.
 
-- [x] G1: Parser lê data com OCR ruidoso (O/0, hífen, por extenso)
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-parse-parcial-motivo && npx vitest run src/lib/__tests__/impcg-parse-oficio.test.ts --reporter=dot
-  EXPECT: Tests  10 passed
-  EVIDENCE: Start at  11:58:45 | Duration  219ms (transform 58ms, setup 0ms, import 75ms, tests 11ms, environment 0ms)
+- [ ] G1: Popup IMPCG tem o campo Data no cabeçalho
+  CHECK: rg -n "tracking-wider text-slate-400\">Data</dt>" /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data/src/app/\(painel\)/gestao/impcg/page-client.tsx
+  EXPECT: Data</dt>
+  EVIDENCE: pending
 
-- [x] G2: Fixture 17673 continua ok; parcial ainda descreve o que faltou
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-parse-parcial-motivo && npx vitest run src/lib/__tests__/impcg-parse-oficio.test.ts src/lib/__tests__/impcg-list-contract.test.ts --reporter=dot
-  EXPECT: Tests  14 passed
-  EVIDENCE: Start at  11:58:46 | Duration  346ms (transform 165ms, setup 0ms, import 269ms, tests 24ms, environment 0ms)
+- [ ] G2: formatDocumentDate formata 2023-08-10T00:00:00.000Z como 10/08/2023
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data && npx vitest run src/lib/__tests__/format-document-date.test.ts --reporter=dot
+  EXPECT: Tests  3 passed
+  EVIDENCE: pending
 
-- [x] G3: Viewer PATCH 403; editor preenche data e o status pode virar ok
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-parse-parcial-motivo && npx vitest run src/lib/__tests__/impcg-acl.test.ts --reporter=dot
-  EXPECT: Tests  12 passed
-  EVIDENCE: Start at  11:58:47 | Duration  349ms (transform 111ms, setup 0ms, import 201ms, tests 25ms, environment 0ms)
-
-- [x] G4: Typecheck
-  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-parse-parcial-motivo && npx tsc --noEmit && echo tsc_ok
+- [ ] G3: Typecheck
+  CHECK: cd /home/marce/qlmed/app/.worktrees/fix-impcg-popup-data && npx tsc --noEmit && echo tsc_ok
   EXPECT: tsc_ok
-  EVIDENCE: tsc_ok
+  EVIDENCE: pending
