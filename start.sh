@@ -24,11 +24,10 @@ esac
 node scripts/validate-database-config.mjs
 
 echo "Running database migrations..."
+# Forward-only. Do not run `migrate diff --exit-code` here: image rollback after
+# an expand migration is expected to see extra tables (the workflow does not
+# undo DDL). Deploy-production.yml already gates drift before `up`.
 node node_modules/prisma/build/index.js migrate deploy
-node node_modules/prisma/build/index.js migrate diff \
-  --from-config-datasource \
-  --to-schema prisma/schema.prisma \
-  --exit-code
 
 if [ "${QLMED_REQUIRE_NONEMPTY_DB:-false}" = "true" ]; then
   echo "Running production database sanity check..."

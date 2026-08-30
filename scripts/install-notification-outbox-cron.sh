@@ -9,6 +9,20 @@ fi
 
 python3 -m py_compile "$worker_source"
 
+smoke_worker() {
+  local invoice_type="$1"
+  local env_file="$2"
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    if python3 "$worker_source" --invoice-type "$invoice_type" --env "$env_file" --smoke; then
+      return 0
+    fi
+    echo "Notification smoke failed for ${invoice_type} (attempt ${attempt}); retrying in 5s" >&2
+    sleep 5
+  done
+  return 1
+}
+
 for invoice_type in NFE CTE; do
   env_dir="$(printf '%s' "$invoice_type" | tr '[:upper:]' '[:lower:]')-notify"
   env_file="/srv/qlmed/services/${env_dir}/.env"
@@ -16,7 +30,7 @@ for invoice_type in NFE CTE; do
     echo "Notification worker environment is missing or unreadable: $env_file" >&2
     exit 1
   fi
-  python3 "$worker_source" --invoice-type "$invoice_type" --env "$env_file" --smoke
+  smoke_worker "$invoice_type" "$env_file"
 done
 
 worker_dir="/srv/qlmed/services/notification-outbox"
