@@ -87,11 +87,18 @@ function extractPatientFromSubject(subject: string): string | null {
 function parseItems(text: string): ParsedImpcgItem[] {
   const items: ParsedImpcgItem[] = [];
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+/g, ' ').trim();
-    if (!line || /total\s+geral/i.test(line) || /descric/i.test(line) || /itens\s+aprovad/i.test(line)) {
+    const line = rawLine
+      .replace(/[|]/g, ' ')
+      .replace(/R\$/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!line || /total(?:\s+geral)?/i.test(line) || /itens\s+aprovad/i.test(line)) {
       continue;
     }
-    const amounts = [...line.matchAll(new RegExp(BRL_MONEY, 'g'))];
+    if (/anvisa|descri/i.test(line) && (line.match(new RegExp(BRL_MONEY.source, 'g'))?.length ?? 0) < 2) {
+      continue;
+    }
+    const amounts = [...line.matchAll(new RegExp(BRL_MONEY.source, 'g'))];
     if (amounts.length < 2) continue;
     const unitRaw = `${amounts[amounts.length - 2][1]},${amounts[amounts.length - 2][2]}`;
     const lineRaw = `${amounts[amounts.length - 1][1]},${amounts[amounts.length - 1][2]}`;
@@ -103,7 +110,11 @@ function parseItems(text: string): ParsedImpcgItem[] {
     const qtyMatch = /(\d+)\s*$/.exec(beforeMoney);
     if (!qtyMatch) continue;
     const quantity = qtyMatch[1];
-    const head = beforeMoney.slice(0, qtyMatch.index).trim();
+    let head = beforeMoney.slice(0, qtyMatch.index).trim();
+    head = head.replace(/^\d{1,3}\s+/, '');
+    const anvisaMatch = /^(\d{8,})\s+/.exec(head);
+    const anvisaCode = anvisaMatch?.[1] ?? null;
+    if (anvisaMatch) head = head.slice(anvisaMatch[0].length).trim();
     const parts = head.split(' ').filter(Boolean);
     if (parts.length < 3) continue;
 
@@ -113,7 +124,7 @@ function parseItems(text: string): ParsedImpcgItem[] {
     if (!description) continue;
 
     items.push({
-      anvisaCode: null,
+      anvisaCode,
       description: description.toUpperCase(),
       brand: normalizeName(brand),
       reference,
@@ -166,12 +177,13 @@ export function parseOficio(text: string, subject = ''): ParsedImpcgOficio {
   const subjectPatient = extractPatientFromSubject(subject);
   const patientName = documentPatient || subjectPatient || 'PACIENTE';
   const patientRegistry = labeledValue(text, /matr[ií]cula\s*:\s*([^\n]+)/i);
-  const doctorName = normalizeName(labeledValue(text, /m[eé]dico\s*:\s*([^\n]+)/i));
+  const doctorRaw = labeledValue(text, /m[eé]dico\s*:\s*([^\n]+)/i);
+  const doctorName = normalizeName(doctorRaw?.replace(/\s+crm\b[\s:]*.*$/i, '') ?? null);
   const doctorCrm = (labeledValue(text, /crm\s*:\s*([^\n]+)/i) || '').replace(/\D/g, '') || null;
   const procedureName = normalizeName(labeledValue(text, /procedimento\s*:\s*([^\n]+)/i));
   const hospitalRaw = labeledValue(text, /(?:local\s+de\s+entrega|hospital)\s*:\s*([^\n]+)/i);
   const hospitalName = normalizeName(hospitalRaw);
-  const totalMatch = /total\s+geral\s*:\s*([0-9.]+\s*,\s*\d{2})/i.exec(haystack);
+  const totalMatch = /total(?:\s+geral)?\s*:?\s*(?:r\$)?\s*([0-9.]+\s*,\s*\d{2})/i.exec(haystack);
   const totalCents = totalMatch ? parseBrlToCents(totalMatch[1].replace(/\s/g, '')) : null;
   const items = parseItems(text);
 
