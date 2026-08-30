@@ -161,6 +161,48 @@ function resolveStatus(parsed: Omit<ParsedImpcgOficio, 'parseStatus'>): ImpcgPar
   return 'parcial';
 }
 
+export type ImpcgParseGapInput = {
+  parseStatus: ImpcgParseStatus;
+  oficioNumber: string | null;
+  issuedAt: Date | string | null;
+  patientName: string;
+  doctorName: string | null;
+  doctorCrm: string | null;
+  procedureName: string | null;
+  hospitalName: string | null;
+  totalCents: number | null;
+  items: Array<{ lineCents: number }>;
+};
+
+/** Texto pt-BR do que faltou. Derivado só dos nulos/inconsistências — sem campo inventado. */
+export function describeImpcgParseGap(input: ImpcgParseGapInput): string | null {
+  if (input.parseStatus === 'ok') return null;
+  if (input.parseStatus === 'falha') return 'Não foi possível ler o documento';
+
+  const missing: string[] = [];
+  const patient = input.patientName.trim();
+  if (!patient || patient.toUpperCase() === 'PACIENTE') missing.push('paciente');
+  if (!input.doctorName) missing.push('médico');
+  if (!input.doctorCrm) missing.push('CRM');
+  if (!input.procedureName) missing.push('procedimento');
+  if (!input.hospitalName) missing.push('hospital');
+  if (!input.issuedAt) missing.push('data');
+  if (!input.oficioNumber) missing.push('número');
+  if (input.items.length === 0) missing.push('nenhum item');
+
+  const itemSum = input.items.reduce((sum, item) => sum + item.lineCents, 0);
+  if (
+    input.totalCents !== null
+    && input.items.length > 0
+    && itemSum !== input.totalCents
+  ) {
+    missing.push('soma dos itens ≠ total');
+  }
+
+  if (missing.length === 0) return null;
+  return `Faltou: ${missing.join(', ')}`;
+}
+
 export function parseRank(status: ImpcgParseStatus): number {
   return IMPCG_PARSE_RANK[status];
 }

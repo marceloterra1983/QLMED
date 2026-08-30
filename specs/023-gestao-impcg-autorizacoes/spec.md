@@ -217,7 +217,11 @@ importa o arquivo da pasta.
 - **FR-007**: A lista MUST mostrar data, número, paciente, médico,
   hospital, total em reais e ação de arquivo. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
-  linha sem impedir abrir o PDF.
+  linha sem impedir abrir o PDF. Parcial MUST mostrar, na lista e
+  no cabeçalho do popup, o que faltou (campos vazios ou soma das
+  linhas ≠ total), derivado dos dados já persistidos — sem coluna
+  nova. Falha MUST dizer que não foi possível ler o documento.
+  Ok MUST NOT exibir texto de falta.
 - **FR-009**: Viewer MUST NOT disparar coleta. Editor ou admin com a
   página MAY disparar a mesma coleta da rotina.
 - **FR-010**: A primeira execução MUST varrer o histórico das duas

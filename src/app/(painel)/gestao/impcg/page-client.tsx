@@ -19,6 +19,7 @@ type ImpcgListItem = {
   totalAmount: string;
   fileName: string;
   parseStatus: ParseStatus;
+  parseMissingReason: string | null;
 };
 
 type ImpcgDetail = ImpcgListItem & {
@@ -49,18 +50,32 @@ function formatBrl(value: string): string {
   return `R$ ${reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
 }
 
-function ParseBadge({ status }: { status: ParseStatus }) {
+function ParseBadge({ status, reason }: { status: ParseStatus; reason?: string | null }) {
   if (status === 'ok') return null;
   const isFail = status === 'falha';
+  const text = reason ?? (isFail ? 'Não foi possível ler o documento' : null);
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-        isFail
-          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-      }`}
-    >
-      {isFail ? 'Falha' : 'Parcial'}
+    <span className="inline-flex items-center gap-1.5 min-w-0">
+      {text ? (
+        <span
+          className={`text-xs font-medium normal-case tracking-normal ${
+            isFail
+              ? 'text-rose-700 dark:text-rose-300'
+              : 'text-amber-800 dark:text-amber-300'
+          }`}
+        >
+          {text}
+        </span>
+      ) : null}
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${
+          isFail
+            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+        }`}
+      >
+        {isFail ? 'Falha' : 'Parcial'}
+      </span>
     </span>
   );
 }
@@ -219,9 +234,9 @@ export default function ImpcgPageClient() {
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate mt-1">
                   {item.patientName}
                 </p>
-                <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center justify-between mt-2 gap-2">
                   <span className="text-sm font-bold font-mono">{formatBrl(item.totalAmount)}</span>
-                  <ParseBadge status={item.parseStatus} />
+                  <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
                 </div>
               </button>
             ))}
@@ -255,7 +270,7 @@ export default function ImpcgPageClient() {
                       <td className="px-4 py-3 text-sm font-semibold">
                         <span className="inline-flex items-center gap-2">
                           {item.oficioNumber}
-                          <ParseBadge status={item.parseStatus} />
+                          <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">{item.patientName}</td>
@@ -291,6 +306,7 @@ export default function ImpcgPageClient() {
         isOpen={Boolean(selectedId)}
         onClose={() => setSelectedId(null)}
         title={modalTitle}
+        subtitle={detail?.parseMissingReason ?? undefined}
         width="max-w-5xl"
       >
         {detailLoading && !detail && (
@@ -328,7 +344,13 @@ export default function ImpcgPageClient() {
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
-                <dd><ParseBadge status={detail.parseStatus} />{detail.parseStatus === 'ok' ? 'Ok' : null}</dd>
+                <dd>
+                  {detail.parseStatus === 'ok' ? (
+                    'Ok'
+                  ) : (
+                    <ParseBadge status={detail.parseStatus} reason={detail.parseMissingReason} />
+                  )}
+                </dd>
               </div>
             </dl>
 

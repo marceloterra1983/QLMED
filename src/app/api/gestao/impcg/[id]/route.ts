@@ -45,6 +45,7 @@ export async function GET(
       totalAmount: formatImpcgMoney(row.totalAmount),
       fileName: row.fileName,
       parseStatus: row.parseStatus,
+      parseMissingReason: row.parseMissingReason ?? null,
       items: row.items.map((item) => ({
         anvisaCode: item.anvisaCode,
         description: item.description,

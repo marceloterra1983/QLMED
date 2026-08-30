@@ -1,6 +1,6 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import { describe, expect, it } from 'vitest';
-import { parseOficio } from '@/lib/impcg/parse-oficio';
+import { describeImpcgParseGap, parseOficio } from '@/lib/impcg/parse-oficio';
 
 /** Texto injetado no formato do OCR da ordem 17673 (scan Brother). */
 export const OFICIO_17673_TEXT = `
@@ -65,6 +65,7 @@ describe('parseOficio fixture 17673', () => {
     const itemSum = parsed.items.reduce((sum, item) => sum + item.lineCents, 0);
     expect(itemSum).toBe(1255000);
     expect(parsed.parseStatus).toBe('ok');
+    expect(describeImpcgParseGap(parsed)).toBeNull();
     expect(new Decimal(parsed.totalCents ?? 0).div(100).toFixed(2)).toBe('12550.00');
     expect(typeof parsed.totalCents).toBe('number');
     expect(Number.isInteger(parsed.totalCents)).toBe(true);
@@ -88,6 +89,7 @@ describe('parseOficio fixture 17673', () => {
     expect(parsed.items).toEqual([]);
     expect(parsed.parseStatus).toBe('falha');
     expect(parsed.patientName).toBe('PACIENTE');
+    expect(describeImpcgParseGap(parsed)).toBe('Não foi possível ler o documento');
   });
 
   it('lê o OCR real do scan 17673 (TOTAL R$, R$ nas linhas, médico+CRM)', () => {
@@ -126,5 +128,36 @@ TOTAL GERAL: 20,00
     expect(parsed.totalCents).toBe(2000);
     expect(parsed.items[0]?.lineCents).toBe(1000);
     expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toContain('soma dos itens ≠ total');
+  });
+
+  it('lista os campos vazios no texto de parcial', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 100
+DATA: 10/08/2023
+PACIENTE: JOAO SILVA
+CRM: 12345
+PROCEDIMENTO: EXAME
+KIT TESTE  MARCA  REF  1  10,00  10,00
+TOTAL GERAL: 10,00
+`);
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: médico, hospital');
+  });
+
+  it('menciona só os totais quando o cabeçalho está completo (FAIL-004)', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 99
+DATA: 10/08/2023
+PACIENTE: JOAO SILVA
+MEDICO: DR TESTE
+CRM: 123
+PROCEDIMENTO: EXAME
+LOCAL DE ENTREGA: HOSPITAL X
+KIT TESTE  MARCA  REF  1  10,00  10,00
+TOTAL GERAL: 20,00
+`);
+    expect(parsed.parseStatus).toBe('parcial');
+    expect(describeImpcgParseGap(parsed)).toBe('Faltou: soma dos itens ≠ total');
   });
 });

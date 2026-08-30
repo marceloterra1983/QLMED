@@ -97,6 +97,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
         totalAmount: '12550.00',
         fileName: 'OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR.pdf',
         parseStatus: 'ok',
+        parseMissingReason: null,
       },
     ]);
     mocks.getImpcgIngestState.mockResolvedValue({
@@ -113,6 +114,7 @@ describe('IMPCG list contract (AC-001, AC-004)', () => {
     expect(typeof body.items[0].totalAmount).toBe('string');
     expect(body.items[0]).not.toHaveProperty('companyId');
     expect(body.items[0].oficioNumber).toBe('17673');
+    expect(body.items[0].parseMissingReason).toBeNull();
     expect(mocks.getOrCreateSingleCompany).toHaveBeenCalledWith('user-1');
     expect(mocks.listImpcgAuthorizations).toHaveBeenCalledWith('company-1');
   });

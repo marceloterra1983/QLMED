@@ -1,9 +1,9 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import type { ImpcgParseStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { centsToDecimal, formatMoneyDecimal } from '@/lib/money';
+import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money';
 import type { ImpcgParseStatus as DomainParseStatus } from './constants';
-import type { ParsedImpcgItem } from './parse-oficio';
+import { describeImpcgParseGap, type ParsedImpcgItem } from './parse-oficio';
 
 export type ImpcgListItem = {
   id: string;
@@ -15,6 +15,7 @@ export type ImpcgListItem = {
   totalAmount: string;
   fileName: string;
   parseStatus: ImpcgParseStatus;
+  parseMissingReason: string | null;
 };
 
 export type ImpcgDetailItem = ImpcgListItem & {
@@ -37,6 +38,32 @@ function moneyString(value: Decimal): string {
   return formatMoneyDecimal(value);
 }
 
+function parseGapFromRow(row: {
+  parseStatus: ImpcgParseStatus;
+  oficioNumber: string;
+  issuedAt: Date | null;
+  patientName: string;
+  doctorName: string | null;
+  doctorCrm: string | null;
+  procedureName: string | null;
+  hospitalName: string | null;
+  totalAmount: Decimal;
+  items: Array<{ lineTotal: Decimal }>;
+}): string | null {
+  return describeImpcgParseGap({
+    parseStatus: row.parseStatus,
+    oficioNumber: row.oficioNumber,
+    issuedAt: row.issuedAt,
+    patientName: row.patientName,
+    doctorName: row.doctorName,
+    doctorCrm: row.doctorCrm,
+    procedureName: row.procedureName,
+    hospitalName: row.hospitalName,
+    totalCents: decimalToCents(row.totalAmount),
+    items: row.items.map((item) => ({ lineCents: decimalToCents(item.lineTotal) })),
+  });
+}
+
 export async function listImpcgAuthorizations(companyId: string): Promise<ImpcgListItem[]> {
   const rows = await prisma.impcgAuthorization.findMany({
     where: { companyId },
@@ -47,10 +74,13 @@ export async function listImpcgAuthorizations(companyId: string): Promise<ImpcgL
       oficioNumber: true,
       patientName: true,
       doctorName: true,
+      doctorCrm: true,
+      procedureName: true,
       hospitalName: true,
       totalAmount: true,
       fileName: true,
       parseStatus: true,
+      items: { select: { lineTotal: true } },
     },
   });
 
@@ -64,6 +94,7 @@ export async function listImpcgAuthorizations(companyId: string): Promise<ImpcgL
     totalAmount: moneyString(row.totalAmount),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
+    parseMissingReason: parseGapFromRow(row),
   }));
 }
 
@@ -91,6 +122,7 @@ export async function getImpcgAuthorization(
     fileName: row.fileName,
     oneDriveItemId: row.oneDriveItemId,
     parseStatus: row.parseStatus,
+    parseMissingReason: parseGapFromRow(row),
     items: row.items.map((item) => ({
       anvisaCode: item.anvisaCode,
       description: item.description,

@@ -25,7 +25,8 @@ Empresa: `getOrCreateSingleCompany(userId)` — nunca do body/query.
       "hospitalName": "HOSPITAL PRONCOR",
       "totalAmount": "12550.00",
       "fileName": "OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR.pdf",
-      "parseStatus": "ok"
+      "parseStatus": "ok",
+      "parseMissingReason": null
     }
   ]
 }
@@ -34,6 +35,8 @@ Empresa: `getOrCreateSingleCompany(userId)` — nunca do body/query.
 Ordem: `issuedAt` desc, empate `oficioNumber` desc.
 `canSync`: true se editor ou admin.
 `totalAmount`: string decimal (não number).
+`parseMissingReason`: texto pt-BR derivado (`Faltou: …` / falha /
+`null` se `ok`). Sem coluna nova.
 Estado vazio: `items: []` (AC-004).
 
 **401** não autenticado. **403** sem a página (AC-003).
@@ -58,6 +61,7 @@ Estado vazio: `items: []` (AC-004).
   "totalAmount": "12550.00",
   "fileName": "OFICIO 17673 PLINIO ANTONIO ARANHA JUNIOR.pdf",
   "parseStatus": "ok",
+  "parseMissingReason": null,
   "items": [
     {
       "anvisaCode": null,

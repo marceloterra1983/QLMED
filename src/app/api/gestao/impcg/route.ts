@@ -93,6 +93,7 @@ export async function GET(_req?: Request) {
       totalAmount: formatImpcgMoney(row.totalAmount),
       fileName: row.fileName,
       parseStatus: row.parseStatus,
+      parseMissingReason: row.parseMissingReason ?? null,
     }));
 
     return NextResponse.json({
