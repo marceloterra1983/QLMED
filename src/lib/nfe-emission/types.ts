@@ -45,6 +45,8 @@ export type NfeEmissionItem = {
   pIcms?: string | null;
   cstPis?: string | null;
   cstCofins?: string | null;
+  pPis?: string | null;
+  pCofins?: string | null;
 };
 
 export type NfePagamento = {

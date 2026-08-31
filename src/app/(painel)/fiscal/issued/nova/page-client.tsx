@@ -14,6 +14,17 @@ import {
   MOD_FRETE_OPTIONS,
   TPAG_OPTIONS,
 } from '@/lib/nfe-emission/form-options';
+import {
+  DEFAULT_IND_PRES,
+  DEFAULT_INDPAG_VENDA,
+  DEFAULT_MOD_FRETE,
+  DEFAULT_SERIES,
+  DEFAULT_TPAG_VENDA,
+  INF_AD_FISCO_SINIEF,
+  INF_CPL_ICMS_CONV_199,
+  defaultFinNFe,
+  isSemPagamentoCfop,
+} from '@/lib/nfe-emission/issued-defaults';
 
 type Tab = 'dados' | 'itens' | 'transporte' | 'pagamento' | 'complementos';
 type Operation = { cfop: string; tag: string; natureza: string; ambito: string };
@@ -90,10 +101,10 @@ export default function EmitirNfePage() {
   const [ambiente, setAmbiente] = useState<'homologation' | 'production' | null>(null);
   const [certExpired, setCertExpired] = useState(false);
   const [cfop, setCfop] = useState('5102');
-  const [series, setSeries] = useState('1');
+  const [series, setSeries] = useState(DEFAULT_SERIES);
   const [finNFe, setFinNFe] = useState<'1' | '2' | '3' | '4'>('1');
   const [indFinal, setIndFinal] = useState<'0' | '1'>('1');
-  const [indPres, setIndPres] = useState('1');
+  const [indPres, setIndPres] = useState(DEFAULT_IND_PRES);
   const [customerQuery, setCustomerQuery] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [dest, setDest] = useState<Customer | null>(null);
@@ -101,7 +112,7 @@ export default function EmitirNfePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Line[]>([]);
   const [openItem, setOpenItem] = useState<number | null>(null);
-  const [modFrete, setModFrete] = useState('9');
+  const [modFrete, setModFrete] = useState(DEFAULT_MOD_FRETE);
   const [vFrete, setVFrete] = useState('0.00');
   const [vSeg, setVSeg] = useState('0.00');
   const [vOutro, setVOutro] = useState('0.00');
@@ -112,10 +123,10 @@ export default function EmitirNfePage() {
   const [esp, setEsp] = useState('');
   const [pesoB, setPesoB] = useState('');
   const [pesoL, setPesoL] = useState('');
-  const [indPag, setIndPag] = useState<'0' | '1'>('0');
-  const [tPag, setTPag] = useState('17');
-  const [infCpl, setInfCpl] = useState('');
-  const [infAdFisco, setInfAdFisco] = useState('');
+  const [indPag, setIndPag] = useState<'0' | '1'>(DEFAULT_INDPAG_VENDA);
+  const [tPag, setTPag] = useState(DEFAULT_TPAG_VENDA);
+  const [infCpl, setInfCpl] = useState(INF_CPL_ICMS_CONV_199);
+  const [infAdFisco, setInfAdFisco] = useState(INF_AD_FISCO_SINIEF);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
@@ -123,6 +134,17 @@ export default function EmitirNfePage() {
   const [sefazMotivo, setSefazMotivo] = useState<string | null>(null);
 
   const op = operations.find((o) => o.cfop === cfop);
+
+  useEffect(() => {
+    setFinNFe(defaultFinNFe(cfop));
+    if (isSemPagamentoCfop(cfop)) {
+      setTPag('90');
+      setIndPag('0');
+    } else {
+      setTPag(DEFAULT_TPAG_VENDA);
+      setIndPag(DEFAULT_INDPAG_VENDA);
+    }
+  }, [cfop]);
 
   useEffect(() => {
     fetch('/api/nfe-emissions/catalog')

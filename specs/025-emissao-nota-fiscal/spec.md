@@ -170,7 +170,8 @@ status do serviço e não cria nota emitida.
   de saída já etiquetadas no produto (venda, consignação, comodato,
   retorno de comodato, bonificação, amostra, demonstração, outras
   saídas, uso externo, devolução de compra, conserto e equivalentes
-  interestaduais).
+  interestaduais) e as devoluções de entrada já usadas nas emitidas
+  (1202, 1918, 2202, 2918).
 - **FR-002**: O destinatário MUST ser cliente pessoa jurídica
   cadastrado da empresa. CPF e CNPJ fora do cadastro de clientes
   MUST ser recusados no servidor.
@@ -208,6 +209,15 @@ status do serviço e não cria nota emitida.
 - **FR-014**: A sincronização operacional DistDFe MUST permanecer
   em produção mesmo quando o certificado está em homologação, para
   não misturar NSU de teste com documentos reais.
+- **FR-015**: O XML de emissão MUST repetir o DNA fiscal das NF-e
+  já autorizadas desta empresa: CRT 3 com ICMS CST 40 (não CSOSN
+  nem CST 41), PIS/COFINS CST 01 com alíquotas 0,65% e 3% e totais
+  batendo no `ICMSTot`, venda com `tPag` 15 a prazo + `cobr/dup`,
+  `modFrete` 0, `indPres` 9, série 2, `natOp` no texto curto já
+  autorizado (ex.: *Venda merc.adq. ou recb. terc.*), `infAdFisco`
+  com Ajuste SINIEF 02/24 e `infCpl` com Convênio ICMS 01/99.
+  Remessa e devolução MUST usar `tPag` 90 sem cobrança. Destinatário
+  CPF permanece recusado (FR-002).
 
 ### Failure cases
 
@@ -272,6 +282,10 @@ status do serviço e não cria nota emitida.
   continua em produção.
 - Homologação usa o destinatário-padrão exigido pela SEFAZ nesse
   ambiente.
+- O DNA fiscal de FR-015 foi medido nas 144 NF-e emitidas dos 30
+  dias até 2026-08-28 (série 2, verProc 7.159.03). QLMED não copia
+  o `infRespTec` da Joinner — o responsável técnico do QLMED fica
+  para fatia seguinte, se a SEFAZ-MS exigir.
 - Numeração oficial é por série, sequencial, persistida só quando
   o envio é aceito para processamento; rejeição sem autorização
   devolve o número.

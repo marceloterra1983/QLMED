@@ -23,6 +23,8 @@ const itemSchema = z.object({
   cstIcms: z.string().max(3).nullable().optional(),
   cstPis: z.string().max(2).nullable().optional(),
   cstCofins: z.string().max(2).nullable().optional(),
+  pPis: money4.nullable().optional(),
+  pCofins: money4.nullable().optional(),
 });
 
 export const nfeEmissionPayloadSchema = z.object({
@@ -34,7 +36,7 @@ export const nfeEmissionPayloadSchema = z.object({
   finNFe: z.enum(['1', '2', '3', '4']).default('1'),
   indFinal: z.enum(['0', '1']),
   indPres: z.enum(['0', '1', '2', '3', '4', '5', '9']),
-  modFrete: z.enum(['0', '1', '2', '3', '4', '9']).default('9'),
+  modFrete: z.enum(['0', '1', '2', '3', '4', '9']).default('0'),
   vFrete: money2.optional(),
   vSeg: money2.optional(),
   vOutro: money2.optional(),
@@ -54,7 +56,7 @@ export const nfeEmissionPayloadSchema = z.object({
     pesoB: money4.optional(),
   }).optional(),
   pag: z.object({
-    indPag: z.enum(['0', '1']).default('0'),
+    indPag: z.enum(['0', '1']).default('1'),
     tPag: z.string().regex(/^\d{2}$/),
     vPag: money2.optional(),
   }).optional(),
@@ -63,7 +65,7 @@ export const nfeEmissionPayloadSchema = z.object({
   items: z.array(itemSchema).min(1).max(100),
 }).superRefine((value, ctx) => {
   if (!getSaidaOperation(value.cfop)) {
-    ctx.addIssue({ code: 'custom', path: ['cfop'], message: 'CFOP fora do catálogo de saídas' });
+    ctx.addIssue({ code: 'custom', path: ['cfop'], message: 'CFOP fora do catálogo de emissão' });
   }
 });
 
