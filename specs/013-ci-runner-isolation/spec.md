@@ -1,6 +1,6 @@
 ---
 id: SPEC-013
-status: draft
+status: approved
 owner: QLMED
 affected_modules:
   - ci
@@ -9,22 +9,22 @@ affected_modules:
 
 # Feature Specification: CI em runner isolado, fora do host de produção
 
-**Feature Branch**: `spec/013-ci-runner-isolation`
+**Feature Branch**: `feat/spec-013-isolated-ci`
 
 **Created**: 2026-08-26
 
-**Status**: Draft
+**Status**: Approved
 
 **Input**: O CI do QLMED não produziu execução alguma entre 21/08 e 26/08 por bloqueio de cobrança do GitHub Actions, travando merge e deploy atrás de um CI que não conseguia existir.
 
 ## Contexto: por que o CI parou, e por que o atalho óbvio é proibido
 
-Os quatro jobs de `ci.yml` usam `ubuntu-24.04`, runner hospedado pelo GitHub, que consome minutos faturáveis. Em 21/08 a conta entrou em bloqueio de cobrança e o GitHub **parou de criar os jobs** — não é job falhando, é job não existindo. Medido: `steps=0`, 2 a 4 segundos, e a anotação `"The job was not started because recent account payments have failed or your spending limit needs to be increased"`.
+Os quatro jobs de `ci.yml` usavam `ubuntu-24.04`, runner hospedado pelo GitHub, que consome minutos faturáveis. Em 21/08 a conta entrou em bloqueio de cobrança e o GitHub **parou de criar os jobs** — não é job falhando, é job não existindo. Medido: `steps=0`, 2 a 4 segundos, e a anotação `"The job was not started because recent account payments have failed or your spending limit needs to be increased"`.
 
-O atalho aparente seria apontar o CI para o runner self-hosted que o QLMED já tem, `qlmed-prod`. O repositório **proíbe isso**, e a proibição está certa. `scripts/verify-ci-hardening.sh`, adicionado em 17/08 no commit `b0acd0e` ("apply audit remediation hardening"), afirma:
+O atalho aparente seria apontar o CI para o runner self-hosted que o QLMED já tem, `qlmed-prod`. O repositório **proíbe isso**, e a proibição está certa. `scripts/verify-ci-hardening.sh`, adicionado em 17/08 no commit `b0acd0e` ("apply audit remediation hardening"), originalmente afirmava:
 
 ```bash
-! grep -Eq 'self-hosted|qlmed-prod' "$workflow"
+if grep -Eq 'self-hosted|qlmed-prod' "$workflow"; then exit 1; fi
 grep -q 'ubuntu-24\.04' "$workflow"
 ```
 
@@ -34,17 +34,25 @@ O motivo: o CI roda `npm ci`, que executa scripts de instalação de centenas de
 
 ### A distinção que esta spec introduz
 
-A regra atual proíbe a **string** `self-hosted`. O que a auditoria quis proteger é o **host de produção**. São coisas diferentes, e a diferença tem consequência prática:
+A regra antiga proibia a **string** `self-hosted`. O que a auditoria quis proteger é o **host de produção**. São coisas diferentes, e a diferença tem consequência prática:
 
-| | `qlmed-prod` | Runner isolado |
+| | `qlmed-prod` | Runner isolado `qlmed-ci-linux-01` |
 |---|---|---|
-| Execução | systemd, usuário `marce`, no host | container, uid não privilegiado |
+| Execução | systemd, usuário `marce`, no host | container, uid 10001 |
 | Privilégios | grupo `docker` — root na prática | `privileged: false` |
 | Socket de container | acesso total | ausente |
-| Rede | host | isolada, com proxy de egresso |
-| Alcança | banco fiscal, n8n, credenciais, backups | só o próprio `_work`, cache e logs |
+| Rede | host | `runner-internal` (`internal: true`) + proxy de egresso |
+| Alcança | banco fiscal, n8n, credenciais, backups | só o próprio `_work`, cache, logs e o sidecar `qlmed-ci-db` |
 
-Este servidor **já opera runners do segundo tipo** para outros repositórios. `deploy-production.yml` continua em `qlmed-prod`, e corretamente: precisa tocar a máquina, roda só por dispatch manual com SHA fixado, e não instala dependências vindas de PR.
+O QLMED **é repositório público**. Isolamento **não** é visibilidade. Isolamento é o contentor + overlay + `approval_policy: all_external_contributors` + guarda de origem no YAML (igual ao Farol). Um `if` no workflow não é fronteira contra YAML de fork depois de Approve.
+
+`deploy-production.yml` continua em `qlmed-prod` (`runs-on: [qlmed-prod]`, environment `production`, só `workflow_dispatch`).
+
+### Banco de CI
+
+`app` deixou de declarar `services: postgres`. Service containers exigem socket de engine; o isolado não expõe. O Postgres é um sidecar na mesma `runner-internal`, hostname `qlmed-ci-db`, porta 5432, role `qlmed_ci` **não-superuser**, database `qlmed_ci`.
+
+A URL usa `schema=public` numa instância **longeva**. Isolamento entre jobs = `DROP SCHEMA public CASCADE` + `CREATE SCHEMA public` no início de `app` (equivalente a DROP/CREATE DATABASE sem privilégio `CREATEDB`). **Não** há schema-por-`GITHUB_RUN_ID`.
 
 ## User Scenarios & Testing
 
@@ -54,13 +62,13 @@ O CI do QLMED executa em runner isolado. Um problema de pagamento ou de limite d
 
 **Why this priority**: é a motivação inteira. Cinco dias sem nenhuma execução, com merge e deploy travados atrás de um portão que não podia abrir.
 
-**Independent Test**: com a conta ainda bloqueada para minutos faturáveis, abrir um PR e observar os jobs concluírem com resultado real.
+**Independent Test**: abrir um PR e observar os jobs concluírem no `qlmed-ci-linux-01` com resultado real.
 
 **Acceptance Scenarios**:
 
-1. **Given** a conta sem minutos faturáveis disponíveis, **When** um PR é aberto, **Then** os jobs executam e reportam aprovação ou reprovação de verdade.
-2. **Given** um job em execução, **When** seu runner é inspecionado, **Then** ele não é `qlmed-prod`.
-3. **Given** um job de CI, **When** ele tenta alcançar o banco canônico, o n8n ou `/srv`, **Then** não consegue.
+1. **Given** um PR interno, **When** o CI corre, **Then** os jobs executam em `qlmed-ci-linux-01` e reportam aprovação ou reprovação de verdade.
+2. **Given** um job em execução, **When** seu runner é inspecionado, **Then** ele não é `qlmed-prod-runner`.
+3. **Given** um job de CI, **When** ele tenta alcançar o banco canônico, o n8n, `/srv` do host ou o socket Docker, **Then** não consegue.
 
 ---
 
@@ -70,38 +78,36 @@ O job `app` — que roda typecheck, testes, build e os verificadores de migratio
 
 **Why this priority**: mesma prioridade da US1 porque sem ela a US1 não vale nada. `app` é onde está a substância do CI.
 
-**O obstáculo**: `app` declara `services: postgres:18-alpine`. Service container do GitHub Actions exige motor de container no runner, e runners isolados não expõem socket — por política, não por limitação. Então o mecanismo precisa ser substituído, não negociado.
-
-**Precedente que já existe**: em 26/08 a suíte inteira e os dois verificadores de migration rodaram contra um PostgreSQL **externo**, num container efêmero com base `qlmed_ci`, sem `services:` — `migrate deploy` replicou o histórico e o diff contra `schema.prisma` deu "No difference detected". O caminho está provado.
-
 **Acceptance Scenarios**:
 
-1. **Given** um runner sem socket de container, **When** `app` roda, **Then** ele alcança um PostgreSQL e conclui.
+1. **Given** um runner sem socket de container, **When** `app` roda, **Then** ele alcança `qlmed-ci-db:5432` e conclui.
 2. **Given** o banco de CI, **When** qualquer job conecta, **Then** o alvo é o descartável `qlmed_ci`, nunca o canônico `postgres`.
-3. **Given** duas execuções simultâneas, **When** ambas usam o banco, **Then** nenhuma enxerga o dado da outra.
-4. **Given** uma execução encerrada, **When** o banco é inspecionado, **Then** nada daquela execução persiste para a seguinte.
+3. **Given** duas execuções consecutivas, **When** a segunda começa, **Then** o schema `public` foi destruído e recriado; nada da execução anterior persiste.
 
 ---
 
 ### User Story 3 - O guarda passa a dizer o que quer dizer (Priority: P2)
 
-`verify-ci-hardening.sh` continua reprovando um `ci.yml` que rode CI no host de produção, e deixa de reprovar um que rode em runner isolado.
+`verify-ci-hardening.sh` continua reprovando um `ci.yml` que rode CI no host de produção, e deixa de reprovar um que rode no selector isolado.
 
-**Why this priority**: sem isso a migração não entra — o guarda reprova o job `app` por desenho. Mas ele precisa ficar **mais preciso**, nunca mais permissivo.
+**Why this priority**: sem isso a migração não entra — o guarda antigo reprova qualquer `self-hosted`. Ele precisa ficar **mais preciso**, nunca mais permissivo.
 
 **Acceptance Scenarios**:
 
 1. **Given** um `ci.yml` apontando para `qlmed-prod`, **When** o guarda roda, **Then** reprova.
-2. **Given** um `ci.yml` apontando para o runner isolado, **When** o guarda roda, **Then** aprova.
+2. **Given** um `ci.yml` apontando para o array exacto do binding, **When** o guarda roda, **Then** aprova.
 3. **Given** a correção revertida, **When** o guarda roda contra `qlmed-prod`, **Then** reprova — verificado por reversão, não por leitura.
+4. **Given** `runs-on: self-hosted` sozinho, **When** o guarda roda, **Then** reprova.
+5. **Given** `ubuntu-24.04` de volta no CI, **When** o guarda roda, **Then** reprova.
 
 ### Edge Cases
 
-- Runner isolado fora do ar: o CI para por inteiro, sem fallback hospedado. Disponibilidade de um runner vira dependência do CI.
-- Concorrência: um runner serializa `docs`, `app` e `quality`, que hoje correm em paralelo. O tempo de parede do CI cresce.
-- O proxy de egresso precisa permitir o registry do npm, senão `npm ci` falha.
-- Node 22 precisa ser obtenível: `setup-node` baixa para o tool cache, então o proxy precisa permitir, ou a imagem precisa já trazer.
+- Runner isolado fora do ar: o CI para por inteiro, sem fallback hospedado.
+- Concorrência: um listener serializa `docs`, `app` e `quality`.
+- O proxy de egresso precisa permitir o registry do npm.
+- Node 22 vem de `actions/setup-node`, não da imagem.
 - `deploy-production.yml` continua em `qlmed-prod` e NÃO é migrado.
+- PR de fork: a setting `all_external_contributors` é a fronteira; o `if` de origem no YAML é defesa em profundidade.
 
 ## Requirements
 
@@ -114,31 +120,34 @@ O job `app` — que roda typecheck, testes, build e os verificadores de migratio
 - **FR-005**: `deploy-production.yml` MUST permanecer em `qlmed-prod`.
 - **FR-006**: O CI MUST NOT conseguir ler `.env`, certificados ou backups do host.
 - **FR-007**: A mudança do guarda MUST ser verificada por reversão: reintroduzido `qlmed-prod`, o guarda reprova.
+- **FR-008**: Nenhum workflow MUST disparar `pull_request_target`, `workflow_run` ou `issue_comment`.
+- **FR-009**: `ci.yml` e `ai-tooling-drift.yml` MUST usar o array exacto do binding (`self-hosted` + labels de `validation-linux-pool`). MUST NOT haver fallback `ubuntu-24.04`. MUST NOT haver label extra `qlmed-ci`.
+- **FR-010**: O job `app` MUST destruir e recriar o schema `public` no sidecar no início da execução. MUST NOT usar schema-por-`GITHUB_RUN_ID`.
 
 ### Key Entities
 
-- **Banco de CI**: PostgreSQL descartável, alcançável da rede interna do runner e de nenhum outro lugar. [NEEDS CLARIFICATION: instância efêmera por execução, ou instância longeva com schema por execução? A primeira isola melhor; a segunda é mais barata de operar.]
+- **Banco de CI**: PostgreSQL sidecar longevo na `runner-internal`, database `qlmed_ci`, role sem SUPERUSER. Isolamento entre jobs por reset do schema `public`, não por instância efémera nem por schema por run.
 
 ## Success Criteria
 
-- **SC-001**: Com minutos faturáveis indisponíveis, um PR do QLMED conclui o CI com resultado real de aprovação ou reprovação.
+- **SC-001**: Um PR do QLMED conclui o CI com resultado real de aprovação ou reprovação no runner isolado.
 - **SC-002**: Nenhum job de CI reporta `runner_name = qlmed-prod-runner`.
-- **SC-003**: De dentro de um job de CI, o banco canônico, `/srv` e o socket do Docker do host são todos inalcançáveis — verificado por teste que tenta e precisa falhar.
+- **SC-003**: De dentro de um job de CI, o banco canônico, as bridges `qlmed_*`, `/srv` do host e o socket do Docker do host são todos inalcançáveis — verificado por teste que tenta e precisa falhar.
 - **SC-004**: `verify-ci-hardening.sh` reprova um `ci.yml` apontado para `qlmed-prod`, verificado por reversão.
 - **SC-005**: `db:migrate:verify` e `db:reconcile:verify` passam no CI, como já passam localmente.
 
 ## Assumptions
 
-- O QLMED permanece repositório **privado**. Runner self-hosted com repositório público é questão separada e muito maior: qualquer PR passaria a executar código na infraestrutura.
-- Existe, ou virá a existir, runner isolado capaz de servir este repositório. O provisionamento pertence à plataforma de runners, não a esta spec.
+- O QLMED é repositório **público**. Isolamento = contentor + overlay + approval de forks + guarda de origem; não visibilidade.
+- O runner isolado `qlmed-ci-linux-01` já existe na plataforma (slot 4 no `server`).
 
 ## Out of Scope
 
-- **Provisionar o runner isolado.** É trabalho da plataforma de runners (`~/GitHub_Runners/platform`), que hoje é de feature única e não aceita uma segunda feature sem mudança de governança própria. Esta spec descreve o lado QLMED e depende daquele lado existir.
+- Provisionar o runner isolado (plataforma, fase 1).
 - Migrar `deploy-production.yml` (FR-005).
-- Tornar o QLMED público.
-- Resolver o bloqueio de cobrança do GitHub, que é independente e continua sendo o desbloqueio imediato do backlog atual.
+- Alterar `publicAllowed` / schema de labels da plataforma.
+- Resolver o bloqueio de cobrança do GitHub.
 
 ## Nota de sequenciamento
 
-Esta spec tem mérito próprio: elimina uma classe inteira de bloqueio e melhora a postura de segurança do CI. Mas **não destrava o backlog atual mais rápido do que resolver a cobrança**, e depende de trabalho na plataforma de runners que ainda não existe. Tratá-la como melhoria planejada, e não como resposta de emergência, é a leitura honesta.
+A plataforma (`qlmed-ci-linux-01`) é pré-requisito desta spec. Sem fallback hospedado: se o isolado cair, o CI pára.
