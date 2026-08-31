@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_SERIES } from './issued-defaults';
 import { getSaidaOperation } from './operations';
 
 const cnpj = z.string().transform((v) => v.replace(/\D/g, '')).refine((v) => v.length === 14, 'CNPJ inválido');
@@ -30,7 +31,7 @@ const itemSchema = z.object({
 export const nfeEmissionPayloadSchema = z.object({
   natureza: z.string().min(1).max(60),
   cfop: z.string().regex(/^\d{4}$/),
-  series: z.string().regex(/^\d{1,3}$/),
+  series: z.coerce.string().pipe(z.literal(DEFAULT_SERIES)).default(DEFAULT_SERIES),
   destCnpj: cnpj,
   destName: z.string().min(1).max(120).optional(),
   finNFe: z.enum(['1', '2', '3', '4']).default('1'),

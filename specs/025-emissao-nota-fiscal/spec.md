@@ -218,6 +218,11 @@ status do serviço e não cria nota emitida.
   com Ajuste SINIEF 02/24 e `infCpl` com Convênio ICMS 01/99.
   Remessa e devolução MUST usar `tPag` 90 sem cobrança. Destinatário
   CPF permanece recusado (FR-002).
+- **FR-016**: A emissão manual MUST usar somente a série 2. O campo
+  série MUST ser visível, compacto e não editável. Payload e schema
+  MUST recusar qualquer série diferente de 2. NF-e históricas série 1
+  (trilho raro de importação) MUST permanecer inalteradas na listagem
+  e no XML já autorizado.
 
 ### Failure cases
 
@@ -231,6 +236,8 @@ status do serviço e não cria nota emitida.
   vencido — recusar sem chamar a SEFAZ.
 - **FAIL-007**: Status do serviço indisponível ou rejeição da
   consulta — mostrar o motivo; não inventar sucesso.
+- **FAIL-008**: Payload de emissão com série diferente de 2 —
+  recusar no schema, sem autorizar.
 
 ### Non-functional
 
