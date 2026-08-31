@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   abbreviateCity,
   buildCteWhatsappCaption,
+  buildNfeWhatsappCaption,
   decorateClaimInvoice,
   extractCteRouteCities,
   shortCarrierName,
@@ -236,18 +237,54 @@ describe('decorateClaimInvoice', () => {
     expect(result.status, result.stderr || result.stdout).toBe(0);
   });
 
-  it('does not add CT-e caption on NF-e', () => {
+  it('adds short NF-e WhatsApp caption without key or labels', () => {
     const decorated = decorateClaimInvoice({
       id: 'inv-2',
       accessKey: ACCESS_KEY,
       type: 'NFE',
-      number: '1',
-      senderName: 'Fornecedor',
-      totalValue: 10,
+      number: '39400',
+      senderName: 'Politec Importacao e Comercio Ltda',
+      totalValue: 60895.8,
       xmlContent: '<nfeProc />',
     });
 
     expect(decorated).not.toHaveProperty('xmlContent');
-    expect(decorated).not.toHaveProperty('whatsappCaption');
+    expect(decorated.whatsappCaption).toBe(
+      'NF-e Recebida\n\nNúmero: 39400\nPolitec Importacao e Comercio Ltda\nR$ 60.895,80',
+    );
+    expect(decorated.whatsappCaption).not.toContain('Chave');
+    expect(decorated.whatsappCaption).not.toContain(ACCESS_KEY);
+    expect(decorated.whatsappCaption).not.toContain('Emitente/Transportadora');
+    expect(decorated.whatsappCaption).not.toContain('Valor:');
+    expect(JSON.stringify(decorated)).not.toContain('<nfeProc');
+  });
+
+  it('prefers shortName over razão social on NF-e caption', () => {
+    const decorated = decorateClaimInvoice({
+      id: 'inv-3',
+      accessKey: ACCESS_KEY,
+      type: 'NFE',
+      number: '39400',
+      senderName: 'Politec Importacao e Comercio Ltda',
+      senderShortName: 'Politec',
+      totalValue: 60895.8,
+    });
+
+    expect(decorated.whatsappCaption).toContain('\nPolitec\n');
+    expect(decorated.whatsappCaption).not.toContain('Politec Importacao');
+    expect(decorated).not.toHaveProperty('senderShortName');
+  });
+});
+
+describe('buildNfeWhatsappCaption', () => {
+  it('uses shortName when present', () => {
+    const text = buildNfeWhatsappCaption({
+      number: '10',
+      senderName: 'Razao Social Longa LTDA',
+      senderShortName: 'Apelido',
+      totalValue: 1,
+    });
+    expect(text).toContain('\nApelido\n');
+    expect(text).not.toContain('Razao Social');
   });
 });

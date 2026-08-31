@@ -466,6 +466,7 @@ export async function claimNotificationDeliveries(options: {
                 number: true,
                 series: true,
                 issueDate: true,
+                companyId: true,
                 senderCnpj: true,
                 senderName: true,
                 recipientCnpj: true,
@@ -479,13 +480,48 @@ export async function claimNotificationDeliveries(options: {
         },
       },
     });
-    return rows.map((delivery) => ({
-      ...delivery,
-      event: {
-        ...delivery.event,
-        invoice: decorateClaimInvoice(delivery.event.invoice),
-      },
-    }));
+
+    const nfeInvoices = rows
+      .map((row) => row.event.invoice)
+      .filter((invoice) => invoice.type === 'NFE');
+    const nicknameByKey = new Map<string, string>();
+    if (nfeInvoices.length > 0) {
+      const companyIds = [...new Set(nfeInvoices.map((invoice) => invoice.companyId))];
+      const cnpjs = [
+        ...new Set(
+          nfeInvoices
+            .map((invoice) => invoice.senderCnpj)
+            .filter((cnpj): cnpj is string => Boolean(cnpj?.trim())),
+        ),
+      ];
+      if (cnpjs.length > 0) {
+        const nicknames = await tx.contactNickname.findMany({
+          where: { companyId: { in: companyIds }, cnpj: { in: cnpjs } },
+          select: { companyId: true, cnpj: true, shortName: true },
+        });
+        for (const nick of nicknames) {
+          nicknameByKey.set(`${nick.companyId}:${nick.cnpj}`, nick.shortName);
+        }
+      }
+    }
+
+    return rows.map((delivery) => {
+      const invoice = delivery.event.invoice;
+      const senderShortName =
+        invoice.type === 'NFE'
+          ? nicknameByKey.get(`${invoice.companyId}:${invoice.senderCnpj}`) || null
+          : null;
+      return {
+        ...delivery,
+        event: {
+          ...delivery.event,
+          invoice: decorateClaimInvoice({
+            ...invoice,
+            senderShortName,
+          }),
+        },
+      };
+    });
   });
 }
 

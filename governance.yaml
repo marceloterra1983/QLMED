@@ -7,7 +7,7 @@
   "spec_kit": {
     "mode": "required",
     "version": "0.14.2",
-    "feature_root": "specs/026-anvisa-consulta-produtos",
+    "feature_root": "specs/035-nfe-whatsapp-caption",
     "validator": "npm run docs:validate"
   },
   "gsd": {
