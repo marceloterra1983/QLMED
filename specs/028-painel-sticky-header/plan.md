@@ -1,4 +1,4 @@
-# Plan: SPEC-027 Cabeçalho fixo do painel
+# Plan: SPEC-028 Cabeçalho fixo do painel
 
 **Branch**: `fix/page-sticky-header`
 **Constitution**: `.specify/memory/constitution.md` v1.0.2 — lida.
