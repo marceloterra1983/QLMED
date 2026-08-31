@@ -282,10 +282,11 @@ status do serviço e não cria nota emitida.
 - **FR-010**: Sem certificado válido, emitente incompleto ou
   endereço do destinatário incompleto, o envio MUST falhar com
   mensagem acionável, sem chamar a SEFAZ.
-- **FR-011**: O formulário MUST cobrir finalidade, presença,
-  transporte (`modFrete`, volumes, transportadora), pagamento
+- **FR-011**: O formulário MUST cobrir finalidade, transporte
+  (`modFrete`, volumes, transportadora), pagamento
   (`tPag`/`indPag`) e informações adicionais, persistidos no
-  rascunho e emitidos no XML.
+  rascunho e emitidos no XML. Presença do comprador (`indPres`)
+  MUST NÃO ser campo editável — ver FR-024.
 - **FR-012**: Admin MUST poder gravar o ambiente do certificado
   (`homologation` ou `production`) sem reenviar o PFX. Viewer e
   editor MUST NÃO alterar o ambiente. O ambiente da emissão MUST
@@ -361,6 +362,12 @@ status do serviço e não cria nota emitida.
   opções de finalidade e consumidor final) MUST permanecer o de
   FR-011/FR-016. MUST NÃO alterar regra fiscal, schema, defaults
   XML nem outras telas.
+- **FR-024**: Presença do comprador (`indPres`) MUST ser sempre
+  `9` (não presencial — outros / `DEFAULT_IND_PRES`) em toda
+  emissão nova via QLMED. A página Nova NF-e MUST NÃO exibir
+  select nem controle para alterar presença. Schema/API MUST
+  forçar `9` mesmo se o client enviar outro valor. NF-e já
+  autorizadas historicamente MUST permanecer inalteradas.
 
 ### Failure cases
 

@@ -118,8 +118,8 @@ operação mais comum (venda). Campos editáveis:
 | CFOP padrão da nota | select das saídas em `cfop.ts` (5102/6102) | sim |
 | Data de emissão | hoje | sim |
 | Consumidor final | `indFinal` 0/1 | sim |
-| Presença | `indPres` (presencial / internet / outros) | sim |
-| Série | default `1`, editável | sim |
+| Presença | fixo `indPres=9` (não presencial — outros); sem campo na UI | sim (server) |
+| Série | fixo `2`, badge não editável | sim |
 | Número | vazio até autorizar; no rascunho opcional | não |
 
 ### Destinatário

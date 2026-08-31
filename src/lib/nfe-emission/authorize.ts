@@ -13,7 +13,7 @@ import { enviarNfeAutorizacao } from './autorizacao-client';
 import { emitenteFromIssuedXml } from './emitente';
 import { destinatarioFromIssuedXml, mergeDestinatario } from './destinatario';
 import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
-import { defaultInfAdFisco, defaultInfCpl } from './issued-defaults';
+import { defaultInfAdFisco, defaultInfCpl, DEFAULT_IND_PRES } from './issued-defaults';
 import { nfeEmissionPayloadSchema } from './schema';
 import { buildUnsignedNfeXml, draftDocumentTotal } from './xml-builder';
 import { signNfeXml } from './xml-sign';
@@ -111,7 +111,7 @@ export async function authorizeInvoiceEmission(
       issueDate,
       finNFe: payload.finNFe,
       indFinal: payload.indFinal,
-      indPres: payload.indPres,
+      indPres: DEFAULT_IND_PRES,
       tpAmb,
       accessKey,
       emit,

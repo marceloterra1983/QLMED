@@ -10,7 +10,6 @@ import { useRole } from '@/hooks/useRole';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   FIN_NFE_OPTIONS,
-  IND_PRES_OPTIONS,
   MOD_FRETE_OPTIONS,
   TPAG_OPTIONS,
 } from '@/lib/nfe-emission/form-options';
@@ -153,7 +152,6 @@ export default function EmitirNfePage() {
   const [cfop, setCfop] = useState('5102');
   const [finNFe, setFinNFe] = useState<'1' | '2' | '3' | '4'>('1');
   const [indFinal, setIndFinal] = useState<'0' | '1'>('1');
-  const [indPres, setIndPres] = useState(DEFAULT_IND_PRES);
   const [customerQuery, setCustomerQuery] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [dest, setDest] = useState<Customer | null>(null);
@@ -346,7 +344,7 @@ export default function EmitirNfePage() {
       destName: dest.name,
       finNFe,
       indFinal,
-      indPres,
+      indPres: DEFAULT_IND_PRES,
       modFrete,
       vFrete: vFrete || '0.00',
       vSeg: vSeg || '0.00',
@@ -572,11 +570,6 @@ export default function EmitirNfePage() {
                       </select>
                     </Field>
                   </div>
-                  <Field label="Presença do comprador" className="max-w-xl">
-                    <select value={indPres} onChange={(e) => setIndPres(e.target.value)} className={FILTER_INPUT_CLS}>
-                      {IND_PRES_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </Field>
                 </div>
               </div>
               <StepCompleteFooter

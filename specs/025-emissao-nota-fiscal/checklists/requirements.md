@@ -41,3 +41,4 @@ Layout compacto (FR-022 / AC-026): série + finalidade + consumidor
 final na mesma linha (wrap em mobile estreito).
 Página única com âncoras e Concluir nesta etapa: FR-020, FR-021,
 AC-021–AC-025.
+Presença do comprador fixa `indPres=9` sem campo na UI: FR-024.
