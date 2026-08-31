@@ -115,7 +115,7 @@ Libanes)` e não contém `QL`.
   documento nem o rótulo `Nº`.
 - **FR-005**: E-mail (CT-e e NF-e) MUST permanecer com o texto atual
   (número, emitente/transportadora por extenso, valor, chave). WhatsApp de
-  NF-e: ver SPEC-033 (supersede parcial de AC-005).
+  NF-e: ver SPEC-035 (supersede parcial de AC-005).
 - **FR-006**: Sem município de início ou fim no documento, o sistema MUST
   omitir a linha da rota; MUST NOT inventar cidade.
 - **FR-007**: O XML completo MUST NOT ser enviado ao worker; só campos já

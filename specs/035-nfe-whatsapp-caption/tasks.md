@@ -1,6 +1,6 @@
-# Tasks: SPEC-033
+# Tasks: SPEC-035
 
-**Input**: Design documents from `/specs/033-nfe-whatsapp-caption/`
+**Input**: Design documents from `/specs/035-nfe-whatsapp-caption/`
 
 - [x] T001 Spec + plan
 - [x] T002 Testes do caption NF-e (sem chave, sem rótulos, shortName)

@@ -47,6 +47,8 @@ export type ImpcgFolderStore = {
     parseStatus: 'ok' | 'parcial' | 'falha';
     oneDriveItemId: string;
     issuedAt?: Date | null;
+    doctorName?: string | null;
+    doctorCrm?: string | null;
   } | null>;
   persistConfirmed(input: ImpcgFolderPersist): Promise<{ id: string }>;
   persistUpgrade(input: ImpcgFolderPersist & { authorizationId: string }): Promise<void>;
@@ -162,11 +164,19 @@ export async function ingestImpcgFolder(input: {
     }
 
     const fillsDate = existing.parseStatus === 'parcial' && !existing.issuedAt && Boolean(parsed.issuedAt);
+    const fillsDoctor = existing.parseStatus === 'parcial'
+      && !existing.doctorName
+      && Boolean(parsed.doctorName);
+    const fillsCrm = existing.parseStatus === 'parcial'
+      && !existing.doctorCrm
+      && Boolean(parsed.doctorCrm);
     const dateChanged = Boolean(parsed.issuedAt)
       && existing.issuedAt?.getTime() !== parsed.issuedAt?.getTime();
     if (
       shouldUpgrade(existing.parseStatus, parsed.parseStatus)
       || fillsDate
+      || fillsDoctor
+      || fillsCrm
       || (existing.parseStatus === 'falha' && existing.oneDriveItemId !== file.itemId)
     ) {
       await input.store.persistUpgrade({ ...persistBase, authorizationId: existing.id });

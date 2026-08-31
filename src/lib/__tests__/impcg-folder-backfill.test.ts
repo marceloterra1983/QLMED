@@ -28,6 +28,8 @@ type AuthRow = {
   patientName: string;
   oneDriveItemId: string;
   issuedAt: Date | null;
+  doctorName?: string | null;
+  doctorCrm?: string | null;
   totalCents: number;
   itemCount: number;
 };
@@ -73,6 +75,8 @@ function memoryStore(): ImpcgStorePort {
         patientName: input.patientName,
         oneDriveItemId: input.oneDriveItemId,
         issuedAt: input.issuedAt,
+        doctorName: input.doctorName,
+        doctorCrm: input.doctorCrm,
         totalCents: input.totalCents,
         itemCount: input.items.length,
       });
@@ -85,6 +89,8 @@ function memoryStore(): ImpcgStorePort {
       row.patientName = input.patientName;
       row.oneDriveItemId = input.oneDriveItemId;
       row.issuedAt = input.issuedAt;
+      row.doctorName = input.doctorName;
+      row.doctorCrm = input.doctorCrm;
       row.totalCents = input.totalCents;
       row.itemCount = input.items.length;
     },
@@ -238,6 +244,42 @@ Campo Grande, 22 de janeiro de 2026.
     expect(memory.authorizations[0]?.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
     expect(result.processed).toBe(1);
     expect(ports.uploadPdf).not.toHaveBeenCalled();
+  });
+
+  it('parcial sem médico é relido e preenche doctorName (layout MÉDICO DR.)', async () => {
+    memory.authorizations.push({
+      id: 'auth-no-doc',
+      oficioNumber: '1589',
+      parseStatus: 'parcial',
+      patientName: 'PAULO ROBERTO LOUREIRO PINHEIRO',
+      oneDriveItemId: 'od-1589',
+      issuedAt: new Date('2018-01-01T00:00:00.000Z'),
+      doctorName: null,
+      doctorCrm: null,
+      totalCents: 899000,
+      itemCount: 5,
+    });
+    ports.listPdfs.mockResolvedValue([
+      {
+        itemId: 'od-1589',
+        name: 'OFICIO 1589 PAULO ROBERTO LOUREIRO PINHEIRO.pdf',
+        lastModifiedAt: new Date('2018-01-01T00:00:00.000Z'),
+      },
+    ]);
+    ports.extractText.mockResolvedValue(`
+OFÍCIO Nº 1589
+PACIENTE: PAULO ROBERTO LOUREIRO PINHEIRO
+MÉDICO DR. ARINO FARIA DA SILVA
+LOCAL DE ENTREGA: HOSPITAL EL KADRI
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL R$ 10,00
+`);
+
+    const { runImpcgIngest } = await import('@/lib/impcg/ingest');
+    const result = await runImpcgIngest('co1', deps());
+
+    expect(memory.authorizations[0]?.doctorName).toBe('ARINO FARIA DA SILVA');
+    expect(result.processed).toBe(1);
   });
 
   it('OCR vazio não inventa itens — persiste falha com número do arquivo', async () => {

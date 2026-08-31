@@ -1,6 +1,6 @@
-# Evidence: SPEC-033 — caption curta da NF-e no WhatsApp
+# Evidence: SPEC-035 — caption curta da NF-e no WhatsApp
 
-Scope: executar `specs/033-nfe-whatsapp-caption/tasks.md`.
+Scope: executar `specs/035-nfe-whatsapp-caption/tasks.md`.
 
 ## Checks (re-medidos)
 

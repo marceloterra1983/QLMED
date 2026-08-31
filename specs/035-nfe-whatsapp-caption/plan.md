@@ -30,12 +30,12 @@ CT-e continuam como estão.
 - Sem migration (III).
 - Lógica em `src/lib`; claim só enriquece (IV).
 - XML não vai ao worker; chave some só no WhatsApp de NF-e (V).
-- SPEC-033, sem GSD (VI).
+- SPEC-035, sem GSD (VI).
 
 ## Project Structure
 
 ```text
-specs/033-nfe-whatsapp-caption/
+specs/035-nfe-whatsapp-caption/
 src/lib/cte-whatsapp-caption.ts
 src/lib/__tests__/cte-whatsapp-caption.test.ts
 src/lib/notification-outbox.ts
