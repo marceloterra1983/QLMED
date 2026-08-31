@@ -70,6 +70,11 @@ certificado). Serve depois para assinar; **não** usar no browser.
 `environment` controla autorização e `NFeStatusServico4`. DistDFe
 operacional permanece em produção: NSU de homologação é outra série.
 
+A SEFAZ-MS (hom e prod) encadeia TLS na raiz ICP-Brasil v10, que o
+Node/Alpine não traz. O cliente SEFAZ anexa essa raiz oficial do ITI
+(`acraiz.icpbrasil.gov.br/.../ICP-Brasilv10.crt`) às CAs do runtime.
+Não desligar `rejectUnauthorized` por causa disso.
+
 ### Destinatário
 
 - `GET /api/customers` — lista de clientes da empresa.

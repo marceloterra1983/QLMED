@@ -3,6 +3,7 @@ import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/aut
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
+import { isSefazTlsTrustError } from '@/lib/ssl-verify';
 import { decrypt } from '@/lib/crypto';
 import { CertificateManager } from '@/lib/certificate-manager';
 import { UF_TO_CODE } from '@/lib/constants';
@@ -73,6 +74,11 @@ export async function POST() {
       || error.message === 'Certificado digital vencido'
     )) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (isSefazTlsTrustError(error)) {
+      return NextResponse.json({
+        error: 'A SEFAZ-MS não enviou uma cadeia TLS completa. O QLMED já inclui a raiz ICP-Brasil v10; tente de novo.',
+      }, { status: 502 });
     }
     return apiError(error, 'POST /api/certificate/status-servico');
   }
