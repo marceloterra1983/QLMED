@@ -113,8 +113,9 @@ Libanes)` e não contém `QL`.
   nem o rótulo `Chave:`.
 - **FR-008**: O caption WhatsApp de CT-e MUST NOT incluir o número do
   documento nem o rótulo `Nº`.
-- **FR-005**: E-mail (CT-e e NF-e) e WhatsApp de NF-e MUST permanecer com o
-  texto atual (número, emitente/transportadora por extenso, valor, chave).
+- **FR-005**: E-mail (CT-e e NF-e) MUST permanecer com o texto atual
+  (número, emitente/transportadora por extenso, valor, chave). WhatsApp de
+  NF-e: ver SPEC-033 (supersede parcial de AC-005).
 - **FR-006**: Sem município de início ou fim no documento, o sistema MUST
   omitir a linha da rota; MUST NOT inventar cidade.
 - **FR-007**: O XML completo MUST NOT ser enviado ao worker; só campos já

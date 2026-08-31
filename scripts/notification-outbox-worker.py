@@ -112,7 +112,7 @@ def build_text(invoice: dict, link: str) -> str:
 
 def build_whatsapp_text(invoice: dict, link: str) -> str:
     caption = invoice.get("whatsappCaption")
-    if invoice.get("type") == "CTE" and isinstance(caption, str) and caption.strip():
+    if isinstance(caption, str) and caption.strip():
         return f"{caption.rstrip()}\n\n{link}"
     return build_text(invoice, link)
 

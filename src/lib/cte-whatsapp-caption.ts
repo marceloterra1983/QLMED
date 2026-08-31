@@ -188,15 +188,38 @@ export function buildCteWhatsappCaption(input: {
   return lines.join('\n');
 }
 
+export function buildNfeWhatsappCaption(input: {
+  number: string | null;
+  senderName: string | null;
+  senderShortName?: string | null;
+  totalValue: unknown;
+}): string {
+  const short = (input.senderShortName || '').trim();
+  const full = (input.senderName || '').trim();
+  const name = short || full || '-';
+  return [
+    'NF-e Recebida',
+    '',
+    `Número: ${input.number || '-'}`,
+    name,
+    formatCaptionBrl(input.totalValue),
+  ].join('\n');
+}
+
 export type ClaimInvoiceInput = {
   type: string;
   number: string | null;
   senderName: string | null;
   totalValue: unknown;
   xmlContent?: string | null;
+  /** Apelido do cadastro; prioridade sobre senderName no caption de NF-e. */
+  senderShortName?: string | null;
 };
 
-type DecoratedClaimInvoice<T extends ClaimInvoiceInput> = Omit<T, 'xmlContent'> & {
+type DecoratedClaimInvoice<T extends ClaimInvoiceInput> = Omit<
+  T,
+  'xmlContent' | 'senderShortName'
+> & {
   originCity?: string | null;
   destCity?: string | null;
   carrierShortName?: string;
@@ -206,7 +229,18 @@ type DecoratedClaimInvoice<T extends ClaimInvoiceInput> = Omit<T, 'xmlContent'> 
 export function decorateClaimInvoice<T extends ClaimInvoiceInput>(
   invoice: T,
 ): DecoratedClaimInvoice<T> {
-  const { xmlContent, ...rest } = invoice;
+  const { xmlContent, senderShortName, ...rest } = invoice;
+  if (invoice.type === 'NFE') {
+    return {
+      ...rest,
+      whatsappCaption: buildNfeWhatsappCaption({
+        number: invoice.number,
+        senderName: invoice.senderName,
+        senderShortName,
+        totalValue: invoice.totalValue,
+      }),
+    };
+  }
   if (invoice.type !== 'CTE') return rest;
   const xml = xmlContent || '';
   const route = extractCteRouteCities(xml);

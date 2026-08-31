@@ -55,7 +55,44 @@ class WorkerCaptionTests(unittest.TestCase):
         self.assertIn(ACCESS_KEY, text)
         self.assertIn("AZUL LINHAS AEREAS BRASILEIRAS SA", text)
 
-    def test_nfe_whatsapp_stays_on_full_text(self) -> None:
+    def test_nfe_whatsapp_uses_caption_and_omits_key(self) -> None:
+        invoice = {
+            "type": "NFE",
+            "number": "39400",
+            "senderName": "Politec Importacao e Comercio Ltda",
+            "totalValue": 60895.8,
+            "accessKey": ACCESS_KEY,
+            "whatsappCaption": (
+                "NF-e Recebida\n\nNúmero: 39400\nPolitec\nR$ 60.895,80"
+            ),
+        }
+        text = WORKER.build_whatsapp_text(invoice, LINK)
+        self.assertIn("NF-e Recebida", text)
+        self.assertIn("Número: 39400", text)
+        self.assertIn("Politec", text)
+        self.assertIn("R$ 60.895,80", text)
+        self.assertNotIn("Emitente/Transportadora", text)
+        self.assertNotIn("Valor:", text)
+        self.assertNotIn("Chave", text)
+        self.assertNotIn(ACCESS_KEY, text)
+        self.assertIn(LINK, text)
+
+    def test_nfe_email_keeps_full_text_with_key(self) -> None:
+        invoice = {
+            "type": "NFE",
+            "number": "39400",
+            "senderName": "Politec Importacao e Comercio Ltda",
+            "totalValue": 60895.8,
+            "accessKey": ACCESS_KEY,
+            "whatsappCaption": "NF-e Recebida\n\nNúmero: 39400\nPolitec\nR$ 60.895,80",
+        }
+        text = WORKER.build_text(invoice, LINK)
+        self.assertIn("Chave:", text)
+        self.assertIn(ACCESS_KEY, text)
+        self.assertIn("Emitente/Transportadora:", text)
+        self.assertIn("Valor:", text)
+
+    def test_nfe_whatsapp_falls_back_without_caption(self) -> None:
         invoice = {
             "type": "NFE",
             "number": "1",
