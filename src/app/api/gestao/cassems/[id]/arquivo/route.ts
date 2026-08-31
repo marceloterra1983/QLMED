@@ -4,7 +4,7 @@ import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getCassemsAuthorization } from '@/lib/cassems/store';
 import { CASSEMS_ONEDRIVE_ACCOUNT } from '@/lib/cassems/constants';
-import { downloadOneDriveItemContent } from '@/lib/onedrive-client';
+import { openOneDriveItemContent } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
@@ -21,6 +21,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const startedAt = Date.now();
   try {
     await requireAuth();
   } catch (error) {
@@ -53,17 +54,23 @@ export async function GET(
     }
 
     const accessToken = await ensureValidOneDriveAccessToken(connection);
-    const bytes = await downloadOneDriveItemContent(
+    const content = await openOneDriveItemContent(
       accessToken,
       connection.driveId,
       row.oneDriveItemId,
     );
 
-    return new Response(new Uint8Array(bytes), {
+    log.info(
+      { authorizationId: row.id, bytes: content.size, durationMs: Date.now() - startedAt },
+      'PDF CASSEMS pronto para stream',
+    );
+
+    return new Response(content.body, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': inlineDisposition(row.fileName),
         'Cache-Control': 'private, max-age=300',
+        ...(content.size !== null ? { 'Content-Length': String(content.size) } : {}),
       },
     });
   } catch (error) {
