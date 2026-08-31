@@ -42,12 +42,15 @@ describe('URLs NFeStatusServico4 MS', () => {
 });
 
 describe('envelope e retorno StatusServico', () => {
-  it('monta consStatServ sem lote de autorização', () => {
+  it('monta consStatServ no contrato SOAP 4.00 (sem cabeçalho nem wrapper de operação)', () => {
     const envelope = buildStatusServicoEnvelope('50', '2');
     expect(envelope).toContain('<xServ>STATUS</xServ>');
     expect(envelope).toContain('<tpAmb>2</tpAmb>');
     expect(envelope).toContain('<cUF>50</cUF>');
-    expect(envelope).toContain('NFeStatusServico4');
+    expect(envelope).toContain('<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4">');
+    expect(envelope).toContain('<consStatServ xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">');
+    expect(envelope).not.toContain('nfeCabecMsg');
+    expect(envelope).not.toContain('<nfeStatusServicoNF');
     expect(envelope).not.toContain('enviNFe');
     expect(envelope).not.toContain('NFeAutorizacao');
   });

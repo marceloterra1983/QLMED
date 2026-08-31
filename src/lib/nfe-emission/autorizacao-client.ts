@@ -14,8 +14,9 @@ export type AutorizacaoResult = {
   xmlAutorizado?: string;
 };
 
-function soapEnvelope(cUf: string, body: string): string {
-  return `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Header><nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><cUF>${cUf}</cUF><versaoDados>4.00</versaoDados></nfeCabecMsg></soap12:Header><soap12:Body><nfeAutorizacaoLote xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><nfeDadosMsg>${body}</nfeDadosMsg></nfeAutorizacaoLote></soap12:Body></soap12:Envelope>`;
+function soapEnvelope(body: string): string {
+  // NF-e 4.00 (NT 2016.002): sem nfeCabecMsg; nfeDadosMsg é filho direto do Body.
+  return `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">${body}</nfeDadosMsg></soap12:Body></soap12:Envelope>`;
 }
 
 function sendHttps(url: string, envelope: string, certPem: string, keyPem: string): Promise<string> {
@@ -27,7 +28,7 @@ function sendHttps(url: string, envelope: string, certPem: string, keyPem: strin
       key: keyPem,
       ...sefazRequestTls(),
       headers: {
-        'Content-Type': 'application/soap+xml; charset=utf-8',
+        'Content-Type': 'application/soap+xml;charset=utf-8;action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote"',
         'Content-Length': Buffer.byteLength(envelope),
       },
     }, (res) => {
@@ -82,7 +83,7 @@ export async function enviarNfeAutorizacao(input: {
   const enviNFe = `<enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>${input.idLote}</idLote><indSinc>1</indSinc>${input.signedNfeXml}</enviNFe>`;
   const xmlResponse = await sendHttps(
     urls.autorizacao,
-    soapEnvelope(input.cUf, enviNFe),
+    soapEnvelope(enviNFe),
     input.certPem,
     input.keyPem,
   );
