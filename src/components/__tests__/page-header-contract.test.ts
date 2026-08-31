@@ -9,7 +9,7 @@ function read(rel: string) {
   return readFileSync(resolve(root, rel), 'utf8');
 }
 
-/** SPEC-028: listas longas do painel usam o chrome compartilhado. */
+/** SPEC-029: listas longas do painel usam o chrome compartilhado. */
 const LIST_PAGES = [
   'src/app/(painel)/fiscal/issued/page-client.tsx',
   'src/app/(painel)/fiscal/invoices/page-client.tsx',
@@ -32,7 +32,7 @@ const LIST_PAGES = [
   'src/app/(painel)/sistema/automacoes/page-client.tsx',
 ] as const;
 
-describe('SPEC-028 page sticky header', () => {
+describe('SPEC-029 page sticky header', () => {
   it('PageHeader keeps an opaque sticky chrome above the table', () => {
     const src = read('src/components/PageHeader.tsx');
     expect(src).toMatch(/sticky top-0/);
