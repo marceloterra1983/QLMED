@@ -61,7 +61,7 @@ describe('emissão manual: série 2 fixa', () => {
       resolve(__dirname, '../../app/(painel)/fiscal/issued/nova/page-client.tsx'),
       'utf8',
     );
-    const dados = src.match(/\{tab === 'dados' && \([\s\S]*?\{tab === 'itens'/);
+    const dados = src.match(/id=\{nfeSectionId\('dados'\)\}[\s\S]*?id=\{nfeSectionId\('itens'\)\}/);
     expect(dados?.[0]).toBeTruthy();
     const block = dados![0];
     const dest = block.indexOf('>Destinatário<');
@@ -72,5 +72,23 @@ describe('emissão manual: série 2 fixa', () => {
     expect(nat).toBeGreaterThan(dest);
     expect(ser).toBeGreaterThan(nat);
     expect(fin).toBeGreaterThan(ser);
+  });
+
+  it('UI: série, finalidade e consumidor final na mesma linha compacta', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../../app/(painel)/fiscal/issued/nova/page-client.tsx'),
+      'utf8',
+    );
+    const row = src.match(/data-nfe-serie-finalidade-linha[\s\S]*?<\/div>/);
+    expect(row?.[0]).toBeTruthy();
+    const block = row![0];
+    expect(block).toMatch(/flex-wrap/);
+    expect(block).toMatch(/sm:grid-cols-3/);
+    const ser = block.indexOf('label="Série"');
+    const fin = block.indexOf('label="Finalidade"');
+    const cons = block.indexOf('label="Consumidor final"');
+    expect(ser).toBeGreaterThanOrEqual(0);
+    expect(fin).toBeGreaterThan(ser);
+    expect(cons).toBeGreaterThan(fin);
   });
 });
