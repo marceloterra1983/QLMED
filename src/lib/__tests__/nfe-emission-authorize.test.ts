@@ -44,7 +44,7 @@ describe('nfe-emission destinatário e payload', () => {
   it('payload aceita CFOP de consignação e rejeita CFOP fora do catálogo', () => {
     const base = {
       natureza: 'Remessa em consignacao',
-      series: '1',
+      series: '2',
       destCnpj: '12345678000199',
       indFinal: '0' as const,
       indPres: '1' as const,

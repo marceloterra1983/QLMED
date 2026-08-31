@@ -101,7 +101,6 @@ export default function EmitirNfePage() {
   const [ambiente, setAmbiente] = useState<'homologation' | 'production' | null>(null);
   const [certExpired, setCertExpired] = useState(false);
   const [cfop, setCfop] = useState('5102');
-  const [series, setSeries] = useState(DEFAULT_SERIES);
   const [finNFe, setFinNFe] = useState<'1' | '2' | '3' | '4'>('1');
   const [indFinal, setIndFinal] = useState<'0' | '1'>('1');
   const [indPres, setIndPres] = useState(DEFAULT_IND_PRES);
@@ -235,7 +234,7 @@ export default function EmitirNfePage() {
     return {
       natureza: op.natureza,
       cfop,
-      series,
+      series: DEFAULT_SERIES,
       destCnpj: dest.cnpj,
       destName: dest.name,
       finNFe,
@@ -401,8 +400,13 @@ export default function EmitirNfePage() {
                     {FIN_NFE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Série">
-                  <input value={series} onChange={(e) => setSeries(e.target.value.replace(/\D/g, '').slice(0, 3))} className={FILTER_INPUT_CLS} />
+                <Field label="Série" className="max-w-[4.5rem]">
+                  <span
+                    aria-readonly="true"
+                    className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {DEFAULT_SERIES}
+                  </span>
                 </Field>
                 <Field label="Consumidor final">
                   <select value={indFinal} onChange={(e) => setIndFinal(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
