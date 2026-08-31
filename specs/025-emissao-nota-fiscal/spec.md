@@ -210,6 +210,14 @@ natureza avança para Itens.
 5. **AC-025** — Given a última seção (Complementos), when o
    operador chega ao fim, then não há Concluir nesta etapa; o
    rascunho e a transmissão seguem o fluxo já existente.
+6. **AC-027** — Given a tela Nova NF-e, when o operador compara os
+   botões de etapa no topo e os cards ao longo da página, then
+   cada etapa tem um tom de cor próprio (Dados, Itens,
+   Transporte, Pagamento, Complementos distintos entre si). O
+   botão ativo usa o tom da etapa com preenchimento, peso
+   tipográfico e anel; o inativo usa versão muted do mesmo tom.
+   O card da seção correspondente usa borda, fundo sutil e
+   título/accent no mesmo tom.
 
 ### User Story 4 — Viewer não envia (Priority: P2)
 
@@ -368,6 +376,17 @@ status do serviço e não cria nota emitida.
   select nem controle para alterar presença. Schema/API MUST
   forçar `9` mesmo se o client enviar outro valor. NF-e já
   autorizadas historicamente MUST permanecer inalteradas.
+- **FR-025**: Cada etapa da Nova NF-e (Dados, Itens, Transporte,
+  Pagamento, Complementos) MUST ter um tom de cor distinto na
+  navegação e no card/bloco da seção correspondente. O botão
+  ativo MUST usar o tom da etapa com preenchimento, peso
+  tipográfico e anel (não só mudança de cor). O botão inativo
+  MUST usar versão muted do mesmo tom daquela etapa, ainda
+  distinguível das demais. O card da seção MUST refletir o
+  mesmo tom com borda, fundo sutil e título/accent alinhados
+  (leve, legível em light e dark; sem neon nem sombra
+  multi-layer). MUST NÃO usar a mesma cor primária única para
+  todas as etapas. Contraste do texto MUST atender AA.
 
 ### Failure cases
 

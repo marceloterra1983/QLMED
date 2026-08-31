@@ -28,11 +28,15 @@ import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
 import {
   NFE_FORM_STEPS,
   NFE_STEP_LABELS,
+  NFE_STEP_TONE,
   completeNfeStep,
   findScrollParent,
   nextNfeFormStep,
   nfeSectionId,
   nfeStepFromSectionId,
+  nfeStepHeadingClass,
+  nfeStepNavClass,
+  nfeStepSectionClass,
   scrollToNfeSection,
   type NfeFormStep,
   type NfeStepDraft,
@@ -478,11 +482,8 @@ export default function EmitirNfePage() {
                 type="button"
                 aria-current={activeStep === t.id ? 'true' : undefined}
                 onClick={() => focusStep(t.id)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs transition-all ${
-                  activeStep === t.id
-                    ? 'bg-primary text-white font-extrabold shadow-md ring-2 ring-primary-dark ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800'
-                    : 'bg-transparent text-slate-400 font-medium opacity-70 hover:opacity-100 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs transition-all ${nfeStepNavClass(t.id, activeStep === t.id)}`}
+                data-nfe-step-tone={NFE_STEP_TONE[t.id].tone}
               >
                 <span
                   className={`material-symbols-outlined ${activeStep === t.id ? 'text-[18px]' : 'text-[16px]'}`}
@@ -497,10 +498,11 @@ export default function EmitirNfePage() {
 
           <section
             id={nfeSectionId('dados')}
-            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-5"
+            data-nfe-step-tone={NFE_STEP_TONE['dados'].tone}
+            className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('dados')} space-y-5`}
           >
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Destinatário</h3>
+                <h3 className={`text-sm font-bold ${nfeStepHeadingClass('dados')}`}>Destinatário</h3>
                 <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Sem digitar, vê os 10 mais faturados (6 meses). Para os demais, busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
                   <div className="space-y-1.5">
@@ -581,10 +583,11 @@ export default function EmitirNfePage() {
 
           <section
             id={nfeSectionId('itens')}
-            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+            data-nfe-step-tone={NFE_STEP_TONE['itens'].tone}
+            className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('itens')} space-y-4`}
           >
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Itens da nota</h3>
+                <h3 className={`text-sm font-bold ${nfeStepHeadingClass('itens')}`}>Itens da nota</h3>
                 <span className="text-xs text-slate-500">{items.length} {items.length === 1 ? 'item' : 'itens'}</span>
               </div>
               <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Buscar produto por código ou descrição" className={FILTER_INPUT_CLS} />
@@ -685,9 +688,10 @@ export default function EmitirNfePage() {
 
           <section
             id={nfeSectionId('transporte')}
-            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+            data-nfe-step-tone={NFE_STEP_TONE['transporte'].tone}
+            className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('transporte')} space-y-4`}
           >
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Transporte e volumes</h3>
+              <h3 className={`text-sm font-bold ${nfeStepHeadingClass('transporte')}`}>Transporte e volumes</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Modalidade do frete" className="md:col-span-2">
                   <select value={modFrete} onChange={(e) => setModFrete(e.target.value)} className={FILTER_INPUT_CLS}>
@@ -734,9 +738,10 @@ export default function EmitirNfePage() {
 
           <section
             id={nfeSectionId('pagamento')}
-            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+            data-nfe-step-tone={NFE_STEP_TONE['pagamento'].tone}
+            className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('pagamento')} space-y-4`}
           >
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Pagamento da NF-e</h3>
+              <h3 className={`text-sm font-bold ${nfeStepHeadingClass('pagamento')}`}>Pagamento da NF-e</h3>
               <p className="text-xs text-slate-500">Grupo <span className="font-mono">pag</span> do XML — distinto do contas a receber interno.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Indicador">
@@ -763,9 +768,10 @@ export default function EmitirNfePage() {
 
           <section
             id={nfeSectionId('complementos')}
-            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+            data-nfe-step-tone={NFE_STEP_TONE['complementos'].tone}
+            className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('complementos')} space-y-4`}
           >
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Informações adicionais</h3>
+              <h3 className={`text-sm font-bold ${nfeStepHeadingClass('complementos')}`}>Informações adicionais</h3>
               <Field label="Informações complementares (contribuinte / DANFE)">
                 <textarea value={infCpl} onChange={(e) => setInfCpl(e.target.value.slice(0, 2000))} rows={4} className={FILTER_INPUT_CLS} placeholder="Pedido, contrato, texto legal ao destinatário" />
               </Field>
