@@ -42,8 +42,8 @@ jobs:
       - name: Refuse production runner
         run: |
           set -euo pipefail
-          if [ "${RUNNER_NAME}" != "qlmed-ci-linux-01" ]; then
-            echo "CI must run on qlmed-ci-linux-01, got ${RUNNER_NAME:-empty}" >&2
+          if ! printf '%s' "${RUNNER_NAME}" | grep -Eq '^qlmed-ci-linux-[0-9]{2}$'; then
+            echo "CI must run on qlmed-ci-linux-NN, got ${RUNNER_NAME:-empty}" >&2
             exit 1
           fi
 

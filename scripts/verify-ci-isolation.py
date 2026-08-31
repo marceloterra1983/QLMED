@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import socket
 import sys
 from pathlib import Path
@@ -13,17 +14,16 @@ TIMEOUT_SECONDS = 1.0
 # Production compose `qlmed_network` (172.18.0.0/16) plus other runner-slot
 # gateways. Own slot-4 gateway 10.254.3.1 is included: Postgres on the host
 # must not answer there. TCP success is a failure of isolation.
+QLMED_CI_RUNNER = re.compile(r"^qlmed-ci-linux-\d{2}$")
+
 TCP_TARGETS: tuple[tuple[str, int, str], ...] = (
     ("172.18.0.3", 5432, "qlmed-db"),
     ("172.18.0.6", 5678, "qlmed-n8n"),
     ("172.18.0.7", 3000, "qlmed-app"),
     ("172.18.0.1", 5432, "qlmed_network gateway"),
-    ("10.254.0.1", 5432, "slot-1 gateway"),
-    ("10.254.1.1", 5432, "slot-2 gateway"),
-    ("10.254.2.1", 5432, "slot-3 gateway"),
-    ("10.254.3.1", 5432, "slot-4 host gateway"),
-    ("10.254.5.1", 5432, "slot-6 gateway"),
-    ("10.254.6.1", 5432, "slot-7 gateway"),
+) + tuple(
+    (f"10.254.{octet}.1", 5432, f"slot-{octet + 1} gateway")
+    for octet in range(12)
 )
 
 HOST_PATHS: tuple[tuple[Path, str], ...] = (
@@ -50,8 +50,8 @@ def main() -> int:
     failures: list[str] = []
 
     runner = os.environ.get("RUNNER_NAME", "")
-    if runner != "qlmed-ci-linux-01":
-        failures.append(f"runner_name={runner!r} is not qlmed-ci-linux-01")
+    if not QLMED_CI_RUNNER.fullmatch(runner):
+        failures.append(f"runner_name={runner!r} is not qlmed-ci-linux-NN")
 
     for host, port, label in TCP_TARGETS:
         try:

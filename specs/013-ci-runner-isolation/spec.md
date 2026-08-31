@@ -66,7 +66,7 @@ O CI do QLMED executa em runner isolado. Um problema de pagamento ou de limite d
 
 **Acceptance Scenarios**:
 
-1. **Given** um PR interno, **When** o CI corre, **Then** os jobs executam em `qlmed-ci-linux-01` e reportam aprovação ou reprovação de verdade.
+1. **Given** um PR interno, **When** o CI corre, **Then** os jobs executam em `qlmed-ci-linux-NN` (01–03) e reportam aprovação ou reprovação de verdade.
 2. **Given** um job em execução, **When** seu runner é inspecionado, **Then** ele não é `qlmed-prod-runner`.
 3. **Given** um job de CI, **When** ele tenta alcançar o banco canônico, o n8n, `/srv` do host ou o socket Docker, **Then** não consegue.
 
@@ -103,7 +103,9 @@ O job `app` — que roda typecheck, testes, build e os verificadores de migratio
 ### Edge Cases
 
 - Runner isolado fora do ar: o CI para por inteiro, sem fallback hospedado.
-- Concorrência: um listener serializa `docs`, `app` e `quality`.
+- Concorrência: cada listener serializa o próprio job. O pool
+  `qlmed-ci-linux-01`…`03` aceita PRs/workflows em paralelo. Um job `app`
+  ainda usa o sidecar `qlmed-ci-db` **daquela** instância.
 - O proxy de egresso precisa permitir o registry do npm.
 - Node 22 vem de `actions/setup-node`, não da imagem.
 - `deploy-production.yml` continua em `qlmed-prod` e NÃO é migrado.
@@ -139,7 +141,8 @@ O job `app` — que roda typecheck, testes, build e os verificadores de migratio
 ## Assumptions
 
 - O QLMED é repositório **público**. Isolamento = contentor + overlay + approval de forks + guarda de origem; não visibilidade.
-- O runner isolado `qlmed-ci-linux-01` já existe na plataforma (slot 4 no `server`).
+- O pool isolado `qlmed-ci-linux-01` (slot 4), `02` (slot 11) e `03`
+  (slot 12) existe na plataforma.
 
 ## Out of Scope
 

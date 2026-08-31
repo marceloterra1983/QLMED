@@ -48,6 +48,11 @@ pb-persistent'
 # máquina, roda só por dispatch manual com SHA fixado, e não instala
 # dependências vindas de pull request.
 #
+# SPEC-013: o que a auditoria quis proteger é o host de produção, não o
+# nome de um único contentor. O pool `qlmed-ci-linux-NN` continua isolado
+# (sidecar `qlmed-ci-db`, sem docker.sock, sem rede do host). O matcher
+# recusa qualquer nome fora desse padrão — inclusive `qlmed-prod-runner`.
+#
 # SPEC-013: o que a auditoria quis proteger é o host de produção, não a
 # string `self-hosted`. O selector isolado inclui `self-hosted` (label default
 # do GitHub no listener de CI) mais as capabilities do perfil. `runs-on` só
@@ -156,8 +161,8 @@ if ! grep -q 'verify-ci-isolation.py' "$workflow"; then
   echo "CI hardening: ci.yml deve executar a prova de isolamento SC-003" >&2
   exit 1
 fi
-if ! grep -q 'qlmed-ci-linux-01' "$workflow"; then
-  echo "CI hardening: ci.yml deve recusar qualquer runner que não seja qlmed-ci-linux-01" >&2
+if ! grep -Eq 'qlmed-ci-linux-\[0-9\]\{2\}' "$workflow"; then
+  echo "CI hardening: ci.yml deve recusar runners fora do pool qlmed-ci-linux-NN" >&2
   exit 1
 fi
 if ! grep -q 'reset-ci-database.mjs' "$workflow"; then
