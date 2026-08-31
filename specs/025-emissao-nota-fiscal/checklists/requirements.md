@@ -33,6 +33,7 @@
 
 URLs de webservice, schemas XML e nomes de tabela ficam no plano,
 não no contrato de negócio. Decisões de escopo: todas as saídas;
-destinatário só PJ cadastrado; envio SEFAZ na primeira entrega.
-Ordem visual da aba Dados (FR-017 / AC-016): destinatário primeiro;
+destinatário só PJ cadastrado; busca nome+CNPJ no mesmo campo;
+endereço sucinto após o select; envio SEFAZ na primeira entrega.
+Ordem visual da aba Dados (FR-017 / AC-020): destinatário primeiro;
 natureza, série (badge) e finalidade nessa sequência.

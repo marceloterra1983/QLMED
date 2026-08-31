@@ -73,12 +73,16 @@ todas persistem com o CFOP correspondente.
 ### User Story 2 — Destinatário só cliente PJ cadastrado (Priority: P1)
 
 Como editor, só escolho destinatário entre clientes pessoa jurídica
-já cadastrados. Não digito um CNPJ solto nem CPF de particular.
+já cadastrados. No mesmo campo, busco por razão social, nome
+fantasia ou CNPJ (com ou sem pontuação). Não digito um CNPJ solto
+nem CPF de particular. Depois de escolher, vejo o endereço em uma
+linha curta e discreta, só se o cadastro tiver município ou UF.
 
 **Why this priority**: Decisão explícita de produto.
 
 **Independent Test**: Tentativa com CNPJ que não é cliente cadastrado
-é recusada.
+é recusada. Trecho de nome e CNPJ mascarado filtram a mesma lista
+da empresa autenticada.
 
 **Acceptance Scenarios**:
 
@@ -89,6 +93,23 @@ já cadastrados. Não digito um CNPJ solto nem CPF de particular.
    tenta salvar ou enviar, then o sistema recusa.
 3. **AC-006** — Given um CPF (11 dígitos), when tenta usar como
    destinatário, then o sistema recusa.
+4. **AC-016** — Given clientes PJ da empresa com razões distintas,
+   when o operador digita um trecho da razão social ou do nome
+   fantasia no campo único de busca, then a lista mostra só os
+   coincidentes da própria empresa.
+5. **AC-017** — Given um cliente com CNPJ conhecido, when o
+   operador digita o CNPJ com pontuação ou só com dígitos no mesmo
+   campo, then a lista inclui esse cliente e não mistura cadastro
+   de outra empresa.
+6. **AC-018** — Given destinatário selecionado cujo cadastro tem
+   cidade e UF (e opcionalmente bairro ou logradouro), when a
+   seleção aparece, then o operador vê uma única linha sucinta
+   (cidade/UF, ou bairro e cidade/UF, ou logradouro curto e
+   cidade/UF), em texto discreto, sem destaque visual, sem CEP,
+   complemento nem inscrição estadual.
+7. **AC-019** — Given destinatário selecionado sem município nem
+   UF no cadastro, when a seleção aparece, then o sistema não
+   inventa linha de endereço.
 
 ### User Story 3 — Enviar à SEFAZ (Priority: P1)
 
@@ -129,7 +150,7 @@ mesmo recorte que Bling/Conta Azul e os grupos do MOC 7.0
 2. **AC-012** — Given frete, PIX e texto complementar preenchidos,
    when o XML é gerado, then constam `modFrete`, `tPag`, `vFrete`
    e `infCpl` / `infAdFisco`.
-3. **AC-016** — Given a tela Nova NF-e na aba Dados, when o
+3. **AC-020** — Given a tela Nova NF-e na aba Dados, when o
    operador vê o formulário, then o destinatário é o primeiro
    controle significativo da seção inicial, e no bloco de
    identificação a série (visível, compacta e não editável)
@@ -242,6 +263,17 @@ status do serviço e não cria nota emitida.
   depois Finalidade. Os demais campos já existentes no bloco
   permanecem depois desse trio. MUST NÃO alterar regra fiscal,
   schema de série, defaults XML nem outras telas.
+- **FR-018**: O campo único de busca de destinatário na Nova NF-e
+  MUST aceitar razão social, nome fantasia ou CNPJ (com ou sem
+  pontuação) e MUST filtrar apenas clientes pessoa jurídica da
+  empresa do usuário autenticado. MUST NÃO exigir um segundo campo
+  nem vazar destinatário de outra empresa.
+- **FR-019**: Após selecionar o destinatário, a tela MUST mostrar o
+  endereço de forma sucinta (cidade/UF, ou bairro e cidade/UF, ou
+  logradouro curto e cidade/UF) em texto discreto, sem destaque
+  visual. MUST NÃO exibir CEP, complemento nem inscrição estadual
+  nessa linha. MUST NÃO inventar endereço quando o cadastro não
+  tiver município nem UF.
 
 ### Failure cases
 
@@ -297,6 +329,9 @@ status do serviço e não cria nota emitida.
 - **SC-004**: Viewer não consegue autorizar pelo servidor.
 - **SC-005**: Admin grava Homologação sem reenviar o PFX e o teste
   de conexão devolve status do serviço sem criar NF-e.
+- **SC-006**: Editor localiza o destinatário pelo nome ou pelo CNPJ
+  no mesmo campo e, ao selecionar, reconhece a cidade/UF quando o
+  cadastro tem esse dado — sem bloco destacado de endereço.
 
 ## Assumptions
 

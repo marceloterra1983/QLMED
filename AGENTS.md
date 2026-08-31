@@ -116,10 +116,14 @@ futuro; até lá, este é o ambiente real.
 ### Diretórios
 
 - `/home/marce/qlmed/app/` — checkout canônico com Git (alias `app-dev` → mesmo tree)
-  - `.env` — dev environment (`DATABASE_URL` → `localhost:5432`; `qlmed-db` publica
-    `127.0.0.1:5432` diretamente)
-  - `npm run dev` usa a porta **3000**; a porta 3001 está reservada pelo Uptime Kuma
-    do host — não suba o compose de dev nela sem resolver o conflito
+  - Env no host: `app/.env` muitas vezes não existe (`.env.enc`). Herdar
+    `/srv/qlmed/env/app.env` sem imprimir. Se `qlmed-db` não resolver,
+    `DATABASE_URL` com host `127.0.0.1:5432` (`qlmed-db` publica essa porta)
+  - `npm run dev` usa a porta **3000** e mata o que estiver nela; a porta 3001
+    está reservada pelo Uptime Kuma — não suba o compose de dev nela sem
+    resolver o conflito. Preview de feature = **única porta 3002**.
+    Proibido subir QLMED em 3003/3004. Feature nova rebase/merge na
+    worktree que já serve `:3002`.
   - `ops/` — scripts, unidades systemd, compose e evidence operacionais
     (watchdogs, backups, sync CT-e, resumo diário, speckit-updater). Migrado
     de `ops/qlmed/` em 27/08/2026; os symlinks vivos em
@@ -162,10 +166,28 @@ environment `production`. Migrações seguem expand/contract — rollback de ima
 
 ### Endpoints públicos e portas
 
-- App: `https://app.qlmed.com.br/` (local: 13000 produção, 3000 dev)
+- App: `https://app.qlmed.com.br/` (local: 13000 produção `127.0.0.1` only, 3000
+  dev no checkout main; preview de feature **só** em `:3002`)
 - n8n: `https://n8n.qlmed.com.br/` (local: 5678)
 - Evolution API: `https://evolution.qlmed.com.br/` (local: 8085)
 - PostgreSQL: `127.0.0.1:5432`, publicado por `qlmed-db` do compose canônico
+
+### Preview DEV persistente (Tailscale)
+
+`npm run dev` no bash do Cursor morre com o agente (`ERR_CONNECTION_REFUSED`
+em `http://100.83.11.58:3000/`). Suba com `systemd-run --user` (Linger:
+`loginctl enable-linger "$USER"`) ou `setsid` cujo pai seja systemd. Bind já
+é `0.0.0.0` (`next dev -H 0.0.0.0 -p 3002`). **Única porta de preview = 3002.**
+Proibido abrir 3003/3004 para QLMED. Feature nova rebase/merge na worktree
+que já serve `:3002` — não suba outro Next. UI nova: preview nessa porta
+**antes** de merge/deploy.
+
+- `NEXTAUTH_URL` (obrigatória em `src/lib/env.ts`): preview HTTP exige
+  `http://100.83.11.58:<porta>`. Herdar `https://app.qlmed.com.br` → cookie
+  `Secure`/`__Host-` → CSRF drop → catch do `signIn` = “Erro ao fazer login”.
+  Senha errada é outra mensagem (“Senha inválida”).
+- Diagnóstico refused: `ss` sem listen = processo morto. Curl local 200 +
+  Windows refused = Tailscale/browser (IPv6: Next pode não ouvir `[::]`).
 
 ### Infra notes específicas do host atual
 
@@ -174,7 +196,8 @@ environment `production`. Migrações seguem expand/contract — rollback de ima
   `prisma migrate deploy`, depois inicia `node server.js`.
 - Node 22 via nvm no host (dev); imagem Alpine (produção). Puppeteer com
   Chromium do sistema para geração de PDF.
-- Acesso de dev via Tailscale: `http://100.83.11.58:3000`.
+- Acesso de dev via Tailscale: `http://100.83.11.58:3000` (main); preview
+  de feature **só** `http://100.83.11.58:3002` — ver Preview DEV persistente.
 - `nvm` obrigatório: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22`
 - `n8n` `$env` expressions (`{{ $env.QLMED_API_URL }}` etc.): versões recentes do
   n8n têm `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` por padrão, o que falha toda
