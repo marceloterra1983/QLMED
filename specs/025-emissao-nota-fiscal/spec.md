@@ -110,6 +110,14 @@ da empresa autenticada.
 7. **AC-019** — Given destinatário selecionado sem município nem
    UF no cadastro, when a seleção aparece, then o sistema não
    inventa linha de endereço.
+8. **AC-024** — Given a caixa de destinatário aberta sem texto de
+   busca, when a lista carrega, then mostra no máximo os 10
+   clientes PJ com maior Σ `totalValue` de NF-e emitidas
+   (`direction=issued`, não canceladas) dos últimos 6 meses da
+   empresa autenticada — e MUST NÃO listar o restante A–Z.
+9. **AC-025** — Given clientes fora do top 10, when o operador
+   digita nome ou CNPJ no campo único, then a lista mostra só os
+   matches (ordem alfabética entre resultados) da própria empresa.
 
 ### User Story 3 — Enviar à SEFAZ (Priority: P1)
 
@@ -137,19 +145,71 @@ autoriza ou devolve o motivo da rejeição na própria tela.
 ### User Story 5 — Tela completa no padrão de emissor (Priority: P1)
 
 Como editor, preencho a nota em seções (dados, itens, transporte,
-pagamento e complementos) com painel de totais e pendências, no
-mesmo recorte que Bling/Conta Azul e os grupos do MOC 7.0
-(`ide`, `dest`, `det`, `transp`, `pag`, `total`, `infAdic`).
+pagamento e complementos) na mesma página rolável, com painel de
+totais e pendências, no mesmo recorte que Bling/Conta Azul e os
+grupos do MOC 7.0 (`ide`, `dest`, `det`, `transp`, `pag`, `total`,
+`infAdic`). Os botões do topo (Dados, Itens, Transporte, Pagamento,
+Complementos) levam até a seção; não escondem o restante.
 
 **Acceptance Scenarios**:
 
 1. **AC-011** — Given a tela Nova NF-e, when o operador navega,
-   then vê abas Dados, Itens, Transporte, Pagamento e Complementos
-   e um resumo com produtos, desconto, frete, seguro, outras e
-   total.
+   then vê na mesma página as seções Dados, Itens, Transporte,
+   Pagamento e Complementos (todas visíveis com rolagem) e um
+   resumo com produtos, desconto, frete, seguro, outras e total.
 2. **AC-012** — Given frete, PIX e texto complementar preenchidos,
    when o XML é gerado, then constam `modFrete`, `tPag`, `vFrete`
    e `infCpl` / `infAdFisco`.
+3. **AC-020** — Given a tela Nova NF-e na seção Dados, when o
+   operador vê o formulário, then o destinatário é o primeiro
+   controle significativo da seção inicial, e no bloco de
+   identificação a série (visível, compacta e não editável)
+   fica entre natureza e finalidade.
+4. **AC-026** — Given a tela Nova NF-e na seção Dados em viewport
+   tablet/desktop, when o operador vê o bloco de identificação,
+   then Série, Finalidade e Consumidor final aparecem na mesma
+   linha (layout compacto). Em viewport estreita (~390px) o trio
+   MAY quebrar com wrap responsivo.
+
+### User Story 7 — Etapas na mesma página (Priority: P1)
+
+Como editor, percorro as seções já existentes sem trocar de
+tela. Clico no botão do topo para ir até a seção. O botão da
+seção visível (ou a que acabei de escolher) fica ativo. Ao
+terminar uma etapa, clico **Concluir nesta etapa**; se o mínimo
+daquela etapa estiver ok, a página vai sozinha para a próxima.
+Se faltar algo, vejo o que falta e não saio do lugar. A última
+seção não tem esse botão: o envio continua no fluxo já existente
+de rascunho / transmitir.
+
+**Why this priority**: O operador precisa ver o contexto da nota
+inteira e avançar só quando decidir, sem wizard nem avanço por
+sair do campo.
+
+**Independent Test**: Nav para uma seção posterior deixa as
+anteriores visíveis ao rolar para cima. Concluir Dados sem
+destinatário não avança. Concluir Dados com destinatário e
+natureza avança para Itens.
+
+**Acceptance Scenarios**:
+
+1. **AC-021** — Given a tela Nova NF-e, when o operador clica em
+   Itens (ou Transporte, Pagamento, Complementos) no topo, then a
+   página foca essa seção sem esconder as demais, e o botão
+   clicado fica ativo.
+2. **AC-022** — Given a seção Dados incompleta (sem destinatário
+   PJ ou sem natureza), when o operador clica em Concluir nesta
+   etapa, then a página não avança e o botão (ou o texto junto
+   dele) explica o que falta.
+3. **AC-023** — Given a seção Dados com destinatário e natureza
+   preenchidos, when o operador clica em Concluir nesta etapa,
+   then a página vai para Itens e o botão Itens fica ativo.
+4. **AC-024** — Given o operador rolando a página à mão, when
+   outra seção passa a ser a principal visível, then o botão do
+   topo correspondente fica ativo.
+5. **AC-025** — Given a última seção (Complementos), when o
+   operador chega ao fim, then não há Concluir nesta etapa; o
+   rascunho e a transmissão seguem o fluxo já existente.
 
 ### User Story 4 — Viewer não envia (Priority: P2)
 
@@ -222,10 +282,11 @@ status do serviço e não cria nota emitida.
 - **FR-010**: Sem certificado válido, emitente incompleto ou
   endereço do destinatário incompleto, o envio MUST falhar com
   mensagem acionável, sem chamar a SEFAZ.
-- **FR-011**: O formulário MUST cobrir finalidade, presença,
-  transporte (`modFrete`, volumes, transportadora), pagamento
+- **FR-011**: O formulário MUST cobrir finalidade, transporte
+  (`modFrete`, volumes, transportadora), pagamento
   (`tPag`/`indPag`) e informações adicionais, persistidos no
-  rascunho e emitidos no XML.
+  rascunho e emitidos no XML. Presença do comprador (`indPres`)
+  MUST NÃO ser campo editável — ver FR-024.
 - **FR-012**: Admin MUST poder gravar o ambiente do certificado
   (`homologation` ou `production`) sem reenviar o PFX. Viewer e
   editor MUST NÃO alterar o ambiente. O ambiente da emissão MUST
@@ -251,17 +312,62 @@ status do serviço e não cria nota emitida.
   MUST recusar qualquer série diferente de 2. NF-e históricas série 1
   (trilho raro de importação) MUST permanecer inalteradas na listagem
   e no XML já autorizado.
-- **FR-017**: O campo único de busca de destinatário na Nova NF-e
+- **FR-017**: Na seção Dados da Nova NF-e, o destinatário MUST ser o
+  primeiro controle significativo (acima dos demais campos dessa
+  seção). No bloco de identificação, a ordem visual MUST ser
+  Natureza, depois Série (badge compacto não editável, FR-016),
+  depois Finalidade. Os demais campos já existentes no bloco
+  permanecem depois desse trio. MUST NÃO alterar regra fiscal,
+  schema de série, defaults XML nem outras telas.
+- **FR-018**: O campo único de busca de destinatário na Nova NF-e
   MUST aceitar razão social, nome fantasia ou CNPJ (com ou sem
   pontuação) e MUST filtrar apenas clientes pessoa jurídica da
   empresa do usuário autenticado. MUST NÃO exigir um segundo campo
   nem vazar destinatário de outra empresa.
-- **FR-018**: Após selecionar o destinatário, a tela MUST mostrar o
+- **FR-023**: Sem texto de busca, a caixa de seleção de destinatário
+  MUST mostrar somente até 10 clientes com maior faturamento
+  (Σ `Invoice.totalValue` de NF-e `type=NFE` `direction=issued`,
+  `cancelledAt` nulo, `issueDate` nos últimos 6 meses) da empresa
+  autenticada, ordenados por valor. MUST NÃO carregar o catálogo
+  alfabético completo nem exibir separator + lista A–Z abaixo do
+  top. Com busca ativa, MUST devolver só matches filtrados
+  (alfabéticos entre si); o restante do cadastro entra só via
+  busca manual. Isolamento por `companyId` do servidor.
+- **FR-019**: Após selecionar o destinatário, a tela MUST mostrar o
   endereço de forma sucinta (cidade/UF, ou bairro e cidade/UF, ou
   logradouro curto e cidade/UF) em texto discreto, sem destaque
   visual. MUST NÃO exibir CEP, complemento nem inscrição estadual
   nessa linha. MUST NÃO inventar endereço quando o cadastro não
   tiver município nem UF.
+- **FR-020**: A Nova NF-e MUST mostrar as seções já existentes
+  (Dados, Itens, Transporte, Pagamento, Complementos) na mesma
+  página, em uma coluna rolável. MUST NÃO esconder as demais seções
+  ao escolher um botão do topo. Esses botões MUST focar a seção
+  correspondente e MUST ficar no estado ativo da seção visível ou
+  da seção recém-escolhida. O ativo MUST se distinguir dos inativos
+  por preenchimento, peso tipográfico e borda/anel — não só por
+  cor. Os inativos MUST parecer recuados. Rolagem manual MUST atualizar o botão
+  ativo. MUST NÃO inventar seções novas.
+- **FR-021**: Cada seção, exceto a última, MUST oferecer o botão
+  **Concluir nesta etapa**. O clique MUST validar só o mínimo
+  daquela etapa. Se completo, a página MUST ir à próxima seção. Se
+  incompleto, MUST explicar o que falta e MUST NÃO avançar. MUST
+  NÃO avançar só porque o operador saiu de um campo. A última seção
+  MUST permanecer no fluxo existente de rascunho / transmitir.
+- **FR-022**: No bloco de identificação da Nova NF-e, Série,
+  Finalidade e Consumidor final MUST compartilhar a mesma linha em
+  viewport tablet/desktop (layout compacto). Em viewport estreita
+  (~390px) o trio MAY usar wrap responsivo (`flex-wrap` /
+  `sm:grid-cols-3`). Comportamento dos campos (badge série 2 fixa,
+  opções de finalidade e consumidor final) MUST permanecer o de
+  FR-011/FR-016. MUST NÃO alterar regra fiscal, schema, defaults
+  XML nem outras telas.
+- **FR-024**: Presença do comprador (`indPres`) MUST ser sempre
+  `9` (não presencial — outros / `DEFAULT_IND_PRES`) em toda
+  emissão nova via QLMED. A página Nova NF-e MUST NÃO exibir
+  select nem controle para alterar presença. Schema/API MUST
+  forçar `9` mesmo se o client enviar outro valor. NF-e já
+  autorizadas historicamente MUST permanecer inalteradas.
 
 ### Failure cases
 
@@ -320,6 +426,9 @@ status do serviço e não cria nota emitida.
 - **SC-006**: Editor localiza o destinatário pelo nome ou pelo CNPJ
   no mesmo campo e, ao selecionar, reconhece a cidade/UF quando o
   cadastro tem esse dado — sem bloco destacado de endereço.
+- **SC-007**: Editor vê todas as seções da nota na mesma rolagem,
+  usa o topo só para ir até uma seção, e só avança de etapa pelo
+  botão Concluir nesta etapa quando o mínimo da etapa está ok.
 
 ## Assumptions
 

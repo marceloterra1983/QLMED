@@ -35,3 +35,10 @@ URLs de webservice, schemas XML e nomes de tabela ficam no plano,
 não no contrato de negócio. Decisões de escopo: todas as saídas;
 destinatário só PJ cadastrado; busca nome+CNPJ no mesmo campo;
 endereço sucinto após o select; envio SEFAZ na primeira entrega.
+Ordem visual da seção Dados (FR-017 / AC-020): destinatário primeiro;
+natureza, série (badge) e finalidade nessa sequência.
+Layout compacto (FR-022 / AC-026): série + finalidade + consumidor
+final na mesma linha (wrap em mobile estreito).
+Página única com âncoras e Concluir nesta etapa: FR-020, FR-021,
+AC-021–AC-025.
+Presença do comprador fixa `indPres=9` sem campo na UI: FR-024.

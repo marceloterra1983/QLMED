@@ -60,6 +60,7 @@ describe('nfe-emission destinatário e payload', () => {
       }],
     };
     expect(nfeEmissionPayloadSchema.parse({ ...base, cfop: '5917' }).cfop).toBe('5917');
+    expect(nfeEmissionPayloadSchema.parse({ ...base, cfop: '5917' }).indPres).toBe('9');
     expect(nfeEmissionPayloadSchema.parse({ ...base, cfop: '1918', natureza: 'Dev. de merc. rem. em consig.' }).cfop).toBe('1918');
     expect(nfeEmissionPayloadSchema.safeParse({ ...base, cfop: '1102' }).success).toBe(false);
   });

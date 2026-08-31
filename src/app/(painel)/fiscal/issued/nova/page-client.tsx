@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -10,7 +10,6 @@ import { useRole } from '@/hooks/useRole';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   FIN_NFE_OPTIONS,
-  IND_PRES_OPTIONS,
   MOD_FRETE_OPTIONS,
   TPAG_OPTIONS,
 } from '@/lib/nfe-emission/form-options';
@@ -26,10 +25,20 @@ import {
   isSemPagamentoCfop,
 } from '@/lib/nfe-emission/issued-defaults';
 import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
-
-type Tab = 'dados' | 'itens' | 'transporte' | 'pagamento' | 'complementos';
+import {
+  NFE_FORM_STEPS,
+  NFE_STEP_LABELS,
+  completeNfeStep,
+  findScrollParent,
+  nextNfeFormStep,
+  nfeSectionId,
+  nfeStepFromSectionId,
+  scrollToNfeSection,
+  type NfeFormStep,
+  type NfeStepDraft,
+} from '@/lib/nfe-emission/form-steps';
 type Operation = { cfop: string; tag: string; natureza: string; ambito: string; featured?: boolean };
-type Customer = { cnpj: string; name: string; addressLine?: string };
+type Customer = { cnpj: string; name: string; addressLine?: string; topBilled?: boolean };
 type Product = {
   id: string;
   code: string | null;
@@ -63,12 +72,12 @@ type Line = {
   csosn?: string | null;
 };
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'dados', label: 'Dados', icon: 'badge' },
-  { id: 'itens', label: 'Itens', icon: 'inventory_2' },
-  { id: 'transporte', label: 'Transporte', icon: 'local_shipping' },
-  { id: 'pagamento', label: 'Pagamento', icon: 'payments' },
-  { id: 'complementos', label: 'Complementos', icon: 'notes' },
+const STEP_NAV: { id: NfeFormStep; icon: string }[] = [
+  { id: 'dados', icon: 'badge' },
+  { id: 'itens', icon: 'inventory_2' },
+  { id: 'transporte', icon: 'local_shipping' },
+  { id: 'pagamento', icon: 'payments' },
+  { id: 'complementos', icon: 'notes' },
 ];
 
 function lineNet(item: Line): number {
@@ -94,17 +103,55 @@ function Field({
   );
 }
 
+function StepCompleteFooter({
+  step,
+  gaps,
+  onComplete,
+}: {
+  step: NfeFormStep;
+  gaps: string[];
+  onComplete: () => void;
+}) {
+  const next = nextNfeFormStep(step);
+  return (
+    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+      <button
+        type="button"
+        data-nfe-complete-step={step}
+        onClick={onComplete}
+        className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold dark:bg-white dark:text-slate-900"
+      >
+        Concluir nesta etapa
+      </button>
+      {next ? (
+        <p className="text-xs text-slate-500">Segue para {NFE_STEP_LABELS[next]}</p>
+      ) : null}
+      {gaps.length > 0 ? (
+        <ul role="alert" data-nfe-step-gaps={step} className="space-y-1">
+          {gaps.map((gap) => (
+            <li key={gap} className="text-xs text-amber-800 dark:text-amber-200 flex gap-1.5">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              {gap}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export default function EmitirNfePage() {
   const { canWrite } = useRole();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('dados');
+  const [activeStep, setActiveStep] = useState<NfeFormStep>('dados');
+  const [stepErrors, setStepErrors] = useState<Partial<Record<NfeFormStep, string[]>>>({});
+  const skipSpy = useRef(false);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [ambiente, setAmbiente] = useState<'homologation' | 'production' | null>(null);
   const [certExpired, setCertExpired] = useState(false);
   const [cfop, setCfop] = useState('5102');
   const [finNFe, setFinNFe] = useState<'1' | '2' | '3' | '4'>('1');
   const [indFinal, setIndFinal] = useState<'0' | '1'>('1');
-  const [indPres, setIndPres] = useState(DEFAULT_IND_PRES);
   const [customerQuery, setCustomerQuery] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [dest, setDest] = useState<Customer | null>(null);
@@ -192,6 +239,60 @@ export default function EmitirNfePage() {
     [vProd, vDesc, vFrete, vSeg, vOutro],
   );
 
+  const stepDraft = useMemo<NfeStepDraft>(
+    () => ({
+      destSelected: Boolean(dest),
+      naturezaSelected: Boolean(op),
+      items: items.map((item) => ({ ncm: item.ncm, qCom: item.qCom, vUnCom: item.vUnCom })),
+      modFrete,
+      transpNome,
+      tPag,
+      vNf,
+    }),
+    [dest, op, items, modFrete, transpNome, tPag, vNf],
+  );
+
+  function focusStep(step: NfeFormStep) {
+    setActiveStep(step);
+    skipSpy.current = true;
+    scrollToNfeSection(step, { getElementById: (id) => document.getElementById(id) });
+    window.setTimeout(() => {
+      skipSpy.current = false;
+    }, 800);
+  }
+
+  function onConcludeStep(step: NfeFormStep) {
+    const result = completeNfeStep(step, stepDraft);
+    if (!result.ok) {
+      setStepErrors((prev) => ({ ...prev, [step]: result.gaps }));
+      return;
+    }
+    setStepErrors((prev) => ({ ...prev, [step]: [] }));
+    focusStep(result.next);
+  }
+
+  useEffect(() => {
+    const nodes = NFE_FORM_STEPS
+      .map((step) => document.getElementById(nfeSectionId(step)))
+      .filter((el): el is HTMLElement => el != null);
+    if (nodes.length === 0) return undefined;
+    const root = findScrollParent(nodes[0]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (skipSpy.current) return;
+        const hit = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!hit) return;
+        const step = nfeStepFromSectionId(hit.target.id);
+        if (step) setActiveStep(step);
+      },
+      { root, rootMargin: '-15% 0px -55% 0px', threshold: [0.1, 0.25, 0.5] },
+    );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
   const pendencias = useMemo(() => {
     const list: string[] = [];
     if (!dest) list.push('Selecione o destinatário PJ');
@@ -228,7 +329,6 @@ export default function EmitirNfePage() {
     ]);
     setProductQuery('');
     setProducts([]);
-    setTab('itens');
   }
 
   function payload() {
@@ -244,7 +344,7 @@ export default function EmitirNfePage() {
       destName: dest.name,
       finNFe,
       indFinal,
-      indPres,
+      indPres: DEFAULT_IND_PRES,
       modFrete,
       vFrete: vFrete || '0.00',
       vSeg: vSeg || '0.00',
@@ -371,68 +471,37 @@ export default function EmitirNfePage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
         <div className="space-y-4 min-w-0">
-          <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80">
-            {TABS.map((t) => (
+          <div className="sticky top-0 z-10 flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+            {STEP_NAV.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
-                  tab === t.id
-                    ? 'bg-white dark:bg-card-dark text-primary shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                aria-current={activeStep === t.id ? 'true' : undefined}
+                onClick={() => focusStep(t.id)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs transition-all ${
+                  activeStep === t.id
+                    ? 'bg-primary text-white font-extrabold shadow-md ring-2 ring-primary-dark ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800'
+                    : 'bg-transparent text-slate-400 font-medium opacity-70 hover:opacity-100 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
                 }`}
               >
-                <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
-                {t.label}
+                <span
+                  className={`material-symbols-outlined ${activeStep === t.id ? 'text-[18px]' : 'text-[16px]'}`}
+                  style={activeStep === t.id ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {t.icon}
+                </span>
+                {NFE_STEP_LABELS[t.id]}
               </button>
             ))}
           </div>
 
-          {tab === 'dados' && (
-            <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-5">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificação da operação</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Field label="Natureza / CFOP" className="lg:col-span-2">
-                  <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
-                    {featuredOps.map((o) => (
-                      <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
-                    ))}
-                    <option disabled value="__sep__">────────</option>
-                    {restOps.map((o) => (
-                      <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Finalidade">
-                  <select value={finNFe} onChange={(e) => setFinNFe(e.target.value as typeof finNFe)} className={FILTER_INPUT_CLS}>
-                    {FIN_NFE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Série" className="max-w-[4.5rem]">
-                  <span
-                    aria-readonly="true"
-                    className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    {DEFAULT_SERIES}
-                  </span>
-                </Field>
-                <Field label="Consumidor final">
-                  <select value={indFinal} onChange={(e) => setIndFinal(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
-                    <option value="1">Sim</option>
-                    <option value="0">Não (revenda / industrialização)</option>
-                  </select>
-                </Field>
-                <Field label="Presença do comprador">
-                  <select value={indPres} onChange={(e) => setIndPres(e.target.value)} className={FILTER_INPUT_CLS}>
-                    {IND_PRES_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+          <section
+            id={nfeSectionId('dados')}
+            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-5"
+          >
+              <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Destinatário</h3>
-                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
+                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Sem digitar, vê os 10 mais faturados (6 meses). Para os demais, busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
                   <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
@@ -462,11 +531,58 @@ export default function EmitirNfePage() {
                   </>
                 )}
               </div>
-            </section>
-          )}
 
-          {tab === 'itens' && (
-            <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificação da operação</h3>
+                <div className="space-y-4">
+                  <Field label="Natureza / CFOP">
+                    <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
+                      {featuredOps.map((o) => (
+                        <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
+                      ))}
+                      <option disabled value="__sep__">────────</option>
+                      {restOps.map((o) => (
+                        <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <div
+                    data-nfe-serie-finalidade-linha
+                    className="flex flex-wrap items-end gap-4 sm:grid sm:grid-cols-3"
+                  >
+                    <Field label="Série" className="max-w-[4.5rem] shrink-0">
+                      <span
+                        aria-readonly="true"
+                        className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        {DEFAULT_SERIES}
+                      </span>
+                    </Field>
+                    <Field label="Finalidade" className="min-w-[10rem] flex-1 sm:min-w-0">
+                      <select value={finNFe} onChange={(e) => setFinNFe(e.target.value as typeof finNFe)} className={FILTER_INPUT_CLS}>
+                        {FIN_NFE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Consumidor final" className="min-w-[12rem] flex-1 sm:min-w-0">
+                      <select value={indFinal} onChange={(e) => setIndFinal(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
+                        <option value="1">Sim</option>
+                        <option value="0">Não (revenda / industrialização)</option>
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+              </div>
+              <StepCompleteFooter
+                step="dados"
+                gaps={stepErrors.dados || []}
+                onComplete={() => onConcludeStep('dados')}
+              />
+            </section>
+
+          <section
+            id={nfeSectionId('itens')}
+            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+          >
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Itens da nota</h3>
                 <span className="text-xs text-slate-500">{items.length} {items.length === 1 ? 'item' : 'itens'}</span>
@@ -560,11 +676,17 @@ export default function EmitirNfePage() {
                   </tbody>
                 </table>
               </div>
+              <StepCompleteFooter
+                step="itens"
+                gaps={stepErrors.itens || []}
+                onComplete={() => onConcludeStep('itens')}
+              />
             </section>
-          )}
 
-          {tab === 'transporte' && (
-            <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+          <section
+            id={nfeSectionId('transporte')}
+            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+          >
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Transporte e volumes</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Modalidade do frete" className="md:col-span-2">
@@ -603,11 +725,17 @@ export default function EmitirNfePage() {
                   <input value={pesoB} onChange={(e) => setPesoB(e.target.value)} className={FILTER_INPUT_CLS} />
                 </Field>
               </div>
+              <StepCompleteFooter
+                step="transporte"
+                gaps={stepErrors.transporte || []}
+                onComplete={() => onConcludeStep('transporte')}
+              />
             </section>
-          )}
 
-          {tab === 'pagamento' && (
-            <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+          <section
+            id={nfeSectionId('pagamento')}
+            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+          >
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Pagamento da NF-e</h3>
               <p className="text-xs text-slate-500">Grupo <span className="font-mono">pag</span> do XML — distinto do contas a receber interno.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -626,11 +754,17 @@ export default function EmitirNfePage() {
               <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-sm">
                 Valor a informar no XML: <span className="font-bold tabular-nums">{tPag === '90' ? '0,00' : formatAmount(vNf)}</span>
               </div>
+              <StepCompleteFooter
+                step="pagamento"
+                gaps={stepErrors.pagamento || []}
+                onComplete={() => onConcludeStep('pagamento')}
+              />
             </section>
-          )}
 
-          {tab === 'complementos' && (
-            <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+          <section
+            id={nfeSectionId('complementos')}
+            className="scroll-mt-14 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4"
+          >
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Informações adicionais</h3>
               <Field label="Informações complementares (contribuinte / DANFE)">
                 <textarea value={infCpl} onChange={(e) => setInfCpl(e.target.value.slice(0, 2000))} rows={4} className={FILTER_INPUT_CLS} placeholder="Pedido, contrato, texto legal ao destinatário" />
@@ -639,7 +773,6 @@ export default function EmitirNfePage() {
                 <textarea value={infAdFisco} onChange={(e) => setInfAdFisco(e.target.value.slice(0, 2000))} rows={3} className={FILTER_INPUT_CLS} />
               </Field>
             </section>
-          )}
         </div>
 
         <aside className="xl:sticky xl:top-4 space-y-4">

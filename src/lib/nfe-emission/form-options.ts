@@ -5,16 +5,6 @@ export const FIN_NFE_OPTIONS = [
   { value: '4', label: 'Devolução' },
 ] as const;
 
-export const IND_PRES_OPTIONS = [
-  { value: '1', label: 'Presencial' },
-  { value: '2', label: 'Internet' },
-  { value: '3', label: 'Teleatendimento' },
-  { value: '4', label: 'Entrega a domicílio' },
-  { value: '5', label: 'Presencial fora do estabelecimento' },
-  { value: '9', label: 'Não presencial — outros' },
-  { value: '0', label: 'Não se aplica' },
-] as const;
-
 export const MOD_FRETE_OPTIONS = [
   { value: '0', label: 'Contratação do emitente (CIF)' },
   { value: '1', label: 'Contratação do destinatário (FOB)' },

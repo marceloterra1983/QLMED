@@ -5,13 +5,50 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
 import {
   buildIssuedCustomerWhere,
+  buildTopBilledWhere,
+  destinatarioBillingWindowStart,
   formatDestinatarioAddressLine,
   isCnpjLikeSearch,
   mergeDestinatarioAddressSources,
+  orderDestinatariosForDropdown,
+  rankRecipientsByBilling,
 } from '@/lib/nfe-emission/customer-search';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
+}
+
+async function attachAddressLines<T extends { cnpj: string }>(
+  companyId: string,
+  customers: T[],
+  extraRawCnpjs: string[] = [],
+): Promise<Array<T & { addressLine?: string }>> {
+  const cnpjKeys = [...new Set([
+    ...customers.map((row) => row.cnpj),
+    ...extraRawCnpjs,
+  ])];
+  if (cnpjKeys.length === 0) return customers;
+
+  const [overrides, fiscals] = await Promise.all([
+    prisma.contactOverride.findMany({
+      where: { companyId, cnpj: { in: cnpjKeys } },
+      select: { cnpj: true, street: true, district: true, city: true, state: true },
+    }),
+    prisma.contactFiscal.findMany({
+      where: { companyId, cnpj: { in: cnpjKeys } },
+      select: { cnpj: true, city: true, uf: true },
+    }),
+  ]);
+
+  const overrideBy = new Map(overrides.map((row) => [digits(row.cnpj), row]));
+  const fiscalBy = new Map(fiscals.map((row) => [digits(row.cnpj), row]));
+
+  return customers.map((row) => {
+    const addressLine = formatDestinatarioAddressLine(
+      mergeDestinatarioAddressSources(overrideBy.get(row.cnpj), fiscalBy.get(row.cnpj)),
+    );
+    return addressLine ? { ...row, addressLine } : row;
+  });
 }
 
 export async function GET(req: Request) {
@@ -20,9 +57,33 @@ export async function GET(req: Request) {
     const company = await getOrCreateSingleCompany(userId);
     const search = new URL(req.url).searchParams.get('search') || '';
     const term = search.trim();
+    const searchActive = Boolean(term);
+
+    // Sem busca: só top 10 faturados (6 meses). Não carrega o catálogo A–Z.
+    if (!searchActive) {
+      const since = destinatarioBillingWindowStart();
+      const billingRows = await prisma.invoice.findMany({
+        where: buildTopBilledWhere(company.id, since),
+        select: { recipientCnpj: true, recipientName: true, totalValue: true },
+      });
+      const topBilled = rankRecipientsByBilling(
+        billingRows.map((row) => ({
+          recipientCnpj: row.recipientCnpj,
+          recipientName: row.recipientName,
+          totalValue: Number(row.totalValue),
+        })),
+      );
+      const ordered = orderDestinatariosForDropdown(
+        topBilled.map((row) => ({ cnpj: row.cnpj, name: row.name })),
+        topBilled,
+        false,
+      );
+      const customers = await attachAddressLines(company.id, ordered);
+      return NextResponse.json({ customers });
+    }
 
     let extraCnpjs: string[] = [];
-    if (term && !isCnpjLikeSearch(term)) {
+    if (!isCnpjLikeSearch(term)) {
       const nicks = await prisma.contactNickname.findMany({
         where: {
           companyId: company.id,
@@ -45,42 +106,21 @@ export async function GET(req: Request) {
       take: 30,
     });
 
-    const customers = rows
+    const baseCustomers = rows
       .map((row) => ({
         cnpj: digits(row.recipientCnpj || ''),
         name: row.recipientName || row.recipientCnpj || '',
       }))
       .filter((row) => row.cnpj.length === 14);
 
-    const cnpjs = customers.map((row) => row.cnpj);
-    const cnpjKeys = [...new Set([
-      ...cnpjs,
-      ...rows.map((row) => row.recipientCnpj).filter((value): value is string => Boolean(value)),
-    ])];
-    const [overrides, fiscals] = cnpjKeys.length
-      ? await Promise.all([
-          prisma.contactOverride.findMany({
-            where: { companyId: company.id, cnpj: { in: cnpjKeys } },
-            select: { cnpj: true, street: true, district: true, city: true, state: true },
-          }),
-          prisma.contactFiscal.findMany({
-            where: { companyId: company.id, cnpj: { in: cnpjKeys } },
-            select: { cnpj: true, city: true, uf: true },
-          }),
-        ])
-      : [[], []];
+    const ordered = orderDestinatariosForDropdown(baseCustomers, [], true);
+    const customers = await attachAddressLines(
+      company.id,
+      ordered,
+      rows.map((row) => row.recipientCnpj).filter((value): value is string => Boolean(value)),
+    );
 
-    const overrideBy = new Map(overrides.map((row) => [digits(row.cnpj), row]));
-    const fiscalBy = new Map(fiscals.map((row) => [digits(row.cnpj), row]));
-
-    return NextResponse.json({
-      customers: customers.map((row) => {
-        const addressLine = formatDestinatarioAddressLine(
-          mergeDestinatarioAddressSources(overrideBy.get(row.cnpj), fiscalBy.get(row.cnpj)),
-        );
-        return addressLine ? { ...row, addressLine } : row;
-      }),
-    });
+    return NextResponse.json({ customers });
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') return unauthorizedResponse();
     return apiError(error, 'GET /api/nfe-emissions/customers');

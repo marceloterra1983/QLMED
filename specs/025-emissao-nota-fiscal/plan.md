@@ -21,6 +21,9 @@
    de endereço (cadastro override/fiscal) sem destaque.
 4. Emitente: última NF-e issued da empresa.
 5. Página `/fiscal/issued/nova` (ACL da lista de emitidas).
+   Uma coluna rolável com as seções já existentes; o topo foca a
+   seção (não troca de view). `src/lib/nfe-emission/form-steps.ts`
+   valida o mínimo de cada etapa no botão Concluir nesta etapa.
 6. Admin grava `CertificateConfig.environment` sem reenviar PFX.
    Teste de conexão: `NFeStatusServico4` (MS). DistDFe operacional
    permanece em produção para não misturar NSU.

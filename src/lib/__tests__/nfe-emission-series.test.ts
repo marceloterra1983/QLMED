@@ -55,4 +55,40 @@ describe('emissão manual: série 2 fixa', () => {
     expect(serieField?.[0]).toContain('{DEFAULT_SERIES}');
     expect(serieField?.[0]).not.toMatch(/<(input|select)\b/);
   });
+
+  it('UI: destinatário primeiro; natureza, série, finalidade nessa ordem', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../../app/(painel)/fiscal/issued/nova/page-client.tsx'),
+      'utf8',
+    );
+    const dados = src.match(/id=\{nfeSectionId\('dados'\)\}[\s\S]*?id=\{nfeSectionId\('itens'\)\}/);
+    expect(dados?.[0]).toBeTruthy();
+    const block = dados![0];
+    const dest = block.indexOf('>Destinatário<');
+    const nat = block.indexOf('label="Natureza / CFOP"');
+    const ser = block.indexOf('label="Série"');
+    const fin = block.indexOf('label="Finalidade"');
+    expect(dest).toBeGreaterThanOrEqual(0);
+    expect(nat).toBeGreaterThan(dest);
+    expect(ser).toBeGreaterThan(nat);
+    expect(fin).toBeGreaterThan(ser);
+  });
+
+  it('UI: série, finalidade e consumidor final na mesma linha compacta', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../../app/(painel)/fiscal/issued/nova/page-client.tsx'),
+      'utf8',
+    );
+    const row = src.match(/data-nfe-serie-finalidade-linha[\s\S]*?<\/div>/);
+    expect(row?.[0]).toBeTruthy();
+    const block = row![0];
+    expect(block).toMatch(/flex-wrap/);
+    expect(block).toMatch(/sm:grid-cols-3/);
+    const ser = block.indexOf('label="Série"');
+    const fin = block.indexOf('label="Finalidade"');
+    const cons = block.indexOf('label="Consumidor final"');
+    expect(ser).toBeGreaterThanOrEqual(0);
+    expect(fin).toBeGreaterThan(ser);
+    expect(cons).toBeGreaterThan(fin);
+  });
 });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_SERIES } from './issued-defaults';
+import { DEFAULT_IND_PRES, DEFAULT_SERIES } from './issued-defaults';
 import { getSaidaOperation } from './operations';
 
 const cnpj = z.string().transform((v) => v.replace(/\D/g, '')).refine((v) => v.length === 14, 'CNPJ inválido');
@@ -36,7 +36,9 @@ export const nfeEmissionPayloadSchema = z.object({
   destName: z.string().min(1).max(120).optional(),
   finNFe: z.enum(['1', '2', '3', '4']).default('1'),
   indFinal: z.enum(['0', '1']),
-  indPres: z.enum(['0', '1', '2', '3', '4', '5', '9']),
+  // Emissão QLMED: presença sempre "não presencial — outros" (DNA fiscal).
+  // Valor do client é ignorado; notas históricas já emitidas não passam por aqui.
+  indPres: z.preprocess(() => DEFAULT_IND_PRES, z.literal(DEFAULT_IND_PRES)),
   modFrete: z.enum(['0', '1', '2', '3', '4', '9']).default('0'),
   vFrete: money2.optional(),
   vSeg: money2.optional(),
