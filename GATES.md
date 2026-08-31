@@ -1,43 +1,28 @@
-# Gates: consulta ANVISA na tela de Produtos
+# Gates: confiança TLS ICP-Brasil v10 no cliente SEFAZ
 
-Scope: Tirar ANVISA da barra lateral e abrir o site oficial (Produtos para Saúde) a partir de Cadastros › Produtos.
+Scope: Testar conexão (e demais HTTPS SEFAZ) valida a cadeia MS com a raiz oficial ICP-Brasil v10, sem desligar rejectUnauthorized.
 
-- [x] G1: Spec 026 descreve remoção da barra e botão externo
-  CHECK: rg -n "AC-001|FR-001|/cadastro/anvisa|consultas.anvisa.gov.br" specs/026-anvisa-consulta-produtos/spec.md
-  EXPECT: /AC-001/
-  EVIDENCE: 131:  `https://consultas.anvisa.gov.br/#/saude/`. | 139:- Apagar a rota `/cadastro/anvisa` e as APIs de embed-status.
-
-- [x] G2: Barra e PAGE_GROUPS não listam /cadastro/anvisa
-  CHECK: npx vitest run src/lib/__tests__/navigation.test.ts src/lib/__tests__/anvisa-consulta.test.ts
+- [x] G1: Pacote CA inclui a raiz ICP-Brasil v10 e não substitui as CAs padrão
+  CHECK: npx vitest run src/lib/__tests__/ssl-verify.test.ts src/lib/__tests__/nfe-status-servico.test.ts
   EXPECT: Test Files  2 passed
-  EVIDENCE: Start at  20:31:56 | Duration  144ms (transform 45ms, setup 0ms, import 74ms, tests 7ms, environment 0ms)
+  EVIDENCE: Start at  22:08:47 | Duration  289ms (transform 83ms, setup 0ms, import 176ms, tests 19ms, environment 0ms)
 
-- [x] G3: /api/anvisa passa a exigir /cadastro/produtos
-  CHECK: npx vitest run src/lib/__tests__/navigation.test.ts -t "anvisa"
-  EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  20:31:57 | Duration  187ms (transform 46ms, setup 0ms, import 58ms, tests 4ms, environment 0ms)
-
-- [x] G4: Typecheck
+- [x] G2: Typecheck
   CHECK: npx tsc --noEmit && echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK
 
-- [x] G5: Lint
+- [x] G3: Lint
   CHECK: npm run lint && echo LINT_OK
   EXPECT: LINT_OK
   EVIDENCE: > eslint . | LINT_OK
 
-- [x] G6: Validação Spec Kit
-  CHECK: npm run docs:validate && echo DOCS_OK
-  EXPECT: DOCS_OK
-  EVIDENCE: Documentation validation passed (134 Markdown files, 35 IDs). | DOCS_OK
+- [x] G4: Fingerprint da raiz empacotada bate com a oficial do ITI
+  CHECK: openssl x509 -in src/lib/certs/icp-brasil-v10.crt -noout -fingerprint -sha256
+  EXPECT: 6E:0B:FF:06:9A:26:99:4C:15:DE:2C:48:88:CC:54:AF:84:88:2E:54:95:B7:FB:F6:6B:E9:CC:FF:EC:74:89:F6
+  EVIDENCE: sha256 Fingerprint=6E:0B:FF:06:9A:26:99:4C:15:DE:2C:48:88:CC:54:AF:84:88:2E:54:95:B7:FB:F6:6B:E9:CC:FF:EC:74:89:F6
 
-- [x] G7: SidebarNav não tem item ANVISA
-  CHECK: bash -c 'rg -n "href: .*/cadastro/anvisa" src/components/SidebarNav.tsx; test $? -eq 1' && echo NO_SIDEBAR_ANVISA
-  EXPECT: NO_SIDEBAR_ANVISA
-  EVIDENCE: NO_SIDEBAR_ANVISA
-
-- [x] G8: Produtos tem botão para o portal oficial
-  CHECK: rg -n "ANVISA_PRODUTOS_SAUDE_URL|Consulta ANVISA" src/app/\(painel\)/cadastro/produtos/page-client.tsx src/lib/anvisa-consulta.ts
-  EXPECT: /consultas.anvisa.gov.br\/#\/saude/
-  EVIDENCE: src/app/(painel)/cadastro/produtos/page-client.tsx:366:            href={ANVISA_PRODUTOS_SAUDE_URL} | src/app/(painel)/cadastro/produtos/page-client.tsx:373:            Consulta ANVISA
+- [x] G5: OpenSSL com a raiz empacotada valida hom.nfe.sefaz.ms.gov.br
+  CHECK: echo | openssl s_client -connect hom.nfe.sefaz.ms.gov.br:443 -servername hom.nfe.sefaz.ms.gov.br -CAfile src/lib/certs/icp-brasil-v10.crt 2>&1 | rg "Verify return code"
+  EXPECT: Verify return code: 0 (ok)
+  EVIDENCE: Verify return code: 0 (ok)

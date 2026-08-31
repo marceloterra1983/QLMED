@@ -4,7 +4,7 @@ import { parseXmlSafe, parseXmlSafeNoMerge } from '@/lib/safe-xml-parser';
 import { promisify } from 'util';
 import { CertificateManager } from './certificate-manager';
 import { createLogger } from '@/lib/logger';
-import { sefazRejectUnauthorized } from '@/lib/ssl-verify';
+import { sefazRequestTls } from '@/lib/ssl-verify';
 
 const log = createLogger('sefaz-client');
 
@@ -85,7 +85,7 @@ export class SefazClient {
     const options = {
       cert: this.certPem,
       key: this.keyPem,
-      rejectUnauthorized: sefazRejectUnauthorized(),
+      ...sefazRequestTls(),
       method: 'POST' as const,
       headers: {
         'Content-Type': 'application/soap+xml; charset=utf-8',

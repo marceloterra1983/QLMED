@@ -1,6 +1,6 @@
 import https from 'https';
 import { createLogger } from '@/lib/logger';
-import { sefazRejectUnauthorized } from '@/lib/ssl-verify';
+import { sefazRequestTls } from '@/lib/ssl-verify';
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { nfeAutorizacaoUrls, type SefazEnvironment } from './autorizacao-urls';
 
@@ -63,7 +63,7 @@ function sendHttps(url: string, envelope: string, certPem: string, keyPem: strin
       method: 'POST',
       cert: certPem,
       key: keyPem,
-      rejectUnauthorized: sefazRejectUnauthorized(),
+      ...sefazRequestTls(),
       headers: {
         'Content-Type': 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4/nfeStatusServicoNF"',
         SOAPAction: '"http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4/nfeStatusServicoNF"',
