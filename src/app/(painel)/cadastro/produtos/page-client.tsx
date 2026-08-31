@@ -15,6 +15,7 @@ import ExportCSVButton from './components/ExportCSVButton';
 import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
+import PageHeader from '@/components/PageHeader';
 
 /**
  * Cards de resumo do cadastro. Estes três números já vinham prontos da API
@@ -352,29 +353,26 @@ export default function ProdutosPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">inventory_2</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Produtos</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Cadastro automatico por produtos das NF-e de entrada, sem duplicar itens repetidos</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <a
-            href={ANVISA_PRODUTOS_SAUDE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Abrir consulta de Produtos para Saúde no site da ANVISA"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-            Consulta ANVISA
-          </a>
-          <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
-        </div>
-      </div>
+      <PageHeader
+        icon="inventory_2"
+        title="Produtos"
+        subtitle="Cadastro automatico por produtos das NF-e de entrada, sem duplicar itens repetidos"
+        actions={(
+          <>
+            <a
+              href={ANVISA_PRODUTOS_SAUDE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir consulta de Produtos para Saúde no site da ANVISA"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+              Consulta ANVISA
+            </a>
+            <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
+          </>
+        )}
+      />
 
       {/* Resumo do cadastro — escondido durante o load para nao piscar zeros */}
       {!loading && <ProductsSummaryCards summary={summary} />}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import PageHeader from '@/components/PageHeader';
 
 interface Company {
   id: string;
@@ -36,15 +37,12 @@ export default function CompaniesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-[28px]">business</span>
-          Empresa
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Modo de empresa única ativo: o sistema opera exclusivamente com a QL MED.
-        </p>
-      </div>
+      <PageHeader
+        icon="business"
+        title="Empresa"
+        subtitle="Modo de empresa única ativo: o sistema opera exclusivamente com a QL MED."
+        showTitleOnMobile
+      />
 
       {loading && (
         <div className="text-center py-12 text-slate-400">

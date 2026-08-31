@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
+import PageHeader from '@/components/PageHeader';
 
 interface UploadResult {
   success: string[];
@@ -141,16 +142,11 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">cloud_upload</span>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Upload XML</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Importe arquivos XML de NF-e, CT-e ou NFS-e</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon="cloud_upload"
+        title="Upload XML"
+        subtitle="Importe arquivos XML de NF-e, CT-e ou NFS-e"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Area */}
@@ -232,13 +228,13 @@ export default function UploadPage() {
                       <span className="material-symbols-outlined text-[20px] text-primary">description</span>
                       <div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{file.name}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
                           {(file.size / 1024).toFixed(1)} KB
-                          {(file as any).webkitRelativePath && <span className="ml-2 text-slate-300">({(file as any).webkitRelativePath})</span>}
+                          {(file as any).webkitRelativePath && <span className="ml-2 text-slate-500">({(file as any).webkitRelativePath})</span>}
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => removeFile(idx)} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <button onClick={() => removeFile(idx)} className="p-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-red-700 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>

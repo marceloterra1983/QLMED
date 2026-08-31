@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCurrencyShort } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
+import PageHeader from '@/components/PageHeader';
 
 interface SystemUser {
   id: string;
@@ -198,20 +199,11 @@ export default function ValvulasImportadasPage() {
 
   return (
     <>
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">bar_chart</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              Válvulas Mecânicas Corcym
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
-              Relatório consolidado de compras e vendas
-            </p>
-          </div>
-        </div>
-        {!loading && data && (
+      <PageHeader
+        icon="bar_chart"
+        title="Válvulas Mecânicas Corcym"
+        subtitle="Relatório consolidado de compras e vendas"
+        actions={!loading && data ? (
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={() => window.open('/api/reports/valvulas-importadas/pdf?action=download', '_blank')}
@@ -228,8 +220,8 @@ export default function ValvulasImportadasPage() {
               Enviar por Email
             </button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Email Modal */}
       {emailModalOpen && (

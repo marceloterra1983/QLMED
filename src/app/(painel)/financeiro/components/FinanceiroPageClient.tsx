@@ -20,6 +20,7 @@ import {
 } from './financeiro-utils';
 import FinanceiroTable from './FinanceiroTable';
 import DuplicataEditPanel from './DuplicataEditPanel';
+import PageHeader from '@/components/PageHeader';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 
@@ -364,21 +365,22 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
   };
 
   return (
-    <div className="w-full min-w-0 overflow-hidden">
-      <div className="flex items-center justify-between gap-2 mb-6">
-        <div className="hidden sm:block min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">{cfg.title}</h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{cfg.subtitle}</p>
-        </div>
-        <button
-          onClick={handleExport}
-          disabled={duplicatas.length === 0}
-          className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
-        >
-          <span className="material-symbols-outlined text-[18px]">download</span>
-          Exportar CSV
-        </button>
-      </div>
+    <div className="w-full min-w-0">
+      <PageHeader
+        icon={cfg.direction === 'pagar' ? 'payments' : 'request_quote'}
+        title={cfg.title}
+        subtitle={cfg.subtitle}
+        actions={(
+          <button
+            onClick={handleExport}
+            disabled={duplicatas.length === 0}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Exportar CSV
+          </button>
+        )}
+      />
 
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">

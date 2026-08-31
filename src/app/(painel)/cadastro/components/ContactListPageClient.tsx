@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
+import PageHeader from '@/components/PageHeader';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
 const ContactPriceTableModal = dynamic(() => import('@/components/ContactPriceTableModal'), { ssr: false });
@@ -340,22 +341,16 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">{cfg.icon}</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
-              {cfg.title}
-              {cnpjChanges > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
-                  {cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ
-                </span>
-              )}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">{cfg.subtitle}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        icon={cfg.icon}
+        title={cfg.title}
+        subtitle={cfg.subtitle}
+        titleExtra={cnpjChanges > 0 ? (
+          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
+            {cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ
+          </span>
+        ) : null}
+        actions={(
           <button
             onClick={handleExport}
             disabled={rows.length === 0 || isExporting}
@@ -364,8 +359,8 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
             <span className={`material-symbols-outlined text-[20px] ${isExporting ? 'animate-spin' : ''}`}>{isExporting ? 'progress_activity' : 'download'}</span>
             {isExporting ? 'Exportando...' : 'Exportar'}
           </button>
-        </div>
-      </div>
+        )}
+      />
 
       <MobileFilterWrapper activeFilterCount={[search, sortBy !== 'lastIssue' ? sortBy : ''].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">

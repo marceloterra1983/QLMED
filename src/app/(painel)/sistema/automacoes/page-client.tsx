@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import PageHeader from '@/components/PageHeader';
 
 /**
  * Tela de Automações — SPEC-011, Fase F.
@@ -108,17 +109,12 @@ export default function AutomacoesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">account_tree</span>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Automações</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
-              Workflows do n8n que mantêm o QLMED sincronizado.
-            </p>
-          </div>
-        </div>
-        {n8nUrl && (
+      <PageHeader
+        icon="account_tree"
+        title="Automações"
+        subtitle="Workflows do n8n que mantêm o QLMED sincronizado."
+        showTitleOnMobile
+        actions={n8nUrl ? (
           <a
             href={n8nUrl}
             target="_blank"
@@ -128,8 +124,8 @@ export default function AutomacoesPage() {
             <span className="material-symbols-outlined text-[18px]">open_in_new</span>
             Abrir n8n
           </a>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {loading && (
         <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">

@@ -8,6 +8,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
 import { formatDate, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import PageHeader from '@/components/PageHeader';
 
 const LotEditModal = dynamic(() => import('@/components/LotEditModal'), { ssr: false });
 
@@ -912,16 +913,11 @@ export default function EntradaNfePage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">inventory</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Entrada NF-e</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Registrar entrada de produtos no estoque</p>
-          </div>
-        </div>
-        {canWrite && (
+      <PageHeader
+        icon="inventory"
+        title="Entrada NF-e"
+        subtitle="Registrar entrada de produtos no estoque"
+        actions={canWrite ? (
           <button
             onClick={() => setShowImportModal(true)}
             className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
@@ -929,8 +925,8 @@ export default function EntradaNfePage() {
             <span className="material-symbols-outlined text-[16px]">upload_file</span>
             Importar E509
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Stats */}
       <div className="flex flex-wrap gap-3">

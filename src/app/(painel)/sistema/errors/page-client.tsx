@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
 import type { SyncLog } from '@/types';
+import PageHeader from '@/components/PageHeader';
 
 export default function ErrorsPage() {
   const [logs, setLogs] = useState<SyncLog[]>([]);
@@ -41,16 +42,11 @@ export default function ErrorsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <div className="hidden sm:flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">warning</span>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Erros</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Erros de sincronização com SEFAZ e NSDocs</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon="warning"
+        title="Erros"
+        subtitle="Erros de sincronização com SEFAZ e NSDocs"
+      />
 
       {/* Loading State */}
       {loading && (
