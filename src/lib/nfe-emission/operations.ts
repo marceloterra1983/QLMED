@@ -45,7 +45,15 @@ export type NfeSaidaOperation = {
   tag: string;
   natureza: string;
   ambito: 'interna' | 'interestadual' | 'exterior';
+  featured: boolean;
 };
+
+/**
+ * Top 5 CFOP nas NF-e emitidas reais (janela de 30 dias até 2026-08-28):
+ * 5102, 6102, 5917, 1918, 6917. O catálogo GET não tem agregado de
+ * frequência; ranking medido, não inventado.
+ */
+export const FREQUENT_SAIDA_CFOPS = ['5102', '6102', '5917', '1918', '6917'] as const;
 
 function ambitoFromCfop(cfop: string): NfeSaidaOperation['ambito'] {
   if (cfop.startsWith('1') || cfop.startsWith('5')) return 'interna';
@@ -57,16 +65,33 @@ function naturezaFor(cfop: string, tag: string): string {
   return NATUREZA_BY_CFOP[cfop] || NATUREZA_BY_TAG[tag] || tag;
 }
 
+function buildSaidaOperation(cfop: string, featured: boolean): NfeSaidaOperation {
+  const tag = getCfopTagByCode(cfop) || 'Outras Saídas';
+  return {
+    cfop,
+    tag,
+    natureza: naturezaFor(cfop, tag),
+    ambito: ambitoFromCfop(cfop),
+    featured,
+  };
+}
+
 export function listSaidaOperations(): NfeSaidaOperation[] {
-  return EMISSION_CFOPS.map((cfop) => {
-    const tag = getCfopTagByCode(cfop) || 'Outras Saídas';
-    return {
-      cfop,
-      tag,
-      natureza: naturezaFor(cfop, tag),
-      ambito: ambitoFromCfop(cfop),
-    };
-  });
+  const frequent = new Set<string>(FREQUENT_SAIDA_CFOPS);
+  const featured = FREQUENT_SAIDA_CFOPS.map((cfop) => buildSaidaOperation(cfop, true));
+  const rest = EMISSION_CFOPS.filter((cfop) => !frequent.has(cfop))
+    .sort((a, b) => Number(a) - Number(b))
+    .map((cfop) => buildSaidaOperation(cfop, false));
+  return [...featured, ...rest];
+}
+
+export function splitSaidaOperationsForDropdown<T extends { featured?: boolean }>(
+  ops: T[],
+): { featured: T[]; rest: T[] } {
+  return {
+    featured: ops.filter((op) => op.featured),
+    rest: ops.filter((op) => !op.featured),
+  };
 }
 
 export function getSaidaOperation(cfop: string): NfeSaidaOperation | null {
