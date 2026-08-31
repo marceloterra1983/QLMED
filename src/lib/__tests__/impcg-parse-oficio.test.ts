@@ -203,6 +203,37 @@ TOTAL GERAL: 12.550,00
     expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2023-08-10');
   });
 
+  it('descarta data futura e cai na data válida do documento (FR-006)', () => {
+    const parsed = parseOficio(`
+IMPCG CAMPO GRANDE
+ORDEM DE FORNECIMENTO N 12741
+PACIENTE: LURDES DA SILVA CACERES
+Campo Grande (MS), 26/06/2024
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL GERAL: 10,00
+Campo Grande (MS), 26/06/2034
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2024-06-26');
+  });
+
+  it('acusa data inválida quando a linha gravada tem emissão no futuro (FR-007)', () => {
+    const future = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    expect(
+      describeImpcgParseGap({
+        parseStatus: 'parcial',
+        oficioNumber: '12741',
+        issuedAt: future,
+        patientName: 'LURDES DA SILVA CACERES',
+        doctorName: 'MEDICO TESTE',
+        doctorCrm: '1234',
+        procedureName: 'TROCA VALVAR',
+        hospitalName: 'HOSPITAL PRONCOR',
+        totalCents: 1000,
+        items: [{ lineCents: 1000 }],
+      }),
+    ).toBe('Faltou: data inválida');
+  });
+
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {
     const parsed = parseOficio(`
 ORDEM DE FORNECIMENTO N 99
