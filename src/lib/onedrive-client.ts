@@ -326,11 +326,11 @@ export async function uploadOneDriveFile(
   return { id: item.id, name: item.name };
 }
 
-export async function downloadOneDriveItemContent(
+async function fetchOneDriveItemContent(
   accessToken: string,
   driveId: string,
   itemId: string,
-): Promise<Buffer> {
+): Promise<Response> {
   const encodedDriveId = encodeURIComponent(driveId);
   const encodedItemId = encodeURIComponent(itemId);
   const response = await fetch(
@@ -345,5 +345,31 @@ export async function downloadOneDriveItemContent(
     const detail = await response.text().catch(() => `${response.status}`);
     throw new Error(`Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`);
   }
+  return response;
+}
+
+export async function downloadOneDriveItemContent(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+): Promise<Buffer> {
+  const response = await fetchOneDriveItemContent(accessToken, driveId, itemId);
   return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * Abre o conteúdo sem materializar o arquivo: quem serve o PDF repassa o
+ * stream e o browser recebe o primeiro byte antes de o Graph terminar.
+ */
+export async function openOneDriveItemContent(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+): Promise<{ body: ReadableStream<Uint8Array> | null; size: number | null }> {
+  const response = await fetchOneDriveItemContent(accessToken, driveId, itemId);
+  const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
+  return {
+    body: response.body,
+    size: Number.isFinite(declared) ? declared : null,
+  };
 }
