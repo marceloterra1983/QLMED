@@ -50,3 +50,16 @@ export function getFiscalPeriodRange(
     endDate: new Date(Date.UTC(year, 11, 31, 23, 59, 59)),
   };
 }
+
+/** NF-e no conjunto vs quantas têm invoice_tax_totals. Período vazio = 0, não all-time. */
+export function nfeTaxCoverage(
+  invoices: { id: string; type: string }[],
+  taxInvoiceIds: Iterable<string>,
+): { totalNfe: number; withTaxData: number } {
+  const tax = new Set(taxInvoiceIds);
+  const nfeIds = invoices.filter((i) => i.type === 'NFE').map((i) => i.id);
+  return {
+    totalNfe: nfeIds.length,
+    withTaxData: nfeIds.filter((id) => tax.has(id)).length,
+  };
+}

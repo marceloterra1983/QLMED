@@ -448,14 +448,6 @@ export async function handleContasGet(
       if (dateFrom && vencimento < dateFrom) continue;
       if (dateTo && vencimento > dateTo) continue;
 
-      // contas-pagar filters only future; contas-receber shows all
-      if (direction === 'pagar') {
-        const vencimentoEpochDay = toEpochDay(vencimento);
-        const isFutureVencimento =
-          Number.isFinite(vencimentoEpochDay) && vencimentoEpochDay > todayEpochDay;
-        if (!isFutureVencimento) continue;
-      }
-
       const statusInfo = getStatusFromVencimento(vencimento, todayEpochDay);
       if (!matchesStatusFilter(statusInfo.status, statusFilter)) continue;
       if (

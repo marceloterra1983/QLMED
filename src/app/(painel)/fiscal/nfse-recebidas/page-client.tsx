@@ -70,7 +70,7 @@ export default function NfseReceivedPage() {
   useEffect(() => {
     const cy = new Date().getFullYear();
     Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
-      fetch(`/api/invoices?limit=1&page=1&type=NFSE&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
+      fetch(`/api/invoices?limit=1&page=1&type=NFSE&direction=received&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
         .then(r => r.ok ? r.json() : null)
         .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
         .catch(() => null)
@@ -90,8 +90,9 @@ export default function NfseReceivedPage() {
     try {
       const params = new URLSearchParams({
         page: '1',
-        limit: '2000',
+        limit: '5000',
         type: 'NFSE',
+        direction: 'received',
         sort: sortBy,
         order: sortOrder,
       });

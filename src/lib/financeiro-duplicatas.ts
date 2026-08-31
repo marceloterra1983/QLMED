@@ -279,15 +279,24 @@ export async function getFinanceiroDuplicatas(
   // Base filter: only NFE invoices for this company + direction.
   const baseWhere = { companyId, type: 'NFE' as const, direction };
 
-  // Use _count + _max.createdAt + _sum.totalValue for cache versioning.
-  const snapshot = await prisma.invoice.aggregate({
-    where: baseWhere,
-    _count: { _all: true },
-    _max: { createdAt: true },
-    _sum: { totalValue: true },
-  });
+  // Cache version includes duplicata coverage so each backfill batch invalidates.
+  const [snapshot, nfeCount, dupGroups] = await Promise.all([
+    prisma.invoice.aggregate({
+      where: baseWhere,
+      _count: { _all: true },
+      _max: { createdAt: true },
+      _sum: { totalValue: true },
+    }),
+    prisma.invoice.count({ where: { companyId, type: 'NFE' } }),
+    prisma.invoiceDuplicata.groupBy({
+      by: ['invoiceId'],
+      where: { companyId },
+      _count: true,
+    }),
+  ]);
+  const remaining = Math.max(0, nfeCount - dupGroups.length);
 
-  const version = `${FINANCEIRO_DUPLICATAS_CACHE_VERSION}:${snapshot._count._all}:${snapshot._max.createdAt?.toISOString() || 'none'}:${snapshot._sum.totalValue?.toString() || '0'}`;
+  const version = `${FINANCEIRO_DUPLICATAS_CACHE_VERSION}:${snapshot._count._all}:${snapshot._max.createdAt?.toISOString() || 'none'}:${snapshot._sum.totalValue?.toString() || '0'}:${dupGroups.length}`;
   const cacheKey = makeCacheKey(companyId, direction, allowedTags);
   const cached = financeiroDuplicatasCache.get(cacheKey);
   if (cached && cached.version === version) {
@@ -301,17 +310,10 @@ export async function getFinanceiroDuplicatas(
   }
 
   const promise = (async () => {
-    // Lazy backfill: populate invoice_duplicata if empty
-    const dupCount = await prisma.invoiceDuplicata.count({
-      where: { companyId },
-    });
-    if (dupCount === 0) {
-      // Run backfill in batches until done
-      let remaining = 1;
-      while (remaining > 0) {
-        const result = await backfillInvoiceDuplicatas(companyId);
-        remaining = result.remaining;
-      }
+    // Lazy backfill one batch when any NFE still lacks a duplicata row.
+    // ponytail: one batch/GET (500 XML). Remaining fills on later loads.
+    if (remaining > 0) {
+      await backfillInvoiceDuplicatas(companyId);
     }
     const duplicatas = await buildDuplicatas(companyId, direction, allowedTags);
     financeiroDuplicatasCache.set(cacheKey, {

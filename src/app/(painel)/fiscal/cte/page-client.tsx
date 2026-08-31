@@ -293,7 +293,7 @@ export default function CtePage() {
   async function loadInvoices() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '2000' });
+      const params = new URLSearchParams({ page: '1', limit: '5000' });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (dateFrom) params.set('dateFrom', dateFrom);
