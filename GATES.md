@@ -1,48 +1,55 @@
-# Gates: fix/impcg-mailbox-timeout
+# Gates: SPEC-032 — Revisão da página de autorizações IMPCG
 
-Scope: o orçamento `IMPCG_MAILBOX_TIMEOUT_MS` passa a valer por requisição HTTP em
-vez de por caixa, para que a ingestão IMPCG por e-mail deixe de abortar o
-histórico inteiro da caixa antes de processar qualquer mensagem.
+Scope: tabela só com o chip de status, explicação do parse no popup, anexo em
+streaming sem esperar o JSON de detalhe, e data futura tratada como leitura
+errada. Worktree `.worktrees/impcg-page-review`; todos os CHECK rodam da raiz.
 
-Causa raiz: `runImpcgIngest` criava um único `AbortSignal.timeout(30s)` por caixa e
-o reutilizava na paginação completa da listagem e em todos os downloads de anexo.
-Com histórico desde 2018 o orçamento expirava sempre
-(`The operation was aborted due to timeout`).
+- [x] G1: A lista (tabela e cards) não imprime mais o texto do que faltou, só o chip.
+  CHECK: rg -c 'reason=\{item\.parseMissingReason\}' 'src/app/(painel)/gestao/impcg/page-client.tsx' || echo NO_REASON_IN_LIST
+  EXPECT: NO_REASON_IN_LIST
+  EVIDENCE: NO_REASON_IN_LIST
 
-- [x] G1: a listagem paginada cria um deadline novo por página, sem signal de vida longa no loop `while (next)`
-  CHECK: rg -n 'perRequestSignal' src/lib/graph-mail-client.ts
-  EXPECT: function perRequestSignal
-  EVIDENCE: 146:      perRequestSignal(options.signal), | 198:    perRequestSignal(signal),
+- [x] G2: O popup de detalhe exibe o texto completo do que faltou, uma vez só.
+  CHECK: rg -c 'parseMissingReason \?\? .Não foi possível ler o documento.' 'src/app/(painel)/gestao/impcg/page-client.tsx'
+  EXPECT: 1
+  EVIDENCE: 1
 
-- [x] G2: o ingest não cria mais orçamento por caixa nem repassa o mesmo signal para listagem e anexos
-  CHECK: rg -c 'AbortSignal.timeout' src/lib/impcg/ingest.ts || echo NONE
-  EXPECT: NONE
-  EVIDENCE: NONE
+- [x] G3: O iframe do PDF é montado a partir do id selecionado, sem esperar o detalhe.
+  CHECK: rg -c 'impcg/\$\{selectedId\}/arquivo' 'src/app/(painel)/gestao/impcg/page-client.tsx'
+  EXPECT: 1
+  EVIDENCE: 1
 
-- [x] G3: cancelamento externo continua respeitado e a regressão está coberta por teste
-  CHECK: npx vitest run src/lib/__tests__/impcg-mailbox-timeout.test.ts 2>&1 | tail -6
-  EXPECT: 3 passed
-  EVIDENCE: Start at  15:40:35 | Duration  292ms (transform 111ms, setup 0ms, import 30ms, tests 172ms, environment 0ms)
+- [x] G4: A rota do anexo não bufferiza o arquivo inteiro antes de responder.
+  CHECK: rg -c 'arrayBuffer|downloadOneDriveItemContent' 'src/app/api/gestao/impcg/[id]/arquivo/route.ts' || echo NO_BUFFERING
+  EXPECT: NO_BUFFERING
+  EVIDENCE: NO_BUFFERING
 
-- [x] G4: existe teste referenciando a listagem paginada corrigida
-  CHECK: rg -ln 'listMailboxMessagesBySender' src/lib/__tests__
-  EXPECT: impcg-mailbox-timeout.test.ts
-  EVIDENCE: src/lib/__tests__/impcg-mailbox-timeout.test.ts
+- [x] G5: A rota devolve stream com Content-Type de PDF e loga durationMs.
+  CHECK: npx vitest run src/lib/__tests__/impcg-arquivo-stream.test.ts 2>&1 | tail -8
+  EXPECT: Tests  3 passed
+  EVIDENCE: Tests  3 passed (3) — impcg-arquivo-stream.test.ts
 
-- [x] G5: typecheck limpo
-  CHECK: npx tsc --noEmit 2>&1 | rg -c 'error TS' || echo ZERO_TS_ERRORS
-  EXPECT: ZERO_TS_ERRORS
-  EVIDENCE: ZERO_TS_ERRORS
+- [x] G6: Parser descarta data futura e o gap acusa data inválida.
+  CHECK: npx vitest run src/lib/__tests__/impcg-parse-oficio.test.ts 2>&1 | tail -8
+  EXPECT: Tests  15 passed
+  EVIDENCE: Tests  15 passed (15) — impcg-parse-oficio.test.ts
 
-- [x] G6: lint limpo nos arquivos tocados
-  CHECK: npx eslint src/lib/graph-mail-client.ts src/lib/impcg/ingest.ts src/lib/__tests__/impcg-mailbox-timeout.test.ts 2>&1 | rg -c 'error' || echo ZERO_LINT_ERRORS
-  EXPECT: ZERO_LINT_ERRORS
-  EVIDENCE: ZERO_LINT_ERRORS
+- [x] G7: Suíte completa verde.
+  CHECK: npm test 2>&1 | tail -4
+  EXPECT: 583 passed
+  EVIDENCE: Test Files  83 passed | 3 skipped (86); Tests  583 passed | 4 skipped (587)
 
-- [x] G7: suíte de testes do repo verde (comando canônico do AGENTS.md)
-  CHECK: npm test 2>&1 | rg 'Test Files'
-  EXPECT: 82 passed
-  EVIDENCE: Test Files  82 passed | 3 skipped (85)
+- [x] G8: Tipos limpos.
+  CHECK: npx tsc --noEmit > /tmp/impcg-tsc.log 2>&1; echo "TSC_EXIT=$?"
+  EXPECT: TSC_EXIT=0
+  EVIDENCE: TSC_EXIT=0
 
-- [ ] G8: em produção a ingestão conclui ciclo sem timeout e as autorizações passam do baseline de 9
-  EVIDENCE: pending
+- [x] G9: Lint limpo.
+  CHECK: npm run lint > /tmp/impcg-lint.log 2>&1; echo "LINT_EXIT=$?"
+  EXPECT: LINT_EXIT=0
+  EVIDENCE: LINT_EXIT=0
+
+- [x] G10: Documentação e IDs de spec validados.
+  CHECK: npm run docs:validate 2>&1 | tail -3
+  EXPECT: Documentation validation passed
+  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (140 Markdown files, 39 IDs).

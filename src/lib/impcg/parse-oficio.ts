@@ -88,6 +88,17 @@ function ocrDigits(raw: string): string {
   return raw.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
 }
 
+/** Um dia de folga cobre fuso; além disso é OCR errado, não data real. */
+const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
+
+/** Ofício não é emitido no futuro: 2034 é "2024" lido errado, não data válida. */
+export function isImpossibleIssuedAt(value: Date | string | null | undefined): boolean {
+  if (!value) return false;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() > Date.now() + FUTURE_TOLERANCE_MS;
+}
+
 function utcDate(day: number, month: number, year: number): Date | null {
   if (year < 1990 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
@@ -96,6 +107,7 @@ function utcDate(day: number, month: number, year: number): Date | null {
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
     return null;
   }
+  if (isImpossibleIssuedAt(date)) return null;
   return date;
 }
 
@@ -218,6 +230,7 @@ export function computeImpcgParseStatus(parsed: Omit<ParsedImpcgOficio, 'parseSt
   const headerComplete = Boolean(
     parsed.oficioNumber
     && parsed.issuedAt
+    && !isImpossibleIssuedAt(parsed.issuedAt)
     && parsed.patientName !== 'PACIENTE'
     && parsed.doctorName
     && parsed.hospitalName
@@ -257,6 +270,7 @@ export function describeImpcgParseGap(input: ImpcgParseGapInput): string | null 
   if (!input.procedureName) missing.push('procedimento');
   if (!input.hospitalName) missing.push('hospital');
   if (!input.issuedAt) missing.push('data');
+  else if (isImpossibleIssuedAt(input.issuedAt)) missing.push('data inválida');
   if (!input.oficioNumber) missing.push('número');
   if (input.items.length === 0) missing.push('nenhum item');
 
