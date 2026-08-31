@@ -19,7 +19,6 @@ export type ImpcgNotifyFields = {
   patientRegistry: string | null;
   doctorName: string | null;
   doctorCrm: string | null;
-  procedureName: string | null;
   hospitalName: string | null;
 };
 
@@ -71,6 +70,7 @@ function line(label: string, value: string | null): string | null {
 /**
  * O local de entrega é a informação que decide a ação do operador, então quando
  * o parser não o encontrou a legenda diz isso em vez de omitir (FR-003).
+ * O procedimento ficou fora do corpo por decisão do dono (FR-002).
  */
 export function buildImpcgWhatsAppCaption(fields: ImpcgNotifyFields): string {
   const doctor = fields.doctorName
@@ -82,7 +82,6 @@ export function buildImpcgWhatsAppCaption(fields: ImpcgNotifyFields): string {
     '',
     `Paciente: ${fields.patientName}`,
     line('Matrícula', fields.patientRegistry),
-    line('Procedimento', fields.procedureName),
     line('Médico', doctor),
     `Local de entrega: ${fields.hospitalName?.trim() || 'não identificado no ofício'}`,
   ]

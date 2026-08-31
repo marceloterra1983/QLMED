@@ -411,7 +411,6 @@ export async function runImpcgIngest(
               patientRegistry: parsed.patientRegistry,
               doctorName: parsed.doctorName,
               doctorCrm: parsed.doctorCrm,
-              procedureName: parsed.procedureName,
               hospitalName: parsed.hospitalName,
             },
             fileName,

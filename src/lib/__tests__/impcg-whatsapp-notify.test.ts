@@ -113,22 +113,24 @@ describe('SPEC-031 — aviso do ofício IMPCG no WhatsApp', () => {
     expect(marked).toEqual([{ internetMessageId: '<msg-1@compras>', messageId: 'wamid-1' }]);
   });
 
-  it('AC-002: legenda traz ofício, paciente e local', () => {
+  it('AC-002: legenda traz ofício, paciente, matrícula, médico e local, sem procedimento', () => {
     const caption = buildImpcgWhatsAppCaption({
       oficioNumber: '17673',
       patientName: 'PLINIO ANTONIO ARANHA JUNIOR',
       patientRegistry: '66429737-4',
       doctorName: 'RODRIGO LUIZ ROCHA CARDOSO',
       doctorCrm: '13716',
-      procedureName: 'TROCA VALVAR',
       hospitalName: 'HOSPITAL PRONCOR',
     });
 
     expect(caption).toContain('Ofício 17673');
     expect(caption).toContain('Paciente: PLINIO ANTONIO ARANHA JUNIOR');
+    expect(caption).toContain('Matrícula: 66429737-4');
     expect(caption).toContain('Local de entrega: HOSPITAL PRONCOR');
-    expect(caption).toContain('Procedimento: TROCA VALVAR');
     expect(caption).toContain('CRM 13716');
+    // Removido a pedido do dono: o procedimento não pode voltar por acidente.
+    expect(caption).not.toContain('Procedimento');
+    expect(caption).not.toContain('TROCA VALVAR');
   });
 
   it('AC-003: local ausente vira "não identificado"', () => {
@@ -138,7 +140,6 @@ describe('SPEC-031 — aviso do ofício IMPCG no WhatsApp', () => {
       patientRegistry: null,
       doctorName: null,
       doctorCrm: null,
-      procedureName: null,
       hospitalName: null,
     });
 

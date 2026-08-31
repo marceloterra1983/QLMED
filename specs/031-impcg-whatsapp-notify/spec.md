@@ -36,8 +36,11 @@ outbox fiscal.
 ## Risco aceito pelo dono (dado de saúde em canal de terceiro)
 
 O solicitante pediu explicitamente nome do paciente e local na mensagem. Isso
-publica dado de saúde (paciente, procedimento, hospital) em um grupo de
-WhatsApp, canal operado por terceiro, fora do controle da empresa. O Princípio V
+publica dado de saúde (paciente, matrícula, médico, hospital) em um grupo de
+WhatsApp, canal operado por terceiro, fora do controle da empresa, cujos
+membros são geridos fora do produto. O procedimento foi retirado do corpo na
+revisão de 2026-08-31, reduzindo — mas não eliminando — a exposição clínica,
+já que a associação paciente + hospital + médico permanece. O Princípio V
 da constituição restringe dado sensível; esta feature amplia deliberadamente
 essa exposição por decisão do dono do produto. Mitigações adotadas: destino
 único e configurado (não há envio para telefone arbitrário); nenhum dado de
@@ -51,7 +54,10 @@ paciente em log; recurso desligado por padrão sem configuração explícita.
   `POST /message/sendMedia/{instance}`.
 - **FR-002**: A legenda MUST conter número do ofício, nome do paciente e o local
   de entrega (`hospitalName`, lido de `LOCAL DE ENTREGA:` ou `HOSPITAL:` pelo
-  parser). Quando presentes, MUST conter também procedimento e médico.
+  parser). Quando presentes, MUST conter também matrícula e médico com CRM.
+  A legenda MUST NÃO conter o procedimento: revisão do dono em 2026-08-31
+  aprovou o restante do corpo e retirou esse campo. O procedimento também não é
+  passado ao módulo de envio, para não trafegar dado clínico desnecessário.
 - **FR-003**: Quando o local não foi lido do PDF, a legenda MUST indicar local
   não identificado em vez de omitir a linha, para o operador saber que precisa
   conferir.
@@ -99,7 +105,8 @@ por env, nunca derivado de dado de request.
 ## Acceptance criteria
 
 - **AC-001**: Mensagem nova com ofício válido gera um envio com o PDF anexado.
-- **AC-002**: Legenda contém ofício, paciente e local.
+- **AC-002**: Legenda contém ofício, paciente, matrícula, médico e local, e não
+  contém procedimento.
 - **AC-003**: Local ausente vira "não identificado" na legenda.
 - **AC-004**: Mensagem já marcada como enviada não gera segundo envio.
 - **AC-005**: Mensagem mais antiga que a janela não gera envio.
