@@ -1,0 +1,20 @@
+name: phase0-self-hosted-negative
+
+# Temporary phase-0 proof: a job that asks only for self-hosted must NOT
+# be assigned to qlmed-prod-runner after --no-default-labels. Delete this
+# file after the run is observed queued and cancelled.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  must-not-match-prod:
+    timeout-minutes: 2
+    runs-on: self-hosted
+    steps:
+      - name: this step must never run on qlmed-prod
+        run: |
+          echo "FAIL: job ran on ${RUNNER_NAME:-unknown}" >&2
+          exit 1
