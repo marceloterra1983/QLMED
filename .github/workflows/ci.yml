@@ -150,7 +150,9 @@ jobs:
         run: python3 ./scripts/verify-ci-isolation.py
 
       - name: Verify CI hardening policy
-        run: npm run ci:verify
+        run: |
+          bash ./scripts/verify-ci-hardening.sh
+          bash ./scripts/test-ci-hardening.sh
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
