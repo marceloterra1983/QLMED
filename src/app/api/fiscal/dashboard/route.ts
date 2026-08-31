@@ -3,7 +3,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { fiscalPeriodQuerySchema, getFiscalPeriodRange } from '@/lib/fiscal-period';
+import { fiscalPeriodQuerySchema, getFiscalPeriodRange, nfeTaxCoverage } from '@/lib/fiscal-period';
 
 const fiscalDashboardQuerySchema = fiscalPeriodQuerySchema;
 
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       },
       select: {
         id: true,
+        type: true,
         issueDate: true,
         senderName: true,
         senderCnpj: true,
@@ -164,10 +165,10 @@ export async function GET(req: Request) {
       }
     }
 
-    const [totalNfe, withTaxData] = await Promise.all([
-      prisma.invoice.count({ where: { companyId: company.id, type: 'NFE' } }),
-      prisma.invoiceTaxTotals.count({ where: { companyId: company.id } }),
-    ]);
+    const { totalNfe, withTaxData } = nfeTaxCoverage(
+      invoices,
+      taxRows.map((t) => t.invoiceId),
+    );
 
     const monthly = Array.from(monthlyMap.values()).sort((a, b) =>
       a.year === b.year ? a.month - b.month : a.year - b.year,

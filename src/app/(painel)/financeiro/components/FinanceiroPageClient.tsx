@@ -66,7 +66,7 @@ const CONFIG: Record<FinanceiroUiDirection, Config> = {
   receber: {
     direction: 'receber',
     apiBase: '/api/financeiro/contas-receber',
-    defaultStatusFilter: 'upcoming',
+    defaultStatusFilter: '',
     title: 'Contas a Receber',
     subtitle: 'Duplicatas das NF-e emitidas',
     searchPlaceholder: 'Buscar por cliente, CNPJ, NF-e...',
