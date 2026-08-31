@@ -2,6 +2,15 @@ import { addMoney, formatMoneyDecimal, sumMoney } from '@/lib/money';
 import { Decimal } from '@prisma/client-runtime-utils';
 import { UF_TO_CODE } from '@/lib/constants';
 import { idDestFromUfs } from './operations';
+import {
+  DEFAULT_COFINS_ALIQUOTA,
+  DEFAULT_ICMS_CST_ISENTO,
+  DEFAULT_MOD_FRETE,
+  DEFAULT_PIS_ALIQUOTA,
+  DEFAULT_PIS_CST,
+  defaultPagFor,
+  isPisNaoTributado,
+} from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 
 function esc(value: string): string {
@@ -65,32 +74,63 @@ function icmsXml(item: NfeEmissionItem, crt: string, vProd: string): string {
   }
   const rate = item.pIcms ? Number(item.pIcms) : 0;
   if (!rate) {
-    return `<ICMS><ICMS40><orig>${orig}</orig><CST>41</CST></ICMS40></ICMS>`;
+    const cst = item.cstIcms || DEFAULT_ICMS_CST_ISENTO;
+    return `<ICMS><ICMS40><orig>${orig}</orig><CST>${esc(cst)}</CST></ICMS40></ICMS>`;
   }
   const vBc = vProd;
   const vIcms = money(new Decimal(vBc).mul(rate).div(100).toNumber());
   return `<ICMS><ICMS00><orig>${orig}</orig><CST>${item.cstIcms || '00'}</CST><modBC>3</modBC><vBC>${vBc}</vBC><pICMS>${money(rate)}</pICMS><vICMS>${vIcms}</vICMS></ICMS00></ICMS>`;
 }
 
-function pisCofins(item: NfeEmissionItem): string {
-  const cstPis = item.cstPis || '07';
-  const cstCofins = item.cstCofins || '07';
-  return `<PIS><PISNT><CST>${cstPis}</CST></PISNT></PIS><COFINS><COFINSNT><CST>${cstCofins}</CST></COFINSNT></COFINS>`;
+function aliquot4(value: string): string {
+  return new Decimal(value).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
 }
 
-function detXml(item: NfeEmissionItem, nItem: number, crt: string): string {
+function itemPisCofins(item: NfeEmissionItem, vBc: string): {
+  xml: string;
+  vPis: number;
+  vCofins: number;
+} {
+  const cstPis = item.cstPis || DEFAULT_PIS_CST;
+  const cstCofins = item.cstCofins || cstPis;
+  if (isPisNaoTributado(cstPis)) {
+    return {
+      xml: `<PIS><PISNT><CST>${esc(cstPis)}</CST></PISNT></PIS><COFINS><COFINSNT><CST>${esc(cstCofins)}</CST></COFINSNT></COFINS>`,
+      vPis: 0,
+      vCofins: 0,
+    };
+  }
+  const pPis = aliquot4(item.pPis || DEFAULT_PIS_ALIQUOTA);
+  const pCofins = aliquot4(item.pCofins || DEFAULT_COFINS_ALIQUOTA);
+  const vPis = money(new Decimal(vBc).mul(pPis).div(100).toNumber());
+  const vCofins = money(new Decimal(vBc).mul(pCofins).div(100).toNumber());
+  return {
+    xml: `<PIS><PISAliq><CST>${esc(cstPis)}</CST><vBC>${vBc}</vBC><pPIS>${pPis}</pPIS><vPIS>${vPis}</vPIS></PISAliq></PIS><COFINS><COFINSAliq><CST>${esc(cstCofins)}</CST><vBC>${vBc}</vBC><pCOFINS>${pCofins}</pCOFINS><vCOFINS>${vCofins}</vCOFINS></COFINSAliq></COFINS>`,
+    vPis: Number(vPis),
+    vCofins: Number(vCofins),
+  };
+}
+
+function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: string; vPis: number; vCofins: number } {
   const vProd = money(new Decimal(item.qCom).mul(item.vUnCom).toNumber());
-  const vDesc = item.vDesc && Number(item.vDesc) > 0 ? `<vDesc>${money(item.vDesc)}</vDesc>` : '';
+  const vDescAmt = item.vDesc && Number(item.vDesc) > 0 ? money(item.vDesc) : '';
+  const vDesc = vDescAmt ? `<vDesc>${vDescAmt}</vDesc>` : '';
+  const vBc = money(new Decimal(vProd).minus(vDescAmt || 0).toNumber());
+  const pis = itemPisCofins(item, vBc);
   const ean = item.ean && item.ean !== 'SEM GTIN' ? esc(item.ean) : 'SEM GTIN';
   const cest = item.cest ? `<CEST>${esc(item.cest)}</CEST>` : '';
   const med = item.anvisa
     ? `<med><cProdANVISA>${esc(item.anvisa)}</cProdANVISA></med>`
     : '';
-  return `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pisCofins(item)}</imposto></det>`;
+  return {
+    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}</imposto></det>`,
+    vPis: pis.vPis,
+    vCofins: pis.vCofins,
+  };
 }
 
 function transpXml(draft: NfeEmissionDraft): string {
-  const mod = draft.modFrete || '9';
+  const mod = draft.modFrete || DEFAULT_MOD_FRETE;
   const t = draft.transporta;
   const transporta = t?.xNome
     ? `<transporta>${t.cnpj ? `<CNPJ>${esc(t.cnpj.replace(/\D/g, ''))}</CNPJ>` : ''}<xNome>${esc(t.xNome)}</xNome>${t.ie ? `<IE>${esc(t.ie)}</IE>` : ''}${t.xEnder ? `<xEnder>${esc(t.xEnder)}</xEnder>` : ''}${t.xMun ? `<xMun>${esc(t.xMun)}</xMun>` : ''}${t.UF ? `<UF>${esc(t.UF)}</UF>` : ''}</transporta>`
@@ -102,11 +142,32 @@ function transpXml(draft: NfeEmissionDraft): string {
   return `<transp><modFrete>${esc(mod)}</modFrete>${transporta}${vol}</transp>`;
 }
 
-function pagXml(draft: NfeEmissionDraft, vNf: string): string {
-  const tPag = draft.pag?.tPag || (draft.finNFe === '3' || draft.finNFe === '4' ? '90' : '17');
+function resolvedPag(draft: NfeEmissionDraft, vNf: string): { tPag: string; indPag: string; vPag: string } {
+  const fallback = defaultPagFor(draft.finNFe || '1', draft.cfop);
+  const tPag = draft.pag?.tPag || fallback.tPag;
+  const indPag = draft.pag?.indPag || fallback.indPag;
   const vPag = tPag === '90' ? '0.00' : money(draft.pag?.vPag || vNf);
-  const indPag = draft.pag?.indPag || '0';
+  return { tPag, indPag, vPag };
+}
+
+function pagXml(draft: NfeEmissionDraft, vNf: string): string {
+  const { tPag, indPag, vPag } = resolvedPag(draft, vNf);
   return `<pag><detPag><indPag>${indPag}</indPag><tPag>${esc(tPag)}</tPag><vPag>${vPag}</vPag></detPag></pag>`;
+}
+
+function isoDate(date: Date, plusDays = 0): string {
+  const d = new Date(date.getTime() + plusDays * 86400000);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function cobrXml(draft: NfeEmissionDraft, vNf: string): string {
+  const { tPag } = resolvedPag(draft, vNf);
+  if (tPag === '90') return '';
+  const nFat = String(Number(draft.number) || draft.number).padStart(9, '0');
+  return `<cobr><fat><nFat>${esc(nFat)}</nFat><vOrig>${vNf}</vOrig><vLiq>${vNf}</vLiq></fat><dup><nDup>001</nDup><dVenc>${isoDate(draft.issueDate, 30)}</dVenc><vDup>${vNf}</vDup></dup></cobr>`;
 }
 
 function infAdicXml(draft: NfeEmissionDraft): string {
@@ -133,8 +194,10 @@ export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   const destIe = draft.dest.indIEDest === '1' && draft.dest.ie
     ? `<IE>${esc(draft.dest.ie.replace(/\D/g, ''))}</IE>`
     : '';
-  const dets = draft.items.map((item, i) => detXml({ ...item, cfop: item.cfop || draft.cfop }, i + 1, draft.emit.crt)).join('');
+  const dets = draft.items.map((item, i) => detXml({ ...item, cfop: item.cfop || draft.cfop }, i + 1, draft.emit.crt));
+  const vPis = money(sumMoney(dets.map((row) => row.vPis)));
+  const vCofins = money(sumMoney(dets.map((row) => row.vCofins)));
   const finNFe = draft.finNFe || '1';
-  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${pagXml(draft, vNf)}${infAdicXml(draft)}</infNFe>`;
+  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets.map((row) => row.xml).join('')}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>${vPis}</vPIS><vCOFINS>${vCofins}</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${cobrXml(draft, vNf)}${pagXml(draft, vNf)}${infAdicXml(draft)}</infNFe>`;
   return `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">${infNFe}</NFe>`;
 }

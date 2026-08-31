@@ -12,6 +12,12 @@ describe('nfe-emission operations', () => {
     expect(tags.has('Demonstração')).toBe(true);
     expect(tags.has('Bonificação')).toBe(true);
     expect(ops.every((op) => /^\d{4}$/.test(op.cfop))).toBe(true);
+    expect(ops.find((op) => op.cfop === '5102')?.natureza).toBe('Venda merc.adq. ou recb. terc.');
+    expect(ops.find((op) => op.cfop === '6102')?.natureza).toBe('Venda fora do estado');
+    expect(ops.find((op) => op.cfop === '5917')?.natureza).toBe('Remessa de consignacao');
+    expect(ops.find((op) => op.cfop === '1918')?.natureza).toBe('Dev. de merc. rem. em consig.');
+    expect(ops.find((op) => op.cfop === '1202')?.cfop).toBe('1202');
+    expect(ops.find((op) => op.cfop === '2918')?.ambito).toBe('interestadual');
   });
 
   it('recusa CFOP interno para destinatário de outra UF', () => {
@@ -19,6 +25,9 @@ describe('nfe-emission operations', () => {
     expect(() => assertCfopMatchesUfs('6102', 'MS', 'MS')).toThrow(/interestadual/);
     expect(() => assertCfopMatchesUfs('5102', 'MS', 'MS')).not.toThrow();
     expect(() => assertCfopMatchesUfs('6102', 'MS', 'SP')).not.toThrow();
+    expect(() => assertCfopMatchesUfs('1918', 'MS', 'MS')).not.toThrow();
+    expect(() => assertCfopMatchesUfs('2918', 'MS', 'MT')).not.toThrow();
+    expect(() => assertCfopMatchesUfs('1918', 'MS', 'MT')).toThrow(/interno/);
   });
 
   it('idDest interno vs interestadual', () => {

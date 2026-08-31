@@ -77,6 +77,52 @@ describe('nfe xml builder', () => {
     expect(xml).toContain('<modFrete>9</modFrete>');
   });
 
+  it('CRT 3 segue o DNA das emitidas: CST 40, PIS 01 0,65/3, boleto e CIF', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      natureza: 'Venda merc.adq. ou recb. terc.',
+      emit: {
+        ...sampleDraft().emit,
+        crt: '3',
+      },
+      dest: {
+        ...sampleDraft().dest,
+        indIEDest: '9',
+      },
+      items: sampleDraft().items.map((item) => ({ ...item, anvisa: undefined })),
+      modFrete: '',
+      pag: undefined,
+    }));
+    expect(xml).toContain('<CRT>3</CRT>');
+    expect(xml).toContain('<ICMS40>');
+    expect(xml).toContain('<CST>40</CST>');
+    expect(xml).not.toContain('<CSOSN>');
+    expect(xml).not.toContain('<CST>41</CST>');
+    expect(xml).toContain('<PISAliq>');
+    expect(xml).toContain('<CST>01</CST>');
+    expect(xml).toContain('<pPIS>0.6500</pPIS>');
+    expect(xml).toContain('<pCOFINS>3.0000</pCOFINS>');
+    expect(xml).toContain('<tPag>15</tPag>');
+    expect(xml).toContain('<indPag>1</indPag>');
+    expect(xml).toContain('<modFrete>0</modFrete>');
+    expect(xml).toContain('<nDup>001</nDup>');
+    expect(xml).toMatch(/<vPIS>(?!0\.00<)/);
+    expect(xml).toMatch(/<vCOFINS>(?!0\.00<)/);
+  });
+
+  it('devolução de consignação usa tPag 90 e não gera cobr', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      natureza: 'Dev. de merc. rem. em consig.',
+      cfop: '1918',
+      finNFe: '4',
+      emit: { ...sampleDraft().emit, crt: '3' },
+      items: [{ ...sampleDraft().items[0], cfop: '1918', anvisa: undefined }],
+    }));
+    expect(xml).toContain('<finNFe>4</finNFe>');
+    expect(xml).toContain('<tPag>90</tPag>');
+    expect(xml).toContain('<vPag>0.00</vPag>');
+    expect(xml).not.toContain('<cobr>');
+  });
+
   it('grava pagamento PIX, frete e informações complementares', () => {
     const xml = buildUnsignedNfeXml(sampleDraft({
       vFrete: '5.00',

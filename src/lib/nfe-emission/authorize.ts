@@ -13,6 +13,7 @@ import { enviarNfeAutorizacao } from './autorizacao-client';
 import { emitenteFromIssuedXml } from './emitente';
 import { destinatarioFromIssuedXml, mergeDestinatario } from './destinatario';
 import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
+import { defaultInfAdFisco, defaultInfCpl } from './issued-defaults';
 import { nfeEmissionPayloadSchema } from './schema';
 import { buildUnsignedNfeXml, draftDocumentTotal } from './xml-builder';
 import { signNfeXml } from './xml-sign';
@@ -103,7 +104,7 @@ export async function authorizeInvoiceEmission(
       number,
     });
     const unsigned = buildUnsignedNfeXml({
-      natureza: payload.natureza || op?.natureza || 'Venda de mercadoria',
+      natureza: payload.natureza || op?.natureza || 'Venda merc.adq. ou recb. terc.',
       cfop: payload.cfop,
       series: payload.series,
       number,
@@ -123,8 +124,8 @@ export async function authorizeInvoiceEmission(
       transporta: payload.transporta,
       volume: payload.volume,
       pag: payload.pag,
-      infCpl: [payload.infCpl, op?.tag].filter(Boolean).join(' — ') || undefined,
-      infAdFisco: payload.infAdFisco,
+      infCpl: defaultInfCpl(payload.cfop, payload.infCpl),
+      infAdFisco: defaultInfAdFisco(payload.cfop, payload.infAdFisco),
     });
     const signed = signNfeXml(unsigned, pems.key, pems.cert);
     await tx.invoiceEmission.update({
