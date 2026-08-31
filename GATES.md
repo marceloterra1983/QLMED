@@ -48,7 +48,7 @@ ingestão quando o provedor falhar; ligar sozinho sem configuração.
 - [x] G8: testes de aceitação AC-001..AC-008 passam
   CHECK: npx vitest run src/lib/__tests__/cassems-whatsapp-notify.test.ts -t 'SPEC-034' 2>&1 | rg 'Tests'
   EXPECT: 8 passed
-  EVIDENCE: Tests  8 passed | 9 skipped (17) — os 9 skipped sao do fixture importado cassems-parse-oficio.test.ts
+  EVIDENCE: Tests  8 passed | 14 skipped (22) apos merge de origin/main — os skipped sao do fixture importado cassems-parse-oficio.test.ts
 
 - [x] G9: gate de janela de migration atualizado para a migration nova
   CHECK: node scripts/test-production-migration-window.cjs >/dev/null 2>&1 && echo MIGRATION_GATE_OK || echo MIGRATION_GATE_FAIL
@@ -68,7 +68,7 @@ ingestão quando o provedor falhar; ligar sozinho sem configuração.
 - [x] G12: suíte completa verde
   CHECK: npm test 2>&1 | rg 'Test Files' | rg -c 'failed' || echo NO_FAILED_FILES
   EXPECT: NO_FAILED_FILES
-  EVIDENCE: NO_FAILED_FILES — Test Files 85 passed | 3 skipped (88); Tests 608 passed | 4 skipped (612)
+  EVIDENCE: NO_FAILED_FILES — Test Files 86 passed | 3 skipped (89); Tests 636 passed | 4 skipped (640) apos merge de origin/main
 
 - [x] G13: prova medida de que ligar o canal não gera enxurrada no grupo
   CHECK: contagem de mensagens CASSEMS dentro da janela de 7 dias, medida na caixa em produção
