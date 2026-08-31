@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfeDetails, NfeProduto, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, TaxFields } from '@/types/invoice-details';
+import { nfeProdutoExpandKey, retainExpandedIds } from '@/lib/list-collapse';
 
 interface NfeDetailsModalProps {
   isOpen: boolean;
@@ -205,18 +206,17 @@ function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'des
   );
 }
 
-function TabProdutos({ data }: { data: NfeDetails }) {
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+function TabProdutos({
+  data,
+  expanded,
+  onToggle,
+}: {
+  data: NfeDetails;
+  expanded: Set<string>;
+  onToggle: (key: string) => void;
+}) {
   const produtos = data.produtos || [];
-
-  const toggle = (idx: number) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
+  const rowKey = (prod: NfeProduto, idx: number) => nfeProdutoExpandKey(prod) || `i:${idx}`;
 
   if (produtos.length === 0) {
     return (
@@ -231,11 +231,13 @@ function TabProdutos({ data }: { data: NfeDetails }) {
     <SectionBlock title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" iconColor="text-emerald-500">
       {/* Mobile Cards */}
       <div className="sm:hidden space-y-1.5">
-        {produtos.map((prod: NfeProduto, idx: number) => (
-          <div key={`m-${idx}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50">
+        {produtos.map((prod: NfeProduto, idx: number) => {
+          const key = rowKey(prod, idx);
+          return (
+          <div key={`m-${key}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <button
-              onClick={() => toggle(idx)}
-              className={`w-full text-left p-2.5 ${expanded.has(idx) ? 'bg-slate-50 dark:bg-slate-800/40' : ''}`}
+              onClick={() => onToggle(key)}
+              className={`w-full text-left p-2.5 ${expanded.has(key) ? 'bg-slate-50 dark:bg-slate-800/40' : ''}`}
             >
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1">{prod.descricao}</p>
               <div className="flex items-center justify-between">
@@ -244,11 +246,11 @@ function TabProdutos({ data }: { data: NfeDetails }) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</span>
-                  <span className={`material-symbols-outlined text-[14px] text-slate-400 transition-transform ${expanded.has(idx) ? 'rotate-180' : ''}`}>expand_more</span>
+                  <span className={`material-symbols-outlined text-[14px] text-slate-400 transition-transform ${expanded.has(key) ? 'rotate-180' : ''}`}>expand_more</span>
                 </div>
               </div>
             </button>
-            {expanded.has(idx) && (
+            {expanded.has(key) && (
               <div className="px-2.5 pb-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-2">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <Field label="Código" value={prod.codigo} />
@@ -265,7 +267,8 @@ function TabProdutos({ data }: { data: NfeDetails }) {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Desktop Table */}
@@ -282,16 +285,18 @@ function TabProdutos({ data }: { data: NfeDetails }) {
             </tr>
           </thead>
           <tbody>
-            {produtos.map((prod: NfeProduto, idx: number) => (
-              <Fragment key={idx}>
+            {produtos.map((prod: NfeProduto, idx: number) => {
+              const key = rowKey(prod, idx);
+              return (
+              <Fragment key={key}>
                 <tr
-                  onClick={() => toggle(idx)}
+                  onClick={() => onToggle(key)}
                   className={`border-b border-slate-100 dark:border-slate-800/60 cursor-pointer transition-colors ${
-                    expanded.has(idx) ? 'bg-slate-50 dark:bg-slate-800/40' : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/20'
+                    expanded.has(key) ? 'bg-slate-50 dark:bg-slate-800/40' : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/20'
                   }`}
                 >
                   <td className="px-3 py-2.5">
-                    <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${expanded.has(idx) ? 'rotate-180' : ''}`}>
+                    <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${expanded.has(key) ? 'rotate-180' : ''}`}>
                       expand_more
                     </span>
                   </td>
@@ -301,7 +306,7 @@ function TabProdutos({ data }: { data: NfeDetails }) {
                   <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{prod.unidade}</td>
                   <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</td>
                 </tr>
-                {expanded.has(idx) && (
+                {expanded.has(key) && (
                   <tr>
                     <td colSpan={6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
@@ -323,7 +328,8 @@ function TabProdutos({ data }: { data: NfeDetails }) {
                   </tr>
                 )}
               </Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -535,23 +541,33 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('nfe');
+  const [expandedProdutos, setExpandedProdutos] = useState<Set<string>>(new Set());
   const tabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen || !invoiceId) return;
     setLoading(true);
     setError(null);
-    setActiveTab(initialTab || 'nfe');
     setData(null);
+    setExpandedProdutos(new Set());
 
     fetch(`/api/invoices/${invoiceId}/details`)
       .then(res => {
         if (!res.ok) throw new Error('Erro ao carregar detalhes');
         return res.json();
       })
-      .then(setData)
+      .then((next: NfeDetails) => {
+        setData(next);
+        const available = (next.produtos || []).map((prod, idx) => nfeProdutoExpandKey(prod) || `i:${idx}`);
+        setExpandedProdutos((prev) => retainExpandedIds(prev, available));
+      })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
+  }, [isOpen, invoiceId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab(initialTab || 'nfe');
   }, [isOpen, invoiceId, initialTab]);
 
   if (!isOpen || !invoiceId) return null;
@@ -583,7 +599,20 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
       case 'nfe': return <TabNfe data={data} />;
       case 'emitente': return <TabEmitDest data={data} type="emitente" />;
       case 'destinatario': return <TabEmitDest data={data} type="destinatario" />;
-      case 'produtos': return <TabProdutos data={data} />;
+      case 'produtos': return (
+        <TabProdutos
+          data={data}
+          expanded={expandedProdutos}
+          onToggle={(key) => {
+            setExpandedProdutos((prev) => {
+              const next = new Set(prev);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              return next;
+            });
+          }}
+        />
+      );
       case 'totais': return <TabTotais data={data} />;
       case 'transporte': return <TabTransporte data={data} />;
       case 'cobranca': return <TabCobranca data={data} />;

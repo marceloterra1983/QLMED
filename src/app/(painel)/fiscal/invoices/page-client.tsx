@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -11,6 +11,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
+import { defaultNfeCollapsedKeys, resolveCollapsedGroupsAfterFetch } from '@/lib/list-collapse';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
@@ -40,7 +41,7 @@ export default function InvoicesPage() {
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [detailsInitialTab, setDetailsInitialTab] = useState<string | undefined>(undefined);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [collapsedInitialized, setCollapsedInitialized] = useState(false);
+  const collapsedInitializedRef = useRef(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
@@ -69,7 +70,7 @@ export default function InvoicesPage() {
     if (year === null) { setDateFrom(`${cy}-01-01`); setDateTo(''); }
     else { setDateFrom(`${year}-01-01`); setDateTo(`${year}-12-31`); }
     setSelectedYear(year);
-    setCollapsedInitialized(false);
+    collapsedInitializedRef.current = false;
     setSelected(new Set());
   };
 
@@ -175,20 +176,15 @@ export default function InvoicesPage() {
         const loaded: Invoice[] = data.invoices || [];
         setInvoices(loaded);
         setTotal(data.pagination?.total || 0);
-        if (search) {
-          setCollapsedGroups(new Set());
-        } else if (!collapsedInitialized && loaded.length > 0) {
-          if (selectedYear !== null) {
-            const months = buildYearMonths(loaded);
-            setCollapsedGroups(new Set(months.map(m => m.key)));
-          } else {
-            const groups = buildNfeGroups(loaded);
-            const toCollapse = new Set<string>();
-            if (groups.semanaPassada.length > 0) toCollapse.add('semana_passada');
-            for (const mg of groups.currentYearMonths) toCollapse.add(mg.key);
-            setCollapsedGroups(toCollapse);
-          }
-          setCollapsedInitialized(true);
+        if (loaded.length > 0) {
+          const collapse = resolveCollapsedGroupsAfterFetch({
+            preserve: silent,
+            resetToExpanded: Boolean(search) && !silent,
+            alreadyInitialized: collapsedInitializedRef.current,
+            defaultCollapsed: defaultNfeCollapsedKeys(loaded, selectedYear),
+          });
+          if (collapse.collapsed) setCollapsedGroups(collapse.collapsed);
+          collapsedInitializedRef.current = collapse.initialized;
         }
         const cnpjs = Array.from(new Set(loaded.map((inv) => inv.senderCnpj).filter(Boolean)));
         if (cnpjs.length > 0) {
