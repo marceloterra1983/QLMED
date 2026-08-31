@@ -261,6 +261,72 @@ TOTAL GERAL: 10,00
     expect(describeImpcgParseGap(parsed)).toBe('Faltou: médico, hospital');
   });
 
+  it('layout antigo MÉDICO DR. sem dois-pontos (ofícios 1589/1748/2010/2476)', () => {
+    const samples = [
+      {
+        text: `
+OFÍCIO Nº 1589
+PACIENTE: PAULO ROBERTO LOUREIRO PINHEIRO
+MATRÍCULA: 10499.0
+MÉDICO DR. ARINO FARIA DA SILVA
+FORNECEDOR: QL MED
+LOCAL DE ENTREGA: HOSPITAL EL KADRI
+TOTAL R$ 8.990,00
+`,
+        doctor: 'ARINO FARIA DA SILVA',
+      },
+      {
+        text: `
+OFÍCIO Nº 1748
+PACIENTE: ROMILDA BATISTA BENITES DA SILVA
+MÉDICO DR. AMAURY MONT SERRAT
+LOCAL DE ENTREGA: HOSPITAL EL KADRI
+TOTAL R$ 1.200,00
+`,
+        doctor: 'AMAURY MONT SERRAT',
+      },
+      {
+        text: `
+OFÍCIONº 2010
+PACIENTE: VIRGILIO CHAPARRO
+MÉDICO DR. THIAGO DIAS MIRANDA
+LOCAL DE ENTREGA: HOSPITAL DO CORAÇÃO
+TOTAL R$ 7.920,00
+`,
+        doctor: 'THIAGO DIAS MIRANDA',
+      },
+      {
+        text: `
+OFÍCIO Nº 2476
+PACIENTE: EDSON KANASHIRO
+MÉDICO DR. CLAUDIO ALBERNAZ CESAR
+PROCEDIMENTO: TROCA VALVAR MITRAL
+LOCAL DE ENTREGA: SANTA CASA
+TOTAL R$ 1.200,00
+`,
+        doctor: 'CLAUDIO ALBERNAZ CESAR',
+      },
+    ];
+    for (const sample of samples) {
+      const parsed = parseOficio(sample.text);
+      expect(parsed.doctorName).toBe(sample.doctor);
+      expect(parsed.doctorCrm).toBeNull();
+    }
+  });
+
+  it('mantém layout novo MÉDICO: + CRM na mesma linha', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO Nº 17673
+PACIENTE: PLINIO ANTONIO ARANHA JUNIOR
+MÉDICO : RODRIGO LUIZ ROCHA CARDOSO CRM: 13716
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+TOTAL R$ 12.550,00
+`);
+    expect(parsed.doctorName).toBe('RODRIGO LUIZ ROCHA CARDOSO');
+    expect(parsed.doctorCrm).toBe('13716');
+  });
+
   it('menciona só os totais quando o cabeçalho está completo (FAIL-004)', () => {
     const parsed = parseOficio(`
 ORDEM DE FORNECIMENTO N 99
