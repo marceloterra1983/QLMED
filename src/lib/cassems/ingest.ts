@@ -20,7 +20,6 @@ import {
 import { getSingleCompany } from '@/lib/single-company';
 import {
   CASSEMS_INGEST_INTERVAL_MS,
-  CASSEMS_MAILBOX_TIMEOUT_MS,
   CASSEMS_MAILBOXES,
   CASSEMS_ONEDRIVE_FOLDER,
   CASSEMS_SENDER_EMAIL,
@@ -34,15 +33,21 @@ import {
 } from './folder-ingest';
 import { buildCassemsFileName, parseOficio, shouldUpgrade, type ParsedCassemsItem } from './parse-oficio';
 import { prismaCassemsStore } from './store';
+import {
+  isWithinCassemsNotifyWindow,
+  notifyCassemsAuthorization,
+  resolveCassemsWhatsAppTarget,
+  type CassemsWhatsAppTarget,
+} from './whatsapp-notify';
 
 const log = createLogger('cassems/ingest');
 
 export type CassemsMailPort = {
-  listMessages(mailbox: string, options: { signal: AbortSignal }): Promise<ImpcgMailMessage[]>;
+  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<ImpcgMailMessage[]>;
   getPdfAttachments(
     mailbox: string,
     graphMessageId: string,
-    signal: AbortSignal,
+    signal?: AbortSignal,
   ): Promise<ImpcgPdfAttachment[]>;
 };
 
@@ -85,7 +90,7 @@ export type CassemsStorePort = {
   findSourceByInternetMessageId(
     companyId: string,
     internetMessageId: string,
-  ): Promise<{ id: string; authorizationId: string | null } | null>;
+  ): Promise<{ id: string; authorizationId: string | null; whatsappSentAt?: Date | null } | null>;
   findByOficioNumber(companyId: string, oficioNumber: string): Promise<CassemsAuthorizationRow | null>;
   persistConfirmed(input: PersistArgs): Promise<{ id: string }>;
   persistUpgrade(input: PersistArgs & { authorizationId: string }): Promise<void>;
@@ -106,6 +111,12 @@ export type CassemsStorePort = {
     companyId: string,
     patch: { lastSuccessAt?: Date | null; backfillCompletedAt?: Date | null; lastError?: string | null },
   ): Promise<void>;
+  /** SPEC-034 FR-004: idempotência do aviso por mensagem de origem. */
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
 };
 
 export type CassemsIngestResult = {
@@ -124,6 +135,8 @@ export type CassemsIngestDeps = {
   folder?: CassemsFolderPort | null;
   extractText: (pdf: Buffer) => Promise<string>;
   store: CassemsStorePort;
+  /** SPEC-034: ausente = canal WhatsApp desligado. */
+  whatsapp?: CassemsWhatsAppTarget | null;
 };
 
 function sanitizeError(message: string): string {
@@ -215,6 +228,7 @@ export async function runCassemsIngest(
       : options.folder,
     extractText: options.extractText ?? extractPdfText,
     store: options.store ?? prismaCassemsStore,
+    whatsapp: options.whatsapp !== undefined ? options.whatsapp : resolveCassemsWhatsAppTarget(),
   };
 
   let processed = 0;
@@ -225,10 +239,9 @@ export async function runCassemsIngest(
 
   try {
     for (const mailbox of CASSEMS_MAILBOXES) {
-      const signal = AbortSignal.timeout(CASSEMS_MAILBOX_TIMEOUT_MS);
       let messages: ImpcgMailMessage[] = [];
       try {
-        messages = await resolved.mail.listMessages(mailbox, { signal });
+        messages = await resolved.mail.listMessages(mailbox, {});
       } catch (error) {
         const label = mailboxLabel(mailbox);
         failedMailboxes.push(label);
@@ -252,7 +265,7 @@ export async function runCassemsIngest(
 
         let attachments: ImpcgPdfAttachment[] = [];
         try {
-          attachments = await resolved.mail.getPdfAttachments(mailbox, message.graphMessageId, signal);
+          attachments = await resolved.mail.getPdfAttachments(mailbox, message.graphMessageId);
         } catch (error) {
           errors.push(sanitizeError(error instanceof Error ? error.message : 'anexo'));
           continue;
@@ -303,16 +316,47 @@ export async function runCassemsIngest(
           graphMessageId: message.graphMessageId,
         };
 
+        const oficioNumber = parsed.oficioNumber;
+        const notifyWhatsApp = async () => {
+          if (!resolved.whatsapp) return;
+          if (!isWithinCassemsNotifyWindow(message.receivedAt)) return;
+
+          const result = await notifyCassemsAuthorization({
+            target: resolved.whatsapp,
+            fields: {
+              oficioNumber,
+              patientName: parsed.patientName,
+              patientRegistry: parsed.patientRegistry,
+              doctorName: parsed.doctorName,
+              doctorCrm: parsed.doctorCrm,
+              hospitalName: parsed.hospitalName,
+            },
+            fileName,
+            content: pdf.content,
+          });
+          if (!result.sent) {
+            errors.push('aviso WhatsApp falhou');
+            return;
+          }
+          await resolved.store.markWhatsAppSent?.(
+            companyId,
+            message.internetMessageId,
+            result.messageId,
+          );
+        };
+
         const existingAuth = await resolved.store.findByOficioNumber(companyId, parsed.oficioNumber);
         if (!existingAuth) {
           await resolved.store.persistConfirmed(persistBase);
           processed += 1;
+          await notifyWhatsApp();
           continue;
         }
 
         if (shouldUpgrade(existingAuth.parseStatus, parsed.parseStatus)) {
           await resolved.store.persistUpgrade({ ...persistBase, authorizationId: existingAuth.id });
           processed += 1;
+          await notifyWhatsApp();
           continue;
         }
 

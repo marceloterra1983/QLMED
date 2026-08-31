@@ -972,6 +972,8 @@ model CassemsSourceMessage {
   graphMessageId    String
   internetMessageId String
   receivedAt        DateTime
+  whatsappSentAt    DateTime?
+  whatsappMessageId String?
   createdAt         DateTime              @default(now())
 
   @@unique([companyId, internetMessageId])
