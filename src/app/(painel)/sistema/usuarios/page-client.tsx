@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { PAGE_GROUPS, ALL_PAGES } from '@/lib/navigation';
 import { PAGE_LABELS } from '@/components/SidebarNav';
+import PageHeader from '@/components/PageHeader';
 
 interface User {
   id: string;
@@ -348,25 +349,20 @@ export default function UsuariosPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <div className="p-2 rounded-xl bg-primary/10 flex-shrink-0">
-            <span className="material-symbols-outlined text-primary text-[28px]">manage_accounts</span>
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Usuários</h1>
-            <p className="text-sm text-slate-500">Gerenciar contas e permissões</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all"
-        >
-          <span className="material-symbols-outlined text-[18px]">person_add</span>
-          Novo Usuário
-        </button>
-      </div>
+      <PageHeader
+        icon="manage_accounts"
+        title="Usuários"
+        subtitle="Gerenciar contas e permissões"
+        actions={(
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            Novo Usuário
+          </button>
+        )}
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -516,21 +512,21 @@ export default function UsuariosPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openEdit(user)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Editar"
                           >
                             <span className="material-symbols-outlined text-[20px]">edit</span>
                           </button>
                           <button
                             onClick={() => openPages(user)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Controle de páginas"
                           >
                             <span className="material-symbols-outlined text-[20px]">tune</span>
                           </button>
                           <button
                             onClick={() => openLogs(user)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Histórico de acesso"
                           >
                             <span className="material-symbols-outlined text-[20px]">history</span>

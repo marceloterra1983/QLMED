@@ -18,6 +18,7 @@ import { issuedCancelTagLabel } from '@/lib/nfe-cancellation-label';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import type { Invoice } from '@/types';
 import { useRole } from '@/hooks/useRole';
+import PageHeader from '@/components/PageHeader';
 
 const AUTO_REFRESH_MS = 30_000;
 
@@ -332,38 +333,35 @@ export default function IssuedInvoicesPage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">output</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">NF-e Emitidas</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Notas fiscais emitidas pela empresa</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {canWrite && (
-            <Link
-              href="/fiscal/issued/nova"
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark transition-colors"
+      <PageHeader
+        icon="output"
+        title="NF-e Emitidas"
+        subtitle="Notas fiscais emitidas pela empresa"
+        actions={(
+          <>
+            {canWrite && (
+              <Link
+                href="/fiscal/issued/nova"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">post_add</span>
+                Nova NF-e
+              </Link>
+            )}
+            <button
+              onClick={() => setHideValues(v => !v)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
             >
-              <span className="material-symbols-outlined text-[20px]">post_add</span>
-              Nova NF-e
-            </Link>
-          )}
-          <button
-            onClick={() => setHideValues(v => !v)}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
-            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-          >
-            <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-          </button>
-          <button onClick={handleExport} disabled={invoices.length === 0} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40">
-            <span className="material-symbols-outlined text-[20px]">download</span>
-            Exportar
-          </button>
-        </div>
-      </div>
+              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
+            </button>
+            <button onClick={handleExport} disabled={invoices.length === 0} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40">
+              <span className="material-symbols-outlined text-[20px]">download</span>
+              Exportar
+            </button>
+          </>
+        )}
+      />
 
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={[search, tagFilter, dateFrom, dateTo].filter(Boolean).length}>

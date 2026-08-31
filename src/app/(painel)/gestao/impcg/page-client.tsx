@@ -10,6 +10,7 @@ import ReadFieldEditor, { readFieldInputClass } from '@/components/gestao/ReadFi
 import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { isOficioFieldEdited } from '@/lib/gestao-oficio-edits';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
+import PageHeader from '@/components/PageHeader';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
 
@@ -218,12 +219,12 @@ export default function ImpcgPageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">assignment</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">IMPCG</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
+      <PageHeader
+        icon="assignment"
+        title="IMPCG"
+        subtitle={(
+          <>
+            <p>
               {data?.lastCollectedAt
                 ? `Última coleta: ${formatDateTime(data.lastCollectedAt)}`
                 : 'Autorizações de fornecimento'}
@@ -231,9 +232,9 @@ export default function ImpcgPageClient() {
             {data?.lastError && (
               <p className="text-amber-700 dark:text-amber-400 text-xs font-medium mt-0.5">{data.lastError}</p>
             )}
-          </div>
-        </div>
-        {data?.canSync && (
+          </>
+        )}
+        actions={data?.canSync ? (
           <button
             type="button"
             onClick={handleSync}
@@ -245,8 +246,8 @@ export default function ImpcgPageClient() {
             </span>
             Atualizar agora
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {loading && (
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-3">

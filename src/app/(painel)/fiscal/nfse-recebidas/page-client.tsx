@@ -9,6 +9,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
 import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import PageHeader from '@/components/PageHeader';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 const NfseDetailsModal = dynamic(() => import('@/components/NfseDetailsModal'), { ssr: false });
@@ -231,35 +232,36 @@ export default function NfseReceivedPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="hidden sm:block min-w-0">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">NFS-e</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Notas de serviço recebidas e emitidas pela QLMED</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-            {total} documento(s)
-          </div>
-          <button
-            onClick={() => setHideValues(v => !v)}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
-            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-          >
-            <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-          </button>
-          <button
-            onClick={handleSyncReceitaNfse}
-            disabled={syncing || !canWrite}
-            className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
-            title={canWrite ? 'Sincronizar NFS-e via Receita' : 'Sem permissão para sincronizar'}
-          >
-            <span className="material-symbols-outlined text-[16px]">
-              {syncing ? 'sync' : 'cloud_sync'}
-            </span>
-            {syncing ? 'Sincronizando...' : 'Sincronizar NFS-e'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon="description"
+        title="NFS-e"
+        subtitle="Notas de serviço recebidas e emitidas pela QLMED"
+        actions={(
+          <>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+              {total} documento(s)
+            </div>
+            <button
+              onClick={() => setHideValues(v => !v)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+            >
+              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
+            </button>
+            <button
+              onClick={handleSyncReceitaNfse}
+              disabled={syncing || !canWrite}
+              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+              title={canWrite ? 'Sincronizar NFS-e via Receita' : 'Sem permissão para sincronizar'}
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {syncing ? 'sync' : 'cloud_sync'}
+              </span>
+              {syncing ? 'Sincronizando...' : 'Sincronizar NFS-e'}
+            </button>
+          </>
+        )}
+      />
 
       {syncMessage ? (
         <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">

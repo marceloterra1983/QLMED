@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import PageHeader from '@/components/PageHeader';
 
 type AnvisaSourceKey = 'produtos_saude' | 'medicamentos';
 
@@ -78,27 +79,23 @@ export default function AnvisaPage() {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[28px] text-primary">biotech</span>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">ANVISA</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
-              Pesquisa pública na base oficial da ANVISA
-            </p>
-          </div>
-        </div>
-
-        <a
-          href={selectedOption.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
-        >
-          <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-          Abrir no site da ANVISA
-        </a>
-      </div>
+      <PageHeader
+        icon="biotech"
+        title="ANVISA"
+        subtitle="Pesquisa pública na base oficial da ANVISA"
+        showTitleOnMobile
+        actions={(
+          <a
+            href={selectedOption.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
+          >
+            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+            Abrir no site da ANVISA
+          </a>
+        )}
+      />
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">

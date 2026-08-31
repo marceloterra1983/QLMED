@@ -14,6 +14,7 @@ import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import { useRole } from '@/hooks/useRole';
+import PageHeader from '@/components/PageHeader';
 
 export default function CtePage() {
   const { canWrite } = useRole();
@@ -416,33 +417,30 @@ export default function CtePage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">local_shipping</span>
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">CT-e</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Conhecimentos de transporte eletrônicos</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setHideValues(v => !v)}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
-            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-          >
-            <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={invoices.length === 0}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[20px]">download</span>
-            Exportar
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon="local_shipping"
+        title="CT-e"
+        subtitle="Conhecimentos de transporte eletrônicos"
+        actions={(
+          <>
+            <button
+              onClick={() => setHideValues(v => !v)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+            >
+              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={invoices.length === 0}
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[20px]">download</span>
+              Exportar
+            </button>
+          </>
+        )}
+      />
 
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={[search, statusFilter, dateFrom, dateTo].filter(Boolean).length}>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount } from '@/lib/utils';
+import PageHeader from '@/components/PageHeader';
 
 type Period = 'month' | 'quarter' | 'year';
 
@@ -203,12 +204,11 @@ export default function FiscalDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="hidden sm:block min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Impostos</h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Visão consolidada de impostos por período</p>
-        </div>
+      <PageHeader
+        icon="monitoring"
+        title="Impostos"
+        subtitle="Visão consolidada de impostos por período"
+        actions={(
         <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <select
             value={year}
@@ -253,7 +253,8 @@ export default function FiscalDashboardPage() {
             ))}
           </div>
         </div>
-      </div>
+        )}
+      />
 
       {/* Backfill Banner */}
       {!loading && needsBackfill && (
