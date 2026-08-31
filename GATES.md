@@ -1,31 +1,48 @@
-# Gates: StatusServico SOAP 4.00
+# Gates: fix/impcg-mailbox-timeout
 
-Scope: Corrigir o envelope do NFeStatusServico4 (cStat 243) para o contrato NF-e 4.00 / nfephp.
+Scope: o orçamento `IMPCG_MAILBOX_TIMEOUT_MS` passa a valer por requisição HTTP em
+vez de por caixa, para que a ingestão IMPCG por e-mail deixe de abortar o
+histórico inteiro da caixa antes de processar qualquer mensagem.
 
-- [x] G1: Envelope coloca consStatServ como filho real de nfeDadosMsg, sem wrapper nfeStatusServicoNF
-  CHECK: rg -F '<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4">' src/lib/nfe-emission/status-servico-client.ts
-  EXPECT: nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4"
-  EVIDENCE: return `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/0
+Causa raiz: `runImpcgIngest` criava um único `AbortSignal.timeout(30s)` por caixa e
+o reutilizava na paginação completa da listagem e em todos os downloads de anexo.
+Com histórico desde 2018 o orçamento expirava sempre
+(`The operation was aborted due to timeout`).
 
-- [x] G2: Envelope 4.00 não envia tag de cabeçalho SOAP
-  CHECK: rg -n "<nfeCabecMsg" src/lib/nfe-emission/status-servico-client.ts || echo no-header
-  EXPECT: no-header
-  EVIDENCE: no-header
+- [x] G1: a listagem paginada cria um deadline novo por página, sem signal de vida longa no loop `while (next)`
+  CHECK: rg -n 'perRequestSignal' src/lib/graph-mail-client.ts
+  EXPECT: function perRequestSignal
+  EVIDENCE: 146:      perRequestSignal(options.signal), | 198:    perRequestSignal(signal),
 
-- [x] G3: Testes do envelope e parser passam
-  CHECK: npx vitest run src/lib/__tests__/nfe-status-servico.test.ts
-  EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  22:36:20 | Duration  203ms (transform 50ms, setup 0ms, import 104ms, tests 9ms, environment 0ms)
+- [x] G2: o ingest não cria mais orçamento por caixa nem repassa o mesmo signal para listagem e anexos
+  CHECK: rg -c 'AbortSignal.timeout' src/lib/impcg/ingest.ts || echo NONE
+  EXPECT: NONE
+  EVIDENCE: NONE
 
-- [x] G4: Typecheck
-  CHECK: npx tsc --noEmit
-  EXPECT: 
-  EVIDENCE: (no output)
+- [x] G3: cancelamento externo continua respeitado e a regressão está coberta por teste
+  CHECK: npx vitest run src/lib/__tests__/impcg-mailbox-timeout.test.ts 2>&1 | tail -6
+  EXPECT: 3 passed
+  EVIDENCE: Start at  15:40:35 | Duration  292ms (transform 111ms, setup 0ms, import 30ms, tests 172ms, environment 0ms)
 
-- [x] G5: Lint dos arquivos tocados
-  CHECK: npx eslint src/lib/nfe-emission/status-servico-client.ts src/lib/nfe-emission/autorizacao-client.ts src/lib/__tests__/nfe-status-servico.test.ts
-  EXPECT: 
-  EVIDENCE: (no output)
+- [x] G4: existe teste referenciando a listagem paginada corrigida
+  CHECK: rg -ln 'listMailboxMessagesBySender' src/lib/__tests__
+  EXPECT: impcg-mailbox-timeout.test.ts
+  EVIDENCE: src/lib/__tests__/impcg-mailbox-timeout.test.ts
 
-- [ ] G6: Produção responde cStat 107 no Testar conexão
+- [x] G5: typecheck limpo
+  CHECK: npx tsc --noEmit 2>&1 | rg -c 'error TS' || echo ZERO_TS_ERRORS
+  EXPECT: ZERO_TS_ERRORS
+  EVIDENCE: ZERO_TS_ERRORS
+
+- [x] G6: lint limpo nos arquivos tocados
+  CHECK: npx eslint src/lib/graph-mail-client.ts src/lib/impcg/ingest.ts src/lib/__tests__/impcg-mailbox-timeout.test.ts 2>&1 | rg -c 'error' || echo ZERO_LINT_ERRORS
+  EXPECT: ZERO_LINT_ERRORS
+  EVIDENCE: ZERO_LINT_ERRORS
+
+- [x] G7: suíte de testes do repo verde (comando canônico do AGENTS.md)
+  CHECK: npm test 2>&1 | rg 'Test Files'
+  EXPECT: 82 passed
+  EVIDENCE: Test Files  82 passed | 3 skipped (85)
+
+- [ ] G8: em produção a ingestão conclui ciclo sem timeout e as autorizações passam do baseline de 9
   EVIDENCE: pending
