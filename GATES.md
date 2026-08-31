@@ -1,64 +1,61 @@
-# Gates: feat/impcg-whatsapp-notify (SPEC-031)
+# Gates: SPEC-033 — Revisão da página de autorizações CASSEMS
 
-Scope: quando a ingestão IMPCG processa com sucesso um e-mail com ofício, enviar
-o PDF ao grupo de WhatsApp via Evolution API, com paciente e local na legenda.
+Scope: replicar em CASSEMS a revisão da SPEC-032 — tabela só com o chip,
+explicação do parse no popup sem duplicar o subtítulo, anexo em streaming sem
+esperar o JSON de detalhe, e data futura tratada como leitura errada.
+Worktree `.worktrees/cassems-page-review`; todos os CHECK rodam da raiz dela.
 
-Riscos que os gates travam: disparar centenas de envios no backfill de 2018;
-reenviar a cada ciclo de 15 min; vazar dado de paciente em log; quebrar a
-ingestão quando o provedor falhar; ligar sozinho sem configuração.
+- [x] G1: A lista (tabela e cards) não imprime mais o texto do que faltou, só o chip.
+  CHECK: rg -c 'reason=\{item\.parseMissingReason\}' 'src/app/(painel)/gestao/cassems/page-client.tsx' || echo NO_REASON_IN_LIST
+  EXPECT: NO_REASON_IN_LIST
+  EVIDENCE: NO_REASON_IN_LIST
 
-- [x] G1: spec SPEC-031 existe e o validador de docs passa
-  CHECK: test -f specs/031-impcg-whatsapp-notify/spec.md && (npm run docs:validate >/dev/null 2>&1 && echo DOCS_OK || echo DOCS_FAIL)
-  EXPECT: DOCS_OK
-  EVIDENCE: DOCS_OK
+- [x] G2: O popup exibe o texto completo do que faltou, uma vez só, e o subtítulo não repete.
+  CHECK: rg -c "parseMissingReason \?\? 'Não foi possível ler o documento'" 'src/app/(painel)/gestao/cassems/page-client.tsx'; rg -c 'subtitle=\{detail\?\.parseMissingReason' 'src/app/(painel)/gestao/cassems/page-client.tsx' || echo NO_DUPLICATE_SUBTITLE
+  EXPECT: NO_DUPLICATE_SUBTITLE
+  EVIDENCE: 1 | NO_DUPLICATE_SUBTITLE
 
-- [x] G2: cliente Evolution usa sendMedia com documento e não fica com credencial hardcoded
-  CHECK: rg -n 'sendMedia|EVO_API_KEY|process.env' src/lib/whatsapp-evolution.ts
-  EXPECT: sendMedia
-  EVIDENCE: 32:  const apiKey = (process.env.EVO_API_KEY ?? '').trim(); | 52:  const response = await fetch(`${config.baseUrl}/message/sendMedia/${encodeURIComponent(config.instance)}`, {
+- [x] G3: O iframe do PDF é montado a partir do id selecionado, sem esperar o detalhe.
+  CHECK: rg -c 'cassems/\$\{selectedId\}/arquivo' 'src/app/(painel)/gestao/cassems/page-client.tsx'
+  EXPECT: 1
+  EVIDENCE: 1
 
-- [x] G3: janela de idade impede envio para e-mail histórico
-  CHECK: rg -n 'IMPCG_NOTIFY_MAX_AGE_MS' src/lib/impcg/constants.ts src/lib/impcg/whatsapp-notify.ts
-  EXPECT: IMPCG_NOTIFY_MAX_AGE_MS
-  EVIDENCE: src/lib/impcg/whatsapp-notify.ts:63:  return now.getTime() - receivedAt.getTime() <= IMPCG_NOTIFY_MAX_AGE_MS; | src/lib/impcg/constants.ts:23:export const IMPCG_NOTIFY_MAX_AGE_MS = 7 * 24 * 60 * 60 * 
+- [x] G4: A rota do anexo não bufferiza o arquivo inteiro antes de responder.
+  CHECK: rg -c 'arrayBuffer|downloadOneDriveItemContent' 'src/app/api/gestao/cassems/[id]/arquivo/route.ts' || echo NO_BUFFERING
+  EXPECT: NO_BUFFERING
+  EVIDENCE: NO_BUFFERING
 
-- [x] G4: idempotência persistida em ImpcgSourceMessage
-  CHECK: rg -c 'whatsappSentAt' prisma/schema.prisma prisma/migrations/*/migration.sql src/lib/impcg/store.ts
-  EXPECT: prisma/schema.prisma:1
-  EVIDENCE: src/lib/impcg/store.ts:2 | prisma/migrations/20260831200000_add_impcg_whatsapp_notify/migration.sql:1
+- [x] G5: A rota devolve stream com Content-Type de PDF, responde antes do fim do upstream e loga durationMs.
+  CHECK: npx vitest run src/lib/__tests__/cassems-arquivo-stream.test.ts 2>&1 | rg 'Tests '
+  EXPECT: 3 passed
+  EVIDENCE: Tests  3 passed (3)
 
-- [x] G5: nenhum dado de paciente em log (FR-009)
-  CHECK: rg -n 'patientName|hospitalName|procedureName|patientRegistry' src/lib/impcg/whatsapp-notify.ts | rg -c 'log\.' || echo NO_PATIENT_IN_LOG
-  EXPECT: NO_PATIENT_IN_LOG
-  EVIDENCE: NO_PATIENT_IN_LOG
+- [x] G6: Parser descarta data futura/fora de faixa e o gap acusa data inválida.
+  CHECK: npx vitest run src/lib/__tests__/cassems-parse-oficio.test.ts 2>&1 | rg 'Tests '
+  EXPECT: passed
+  EVIDENCE: Tests  9 passed (9)
 
-- [x] G6: testes de aceitação AC-001..AC-008 passam
-  CHECK: npx vitest run src/lib/__tests__/impcg-whatsapp-notify.test.ts 2>&1 | rg 'Tests'
-  EXPECT: 8 passed
-  EVIDENCE: Tests  8 passed (8)
+- [x] G7: Nenhuma migration Prisma nem mudança de schema entrou nesta branch.
+  CHECK: git diff --name-only origin/main...HEAD | rg 'prisma/|verify-production-migration-window' || echo NO_PRISMA_CHANGE
+  EXPECT: NO_PRISMA_CHANGE
+  EVIDENCE: NO_PRISMA_CHANGE
 
-- [x] G7: gate de janela de migration atualizado para a migration nova
-  CHECK: node scripts/test-production-migration-window.cjs >/dev/null 2>&1 && echo MIGRATION_GATE_OK || echo MIGRATION_GATE_FAIL
-  EXPECT: MIGRATION_GATE_OK
-  EVIDENCE: MIGRATION_GATE_OK
+- [x] G8: Suíte completa verde.
+  CHECK: npm test 2>&1 | tail -4
+  EXPECT: passed
+  EVIDENCE: Start at  19:41:22 | Duration  3.13s (transform 3.21s, setup 0ms, import 6.77s, tests 5.18s, environment 8ms)
 
-- [x] G8: typecheck limpo
-  CHECK: npx tsc --noEmit 2>&1 | rg -c 'error TS' || echo ZERO_TS_ERRORS
-  EXPECT: ZERO_TS_ERRORS
-  EVIDENCE: ZERO_TS_ERRORS
+- [x] G9: Tipos limpos.
+  CHECK: npx tsc --noEmit > /tmp/cassems-tsc.log 2>&1; echo "TSC_EXIT=$?"
+  EXPECT: TSC_EXIT=0
+  EVIDENCE: TSC_EXIT=0
 
-- [x] G9: lint limpo
-  CHECK: npm run lint >/dev/null 2>&1 && echo LINT_OK || echo LINT_FAIL
-  EXPECT: LINT_OK
-  EVIDENCE: LINT_OK
+- [x] G10: Lint limpo.
+  CHECK: npm run lint > /tmp/cassems-lint.log 2>&1; echo "LINT_EXIT=$?"
+  EXPECT: LINT_EXIT=0
+  EVIDENCE: LINT_EXIT=0
 
-- [x] G10: suíte completa verde
-  CHECK: npm test 2>&1 | rg 'Test Files' | rg -c 'failed' || echo NO_FAILED_FILES
-  EXPECT: NO_FAILED_FILES
-  EVIDENCE: NO_FAILED_FILES
-
-- [ ] G11: credenciais Evolution disponíveis para o app em produção (env), sem imprimir valor
-  EVIDENCE: pending
-
-- [ ] G12: envio de teste aprovado no grupo administrado só pelo solicitante
-  EVIDENCE: pending
+- [x] G11: Documentação e IDs de spec validados.
+  CHECK: npm run docs:validate 2>&1 | tail -3
+  EXPECT: Documentation validation passed
+  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (142 Markdown files, 41 IDs).

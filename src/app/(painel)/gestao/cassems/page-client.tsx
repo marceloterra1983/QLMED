@@ -57,34 +57,27 @@ function formatBrl(value: string): string {
   return `R$ ${reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
 }
 
-function ParseBadge({ status, reason }: { status: ParseStatus; reason?: string | null }) {
+/** Lista mostra só o chip; o que faltou é longo demais para caber na linha. */
+function ParseBadge({ status }: { status: ParseStatus }) {
   if (status === 'ok') return null;
   const isFail = status === 'falha';
-  const text = reason ?? (isFail ? 'Não foi possível ler o documento' : null);
   return (
-    <span className="inline-flex items-center gap-1.5 min-w-0">
-      {text ? (
-        <span
-          className={`text-xs font-medium normal-case tracking-normal ${
-            isFail
-              ? 'text-rose-700 dark:text-rose-300'
-              : 'text-amber-800 dark:text-amber-300'
-          }`}
-        >
-          {text}
-        </span>
-      ) : null}
-      <span
-        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${
-          isFail
-            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-        }`}
-      >
-        {isFail ? 'Falha' : 'Parcial'}
-      </span>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${
+        isFail
+          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+      }`}
+    >
+      {isFail ? 'Falha' : 'Parcial'}
     </span>
   );
+}
+
+/** Data futura é leitura errada do PDF; não mostra como se fosse verdade. */
+function formatIssuedAt(issuedAt: string | null): string {
+  if (issuedAt && new Date(issuedAt).getTime() > Date.now() + 24 * 60 * 60 * 1000) return '—';
+  return formatDocumentDate(issuedAt);
 }
 
 export default function CassemsPageClient() {
@@ -280,7 +273,7 @@ export default function CassemsPageClient() {
                     Autorização {item.oficioNumber}
                   </span>
                   <span className="text-xs text-slate-500">
-                    {formatDocumentDate(item.issuedAt)}
+                    {formatIssuedAt(item.issuedAt)}
                   </span>
                 </div>
                 <div className="mt-1">
@@ -293,7 +286,7 @@ export default function CassemsPageClient() {
                   <p className="text-xs text-slate-500 truncate">
                     {item.doctorName || '—'}
                   </p>
-                  <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
+                  <ParseBadge status={item.parseStatus} />
                 </div>
               </button>
             ))}
@@ -321,12 +314,12 @@ export default function CassemsPageClient() {
                       className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
                     >
                       <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        {formatDocumentDate(item.issuedAt)}
+                        {formatIssuedAt(item.issuedAt)}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold">
                         <span className="inline-flex items-center gap-2">
                           {item.oficioNumber}
-                          <ParseBadge status={item.parseStatus} reason={item.parseMissingReason} />
+                          <ParseBadge status={item.parseStatus} />
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -366,7 +359,6 @@ export default function CassemsPageClient() {
         isOpen={Boolean(selectedId)}
         onClose={() => setSelectedId(null)}
         title={modalTitle}
-        subtitle={detail?.parseMissingReason ?? undefined}
         width="max-w-5xl"
       >
         {detailLoading && !detail && (
@@ -380,7 +372,7 @@ export default function CassemsPageClient() {
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <ReadFieldEditor
                 label="Data"
-                display={formatDocumentDate(detail.issuedAt)}
+                display={formatIssuedAt(detail.issuedAt)}
                 edited={isOficioFieldEdited(detail.editedFields, 'issuedAt')}
                 canEdit={detail.canEdit}
                 saving={saving}
@@ -494,11 +486,22 @@ export default function CassemsPageClient() {
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
-                <dd>
+                <dd className="flex items-center gap-2 flex-wrap">
                   {detail.parseStatus === 'ok' ? (
                     'Ok'
                   ) : (
-                    <ParseBadge status={detail.parseStatus} reason={detail.parseMissingReason} />
+                    <>
+                      <ParseBadge status={detail.parseStatus} />
+                      <span
+                        className={`text-xs font-medium ${
+                          detail.parseStatus === 'falha'
+                            ? 'text-rose-700 dark:text-rose-300'
+                            : 'text-amber-800 dark:text-amber-300'
+                        }`}
+                      >
+                        {detail.parseMissingReason ?? 'Não foi possível ler o documento'}
+                      </span>
+                    </>
                   )}
                 </dd>
               </div>
@@ -540,14 +543,17 @@ export default function CassemsPageClient() {
               </table>
             </div>
 
-            <div className="w-full h-[70vh] bg-slate-200 dark:bg-slate-900 rounded-lg overflow-hidden">
-              <iframe
-                src={embeddedPdfViewerSrc(`/api/gestao/cassems/${detail.id}/arquivo`)}
-                className="w-full h-full border-0"
-                title={`PDF da autorização ${detail.oficioNumber}`}
-                onLoad={(event) => closeEmbeddedPdfSidebar(event.currentTarget)}
-              />
-            </div>
+          </div>
+        )}
+        {/* Fora do bloco de detalhe: o PDF começa a carregar junto do JSON, não depois. */}
+        {selectedId && (
+          <div className="w-full h-[70vh] mt-5 bg-slate-200 dark:bg-slate-900 rounded-lg overflow-hidden">
+            <iframe
+              src={embeddedPdfViewerSrc(`/api/gestao/cassems/${selectedId}/arquivo`)}
+              className="w-full h-full border-0"
+              title="PDF da autorização"
+              onLoad={(event) => closeEmbeddedPdfSidebar(event.currentTarget)}
+            />
           </div>
         )}
       </Modal>
