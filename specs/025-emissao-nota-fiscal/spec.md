@@ -60,7 +60,9 @@ todas persistem com o CFOP correspondente.
 
 1. **AC-001** — Given o operador com permissão de escrita em NF-e
    Emitidas, when abre Nova NF-e, then vê todas as naturezas de
-   saída do catálogo fiscal do produto.
+   saída do catálogo fiscal do produto: no topo as 5 mais usadas
+   nas emitidas reais (CFOP 5102, 6102, 5917, 1918, 6917), uma
+   linha separadora, e o restante em ordem numérica de CFOP.
 2. **AC-002** — Given um rascunho com natureza Consignação, when
    salva, then o documento fica gravado com essa natureza e o CFOP
    de consignação compatível com a UF do destinatário.
@@ -171,7 +173,12 @@ status do serviço e não cria nota emitida.
   retorno de comodato, bonificação, amostra, demonstração, outras
   saídas, uso externo, devolução de compra, conserto e equivalentes
   interestaduais) e as devoluções de entrada já usadas nas emitidas
-  (1202, 1918, 2202, 2918).
+  (1202, 1918, 2202, 2918). O dropdown de natureza/CFOP MUST listar
+  no topo as 5 naturezas mais usadas nas NF-e emitidas reais (CFOP
+  5102, 6102, 5917, 1918, 6917 — ranking medido nas emitidas em
+  janela de 30 dias até 2026-08-28), MUST exibir uma linha
+  separadora, e MUST listar o restante do catálogo em ordem
+  numérica de CFOP, sem duplicar os do topo.
 - **FR-002**: O destinatário MUST ser cliente pessoa jurídica
   cadastrado da empresa. CPF e CNPJ fora do cadastro de clientes
   MUST ser recusados no servidor.

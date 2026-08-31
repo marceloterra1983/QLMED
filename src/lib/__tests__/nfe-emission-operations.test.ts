@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { assertCfopMatchesUfs, idDestFromUfs, listSaidaOperations } from '@/lib/nfe-emission/operations';
+import {
+  assertCfopMatchesUfs,
+  FREQUENT_SAIDA_CFOPS,
+  idDestFromUfs,
+  listSaidaOperations,
+  splitSaidaOperationsForDropdown,
+} from '@/lib/nfe-emission/operations';
 
 describe('nfe-emission operations', () => {
   it('lista todas as saídas do catálogo com tag e natureza', () => {
@@ -34,5 +40,25 @@ describe('nfe-emission operations', () => {
     expect(idDestFromUfs('MS', 'MS')).toBe('1');
     expect(idDestFromUfs('MS', 'SP')).toBe('2');
     expect(idDestFromUfs('MS', 'EX')).toBe('3');
+  });
+
+  it('top 5 do dropdown é o ranking medido nas emitidas', () => {
+    expect([...FREQUENT_SAIDA_CFOPS]).toEqual(['5102', '6102', '5917', '1918', '6917']);
+    const ops = listSaidaOperations();
+    expect(ops.slice(0, 5).map((op) => op.cfop)).toEqual(['5102', '6102', '5917', '1918', '6917']);
+    expect(ops.slice(0, 5).every((op) => op.featured)).toBe(true);
+  });
+
+  it('resto numérico do catálogo sem duplicar o topo', () => {
+    const ops = listSaidaOperations();
+    const { featured, rest } = splitSaidaOperationsForDropdown(ops);
+    expect(featured.map((op) => op.cfop)).toEqual(['5102', '6102', '5917', '1918', '6917']);
+    expect(rest.every((op) => !op.featured)).toBe(true);
+    expect(rest.map((op) => op.cfop)).toEqual([...rest.map((op) => op.cfop)].sort((a, b) => Number(a) - Number(b)));
+    const all = [...featured, ...rest].map((op) => op.cfop);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all.length).toBe(ops.length);
+    expect(rest.some((op) => op.cfop === '5102')).toBe(false);
+    expect(rest[0]?.cfop).toBe('1202');
   });
 });

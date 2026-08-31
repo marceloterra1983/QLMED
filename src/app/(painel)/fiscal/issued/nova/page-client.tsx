@@ -25,9 +25,10 @@ import {
   defaultFinNFe,
   isSemPagamentoCfop,
 } from '@/lib/nfe-emission/issued-defaults';
+import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
 
 type Tab = 'dados' | 'itens' | 'transporte' | 'pagamento' | 'complementos';
-type Operation = { cfop: string; tag: string; natureza: string; ambito: string };
+type Operation = { cfop: string; tag: string; natureza: string; ambito: string; featured?: boolean };
 type Customer = { cnpj: string; name: string };
 type Product = {
   id: string;
@@ -134,6 +135,10 @@ export default function EmitirNfePage() {
   const [sefazMotivo, setSefazMotivo] = useState<string | null>(null);
 
   const op = operations.find((o) => o.cfop === cfop);
+  const { featured: featuredOps, rest: restOps } = useMemo(
+    () => splitSaidaOperationsForDropdown(operations),
+    [operations],
+  );
 
   useEffect(() => {
     setFinNFe(defaultFinNFe(cfop));
@@ -391,7 +396,11 @@ export default function EmitirNfePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Field label="Natureza / CFOP" className="lg:col-span-2">
                   <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
-                    {operations.map((o) => (
+                    {featuredOps.map((o) => (
+                      <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
+                    ))}
+                    <option disabled value="__sep__">────────</option>
+                    {restOps.map((o) => (
                       <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
                     ))}
                   </select>
