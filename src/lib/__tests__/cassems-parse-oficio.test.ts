@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { Decimal } from '@prisma/client-runtime-utils';
 import { describe, expect, it } from 'vitest';
-import { describeCassemsParseGap, oficioFromFileName, parseOficio } from '@/lib/cassems/parse-oficio';
+import {
+  computeCassemsParseStatus,
+  describeCassemsParseGap,
+  oficioFromFileName,
+  parseOficio,
+} from '@/lib/cassems/parse-oficio';
 
 /** Texto real do pdftotext -layout do ofício modelo (autorização 2479325231). */
 export const OFICIO_2479325231_TEXT = `
@@ -122,6 +127,67 @@ describe('parseOficio fixture 2479325231 (PDF real CASSEMS)', () => {
     expect(parsed.parseStatus).toBe('falha');
     expect(parsed.patientName).toBe('PACIENTE');
     expect(describeCassemsParseGap(parsed)).toBe('Não foi possível ler o documento');
+  });
+
+  it('descarta data futura e cai na data válida do documento (FR-006)', () => {
+    const parsed = parseOficio(`
+Número de autorização: 2479000010
+Data/Hora: 26/06/2034
+paciente JOAO SILVA, matrícula 1
+Campo Grande (MS), 26/06/2024
+Valor total com desconto    R$ 10,00
+`);
+    expect(parsed.issuedAt?.toISOString().slice(0, 10)).toBe('2024-06-26');
+  });
+
+  it('deixa issuedAt nulo quando toda data do documento é impossível (FR-006)', () => {
+    const parsed = parseOficio(`
+Número de autorização: 2479000011
+Data/Hora: 26/06/2034
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(parsed.issuedAt).toBeNull();
+    expect(describeCassemsParseGap(parsed)).toContain('data');
+  });
+
+  it('rejeita data fora da faixa plausível e dia inexistente no calendário (FR-006)', () => {
+    expect(parseOficio('Número de autorização: 2479000012\nData/Hora: 10/08/1889').issuedAt).toBeNull();
+    expect(parseOficio('Número de autorização: 2479000013\nData/Hora: 31/02/2020').issuedAt).toBeNull();
+  });
+
+  it('acusa data inválida quando a linha gravada tem emissão no futuro (FR-007)', () => {
+    const future = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    expect(describeCassemsParseGap({
+      parseStatus: 'parcial',
+      oficioNumber: '2479000014',
+      issuedAt: future,
+      patientName: 'JOAO SILVA',
+      doctorName: 'DR TESTE',
+      doctorCrm: '123',
+      procedureName: 'EXAME',
+      hospitalName: 'HOSPITAL X',
+      totalCents: 1000,
+      items: [{ lineCents: 1000 }],
+    })).toBe('Faltou: data inválida');
+  });
+
+  it('não marca ok quando a emissão persistida está no futuro (FR-006)', () => {
+    expect(computeCassemsParseStatus({
+      oficioNumber: '2479000015',
+      issuedAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      patientName: 'JOAO SILVA',
+      patientRegistry: '1',
+      doctorName: 'DR TESTE',
+      doctorCrm: '123',
+      procedureName: 'EXAME',
+      hospitalName: 'HOSPITAL X',
+      totalCents: 1000,
+      items: [{
+        anvisaCode: '1', description: 'X', brand: null, reference: null,
+        quantity: '1', unitCents: 1000, lineCents: 1000,
+      }],
+    })).toBe('parcial');
   });
 
   it('marca parcial quando a soma dos itens diverge do total (FAIL-004)', () => {

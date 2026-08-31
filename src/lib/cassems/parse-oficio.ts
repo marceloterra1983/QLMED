@@ -68,15 +68,42 @@ function extractOficioNumber(text: string, subject: string): string | null {
   return normalizeOficioNumber(fromSubject?.[1] ?? null);
 }
 
+/** Um dia de folga cobre fuso; além disso é OCR errado, não data real. */
+const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
+
+/** Ofício não é emitido no futuro: 2034 é "2024" lido errado, não data válida. */
+export function isImpossibleIssuedAt(value: Date | string | null | undefined): boolean {
+  if (!value) return false;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() > Date.now() + FUTURE_TOLERANCE_MS;
+}
+
+function utcDate(day: number, month: number, year: number): Date | null {
+  if (year < 1990 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  if (isImpossibleIssuedAt(date)) return null;
+  return date;
+}
+
 function extractIssuedAt(text: string): Date | null {
-  const match = /data\/hora\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i.exec(text)
-    ?? /\b(\d{2})\/(\d{2})\/(\d{4})\b/.exec(text);
-  if (!match) return null;
-  const day = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  const year = Number.parseInt(match[3], 10);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return new Date(Date.UTC(year, month - 1, day));
+  const labeled = /data\/hora\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i.exec(text);
+  const candidates = labeled ? [labeled] : [];
+  candidates.push(...text.matchAll(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g));
+  for (const match of candidates) {
+    const date = utcDate(
+      Number.parseInt(match[1], 10),
+      Number.parseInt(match[2], 10),
+      Number.parseInt(match[3], 10),
+    );
+    if (date) return date;
+  }
+  return null;
 }
 
 function extractPatientFromSubject(subject: string): string | null {
@@ -165,6 +192,7 @@ export function computeCassemsParseStatus(
   const headerComplete = Boolean(
     parsed.oficioNumber
     && parsed.issuedAt
+    && !isImpossibleIssuedAt(parsed.issuedAt)
     && parsed.patientName !== 'PACIENTE'
     && parsed.doctorName
     && parsed.hospitalName
@@ -204,6 +232,7 @@ export function describeCassemsParseGap(input: CassemsParseGapInput): string | n
   if (!input.procedureName) missing.push('procedimento');
   if (!input.hospitalName) missing.push('hospital');
   if (!input.issuedAt) missing.push('data');
+  else if (isImpossibleIssuedAt(input.issuedAt)) missing.push('data inválida');
   if (!input.oficioNumber) missing.push('número');
   if (input.items.length === 0) missing.push('nenhum item');
 
