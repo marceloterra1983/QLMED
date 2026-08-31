@@ -55,4 +55,22 @@ describe('emissão manual: série 2 fixa', () => {
     expect(serieField?.[0]).toContain('{DEFAULT_SERIES}');
     expect(serieField?.[0]).not.toMatch(/<(input|select)\b/);
   });
+
+  it('UI: destinatário primeiro; natureza, série, finalidade nessa ordem', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../../app/(painel)/fiscal/issued/nova/page-client.tsx'),
+      'utf8',
+    );
+    const dados = src.match(/\{tab === 'dados' && \([\s\S]*?\{tab === 'itens'/);
+    expect(dados?.[0]).toBeTruthy();
+    const block = dados![0];
+    const dest = block.indexOf('>Destinatário<');
+    const nat = block.indexOf('label="Natureza / CFOP"');
+    const ser = block.indexOf('label="Série"');
+    const fin = block.indexOf('label="Finalidade"');
+    expect(dest).toBeGreaterThanOrEqual(0);
+    expect(nat).toBeGreaterThan(dest);
+    expect(ser).toBeGreaterThan(nat);
+    expect(fin).toBeGreaterThan(ser);
+  });
 });

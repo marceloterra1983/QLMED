@@ -129,6 +129,11 @@ mesmo recorte que Bling/Conta Azul e os grupos do MOC 7.0
 2. **AC-012** — Given frete, PIX e texto complementar preenchidos,
    when o XML é gerado, then constam `modFrete`, `tPag`, `vFrete`
    e `infCpl` / `infAdFisco`.
+3. **AC-016** — Given a tela Nova NF-e na aba Dados, when o
+   operador vê o formulário, then o destinatário é o primeiro
+   controle significativo da seção inicial, e no bloco de
+   identificação a série (visível, compacta e não editável)
+   fica entre natureza e finalidade.
 
 ### User Story 4 — Viewer não envia (Priority: P2)
 
@@ -230,6 +235,13 @@ status do serviço e não cria nota emitida.
   MUST recusar qualquer série diferente de 2. NF-e históricas série 1
   (trilho raro de importação) MUST permanecer inalteradas na listagem
   e no XML já autorizado.
+- **FR-017**: Na aba Dados da Nova NF-e, o destinatário MUST ser o
+  primeiro controle significativo (acima dos demais campos dessa
+  seção). No bloco de identificação, a ordem visual MUST ser
+  Natureza, depois Série (badge compacto não editável, FR-016),
+  depois Finalidade. Os demais campos já existentes no bloco
+  permanecem depois desse trio. MUST NÃO alterar regra fiscal,
+  schema de série, defaults XML nem outras telas.
 
 ### Failure cases
 

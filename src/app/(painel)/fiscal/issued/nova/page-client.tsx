@@ -391,46 +391,7 @@ export default function EmitirNfePage() {
 
           {tab === 'dados' && (
             <section className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-5">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificação da operação</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Field label="Natureza / CFOP" className="lg:col-span-2">
-                  <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
-                    {featuredOps.map((o) => (
-                      <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
-                    ))}
-                    <option disabled value="__sep__">────────</option>
-                    {restOps.map((o) => (
-                      <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Finalidade">
-                  <select value={finNFe} onChange={(e) => setFinNFe(e.target.value as typeof finNFe)} className={FILTER_INPUT_CLS}>
-                    {FIN_NFE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Série" className="max-w-[4.5rem]">
-                  <span
-                    aria-readonly="true"
-                    className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    {DEFAULT_SERIES}
-                  </span>
-                </Field>
-                <Field label="Consumidor final">
-                  <select value={indFinal} onChange={(e) => setIndFinal(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
-                    <option value="1">Sim</option>
-                    <option value="0">Não (revenda / industrialização)</option>
-                  </select>
-                </Field>
-                <Field label="Presença do comprador">
-                  <select value={indPres} onChange={(e) => setIndPres(e.target.value)} className={FILTER_INPUT_CLS}>
-                    {IND_PRES_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </Field>
-              </div>
-
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+              <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Destinatário</h3>
                 <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
@@ -456,6 +417,47 @@ export default function EmitirNfePage() {
                     </ul>
                   </>
                 )}
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificação da operação</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Field label="Natureza / CFOP" className="lg:col-span-2">
+                    <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
+                      {featuredOps.map((o) => (
+                        <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
+                      ))}
+                      <option disabled value="__sep__">────────</option>
+                      {restOps.map((o) => (
+                        <option key={o.cfop} value={o.cfop}>{o.tag} · {o.cfop} · {o.ambito}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Série" className="max-w-[4.5rem]">
+                    <span
+                      aria-readonly="true"
+                      className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      {DEFAULT_SERIES}
+                    </span>
+                  </Field>
+                  <Field label="Finalidade">
+                    <select value={finNFe} onChange={(e) => setFinNFe(e.target.value as typeof finNFe)} className={FILTER_INPUT_CLS}>
+                      {FIN_NFE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Consumidor final">
+                    <select value={indFinal} onChange={(e) => setIndFinal(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
+                      <option value="1">Sim</option>
+                      <option value="0">Não (revenda / industrialização)</option>
+                    </select>
+                  </Field>
+                  <Field label="Presença do comprador">
+                    <select value={indPres} onChange={(e) => setIndPres(e.target.value)} className={FILTER_INPUT_CLS}>
+                      {IND_PRES_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </Field>
+                </div>
               </div>
             </section>
           )}
