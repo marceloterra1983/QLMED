@@ -12,8 +12,21 @@ permissions:
 jobs:
   drift:
     name: drift
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

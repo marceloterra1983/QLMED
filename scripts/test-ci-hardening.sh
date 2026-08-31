@@ -15,12 +15,10 @@ workflow_rel=".github/workflows/ci.yml"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# Réplica mínima do repositório: o portão lê caminhos relativos ao diretório
-# corrente, então cada caso roda numa cópia isolada.
 setup_case() {
   local case_dir="$1"
   mkdir -p "$case_dir/.github/workflows"
-  cp "$root/$workflow_rel" "$case_dir/$workflow_rel"
+  cp "$root/.github/workflows/"*.yml "$case_dir/.github/workflows/"
   cp "$root/package.json" "$case_dir/package.json"
 }
 
@@ -28,6 +26,7 @@ expect_pass() {
   local case_dir="$1" label="$2"
   if ! (cd "$case_dir" && bash "$guard" >/dev/null 2>&1); then
     echo "FALHOU: $label deveria PASSAR e reprovou" >&2
+    (cd "$case_dir" && bash "$guard") || true
     exit 1
   fi
   echo "  ok  $label"
@@ -42,45 +41,97 @@ expect_fail() {
   echo "  ok  $label"
 }
 
+append_job() {
+  local file="$1"
+  cat >> "$file"
+}
+
 # 1. O workflow real, como está no repositório, precisa passar.
 setup_case "$tmp/atual"
 expect_pass "$tmp/atual" "workflow vigente passa"
 
-# 2. CI apontado para o host de produção precisa reprovar. Esta é a regra que
-#    um agente tentou remover em 26/08; se ela ficar vacuosa, o CI passa a
-#    poder rodar npm ci na máquina do banco fiscal.
+# 2. CI apontado para o host de produção precisa reprovar. FR-007 / reversão.
 setup_case "$tmp/qlmed_prod"
-sed -i 's/runs-on: ubuntu-24\.04/runs-on: [self-hosted, qlmed-prod]/' "$tmp/qlmed_prod/$workflow_rel"
-expect_fail "$tmp/qlmed_prod" "runs-on apontando para qlmed-prod reprova"
+append_job "$tmp/qlmed_prod/$workflow_rel" <<'EOF'
 
-# 3. Qualquer self-hosted reprova enquanto não houver runner isolado — hoje
-#    self-hosted significa qlmed-prod.
+  job-extra:
+    runs-on: [self-hosted, qlmed-prod]
+    steps:
+      - run: echo oi
+EOF
+expect_fail "$tmp/qlmed_prod" "job extra apontando para qlmed-prod reprova"
+
+# 3. runs-on só com self-hosted continua proibido (AND demasiado largo).
 setup_case "$tmp/self_hosted"
-sed -i 's/runs-on: ubuntu-24\.04/runs-on: self-hosted/' "$tmp/self_hosted/$workflow_rel"
+append_job "$tmp/self_hosted/$workflow_rel" <<'EOF'
+
+  job-extra:
+    runs-on: self-hosted
+    steps:
+      - run: echo oi
+EOF
 expect_fail "$tmp/self_hosted" "runs-on self-hosted genérico reprova"
 
-# 4. Postgres do CI divergindo da produção reprova.
-setup_case "$tmp/pg16"
-sed -i 's/postgres:18-alpine/postgres:16/' "$tmp/pg16/$workflow_rel"
-expect_fail "$tmp/pg16" "serviço postgres:16 reprova"
+# 4. Fallback hospedado reprova.
+setup_case "$tmp/hosted"
+append_job "$tmp/hosted/$workflow_rel" <<'EOF'
 
-# 5. Typecheck declarado mas não executado deixa o portão vacuoso.
+  job-extra:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo oi
+EOF
+expect_fail "$tmp/hosted" "ubuntu-24.04 em ci.yml reprova"
+
+# 5. Service container (socket de engine) reprova.
+setup_case "$tmp/services"
+append_job "$tmp/services/$workflow_rel" <<'EOF'
+
+  job-extra:
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
+    services:
+      postgres:
+        image: postgres:16
+    steps:
+      - run: echo oi
+EOF
+expect_fail "$tmp/services" "service container postgres reprova"
+
+# 6. Typecheck declarado mas não executado deixa o portão vacuoso.
 setup_case "$tmp/sem_run"
 sed -i 's/run: npm run typecheck/run: echo pulando typecheck/' "$tmp/sem_run/$workflow_rel"
 expect_fail "$tmp/sem_run" "typecheck não executado no workflow reprova"
 
-# 6. Typecheck executado mas não declarado, o inverso do caso 5.
+# 7. Typecheck executado mas não declarado, o inverso do caso 6.
 setup_case "$tmp/sem_script"
 sed -i 's/"typecheck": "tsc --noEmit"/"typecheck": "echo skip"/' "$tmp/sem_script/package.json"
 expect_fail "$tmp/sem_script" "script typecheck adulterado reprova"
 
-# 7. O caso que expôs o furo em 26/08: um job self-hosted ACRESCENTADO, com os
-#    ubuntu-24.04 existentes intactos. Antes da correção o portão aprovava,
-#    porque `! grep` não aborta sob `set -e` e quem reprovava era, por acidente,
-#    a asserção positiva de ubuntu-24.04.
-setup_case "$tmp/job_extra"
-printf '\n  job-extra:\n    runs-on: [self-hosted, qlmed-prod]\n    steps:\n      - run: echo oi\n' \
-  >> "$tmp/job_extra/$workflow_rel"
-expect_fail "$tmp/job_extra" "job self-hosted acrescentado reprova (ubuntu-24.04 intacto)"
+# 8. DATABASE_URL no loopback do job (serviço antigo) reprova.
+setup_case "$tmp/loopback"
+sed -i 's@qlmed-ci-db:5432@127.0.0.1:5433@' "$tmp/loopback/$workflow_rel"
+expect_fail "$tmp/loopback" "DATABASE_URL em 127.0.0.1:5433 reprova"
+
+# 9. Evento proibido reprova.
+setup_case "$tmp/pr_target"
+sed -i '/^on:/a\  pull_request_target:' "$tmp/pr_target/$workflow_rel"
+expect_fail "$tmp/pr_target" "pull_request_target reprova"
+
+# 10. deploy-production.yml sem qlmed-prod reprova (FR-005).
+setup_case "$tmp/deploy_drift"
+sed -i 's/qlmed-prod/self-hosted/' "$tmp/deploy_drift/.github/workflows/deploy-production.yml"
+expect_fail "$tmp/deploy_drift" "deploy-production.yml sem qlmed-prod reprova"
 
 echo "CI hardening guard tests passed."

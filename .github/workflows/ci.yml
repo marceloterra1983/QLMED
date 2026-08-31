@@ -13,16 +13,40 @@ concurrency:
   group: qlmed-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Binding selector: validation-linux-pool + self-hosted. Same-repo guard is
+# defense in depth; fork approval is all_external_contributors.
+
 jobs:
   changes:
     name: changes
-    runs-on: ubuntu-24.04
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
     timeout-minutes: 5
     outputs:
       # Push to main always runs the full app job (CI verification on main).
       # Production deploy is manual (workflow_dispatch); CI success alone never deploys.
       app: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.app }}
     steps:
+      - name: Refuse production runner
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_NAME}" != "qlmed-ci-linux-01" ]; then
+            echo "CI must run on qlmed-ci-linux-01, got ${RUNNER_NAME:-empty}" >&2
+            exit 1
+          fi
+
       - name: Checkout
         if: github.event_name == 'pull_request'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,12 +81,27 @@ jobs:
   docs:
     name: docs
     needs: changes
-    if: needs.changes.outputs.app != 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    if: needs.changes.outputs.app != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Prove production is unreachable
+        run: python3 ./scripts/verify-ci-isolation.py
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -83,32 +122,32 @@ jobs:
   app:
     name: app
     needs: changes
-    if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: qlmed_ci
-          POSTGRES_DB: qlmed_ci
-        # 5433 avoids colliding with production qlmed-db on the same host.
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d qlmed_ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
+    if: needs.changes.outputs.app == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
+    timeout-minutes: 45
     env:
-      DATABASE_URL: postgresql://postgres:qlmed_ci@127.0.0.1:5433/qlmed_ci?schema=public
+      DATABASE_URL: postgresql://qlmed_ci:qlmed_ci@qlmed-ci-db:5432/qlmed_ci?schema=public
       NEXTAUTH_SECRET: ci-only-secret
       NEXTAUTH_URL: http://127.0.0.1:3000
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Prove production is unreachable
+        run: python3 ./scripts/verify-ci-isolation.py
 
       - name: Verify CI hardening policy
         run: npm run ci:verify
@@ -144,6 +183,9 @@ jobs:
           npm run ai-tooling:check:test
           npm run ai-tooling:check
 
+      - name: Reset disposable CI schema
+        run: node ./scripts/reset-ci-database.mjs
+
       - name: Replay and verify migration history
         run: bash ./scripts/verify-migrations.sh
 
@@ -172,8 +214,20 @@ jobs:
   quality:
     name: quality
     needs: [changes, docs, app]
-    if: always() && needs.changes.result == 'success'
-    runs-on: ubuntu-24.04
+    if: always() && needs.changes.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on:
+      - self-hosted
+      - pb-linux
+      - pb-x64
+      - pb-docs
+      - pb-python
+      - pb-shell
+      - pb-powershell
+      - pb-dotnet
+      - pb-node
+      - pb-validation
+      - pb-build
+      - pb-persistent
     timeout-minutes: 5
     steps:
       - name: Gate required status check
