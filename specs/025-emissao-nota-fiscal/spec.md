@@ -110,6 +110,14 @@ da empresa autenticada.
 7. **AC-019** — Given destinatário selecionado sem município nem
    UF no cadastro, when a seleção aparece, then o sistema não
    inventa linha de endereço.
+8. **AC-024** — Given a caixa de destinatário aberta sem texto de
+   busca, when a lista carrega, then mostra no máximo os 10
+   clientes PJ com maior Σ `totalValue` de NF-e emitidas
+   (`direction=issued`, não canceladas) dos últimos 6 meses da
+   empresa autenticada — e MUST NÃO listar o restante A–Z.
+9. **AC-025** — Given clientes fora do top 10, when o operador
+   digita nome ou CNPJ no campo único, then a lista mostra só os
+   matches (ordem alfabética entre resultados) da própria empresa.
 
 ### User Story 3 — Enviar à SEFAZ (Priority: P1)
 
@@ -315,6 +323,15 @@ status do serviço e não cria nota emitida.
   pontuação) e MUST filtrar apenas clientes pessoa jurídica da
   empresa do usuário autenticado. MUST NÃO exigir um segundo campo
   nem vazar destinatário de outra empresa.
+- **FR-023**: Sem texto de busca, a caixa de seleção de destinatário
+  MUST mostrar somente até 10 clientes com maior faturamento
+  (Σ `Invoice.totalValue` de NF-e `type=NFE` `direction=issued`,
+  `cancelledAt` nulo, `issueDate` nos últimos 6 meses) da empresa
+  autenticada, ordenados por valor. MUST NÃO carregar o catálogo
+  alfabético completo nem exibir separator + lista A–Z abaixo do
+  top. Com busca ativa, MUST devolver só matches filtrados
+  (alfabéticos entre si); o restante do cadastro entra só via
+  busca manual. Isolamento por `companyId` do servidor.
 - **FR-019**: Após selecionar o destinatário, a tela MUST mostrar o
   endereço de forma sucinta (cidade/UF, ou bairro e cidade/UF, ou
   logradouro curto e cidade/UF) em texto discreto, sem destaque

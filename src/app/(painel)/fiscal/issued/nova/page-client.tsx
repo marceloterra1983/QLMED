@@ -39,7 +39,7 @@ import {
   type NfeStepDraft,
 } from '@/lib/nfe-emission/form-steps';
 type Operation = { cfop: string; tag: string; natureza: string; ambito: string; featured?: boolean };
-type Customer = { cnpj: string; name: string; addressLine?: string };
+type Customer = { cnpj: string; name: string; addressLine?: string; topBilled?: boolean };
 type Product = {
   id: string;
   code: string | null;
@@ -503,7 +503,7 @@ export default function EmitirNfePage() {
           >
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Destinatário</h3>
-                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
+                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Sem digitar, vê os 10 mais faturados (6 meses). Para os demais, busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
                   <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
