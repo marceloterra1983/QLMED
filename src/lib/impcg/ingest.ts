@@ -20,7 +20,6 @@ import {
 import { getSingleCompany } from '@/lib/single-company';
 import {
   IMPCG_INGEST_INTERVAL_MS,
-  IMPCG_MAILBOX_TIMEOUT_MS,
   IMPCG_MAILBOXES,
   IMPCG_ONEDRIVE_FOLDER,
 } from './constants';
@@ -37,11 +36,11 @@ import { prismaImpcgStore } from './store';
 const log = createLogger('impcg/ingest');
 
 export type ImpcgMailPort = {
-  listMessages(mailbox: string, options: { signal: AbortSignal }): Promise<ImpcgMailMessage[]>;
+  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<ImpcgMailMessage[]>;
   getPdfAttachments(
     mailbox: string,
     graphMessageId: string,
-    signal: AbortSignal,
+    signal?: AbortSignal,
   ): Promise<ImpcgPdfAttachment[]>;
 };
 
@@ -221,7 +220,7 @@ function mailPortFromOptions(options: ImpcgRunOptions): ImpcgMailPort {
   if (options.mail) return options.mail;
   if (options.listMessages || options.getPdfAttachment) {
     return {
-      async listMessages(mailbox, { signal }) {
+      async listMessages(mailbox, { signal } = {}) {
         const rows = options.listMessages
           ? await options.listMessages(mailbox, { signal })
           : await defaultMailPort().listMessages(mailbox, { signal });
@@ -307,10 +306,9 @@ export async function runImpcgIngest(
 
   try {
     for (const mailbox of IMPCG_MAILBOXES) {
-      const signal = AbortSignal.timeout(IMPCG_MAILBOX_TIMEOUT_MS);
       let messages: ImpcgMailMessage[] = [];
       try {
-        messages = await resolved.mail.listMessages(mailbox, { signal });
+        messages = await resolved.mail.listMessages(mailbox, {});
       } catch (error) {
         const label = mailboxLabel(mailbox);
         failedMailboxes.push(label);
@@ -334,7 +332,7 @@ export async function runImpcgIngest(
 
         let attachments: ImpcgPdfAttachment[] = [];
         try {
-          attachments = await resolved.mail.getPdfAttachments(mailbox, message.graphMessageId, signal);
+          attachments = await resolved.mail.getPdfAttachments(mailbox, message.graphMessageId);
         } catch (error) {
           errors.push(sanitizeError(error instanceof Error ? error.message : 'anexo'));
           continue;

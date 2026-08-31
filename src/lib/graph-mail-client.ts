@@ -90,6 +90,16 @@ export async function getGraphAppOnlyToken(): Promise<string> {
   return tokenCache.value;
 }
 
+/**
+ * IMPCG_MAILBOX_TIMEOUT_MS é orçamento de uma requisição, não da caixa inteira:
+ * um deadline compartilhado entre todas as páginas e anexos aborta o histórico
+ * completo de uma caixa antiga antes de qualquer mensagem ser processada.
+ */
+function perRequestSignal(external?: AbortSignal): AbortSignal {
+  const deadline = AbortSignal.timeout(IMPCG_MAILBOX_TIMEOUT_MS);
+  return external ? AbortSignal.any([external, deadline]) : deadline;
+}
+
 async function graphJson<T>(
   accessToken: string,
   resourcePath: string,
@@ -108,7 +118,7 @@ async function graphJson<T>(
 export async function listMailboxMessagesBySender(
   mailbox: string,
   senderEmail: string,
-  options: { signal: AbortSignal },
+  options: { signal?: AbortSignal } = {},
 ): Promise<ImpcgMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
@@ -130,7 +140,11 @@ export async function listMailboxMessagesBySender(
 
   const messages: ImpcgMailMessage[] = [];
   while (next) {
-    const listed = await graphJson<MessageListResponse>(accessToken, next, options.signal);
+    const listed = await graphJson<MessageListResponse>(
+      accessToken,
+      next,
+      perRequestSignal(options.signal),
+    );
     const status = listed.status;
     const body: MessageListResponse = listed.body;
 
@@ -160,7 +174,7 @@ export async function listMailboxMessagesBySender(
 
 export async function listImpcgMailboxMessages(
   mailbox: string,
-  options: { signal: AbortSignal },
+  options: { signal?: AbortSignal } = {},
 ): Promise<ImpcgMailMessage[]> {
   return listMailboxMessagesBySender(mailbox, IMPCG_SENDER_EMAIL, options);
 }
@@ -168,7 +182,7 @@ export async function listImpcgMailboxMessages(
 export async function listImpcgPdfAttachments(
   mailbox: string,
   graphMessageId: string,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ): Promise<ImpcgPdfAttachment[]> {
   const accessToken = await getGraphAppOnlyToken();
   const { status, body } = await graphJson<{
@@ -181,7 +195,7 @@ export async function listImpcgPdfAttachments(
   }>(
     accessToken,
     `/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(graphMessageId)}/attachments`,
-    signal,
+    perRequestSignal(signal),
   );
 
   if (status === 403 || status === 401) {
