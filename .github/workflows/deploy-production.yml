@@ -32,8 +32,10 @@ jobs:
     environment:
       name: production
       url: https://app.qlmed.com.br
+    # Only the custom label. GitHub AND-matches requested labels; including
+    # `self-hosted` would also select any other self-hosted listener in this
+    # repo. The production runner is registered with --no-default-labels.
     runs-on:
-      - self-hosted
       - qlmed-prod
 
     steps:
