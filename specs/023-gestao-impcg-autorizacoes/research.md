@@ -74,6 +74,13 @@ Dinheiro: inteiros em centavos no parser → `Prisma.Decimal` /
 Não há `pdf-parse` / `tesseract.js` no lockfile. Alpine de produção
 já tem Chromium; somar poppler + tesseract-por.
 
+Ofícios mais antigos usam layout `MÉDICO DR. NOME` **sem**
+dois-pontos e sem linha `CRM:` (ex.: 1589, 1748, 2010, 2476). O
+parser aceita esse formato além de `MÉDICO:` / `CRM:`. Coleta da
+pasta re-preenche `doctorName`/`doctorCrm` nulos em `parcial`
+(`fillsDoctor` / `fillsCrm`), mesmo quando o rank permanece
+`parcial`.
+
 **Alternatives considered**:
 
 1. `tesseract.js` — pacote novo, bundle pesado. Rejeitado.

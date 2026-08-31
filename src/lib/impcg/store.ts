@@ -430,6 +430,8 @@ export const prismaImpcgStore = {
         patientName: true,
         oneDriveItemId: true,
         issuedAt: true,
+        doctorName: true,
+        doctorCrm: true,
         editedFields: true,
       },
     });

@@ -60,6 +60,26 @@ function labeledValue(text: string, labels: RegExp): string | null {
   return match[1].replace(/\s+/g, ' ').trim() || null;
 }
 
+/**
+ * Layout novo: `MÉDICO: NOME` / `MÉDICO : NOME CRM: 123`.
+ * Layout antigo (Brother): `MÉDICO DR. NOME` sem dois-pontos e sem CRM.
+ */
+export function extractDoctorFields(text: string): { doctorName: string | null; doctorCrm: string | null } {
+  const withColon = /m[eé]dico\s*:\s*([^\n]+)/i.exec(text);
+  const withoutColon = /m[eé]dico\s+(?:dr\.?a?\.?\s+)?([^\n]+)/i.exec(text);
+  const doctorRaw = (withColon?.[1] ?? withoutColon?.[1] ?? '').replace(/\s+/g, ' ').trim() || null;
+  const doctorName = normalizeName(
+    doctorRaw
+      ?.replace(/\s+crm\b[\s:]*.*$/i, '')
+      .replace(/^(?:dr\.?a?\.?\s+)/i, '')
+    ?? null,
+  );
+  const crmFromLine = doctorRaw ? /\bcrm\s*:?\s*(\d{4,10})\b/i.exec(doctorRaw)?.[1] : null;
+  const crmLabeled = labeledValue(text, /crm\s*:\s*([^\n]+)/i);
+  const doctorCrm = (crmFromLine || crmLabeled || '').replace(/\D/g, '') || null;
+  return { doctorName, doctorCrm };
+}
+
 function extractOficioNumber(text: string, subject: string): string | null {
   const fromDoc = /ordem\s+de\s+fornecimento\s+n[ºo°.]?\s*(\d{1,20})/i.exec(text)
     ?? /\bn[ºo°.]?\s*(\d{4,20})\b/i.exec(text);
@@ -303,9 +323,7 @@ export function parseOficio(text: string, subject = ''): ParsedImpcgOficio {
   const subjectPatient = extractPatientFromSubject(subject);
   const patientName = documentPatient || subjectPatient || 'PACIENTE';
   const patientRegistry = labeledValue(text, /matr[ií]cula\s*:\s*([^\n]+)/i);
-  const doctorRaw = labeledValue(text, /m[eé]dico\s*:\s*([^\n]+)/i);
-  const doctorName = normalizeName(doctorRaw?.replace(/\s+crm\b[\s:]*.*$/i, '') ?? null);
-  const doctorCrm = (labeledValue(text, /crm\s*:\s*([^\n]+)/i) || '').replace(/\D/g, '') || null;
+  const { doctorName, doctorCrm } = extractDoctorFields(text);
   const procedureName = normalizeName(labeledValue(text, /procedimento\s*:\s*([^\n]+)/i));
   const hospitalRaw = labeledValue(text, /(?:local\s+de\s+entrega|hospital)\s*:\s*([^\n]+)/i);
   const hospitalName = normalizeName(hospitalRaw);
