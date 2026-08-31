@@ -77,6 +77,9 @@ Não desligar `rejectUnauthorized` por causa disso.
 
 ### Destinatário
 
+- `GET /api/nfe-emissions/customers` — destinatários das emitidas da
+  empresa; o mesmo `search` aceita razão, fantasia (`ContactNickname`)
+  ou CNPJ (dígitos, com ou sem máscara).
 - `GET /api/customers` — lista de clientes da empresa.
 - `ContactFiscal` — IE, IM, CRT, UF, cidade por CNPJ.
 - `ContactOverride` — telefone, e-mail, logradouro, número, bairro, cidade, UF, CEP.
