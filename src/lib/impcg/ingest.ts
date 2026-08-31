@@ -32,6 +32,12 @@ import {
 } from './folder-ingest';
 import { buildImpcgFileName, parseOficio, shouldUpgrade, type ParsedImpcgItem } from './parse-oficio';
 import { prismaImpcgStore } from './store';
+import {
+  isWithinImpcgNotifyWindow,
+  notifyImpcgAuthorization,
+  resolveImpcgWhatsAppTarget,
+  type ImpcgWhatsAppTarget,
+} from './whatsapp-notify';
 
 const log = createLogger('impcg/ingest');
 
@@ -63,7 +69,7 @@ export type ImpcgStorePort = {
   findSourceByInternetMessageId(
     companyId: string,
     internetMessageId: string,
-  ): Promise<{ id: string; authorizationId: string | null } | null>;
+  ): Promise<{ id: string; authorizationId: string | null; whatsappSentAt?: Date | null } | null>;
   findByOficioNumber(companyId: string, oficioNumber: string): Promise<ImpcgAuthorizationRow | null>;
   persistConfirmed(input: PersistArgs): Promise<{ id: string }>;
   persistUpgrade(input: PersistArgs & { authorizationId: string }): Promise<void>;
@@ -84,6 +90,12 @@ export type ImpcgStorePort = {
   saveIngestState(
     companyId: string,
     patch: { lastSuccessAt?: Date | null; backfillCompletedAt?: Date | null; lastError?: string | null },
+  ): Promise<void>;
+  /** SPEC-031 FR-004: idempotência do aviso por mensagem de origem. */
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
   ): Promise<void>;
 };
 
@@ -124,6 +136,8 @@ export type ImpcgIngestDeps = {
   folder?: ImpcgFolderPort | null;
   extractText: (pdf: Buffer) => Promise<string>;
   store: ImpcgStorePort;
+  /** SPEC-031: ausente = canal WhatsApp desligado. */
+  whatsapp?: ImpcgWhatsAppTarget | null;
 };
 
 function sanitizeError(message: string): string {
@@ -296,6 +310,7 @@ export async function runImpcgIngest(
     folder: await folderPortFromOptions(options, companyId),
     extractText: options.extractText ?? extractPdfText,
     store: options.store ?? prismaImpcgStore,
+    whatsapp: options.whatsapp !== undefined ? options.whatsapp : resolveImpcgWhatsAppTarget(),
   };
 
   let processed = 0;
@@ -383,16 +398,48 @@ export async function runImpcgIngest(
           graphMessageId: message.graphMessageId,
         };
 
+        const oficioNumber = parsed.oficioNumber;
+        const notifyWhatsApp = async () => {
+          if (!resolved.whatsapp) return;
+          if (!isWithinImpcgNotifyWindow(message.receivedAt)) return;
+
+          const result = await notifyImpcgAuthorization({
+            target: resolved.whatsapp,
+            fields: {
+              oficioNumber,
+              patientName: parsed.patientName,
+              patientRegistry: parsed.patientRegistry,
+              doctorName: parsed.doctorName,
+              doctorCrm: parsed.doctorCrm,
+              procedureName: parsed.procedureName,
+              hospitalName: parsed.hospitalName,
+            },
+            fileName,
+            content: pdf.content,
+          });
+          if (!result.sent) {
+            errors.push('aviso WhatsApp falhou');
+            return;
+          }
+          await resolved.store.markWhatsAppSent?.(
+            companyId,
+            message.internetMessageId,
+            result.messageId,
+          );
+        };
+
         const existingAuth = await resolved.store.findByOficioNumber(companyId, parsed.oficioNumber);
         if (!existingAuth) {
           await resolved.store.persistConfirmed(persistBase);
           processed += 1;
+          await notifyWhatsApp();
           continue;
         }
 
         if (shouldUpgrade(existingAuth.parseStatus, parsed.parseStatus)) {
           await resolved.store.persistUpgrade({ ...persistBase, authorizationId: existingAuth.id });
           processed += 1;
+          await notifyWhatsApp();
           continue;
         }
 

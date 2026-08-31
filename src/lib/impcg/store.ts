@@ -410,7 +410,14 @@ export const prismaImpcgStore = {
   async findSourceByInternetMessageId(companyId: string, internetMessageId: string) {
     return prisma.impcgSourceMessage.findUnique({
       where: { companyId_internetMessageId: { companyId, internetMessageId } },
-      select: { id: true, authorizationId: true },
+      select: { id: true, authorizationId: true, whatsappSentAt: true },
+    });
+  },
+  /** SPEC-031 FR-004: impede reenvio nos ciclos seguintes da coleta. */
+  async markWhatsAppSent(companyId: string, internetMessageId: string, messageId: string | null) {
+    await prisma.impcgSourceMessage.updateMany({
+      where: { companyId, internetMessageId },
+      data: { whatsappSentAt: new Date(), whatsappMessageId: messageId },
     });
   },
   async findByOficioNumber(companyId: string, oficioNumber: string) {
