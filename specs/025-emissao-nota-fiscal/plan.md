@@ -14,7 +14,11 @@
 
 1. `InvoiceEmission` guarda rascunho. `Invoice` só após autorização.
 2. XML 4.00 + assinatura A1 (`node-forge`) + `NFeAutorizacao4` da UF do emitente (MS).
-3. Destinatário: cliente PJ extraído das emitidas + endereço do cadastro/XML.
+3. Destinatário: cliente PJ extraído das emitidas + endereço do
+   cadastro/XML. A busca no endpoint já existente filtra razão,
+   fantasia (apelido) ou CNPJ normalizado, sempre com `companyId`
+   do autenticado. A UI, após o select, mostra uma linha sucinta
+   de endereço (cadastro override/fiscal) sem destaque.
 4. Emitente: última NF-e issued da empresa.
 5. Página `/fiscal/issued/nova` (ACL da lista de emitidas).
 6. Admin grava `CertificateConfig.environment` sem reenviar PFX.

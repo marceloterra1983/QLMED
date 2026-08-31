@@ -29,7 +29,7 @@ import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
 
 type Tab = 'dados' | 'itens' | 'transporte' | 'pagamento' | 'complementos';
 type Operation = { cfop: string; tag: string; natureza: string; ambito: string; featured?: boolean };
-type Customer = { cnpj: string; name: string };
+type Customer = { cnpj: string; name: string; addressLine?: string };
 type Product = {
   id: string;
   code: string | null;
@@ -432,18 +432,23 @@ export default function EmitirNfePage() {
 
               <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Destinatário</h3>
-                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
+                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
-                  <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
-                    <div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{dest.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{formatCnpj(dest.cnpj)}</div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+                      <div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">{dest.name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{formatCnpj(dest.cnpj)}</div>
+                      </div>
+                      <button type="button" onClick={() => setDest(null)} className="text-xs font-bold text-slate-500 hover:text-rose-600">Trocar</button>
                     </div>
-                    <button type="button" onClick={() => setDest(null)} className="text-xs font-bold text-slate-500 hover:text-rose-600">Trocar</button>
+                    {dest.addressLine ? (
+                      <p className="text-xs font-normal text-slate-500 dark:text-slate-400">{dest.addressLine}</p>
+                    ) : null}
                   </div>
                 ) : (
                   <>
-                    <input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Buscar por CNPJ" className={FILTER_INPUT_CLS} />
+                    <input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Nome ou CNPJ" className={FILTER_INPUT_CLS} />
                     <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-auto rounded-lg border border-slate-100 dark:border-slate-800">
                       {customers.map((c) => (
                         <li key={c.cnpj}>
