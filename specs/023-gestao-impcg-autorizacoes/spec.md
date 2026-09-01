@@ -91,6 +91,14 @@ recusa na API.
    MUST persistir, marcar o campo como **editado** e MUST NOT
    deixar a coleta subsequente sobrescrever esse campo. Viewer
    MUST receber 403 e MUST NOT ver o lápis.
+6. **AC-017** — Given o popup com a tabela de itens capturada, when
+   o editor corrige, inclui ou remove uma linha (ou o total), then
+   MUST persistir em centavos, marcar `items` (e `totalAmount` se
+   o total mudou) em `editedFields` e MUST NOT deixar a coleta
+   subsequente sobrescrever a tabela/total editados. Viewer MUST
+   receber 403 e MUST NOT ver os controles. FAIL-003 permanece:
+   o sistema MUST NOT inventar linha. Soma ≠ total continua
+   `parcial` (FAIL-004) até o editor reconciliar.
 
 ### User Story 2 — E-mail vira arquivo e linha (Priority: P1)
 
@@ -252,10 +260,11 @@ importa o arquivo da pasta.
   se o fechamento Campo Grande divergir e o campo NÃO foi
   editado à mão.
 - **FR-012**: Editor ou admin com a página MAY corrigir no popup
-  qualquer campo do cabeçalho (lápis sutil). After save MUST
-  marcar **editado**. Viewer MUST NOT editar. Coleta MUST NOT
-  sobrescrever campo editado. Estado de leitura MUST ser
-  recalculado.
+  qualquer campo do cabeçalho (lápis sutil) e a tabela de itens
+  capturada (incluir, alterar, remover linhas) e o total. After
+  save MUST marcar **editado**. Viewer MUST NOT editar. Coleta
+  MUST NOT sobrescrever campo/tabela editados. Estado de leitura
+  MUST ser recalculado.
 
 ### Failure cases
 

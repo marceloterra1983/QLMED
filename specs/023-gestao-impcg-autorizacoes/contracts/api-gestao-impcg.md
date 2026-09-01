@@ -89,6 +89,13 @@ Corrige os campos enviados (mesmo se já lidos) e os marca em
 de leitura é recalculado. Coleta posterior não sobrescreve
 campo em `editedFields`.
 
+`items` (opcional): substitui a tabela inteira. Cada linha:
+`description` (obrigatório), `anvisaCode`, `brand`, `reference`,
+`quantity`, `unitAmount` e `lineTotal` como string decimal
+(`"6500.00"`). `totalAmount` (opcional): string decimal do
+total do ofício. Marca `items` / `totalAmount` em
+`editedFields`. Dinheiro em centavos na persistência.
+
 **200** — mesmo JSON do GET detalhe, com `canEdit: true` e
 `editedFields`.
 **400** body inválido. **404** id inexistente / outra empresa.

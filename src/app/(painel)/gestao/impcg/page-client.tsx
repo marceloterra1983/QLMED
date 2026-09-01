@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
 import GestaoPatientHospital from '@/components/gestao/GestaoPatientHospital';
+import ImpcgItemsEditor, { type ImpcgItemDraft } from '@/components/gestao/ImpcgItemsEditor';
 import ReadFieldEditor, { readFieldInputClass } from '@/components/gestao/ReadFieldEditor';
 import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { isOficioFieldEdited } from '@/lib/gestao-oficio-edits';
@@ -96,6 +97,7 @@ export default function ImpcgPageClient() {
   const [procedureDraft, setProcedureDraft] = useState('');
   const [hospitalDraft, setHospitalDraft] = useState('');
   const [registryDraft, setRegistryDraft] = useState('');
+  const [totalDraft, setTotalDraft] = useState('');
 
   const loadList = useCallback(async () => {
     const res = await fetch('/api/gestao/impcg');
@@ -140,6 +142,7 @@ export default function ImpcgPageClient() {
           setProcedureDraft(payload.procedureName ?? '');
           setHospitalDraft(payload.hospitalName ?? '');
           setRegistryDraft(payload.patientRegistry ?? '');
+          setTotalDraft(payload.totalAmount);
         }
       })
       .catch(() => {
@@ -153,7 +156,7 @@ export default function ImpcgPageClient() {
     };
   }, [selectedId]);
 
-  async function savePatch(body: Record<string, string>) {
+  async function savePatch(body: Record<string, unknown>) {
     if (!detail?.canEdit || !selectedId) return;
     if (Object.keys(body).length === 0) return;
     setSaving(true);
@@ -173,12 +176,17 @@ export default function ImpcgPageClient() {
       }
       const payload = (await res.json()) as ImpcgDetail;
       setDetail(payload);
+      setTotalDraft(payload.totalAmount);
       await loadList();
     } catch {
       toast.error('Erro de rede ao salvar');
     } finally {
       setSaving(false);
     }
+  }
+
+  async function savePatchItems(items: ImpcgItemDraft[]) {
+    await savePatch({ items });
   }
 
   async function handleSync() {
@@ -481,10 +489,23 @@ export default function ImpcgPageClient() {
                   />
                 </ReadFieldEditor>
               </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Total</dt>
-                <dd className="font-mono font-bold">{formatBrl(detail.totalAmount)}</dd>
-              </div>
+              <ReadFieldEditor
+                label="Total"
+                display={<span className="font-mono font-bold">{formatBrl(detail.totalAmount)}</span>}
+                edited={isOficioFieldEdited(detail.editedFields, 'totalAmount')}
+                canEdit={detail.canEdit}
+                saving={saving}
+                onSave={() => {
+                  if (totalDraft.trim()) void savePatch({ totalAmount: totalDraft.trim() });
+                }}
+              >
+                <input
+                  value={totalDraft}
+                  onChange={(event) => setTotalDraft(event.target.value)}
+                  className={`${readFieldInputClass} font-mono`}
+                  placeholder="12550.00"
+                />
+              </ReadFieldEditor>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
                 <dd className="flex items-center gap-2 flex-wrap">
@@ -508,41 +529,14 @@ export default function ImpcgPageClient() {
               </div>
             </dl>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Itens aprovados</caption>
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 font-bold">
-                    <th className="px-3 py-2">Descrição</th>
-                    <th className="px-3 py-2">Marca</th>
-                    <th className="px-3 py-2">Ref.</th>
-                    <th className="px-3 py-2 text-right">Qtd</th>
-                    <th className="px-3 py-2 text-right">Unitário</th>
-                    <th className="px-3 py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.items.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-3 py-4 text-center text-slate-400">
-                        Nenhum item extraído.
-                      </td>
-                    </tr>
-                  ) : (
-                    detail.items.map((item, index) => (
-                      <tr key={`${item.description}-${index}`} className="border-t border-slate-100 dark:border-slate-800">
-                        <td className="px-3 py-2">{item.description}</td>
-                        <td className="px-3 py-2">{item.brand || '—'}</td>
-                        <td className="px-3 py-2">{item.reference || '—'}</td>
-                        <td className="px-3 py-2 text-right font-mono">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right font-mono">{formatBrl(item.unitAmount)}</td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold">{formatBrl(item.lineTotal)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <ImpcgItemsEditor
+              items={detail.items}
+              canEdit={detail.canEdit}
+              edited={isOficioFieldEdited(detail.editedFields, 'items')}
+              saving={saving}
+              formatBrl={formatBrl}
+              onSave={(items) => void savePatchItems(items)}
+            />
 
           </div>
         )}
