@@ -485,36 +485,41 @@ export async function handleContasGet(
 
       filtered.push(duplicata);
 
+      // QLMED-DATA-005: `+=` em number acumula o erro do binário parcela a
+      // parcela — 0.10 + 0.20 dá 0.30000000000000004, e o total do topo da tela
+      // deixa de bater com a soma das linhas. addMoney soma em Decimal com
+      // ROUND_HALF_UP em 2 casas, que é a aritmética de centavo que o
+      // financeiro precisa.
       summary.total += 1;
-      summary.totalValor += duplicata.dupValor;
+      summary.totalValor = addMoney(summary.totalValor, duplicata.dupValor);
 
       if (duplicata.dupVencimento === todayKey) {
         summary.hoje += 1;
-        summary.hojeValor += duplicata.dupValor;
+        summary.hojeValor = addMoney(summary.hojeValor, duplicata.dupValor);
       }
       if (duplicata.dupVencimento >= weekStartKey && duplicata.dupVencimento <= weekEndKey) {
         summary.estaSemana += 1;
-        summary.estaSemanaValor += duplicata.dupValor;
+        summary.estaSemanaValor = addMoney(summary.estaSemanaValor, duplicata.dupValor);
       }
       if (duplicata.dupVencimento.startsWith(thisMonthKey)) {
         summary.esteMes += 1;
-        summary.esteMesValor += duplicata.dupValor;
+        summary.esteMesValor = addMoney(summary.esteMesValor, duplicata.dupValor);
       }
       if (duplicata.dupVencimento.startsWith(nextMonthKey)) {
         summary.proximoMes += 1;
-        summary.proximoMesValor += duplicata.dupValor;
+        summary.proximoMesValor = addMoney(summary.proximoMesValor, duplicata.dupValor);
       }
       if (duplicata.status === 'overdue') {
         summary.vencidas += 1;
-        summary.vencidasValor += duplicata.dupValor;
+        summary.vencidasValor = addMoney(summary.vencidasValor, duplicata.dupValor);
       }
       if (duplicata.status === 'due_today') {
         summary.venceHoje += 1;
-        summary.venceHojeValor += duplicata.dupValor;
+        summary.venceHojeValor = addMoney(summary.venceHojeValor, duplicata.dupValor);
       }
       if (duplicata.status !== 'overdue') {
         summary.aVencer += 1;
-        summary.aVencerValor += duplicata.dupValor;
+        summary.aVencerValor = addMoney(summary.aVencerValor, duplicata.dupValor);
       }
     }
 

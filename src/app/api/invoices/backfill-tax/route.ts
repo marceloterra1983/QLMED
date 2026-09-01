@@ -36,13 +36,16 @@ export async function POST(req: NextRequest) {
     if (page.length === 0) break;
     cursor = page[page.length - 1].id;
     const pageIds = page.map((p) => p.id);
-    const existingTax = await prisma.invoiceTaxTotals.findMany({
-      where: { invoiceId: { in: pageIds } },
+    // QLMED-DATA-007: coberta é a nota cujo item_count já foi medido, não a que
+    // tem linha em invoice_tax_totals. Linha antiga (item_count NULL) volta ao
+    // lote exatamente uma vez, para ganhar a medição.
+    const measured = await prisma.invoiceTaxTotals.findMany({
+      where: { invoiceId: { in: pageIds }, itemCount: { not: null } },
       select: { invoiceId: true },
     });
-    const hasTax = new Set(existingTax.map((t) => t.invoiceId));
+    const covered = new Set(measured.map((t) => t.invoiceId));
     for (const id of pageIds) {
-      if (!hasTax.has(id)) {
+      if (!covered.has(id)) {
         ids.push(id);
         if (ids.length >= BATCH_SIZE) break;
       }
@@ -72,12 +75,30 @@ export async function POST(req: NextRequest) {
       chunk.map(async (full) => {
         if (!full.xmlContent) return;
         const { totals, items } = await extractAllTaxData(full.xmlContent);
-        if (totals) {
-          await upsertTaxTotals({ invoiceId: full.id, companyId: full.companyId, ...totals });
-        }
-        if (items.length > 0) {
-          await upsertItemTaxes(full.id, full.companyId, items);
-        }
+        // A linha de totais é gravada mesmo quando o XML não tem ICMSTot (CT-e ou
+        // NFS-e classificada como NFE, XML truncado). Ela é a marca de "o backfill
+        // olhou esta nota": sem ela, `remaining` nunca cai e o laço
+        // `while (remaining > 0)` do dashboard nunca termina.
+        await upsertTaxTotals({
+          invoiceId: full.id,
+          companyId: full.companyId,
+          vbc: totals?.vbc ?? null,
+          vicms: totals?.vicms ?? null,
+          vpis: totals?.vpis ?? null,
+          vcofins: totals?.vcofins ?? null,
+          vipi: totals?.vipi ?? null,
+          vfrete: totals?.vfrete ?? null,
+          vseg: totals?.vseg ?? null,
+          vdesc: totals?.vdesc ?? null,
+          voutro: totals?.voutro ?? null,
+          vtottrib: totals?.vtottrib ?? null,
+          vfcp: totals?.vfcp ?? null,
+          vicmsSt: totals?.vicmsSt ?? null,
+          itemCount: items.length,
+        });
+        // Incondicional: com zero itens ela limpa linhas obsoletas de uma
+        // passagem anterior, o que o `if (items.length > 0)` deixava para trás.
+        await upsertItemTaxes(full.id, full.companyId, items);
       }),
     );
     for (const r of results) {
@@ -192,21 +213,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Approximate remaining: NFE total minus rows that already have tax data
-  const [totalNfe, withTaxData] = await Promise.all([
+  // QLMED-DATA-007: `remaining` conta a nota cuja cobertura de itens ainda não
+  // foi medida — não a que não tem linha de totais. As duas contas divergiam:
+  // totais gravados e zero itens passavam por "processado".
+  const [totalNfe, coveredCount, withoutItemsCount] = await Promise.all([
     prisma.invoice.count({ where: { companyId: company.id, type: 'NFE' } }),
-    prisma.invoiceTaxTotals.count({ where: { companyId: company.id } }),
+    prisma.invoiceTaxTotals.count({
+      where: { companyId: company.id, itemCount: { not: null } },
+    }),
+    prisma.invoiceTaxTotals.count({ where: { companyId: company.id, itemCount: 0 } }),
   ]);
-  const remainingCount = Math.max(0, totalNfe - withTaxData);
+  const remainingCount = Math.max(0, totalNfe - coveredCount);
 
   return NextResponse.json({
     ok: true,
     processed,
     errors,
     remaining: remainingCount,
+    // Medidas e sem item nenhum: nada a reprocessar, mas a cobertura não é
+    // total. Vai na resposta em vez de sumir dentro de "Done!".
+    withoutItems: withoutItemsCount,
     message:
       remainingCount > 0
         ? `Processed ${processed} invoices. ${remainingCount} remaining — call again to continue.`
-        : `Done! All ${processed} invoices processed.`,
+        : withoutItemsCount > 0
+          ? `Done! All ${processed} invoices processed. ${withoutItemsCount} without extractable items.`
+          : `Done! All ${processed} invoices processed.`,
   });
 }

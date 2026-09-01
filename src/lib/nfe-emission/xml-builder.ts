@@ -13,12 +13,26 @@ import {
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 
+/**
+ * Escape de NÓ DE TEXTO na forma canônica C14N 1.0 (§2.3 Text Nodes): só `&`,
+ * `<`, `>` e `#xD` viram referência. Aspa dupla fica LITERAL.
+ *
+ * QLMED-FISCAL-006: escapar `"` como `&quot;` aqui produzia XML válido mas não
+ * canônico. O digest da assinatura é calculado sobre estes bytes; a SEFAZ
+ * recalcula sobre a forma canônica, onde a aspa é literal. Um `"` numa
+ * descrição de produto — `Cabo 5"` — bastava para os dois hashes divergirem e a
+ * nota ser rejeitada por "Digest Value da assinatura difere do calculado".
+ *
+ * Todos os call sites desta função são conteúdo de elemento. Se algum dia
+ * alguém precisar interpolar em ATRIBUTO, a regra é outra (`"` escapa, `>` não)
+ * e precisa de uma função própria — signNfeXml recusa o que não reconhecer.
+ */
 function esc(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/\r/g, '&#xD;');
 }
 
 function money(value: string | number): string {

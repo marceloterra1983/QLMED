@@ -90,27 +90,27 @@ enum NotificationDeliveryStatus {
 // ── Models ──
 
 model User {
-  id             String      @id @default(cuid())
-  email          String      @unique
-  passwordHash   String
-  name           String
-  phone          String?
-  role           UserRole    @default(viewer)
-  status         UserStatus  @default(pending)
-  allowedPages   String[]    @default([])
+  id                      String                       @id @default(cuid())
+  email                   String                       @unique
+  passwordHash            String
+  name                    String
+  phone                   String?
+  role                    UserRole                     @default(viewer)
+  status                  UserStatus                   @default(pending)
+  allowedPages            String[]                     @default([])
   // PIN brute-force protection: incremented on failed login, reset on success.
   // lockedUntil is a soft lock — authorize() rejects the login while now < lockedUntil.
-  failedAttempts Int         @default(0)
-  lockedUntil    DateTime?
+  failedAttempts          Int                          @default(0)
+  lockedUntil             DateTime?
   // Session revocation counter — every issued JWT embeds this value in its
   // `tokenVersion` claim. Increment to invalidate ALL outstanding sessions
   // for this user (logout-everywhere, role demotion, status change, etc.).
-  tokenVersion   Int         @default(0)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  companies      Company[]
-  accessLogs     AccessLog[]
-  apiKeys        ApiKey[]    @relation("ApiKeyCreator")
+  tokenVersion            Int                          @default(0)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  companies               Company[]
+  accessLogs              AccessLog[]
+  apiKeys                 ApiKey[]                     @relation("ApiKeyCreator")
   notificationPreferences UserNotificationPreference[]
   pushSubscriptions       PushSubscription[]
 }
@@ -147,25 +147,25 @@ model AccessLog {
 }
 
 model Company {
-  id                  String                                 @id @default(cuid())
-  cnpj                String                                 @unique
-  razaoSocial         String
-  nomeFantasia        String?
-  userId              String
-  user                User                                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoices            Invoice[]
-  duplicataOverrides  FinanceiroDuplicataOverride[]
-  manualInstallments  FinanceiroDuplicataManualInstallment[]
-  contactNicknames    ContactNickname[]
-  contactOverrides    ContactOverride[]
-  nsdocsConfig        NsdocsConfig?
-  receitaNfseConfig   ReceitaNfseConfig?
-  n8nConfig           N8nIntegrationConfig?
-  certificateConfig   CertificateConfig?
-  oneDriveConnections OneDriveConnection[]
-  syncLogs            SyncLog[]
-  notificationEvents  NotificationOutboxEvent[]
-  productRebuildState ProductAggregateRebuildState?
+  id                    String                                 @id @default(cuid())
+  cnpj                  String                                 @unique
+  razaoSocial           String
+  nomeFantasia          String?
+  userId                String
+  user                  User                                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  invoices              Invoice[]
+  duplicataOverrides    FinanceiroDuplicataOverride[]
+  manualInstallments    FinanceiroDuplicataManualInstallment[]
+  contactNicknames      ContactNickname[]
+  contactOverrides      ContactOverride[]
+  nsdocsConfig          NsdocsConfig?
+  receitaNfseConfig     ReceitaNfseConfig?
+  n8nConfig             N8nIntegrationConfig?
+  certificateConfig     CertificateConfig?
+  oneDriveConnections   OneDriveConnection[]
+  syncLogs              SyncLog[]
+  notificationEvents    NotificationOutboxEvent[]
+  productRebuildState   ProductAggregateRebuildState?
   impcgAuthorizations   ImpcgAuthorization[]
   impcgSourceMessages   ImpcgSourceMessage[]
   impcgIngestState      ImpcgIngestState?
@@ -173,8 +173,17 @@ model Company {
   cassemsSourceMessages CassemsSourceMessage[]
   cassemsIngestState    CassemsIngestState?
   invoiceEmissions      InvoiceEmission[]
-  createdAt           DateTime                               @default(now())
-  updatedAt           DateTime                               @updatedAt
+  invoiceTaxTotals      InvoiceTaxTotals[]
+  invoiceItemTaxes      InvoiceItemTax[]
+  invoiceDuplicatas     InvoiceDuplicata[]
+  contactFiscals        ContactFiscal[]
+  productRegistries     ProductRegistry[]
+  stockEntries          StockEntry[]
+  nfeEntryItems         NfeEntryItem[]
+  productSettings       ProductSettingsCatalog[]
+  cnpjMonitorings       CnpjMonitoring[]
+  createdAt             DateTime                               @default(now())
+  updatedAt             DateTime                               @updatedAt
 
   @@index([userId])
 }
@@ -289,29 +298,35 @@ model OneDriveConnection {
 }
 
 model Invoice {
-  id                 String                                 @id @default(cuid())
-  accessKey          String                                 @unique
-  type               InvoiceType
-  direction          InvoiceDirection                       @default(received)
-  number             String
-  series             String?
-  issueDate          DateTime
-  senderCnpj         String
-  senderName         String
-  recipientCnpj      String?
-  recipientName      String?
-  totalValue         Decimal
-  status             InvoiceStatus                          @default(received)
-  cancelledAt        DateTime?
-  cfop               String?
-  xmlContent         String
-  companyId          String
-  company            Company                                @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  duplicataOverrides FinanceiroDuplicataOverride[]
-  manualInstallments FinanceiroDuplicataManualInstallment[]
-  notificationEvent  NotificationOutboxEvent?
-  createdAt          DateTime                               @default(now())
-  updatedAt          DateTime                               @updatedAt
+  id                    String                                 @id @default(cuid())
+  accessKey             String                                 @unique
+  type                  InvoiceType
+  direction             InvoiceDirection                       @default(received)
+  number                String
+  series                String?
+  issueDate             DateTime
+  senderCnpj            String
+  senderName            String
+  recipientCnpj         String?
+  recipientName         String?
+  totalValue            Decimal
+  status                InvoiceStatus                          @default(received)
+  cancelledAt           DateTime?
+  cfop                  String?
+  xmlContent            String
+  companyId             String
+  company               Company                                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  duplicataOverrides    FinanceiroDuplicataOverride[]
+  manualInstallments    FinanceiroDuplicataManualInstallment[]
+  notificationEvent     NotificationOutboxEvent?
+  taxTotals             InvoiceTaxTotals?
+  itemTaxes             InvoiceItemTax[]
+  duplicatas            InvoiceDuplicata[]
+  stockEntries          StockEntry[]
+  nfeEntryItems         NfeEntryItem[]
+  sourcedContactFiscals ContactFiscal[]
+  createdAt             DateTime                               @default(now())
+  updatedAt             DateTime                               @updatedAt
 
   @@index([companyId])
   @@index([senderCnpj])
@@ -501,7 +516,9 @@ model FinanceiroDuplicataManualInstallment {
 // Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model InvoiceTaxTotals {
   invoiceId  String    @id @map("invoice_id")
+  invoice    Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   companyId  String    @map("company_id")
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   vbc        Float?
   vicms      Float?
   vpis       Float?
@@ -514,6 +531,11 @@ model InvoiceTaxTotals {
   vtottrib   Float?
   vfcp       Float?
   vicmsSt    Float?    @map("vicms_st")
+  /// Itens gravados em invoice_item_tax na ultima passagem do backfill.
+  /// NULL = cobertura de itens desconhecida (linha anterior a esta coluna);
+  /// 0 = XML sem item extraivel. E o que faz `remaining` do backfill ser
+  /// honesto sem transformar o laco do cliente em laco infinito.
+  itemCount  Int?      @map("item_count")
   computedAt DateTime? @default(now()) @map("computed_at") @db.Timestamptz
 
   @@index([companyId])
@@ -524,7 +546,9 @@ model InvoiceTaxTotals {
 model InvoiceItemTax {
   id                 String  @id
   invoiceId          String  @map("invoice_id")
+  invoice            Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   companyId          String  @map("company_id")
+  company            Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   itemNumber         Int?    @map("item_number")
   productCode        String? @map("product_code")
   productDescription String? @map("product_description")
@@ -558,6 +582,7 @@ model InvoiceItemTax {
 model ContactFiscal {
   id              String    @id
   companyId       String    @map("company_id")
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   cnpj            String
   ie              String?
   im              String?
@@ -565,28 +590,34 @@ model ContactFiscal {
   uf              String?
   city            String?
   sourceInvoiceId String?   @map("source_invoice_id")
+  /// SetNull, nao Cascade: a ficha fiscal do contacto sobrevive a exclusao da
+  /// nota que a originou. sourceInvoiceId e proveniencia, nao dono.
+  sourceInvoice   Invoice?  @relation(fields: [sourceInvoiceId], references: [id], onDelete: SetNull)
   extractedAt     DateTime? @default(now()) @map("extracted_at") @db.Timestamptz
 
   @@unique([companyId, cnpj])
   @@index([companyId])
+  @@index([sourceInvoiceId])
   @@map("contact_fiscal")
 }
 
 // Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model InvoiceDuplicata {
-  id                  String   @id
-  invoiceId           String   @map("invoice_id")
-  companyId           String   @map("company_id")
-  dupNumero           String?  @map("dup_numero")
-  dupVencimento       String   @map("dup_vencimento")
-  dupValor                   Float     @map("dup_valor")
-  dupValorDecimal            Decimal?  @map("dup_valor_decimal")
-  faturaNumero               String?   @map("fatura_numero")
-  faturaValorOriginal        Float?    @map("fatura_valor_original")
-  faturaValorOriginalDecimal Decimal?  @map("fatura_valor_original_decimal")
-  faturaValorLiquido         Float?    @map("fatura_valor_liquido")
-  faturaValorLiquidoDecimal  Decimal?  @map("fatura_valor_liquido_decimal")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                         String   @id
+  invoiceId                  String   @map("invoice_id")
+  invoice                    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  companyId                  String   @map("company_id")
+  company                    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dupNumero                  String?  @map("dup_numero")
+  dupVencimento              String   @map("dup_vencimento")
+  dupValor                   Float    @map("dup_valor")
+  dupValorDecimal            Decimal? @map("dup_valor_decimal")
+  faturaNumero               String?  @map("fatura_numero")
+  faturaValorOriginal        Float?   @map("fatura_valor_original")
+  faturaValorOriginalDecimal Decimal? @map("fatura_valor_original_decimal")
+  faturaValorLiquido         Float?   @map("fatura_valor_liquido")
+  faturaValorLiquidoDecimal  Decimal? @map("fatura_valor_liquido_decimal")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([invoiceId, dupNumero, dupVencimento])
   @@index([companyId])
@@ -611,6 +642,7 @@ model NcmCache {
 model ProductRegistry {
   id                        String    @id
   companyId                 String    @map("company_id")
+  company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   productKey                String    @map("product_key")
   code                      String?
   description               String
@@ -681,107 +713,115 @@ model ProductRegistry {
 
 // Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model StockEntry {
-  id            String    @id
-  companyId     String    @map("company_id")
-  invoiceId     String    @map("invoice_id")
-  invoiceNumber String?   @map("invoice_number")
-  supplierName  String?   @map("supplier_name")
-  supplierCnpj  String?   @map("supplier_cnpj")
-  issueDate     DateTime? @map("issue_date") @db.Timestamptz
-  totalValue    Float?    @map("total_value")
-  totalItems    Int?      @default(0) @map("total_items")
-  matchedItems  Int?      @default(0) @map("matched_items")
-  status        String    @default("pending")
-  registeredAt  DateTime? @map("registered_at") @db.Timestamptz
-  registeredBy  String?   @map("registered_by")
-  emitterCity   String?   @map("emitter_city")
-  emitterState  String?   @map("emitter_state")
-  accessKey     String?   @map("access_key")
+  id            String         @id
+  companyId     String         @map("company_id")
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId     String         @map("invoice_id")
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceNumber String?        @map("invoice_number")
+  supplierName  String?        @map("supplier_name")
+  supplierCnpj  String?        @map("supplier_cnpj")
+  issueDate     DateTime?      @map("issue_date") @db.Timestamptz
+  totalValue    Float?         @map("total_value")
+  totalItems    Int?           @default(0) @map("total_items")
+  matchedItems  Int?           @default(0) @map("matched_items")
+  status        String         @default("pending")
+  registeredAt  DateTime?      @map("registered_at") @db.Timestamptz
+  registeredBy  String?        @map("registered_by")
+  emitterCity   String?        @map("emitter_city")
+  emitterState  String?        @map("emitter_state")
+  accessKey     String?        @map("access_key")
   cfop          String?
-  totVprod      Float?    @map("tot_vprod")
-  totVdesc      Float?    @map("tot_vdesc")
-  totVbc        Float?    @map("tot_vbc")
-  totVicms      Float?    @map("tot_vicms")
-  totVbcSt      Float?    @map("tot_vbc_st")
-  totVicmsSt    Float?    @map("tot_vicms_st")
-  totVfrete     Float?    @map("tot_vfrete")
-  totVseg       Float?    @map("tot_vseg")
-  totVoutro     Float?    @map("tot_voutro")
-  totVipi       Float?    @map("tot_vipi")
-  totVpis       Float?    @map("tot_vpis")
-  totVcofins    Float?    @map("tot_vcofins")
-  totVfcp       Float?    @map("tot_vfcp")
-  totVnf        Float?    @map("tot_vnf")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  totVprod      Float?         @map("tot_vprod")
+  totVdesc      Float?         @map("tot_vdesc")
+  totVbc        Float?         @map("tot_vbc")
+  totVicms      Float?         @map("tot_vicms")
+  totVbcSt      Float?         @map("tot_vbc_st")
+  totVicmsSt    Float?         @map("tot_vicms_st")
+  totVfrete     Float?         @map("tot_vfrete")
+  totVseg       Float?         @map("tot_vseg")
+  totVoutro     Float?         @map("tot_voutro")
+  totVipi       Float?         @map("tot_vipi")
+  totVpis       Float?         @map("tot_vpis")
+  totVcofins    Float?         @map("tot_vcofins")
+  totVfcp       Float?         @map("tot_vfcp")
+  totVnf        Float?         @map("tot_vnf")
+  entryItems    NfeEntryItem[]
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz
 
   @@unique([companyId, invoiceId])
   @@index([companyId])
   @@index([companyId, status])
+  @@index([invoiceId])
   @@map("stock_entry")
 }
 
 // Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).
 model NfeEntryItem {
-  id                  Int       @id @default(autoincrement())
-  stockEntryId        String    @map("stock_entry_id")
-  companyId           String    @map("company_id")
-  invoiceId           String    @map("invoice_id")
-  itemNumber          Int       @map("item_number")
-  supplierCode        String?   @map("supplier_code")
-  supplierDescription String?   @map("supplier_description")
+  id                  Int        @id @default(autoincrement())
+  stockEntryId        String     @map("stock_entry_id")
+  stockEntry          StockEntry @relation(fields: [stockEntryId], references: [id], onDelete: Cascade)
+  companyId           String     @map("company_id")
+  company             Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId           String     @map("invoice_id")
+  invoice             Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemNumber          Int        @map("item_number")
+  supplierCode        String?    @map("supplier_code")
+  supplierDescription String?    @map("supplier_description")
   ncm                 String?
   cfop                String?
   cest                String?
   ean                 String?
   anvisa              String?
   unit                String?
-  registryId          String?   @map("registry_id")
-  codigoInterno       String?   @map("codigo_interno")
-  productName         String?   @map("product_name")
+  registryId          String?    @map("registry_id")
+  codigoInterno       String?    @map("codigo_interno")
+  productName         String?    @map("product_name")
   manufacturer        String?
-  productType         String?   @map("product_type")
-  productSubtype      String?   @map("product_subtype")
-  quantity            Float?    @default(0)
-  unitPrice           Float?    @default(0) @map("unit_price")
-  totalValueGross     Float?    @default(0) @map("total_value_gross")
-  itemDiscount        Float?    @default(0) @map("item_discount")
-  totalValueNet       Float?    @default(0) @map("total_value_net")
+  productType         String?    @map("product_type")
+  productSubtype      String?    @map("product_subtype")
+  quantity            Float?     @default(0)
+  unitPrice           Float?     @default(0) @map("unit_price")
+  totalValueGross     Float?     @default(0) @map("total_value_gross")
+  itemDiscount        Float?     @default(0) @map("item_discount")
+  totalValueNet       Float?     @default(0) @map("total_value_net")
   origem              String?
-  cstIcms             String?   @map("cst_icms")
-  baseIcms            Float?    @map("base_icms")
-  aliqIcms            Float?    @map("aliq_icms")
-  valorIcms           Float?    @map("valor_icms")
-  baseIcmsSt          Float?    @map("base_icms_st")
-  valorIcmsSt         Float?    @map("valor_icms_st")
-  cstIpi              String?   @map("cst_ipi")
-  aliqIpi             Float?    @map("aliq_ipi")
-  baseIpi             Float?    @map("base_ipi")
-  valorIpi            Float?    @map("valor_ipi")
-  cstPis              String?   @map("cst_pis")
-  aliqPis             Float?    @map("aliq_pis")
-  basePis             Float?    @map("base_pis")
-  valorPis            Float?    @map("valor_pis")
-  cstCofins           String?   @map("cst_cofins")
-  aliqCofins          Float?    @map("aliq_cofins")
-  baseCofins          Float?    @map("base_cofins")
-  valorCofins         Float?    @map("valor_cofins")
-  valorFcp            Float?    @map("valor_fcp")
-  rateioFrete         Float?    @default(0) @map("rateio_frete")
-  rateioSeguro        Float?    @default(0) @map("rateio_seguro")
-  rateioOutrasDesp    Float?    @default(0) @map("rateio_outras_desp")
-  rateioDesconto      Float?    @default(0) @map("rateio_desconto")
+  cstIcms             String?    @map("cst_icms")
+  baseIcms            Float?     @map("base_icms")
+  aliqIcms            Float?     @map("aliq_icms")
+  valorIcms           Float?     @map("valor_icms")
+  baseIcmsSt          Float?     @map("base_icms_st")
+  valorIcmsSt         Float?     @map("valor_icms_st")
+  cstIpi              String?    @map("cst_ipi")
+  aliqIpi             Float?     @map("aliq_ipi")
+  baseIpi             Float?     @map("base_ipi")
+  valorIpi            Float?     @map("valor_ipi")
+  cstPis              String?    @map("cst_pis")
+  aliqPis             Float?     @map("aliq_pis")
+  basePis             Float?     @map("base_pis")
+  valorPis            Float?     @map("valor_pis")
+  cstCofins           String?    @map("cst_cofins")
+  aliqCofins          Float?     @map("aliq_cofins")
+  baseCofins          Float?     @map("base_cofins")
+  valorCofins         Float?     @map("valor_cofins")
+  valorFcp            Float?     @map("valor_fcp")
+  rateioFrete         Float?     @default(0) @map("rateio_frete")
+  rateioSeguro        Float?     @default(0) @map("rateio_seguro")
+  rateioOutrasDesp    Float?     @default(0) @map("rateio_outras_desp")
+  rateioDesconto      Float?     @default(0) @map("rateio_desconto")
   lot                 String?
-  lotSerial           String?   @map("lot_serial")
-  lotQuantity         Float?    @map("lot_quantity")
-  lotFabrication      String?   @map("lot_fabrication")
-  lotExpiry           String?   @map("lot_expiry")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime? @map("updated_at") @db.Timestamptz
+  lotSerial           String?    @map("lot_serial")
+  lotQuantity         Float?     @map("lot_quantity")
+  lotFabrication      String?    @map("lot_fabrication")
+  lotExpiry           String?    @map("lot_expiry")
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime?  @map("updated_at") @db.Timestamptz
 
   @@index([stockEntryId])
   @@index([companyId, invoiceId])
   @@index([companyId, codigoInterno])
+  @@index([invoiceId])
   @@map("nfe_entry_item")
 }
 
@@ -789,6 +829,7 @@ model NfeEntryItem {
 model ProductSettingsCatalog {
   id                      String   @id
   companyId               String   @map("company_id")
+  company                 Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   section                 String
   value                   String
   parentValue             String?  @map("parent_value")
@@ -817,6 +858,7 @@ model CnpjCache {
 model CnpjMonitoring {
   id             String    @id
   companyId      String    @map("company_id")
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   cnpj           String
   contactName    String?   @map("contact_name")
   previousStatus String?   @map("previous_status")

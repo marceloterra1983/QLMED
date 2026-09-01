@@ -18,6 +18,7 @@ export interface InvoiceTaxTotals {
   vtottrib: number | null;
   vfcp: number | null;
   vicmsSt: number | null;
+  itemCount: number | null;
   computedAt: Date;
 }
 
@@ -67,6 +68,10 @@ export async function upsertTaxTotals(data: {
   vtottrib: number | null;
   vfcp: number | null;
   vicmsSt: number | null;
+  /// QLMED-DATA-007: quantos itens foram gravados em invoice_item_tax nesta
+  /// passagem. E o que permite ao backfill dizer `remaining` honesto sem
+  /// reprocessar para sempre a nota cujo XML nao tem item nenhum.
+  itemCount: number;
 }): Promise<void> {
   const now = new Date();
   await prisma.invoiceTaxTotals.upsert({
@@ -86,6 +91,7 @@ export async function upsertTaxTotals(data: {
       vtottrib: data.vtottrib,
       vfcp: data.vfcp,
       vicmsSt: data.vicmsSt,
+      itemCount: data.itemCount,
       computedAt: now,
     },
     update: {
@@ -102,6 +108,7 @@ export async function upsertTaxTotals(data: {
       vtottrib: data.vtottrib,
       vfcp: data.vfcp,
       vicmsSt: data.vicmsSt,
+      itemCount: data.itemCount,
       computedAt: now,
     },
   });

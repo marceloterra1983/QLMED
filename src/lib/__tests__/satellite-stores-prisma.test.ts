@@ -141,6 +141,7 @@ describe('invoice-tax-store Prisma CRUD', () => {
       vtottrib: null,
       vfcp: null,
       vicmsSt: null,
+      itemCount: 1,
     });
     expect(mocks.taxTotalsUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
