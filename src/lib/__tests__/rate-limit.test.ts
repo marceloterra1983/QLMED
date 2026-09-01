@@ -1,10 +1,43 @@
+import { NextRequest } from 'next/server';
 import { describe, expect, it, vi } from 'vitest';
-import { checkRateLimit } from '../rate-limit';
+import { RATE_LIMITS, checkRateLimit } from '../rate-limit';
 import {
   allowsRouteLevelApiKeyAuth,
   getClientIp,
   getRateLimitConfig,
+  middleware,
 } from '../../middleware';
+
+/**
+ * REAUD-B-16. `findUserByPassword` compara bcrypt contra TODOS os
+ * utilizadores por tentativa (ADR-0012: a senha é a identidade). Medido a
+ * custo 12 com bcryptjs: 185 ms por compare. O teto de CPU por minuto é
+ * N × loginGlobal × 0,185 s; com 120 e 10 utilizadores eram 222 s — mais de
+ * três threads que o Node não tem.
+ */
+describe('teto global de login (REAUD-B-16)', () => {
+  it('prende loginGlobal ao orçamento de bcrypt (≤ 20/min)', () => {
+    expect(RATE_LIMITS.loginGlobal.maxRequests).toBeLessThanOrEqual(20);
+  });
+
+  it('o middleware corta com 429 antes de o authorize correr, mesmo com IPs distintos', async () => {
+    const attempt = (ip: string) =>
+      middleware(
+        new NextRequest('http://localhost/api/auth/callback/credentials', {
+          method: 'POST',
+          headers: { 'x-forwarded-for': ip },
+        }),
+      );
+    const max = RATE_LIMITS.loginGlobal.maxRequests;
+
+    // Cada IP é novo (fica abaixo do limite por IP); só o balde global conta.
+    for (let i = 0; i < max; i++) {
+      expect((await attempt(`198.51.100.${i}`)).status).toBe(200);
+    }
+
+    expect((await attempt('198.51.100.250')).status).toBe(429);
+  });
+});
 
 describe('rate limit helpers', () => {
   it('blocks after the configured limit until the window expires', () => {

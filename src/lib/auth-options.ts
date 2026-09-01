@@ -236,7 +236,13 @@ export const authOptions: AuthOptions = {
             token.dbRefreshedAt = Date.now();
           }
         } catch (err) {
-          log.error({ err }, 'Failed to refresh user role from DB');
+          // REAUD-B-17: com o banco em baixo, o token voltava INALTERADO —
+          // papel, estado e allowedPages velhos continuavam válidos nas
+          // páginas do painel (o middleware só confere que tokenVersion é
+          // numérico), enquanto as rotas de API já fechavam (requireAuth
+          // propaga). Fecha dos dois lados: token vazio, como no mismatch.
+          log.error({ err }, 'Failed to refresh user role from DB; refusing session');
+          return {} as typeof token;
         }
       }
       return token;
