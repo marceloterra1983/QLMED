@@ -10,6 +10,7 @@ import type { Invoice } from '@/types';
 import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 const NfseDetailsModal = dynamic(() => import('@/components/NfseDetailsModal'), { ssr: false });
@@ -242,24 +243,24 @@ export default function NfseReceivedPage() {
             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
               {total} documento(s)
             </div>
-            <button
+            <Button
               onClick={() => setHideValues(v => !v)}
-              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              variant="secondary"
+              icon={hideValues ? 'visibility' : 'visibility_off'}
               title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-            >
-              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-            </button>
-            <button
+              aria-label={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+              className="hidden sm:inline-flex"
+            />
+            <Button
               onClick={handleSyncReceitaNfse}
-              disabled={syncing || !canWrite}
-              className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+              disabled={!canWrite}
+              loading={syncing}
+              size="sm"
+              icon="cloud_sync"
               title={canWrite ? 'Sincronizar NFS-e via Receita' : 'Sem permissão para sincronizar'}
             >
-              <span className="material-symbols-outlined text-[16px]">
-                {syncing ? 'sync' : 'cloud_sync'}
-              </span>
               {syncing ? 'Sincronizando...' : 'Sincronizar NFS-e'}
-            </button>
+            </Button>
           </>
         )}
       />

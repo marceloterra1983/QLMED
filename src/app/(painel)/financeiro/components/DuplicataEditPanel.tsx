@@ -4,6 +4,7 @@ import React from 'react';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCnpj, formatDate } from '@/lib/utils';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
+import Button from '@/components/ui/Button';
 import {
   type DuplicataEditForm,
   type InvoiceHeader,
@@ -159,15 +160,15 @@ export default function DuplicataEditPanel({
                   Parcelas da Nota
                 </h4>
                 {canWrite && (
-                  <button
-                    type="button"
+                  <Button
                     onClick={onAddInstallment}
                     disabled={loadingDetails || savingDetails}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-primary/30 text-primary dark:text-blue-400 hover:bg-primary/10 transition-colors disabled:opacity-50"
+                    variant="soft"
+                    size="sm"
+                    icon="add"
                   >
-                    <span className="material-symbols-outlined text-[16px]">add</span>
                     Adicionar parcela
-                  </button>
+                  </Button>
                 )}
               </div>
               {loadingDetails ? (
@@ -346,13 +347,9 @@ export default function DuplicataEditPanel({
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
           {/* Mobile */}
           <div className="sm:hidden flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <Button onClick={onClose} icon="arrow_back" size="lg" className="flex-1">
               Voltar
-            </button>
+            </Button>
             {canWrite && (
               <button
                 onClick={onSave}
@@ -366,21 +363,13 @@ export default function DuplicataEditPanel({
           </div>
           {/* Desktop */}
           <div className="hidden sm:flex items-center justify-end gap-2">
-            <button
-              onClick={onClose}
-              disabled={savingDetails}
-              className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
-            >
+            <Button onClick={onClose} disabled={savingDetails} variant="secondary" size="sm">
               {canWrite ? 'Cancelar' : 'Fechar'}
-            </button>
+            </Button>
             {canWrite && (
-              <button
-                onClick={onSave}
-                disabled={!canSaveDetails}
-                className="px-3 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
+              <Button onClick={onSave} disabled={!canSaveDetails} loading={savingDetails} size="sm">
                 {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
-              </button>
+              </Button>
             )}
           </div>
         </div>

@@ -7,6 +7,7 @@ import type { ProductRow } from '../types';
 import { BulkFieldRow } from './DetailSectionCard';
 import { BULK_INPUT_CLS } from './product-utils';
 import type { HierOptions } from './product-utils';
+import Button from '@/components/ui/Button';
 
 interface BulkEditModalProps {
   selectedKeys: Set<string>;
@@ -264,14 +265,12 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
                 <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>
               )}
             </button>
-            <button onClick={onClose} className="w-full px-4 py-2.5 text-sm font-semibold text-primary dark:text-blue-400 hover:bg-primary/5 rounded-xl transition-colors">
-              <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
-            </button>
+            <Button onClick={onClose} variant="soft" icon="arrow_back" block>Voltar</Button>
           </div>
           <div className="hidden sm:flex items-center justify-between">
-            <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Button onClick={onClose} variant="ghost">
               Cancelar
-            </button>
+            </Button>
             <button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none">
               {isBulkSaving ? (
                 <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
 import type { SyncLog } from '@/types';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 export default function ErrorsPage() {
   const [logs, setLogs] = useState<SyncLog[]>([]);
@@ -98,13 +98,9 @@ export default function ErrorsPage() {
                   </div>
                 </div>
 
-                <Link
-                  href="/sistema/sync"
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary dark:text-blue-400 rounded-lg text-xs font-bold transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px]">refresh</span>
+                <Button href="/sistema/sync" variant="soft" size="sm" icon="refresh" className="shrink-0">
                   Tentar Novamente
-                </Link>
+                </Button>
               </div>
             </div>
           ))}

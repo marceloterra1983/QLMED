@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
 import type { CteDetails, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
+import Button from '@/components/ui/Button';
 
 interface CteDetailsModalProps {
   isOpen: boolean;
@@ -619,13 +620,9 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
 
         {/* Footer - mobile only */}
         <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={onClose}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

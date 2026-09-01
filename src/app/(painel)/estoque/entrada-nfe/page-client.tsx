@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import Field from '@/components/ui/Field';
+import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
@@ -958,10 +960,9 @@ export default function EntradaNfePage() {
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={activeFilterCount}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-          <div className="lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fornecedor / Número</label>
+          <Field label="Fornecedor / Número" className="lg:col-span-2">
             <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
-          </div>
+          </Field>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_INPUT_CLS}>
@@ -972,14 +973,12 @@ export default function EntradaNfePage() {
             </select>
           </div>
           <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
+            <Field label="Data Início" className="flex-1">
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
+            </Field>
+            <Field label="Data Fim" className="flex-1">
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
-            </div>
+            </Field>
           </div>
           <div>
             <button onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); selectYear(null); }} className="px-3 py-2.5 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors">Limpar</button>
@@ -1135,18 +1134,9 @@ export default function EntradaNfePage() {
           >
             Cancelar
           </button>
-          <button
-            onClick={handleImportE509}
-            disabled={!importFile || importing}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            {importing ? (
-              <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-            ) : (
-              <span className="material-symbols-outlined text-[16px]">upload</span>
-            )}
+          <Button onClick={handleImportE509} disabled={!importFile} loading={importing} icon="upload">
             {importing ? 'Importando...' : 'Importar'}
-          </button>
+          </Button>
         </div>
       </Modal>
 

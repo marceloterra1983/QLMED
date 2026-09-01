@@ -6,6 +6,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCurrencyShort } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 interface SystemUser {
   id: string;
@@ -212,13 +213,9 @@ export default function ValvulasImportadasPage() {
               <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
               Exportar PDF
             </button>
-            <button
-              onClick={openEmailModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">mail</span>
+            <Button onClick={openEmailModal} size="sm" icon="mail">
               Enviar por Email
-            </button>
+            </Button>
           </div>
         ) : undefined}
       />
@@ -267,14 +264,9 @@ export default function ValvulasImportadasPage() {
             </div>
             {/* Mobile footer */}
             <div className="sm:hidden border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-2">
-              <button
-                onClick={handleSendEmail}
-                disabled={!selectedUserId || sendingEmail}
-                className="flex items-center justify-center gap-1.5 w-full px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingEmail && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+              <Button onClick={handleSendEmail} disabled={!selectedUserId} loading={sendingEmail} block>
                 {sendingEmail ? 'Enviando...' : 'Enviar'}
-              </button>
+              </Button>
               <button
                 onClick={() => setEmailModalOpen(false)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -290,14 +282,9 @@ export default function ValvulasImportadasPage() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleSendEmail}
-                disabled={!selectedUserId || sendingEmail}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingEmail && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}
+              <Button onClick={handleSendEmail} disabled={!selectedUserId} loading={sendingEmail} size="sm">
                 {sendingEmail ? 'Enviando...' : 'Enviar'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

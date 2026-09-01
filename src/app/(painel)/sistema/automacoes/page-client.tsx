@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import PageHeader from '@/components/PageHeader';
 
 /**
@@ -115,15 +116,9 @@ export default function AutomacoesPage() {
         subtitle="Workflows do n8n que mantêm o QLMED sincronizado."
         showTitleOnMobile
         actions={n8nUrl ? (
-          <a
-            href={n8nUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+          <Button href={n8nUrl} external target="_blank" rel="noopener noreferrer" variant="secondary" icon="open_in_new">
             Abrir n8n
-          </a>
+          </Button>
         ) : undefined}
       />
 

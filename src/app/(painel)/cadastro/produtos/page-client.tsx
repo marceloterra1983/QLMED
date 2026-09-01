@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -359,16 +360,17 @@ export default function ProdutosPage() {
         subtitle="Cadastro automatico por produtos das NF-e de entrada, sem duplicar itens repetidos"
         actions={(
           <>
-            <a
+            <Button
               href={ANVISA_PRODUTOS_SAUDE_URL}
+              external
               target="_blank"
               rel="noopener noreferrer"
               title="Abrir consulta de Produtos para Saúde no site da ANVISA"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              variant="secondary"
+              icon="open_in_new"
             >
-              <span className="material-symbols-outlined text-[20px]">open_in_new</span>
               Consulta ANVISA
-            </a>
+            </Button>
             <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
           </>
         )}

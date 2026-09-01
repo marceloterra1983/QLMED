@@ -40,7 +40,7 @@ const files = execFileSync(
   { encoding: 'utf8' }
 ).trim().split('\n').filter(Boolean).sort();
 
-const violations = { primary: [], muted: [], scale: [] };
+const violations = { primary: [], muted: [], scale: [], button: [] };
 const stats = { arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0 };
 
 /**
@@ -53,8 +53,16 @@ const isTokenKey = (src, at, raw) =>
 
 const lineOf = (src, at) => src.slice(0, at).split('\n').length;
 
+/**
+ * Apaga comentários preservando os offsets, senão uma crase dentro de um
+ * comentário vira literal e o verificador acusa a própria documentação —
+ * aconteceu com o cabeçalho de `ui/Button.tsx`.
+ */
+const semComentarios = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
+
 for (const file of files) {
-  const src = readFileSync(file, 'utf8');
+  const src = semComentarios(readFileSync(file, 'utf8'));
   for (const m of src.matchAll(LITERAL)) {
     const lit = m[1] ?? m[2] ?? m[3];
     if (!lit) continue;
@@ -81,9 +89,9 @@ for (const file of files) {
       if (variant.includes('dark:')) continue;
       stats.primary++;
       if (isTokenKey(src, at, raw)) continue;
-      const pair = `dark:${variant}text-blue-300`;
-      if (!lit.includes(pair)) {
-        violations.primary.push(`${line()}  ${variant}text-primary-dark sem ${pair}`);
+      const pares = [`dark:${variant}text-blue-300`, `dark:${variant}text-blue-400`];
+      if (!pares.some((par) => lit.includes(par))) {
+        violations.primary.push(`${line()}  ${variant}text-primary-dark sem ${pares[0]}`);
       }
     }
 
@@ -107,6 +115,45 @@ for (const file of files) {
         violations.scale.push(`${line()}  text-[${px}px] em literal de texto — use a escala nomeada`);
       }
     }
+  }
+}
+
+// ── button ────────────────────────────────────────────────────────────────
+// Superfície de botão primário ou de perigo escrita à mão. Antes da etapa 2 o
+// botão primário tinha 23 grafias, divergindo em hover, raio, peso e estado
+// desabilitado; `components/ui/Button.tsx` é a única fonte agora.
+// Fora do alvo: item de navegação, ação só-ícone de linha, item de menu e
+// controles com papel próprio (`role="switch"`, cabeçalho de acordeão).
+const BOTAO_ABRE = /<(button|Link|a)\b([^>]*?)>/gs;
+const SUPERFICIE = /\bbg-(primary|red-600|red-500)\b/;
+const classeDe = (attrs) => {
+  const m = attrs.match(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{([^}]*)\})/s);
+  return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
+};
+
+for (const file of files) {
+  if (!file.endsWith('.tsx')) continue;
+  if (file.endsWith('components/ui/Button.tsx')) continue;
+  const src = semComentarios(readFileSync(file, 'utf8'));
+  for (const m of src.matchAll(BOTAO_ABRE)) {
+    const [raw, tagName, attrs] = m;
+    const c = classeDe(attrs);
+    if (!SUPERFICIE.test(c)) continue;
+    if (/role="(switch|tab|menuitem)"/.test(attrs)) continue;
+    const resto = src.slice(m.index + raw.length);
+    const fim = resto.indexOf(`</${tagName}>`);
+    if (fim < 0 || fim > 900) continue;
+    const corpo = resto.slice(0, fim);
+    // sem rótulo de texto é ação só-ícone: outro componente cuida dela
+    const texto = corpo
+      .replace(/<span[^>]*material-symbols[^>]*>[\s\S]*?<\/span>/g, '')
+      .replace(/<svg[\s\S]*?<\/svg>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!texto || /^\{?\s*\}?$/.test(texto)) continue;
+    violations.button.push(
+      `${file}:${lineOf(src, m.index)}  <${tagName}> com superfície de botão fora de ui/Button`,
+    );
   }
 }
 

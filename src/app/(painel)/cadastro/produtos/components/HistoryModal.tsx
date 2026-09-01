@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { formatAmount } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import type { ProductRow } from '../types';
@@ -283,8 +284,8 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
 
         {/* Footer */}
         <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-          <div className="sm:hidden"><button onClick={onClose} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"><span className="material-symbols-outlined text-[18px]">arrow_back</span>Voltar</button></div>
-          <div className="hidden sm:flex justify-end"><button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fechar</button></div>
+          <div className="sm:hidden"><Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button></div>
+          <div className="hidden sm:flex justify-end"><Button onClick={onClose} variant="ghost">Fechar</Button></div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { ProductRow } from './types';
@@ -675,7 +676,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     setNewTypeName('');
                   }} className="flex items-center gap-2">
                     <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
-                    <button type="submit" className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary dark:text-blue-400 border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
+                    <Button type="submit" variant="soft" icon="add">Adicionar</Button>
                   </form>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from 'react';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
+import Button from '@/components/ui/Button';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -71,9 +72,7 @@ export default function ConfirmDialog({
   const iconColor = isDanger ? 'text-red-500' : 'text-primary dark:text-blue-400';
   const iconName = isDanger ? 'warning' : 'help';
 
-  const confirmCls = isDanger
-    ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-600/25'
-    : 'bg-primary hover:bg-primary-dark text-white shadow-sm shadow-primary/25';
+  const confirmVariantName = isDanger ? 'danger' : 'primary';
 
   return (
     <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
@@ -100,38 +99,33 @@ export default function ConfirmDialog({
 
         {/* Actions — desktop */}
         <div className="hidden sm:flex items-center gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
+          <Button onClick={onClose} variant="secondary" className="flex-1">
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => { onConfirm(); }}
-            disabled={loading}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all disabled:opacity-50 ${confirmCls}`}
+            loading={loading}
+            variant={confirmVariantName}
+            className="flex-1"
           >
-            {loading && <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>}
             {confirmLabel}
-          </button>
+          </Button>
         </div>
 
         {/* Actions — mobile fullscreen */}
         <div className="sm:hidden px-4 py-4 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 space-y-2 shrink-0">
-          <button
+          <Button
             onClick={() => { onConfirm(); }}
-            disabled={loading}
-            className={`w-full flex items-center justify-center gap-2 py-3.5 text-base font-bold rounded-xl transition-all disabled:opacity-50 ${confirmCls}`}
+            loading={loading}
+            variant={confirmVariantName}
+            size="lg"
+            block
           >
-            {loading && <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>}
             {confirmLabel}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full py-3.5 text-base font-medium text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
+          </Button>
+          <Button onClick={onClose} variant="secondary" size="lg" block>
             {cancelLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

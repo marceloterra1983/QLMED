@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
 
 export default function NotFound() {
   return (
@@ -12,13 +12,9 @@ export default function NotFound() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">
           O endereço que você acessou não existe ou foi movido.
         </p>
-        <Link
-          href="/fiscal/invoices"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg"
-        >
-          <span className="material-symbols-outlined text-[18px]">home</span>
+        <Button href="/fiscal/invoices" icon="home" size="lg">
           Voltar ao início
-        </Link>
+        </Button>
       </div>
     </div>
   );

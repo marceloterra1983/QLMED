@@ -52,6 +52,12 @@ caso dark-slate500 fail \
 caso px-em-texto fail \
   'export const A = () => <span className="text-[10px] font-bold">x</span>;'
 
+caso botao-cru fail \
+  'export const A = () => <button className="px-4 py-2.5 bg-primary text-white rounded-lg">Salvar</button>;'
+
+caso botao-perigo-cru fail \
+  'export const A = () => <a className="px-4 py-2 bg-red-600 text-white rounded-lg">Excluir</a>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -61,6 +67,8 @@ export const A = () => (
     <span className="text-slate-500 dark:text-slate-400 text-xs">c</span>
     <span className="material-symbols-outlined text-[20px]">home</span>
     <span className={bgMap["text-primary"]}>d</span>
+    <button className="p-1.5 rounded-md hover:bg-primary/10" aria-label="Ver"><span className="material-symbols-outlined text-[18px]">search</span></button>
+    <button role="switch" aria-checked="false" aria-label="Avisar" className="w-12 h-6 rounded-full bg-primary">x</button>
   </>
 );'
 
@@ -69,4 +77,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 6 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 8 violações reprovadas, fixture limpo aprovado"
