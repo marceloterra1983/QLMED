@@ -88,10 +88,10 @@ testes novos. `src/middleware.ts` não foi tocado (nem o `matcher`, ver G4).
   EXPECT: exit 0 nos três; contagem de testes = G0 + novos
   EVIDENCE: `tsc --noEmit` exit 0; `eslint .` exit 0; `Test Files 143 passed | 4 skipped (147)`, `Tests 1222 passed | 9 skipped (1231)`, sem `Errors`. Delta 1175 → 1222 = 47: 32 novos (25 + 2 + 1 + 2 + 2) e 15 dos 4 ficheiros de render que em G0 não arrancavam por falta de jsdom (141 → 147 ficheiros = 2 novos + 4 de render).
 
-- [ ] **G8 — Commit e push**
+- [x] **G8 — Commit e push**
   CHECK: git ls-remote origin fix/reaudit-r4
   EXPECT: SHA do HEAD local aparece no remoto
-  EVIDENCE: pending
+  EVIDENCE: commit `db6d69c` (10 ficheiros, +468/−5); `git push -u origin fix/reaudit-r4` → `* [new branch] fix/reaudit-r4 -> fix/reaudit-r4`; `git ls-remote origin fix/reaudit-r4` → `db6d69c202073bb491d5ba2f4306e8a9504577c6 refs/heads/fix/reaudit-r4` = `git rev-parse HEAD`. Esta linha entra num commit seguinte, só de gates.
 
 ---
 
