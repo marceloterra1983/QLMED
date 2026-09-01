@@ -142,7 +142,7 @@ export default function PreferencesSection() {
               Sistema
             </button>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             Escolha entre tema claro, escuro ou siga a preferência do seu sistema operacional.
           </p>
         </div>
@@ -188,7 +188,7 @@ export default function PreferencesSection() {
                 </div>
               );
             })}
-            <p className="text-xs text-slate-400 dark:text-slate-500 px-3 pt-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 px-3 pt-2">
               Alterações são salvas automaticamente.
             </p>
           </div>
@@ -225,7 +225,7 @@ export default function PreferencesSection() {
           <div className="relative group">
             <button
               disabled
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
             >
               <span className="material-symbols-outlined text-[18px]">download</span>
               Exportar todos os dados (CSV)
@@ -239,7 +239,7 @@ export default function PreferencesSection() {
           <div className="relative group">
             <button
               disabled
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
             >
               <span className="material-symbols-outlined text-[18px]">folder_zip</span>
               Exportar XMLs em lote

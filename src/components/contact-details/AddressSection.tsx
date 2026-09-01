@@ -52,12 +52,12 @@ export default function AddressSection({
     <div className="rounded-lg ring-1 ring-slate-200/60 dark:ring-slate-800/60 p-2.5 bg-slate-50/50 dark:bg-slate-900/20">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[13px] text-slate-400">location_on</span>
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Endereço & Contato</p>
+          <span className="material-symbols-outlined text-[13px] text-slate-500 dark:text-slate-400">location_on</span>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Endereço & Contato</p>
         </div>
         <button
           onClick={onToggleEdit}
-          className={`flex items-center gap-1 text-[10px] font-medium ${colors.editBtn} transition-colors`}
+          className={`flex items-center gap-1 text-xs font-medium ${colors.editBtn} transition-colors`}
         >
           <span className="material-symbols-outlined text-[13px]">{isEditing ? 'close' : 'edit'}</span>
           {isEditing ? 'Cancelar' : 'Editar'}
@@ -82,7 +82,7 @@ export default function AddressSection({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
           <span>
             <span className="material-symbols-outlined text-[12px] align-middle mr-0.5">location_on</span>
             {[
@@ -97,7 +97,7 @@ export default function AddressSection({
               getField(contact.address.state, 'state'),
             ].filter(Boolean).join(', ')}
             {getField(contact.address.zipCode, 'zipCode') && (
-              <span className="text-slate-400"> · CEP {getField(contact.address.zipCode, 'zipCode')}</span>
+              <span className="text-slate-500 dark:text-slate-400"> · CEP {getField(contact.address.zipCode, 'zipCode')}</span>
             )}
           </span>
           {getField(contact.phone, 'phone') && <span><span className="material-symbols-outlined text-[12px] align-middle mr-0.5">phone</span>{getField(contact.phone, 'phone')}</span>}
@@ -110,13 +110,13 @@ export default function AddressSection({
         if (divs.length === 0) return null;
         return (
           <details className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 p-2">
-            <summary className="flex items-center gap-1.5 cursor-pointer text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+            <summary className="flex items-center gap-1.5 cursor-pointer text-amber-700 dark:text-amber-400 text-xs font-bold">
               <span className="material-symbols-outlined text-[13px]">warning</span>
               Diverge da Receita ({divs.length})
             </summary>
             <div className="mt-1.5 space-y-1">
               {divs.map((d) => (
-                <div key={d.field} className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
+                <div key={d.field} className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   <span className="font-bold text-slate-500">{d.label}</span>
                   <span className="text-slate-600 dark:text-slate-400">{d.xmlValue}</span>
                   <span className="text-amber-700 dark:text-amber-400">{d.apiValue}</span>
@@ -131,14 +131,14 @@ export default function AddressSection({
         <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/40">
           <button
             onClick={onCancelEdit}
-            className="px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
+            className="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={onSave}
             disabled={savingOverride}
-            className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold ${colors.saveBtn} text-white rounded-lg transition-colors disabled:opacity-40 shadow-sm`}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold ${colors.saveBtn} text-white rounded-lg transition-colors disabled:opacity-40 shadow-sm`}
           >
             {savingOverride && <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>}
             {savingOverride ? 'Salvando...' : 'Salvar'}

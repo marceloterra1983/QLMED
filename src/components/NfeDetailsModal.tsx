@@ -33,7 +33,7 @@ function TaxCard({ label, color, data }: { label: string; color: string; data: T
 
   return (
     <div className={`rounded-xl bg-gradient-to-br ring-1 p-3 ${cls}`}>
-      <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${txtCls}`}>{label}</p>
+      <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${txtCls}`}>{label}</p>
       <div className="grid grid-cols-2 gap-2.5">
         <Field label="Origem" value={data.orig} />
         <Field label="CST" value={data.cst} />
@@ -87,7 +87,7 @@ function TabNfe({ data }: { data: NfeDetails }) {
   const nfe = data.nfe;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados da NF-e" icon="receipt_long" iconColor="text-primary">
+      <SectionBlock title="Dados da NF-e" icon="receipt_long" iconColor="text-primary dark:text-blue-400">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={nfe.modelo} />
           <Field label="Série" value={nfe.serie} />
@@ -149,7 +149,7 @@ function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'des
   if (!entity) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">person_off</span>
-      <span className="text-[13px] text-slate-400">Dados não disponíveis</span>
+      <span className="text-sm text-slate-500 dark:text-slate-400">Dados não disponíveis</span>
     </div>
   );
 
@@ -222,7 +222,7 @@ function TabProdutos({
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">inventory_2</span>
-        <span className="text-[13px] text-slate-400">Nenhum produto encontrado</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum produto encontrado</span>
       </div>
     );
   }
@@ -241,12 +241,12 @@ function TabProdutos({
             >
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1">{prod.descricao}</p>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span>{prod.quantidade} {prod.unidade}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</span>
-                  <span className={`material-symbols-outlined text-[14px] text-slate-400 transition-transform ${expanded.has(key) ? 'rotate-180' : ''}`}>expand_more</span>
+                  <span className={`material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 transition-transform ${expanded.has(key) ? 'rotate-180' : ''}`}>expand_more</span>
                 </div>
               </div>
             </button>
@@ -275,7 +275,7 @@ function TabProdutos({
       <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+            <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
               <th className="px-3 py-2.5 w-8"></th>
               <th className="px-3 py-2.5 text-left">Num.</th>
               <th className="px-3 py-2.5 text-left">Descrição</th>
@@ -296,7 +296,7 @@ function TabProdutos({
                   }`}
                 >
                   <td className="px-3 py-2.5">
-                    <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${expanded.has(key) ? 'rotate-180' : ''}`}>
+                    <span className={`material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${expanded.has(key) ? 'rotate-180' : ''}`}>
                       expand_more
                     </span>
                   </td>
@@ -375,7 +375,7 @@ function TabTransporte({ data }: { data: NfeDetails }) {
   if (!transp) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">local_shipping</span>
-      <span className="text-[13px] text-slate-400">Dados de transporte não disponíveis</span>
+      <span className="text-sm text-slate-500 dark:text-slate-400">Dados de transporte não disponíveis</span>
     </div>
   );
 
@@ -428,7 +428,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">account_balance</span>
-        <span className="text-[13px] text-slate-400">Dados de cobrança não disponíveis</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Dados de cobrança não disponíveis</span>
       </div>
     );
   }
@@ -436,7 +436,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
   return (
     <div className="space-y-4">
       {cobr.formasPagamento?.length > 0 && (
-        <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary">
+        <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary dark:text-blue-400">
           {cobr.formasPagamento.map((p: FormaPagamento, i: number) => (
             <div key={i} className={i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-3">
@@ -474,7 +474,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
               <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{d.vencimento}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{d.vencimento}</span>
                 </div>
                 <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(d.valor)}</span>
               </div>
@@ -484,7 +484,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
           <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-3 py-2.5 text-left">Número</th>
                   <th className="px-3 py-2.5 text-left">Vencimento</th>
                   <th className="px-3 py-2.5 text-right">Valor</th>
@@ -518,15 +518,15 @@ function TabInfAdicionais({ data }: { data: NfeDetails }) {
       {inf.infComplementar && (
         <SectionBlock title="Informações Complementares" icon="article" iconColor="text-indigo-500">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Descrição</p>
-            <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infComplementar}</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Descrição</p>
+            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infComplementar}</p>
           </div>
         </SectionBlock>
       )}
 
       {inf.infFisco && (
         <SectionBlock title="Informações do Fisco" icon="gavel" iconColor="text-amber-500">
-          <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infFisco}</p>
+          <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infFisco}</p>
         </SectionBlock>
       )}
     </div>
@@ -635,14 +635,14 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
-                <span className="material-symbols-outlined text-[22px] text-primary">description</span>
+                <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">description</span>
               </div>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                   {data ? `NF-e ${data.number}` : 'Detalhes da NF-e'}
                 </h3>
                 {data?.series && (
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Série {data.series}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Série {data.series}</span>
                 )}
               </div>
             </div>
@@ -650,7 +650,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
             <button
               onClick={onClose}
               aria-label="Fechar"
-              className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
               title="Fechar"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
@@ -660,14 +660,14 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           {/* Access Key Bar */}
           {data?.accessKey && (
             <div className="flex items-center gap-2.5 mt-3 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/50">
-              <span className="material-symbols-outlined text-[14px] text-slate-400">key</span>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Chave</span>
-              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
+              <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400">key</span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Chave</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
                 {data.accessKey.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim()}
               </span>
               <button
                 onClick={copyAccessKey}
-                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:text-primary transition-colors"
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
                 title="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
@@ -680,7 +680,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
         <div className="flex items-center border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-1 shrink-0">
           <button
             onClick={() => scrollTabs('left')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll esquerda"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -694,10 +694,10 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
-                    ? 'text-primary border-primary bg-primary/5 dark:bg-primary/10'
-                    : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                    ? 'text-primary dark:text-blue-400 border-primary bg-primary/5 dark:bg-primary/10'
+                    : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
@@ -707,7 +707,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           </div>
           <button
             onClick={() => scrollTabs('right')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll direita"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -719,9 +719,9 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-                <span className="material-symbols-outlined text-[28px] text-primary animate-spin">progress_activity</span>
+                <span className="material-symbols-outlined text-[28px] text-primary dark:text-blue-400 animate-spin">progress_activity</span>
               </div>
-              <p className="text-[13px] font-medium text-slate-400">Carregando detalhes...</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
             </div>
           )}
           {error && (
@@ -729,7 +729,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
               <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
                 <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
               </div>
-              <p className="text-[13px] font-medium text-red-400">{error}</p>
+              <p className="text-sm font-medium text-red-400">{error}</p>
             </div>
           )}
           {data && !loading && renderTabContent()}

@@ -168,7 +168,7 @@ export default function LoginPage() {
         <PWAInstallPrompt />
 
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+        <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1">
           <p>QL MED Produtos Hospitalares LTDA</p>
           <p>CNPJ 07.832.309/0001-97</p>
           <p>Campo Grande, MS &mdash; Brasil</p>

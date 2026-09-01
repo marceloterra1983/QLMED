@@ -19,7 +19,7 @@ export default function SupplierDetailsClient() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[24px] text-primary">storefront</span>
+          <span className="material-symbols-outlined text-[24px] text-primary dark:text-blue-400">storefront</span>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Detalhes do Fornecedor</h2>
         </div>
 

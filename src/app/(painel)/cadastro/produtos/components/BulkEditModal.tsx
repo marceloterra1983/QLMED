@@ -92,15 +92,15 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
         <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
-              <span className="material-symbols-outlined text-[22px] text-primary">edit_note</span>
+              <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">edit_note</span>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">Editar em massa</h3>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                <span className="font-bold text-primary">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
+              <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Editar em massa</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <span className="font-bold text-primary dark:text-blue-400">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
               </p>
             </div>
-            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
@@ -112,14 +112,14 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
             <div className="w-6 h-6 rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
               <span className="material-symbols-outlined text-[13px] text-blue-500">info</span>
             </div>
-            <p className="text-[12px] text-blue-700 dark:text-blue-300 leading-relaxed">Marque os campos que deseja alterar. Campos nao marcados permanecerao inalterados.</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">Marque os campos que deseja alterar. Campos nao marcados permanecerao inalterados.</p>
           </div>
 
           <BulkFieldRow checked={bulkFields.enableType} onChange={(v) => setBulkFields((f) => ({ ...f, enableType: v }))} icon="category" label="Linha">
             {bulkNewMode.type ? (
               <div className="flex gap-1.5">
                 <input autoFocus type="text" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Nome da nova linha" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, type: false })); setBulkFields((f) => ({ ...f, productType: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, type: false })); setBulkFields((f) => ({ ...f, productType: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
               <select value={bulkFields.productType} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, type: true })); setBulkFields((f) => ({ ...f, productType: '' })); } else { setBulkFields((f) => ({ ...f, productType: e.target.value })); } }} className={BULK_INPUT_CLS}>
@@ -134,7 +134,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
             {bulkNewMode.subtype ? (
               <div className="flex gap-1.5">
                 <input autoFocus type="text" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Nome do novo grupo" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subtype: false })); setBulkFields((f) => ({ ...f, productSubtype: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subtype: false })); setBulkFields((f) => ({ ...f, productSubtype: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
               <select value={bulkFields.productSubtype} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subtype: true })); setBulkFields((f) => ({ ...f, productSubtype: '' })); } else { setBulkFields((f) => ({ ...f, productSubtype: e.target.value })); } }} className={BULK_INPUT_CLS}>
@@ -164,7 +164,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
             {bulkNewMode.subgroup ? (
               <div className="flex gap-1.5">
                 <input autoFocus type="text" value={bulkFields.productSubgroup} onChange={(e) => setBulkFields((f) => ({ ...f, productSubgroup: e.target.value }))} placeholder="Nome do novo subgrupo" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subgroup: false })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); }} className="px-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subgroup: false })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
               <select value={bulkFields.productSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subgroup: true })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); } else { setBulkFields((f) => ({ ...f, productSubgroup: e.target.value })); } }} className={BULK_INPUT_CLS}>
@@ -202,11 +202,11 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
 
           <BulkFieldRow checked={bulkFields.enableOutOfLine} onChange={(v) => setBulkFields((f) => ({ ...f, enableOutOfLine: v }))} icon="toggle_on" label="Status">
             <div className="flex gap-2">
-              <button onClick={() => setBulkFields((f) => ({ ...f, outOfLine: false }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${!bulkFields.outOfLine ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-emerald-300 dark:ring-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+              <button onClick={() => setBulkFields((f) => ({ ...f, outOfLine: false }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${!bulkFields.outOfLine ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-emerald-300 dark:ring-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
                 Em Linha
               </button>
-              <button onClick={() => setBulkFields((f) => ({ ...f, outOfLine: true }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${bulkFields.outOfLine ? 'bg-red-50 dark:bg-red-900/20 ring-red-300 dark:ring-red-700 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+              <button onClick={() => setBulkFields((f) => ({ ...f, outOfLine: true }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ring-1 ${bulkFields.outOfLine ? 'bg-red-50 dark:bg-red-900/20 ring-red-300 dark:ring-red-700 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none' : 'ring-slate-200 dark:ring-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                 <span className="material-symbols-outlined text-[16px]">block</span>
                 Fora de Linha
               </button>
@@ -261,10 +261,10 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
               {isBulkSaving ? (
                 <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
               ) : (
-                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
+                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>
               )}
             </button>
-            <button onClick={onClose} className="w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+            <button onClick={onClose} className="w-full px-4 py-2.5 text-sm font-semibold text-primary dark:text-blue-400 hover:bg-primary/5 rounded-xl transition-colors">
               <span className="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Voltar
             </button>
           </div>
@@ -276,7 +276,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
               {isBulkSaving ? (
                 <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
               ) : (
-                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold">{enabledCount}</span>}</>
+                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>
               )}
             </button>
           </div>

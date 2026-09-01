@@ -285,8 +285,8 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           <SectionCard title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" iconColor={cfg.shortNameIconClass} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
             <div className="flex items-center gap-2 mb-3">
               <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
-              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className={`flex-1 px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${cfg.shortNameInputClass}`} />
-              <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-[12px] font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
+              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className={`flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${cfg.shortNameInputClass}`} />
+              <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
                 {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
                 {savingShortName ? '...' : 'Salvar'}
               </button>
@@ -306,7 +306,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
               <div className="mt-3 rounded-lg ring-1 ring-blue-200/60 dark:ring-blue-800/40 p-2.5 bg-blue-50/30 dark:bg-blue-900/10">
                 <div className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[13px] text-blue-500 animate-spin">sync</span>
-                  <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Consultando Receita Federal...</p>
+                  <p className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Consultando Receita Federal...</p>
                 </div>
               </div>
             )}
@@ -315,7 +315,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             )}
             {!cnpjLoading && !cnpjData && contact?.cnpj && contact.cnpj.replace(/\D/g, '').length === 14 && (
               <div className="mt-3 flex justify-center">
-                <button onClick={handleSyncCnpj} className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-blue-500 hover:text-blue-600 ring-1 ring-blue-200 dark:ring-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                <button onClick={handleSyncCnpj} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-500 hover:text-blue-600 ring-1 ring-blue-200 dark:ring-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                   <span className="material-symbols-outlined text-[14px]">account_balance</span>
                   Consultar Receita Federal
                 </button>
@@ -339,7 +339,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             <PriceTableSection priceTable={details.priceTable} meta={details.meta} sortAccentColor={cfg.sortAccentColor} />
           </SectionCard>
 
-          <SectionCard title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" iconColor="text-primary" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
+          <SectionCard title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" iconColor="text-primary dark:text-blue-400" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
             <InvoiceTable invoices={primaryInvoices} installmentsMap={invoiceInstallmentsMap} emptyLabel={cfg.invoicesEmptyLabel} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
           </SectionCard>
 
@@ -358,7 +358,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50">
             <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">{cfg.emptyIcon}</span>
           </div>
-          <p className="text-[13px] font-medium text-slate-400">Sem dados para este {cfg.noun}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Sem dados para este {cfg.noun}</p>
         </div>
       )}
     </>
@@ -381,15 +381,15 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
                     <span className={`material-symbols-outlined text-[22px] ${cfg.headerIconClass}`}>{cfg.headerIcon}</span>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
                       {contactData?.name || contact?.name || cfg.titleFallback}
                     </h3>
                     {contactData?.cnpj && (
-                      <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">{formatDocument(contactData.cnpj)}</span>
+                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatDocument(contactData.cnpj)}</span>
                     )}
                   </div>
                 </div>
-                <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0" title="Fechar">
+                <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0" title="Fechar">
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>

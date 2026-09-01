@@ -55,7 +55,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     noun: 'cliente',
 
     headerIcon: 'person',
-    headerIconClass: 'text-primary',
+    headerIconClass: 'text-primary dark:text-blue-400',
     headerAvatarClass:
       'bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 ring-primary/20 dark:ring-primary/30',
     emptyIcon: 'person_off',
@@ -73,7 +73,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     firstStatColor: 'primary',
 
     priceTableSubtitle: 'Histórico por item com base nas NF-e emitidas',
-    sortAccentColor: 'text-primary',
+    sortAccentColor: 'text-primary dark:text-blue-400',
 
     primaryInvoiceTags: ['Venda', 'Bonificação'],
     invoicesSubtitle: 'Vendas e bonificações',

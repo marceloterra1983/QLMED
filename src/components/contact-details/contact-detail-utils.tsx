@@ -36,7 +36,7 @@ export function compareAddressFields(
 
 // --- Shared table class constants ---
 
-export const thCls = 'px-3 py-2.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500';
+export const thCls = 'px-3 py-2.5 text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400';
 export const tdCls = 'px-3 py-2';
 
 // --- Shared UI components ---
@@ -50,12 +50,12 @@ export function EditableField({ label, value, field, draft, onChange }: {
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
       <input
         type="text"
         value={draft[field] ?? value ?? ''}
         onChange={(e) => onChange(field, e.target.value)}
-        className="w-full px-2 py-1 text-[13px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+        className="w-full px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
       />
     </div>
   );
@@ -72,7 +72,7 @@ interface SectionCardProps {
   children: React.ReactNode;
 }
 
-export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary', open, onToggle, badge, children }: SectionCardProps) {
+export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary dark:text-blue-400', open, onToggle, badge, children }: SectionCardProps) {
   const hasBeenOpened = useRef(open);
   if (open && !hasBeenOpened.current) hasBeenOpened.current = true;
 
@@ -85,7 +85,8 @@ export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary',
     'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
     'text-orange-500': 'bg-orange-500/10 dark:bg-orange-500/20 ring-orange-500/20 dark:ring-orange-500/30',
   };
-  const iconBg = iconBgMap[iconColor] || iconBgMap['text-primary'];
+  // iconColor carrega o par claro/escuro; a chave do mapa é só o primeiro token.
+  const iconBg = iconBgMap[iconColor.split(' ')[0]] || iconBgMap['text-primary'];
 
   return (
     <div className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden ring-1 transition-all ${open ? 'ring-slate-200/80 dark:ring-slate-700/60 shadow-sm' : 'ring-slate-200/50 dark:ring-slate-800/50'}`}>
@@ -94,20 +95,20 @@ export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary',
         className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
       >
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center ring-1 shrink-0 ${iconBg}`}>
-          <span className={`material-symbols-outlined text-[17px] ${open ? iconColor : 'text-slate-400 dark:text-slate-500'} transition-colors`}>{icon}</span>
+          <span className={`material-symbols-outlined text-[17px] ${open ? iconColor : 'text-slate-500 dark:text-slate-400'} transition-colors`}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-[13px] font-bold text-slate-900 dark:text-white">{title}</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
             {badge !== undefined && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+              <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                 {badge}
               </span>
             )}
           </div>
-          {subtitle && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <span className={`material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+        <span className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
           expand_more
         </span>
       </button>
@@ -120,7 +121,7 @@ export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary',
 
 export function StatCard({ label, value, icon, color = 'primary' }: { label: string; value: string; icon: string; color?: string }) {
   const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
-    primary: { bg: 'bg-primary/10 dark:bg-primary/20', text: 'text-primary', ring: 'ring-primary/20 dark:ring-primary/30' },
+    primary: { bg: 'bg-primary/10 dark:bg-primary/20', text: 'text-primary dark:text-blue-400', ring: 'ring-primary/20 dark:ring-primary/30' },
     indigo: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20', text: 'text-indigo-500', ring: 'ring-indigo-500/20 dark:ring-indigo-500/30' },
     emerald: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-500', ring: 'ring-emerald-500/20 dark:ring-emerald-500/30' },
     amber: { bg: 'bg-amber-500/10 dark:bg-amber-500/20', text: 'text-amber-500', ring: 'ring-amber-500/20 dark:ring-amber-500/30' },
@@ -133,7 +134,7 @@ export function StatCard({ label, value, icon, color = 'primary' }: { label: str
     <div className="rounded-xl bg-slate-50 dark:bg-slate-900/30 p-3 ring-1 ring-slate-200/50 dark:ring-slate-800/50">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
           <p className="text-base font-bold text-slate-900 dark:text-white mt-1 truncate">{value}</p>
         </div>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ring-1 ${c.bg} ${c.ring}`}>

@@ -397,45 +397,45 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           )}
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-              <span className="material-symbols-outlined text-[22px] text-primary">inventory_2</span>
+              <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">inventory_2</span>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
                 {detailProduct.codigo && <><span className="font-mono text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                 {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
                 {detailProduct.description}
               </h3>
               {detailProduct.shortName && (
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
               )}
               <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 {detailProduct.outOfLine && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-[10px] font-bold text-red-600 dark:text-red-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
                     <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
                   </span>
                 )}
                 {detailProduct.productType && (
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
                 )}
                 {detailProduct.productSubtype && (
-                  <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
                 )}
                 {detailProduct.productSubgroup && (
-                  <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-[10px] font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
                 )}
                 {detailProduct.ean && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
                     EAN {detailProduct.ean}
                   </span>
                 )}
                 {detailProduct.anvisa && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-[10px] font-mono font-bold text-teal-600 dark:text-teal-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
                     <span className="material-symbols-outlined text-[11px]">verified</span>{detailProduct.anvisa}
                   </span>
                 )}
               </div>
             </div>
-            <button onClick={onClose} className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button onClick={onClose} className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
@@ -457,8 +457,8 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     <span className="material-symbols-outlined text-[13px]">{s.icon}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{s.label}</p>
-                    <p className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{s.value}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.label}</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{s.value}</p>
                   </div>
                 </div>
               ))}
@@ -466,20 +466,20 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           </DetailSectionCard>
 
           {/* Card: Dados do Cadastro */}
-          <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
+          <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary dark:text-blue-400" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
             <div className="space-y-2 mt-1">
               {/* Referencias */}
               <div>
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referencia</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Referencia</p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Ref 1</span>
-                    <input type="text" value={detailProduct.code || '\u2014'} readOnly disabled size={Math.max(4, (detailProduct.code || '\u2014').length)} className="font-mono text-[13px] text-slate-600 dark:text-slate-300 bg-transparent border-0 outline-none p-0 min-w-0" />
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Ref 1</span>
+                    <input type="text" value={detailProduct.code || '\u2014'} readOnly disabled size={Math.max(4, (detailProduct.code || '\u2014').length)} className="font-mono text-sm text-slate-600 dark:text-slate-300 bg-transparent border-0 outline-none p-0 min-w-0" />
                   </div>
                   {detailRefs.map((ref, idx) => (
                     <div key={idx} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-shadow">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Ref {idx + 2}</span>
-                      <input type="text" value={ref} onChange={(e) => { const next = [...detailRefs]; next[idx] = e.target.value; setDetailRefs(next); }} size={Math.max(6, ref.length + 1)} maxLength={100} placeholder="\u2014" disabled={!canWrite} className="font-mono text-[13px] text-slate-800 dark:text-slate-200 bg-transparent border-0 outline-none p-0 min-w-0 disabled:cursor-not-allowed" />
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Ref {idx + 2}</span>
+                      <input type="text" value={ref} onChange={(e) => { const next = [...detailRefs]; next[idx] = e.target.value; setDetailRefs(next); }} size={Math.max(6, ref.length + 1)} maxLength={100} placeholder="\u2014" disabled={!canWrite} className="font-mono text-sm text-slate-800 dark:text-slate-200 bg-transparent border-0 outline-none p-0 min-w-0 disabled:cursor-not-allowed" />
                       {canWrite && (
                         <button type="button" onClick={() => setDetailRefs(detailRefs.filter((_, i) => i !== idx))} className="shrink-0 ml-0.5 text-slate-300 hover:text-red-500 transition-colors" title="Remover">
                           <span className="material-symbols-outlined text-[13px]">close</span>
@@ -488,7 +488,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     </div>
                   ))}
                   {canWrite && (
-                    <button type="button" onClick={() => setDetailRefs([...detailRefs, ''])} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors text-[11px] font-medium">
+                    <button type="button" onClick={() => setDetailRefs([...detailRefs, ''])} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-primary/40 text-primary dark:text-blue-400 hover:bg-primary/5 transition-colors text-xs font-medium">
                       <span className="material-symbols-outlined text-[13px]">add</span>
                       Adicionar
                     </button>
@@ -498,11 +498,11 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 
               <div className="flex gap-2 items-start">
                 <div className="shrink-0">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Codigo Interno</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Codigo Interno</label>
                   <input type="text" value={detailProduct.codigo || '\u2014'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-28`} />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Nome Abreviado</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Nome Abreviado</label>
                   <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificacao rapida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
                 </div>
               </div>
@@ -531,7 +531,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.type ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="Nova linha" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
                     <select value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
@@ -545,7 +545,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.subtype ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="Novo grupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
                     <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
@@ -574,7 +574,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.subgroup ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailSubgroup} onChange={(e) => setDetailSubgroup(e.target.value)} placeholder="Novo subgrupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
                     <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
@@ -604,7 +604,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
               </div>
 
               {detailProduct.lastSupplierName && (
-                <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[14px] text-orange-500">local_shipping</span>
                   <span>Fabricante:</span>
                   <span className="font-medium text-slate-700 dark:text-slate-300">{detailProduct.lastSupplierName}</span>
@@ -618,7 +618,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-red-500 peer-disabled:opacity-50 transition-colors"></div>
                     <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
                   </div>
-                  <span className={`text-[12px] font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>Fora de Linha</span>
+                  <span className={`text-xs font-semibold ${detailProduct.outOfLine ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>Fora de Linha</span>
                 </label>
                 <label className={`flex-1 flex items-center gap-2.5 cursor-pointer px-2.5 py-2 rounded-xl border transition-colors ${detailProduct.instrumental ? 'border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-900/10' : 'border-dashed border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}>
                   <div className="relative">
@@ -626,7 +626,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     <div className="w-9 h-5 bg-slate-300 dark:bg-slate-600 rounded-full peer-checked:bg-violet-500 peer-disabled:opacity-50 transition-colors"></div>
                     <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
                   </div>
-                  <span className={`text-[12px] font-semibold ${detailProduct.instrumental ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>Instrumental</span>
+                  <span className={`text-xs font-semibold ${detailProduct.instrumental ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>Instrumental</span>
                 </label>
               </div>
             </div>
@@ -651,12 +651,12 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                         <div className="mt-1">
                           {!detailNcmExpanded && (
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-tight bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold">
                                 <span className="font-mono opacity-70">{last.codigo}</span>
                                 <span>{last.descricao}</span>
                               </span>
                               {hasMore && (
-                                <button type="button" onClick={() => setDetailNcmExpanded(true)} className="text-[10px] text-amber-500 dark:text-amber-400 hover:underline whitespace-nowrap">ver hierarquia</button>
+                                <button type="button" onClick={() => setDetailNcmExpanded(true)} className="text-xs text-amber-500 dark:text-amber-400 hover:underline whitespace-nowrap">ver hierarquia</button>
                               )}
                             </div>
                           )}
@@ -665,13 +665,13 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                               {levels.map((level, i) => (
                                 <React.Fragment key={level.codigo}>
                                   {i > 0 && <span className="material-symbols-outlined text-[12px] text-slate-300 dark:text-slate-600">chevron_right</span>}
-                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight ${i === levels.length - 1 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-tight ${i === levels.length - 1 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                                     <span className="font-mono opacity-70">{level.codigo}</span>
                                     <span>{level.descricao}</span>
                                   </span>
                                 </React.Fragment>
                               ))}
-                              <button type="button" onClick={() => setDetailNcmExpanded(false)} className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:underline whitespace-nowrap ml-1">recolher</button>
+                              <button type="button" onClick={() => setDetailNcmExpanded(false)} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:underline whitespace-nowrap ml-1">recolher</button>
                             </div>
                           )}
                         </div>
@@ -710,7 +710,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 
               {/* CST */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/30 p-3 space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[13px]">receipt_long</span>
                   Situacao Tributaria (CST)
                 </p>
@@ -812,7 +812,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 
               {/* Observacoes */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/30 p-3 space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[13px]">comment</span>
                   Observacoes
                 </p>
@@ -838,7 +838,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           {/* Card: Dados da ANVISA */}
           <DetailSectionCard id="anvisa" icon="verified_user" iconColor="text-teal-500" title="Dados da ANVISA" isOpen={detailOpenSections.has('anvisa')} onToggle={toggleDetailSection}
             badge={detailProduct.anvisaStatus ? (
-              <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
+              <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
             ) : undefined}
           >
             <div className="grid grid-cols-2 gap-3 mt-2">
@@ -851,7 +851,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     </button>
                   )}
                   {canWrite && detailProduct.anvisa && (
-                    <button onClick={handleSyncRegistry} disabled={syncingRegistry} className="flex items-center gap-1.5 px-3.5 py-2.5 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl text-[12px] font-semibold transition-colors disabled:opacity-60 whitespace-nowrap" title="Consultar dados do registro na ANVISA">
+                    <button onClick={handleSyncRegistry} disabled={syncingRegistry} className="flex items-center gap-1.5 px-3.5 py-2.5 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap" title="Consultar dados do registro na ANVISA">
                       <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'progress_activity' : 'verified'}</span>
                       {syncingRegistry ? 'Consultando...' : 'Buscar'}
                     </button>
@@ -863,19 +863,19 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 <div className="col-span-2">
                   {anvisaValidation.loading ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/30 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                      <span className="material-symbols-outlined text-[14px] text-slate-400 animate-spin">progress_activity</span>
-                      <span className="text-[11px] text-slate-400">Validando na ANVISA...</span>
+                      <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 animate-spin">progress_activity</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Validando na ANVISA...</span>
                     </div>
                   ) : anvisaValidation.notFound ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/30 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                      <span className="material-symbols-outlined text-[14px] text-slate-400">help_outline</span>
-                      <span className="text-[11px] font-medium text-slate-400">Nao encontrado na ANVISA</span>
+                      <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400">help_outline</span>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Nao encontrado na ANVISA</span>
                     </div>
                   ) : (
                     <div className="rounded-xl bg-teal-50/40 dark:bg-teal-900/10 border border-teal-200/40 dark:border-teal-800/30 px-3 py-2.5 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         {anvisaValidation.status && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                             anvisaValidation.status.toLowerCase().includes('valid') || anvisaValidation.status.toLowerCase().includes('ativ')
                               ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400'
                               : anvisaValidation.status.toLowerCase().includes('cancel') || anvisaValidation.status.toLowerCase().includes('caduc')
@@ -885,11 +885,11 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                             {anvisaValidation.status}
                           </span>
                         )}
-                        {anvisaValidation.riskClass && <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">Classe {anvisaValidation.riskClass}</span>}
-                        {anvisaValidation.expiration && <span className="text-[10px] text-slate-400 dark:text-slate-500">Val. {anvisaValidation.expiration}</span>}
+                        {anvisaValidation.riskClass && <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Classe {anvisaValidation.riskClass}</span>}
+                        {anvisaValidation.expiration && <span className="text-xs text-slate-500 dark:text-slate-400">Val. {anvisaValidation.expiration}</span>}
                       </div>
-                      {anvisaValidation.productName && <p className="text-[12px] font-medium text-slate-700 dark:text-slate-300 leading-snug">{anvisaValidation.productName}</p>}
-                      {anvisaValidation.company && <p className="text-[10px] text-slate-400 dark:text-slate-500">{anvisaValidation.company}</p>}
+                      {anvisaValidation.productName && <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-snug">{anvisaValidation.productName}</p>}
+                      {anvisaValidation.company && <p className="text-xs text-slate-500 dark:text-slate-400">{anvisaValidation.company}</p>}
                     </div>
                   )}
                 </div>
@@ -897,8 +897,8 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 
               {detailProduct.anvisaMatchedProductName && (
                 <div className="col-span-2 bg-teal-50/60 dark:bg-teal-900/10 border border-teal-200/50 dark:border-teal-800/40 rounded-xl px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-teal-500 dark:text-teal-400 mb-1">Produto Registrado</p>
-                  <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300 leading-snug">{detailProduct.anvisaMatchedProductName}</p>
+                  <p className="text-xs uppercase tracking-wider font-bold text-teal-500 dark:text-teal-400 mb-1">Produto Registrado</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 leading-snug">{detailProduct.anvisaMatchedProductName}</p>
                 </div>
               )}
 
@@ -907,23 +907,23 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailProduct.anvisaHolder && (
                     <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="material-symbols-outlined text-[12px] text-slate-400">business</span>
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Detentor do Registro</p>
+                        <span className="material-symbols-outlined text-[12px] text-slate-500 dark:text-slate-400">business</span>
+                        <p className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Detentor do Registro</p>
                       </div>
-                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{detailProduct.anvisaHolder}</p>
                     </div>
                   )}
                   {detailProduct.anvisaManufacturer && (
                     <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="material-symbols-outlined text-[12px] text-slate-400">factory</span>
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">
+                        <span className="material-symbols-outlined text-[12px] text-slate-500 dark:text-slate-400">factory</span>
+                        <p className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
                           Fabricante Legal{detailProduct.anvisaManufacturerCountry ? ` \u00B7 ${detailProduct.anvisaManufacturerCountry}` : ''}
                         </p>
                       </div>
-                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         {detailProduct.manufacturerShortName ? (
-                          <><span className="font-semibold">{detailProduct.manufacturerShortName}</span> <span className="text-slate-400 text-[11px]">({detailProduct.anvisaManufacturer})</span></>
+                          <><span className="font-semibold">{detailProduct.manufacturerShortName}</span> <span className="text-slate-500 dark:text-slate-400 text-xs">({detailProduct.anvisaManufacturer})</span></>
                         ) : detailProduct.anvisaManufacturer}
                       </p>
                     </div>
@@ -935,26 +935,26 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 <div className="col-span-2 grid grid-cols-2 md:grid-cols-4 gap-2">
                   {detailProduct.anvisaStatus && (
                     <div className={`rounded-xl px-3.5 py-2.5 border ${anvisaStatusColor}`}>
-                      <p className="text-[9px] uppercase tracking-wider font-bold opacity-60 mb-0.5">Situacao</p>
-                      <p className="text-[12px] font-bold">{detailProduct.anvisaStatus}</p>
+                      <p className="text-xs uppercase tracking-wider font-bold opacity-60 mb-0.5">Situacao</p>
+                      <p className="text-xs font-bold">{detailProduct.anvisaStatus}</p>
                     </div>
                   )}
                   <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                    <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Vencimento</p>
-                    <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
+                    <p className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-0.5">Vencimento</p>
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       {detailProduct.anvisaExpiration ? formatDate(detailProduct.anvisaExpiration) : 'Vigente'}
                     </p>
                   </div>
                   {detailProduct.anvisaProcess && (
                     <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                      <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Processo</p>
-                      <p className="text-[11px] font-mono font-medium text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
+                      <p className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-0.5">Processo</p>
+                      <p className="text-xs font-mono font-medium text-slate-600 dark:text-slate-400">{detailProduct.anvisaProcess}</p>
                     </div>
                   )}
                   {detailProduct.anvisaRiskClass && (
                     <div className="rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                      <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 mb-0.5">Classe de Risco</p>
-                      <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
+                      <p className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-0.5">Classe de Risco</p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{detailProduct.anvisaRiskClass}</p>
                     </div>
                   )}
                 </div>
@@ -967,7 +967,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
         <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
           <div className="sm:hidden space-y-2">
             <div className="flex gap-2">
-              <button onClick={() => onOpenHistory(detailProduct)} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors">
+              <button onClick={() => onOpenHistory(detailProduct)} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors">
                 <span className="material-symbols-outlined text-[18px] text-blue-500">history</span>
                 Historico
               </button>
@@ -988,7 +988,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
               Fechar
             </button>
             <div className="flex items-center gap-2">
-              <button onClick={() => onOpenHistory(detailProduct)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Ver historico de compras e vendas">
+              <button onClick={() => onOpenHistory(detailProduct)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Ver historico de compras e vendas">
                 <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
                 Historico
               </button>

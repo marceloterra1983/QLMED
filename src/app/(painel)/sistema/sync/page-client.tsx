@@ -306,7 +306,7 @@ export default function SyncPage() {
       error: 'error',
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${styles[status] || styles.error}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${styles[status] || styles.error}`}>
         <span className={`material-symbols-outlined text-[13px] ${status === 'running' ? 'animate-spin' : ''}`}>
           {icons[status] || 'help'}
         </span>
@@ -318,7 +318,7 @@ export default function SyncPage() {
   const formatFailedCell = (status: string) => {
     const failed = status === 'error';
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
         failed
           ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
           : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
@@ -361,7 +361,7 @@ export default function SyncPage() {
           </div>
           <div className="flex items-center justify-between w-full gap-3">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">{title}</h3>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {methodLogs.length} registro(s)
             </span>
           </div>
@@ -377,7 +377,7 @@ export default function SyncPage() {
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                     <th className="px-3 py-2">Horário</th>
                     <th className="px-3 py-2">Resultado</th>
                     <th className="px-3 py-2 text-right">Novos</th>
@@ -395,7 +395,7 @@ export default function SyncPage() {
                         <div className="flex flex-col gap-1">
                           <div>{getStatusBadge(log.status)}</div>
                           {log.errorMessage && (
-                            <span className="text-[11px] text-red-500 dark:text-red-400 max-w-[14rem] truncate" title={log.errorMessage}>
+                            <span className="text-xs text-red-500 dark:text-red-400 max-w-[14rem] truncate" title={log.errorMessage}>
                               {log.errorMessage}
                             </span>
                           )}
@@ -421,7 +421,7 @@ export default function SyncPage() {
               {methodLogs.map((log) => (
                 <div key={log.id} className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <p className="text-[10px] font-bold text-slate-900 dark:text-white">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
                       {formatDate(log.startedAt)}
                     </p>
                     {formatFailedCell(log.status)}
@@ -429,7 +429,7 @@ export default function SyncPage() {
                   <div className="mb-1.5">
                     {getStatusBadge(log.status)}
                     {log.errorMessage && (
-                      <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 break-words">
+                      <p className="text-xs text-red-500 dark:text-red-400 mt-1 break-words">
                         {log.errorMessage}
                       </p>
                     )}
@@ -437,11 +437,11 @@ export default function SyncPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 border border-emerald-100 dark:border-emerald-800">
                       <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">{log.newDocs}</p>
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-500 font-medium">Novas notas</p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">Novas notas</p>
                     </div>
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 border border-blue-100 dark:border-blue-800">
                       <p className="text-base font-bold text-blue-700 dark:text-blue-400">{log.updatedDocs}</p>
-                      <p className="text-[11px] text-blue-600 dark:text-blue-500 font-medium">Atualizados</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-500 font-medium">Atualizados</p>
                     </div>
                   </div>
                 </div>
@@ -600,7 +600,7 @@ export default function SyncPage() {
       {/* Page Header */}
       <div>
         <div className="hidden sm:flex items-center gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[24px] text-primary flex-shrink-0">cloud_sync</span>
+          <span className="material-symbols-outlined text-[24px] text-primary dark:text-blue-400 flex-shrink-0">cloud_sync</span>
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Sincronizar</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Sincronize documentos via SEFAZ, NSDocs ou Receita NFS-e (ADN)</p>
@@ -619,7 +619,7 @@ export default function SyncPage() {
 
         {/* Badges */}
         <div className="flex items-center gap-2 mt-3">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
             hasCertificate
               ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
               : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
@@ -628,7 +628,7 @@ export default function SyncPage() {
             SEFAZ: {hasCertificate ? 'Ativa' : 'Inativa'}
           </div>
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
             hasNsdocsConfig
               ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
               : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
@@ -637,7 +637,7 @@ export default function SyncPage() {
             NSDocs: {hasNsdocsConfig ? 'Ativa' : 'Inativa'}
           </div>
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
             hasReceitaConfig
               ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800'
               : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
@@ -776,12 +776,12 @@ export default function SyncPage() {
       <div className="space-y-3">
         <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400 text-[18px]">history</span>
+            <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-[18px]">history</span>
             Histórico de Sincronizações
           </h3>
           <button
             onClick={loadLogs}
-            className="text-xs text-primary hover:text-primary-dark font-medium flex items-center gap-1"
+            className="text-xs text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 font-medium flex items-center gap-1"
           >
             <span className="material-symbols-outlined text-[14px]">refresh</span>
             Atualizar
@@ -792,7 +792,7 @@ export default function SyncPage() {
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-center">
             <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[36px]">cloud_off</span>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Nenhuma sincronização realizada</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Use os botões acima para sincronizar documentos fiscais
             </p>
           </div>

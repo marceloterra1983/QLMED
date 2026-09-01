@@ -63,7 +63,7 @@ function ParseBadge({ status }: { status: ParseStatus }) {
   const isFail = status === 'falha';
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0 ${
         isFail
           ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
@@ -339,7 +339,7 @@ export default function CassemsPageClient() {
                             event.stopPropagation();
                             setSelectedId(item.id);
                           }}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10"
                           title={item.fileName}
                           aria-label={`Abrir arquivo da autorização ${item.oficioNumber}`}
                         >
@@ -481,11 +481,11 @@ export default function CassemsPageClient() {
                 </ReadFieldEditor>
               </div>
               <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Total</dt>
+                <dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total</dt>
                 <dd className="font-mono font-bold">{formatBrl(detail.totalAmount)}</dd>
               </div>
               <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
+                <dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Leitura</dt>
                 <dd className="flex items-center gap-2 flex-wrap">
                   {detail.parseStatus === 'ok' ? (
                     'Ok'
@@ -523,7 +523,7 @@ export default function CassemsPageClient() {
                 <tbody>
                   {detail.items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-3 py-4 text-center text-slate-400">
+                      <td colSpan={6} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
                         Nenhum item extraído.
                       </td>
                     </tr>

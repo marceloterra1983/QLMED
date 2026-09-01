@@ -85,7 +85,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
     <div className="flex items-center justify-center gap-0">
       <button
         onClick={() => onView(invoiceId)}
-        className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+        className="p-1.5 rounded-md text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
         title="Visualizar documento"
         aria-label="Visualizar documento"
       >
@@ -94,7 +94,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
       {onViewProducts && (
         <button
           onClick={() => onViewProducts(invoiceId)}
-          className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+          className="p-1.5 rounded-md text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
           title="Ver detalhes"
           aria-label="Ver detalhes"
         >
@@ -103,7 +103,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
       )}
       <button
         onClick={handlePrint}
-        className="hidden sm:flex p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+        className="hidden sm:flex p-1.5 rounded-md text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
         title="Imprimir"
         aria-label="Imprimir PDF"
       >
@@ -112,7 +112,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setOpen(!open)}
-          className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+          className="p-1.5 rounded-md text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
           title="Mais opções"
           aria-label="Mais opções"
           aria-expanded={open}
@@ -133,7 +133,7 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
                       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[16px] ${item.danger ? '' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <span className={`material-symbols-outlined text-[16px] ${item.danger ? '' : 'text-slate-500 dark:text-slate-400'}`}>
                     {item.icon}
                   </span>
                   {item.label}

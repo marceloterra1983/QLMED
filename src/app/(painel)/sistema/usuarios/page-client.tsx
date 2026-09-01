@@ -457,7 +457,7 @@ export default function UsuariosPage() {
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <span className="material-symbols-outlined text-[24px] animate-spin text-slate-400">progress_activity</span>
+            <span className="material-symbols-outlined text-[24px] animate-spin text-slate-500 dark:text-slate-400">progress_activity</span>
             <p className="text-sm text-slate-500 mt-2">Carregando...</p>
           </div>
         ) : users.length === 0 ? (
@@ -512,7 +512,7 @@ export default function UsuariosPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openEdit(user)}
-                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Editar"
                           >
                             <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -557,17 +557,17 @@ export default function UsuariosPage() {
                   </div>
 
                   {/* Secondary fields */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] mb-1.5">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-1.5">
                     <div className="col-span-2">
-                      <span className="text-slate-400 font-medium">Email</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Email</span>
                       <p className="text-slate-700 dark:text-slate-300 truncate">{user.email}</p>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-medium">Telefone</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Telefone</span>
                       <p className="text-slate-700 dark:text-slate-300">{user.phone || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-medium">Criado em</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Criado em</span>
                       <p className="text-slate-700 dark:text-slate-300">
                         {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                       </p>
@@ -578,7 +578,7 @@ export default function UsuariosPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEdit(user)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-primary dark:text-blue-400 bg-primary/10 hover:bg-primary/20 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">edit</span>
                       Editar
@@ -648,7 +648,7 @@ export default function UsuariosPage() {
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">
-              Telefone <span className="font-normal text-slate-400">(opcional)</span>
+              Telefone <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
             </label>
             <input
               type="tel"
@@ -726,7 +726,7 @@ export default function UsuariosPage() {
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">
-              Telefone <span className="font-normal text-slate-400">(opcional)</span>
+              Telefone <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
             </label>
             <input
               type="tel"
@@ -749,7 +749,7 @@ export default function UsuariosPage() {
               <option value="admin">Admin</option>
             </select>
             {editingUser?.id === session?.user?.id && (
-              <p className="text-xs text-slate-400 mt-1">Não é possível alterar seu próprio perfil</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Não é possível alterar seu próprio perfil</p>
             )}
           </div>
           <div>
@@ -768,7 +768,7 @@ export default function UsuariosPage() {
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">
-              Nova senha <span className="font-normal text-slate-400">(opcional)</span>
+              Nova senha <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
             </label>
             <input
               type="password"
@@ -812,10 +812,10 @@ export default function UsuariosPage() {
               type="checkbox"
               checked={allPagesChecked}
               onChange={handleToggleAllPages}
-              className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
+              className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
             />
             <span className="text-sm font-bold text-slate-900 dark:text-white">Todas as páginas</span>
-            <span className="text-xs text-slate-400 ml-auto">Acesso completo</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">Acesso completo</span>
           </label>
 
           {/* Grouped pages */}
@@ -839,10 +839,10 @@ export default function UsuariosPage() {
                       ref={(el) => { if (el) el.indeterminate = !allPagesChecked && someGroupSelected && !allGroupSelected; }}
                       onChange={() => handleToggleGroup(groupPaths)}
                       disabled={allPagesChecked}
-                      className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
+                      className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
                     />
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{group.section}</span>
-                    <span className="text-xs text-slate-400 ml-auto">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
                       {allPagesChecked ? groupPaths.length : groupPaths.filter((p) => selectedPages.includes(p)).length}/{groupPaths.length}
                     </span>
                   </label>
@@ -858,7 +858,7 @@ export default function UsuariosPage() {
                           checked={allPagesChecked || selectedPages.includes(page.path)}
                           onChange={() => handleTogglePage(page.path)}
                           disabled={allPagesChecked}
-                          className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
+                          className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
                         />
                         <span className="text-sm text-slate-700 dark:text-slate-200">{page.label}</span>
                       </label>
@@ -874,7 +874,7 @@ export default function UsuariosPage() {
               <button
                 type="button"
                 onClick={() => setSelectedPages(ALL_PAGES.map((p) => p.path))}
-                className="text-xs text-primary hover:text-primary-dark font-medium transition-colors"
+                className="text-xs text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 font-medium transition-colors"
               >
                 Selecionar todas
               </button>
@@ -882,7 +882,7 @@ export default function UsuariosPage() {
               <button
                 type="button"
                 onClick={() => setSelectedPages([])}
-                className="text-xs text-primary hover:text-primary-dark font-medium transition-colors"
+                className="text-xs text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 font-medium transition-colors"
               >
                 Desmarcar todas
               </button>
@@ -915,10 +915,10 @@ export default function UsuariosPage() {
         <div className="space-y-3">
           {logsLoading && accessLogs.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <span className="material-symbols-outlined text-[24px] animate-spin text-slate-400">progress_activity</span>
+              <span className="material-symbols-outlined text-[24px] animate-spin text-slate-500 dark:text-slate-400">progress_activity</span>
             </div>
           ) : accessLogs.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Nenhum registro de acesso</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Nenhum registro de acesso</p>
           ) : (
             <>
               <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
@@ -926,18 +926,18 @@ export default function UsuariosPage() {
                   <div key={log.id} className="flex items-center justify-between py-2 px-1">
                     <div className="flex items-center gap-2 min-w-0">
                       {log.action === 'login' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                           <span className="material-symbols-outlined text-[12px]">login</span>
                           Login
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 truncate max-w-[200px]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 truncate max-w-[200px]">
                           <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                           {PAGE_LABELS[log.path || '']?.label || log.path}
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400 flex-shrink-0 ml-2">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">
                       {new Date(log.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}{' '}
                       {new Date(log.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -948,7 +948,7 @@ export default function UsuariosPage() {
                 <button
                   onClick={() => logsUser && openLogs(logsUser, accessLogs.length)}
                   disabled={logsLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-primary dark:text-blue-400 hover:bg-primary/5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {logsLoading ? (
                     <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
@@ -958,7 +958,7 @@ export default function UsuariosPage() {
                   Carregar mais ({logsTotal - accessLogs.length} restantes)
                 </button>
               )}
-              <p className="text-[10px] text-slate-400 text-center">{logsTotal} registro(s) no total</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">{logsTotal} registro(s) no total</p>
             </>
           )}
         </div>

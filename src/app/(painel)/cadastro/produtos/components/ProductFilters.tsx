@@ -38,7 +38,7 @@ export default function ProductFilters({
             Buscar por codigo, descricao, NCM, ANVISA ou fornecedor
           </label>
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">search</span>
+            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-500 dark:text-slate-400">search</span>
             <input
               type="text"
               placeholder="ex: 7891234567890 ou dipirona"
@@ -47,7 +47,7 @@ export default function ProductFilters({
               className="block w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             )}
@@ -114,7 +114,7 @@ export default function ProductFilters({
               </select>
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors"
+                className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/5 transition-colors"
                 title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
               >
                 <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
@@ -143,7 +143,7 @@ export default function ProductFilters({
         <div className="flex items-center gap-2 mt-2.5 flex-wrap">
           <span className="text-xs text-slate-500">Filtros ativos:</span>
           {search && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-medium">
               &ldquo;{search}&rdquo;
               <button onClick={() => setSearch('')} className="hover:opacity-70">
                 <span className="material-symbols-outlined text-[13px]">close</span>
@@ -174,7 +174,7 @@ export default function ProductFilters({
               </button>
             </span>
           )}
-          <span className="text-xs text-slate-400">{filteredCount.toLocaleString('pt-BR')} resultado{filteredCount !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{filteredCount.toLocaleString('pt-BR')} resultado{filteredCount !== 1 ? 's' : ''}</span>
         </div>
       )}
     </MobileFilterWrapper>

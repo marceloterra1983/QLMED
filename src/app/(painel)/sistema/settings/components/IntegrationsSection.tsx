@@ -392,7 +392,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               <div>
                 <h4 className="font-bold text-blue-900 dark:text-blue-300 text-xs">Como obter o Token da API</h4>
                 <ol className="text-xs text-blue-800 dark:text-blue-400 mt-1 space-y-0.5 list-decimal list-inside">
-                  <li>Acesse <a href="https://app.nsdocs.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-primary">app.nsdocs.com.br</a></li>
+                  <li>Acesse <a href="https://app.nsdocs.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-primary dark:hover:text-blue-400">app.nsdocs.com.br</a></li>
                   <li>Vá em <strong>Configurações → Integração via API</strong></li>
                   <li>Copie o <strong>Token de API</strong> gerado</li>
                   <li>Cole aqui abaixo e salve</li>

@@ -96,7 +96,7 @@ const DOC_THEME: Record<string, { icon: string; label: string; gradient: string;
     label: 'NF-e',
     gradient: 'from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10',
     ring: 'ring-primary/20 dark:ring-primary/30',
-    text: 'text-primary',
+    text: 'text-primary dark:text-blue-400',
     pdfLabel: 'DANFE',
   },
   CTE: {
@@ -260,10 +260,10 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 <span className={`material-symbols-outlined text-[22px] ${theme.text}`}>{theme.icon}</span>
               </div>
               <div className="min-w-0">
-                <h3 className="text-[13px] sm:text-[15px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
                   {meta?.number ? `${theme.label} ${meta.number}` : 'Visualizar Documento'}
                 </h3>
-                <span className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500">
+                <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
                   {view === 'danfe' ? theme.pdfLabel : 'XML'}
                 </span>
               </div>
@@ -275,7 +275,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                 <button
                   onClick={() => view === 'xml' && toggleXmlView()}
-                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-bold transition-all ${
+                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-xs font-bold transition-all ${
                     view === 'danfe'
                       ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -287,7 +287,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 <button
                   onClick={() => view === 'danfe' && toggleXmlView()}
                   disabled={loadingXml}
-                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-bold transition-all ${
+                  className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-xs font-bold transition-all ${
                     view === 'xml'
                       ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -305,7 +305,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               {/* Action buttons */}
               <button
                 onClick={handleDownloadPdf}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
                 title="Baixar PDF"
               >
                 <span className="material-symbols-outlined text-[14px] sm:text-[16px] text-rose-500">picture_as_pdf</span>
@@ -313,7 +313,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               </button>
               <button
                 onClick={handleDownloadXml}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-[13px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
                 title="Baixar XML"
               >
                 <span className="material-symbols-outlined text-[14px] sm:text-[16px] text-amber-500">data_object</span>
@@ -321,7 +321,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               </button>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-[13px] font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 transition-all"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 transition-all"
                 title="Imprimir"
               >
                 <span className="material-symbols-outlined text-[14px] sm:text-[16px]">print</span>
@@ -333,7 +333,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               <button
                 onClick={onClose}
                 aria-label="Fechar documento"
-                className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title="Fechar"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -344,14 +344,14 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
           {/* Access Key Bar - hidden on mobile, shown on sm+ */}
           {meta?.accessKey && (
             <div className="hidden sm:flex items-center gap-2.5 mt-3 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/50">
-              <span className="material-symbols-outlined text-[14px] text-slate-400">key</span>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Chave</span>
-              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
+              <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400">key</span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Chave</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
                 {formatAccessKey(meta.accessKey)}
               </span>
               <button
                 onClick={copyAccessKey}
-                className={`flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:${theme.text} transition-colors`}
+                className={`flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:${theme.text} transition-colors`}
                 title="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
@@ -377,14 +377,14 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                   <div className="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">
                     <span className="material-symbols-outlined text-[28px] text-amber-500 animate-spin">progress_activity</span>
                   </div>
-                  <p className="text-[13px] font-medium text-slate-500">Carregando XML...</p>
+                  <p className="text-sm font-medium text-slate-500">Carregando XML...</p>
                 </div>
               ) : xmlHighlighted ? (
                 <>
                   {/* Floating copy button */}
                   <button
                     onClick={copyXml}
-                    className="absolute top-3 right-5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#313244] hover:bg-[#45475a] text-[11px] font-bold text-slate-400 hover:text-slate-200 transition-all ring-1 ring-[#45475a]"
+                    className="absolute top-3 right-5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#313244] hover:bg-[#45475a] text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-200 transition-all ring-1 ring-[#45475a]"
                     title="Copiar XML"
                   >
                     <span className="material-symbols-outlined text-[14px]">content_copy</span>
@@ -393,7 +393,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                   <div className="flex h-full">
                     {/* Line numbers */}
                     <div className="flex-shrink-0 py-4 pr-0 select-none border-r border-[#313244]">
-                      <pre className="text-[11px] font-mono leading-[1.6] text-[#6c7086] text-right px-3">
+                      <pre className="text-xs font-mono leading-[1.6] text-[#6c7086] text-right px-3">
                         {Array.from({ length: xmlHighlighted.lineCount }, (_, i) => i + 1).join('\n')}
                       </pre>
                     </div>
@@ -408,7 +408,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                         .xml-code .xml-decl { color: #9399b2; }
                       `}} />
                       <pre
-                        className="xml-code text-[11px] font-mono leading-[1.6] whitespace-pre"
+                        className="xml-code text-xs font-mono leading-[1.6] whitespace-pre"
                         dangerouslySetInnerHTML={{ __html: xmlHighlighted.html }}
                       />
                     </div>
@@ -419,7 +419,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                   <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center ring-1 ring-slate-600/50">
                     <span className="material-symbols-outlined text-[28px] text-slate-500">code_off</span>
                   </div>
-                  <p className="text-[13px] font-medium text-slate-500">XML não disponível</p>
+                  <p className="text-sm font-medium text-slate-500">XML não disponível</p>
                 </div>
               )}
             </div>
