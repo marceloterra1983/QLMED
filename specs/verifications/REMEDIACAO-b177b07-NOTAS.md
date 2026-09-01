@@ -228,3 +228,11 @@ ilegível grava `item_count = -1` e o cliente para em 500 voltas ou sem
 progresso; TEST-001 reescrito com store em memória e caso que rejeita. Sonda de
 8 chamadas com nota truncada: `[1,1,1,1,1,1,1,1]` → `[0,0,0,0,0,0,0,0]`. Thread
 P1 #3 do Codex respondida e resolvida.
+
+**R3 integrada** (`3fb34e5`): B-08 — `looksEncrypted` deixou de contar `:`;
+agora exige a forma hex real e prova com `decrypt()`, e o que não abre vai para
+`failed`, nunca é pulado. B-07 — `n8nIntegrationConfig.apiToken` entra na lista,
+e a leitura cruzada dos 14 call sites de `decrypt()` fecha em 6 colunas, todas
+cobertas. B-10 — `redirect: 'error'` no fetch do n8n. B-11 — o backfill de
+`allowedPages` filtra `active`, exige `--created-before`, e exclui `/sistema/*`
+por omissão. Thread P1 #4 do Codex respondida e resolvida.
