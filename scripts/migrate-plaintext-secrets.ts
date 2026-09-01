@@ -11,74 +11,108 @@
  *  1. `pfxData` (Bytes) — o PKCS#12 ia cru para o banco. Passa a AES-256-GCM
  *     com o CNPJ da empresa como AAD. A lógica está em
  *     src/lib/certificate-secret.ts e é coberta por testes.
- *  2. Colunas de texto que guardam saída de `encrypt()`. Um valor que não está
- *     em `salt:iv:tag:ct` nem `iv:tag:ct` foi gravado em claro e é recifrado.
+ *  2. Colunas de texto que guardam saída de `encrypt()`. Um valor fora da
+ *     FORMA exata (`isEncryptedText`: salt/iv/tag de 32 hex, ou o legado sem
+ *     salt) foi gravado em claro e é recifrado. Um valor na forma é provado
+ *     com `decrypt()`: se não abre, é reportado como falha e deixado intacto —
+ *     antes era pulado em silêncio e, com o decrypt fail-closed, ficava
+ *     ilegível sem aviso (REAUD-B-08).
  *
  * Idempotente nas duas partes: rodar de novo não reescreve o que já está
  * cifrado. Nada é apagado; uma linha que não dá para migrar é reportada e
- * deixada intacta.
+ * deixada intacta. Sai com código 1 se houve falhas.
  */
 
+import { pathToFileURL } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getCanonicalDatabaseUrl } from '../src/lib/database-config';
 import { migratePlaintextPfx } from '../src/lib/certificate-secret';
-import { encrypt } from '../src/lib/crypto';
+import { decrypt, encrypt, isEncryptedText } from '../src/lib/crypto';
 
-const prisma = new PrismaClient({ adapter: new PrismaPg(getCanonicalDatabaseUrl()) });
-const APPLY = process.argv.includes('--apply');
-
-/** Mesma leitura que `decrypt()` faz: 4 partes = formato novo, 3 = legado. */
-function looksEncrypted(value: string): boolean {
-  const parts = value.split(':');
-  return parts.length === 4 || parts.length === 3;
-}
-
-/** Colunas de texto que guardam saída de `encrypt()`. */
-const TEXT_SECRETS: Array<{ model: string; fields: string[] }> = [
+/**
+ * Colunas de texto que guardam saída de `encrypt()` — uma por coluna lida com
+ * `decrypt()` em src/ (o teste cruza cada entrada com o schema.prisma).
+ */
+export const TEXT_SECRETS: ReadonlyArray<{ model: string; fields: readonly string[] }> = [
   { model: 'certificateConfig', fields: ['pfxPassword'] },
   { model: 'nsdocsConfig', fields: ['apiToken'] },
   { model: 'receitaNfseConfig', fields: ['apiToken'] },
   { model: 'oneDriveConnection', fields: ['accessToken', 'refreshToken'] },
+  { model: 'n8nIntegrationConfig', fields: ['apiToken'] },
 ];
 
-type Delegate = {
-  findMany: (args: unknown) => Promise<Array<Record<string, unknown>>>;
-  update: (args: unknown) => Promise<unknown>;
-};
+export interface TextSecretDelegate {
+  findMany: (args: { select: Record<string, true> }) => Promise<Array<Record<string, unknown>>>;
+  update: (args: { where: { id: string }; data: Record<string, string> }) => Promise<unknown>;
+}
 
-async function migrateTextSecrets() {
+/** O PrismaClient real satisfaz este tipo (por cast: os delegates são propriedades). */
+export type TextSecretDb = Record<string, TextSecretDelegate | undefined>;
+
+export interface TextSecretResult {
+  model: string;
+  scanned: number;
+  /** Campos fora da forma cifrada: recifrados (ou a recifrar, sem `apply`). */
+  encrypted: number;
+  /** Campos na forma cifrada que `decrypt()` abre: intactos. */
+  alreadyEncrypted: number;
+  /** Campos na forma cifrada que `decrypt()` NÃO abre: intactos e reportados. */
+  failed: Array<{ id: string; field: string; reason: string }>;
+}
+
+export async function migrateTextSecrets(db: TextSecretDb, apply: boolean): Promise<TextSecretResult[]> {
+  const results: TextSecretResult[] = [];
+
   for (const { model, fields } of TEXT_SECRETS) {
-    const delegate = (prisma as unknown as Record<string, Delegate>)[model];
+    const delegate = db[model];
     if (!delegate?.findMany) {
-      console.log(`  ${model}: modelo ausente no schema, pulado`);
-      continue;
+      // Nome errado na lista é defeito do script, não condição de dados:
+      // pular "em silêncio" deixaria a coluna em claro com relatório limpo.
+      throw new Error(`TEXT_SECRETS: modelo "${model}" não existe no PrismaClient`);
     }
-    const select = Object.fromEntries([['id', true], ...fields.map((f) => [f, true])]);
-    const rows = await delegate.findMany({ select });
-    let changed = 0;
+    const rows = await delegate.findMany({
+      select: Object.fromEntries(['id', ...fields].map((f) => [f, true])),
+    });
+    const result: TextSecretResult = { model, scanned: rows.length, encrypted: 0, alreadyEncrypted: 0, failed: [] };
 
     for (const row of rows) {
+      const id = String(row.id);
       const data: Record<string, string> = {};
       for (const field of fields) {
         const value = row[field];
-        if (typeof value === 'string' && value.length > 0 && !looksEncrypted(value)) {
+        if (typeof value !== 'string' || value.length === 0) continue;
+        if (!isEncryptedText(value)) {
           data[field] = encrypt(value);
+          result.encrypted++;
+          continue;
+        }
+        try {
+          decrypt(value);
+          result.alreadyEncrypted++;
+        } catch (error) {
+          result.failed.push({
+            id,
+            field,
+            reason: error instanceof Error ? error.message : String(error),
+          });
         }
       }
-      if (Object.keys(data).length === 0) continue;
-      changed++;
-      if (APPLY) await delegate.update({ where: { id: row.id as string }, data });
+      if (Object.keys(data).length > 0 && apply) {
+        await delegate.update({ where: { id }, data });
+      }
     }
-    console.log(`  ${model}: ${rows.length} linha(s), ${changed} com segredo em claro`);
+    results.push(result);
   }
+
+  return results;
 }
 
-async function main() {
-  console.log(APPLY ? '== APLICANDO ==' : '== SIMULAÇÃO (use --apply para gravar) ==');
+async function main(prisma: PrismaClient, apply: boolean) {
+  console.log(apply ? '== APLICANDO ==' : '== SIMULAÇÃO (use --apply para gravar) ==');
 
   console.log('\npfxData (certificado A1):');
-  if (APPLY) {
+  if (apply) {
     const result = await migratePlaintextPfx(prisma);
     console.log(
       `  ${result.scanned} linha(s): ${result.encrypted} cifrada(s), `
@@ -102,12 +136,26 @@ async function main() {
   }
 
   console.log('\nColunas de texto:');
-  await migrateTextSecrets();
+  const results = await migrateTextSecrets(prisma as unknown as TextSecretDb, apply);
+  for (const r of results) {
+    console.log(
+      `  ${r.model}: ${r.scanned} linha(s): ${r.encrypted} campo(s) em claro`
+      + `${apply ? ' recifrado(s)' : ' a recifrar'}, ${r.alreadyEncrypted} já cifrado(s), `
+      + `${r.failed.length} falha(s)`,
+    );
+    for (const f of r.failed) console.error(`  FALHA ${r.model}/${f.id}.${f.field}: ${f.reason}`);
+    if (r.failed.length > 0) process.exitCode = 1;
+  }
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-    process.exitCode = 1;
-  })
-  .finally(() => prisma.$disconnect());
+// Só corre quando é o ponto de entrada: os testes importam as funções acima
+// sem abrir o banco.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const prisma = new PrismaClient({ adapter: new PrismaPg(getCanonicalDatabaseUrl()) });
+  main(prisma, process.argv.includes('--apply'))
+    .catch((err) => {
+      console.error(err);
+      process.exitCode = 1;
+    })
+    .finally(() => prisma.$disconnect());
+}
