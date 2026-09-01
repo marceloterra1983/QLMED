@@ -277,3 +277,16 @@ coordenador pediu.
 - [x] G33: branch `fix/audit-l5-uploads` empurrada para `origin`
   EVIDENCE: `* [new branch] fix/audit-l5-uploads -> fix/audit-l5-uploads`;
   commit `1d909c1`; tracking `origin/fix/audit-l5-uploads`.
+
+ABANDON: G24-no-sandbox `--no-sandbox` fica no launch do Chromium. Remover sem
+poder medir se o sandbox arranca no contentor Alpine quebraria a geração de
+DANFE em produção, e não há Chromium nem Docker neste ambiente para medir. O que
+tornava a flag perigosa está desligado e testado: JavaScript off e toda a rede
+abortada (só `data:` e `about:` passam). Quem fechar precisa de um contentor
+real para verificar o arranque.
+
+ABANDON: G28-migracao-volume Mover os ficheiros já gravados em
+`<BACKUP_DIR>/<AAAA_MM>/` para o layout novo `<BACKUP_DIR>/<companyId>/<AAAA_MM>/`
+é operação de infraestrutura sobre volume de produção, não mudança de código. O
+código novo escreve no layout novo e a LEITURA tem fallback para o caminho
+antigo, então nada no volume fica órfão enquanto a migração não corre.

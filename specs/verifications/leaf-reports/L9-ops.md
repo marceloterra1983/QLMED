@@ -276,3 +276,29 @@ Contratos herdados do PLAN.md: `.github/workflows/**` é meu; não toco em
 - [x] `npm run docs:validate` e `docs:validate:test` verdes
 - [x] `npm run build` verde (Next 15.5.24, todas as rotas)
 - [x] Commit em `fix/audit-l9-ops`, empurrado para `origin`
+
+ABANDON: OPS-005-imagem-anterior Testar "imagem N-1 sobe contra schema N" no CI
+exige docker e Postgres no runner isolado, que por política de hardening não
+expõe socket de engine — o próprio `verify-ci-hardening.sh` proíbe. O portão
+expand-only para migrações >= 20260901 ficou, e é ele que protege a propriedade.
+
+ABANDON: SUPPLY-002-postgres-digest `postgres:18-alpine` fica sem pin por
+digest, por decisão medida: o deploy canónico só toca `qlmed-app`, e pinar o
+banco tornaria o próximo `up -d` completo uma recriação do contentor de dados. O
+digest vivo do host não é observável daqui. Registado no SECURITY.md. O
+`node:22-alpine` FOI pinado por digest nos três estágios.
+
+ABANDON: SUPPLY-003-user-dockerfile `USER nextjs` no Dockerfile mudaria a posse
+de um volume vivo (`qlmed_app_storage`) sem que isso possa ser medido aqui.
+`start.sh` faz `exec su-exec nextjs`, então nada corre como root de facto — o
+risco residual é a janela entre entrypoint e exec, não o processo servindo.
+
+ABANDON: SUPPLY-003-cap-drop `cap_drop` no `qlmed-db` não aplicado: mudar a
+postura de segurança do contentor de banco sem poder reiniciá-lo e observar é
+justamente o tipo de mudança que derruba produção em silêncio.
+
+ABANDON: UI-002-loop-backfill O laço até `remaining = 0` precisa de um job, que
+não existe. Fechar o histórico dentro do GET é exatamente o risco que o próprio
+finding aponta (GET lento). A API passou a expor `coverage` e a UI diz
+"Cobertura incompleta: N nota(s)" — o utilizador deixa de ser enganado, que era
+a parte urgente. O laço fica para quando houver job.

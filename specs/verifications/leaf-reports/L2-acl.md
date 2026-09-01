@@ -527,3 +527,12 @@ EVIDENCE: × revalidates tokenVersion against the DB on EVERY pass, even for a f
 - **Aparato morto.** O middleware grava `x-qlmed-request-path` e
   `x-qlmed-request-method` em toda passagem com `x-api-key`, e nenhum consumidor
   lê esses cabeçalhos. Não removido: fora do escopo desta folha.
+
+ABANDON: AUTH-008-store-partilhado Rate limit de login continua in-process. Um
+store partilhado exige tabela nova, e o contrato do fan-out deu o schema à folha
+L8 — a L2 não podia criar migração. Não é impossível de fazer, é impossível de
+fazer DENTRO desta folha, e fechar por fora agora significaria mexer no schema
+sem os testes de concorrência que o caso pede. Fica aceite e documentado em
+SECURITY.md como QLMED-RISK-2026-09-RATELIMIT-INPROC, com gatilho de remediação.
+Consequência real hoje: com uma réplica só, o limite funciona; ao escalar
+horizontalmente, cada réplica conta o seu próprio balde.

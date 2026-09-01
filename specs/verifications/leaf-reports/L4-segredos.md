@@ -170,3 +170,23 @@ em browser.
       `prisma/schema.prisma`, `prisma/migrations/`, `.github/workflows/`,
       `src/lib/pdf/render.ts` (L5), `src/app/api/webhooks/n8n/route.ts` (L3).
 - [x] Branch `fix/audit-l4-segredos` empurrada para `origin`.
+
+ABANDON: OBS-005-csp-nonce O nonce do Next exige estender o matcher do
+middleware para `/`, `/login`, `/sobre`, `/register`, `/r` e `/auth`, o que
+esbarra na lógica de auth (sem early-return, `/login` entra em loop de
+redirect), e converte 26 páginas hoje estáticas em dinâmicas — medido no build
+desta branch: 26 estáticas contra 3 dinâmicas. O gate ainda pede prova em
+browser, que não é executável neste ambiente. O que a folha MEDIU e que reduz o
+custo de quem fechar: a app não tem script inline próprio
+(`grep -rn "dangerouslySetInnerHTML|<script" src/app` vazio), e o beacon do
+Cloudflare é `<script src=...>` externo, liberado por host — não quebra ao
+remover o `unsafe-inline`. Falta só o matcher e a verificação em browser.
+
+ABANDON: PRIV-002-enum-dedicado A ação do AccessLog ficou `navigation` com
+`path` descritivo, seguindo o precedente já comentado em
+`src/app/api/users/[id]/route.ts`. Ações dedicadas `impcg_pdf_read` e
+`cassems_pdf_read` exigem `ALTER TYPE ... ADD VALUE`, que não roda dentro de
+bloco de transação no Postgres e portanto precisa de migração desenhada com
+cuidado — schema é da folha L8, que já entregou. O invariante do finding
+(acesso a ofício é atribuível a um utilizador) ESTÁ fechado; o que fica é
+granularidade de consulta, não rastreabilidade.
