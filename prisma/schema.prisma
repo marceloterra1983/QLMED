@@ -1024,6 +1024,10 @@ model InvoiceEmission {
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
+  /// Um número por (empresa, série). `number` nulo não colide: o Postgres
+  /// permite NULLs repetidos num unique, então rascunhos sem número convivem.
+  /// Fecha QLMED-FISCAL-003.
+  @@unique([companyId, series, number])
   @@index([companyId, status])
   @@index([companyId, destCnpj])
 }
