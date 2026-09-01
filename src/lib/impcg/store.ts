@@ -5,7 +5,7 @@ import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money'
 import type { ImpcgParseStatus as DomainParseStatus } from './constants';
 import {
   computeImpcgParseStatus,
-  describeImpcgParseGap,
+  presentImpcgReadStatus,
   type ParsedImpcgItem,
 } from './parse-oficio';
 import { mergeEditedFields, shouldPreserveEditedItems, type OficioEditableField } from '@/lib/gestao-oficio-edits';
@@ -55,8 +55,8 @@ function parseGapFromRow(row: {
   hospitalName: string | null;
   totalAmount: Decimal;
   items: Array<{ lineTotal: Decimal }>;
-}): string | null {
-  return describeImpcgParseGap({
+}): { parseStatus: ImpcgParseStatus; parseMissingReason: string | null } {
+  return presentImpcgReadStatus({
     parseStatus: row.parseStatus,
     oficioNumber: row.oficioNumber,
     issuedAt: row.issuedAt,
@@ -90,18 +90,21 @@ export async function listImpcgAuthorizations(companyId: string): Promise<ImpcgL
     },
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    issuedAt: row.issuedAt ? row.issuedAt.toISOString() : null,
-    oficioNumber: row.oficioNumber,
-    patientName: row.patientName,
-    doctorName: row.doctorName,
-    hospitalName: row.hospitalName,
-    totalAmount: moneyString(row.totalAmount),
-    fileName: row.fileName,
-    parseStatus: row.parseStatus,
-    parseMissingReason: parseGapFromRow(row),
-  }));
+  return rows.map((row) => {
+    const presented = parseGapFromRow(row);
+    return {
+      id: row.id,
+      issuedAt: row.issuedAt ? row.issuedAt.toISOString() : null,
+      oficioNumber: row.oficioNumber,
+      patientName: row.patientName,
+      doctorName: row.doctorName,
+      hospitalName: row.hospitalName,
+      totalAmount: moneyString(row.totalAmount),
+      fileName: row.fileName,
+      parseStatus: presented.parseStatus,
+      parseMissingReason: presented.parseMissingReason,
+    };
+  });
 }
 
 export async function getImpcgAuthorization(
@@ -114,6 +117,7 @@ export async function getImpcgAuthorization(
   });
   if (!row) return null;
 
+  const presented = parseGapFromRow(row);
   return {
     id: row.id,
     issuedAt: row.issuedAt ? row.issuedAt.toISOString() : null,
@@ -127,8 +131,8 @@ export async function getImpcgAuthorization(
     totalAmount: moneyString(row.totalAmount),
     fileName: row.fileName,
     oneDriveItemId: row.oneDriveItemId,
-    parseStatus: row.parseStatus,
-    parseMissingReason: parseGapFromRow(row),
+    parseStatus: presented.parseStatus,
+    parseMissingReason: presented.parseMissingReason,
     editedFields: row.editedFields,
     items: row.items.map((item) => ({
       anvisaCode: item.anvisaCode,

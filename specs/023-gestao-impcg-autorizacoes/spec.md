@@ -95,10 +95,12 @@ recusa na API.
    o editor corrige, inclui ou remove uma linha (ou o total), then
    MUST persistir em centavos, marcar `items` (e `totalAmount` se
    o total mudou) em `editedFields` e MUST NOT deixar a coleta
-   subsequente sobrescrever a tabela/total editados. Viewer MUST
-   receber 403 e MUST NOT ver os controles. FAIL-003 permanece:
-   o sistema MUST NOT inventar linha. Soma ≠ total continua
-   `parcial` (FAIL-004) até o editor reconciliar.
+   subsequente sobrescrever a tabela/total editados. O total MUST
+   ser editável de forma visível (campo + Salvar total; aceita
+   `12.550,00` ou `12550.00`). Viewer MUST receber 403 e MUST NOT
+   ver os controles. FAIL-003 permanece: o sistema MUST NOT
+   inventar linha. Soma ≠ total continua `parcial` (FAIL-004) até
+   o editor reconciliar. CRM MUST NOT ter campo obrigatório.
 
 ### User Story 2 — E-mail vira arquivo e linha (Priority: P1)
 
@@ -131,10 +133,13 @@ centavos iguais aos do documento.
    MUST atualizar a linha (completa > parcial > falha).
 4. **AC-008** — Given um documento digitalizado sem texto
    selecionável (como a ordem 17673), when a coleta lê o arquivo,
-   then MUST extrair paciente, médico, CRM, procedimento, hospital,
+   then MUST extrair paciente, médico, procedimento, hospital,
    itens (registro, descrição, marca, referência, quantidade,
    unitário, total da linha) e total geral, com dinheiro em
-   centavos. Data MUST ser a do fechamento (“Campo Grande…”,
+   centavos. CRM MAY ser lido se existir no documento; MUST NOT
+   ser exigido para `ok` nem aparecer como falta. Tabelas antigas
+   (ANVISA no fim, descrição na linha de cima, pipes/OCR sujo)
+   MUST ainda produzir itens quando houver dois valores `R$`. Data MUST ser a do fechamento (“Campo Grande…”,
    inclusive `Campo Grande (MS), DD/MM/AAAA` e data por extenso),
    não a data de urgência na OBS. Também MUST ler `DATA:` no
    rótulo da linha, hífen/ponto e OCR com `O`/`0`.
@@ -234,20 +239,22 @@ importa o arquivo da pasta.
 - **FR-005**: Deduplicação MUST usar o identificador da mensagem e o
   número da ordem de fornecimento, por empresa.
 - **FR-006**: Quando o documento for legível, a leitura MUST obter
-  data do ofício, número, paciente, matrícula se houver, médico, CRM
-  se houver, procedimento, hospital (local de entrega), itens
-  aprovados e totais. Dinheiro MUST ser inteiro em centavos (ou
-  decimal de dinheiro), nunca fração binária. Documento ilegível
-  segue FAIL-003 — não inventar campo.
+  data do ofício, número, paciente, matrícula se houver, médico,
+  procedimento, hospital (local de entrega), itens aprovados e
+  totais. CRM MAY ser persistido se o documento trouxer; MUST NOT
+  entrar no critério de `ok` nem no texto de falta. Dinheiro MUST
+  ser inteiro em centavos (ou decimal de dinheiro), nunca fração
+  binária. Documento ilegível segue FAIL-003 — não inventar campo.
 - **FR-007**: A lista MUST mostrar data, número, paciente (com o
   hospital embaixo, contraste sutil), médico, total em reais e
   ação de arquivo. No card compacto/celular MUST mostrar paciente,
   local e médico e MUST NOT mostrar o valor. Itens e PDF no popup.
 - **FR-008**: Estado de leitura parcial ou falha MUST aparecer na
-  linha sem impedir abrir o PDF. Parcial MUST mostrar, na lista e
+  linha sem impedir abrir o PDF.   Parcial MUST mostrar, na lista e
   no cabeçalho do popup, o que faltou (campos vazios ou soma das
   linhas ≠ total), derivado dos dados já persistidos — sem coluna
-  nova. Falha MUST dizer que não foi possível ler o documento.
+  nova. CRM ausente MUST NOT contar como falta. Falha MUST dizer
+  que não foi possível ler o documento.
   Ok MUST NOT exibir texto de falta.
 - **FR-009**: Viewer MUST NOT disparar coleta. Editor ou admin com a
   página MAY disparar a mesma coleta da rotina.

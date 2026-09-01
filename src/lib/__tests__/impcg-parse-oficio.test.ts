@@ -1,6 +1,6 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import { describe, expect, it } from 'vitest';
-import { describeImpcgParseGap, parseOficio } from '@/lib/impcg/parse-oficio';
+import { describeImpcgParseGap, parseOficio, presentImpcgReadStatus } from '@/lib/impcg/parse-oficio';
 
 /** Texto injetado no formato do OCR da ordem 17673 (scan Brother). */
 export const OFICIO_17673_TEXT = `
@@ -341,5 +341,105 @@ TOTAL GERAL: 20,00
 `);
     expect(parsed.parseStatus).toBe('parcial');
     expect(describeImpcgParseGap(parsed)).toBe('Faltou: soma dos itens ≠ total');
+  });
+
+  it('não exige CRM para ok nem no texto de gap', () => {
+    const parsed = parseOficio(`
+ORDEM DE FORNECIMENTO N 1589
+Campo Grande, 10 de agosto de 2023
+PACIENTE: PAULO ROBERTO LOUREIRO PINHEIRO
+MEDICO DR. ARINO FARIA DA SILVA
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL EL KADRI
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL GERAL: 10,00
+`);
+    expect(parsed.doctorCrm).toBeNull();
+    expect(parsed.parseStatus).toBe('ok');
+    expect(describeImpcgParseGap(parsed)).toBeNull();
+    expect(
+      presentImpcgReadStatus({
+        parseStatus: 'parcial',
+        oficioNumber: '1589',
+        issuedAt: new Date('2023-08-10T00:00:00.000Z'),
+        patientName: 'PAULO ROBERTO LOUREIRO PINHEIRO',
+        doctorName: 'ARINO FARIA DA SILVA',
+        doctorCrm: null,
+        procedureName: 'TROCA VALVAR',
+        hospitalName: 'HOSPITAL EL KADRI',
+        totalCents: 1000,
+        items: [{ lineCents: 1000 }],
+      }),
+    ).toEqual({ parseStatus: 'ok', parseMissingReason: null });
+  });
+
+  it('OCR tabela 11927/2830/3186 extrai item e total', () => {
+    const of11927 = parseOficio(`
+ORDEM DE FORNECIMENTO Nº 11927/2024
+PACIENTE: KEYLLA DOS SANTOS SILVA
+MÉDICO BRENO MATOS DELFINO
+LOCAL DE ENTREGA: HOSPITAL PRONCOR
+PROCEDIMENTO: OOFORECTOMIA LAPARQSCÓPICA
+1 | 10243070060 |PINÇAULTRASSÓNICA MACON La R$ 1.500,00 R$ 1.500,00
+TOTAL R$ 1.500,00
+Campo Grande, 20 de fevereiro de 2024.
+`);
+    expect(of11927.oficioNumber).toBe('11927');
+    expect(of11927.doctorName).toBe('BRENO MATOS DELFINO');
+    expect(of11927.doctorCrm).toBeNull();
+    expect(of11927.items).toHaveLength(1);
+    expect(of11927.items[0]).toMatchObject({
+      anvisaCode: '10243070060',
+      quantity: '1',
+      unitCents: 150000,
+      lineCents: 150000,
+    });
+    expect(of11927.totalCents).toBe(150000);
+    expect(of11927.parseStatus).toBe('ok');
+
+    const of2830 = parseOficio(`
+OFÍCIONº "2830
+PACIENTE: MARCIO BARBOSA MACEDO
+MÉDICO DR. RAONY PREVITALLI PANIQUAR
+LOCAL DE ENTREGA: CLINICA CAMPO GRANDE
+PROCEDIMENTO: TROCA VALVAR
+PROTESE VALVULAR MECANICA
+1 1 2510935 | R$ 6.500,00 R$ 6.500,00
+TOTAL R$ 6.500,00
+Campo Grande, 22 de Maio de 2019.
+`);
+    expect(of2830.oficioNumber).toBe('2830');
+    expect(of2830.items).toHaveLength(1);
+    expect(of2830.items[0]).toMatchObject({
+      description: 'PROTESE VALVULAR MECANICA',
+      anvisaCode: '2510935',
+      quantity: '1',
+      unitCents: 650000,
+      lineCents: 650000,
+    });
+    expect(of2830.totalCents).toBe(650000);
+
+    const of3186 = parseOficio(`
+OFÍCIO Nº 3186
+PACIENTE: VANDERLEY ALVES OLMEDO
+MÉDICO |. DR. RICARDO A. BENFATTI
+LOCAL DE ENTREGA: PRONCOR
+PROCEDIMENTO: REVASCULARIZAÇÃO DO MIOCÁRDIO
+1 1 GONIUNTE PARA GIRCHLAÇÃO 80102511454 | R$2.400,00 | R$ 2.400,00
+EXTRACORPOREA ADULTO
+[2 [4 | KIT AUTOTRANFUSÃO | SORIN | | 10178010128 | R$2.650,00 | R$ 2.650,00
+[6 [| 1 | KiTDECIRCULAÇÃOASSISTIDA | — SORIN — | 80102510788 | R$1.200,00 | R$ 1.200,00
+CANULA ARAMADA ARTERIAL Nº 22 | SORIN | 80102510981 | R$390,00 R$ 390,00
+[8 | | 1 | caNULAVENOSADUPLOESTAGIO | — SORIN | 80102510967 | R$390,00 R$ 390,00
+TOTAL R$ 7.030,00
+Campo Grande, 08 de Agosto de 2019.
+`);
+    expect(of3186.doctorName).toBe('RICARDO A. BENFATTI');
+    expect(of3186.items.length).toBeGreaterThanOrEqual(4);
+    const sum = of3186.items.reduce((acc, item) => acc + item.lineCents, 0);
+    expect(of3186.totalCents).toBe(703000);
+    expect(sum).toBe(703000);
+    expect(of3186.items[0]?.description).toContain('GONIUNTE');
+    expect(of3186.items[0]?.description).toContain('EXTRACORPOREA');
   });
 });

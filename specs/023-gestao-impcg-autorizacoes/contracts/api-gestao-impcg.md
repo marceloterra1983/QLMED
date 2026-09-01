@@ -92,9 +92,11 @@ campo em `editedFields`.
 `items` (opcional): substitui a tabela inteira. Cada linha:
 `description` (obrigatório), `anvisaCode`, `brand`, `reference`,
 `quantity`, `unitAmount` e `lineTotal` como string decimal
-(`"6500.00"`). `totalAmount` (opcional): string decimal do
-total do ofício. Marca `items` / `totalAmount` em
-`editedFields`. Dinheiro em centavos na persistência.
+(`"6500.00"`). `totalAmount` (opcional): string decimal
+(`"12550.00"`) ou BRL (`"12.550,00"`). Marca `items` /
+`totalAmount` em `editedFields`. Dinheiro em centavos na
+persistência. `doctorCrm` MAY ser enviado; CRM ausente MUST
+NOT manter a linha em `parcial`.
 
 **200** — mesmo JSON do GET detalhe, com `canEdit: true` e
 `editedFields`.

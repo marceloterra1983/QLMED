@@ -118,6 +118,7 @@ export function extractDoctorFields(text: string): { doctorName: string | null; 
   const doctorName = normalizeName(
     doctorRaw
       ?.replace(/\s+crm\b[\s:]*.*$/i, '')
+      .replace(/^[^A-Za-zÀ-ÿ]+/, '')
       .replace(/^(?:dr\.?a?\.?\s+)/i, '')
     ?? null,
   );
@@ -129,6 +130,7 @@ export function extractDoctorFields(text: string): { doctorName: string | null; 
 
 function extractOficioNumber(text: string, subject: string): string | null {
   const fromDoc = /ordem\s+de\s+fornecimento\s+n[ºo°.]?\s*(\d{1,20})/i.exec(text)
+    ?? /of[ií]cio\s*n[ºo°.]?\s*["']?\s*(\d{1,20})/i.exec(text)
     ?? /\bn[ºo°.]?\s*(\d{4,20})\b/i.exec(text);
   if (fromDoc?.[1]) return normalizeOficioNumber(fromDoc[1]);
   const fromSubject = /\b(?:of|oficio|ordem)\s*(\d{1,20})\b/i.exec(subject)
@@ -235,6 +237,7 @@ function extractPatientFromSubject(subject: string): string | null {
 
 function parseItems(text: string): ParsedImpcgItem[] {
   const items: ParsedImpcgItem[] = [];
+  let pendingDesc = '';
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine
       .replace(/[|]/g, ' ')
@@ -242,34 +245,80 @@ function parseItems(text: string): ParsedImpcgItem[] {
       .replace(/\s+/g, ' ')
       .trim();
     if (!line || /total(?:\s+geral)?/i.test(line) || /itens\s+aprovad/i.test(line)) {
+      pendingDesc = '';
       continue;
     }
-    if (/anvisa|descri/i.test(line) && (line.match(new RegExp(BRL_MONEY.source, 'g'))?.length ?? 0) < 2) {
+    if (/anvisa|descri|valor\s+r\$/i.test(line) && (line.match(new RegExp(BRL_MONEY.source, 'g'))?.length ?? 0) < 2) {
       continue;
     }
     const amounts = [...line.matchAll(new RegExp(BRL_MONEY.source, 'g'))];
-    if (amounts.length < 2) continue;
+    if (amounts.length < 2) {
+      if (
+        items.length > 0
+        && line.length <= 48
+        && /[A-Za-zÀ-ÿ]{3,}/.test(line)
+        && !/[a-zà-ÿ]/.test(line)
+        && !/^(paciente|m[eé]dico|obs|campo|fornecedor|local|procedimento|matr|of[ií]cio|ordem|solicita|nada|essa|os materiais|item|qtd|marca|valor)\b/i.test(line)
+      ) {
+        const last = items[items.length - 1];
+        last.description = `${last.description} ${line}`.replace(/\s+/g, ' ').trim().toUpperCase();
+        continue;
+      }
+      if (/[A-Za-zÀ-ÿ]{3,}/.test(line) && !/^(item|qtd|marca|obs|valor)\b/i.test(line)) {
+        pendingDesc = line;
+      }
+      continue;
+    }
     const unitRaw = `${amounts[amounts.length - 2][1]},${amounts[amounts.length - 2][2]}`;
     const lineRaw = `${amounts[amounts.length - 1][1]},${amounts[amounts.length - 1][2]}`;
     const unitCents = parseBrlToCents(unitRaw);
     const lineCents = parseBrlToCents(lineRaw);
     if (unitCents === null || lineCents === null) continue;
 
-    const beforeMoney = line.slice(0, amounts[amounts.length - 2].index).trim();
-    const qtyMatch = /(\d+)\s*$/.exec(beforeMoney);
-    if (!qtyMatch) continue;
-    const quantity = qtyMatch[1];
-    let head = beforeMoney.slice(0, qtyMatch.index).trim();
-    head = head.replace(/^\d{1,3}\s+/, '');
-    const anvisaMatch = /^(\d{8,})\s+/.exec(head);
+    let head = line.slice(0, amounts[amounts.length - 2].index).trim();
+    const anvisaMatch = /(\d{8,14})/.exec(head) ?? /\b(\d{6,7})\b/.exec(head);
     const anvisaCode = anvisaMatch?.[1] ?? null;
-    if (anvisaMatch) head = head.slice(anvisaMatch[0].length).trim();
-    const parts = head.split(' ').filter(Boolean);
-    if (parts.length < 3) continue;
+    if (anvisaMatch) {
+      head = `${head.slice(0, anvisaMatch.index)} ${head.slice(anvisaMatch.index + anvisaMatch[0].length)}`.trim();
+    }
+    head = head.replace(/^\d{1,3}\s+/, '').replace(/\s+/g, ' ').trim();
 
-    const reference = parts[parts.length - 1] ?? null;
-    const brand = parts[parts.length - 2] ?? null;
-    const description = parts.slice(0, -2).join(' ');
+    let quantity: string | null = null;
+    const trailingQty = /(\d{1,3})\s*$/.exec(head);
+    if (trailingQty) {
+      quantity = trailingQty[1];
+      head = head.slice(0, trailingQty.index).trim();
+    } else {
+      const leadingQty = /^(\d{1,3})\b/.exec(head);
+      if (leadingQty) {
+        quantity = leadingQty[1];
+        head = head.slice(leadingQty[0].length).trim();
+      } else if (unitCents === lineCents) {
+        quantity = '1';
+      }
+    }
+    if (!quantity) continue;
+
+    if (pendingDesc && !/[A-Za-zÀ-ÿ]{3,}/.test(head)) {
+      head = `${pendingDesc} ${head}`.replace(/\s+/g, ' ').trim();
+    }
+    pendingDesc = '';
+    const parts = head.split(' ').filter(Boolean);
+    if (parts.length === 0) continue;
+
+    let brand: string | null = null;
+    let reference: string | null = null;
+    let description = parts.join(' ');
+    const last = parts[parts.length - 1] ?? '';
+    const lastLooksCode = /\d/.test(last) || /^[A-Z0-9.\-]{1,6}$/i.test(last);
+    if (parts.length >= 3 && lastLooksCode) {
+      reference = last;
+      brand = parts[parts.length - 2] ?? null;
+      description = parts.slice(0, -2).join(' ');
+    } else if (parts.length === 2 && lastLooksCode) {
+      brand = last;
+      description = parts[0];
+    }
     if (!description) continue;
 
     items.push({
@@ -333,7 +382,6 @@ export function describeImpcgParseGap(input: ImpcgParseGapInput): string | null 
   const patient = input.patientName.trim();
   if (!patient || patient.toUpperCase() === 'PACIENTE') missing.push('paciente');
   if (!input.doctorName) missing.push('médico');
-  if (!input.doctorCrm) missing.push('CRM');
   if (!input.procedureName) missing.push('procedimento');
   if (!input.hospitalName) missing.push('hospital');
   if (!input.issuedAt) missing.push('data');
@@ -352,6 +400,24 @@ export function describeImpcgParseGap(input: ImpcgParseGapInput): string | null 
 
   if (missing.length === 0) return null;
   return `Faltou: ${missing.join(', ')}`;
+}
+
+/** Lista/popup: CRM ausente não deixa parcial; status persistido pode estar velho. */
+export function presentImpcgReadStatus(input: ImpcgParseGapInput): {
+  parseStatus: ImpcgParseStatus;
+  parseMissingReason: string | null;
+} {
+  if (input.parseStatus === 'falha') {
+    return {
+      parseStatus: 'falha',
+      parseMissingReason: 'Não foi possível ler o documento',
+    };
+  }
+  const parseMissingReason = describeImpcgParseGap({ ...input, parseStatus: 'parcial' });
+  if (!parseMissingReason) {
+    return { parseStatus: 'ok', parseMissingReason: null };
+  }
+  return { parseStatus: 'parcial', parseMissingReason };
 }
 
 export function parseRank(status: ImpcgParseStatus): number {

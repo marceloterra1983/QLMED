@@ -93,7 +93,6 @@ export default function ImpcgPageClient() {
   const [issuedAtDraft, setIssuedAtDraft] = useState('');
   const [patientDraft, setPatientDraft] = useState('');
   const [doctorDraft, setDoctorDraft] = useState('');
-  const [crmDraft, setCrmDraft] = useState('');
   const [procedureDraft, setProcedureDraft] = useState('');
   const [hospitalDraft, setHospitalDraft] = useState('');
   const [registryDraft, setRegistryDraft] = useState('');
@@ -138,7 +137,6 @@ export default function ImpcgPageClient() {
           setIssuedAtDraft(payload.issuedAt ? payload.issuedAt.slice(0, 10) : '');
           setPatientDraft(payload.patientName === 'PACIENTE' ? '' : payload.patientName);
           setDoctorDraft(payload.doctorName ?? '');
-          setCrmDraft(payload.doctorCrm ?? '');
           setProcedureDraft(payload.procedureName ?? '');
           setHospitalDraft(payload.hospitalName ?? '');
           setRegistryDraft(payload.patientRegistry ?? '');
@@ -428,18 +426,12 @@ export default function ImpcgPageClient() {
               </ReadFieldEditor>
               <ReadFieldEditor
                 label="Médico"
-                display={`${detail.doctorName || '—'}${detail.doctorCrm ? ` · CRM ${detail.doctorCrm}` : ''}`}
-                edited={
-                  isOficioFieldEdited(detail.editedFields, 'doctorName')
-                  || isOficioFieldEdited(detail.editedFields, 'doctorCrm')
-                }
+                display={detail.doctorName || '—'}
+                edited={isOficioFieldEdited(detail.editedFields, 'doctorName')}
                 canEdit={detail.canEdit}
                 saving={saving}
                 onSave={() => {
-                  const body: Record<string, string> = {};
-                  if (doctorDraft.trim()) body.doctorName = doctorDraft.trim();
-                  body.doctorCrm = crmDraft.trim();
-                  void savePatch(body);
+                  if (doctorDraft.trim()) void savePatch({ doctorName: doctorDraft.trim() });
                 }}
               >
                 <input
@@ -447,12 +439,6 @@ export default function ImpcgPageClient() {
                   onChange={(event) => setDoctorDraft(event.target.value)}
                   className={readFieldInputClass}
                   placeholder="Nome"
-                />
-                <input
-                  value={crmDraft}
-                  onChange={(event) => setCrmDraft(event.target.value)}
-                  className={`${readFieldInputClass} max-w-24`}
-                  placeholder="CRM"
                 />
               </ReadFieldEditor>
               <ReadFieldEditor
@@ -489,23 +475,41 @@ export default function ImpcgPageClient() {
                   />
                 </ReadFieldEditor>
               </div>
-              <ReadFieldEditor
-                label="Total"
-                display={<span className="font-mono font-bold">{formatBrl(detail.totalAmount)}</span>}
-                edited={isOficioFieldEdited(detail.editedFields, 'totalAmount')}
-                canEdit={detail.canEdit}
-                saving={saving}
-                onSave={() => {
-                  if (totalDraft.trim()) void savePatch({ totalAmount: totalDraft.trim() });
-                }}
-              >
-                <input
-                  value={totalDraft}
-                  onChange={(event) => setTotalDraft(event.target.value)}
-                  className={`${readFieldInputClass} font-mono`}
-                  placeholder="12550.00"
-                />
-              </ReadFieldEditor>
+              <div>
+                <dt className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Total
+                  {isOficioFieldEdited(detail.editedFields, 'totalAmount') ? (
+                    <span className="normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+                      editado
+                    </span>
+                  ) : null}
+                </dt>
+                {detail.canEdit ? (
+                  <dd className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <input
+                      value={totalDraft}
+                      onChange={(event) => setTotalDraft(event.target.value)}
+                      className={`${readFieldInputClass} font-mono w-36`}
+                      placeholder="12.550,00"
+                      aria-label="Total do ofício"
+                    />
+                    <button
+                      type="button"
+                      disabled={saving || !totalDraft.trim()}
+                      onClick={() => {
+                        if (totalDraft.trim()) void savePatch({ totalAmount: totalDraft.trim() });
+                      }}
+                      className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+                    >
+                      Salvar total
+                    </button>
+                  </dd>
+                ) : (
+                  <dd>
+                    <span className="font-mono font-bold">{formatBrl(detail.totalAmount)}</span>
+                  </dd>
+                )}
+              </div>
               <div>
                 <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
                 <dd className="flex items-center gap-2 flex-wrap">
@@ -536,6 +540,9 @@ export default function ImpcgPageClient() {
               saving={saving}
               formatBrl={formatBrl}
               onSave={(items) => void savePatchItems(items)}
+              totalAmount={detail.totalAmount}
+              totalEdited={isOficioFieldEdited(detail.editedFields, 'totalAmount')}
+              onSaveTotal={(totalAmount) => void savePatch({ totalAmount })}
             />
 
           </div>

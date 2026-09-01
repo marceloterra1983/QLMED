@@ -30,6 +30,9 @@ type Props = {
   saving?: boolean;
   formatBrl: (value: string) => string;
   onSave: (items: ImpcgItemDraft[]) => void;
+  totalAmount: string;
+  totalEdited?: boolean;
+  onSaveTotal: (totalAmount: string) => void;
 };
 
 function toDraft(item: Item): ImpcgItemDraft {
@@ -61,13 +64,21 @@ export default function ImpcgItemsEditor({
   saving,
   formatBrl,
   onSave,
+  totalAmount,
+  totalEdited,
+  onSaveTotal,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [drafts, setDrafts] = useState<ImpcgItemDraft[]>(items.map(toDraft));
+  const [totalDraft, setTotalDraft] = useState(totalAmount);
 
   useEffect(() => {
     if (!open) setDrafts(items.map(toDraft));
   }, [items, open]);
+
+  useEffect(() => {
+    setTotalDraft(totalAmount);
+  }, [totalAmount]);
 
   function updateRow(index: number, patch: Partial<ImpcgItemDraft>) {
     setDrafts((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -227,6 +238,38 @@ export default function ImpcgItemsEditor({
           </button>
         </div>
       ) : null}
+
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          Total do ofício
+          {totalEdited ? (
+            <span className="ml-1 normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+              editado
+            </span>
+          ) : null}
+        </span>
+        {canEdit ? (
+          <>
+            <input
+              value={totalDraft}
+              onChange={(event) => setTotalDraft(event.target.value)}
+              className={`${readFieldInputClass} font-mono w-36 text-right`}
+              placeholder="12.550,00"
+              aria-label="Total do ofício"
+            />
+            <button
+              type="button"
+              disabled={saving || !totalDraft.trim()}
+              onClick={() => onSaveTotal(totalDraft.trim())}
+              className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+            >
+              Salvar total
+            </button>
+          </>
+        ) : (
+          <span className="font-mono font-bold">{formatBrl(totalAmount)}</span>
+        )}
+      </div>
     </div>
   );
 }

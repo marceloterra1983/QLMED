@@ -6,6 +6,7 @@ describe('IMPCG items edit (AC-017)', () => {
   it('aceita dinheiro da API e BRL em centavos', () => {
     expect(parseMoneyInputToCents('12550.00')).toBe(1_255_000);
     expect(parseMoneyInputToCents('12.550,00')).toBe(1_255_000);
+    expect(parseMoneyInputToCents('7.030,00')).toBe(703_000);
     expect(parseMoneyInputToCents('10')).toBe(1000);
     expect(parseMoneyInputToCents('abc')).toBeNull();
   });
