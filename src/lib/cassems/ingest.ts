@@ -6,7 +6,7 @@ import {
 } from '@/lib/onedrive-client';
 import {
   GraphMailboxError,
-  listMailboxMessagesBySender,
+  listMailboxMessagesBySenders,
   listImpcgPdfAttachments,
   type ImpcgMailMessage,
   type ImpcgPdfAttachment,
@@ -22,7 +22,7 @@ import {
   CASSEMS_INGEST_INTERVAL_MS,
   CASSEMS_MAILBOXES,
   CASSEMS_ONEDRIVE_FOLDER,
-  CASSEMS_SENDER_EMAIL,
+  CASSEMS_SENDER_EMAILS,
 } from './constants';
 import { extractPdfText } from './extract-pdf-text';
 import {
@@ -154,7 +154,8 @@ function mailboxLabel(upn: string): string {
 
 function defaultMailPort(): CassemsMailPort {
   return {
-    listMessages: (mailbox, options) => listMailboxMessagesBySender(mailbox, CASSEMS_SENDER_EMAIL, options),
+    listMessages: (mailbox, options) =>
+      listMailboxMessagesBySenders(mailbox, CASSEMS_SENDER_EMAILS, options),
     getPdfAttachments: (mailbox, graphMessageId, signal) =>
       listImpcgPdfAttachments(mailbox, graphMessageId, signal),
   };

@@ -1,5 +1,11 @@
 export const CASSEMS_SENDER_EMAIL = 'oficio.cconecte@cassems.com.br';
 
+/** SPEC-036: ofício antigo permanece; OPME é adicional (endereço confirmado no Graph). */
+export const CASSEMS_SENDER_EMAILS = [
+  CASSEMS_SENDER_EMAIL,
+  'mailing.opme@cassems.com.br',
+] as const;
+
 export const CASSEMS_MAILBOXES = ['joseroberto@qlmed.com.br'] as const;
 
 export const CASSEMS_ONEDRIVE_FOLDER = '1 - DOCUMENTOS/0 - AUTORIZACOES/CASSEMS';

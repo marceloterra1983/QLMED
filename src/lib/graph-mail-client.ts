@@ -172,6 +172,26 @@ export async function listMailboxMessagesBySender(
   return messages;
 }
 
+export async function listMailboxMessagesBySenders(
+  mailbox: string,
+  senderEmails: readonly string[],
+  options: { signal?: AbortSignal } = {},
+): Promise<ImpcgMailMessage[]> {
+  const uniqueSenders = [...new Set(senderEmails.map((email) => email.trim()).filter(Boolean))];
+  const byInternetMessageId = new Map<string, ImpcgMailMessage>();
+  for (const sender of uniqueSenders) {
+    const rows = await listMailboxMessagesBySender(mailbox, sender, options);
+    for (const row of rows) {
+      if (!byInternetMessageId.has(row.internetMessageId)) {
+        byInternetMessageId.set(row.internetMessageId, row);
+      }
+    }
+  }
+  return [...byInternetMessageId.values()].sort(
+    (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime(),
+  );
+}
+
 export async function listImpcgMailboxMessages(
   mailbox: string,
   options: { signal?: AbortSignal } = {},
