@@ -1,6 +1,7 @@
 import path from 'path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { safeJoinUnderDir } from '@/lib/local-xml-sync/sync-utils';
+import { oneDriveGraphDownloadFile, MAX_ONEDRIVE_DOWNLOAD_BYTES } from '@/lib/onedrive-graph';
 
 const BASE = '/srv/qlmed/xml_backup';
 
@@ -52,5 +53,48 @@ describe('safeJoinUnderDir (FILE-004 zip-slip)', () => {
   it('reduz o nome hostil ao seu basename em vez de perder o arquivo', () => {
     expect(safeJoinUnderDir(BASE, '2026_09', '../../evil.xml'))
       .toBe(path.join(BASE, '2026_09', 'evil.xml'));
+  });
+});
+
+describe('cap de bytes no download do OneDrive (FILE-004)', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('recusa pelo Content-Length sem materializar o corpo', async () => {
+    const arrayBuffer = vi.fn();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-length': String(MAX_ONEDRIVE_DOWNLOAD_BYTES + 1) }),
+      arrayBuffer,
+    }));
+
+    await expect(oneDriveGraphDownloadFile('token', '/drives/x/items/y/content'))
+      .rejects.toThrow(/excede o limite/);
+    expect(arrayBuffer).not.toHaveBeenCalled();
+  });
+
+  it('recusa também sem Content-Length (chunked), depois de medir', async () => {
+    const oversized = new ArrayBuffer(MAX_ONEDRIVE_DOWNLOAD_BYTES + 1);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      arrayBuffer: vi.fn().mockResolvedValue(oversized),
+    }));
+
+    await expect(oneDriveGraphDownloadFile('token', '/drives/x/items/y/content'))
+      .rejects.toThrow(/excede o limite/);
+  });
+
+  it('deixa passar um arquivo de tamanho normal', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-length': '11' }),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('<nfe>ok</n>').buffer),
+    }));
+
+    const buf = await oneDriveGraphDownloadFile('token', '/drives/x/items/y/content');
+    expect(buf?.byteLength).toBe(11);
   });
 });

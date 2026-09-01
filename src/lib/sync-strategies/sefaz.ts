@@ -196,7 +196,7 @@ export async function syncViaSefaz(
           });
           if (isNewInvoice) {
             totalNovos++;
-            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
+            saveXmlToFile(companyId, accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
           } else {
             totalAtualizados++;
           }

@@ -79,6 +79,21 @@ describe('assertSafeXlsx (FILE-002 zip-bomb)', () => {
     await expect(assertSafeXlsx(new Uint8Array([1, 2, 3, 4]))).rejects.toBeInstanceOf(XlsxTooLargeError);
   });
 
+  it('recusa por magic PK ausente antes de olhar o resto', async () => {
+    // %PDF disfarçado de .xlsx
+    const notZip = new TextEncoder().encode('%PDF-1.4 nao sou planilha');
+    await expect(assertSafeXlsx(notZip)).rejects.toThrow(/assinatura ZIP/);
+  });
+
+  it('rejeita o zip-bomb em menos de 2s', async () => {
+    const bomb = await zipBomb(50 * 1024 * 1024);
+    const started = Date.now();
+
+    await expect(assertSafeXlsx(bomb)).rejects.toBeInstanceOf(XlsxTooLargeError);
+
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
   it('aceita uma planilha real gerada pelo próprio exceljs', async () => {
     await expect(assertSafeXlsx(await realWorkbook())).resolves.toBeUndefined();
   });

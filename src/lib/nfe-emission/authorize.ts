@@ -442,7 +442,7 @@ async function finalizeAuthorized(
 
   // Escrita de ficheiro é idempotente; roda também no retry para não deixar
   // o backup em XML faltando quando a primeira tentativa morreu aqui.
-  await saveXmlToFile(input.accessKey, 'NFE', input.xml, input.issueDate);
+  await saveXmlToFile(ctx.companyId, input.accessKey, 'NFE', input.xml, input.issueDate);
 
   await prisma.invoiceEmission.update({
     where: { id: ctx.emissionId },

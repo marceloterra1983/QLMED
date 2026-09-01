@@ -4,6 +4,11 @@ const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 
 /** Único host que pode receber o Bearer do OneDrive. */
 export const GRAPH_ALLOWED_HOSTS = ['graph.microsoft.com'] as const;
+/**
+ * Teto para download de item do OneDrive. Cobre XML de NF-e (KiB) e DANFE em
+ * PDF (poucos MiB) com folga larga; existe para o corpo não ser ilimitado.
+ */
+export const MAX_ONEDRIVE_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 
 type GraphRequestOptions = {
   allowNotFound?: boolean;
@@ -88,5 +93,21 @@ export async function oneDriveGraphDownloadFile(
     throw new Error(`Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`);
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  // Teto por Content-Length antes de materializar o corpo: um item gigante no
+  // OneDrive não pode encher os 512MB de heap do processo (auditoria FILE-004).
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_ONEDRIVE_DOWNLOAD_BYTES) {
+    throw new Error(
+      `Arquivo do OneDrive excede o limite de ${MAX_ONEDRIVE_DOWNLOAD_BYTES} bytes (${declared})`,
+    );
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.byteLength > MAX_ONEDRIVE_DOWNLOAD_BYTES) {
+    // Sem Content-Length (chunked) o teto só dá para conferir aqui.
+    throw new Error(
+      `Arquivo do OneDrive excede o limite de ${MAX_ONEDRIVE_DOWNLOAD_BYTES} bytes`,
+    );
+  }
+  return buffer;
 }

@@ -57,7 +57,7 @@ export async function getOriginalIssuedPdf(
     return null;
   }
 
-  const localPdf = await readIssuedPdfFromFile(invoice.number, invoice.issueDate);
+  const localPdf = await readIssuedPdfFromFile(invoice.companyId, invoice.number, invoice.issueDate);
   if (localPdf) {
     return { buffer: localPdf, filename };
   }
@@ -92,6 +92,6 @@ export async function getOriginalIssuedPdf(
     return null;
   }
 
-  await saveIssuedPdfToFile(invoice.number, buffer, invoice.issueDate);
+  await saveIssuedPdfToFile(invoice.companyId, invoice.number, buffer, invoice.issueDate);
   return { buffer, filename };
 }

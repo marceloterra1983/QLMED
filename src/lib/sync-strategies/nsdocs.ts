@@ -125,7 +125,7 @@ export async function syncViaNsdocs(
         });
         if (isNewInvoice) {
           totalNovos++;
-          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
+          saveXmlToFile(companyId, parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
         } else {
           totalAtualizados++;
         }

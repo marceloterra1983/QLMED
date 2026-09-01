@@ -10,7 +10,7 @@ import JSZip from 'jszip';
  */
 
 /** Bytes do .xlsx comprimido aceitos no corpo do upload. */
-export const MAX_XLSX_BYTES = 15 * 1024 * 1024;
+export const MAX_XLSX_BYTES = 5 * 1024 * 1024;
 /** Soma máxima do conteúdo descomprimido declarado no zip. */
 export const MAX_XLSX_UNCOMPRESSED_BYTES = 120 * 1024 * 1024;
 /** Razão máxima descomprimido/comprimido do arquivo inteiro. */
@@ -43,6 +43,14 @@ export async function assertSafeXlsx(buf: ArrayBuffer | Uint8Array): Promise<voi
     throw new XlsxTooLargeError(
       `Planilha excede ${Math.floor(MAX_XLSX_BYTES / 1024 / 1024)}MB`,
     );
+  }
+
+  // Magic "PK\x03\x04": recusa antes de o JSZip sequer olhar o resto.
+  // (`new Uint8Array(buf)` sobre o Uint8Array preserva o byteOffset; usar
+  // `buf.buffer` perderia o offset de uma subarray.)
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b || bytes[2] !== 0x03 || bytes[3] !== 0x04) {
+    throw new XlsxTooLargeError('Arquivo não é um .xlsx (assinatura ZIP ausente)');
   }
 
   let zip: JSZip;

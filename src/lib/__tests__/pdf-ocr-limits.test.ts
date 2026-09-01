@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MAX_OCR_PAGES, MAX_PDF_BYTES, createOcrDeadline } from '@/lib/pdf/ocr-limits';
+import {
+  MAX_OCR_PAGES,
+  MAX_PDF_BYTES,
+  createOcrDeadline,
+  looksLikePdf,
+  parsePdfInfoPages,
+} from '@/lib/pdf/ocr-limits';
+
+/** Fixture: cabeçalho %PDF real, conteúdo sintético. */
+const FAKE_PDF = Buffer.from('%PDF-1.4\n% fixture sintetica\n');
 
 /**
  * FILE-003: o PDF vem de anexo de e-mail. Antes, qualquer tamanho era escrito
@@ -34,9 +43,10 @@ import { extractPdfText as extractImpcg } from '@/lib/impcg/extract-pdf-text';
 import { extractPdfText as extractCassems } from '@/lib/cassems/extract-pdf-text';
 
 /** Todos os binários existem; pdftotext devolve vazio para forçar o caminho OCR. */
-function ocrPathAvailable(pageCount: number) {
+function ocrPathAvailable(pageCount: number, reportedPages = pageCount) {
   mocks.spawnSync.mockImplementation((cmd: string) => {
     if (cmd === 'which') return { status: 0, stdout: '/usr/bin/x' };
+    if (cmd === 'pdfinfo') return { status: 0, stdout: `Pages:          ${reportedPages}\n` };
     return { status: 0, stdout: '' };
   });
   mocks.readdirSync.mockReturnValue(
@@ -79,7 +89,7 @@ describe.each([
   it('limita a rasterização na origem: pdftoppm recebe -l MAX_OCR_PAGES', async () => {
     ocrPathAvailable(3);
 
-    await extract(Buffer.from('%PDF-1.4 fake'));
+    await extract(FAKE_PDF);
 
     const call = pdftoppmCall();
     expect(call).toBeDefined();
@@ -92,7 +102,7 @@ describe.each([
     // PDF com contagem de páginas absurda: pdftoppm ignorado, 500 arquivos.
     ocrPathAvailable(500);
 
-    await extract(Buffer.from('%PDF-1.4 fake'));
+    await extract(FAKE_PDF);
 
     // impcg pode fazer 1 fallback extra na primeira página; o teto continua valendo.
     expect(tesseractCalls().length).toBeLessThanOrEqual(MAX_OCR_PAGES + 1);
@@ -101,7 +111,7 @@ describe.each([
   it('passa timeout em TODO spawn de OCR (orçamento, não só 60s por processo)', async () => {
     ocrPathAvailable(5);
 
-    await extract(Buffer.from('%PDF-1.4 fake'));
+    await extract(FAKE_PDF);
 
     for (const call of mocks.spawnSync.mock.calls) {
       if (call[0] === 'which') continue;
@@ -112,7 +122,7 @@ describe.each([
   it('passa -l por ao tesseract (idioma explícito)', async () => {
     ocrPathAvailable(2);
 
-    await extract(Buffer.from('%PDF-1.4 fake'));
+    await extract(FAKE_PDF);
 
     for (const call of tesseractCalls()) {
       const args = call[1] as string[];
@@ -121,9 +131,45 @@ describe.each([
     }
   });
 
+  it('PDF de 9999 páginas aborta SEM chamar tesseract nenhuma vez', async () => {
+    ocrPathAvailable(9999);
+
+    await expect(extract(FAKE_PDF)).resolves.toBe('');
+
+    expect(tesseractCalls()).toHaveLength(0);
+    expect(pdftoppmCall()).toBeUndefined();
+    expect(mocks.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ pages: 9999 }),
+      'pdf_too_many_pages_ocr_skipped',
+    );
+  });
+
+  it('recusa arquivo sem magic %PDF antes de escrever em disco', async () => {
+    ocrPathAvailable(1);
+
+    await expect(extract(Buffer.from('PK\x03\x04 isto e um zip'))).resolves.toBe('');
+
+    expect(mocks.writeFileSync).not.toHaveBeenCalled();
+    expect(mocks.spawnSync).not.toHaveBeenCalled();
+  });
+
   it('PDF vazio continua devolvendo vazio sem tocar em disco', async () => {
     await expect(extract(Buffer.alloc(0))).resolves.toBe('');
     expect(mocks.mkdtempSync).not.toHaveBeenCalled();
+  });
+});
+
+describe('magic %PDF e contagem de páginas (FILE-003)', () => {
+  it('só aceita buffer que começa com %PDF-', () => {
+    expect(looksLikePdf(Buffer.from('%PDF-1.7 ...'))).toBe(true);
+    expect(looksLikePdf(Buffer.from('PK\x03\x04'))).toBe(false);
+    expect(looksLikePdf(Buffer.from('<html>'))).toBe(false);
+    expect(looksLikePdf(Buffer.alloc(2))).toBe(false);
+  });
+
+  it('lê a contagem de páginas da saída do pdfinfo', () => {
+    expect(parsePdfInfoPages('Title: x\nPages:          42\nEncrypted: no')).toBe(42);
+    expect(parsePdfInfoPages('sem contagem')).toBeNull();
   });
 });
 
