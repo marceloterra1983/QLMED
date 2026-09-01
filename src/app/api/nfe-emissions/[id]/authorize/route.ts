@@ -18,6 +18,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (result.status === 'rejected') {
       return NextResponse.json(result, { status: 422 });
     }
+    // 202: aceito, desfecho ainda desconhecido na SEFAZ. Número e chave seguem
+    // reservados — a UI deve consultar de novo, nunca reenviar.
+    if (result.status === 'pending') {
+      return NextResponse.json(result, { status: 202 });
+    }
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha ao autorizar';

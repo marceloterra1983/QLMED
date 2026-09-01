@@ -1,54 +1,72 @@
-# Gates: Remetente adicional CASSEMS
+# Gates: Emissão de NF-e atômica (auditoria b177b07, backlog 1)
 
-Scope: A coleta lê a caixa `joseroberto@qlmed.com.br` e aceita os
-remetentes `oficio.cconecte@cassems.com.br` e o endereço OPME
-confirmado no Graph; deduplica por `internetMessageId`.
+Scope: fechar QLMED-FISCAL-001 (reentrada do rascunho), -002 (PATCH em paralelo
+com o send), -003 (sem unique de série+número), -004 (estado SEFAZ incerto
+apagado) e -005 (persistência pós-autorização não atômica).
 
-- [x] G1: Caixa monitorada continua `joseroberto@qlmed.com.br`
-  CHECK: grep -n "CASSEMS_MAILBOXES" /home/marce/qlmed/app/.worktrees/cassems-sender/src/lib/cassems/constants.ts
-  EXPECT: joseroberto@qlmed.com.br
-  EVIDENCE: 9:export const CASSEMS_MAILBOXES = ['joseroberto@qlmed.com.br'] as const;
+Invariante: **um rascunho produz no máximo um `enviNFe` autorizado**, e um
+estado incerto na SEFAZ nunca vira reemissão cega.
 
-- [x] G2: Filtro inclui o remetente antigo e o OPME confirmado
-  CHECK: grep -E "oficio.cconecte@cassems.com.br|mailing.opme@cassems.com.br" /home/marce/qlmed/app/.worktrees/cassems-sender/src/lib/cassems/constants.ts
-  EXPECT: /mailing\.opme@cassems\.com\.br/
-  EVIDENCE: export const CASSEMS_SENDER_EMAIL = 'oficio.cconecte@cassems.com.br'; | 'mailing.opme@cassems.com.br',
+Base: `origin/main` b177b07. Worktree `/home/marce/qlmed/.worktrees/nfe-emissao-atomica`.
+Rodar com o cwd no worktree.
 
-- [x] G3: Listagem aceita o novo remetente, o antigo, e dedup por internetMessageId
-  CHECK: cd /home/marce/qlmed/app/.worktrees/cassems-sender && npx vitest run src/lib/__tests__/cassems-sender-filter.test.ts 2>&1 | tail -25
-  EXPECT: /Tests?\s+\d+\s+passed/
-  EVIDENCE: Start at  21:00:51 | Duration  159ms (transform 39ms, setup 0ms, import 31ms, tests 43ms, environment 0ms)
+- [x] G1: CAS de estado — o send só acontece depois de um UPDATE condicional que
+  sai de `draft`/`rejected`.
+  CHECK: grep -q "status: { in: \['draft', 'rejected'\] }" src/lib/nfe-emission/authorize.ts && echo G1_CAS_OK
+  EXPECT: G1_CAS_OK
+  EVIDENCE: G1_CAS_OK
 
-- [x] G4: Suite de testes do repo
-  CHECK: cd /home/marce/qlmed/app/.worktrees/cassems-sender && npm test 2>&1 | tail -20
-  EXPECT: /Test Files\s+\d+\s+passed/
-  EVIDENCE: Test Files 90 passed | 3 skipped; Tests 673 passed | 4 skipped; Duration 4.26s
+- [x] G2: Erro de transporte não apaga número nem chave no caminho de envio.
+  CHECK: test "$(sed -n '/} catch (error) {/,/^  }$/p' src/lib/nfe-emission/authorize.ts | grep -c 'number: null')" = 0 && echo G2_SEM_WIPE
+  EXPECT: G2_SEM_WIPE
+  EVIDENCE: G2_SEM_WIPE
 
-- [x] G5: Typecheck
-  CHECK: cd /home/marce/qlmed/app/.worktrees/cassems-sender && npx tsc --noEmit && echo TSC_OK
-  EXPECT: TSC_OK
-  EVIDENCE: TSC_OK
+- [x] G3: Cliente de NFeConsultaProtocolo existe e é usado na reentrada.
+  CHECK: grep -q "export async function consultarNfeProtocolo" src/lib/nfe-emission/autorizacao-client.ts && grep -q "resolveSubmittedEmission" src/lib/nfe-emission/authorize.ts && echo G3_CONSULTA_OK
+  EXPECT: G3_CONSULTA_OK
+  EVIDENCE: G3_CONSULTA_OK
 
-- [x] G6: Lint
-  CHECK: cd /home/marce/qlmed/app/.worktrees/cassems-sender && npm run lint 2>&1 | tail -15
-  EXPECT: /eslint/
-  EVIDENCE: > qlmed@0.1.0 lint | > eslint .
+- [x] G4: O desfecho vem do `infProt`, não do primeiro cStat da árvore, e isso
+  é provado por parse de resposta real da SEFAZ (não por grep).
+  CHECK: npx vitest run src/lib/__tests__/nfe-emission-autorizacao-response.test.ts 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /5 passed/
+  EVIDENCE: Tests  5 passed (5)
 
-- [x] G7: Spec Kit docs:validate
-  CHECK: cd /home/marce/qlmed/app/.worktrees/cassems-sender && npm run docs:validate
-  EXPECT: Documentation validation passed
-  EVIDENCE: Documentation validation passed (149 Markdown files, 44 IDs).
+- [x] G4b: Controlo positivo do G4 — lendo o cStat do lote em vez do `infProt`,
+  os testes ficam vermelhos com o defeito exato da auditoria.
+  EVIDENCE: trocando `findNode(parsed, 'infProt')` por `findNode(parsed,
+  'retEnviNFe')`: "expected 'rejected' to be 'authorized'" (lote 104 lido como
+  rejeicao da nota), "expected '104' to be '539'", "expected 'rejected' to be
+  'pending'" / "Tests 3 failed | 2 passed (5)". Restaurado, volta a 5 passed.
 
-- [x] G8: Endereço exato do remetente OPME confirmado no Graph (sem token no log)
-  EVIDENCE: Graph 200 na caixa joseroberto@qlmed.com.br; from.address exato mailing.opme@cassems.com.br; histórico 3554 com anexo; janela 7d = 2; oficio.cconecte = 0; $filter or também 200/2; único remetente cassems na janela.
+- [x] G5: Unique de (companyId, series, number) no schema e na migração.
+  CHECK: grep -q "@@unique(\[companyId, series, number\])" prisma/schema.prisma && grep -q "CREATE UNIQUE INDEX" prisma/migrations/20260901180000_nfe_emission_atomic/migration.sql && echo G5_UNIQUE_OK
+  EXPECT: G5_UNIQUE_OK
+  EVIDENCE: G5_UNIQUE_OK
 
-- [x] G9: Contagem de 7 dias remediada antes do deploy
-  EVIDENCE: Graph 200; mailing.opme@cassems.com.br janela 7d = 2 (desde 2026-08-25T00:00:51Z); histórico 3554; oficio.cconecte = 0; único cassems na janela.
+- [x] G6: PATCH recusa emissão `submitted` com 409.
+  CHECK: grep -q "existing.status === 'submitted'" "src/app/api/nfe-emissions/[id]/route.ts" && echo G6_PATCH_OK
+  EXPECT: G6_PATCH_OK
+  EVIDENCE: G6_PATCH_OK
 
-- [x] G10: Ingestão não reintroduz timeout compartilhado por caixa
-  CHECK: grep -c "AbortSignal.timeout" /home/marce/qlmed/app/.worktrees/cassems-sender/src/lib/cassems/ingest.ts || true
-  EXPECT: 0
-  EVIDENCE: 0
+- [x] G7: Regressão — dois authorize concorrentes, exatamente 1 `send`.
+  CHECK: npx vitest run src/lib/__tests__/nfe-emission-authorize-atomic.test.ts 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /8 passed/
+  EVIDENCE: Tests  8 passed (8)
 
-- [ ] G11: Produção saudável no SHA do merge
-  EVIDENCE: pending
+- [x] G8: Controlo positivo — sem o CAS, o teste de G7 fica vermelho.
+  EVIDENCE: trocando o `where` do updateMany por `{ id, companyId }` (sem o filtro
+  de status) e rodando o mesmo ficheiro: "× dois authorize concorrentes enviam à
+  SEFAZ exatamente uma vez" / "AssertionError: expected vi.fn() to be called 1
+  times, but got 2 times" / "Tests 1 failed | 7 passed (8)". Restaurado o CAS,
+  volta a "Tests 8 passed (8)". O teste falha pelo defeito, não por acaso.
+
+- [x] G9: Suíte inteira verde, sem regressão contra as 725 do TARGET.
+  CHECK: npm test 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /738 passed/
+  EVIDENCE: Tests  738 passed | 4 skipped (742)
+
+- [x] G10: typecheck e lint limpos.
+  CHECK: npm run typecheck >/dev/null 2>&1 && npm run lint >/dev/null 2>&1 && echo G10_TSC_LINT_OK
+  EXPECT: G10_TSC_LINT_OK
+  EVIDENCE: G10_TSC_LINT_OK

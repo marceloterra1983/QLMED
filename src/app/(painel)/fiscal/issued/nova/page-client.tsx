@@ -422,6 +422,14 @@ export default function EmitirNfePage() {
         router.push('/fiscal/issued');
         return;
       }
+      // `pending` não é rejeição: a nota pode estar na SEFAZ. Reenviar aqui é
+      // o caminho para a nota duplicada, então o aviso não pode parecer erro.
+      if (data.status === 'pending') {
+        const aviso = data.xMotivo || 'Envio sem desfecho conhecido na SEFAZ';
+        setSefazMotivo(aviso);
+        toast.warning(aviso);
+        return;
+      }
       const motivo = data.xMotivo || data.error || 'SEFAZ rejeitou ou não autorizou';
       setSefazMotivo(motivo);
       toast.error(motivo);

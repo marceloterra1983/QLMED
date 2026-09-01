@@ -41,6 +41,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (existing.status === 'authorized') {
       return NextResponse.json({ error: 'Nota já autorizada' }, { status: 409 });
     }
+    // Editar uma emissão `submitted` zerava número e chave enquanto o envio
+    // ainda podia estar em voo na SEFAZ (QLMED-FISCAL-002). Só a consulta de
+    // protocolo pode tirar o rascunho desse estado.
+    if (existing.status === 'submitted') {
+      return NextResponse.json(
+        { error: 'Nota já enviada à SEFAZ; consulte o protocolo antes de editar' },
+        { status: 409 },
+      );
+    }
     const parsed = nfeEmissionPayloadSchema.safeParse(await req.json());
     if (!parsed.success) return apiValidationError(parsed.error);
     const payload = parsed.data;

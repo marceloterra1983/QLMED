@@ -7,11 +7,13 @@ const MS = {
     autorizacao: 'https://nfe.sefaz.ms.gov.br/ws/NFeAutorizacao4',
     retorno: 'https://nfe.sefaz.ms.gov.br/ws/NFeRetAutorizacao4',
     statusServico: 'https://nfe.sefaz.ms.gov.br/ws/NFeStatusServico4',
+    consultaProtocolo: 'https://nfe.sefaz.ms.gov.br/ws/NFeConsultaProtocolo4',
   },
   homologation: {
     autorizacao: 'https://hom.nfe.sefaz.ms.gov.br/ws/NFeAutorizacao4',
     retorno: 'https://hom.nfe.sefaz.ms.gov.br/ws/NFeRetAutorizacao4',
     statusServico: 'https://hom.nfe.sefaz.ms.gov.br/ws/NFeStatusServico4',
+    consultaProtocolo: 'https://hom.nfe.sefaz.ms.gov.br/ws/NFeConsultaProtocolo4',
   },
 };
 
