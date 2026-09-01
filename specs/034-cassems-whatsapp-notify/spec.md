@@ -137,8 +137,5 @@ toca a Evolution real.
 
 Responder o e-mail do CASSEMS. Reenvio manual pela interface. Backfill de envio
 para autorizações históricas já coletadas. Reescrever o outbox fiscal.
-Correção do remetente configurado da coleta CASSEMS: a apuração desta entrega
-mostrou que `CASSEMS_SENDER_EMAIL` não casa com nenhuma mensagem da caixa
-monitorada, o que mantém a coleta de e-mail em zero. Trocar esse valor
-desencadeia um backfill de milhares de mensagens com upload ao OneDrive e é
-decisão operacional separada, fora desta spec.
+Correção do remetente configurado da coleta CASSEMS: fora desta spec;
+ver SPEC-036.
