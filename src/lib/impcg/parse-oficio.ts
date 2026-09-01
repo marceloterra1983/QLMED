@@ -37,6 +37,53 @@ export function parseBrlToCents(raw: string): number | null {
   return whole * 100 + frac;
 }
 
+/** Aceita BRL (`12.550,00`) ou decimal canônico da API (`12550.00`). */
+export function parseImpcgItemDraft(row: {
+  description: string;
+  anvisaCode?: string | null;
+  brand?: string | null;
+  reference?: string | null;
+  quantity: string;
+  unitAmount: string;
+  lineTotal: string;
+}): ParsedImpcgItem | null {
+  const description = row.description.trim().toUpperCase();
+  if (!description) return null;
+  const unitCents = parseMoneyInputToCents(row.unitAmount);
+  const lineCents = parseMoneyInputToCents(row.lineTotal);
+  const quantity = row.quantity.trim();
+  if (unitCents === null || lineCents === null || !/^\d+(\.\d{1,4})?$/.test(quantity)) {
+    return null;
+  }
+  return {
+    anvisaCode: row.anvisaCode?.replace(/\D/g, '') || null,
+    description,
+    brand: row.brand?.trim().toUpperCase() || null,
+    reference: row.reference?.trim() || null,
+    quantity,
+    unitCents,
+    lineCents,
+  };
+}
+
+export function parseMoneyInputToCents(raw: string): number | null {
+  const fromBrl = parseBrlToCents(raw);
+  if (fromBrl !== null) return fromBrl;
+  const cleaned = raw.trim().replace(/\s/g, '');
+  const dotted = /^(\d+)\.(\d{2})$/.exec(cleaned);
+  if (dotted) {
+    const whole = Number.parseInt(dotted[1], 10);
+    const frac = Number.parseInt(dotted[2], 10);
+    if (!Number.isInteger(whole) || !Number.isInteger(frac)) return null;
+    return whole * 100 + frac;
+  }
+  if (/^\d+$/.test(cleaned)) {
+    const whole = Number.parseInt(cleaned, 10);
+    return Number.isInteger(whole) ? whole * 100 : null;
+  }
+  return null;
+}
+
 export function normalizeOficioNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const digits = raw.replace(/\D/g, '');

@@ -4,10 +4,21 @@ import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth
 import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getImpcgAuthorization, updateImpcgMissingFields } from '@/lib/impcg/store';
+import { parseImpcgItemDraft, parseMoneyInputToCents } from '@/lib/impcg/parse-oficio';
 import { createLogger } from '@/lib/logger';
 import { formatImpcgMoney, requireImpcgPage } from '@/lib/impcg/access';
 
 const optionalText = z.string().trim().max(200).optional();
+const moneyText = z.string().trim().min(1).max(24);
+const itemDraftSchema = z.object({
+  anvisaCode: z.string().trim().max(40).optional().nullable(),
+  description: z.string().trim().min(1).max(300),
+  brand: z.string().trim().max(80).optional().nullable(),
+  reference: z.string().trim().max(80).optional().nullable(),
+  quantity: z.string().trim().min(1).max(20),
+  unitAmount: moneyText,
+  lineTotal: moneyText,
+});
 
 const impcgMissingFieldsSchema = z.object({
   issuedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -17,6 +28,8 @@ const impcgMissingFieldsSchema = z.object({
   doctorCrm: z.string().trim().max(20).optional().nullable(),
   procedureName: optionalText,
   hospitalName: optionalText,
+  totalAmount: moneyText.optional(),
+  items: z.array(itemDraftSchema).max(80).optional(),
 });
 
 const log = createLogger('gestao/impcg/:id');
@@ -107,6 +120,27 @@ export async function PATCH(
       return NextResponse.json({ error: 'Data inválida' }, { status: 400 });
     }
 
+    let items;
+    if (body.data.items) {
+      items = [];
+      for (const draft of body.data.items) {
+        const parsedItem = parseImpcgItemDraft(draft);
+        if (!parsedItem) {
+          return NextResponse.json({ error: 'Item inválido' }, { status: 400 });
+        }
+        items.push(parsedItem);
+      }
+    }
+
+    let totalCents;
+    if (body.data.totalAmount !== undefined) {
+      const parsedTotal = parseMoneyInputToCents(body.data.totalAmount);
+      if (parsedTotal === null) {
+        return NextResponse.json({ error: 'Total inválido' }, { status: 400 });
+      }
+      totalCents = parsedTotal;
+    }
+
     const row = await updateImpcgMissingFields(access.companyId, parsedId.data.id, {
       issuedAt,
       patientName: body.data.patientName,
@@ -115,6 +149,8 @@ export async function PATCH(
       doctorCrm: body.data.doctorCrm,
       procedureName: body.data.procedureName,
       hospitalName: body.data.hospitalName,
+      totalCents,
+      items,
     });
     if (!row) {
       return NextResponse.json({ error: 'Autorização não encontrada' }, { status: 404 });

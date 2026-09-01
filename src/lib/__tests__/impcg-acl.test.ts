@@ -252,6 +252,62 @@ describe('IMPCG ACL (AC-003, AC-012)', () => {
       expect(mocks.updateImpcgMissingFields).not.toHaveBeenCalled();
     });
 
+    it('lets editor replace captured items (AC-017)', async () => {
+      mocks.requireAuth.mockResolvedValue('user-editor');
+      mocks.userFindUnique.mockResolvedValue({
+        role: 'editor',
+        allowedPages: [PAGE],
+      });
+      mocks.updateImpcgMissingFields.mockResolvedValue({
+        id: 'clx1',
+        issuedAt: '2023-08-10T00:00:00.000Z',
+        oficioNumber: '17673',
+        patientName: 'PLINIO ANTONIO ARANHA JUNIOR',
+        patientRegistry: '66429737-4',
+        doctorName: 'RODRIGO LUIZ ROCHA CARDOSO',
+        doctorCrm: '13716',
+        procedureName: 'TROCA VALVAR',
+        hospitalName: 'HOSPITAL PRONCOR',
+        totalAmount: '12550.00',
+        fileName: 'OFICIO 17673.pdf',
+        parseStatus: 'ok',
+        parseMissingReason: null,
+        oneDriveItemId: 'item-1',
+        editedFields: ['items'],
+        items: [],
+      });
+
+      const res = await patchDetail(
+        new Request('http://localhost/api/gestao/impcg/clx1', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [{
+              description: 'KIT CEC',
+              brand: 'EUROSETS',
+              reference: 'AG5214',
+              quantity: '1',
+              unitAmount: '5500.00',
+              lineTotal: '5500.00',
+            }],
+          }),
+        }),
+        { params: Promise.resolve({ id: 'clx1' }) },
+      );
+      expect(res.status).toBe(200);
+      expect(mocks.updateImpcgMissingFields).toHaveBeenCalledWith(
+        'company-1',
+        'clx1',
+        expect.objectContaining({
+          items: [expect.objectContaining({
+            description: 'KIT CEC',
+            unitCents: 550_000,
+            lineCents: 550_000,
+          })],
+        }),
+      );
+    });
+
     it('lets editor fill the missing date', async () => {
       mocks.requireAuth.mockResolvedValue('user-editor');
       mocks.userFindUnique.mockResolvedValue({

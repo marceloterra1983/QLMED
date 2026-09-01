@@ -39,6 +39,7 @@ Uma ordem de fornecimento.
 | oneDriveItemId | string | obrigatório se linha confirmada |
 | fileName | string | `OFICIO {n} {PACIENTE}.pdf` |
 | parseStatus | enum | ver acima |
+| editedFields | string[] | cabeçalho + `items` + `totalAmount` (AC-017) |
 | receivedAt | DateTime | chegada do e-mail (mais cedo se duas caixas) |
 | createdAt / updatedAt | DateTime | |
 

@@ -109,7 +109,8 @@ infra nova sem necessidade.
 nas duas caixas). `oficioNumber` único por empresa. Rank
 `ok > parcial > falha`: só atualiza cabeçalho/itens se o parse novo
 for melhor ou igual com campos preenchidos que o antigo não tinha.
-Nunca downgrade.
+Nunca downgrade. Tabela/total em `editedFields` (`items`,
+`totalAmount`) não são substituídos pela coleta (AC-017).
 
 ## 6. Nav e ACL
 

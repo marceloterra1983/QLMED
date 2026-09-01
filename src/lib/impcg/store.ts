@@ -8,7 +8,7 @@ import {
   describeImpcgParseGap,
   type ParsedImpcgItem,
 } from './parse-oficio';
-import { mergeEditedFields, type OficioEditableField } from '@/lib/gestao-oficio-edits';
+import { mergeEditedFields, shouldPreserveEditedItems, type OficioEditableField } from '@/lib/gestao-oficio-edits';
 
 export type ImpcgListItem = {
   id: string;
@@ -154,6 +154,8 @@ export type ImpcgMissingFieldsPatch = {
   doctorCrm?: string | null;
   procedureName?: string | null;
   hospitalName?: string | null;
+  totalCents?: number;
+  items?: ParsedImpcgItem[];
 };
 
 /** Editor corrige o campo lido. Marca como editado para a coleta não sobrescrever. */
@@ -219,21 +221,38 @@ export async function updateImpcgMissingFields(
     next.hospitalName = patch.hospitalName.trim().toUpperCase();
     touched.push('hospitalName');
   }
+  if (patch.totalCents !== undefined) {
+    next.totalCents = patch.totalCents;
+    touched.push('totalAmount');
+  }
+  if (patch.items) {
+    next.items = patch.items;
+    touched.push('items');
+  }
 
   const parseStatus = computeImpcgParseStatus(next);
-  await prisma.impcgAuthorization.update({
-    where: { id: row.id },
-    data: {
-      issuedAt: next.issuedAt,
-      patientName: next.patientName,
-      patientRegistry: next.patientRegistry,
-      doctorName: next.doctorName,
-      doctorCrm: next.doctorCrm,
-      procedureName: next.procedureName,
-      hospitalName: next.hospitalName,
-      parseStatus,
-      editedFields: mergeEditedFields(row.editedFields, touched),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.impcgAuthorization.update({
+      where: { id: row.id },
+      data: {
+        issuedAt: next.issuedAt,
+        patientName: next.patientName,
+        patientRegistry: next.patientRegistry,
+        doctorName: next.doctorName,
+        doctorCrm: next.doctorCrm,
+        procedureName: next.procedureName,
+        hospitalName: next.hospitalName,
+        totalAmount: centsToDecimal(next.totalCents),
+        parseStatus,
+        editedFields: mergeEditedFields(row.editedFields, touched),
+      },
+    });
+    if (patch.items) {
+      await tx.impcgAuthorizationItem.deleteMany({ where: { authorizationId: row.id } });
+      if (patch.items.length > 0) {
+        await tx.impcgAuthorizationItem.createMany({ data: itemRows(row.id, patch.items) });
+      }
+    }
   });
 
   return getImpcgAuthorization(companyId, id);
@@ -329,29 +348,80 @@ export async function persistUpgradeAuthorization(
         doctorCrm: true,
         procedureName: true,
         hospitalName: true,
+        totalAmount: true,
       },
     });
     const edited = current?.editedFields ?? [];
+    const issuedAt = edited.includes('issuedAt') ? current?.issuedAt ?? null : input.issuedAt;
+    const patientName = edited.includes('patientName')
+      ? current?.patientName ?? input.patientName
+      : input.patientName;
+    const patientRegistry = edited.includes('patientRegistry')
+      ? current?.patientRegistry ?? null
+      : input.patientRegistry;
+    const doctorName = edited.includes('doctorName') ? current?.doctorName ?? null : input.doctorName;
+    const doctorCrm = edited.includes('doctorCrm') ? current?.doctorCrm ?? null : input.doctorCrm;
+    const procedureName = edited.includes('procedureName')
+      ? current?.procedureName ?? null
+      : input.procedureName;
+    const hospitalName = edited.includes('hospitalName')
+      ? current?.hospitalName ?? null
+      : input.hospitalName;
+    const totalCents = edited.includes('totalAmount') && current?.totalAmount
+      ? decimalToCents(current.totalAmount)
+      : input.totalCents;
+
+    let itemsForStatus = input.items;
+    if (shouldPreserveEditedItems(edited)) {
+      const existingItems = await tx.impcgAuthorizationItem.findMany({
+        where: { authorizationId: input.authorizationId },
+        orderBy: { sortOrder: 'asc' },
+      });
+      itemsForStatus = existingItems.map((item) => ({
+        anvisaCode: item.anvisaCode,
+        description: item.description,
+        brand: item.brand,
+        reference: item.reference,
+        quantity: new Decimal(item.quantity).toFixed(),
+        unitCents: decimalToCents(item.unitAmount),
+        lineCents: decimalToCents(item.lineTotal),
+      }));
+    } else {
+      await tx.impcgAuthorizationItem.deleteMany({ where: { authorizationId: input.authorizationId } });
+      if (input.items.length > 0) {
+        await tx.impcgAuthorizationItem.createMany({ data: itemRows(input.authorizationId, input.items) });
+      }
+    }
+
+    const parseStatus = computeImpcgParseStatus({
+      oficioNumber: input.oficioNumber,
+      issuedAt,
+      patientName,
+      patientRegistry,
+      doctorName,
+      doctorCrm,
+      procedureName,
+      hospitalName,
+      totalCents,
+      items: itemsForStatus,
+    });
+
     await tx.impcgAuthorization.update({
       where: { id: input.authorizationId },
       data: {
-        issuedAt: edited.includes('issuedAt') ? current?.issuedAt : input.issuedAt,
-        patientName: edited.includes('patientName') ? current?.patientName ?? input.patientName : input.patientName,
-        patientRegistry: edited.includes('patientRegistry') ? current?.patientRegistry : input.patientRegistry,
-        doctorName: edited.includes('doctorName') ? current?.doctorName : input.doctorName,
-        doctorCrm: edited.includes('doctorCrm') ? current?.doctorCrm : input.doctorCrm,
-        procedureName: edited.includes('procedureName') ? current?.procedureName : input.procedureName,
-        hospitalName: edited.includes('hospitalName') ? current?.hospitalName : input.hospitalName,
-        totalAmount: centsToDecimal(input.totalCents),
+        issuedAt,
+        patientName,
+        patientRegistry,
+        doctorName,
+        doctorCrm,
+        procedureName,
+        hospitalName,
+        totalAmount: centsToDecimal(totalCents),
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
-        parseStatus: input.parseStatus,
+        parseStatus,
       },
     });
-    await tx.impcgAuthorizationItem.deleteMany({ where: { authorizationId: input.authorizationId } });
-    if (input.items.length > 0) {
-      await tx.impcgAuthorizationItem.createMany({ data: itemRows(input.authorizationId, input.items) });
-    }
     if (input.internetMessageId && input.mailbox && input.graphMessageId) {
       await tx.impcgSourceMessage.create({
         data: {
