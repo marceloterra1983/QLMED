@@ -20,7 +20,17 @@ const historicalUserEmail = `historical-${userEmail}`;
 
 integrationDescribe('notification outbox database integration', () => {
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { email: { in: [userEmail, historicalUserEmail] } } });
+    // `Company.userId` é RESTRICT desde a correção do INFO-002: apagar o
+    // utilizador já não arrasta a empresa nem as notas dela.
+    const owners = await prisma.user.findMany({
+      where: { email: { in: [userEmail, historicalUserEmail] } },
+      select: { id: true },
+    });
+    const ownerIds = owners.map((row) => row.id);
+    if (ownerIds.length > 0) {
+      await prisma.company.deleteMany({ where: { userId: { in: ownerIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: ownerIds } } });
+    }
     await prisma.$disconnect();
   });
 
