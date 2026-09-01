@@ -5,13 +5,13 @@ Auditoria QLMED b177b07. Uma caixa por resultado. `[x]` só com evidência medid
 **Nota de escopo:** `specs/leaf-briefs/L3-borda.md` e `PLAN.md` NÃO existem neste
 worktree (verificado: `ls: cannot access 'specs/leaf-briefs': No such file or
 directory`). Os achados INT-001/009/010/011 vêm do enunciado da tarefa e foram
-confirmados no código. INT-003/006/007/012/014 não têm local nem cenário
-disponíveis — ver G9.
+confirmados no código. INT-003/006/007/012/014 chegaram depois, por
+mensagem do coordenador, e estão fechados em G9-G13.
 
 Baseline medido antes de qualquer edição:
 `Test Files 94 passed | 3 skipped (97) / Tests 725 passed | 4 skipped (729)`
 
-Depois: `Test Files 98 passed | 3 skipped (101) / Tests 775 passed | 4 skipped (779)`
+Depois: `Test Files 100 passed | 3 skipped (103) / Tests 795 passed | 4 skipped (799)`
 
 ---
 
@@ -181,25 +181,147 @@ Local: `src/app/api/integrations/n8n/config/route.ts:17`.
 
 ## G8 — Controlos positivos registados
 
-- [x] 7 reversões independentes, cada uma VERMELHA, cada uma restaurada, com o
+- [x] 12 reversões independentes, cada uma VERMELHA, cada uma restaurada, com o
       erro exato registado em G1–G7 e no relatório final.
   - EVIDENCE: suíte completa verde após TODAS as restaurações —
-    `Test Files 98 passed | 3 skipped (101) / Tests 775 passed | 4 skipped (779)`.
+    `Test Files 100 passed | 3 skipped (103) / Tests 795 passed | 4 skipped (799)`.
+  - Uma reversão NÃO reprovou à primeira (INT-006): o teste era inútil e foi
+    refeito. Ver G10.
 
 ---
 
-## G9 — INT-003 / INT-006 / INT-007 / INT-012 / INT-014
+## G9 — INT-003: nonce HMAC é process-local
 
-- [ ] NÃO FECHADOS. O brief `specs/leaf-briefs/L3-borda.md` não existe no
-      worktree e o enunciado não descreve local nem cenário destes cinco.
-      Fechá-los por adivinhação seria inventar o achado. Candidatos reais
-      encontrados na varredura da borda estão listados no relatório final.
+Local: `src/lib/n8n-webhook-security.ts:56-73` — `Map` em processo, com um
+comentário `ponytail:` a admitir o teto. Com N réplicas a proteção valia 1/N.
+
+- [x] Store partilhado no Postgres. `INSERT ... ON CONFLICT DO NOTHING` é a
+      reivindicação atómica; a chave primária resolve a corrida no banco.
+  - CHECK: `npx vitest run src/lib/__tests__/n8n-webhook-security.test.ts`
+  - EXPECT: segunda réplica recusa; 8 concorrentes dão 1 vencedor
+  - EVIDENCE: `Tests  6 passed (6)`
+
+- [x] Prova de "dois processos": `vi.resetModules()` + reimport cria uma
+      instância sem NENHUM estado em memória partilhado, e ela recusa.
+- [x] Falha de banco RECUSA (fail-closed).
+- [x] Controlo positivo: trocar `return inserted === 1` por `return true`
+      (o que o Map fazia) deixa VERMELHO.
+  - EVIDENCE: 3 falhas, incl. `expected [ true, true, true, true, true, ...(3) ]
+    to have a length of 1 but got 8`. Restaurado.
+
+**DDL para a folha L8** (não editei `prisma/schema.prisma` nem
+`prisma/migrations/`, conforme o contrato). Diff do schema:
+
+```prisma
+model N8nWebhookNonce {
+  nonce     String   @id
+  expiresAt DateTime @db.Timestamptz
+
+  @@index([expiresAt])
+}
+```
+
+SQL equivalente:
+
+```sql
+CREATE TABLE "N8nWebhookNonce" (
+    "nonce"     TEXT        NOT NULL,
+    "expiresAt" TIMESTAMPTZ NOT NULL,
+    CONSTRAINT "N8nWebhookNonce_pkey" PRIMARY KEY ("nonce")
+);
+CREATE INDEX "N8nWebhookNonce_expiresAt_idx" ON "N8nWebhookNonce"("expiresAt");
+```
+
+`@db.Timestamptz` é deliberado: o código compara `"expiresAt"` com um `Date`
+ligado por parâmetro, e `timestamp` sem fuso faria a comparação depender do
+`TimeZone` da sessão. **Ordenação: L8 tem de aplicar isto ANTES deste código
+ir a produção** — sem a tabela, `consumeWebhookNonce` falha fechado e o
+webhook devolve 401 em tudo.
 
 ---
 
-## G10 — Portões finais
+## G10 — INT-006: action notify regista payload arbitrário
+
+Local: `src/app/api/webhooks/n8n/route.ts:169` — `log.info({payload})`.
+
+- [x] O payload não é entregue ao logger; só a contagem de chaves.
+  - CHECK: `npx vitest run src/lib/__tests__/n8n-webhook-notify-log.test.ts`
+  - EXPECT: nem chaves nem valores no que chega ao logger
+  - EVIDENCE: `Tests  1 passed (1)`
+
+- [x] Controlo positivo: repor `log.info({ payload })` deixa VERMELHO.
+  - EVIDENCE: `AssertionError: expected '[{"payload":{"cpfDoPaciente":"9998887...'
+    not to contain 'cpfDoPaciente'`. Restaurado.
+
+- [x] **A primeira versão deste teste não protegia nada.** Espiava
+      `process.stdout.write`, e passava COM e SEM a correção — o pino escreve
+      no descritor por baixo. Descartada e refeita a observar a fronteira que a
+      rota controla: o objeto passado ao logger. Só a segunda versão reprovou
+      no controlo.
+
+- [x] Fronteira com a L4: mexi apenas na linha do route.ts.
+      `src/lib/logger.ts` não foi tocado — o `redact` global é da L4.
+
+---
+
+## G11 — INT-007: base64 do webhook não é estrito
+
+Local: `src/app/api/webhooks/n8n/route.ts:119-132`.
+
+- [x] Alfabeto base64 canónico exigido antes de `Buffer.from`, que é leniente
+      e descarta silenciosamente o que não reconhece.
+- [x] Teto do DECODIFICADO (5 MiB, espelha o `MAX_XML_SIZE` do
+      `/api/invoices/upload`) além do teto do codificado.
+  - CHECK: `npx vitest run src/lib/__tests__/n8n-webhook-edge.test.ts -t "INT-007"`
+  - EXPECT: 7 MiB de zeros → 413; malformado → 400; válido pequeno → 200
+  - EVIDENCE: `Tests  5 passed`
+
+- [x] Controlo positivo: neutralizar as duas checagens deixa VERMELHO.
+  - EVIDENCE: 4 falhas — `expected 200 to be 413` e `expected 200 to be 400`.
+    Restaurado.
+
+---
+
+## G12 — INT-012: EVO_API_URL sem allowlist
+
+Local: `src/lib/whatsapp-evolution.ts:29-68`.
+
+- [x] `assertAllowedHost` (o contrato de G1) aplicado. Endereço inutilizável
+      DESLIGA o canal em vez de lançar, como uma variável em falta
+      (SPEC-031 FR-006) — lançar derrubaria o envio de uma nota por causa de
+      configuração.
+- [x] `redirect: 'error'`. O spec do fetch remove `Authorization`/`Cookie` num
+      salto entre origens, mas NÃO um cabeçalho próprio como `apikey`: um 302
+      levava a chave e o PDF juntos.
+  - CHECK: `npx vitest run src/lib/__tests__/whatsapp-evolution-egress.test.ts`
+  - EXPECT: `http://evil` recusado; 6 formas de endereço mau desligam o canal
+  - EVIDENCE: `Tests  9 passed (9)`
+
+- [x] Controlo positivo: neutralizar a checagem e remover `redirect` deixa
+      VERMELHO.
+  - EVIDENCE: 7 falhas, incl. `expected { baseUrl: 'http://evil', ...(2) } to be
+    null`. Restaurado.
+
+---
+
+## G13 — INT-014: GET enumera actions com a master key
+
+Local: `src/app/api/webhooks/n8n/route.ts:181-189`.
+
+- [x] Handler GET removido. Sem export, o Next responde 405.
+  - CHECK: `npx vitest run src/lib/__tests__/n8n-webhook-edge.test.ts -t "INT-014"`
+  - EXPECT: o módulo não exporta GET
+  - EVIDENCE: `Tests  1 passed`
+
+- [x] Controlo positivo: repor o GET deixa VERMELHO.
+  - EVIDENCE: `AssertionError: expected [AsyncFunction GET] to be undefined`.
+    Restaurado.
+
+---
+
+## G14 — Portões finais
 
 - [x] `npm run typecheck` verde. EVIDENCE: exit 0, sem diagnóstico.
 - [x] `npm run lint` verde. EVIDENCE: exit 0, sem warnings.
-- [x] `npm test` verde. EVIDENCE: `775 passed | 4 skipped (779)`, de `729`.
+- [x] `npm test` verde. EVIDENCE: `795 passed | 4 skipped (799)`, de `729`.
 - [x] Commit na branch `fix/audit-l3-borda`, push para `origin`.

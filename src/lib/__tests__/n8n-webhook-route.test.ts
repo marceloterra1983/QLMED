@@ -3,6 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/webhooks/n8n/route';
 import { createWebhookSignature } from '@/lib/n8n-webhook-security';
 
+// O nonce passou a viver no Postgres (INT-003). Estes testes exercitam
+// roteamento e assinatura, não repetição: um store que sempre concede mantém o
+// foco, e cada teste usa um nonce distinto.
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    $executeRaw: async (strings: TemplateStringsArray) =>
+      strings.join('?').includes('INSERT') ? 1 : 0,
+  },
+}));
+
+
 const fetchMock = vi.fn();
 
 function request(body: unknown, headers: Record<string, string> = {}): NextRequest {
