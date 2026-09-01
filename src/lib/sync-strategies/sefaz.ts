@@ -10,7 +10,8 @@ import { UF_TO_CODE } from '../constants';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { beginSyncRun } from '@/lib/postgres-advisory-lock';
-import { applyNfeCancellation } from '@/lib/nfe-cancellation';
+import { applyNfeCancellationOutcome } from '@/lib/nfe-cancellation';
+import { isUniqueViolation } from '@/lib/prisma-errors';
 import { distDfeIsProduction } from '@/lib/nfe-emission/environment';
 
 const log = createLogger('auto-sync');
@@ -135,8 +136,12 @@ export async function syncViaSefaz(
 
           if (doc.tipo === 'evento') {
             // Evento não é documento fiscal: a maioria (ciência, carta de
-            // correção) não gera escrita e não pode travar o cursor.
-            await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            // correção) não gera escrita e não pode travar o cursor. Já um
+            // cancelamento aceite cuja nota não está nesta base é facto fiscal
+            // perdido — a SEFAZ não o reentrega, então o cursor tem de parar
+            // antes dele (REAUD-FISCAL-015).
+            const outcome = await applyNfeCancellationOutcome({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            if (outcome === 'lost') skipDoc(doc.nsuseq, doc.chave, 'cancelamento_sem_nota');
             continue;
           }
 
@@ -149,8 +154,10 @@ export async function syncViaSefaz(
           if (!parsed) {
             // Último recurso: pode ser um cancelamento reconhecível. Se nem isso
             // gravou nada, o documento foi perdido — segura o cursor.
-            const applied = await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
-            if (!applied) skipDoc(doc.nsuseq, doc.chave, 'parse_falhou_schema_desconhecido');
+            const outcome = await applyNfeCancellationOutcome({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            if (outcome !== 'applied') {
+              skipDoc(doc.nsuseq, doc.chave, outcome === 'lost' ? 'cancelamento_sem_nota' : 'parse_falhou_schema_desconhecido');
+            }
             continue;
           }
 
@@ -215,6 +222,24 @@ export async function syncViaSefaz(
             }).catch((err) => { log.error({ err, accessKey }, 'updateProductAggregatesForInvoice failed for SEFAZ'); });
           }
         } catch (docErr) {
+          if (isUniqueViolation(docErr)) {
+            // Outra linha já tem o unique que este documento precisa (série+
+            // número da NF-e emitida, ou a própria chave numa corrida). Reter o
+            // cursor aqui é falha DETERMINÍSTICA: a corrida seguinte tropeça no
+            // mesmo NSU e a ingestão da empresa para até intervenção manual
+            // (REAUD-DATA-015). Skip durável por chave, com o XML, e o cursor
+            // segue. Se ESTA escrita falhar, o erro sobe para o catch da
+            // corrida: o cursor não avança e nada se perde.
+            const target = (docErr as { meta?: { target?: unknown } }).meta?.target;
+            await prisma.syncSkippedDocument.upsert({
+              where: { companyId_accessKey: { companyId, accessKey: doc.chave } },
+              create: { companyId, accessKey: doc.chave, nsu: doc.nsuseq, reason: 'unique_violado', xmlContent: doc.xml },
+              update: { nsu: doc.nsuseq, xmlContent: doc.xml },
+            });
+            skippedReasons.push(`chave=${doc.chave.slice(0, 12)}… unique_violado${target ? ` (${String(target)})` : ''}: skip durável, cursor segue`);
+            log.warn({ nsu: doc.nsuseq, chave: doc.chave, target }, 'SEFAZ doc skipped durably (unique violation)');
+            continue;
+          }
           log.error({ err: docErr, chave: doc.chave }, 'Erro ao processar doc SEFAZ');
           skipDoc(doc.nsuseq, doc.chave, 'gravacao_falhou', docErr);
         }

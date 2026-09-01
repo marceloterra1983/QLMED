@@ -164,6 +164,7 @@ model Company {
   certificateConfig     CertificateConfig?
   oneDriveConnections   OneDriveConnection[]
   syncLogs              SyncLog[]
+  syncSkippedDocuments  SyncSkippedDocument[]
   notificationEvents    NotificationOutboxEvent[]
   productRebuildState   ProductAggregateRebuildState?
   impcgAuthorizations   ImpcgAuthorization[]
@@ -273,6 +274,24 @@ model SyncLog {
   @@index([companyId])
   @@index([companyId, status])
   @@index([companyId, syncMethod, status])
+}
+
+/// Documento que a DistDFe entregou e que a ingestão recusou de forma
+/// DETERMINÍSTICA — hoje, violação de unique no upsert (NF-e emitida cuja
+/// série+número já pertence a outra chave). Reter o cursor aqui travava a
+/// ingestão da empresa para sempre no mesmo NSU (REAUD-DATA-015). O documento
+/// fica aqui, com o XML, e o cursor segue; a corrida sai `partial` com o motivo.
+model SyncSkippedDocument {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  accessKey  String
+  nsu        String
+  reason     String
+  xmlContent String
+  createdAt  DateTime @default(now())
+
+  @@unique([companyId, accessKey])
 }
 
 model OneDriveConnection {

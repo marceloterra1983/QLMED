@@ -23,7 +23,10 @@ const mocks = vi.hoisted(() => {
     syncLogUpdate: vi.fn(),
     upsert: vi.fn(),
     parseInvoiceXml: vi.fn(),
-    applyNfeCancellation: vi.fn(),
+    applyNfeCancellationOutcome: vi.fn(),
+    skipUpsert: vi.fn(),
+    invoiceUpdateMany: vi.fn(),
+    invoiceCount: vi.fn(),
     release: vi.fn(),
   };
 });
@@ -33,6 +36,8 @@ vi.mock('@/lib/prisma', () => {
     certificateConfig: { update: mocks.certUpdate },
     receitaNfseConfig: { update: mocks.receitaConfigUpdate },
     syncLog: { update: mocks.syncLogUpdate },
+    syncSkippedDocument: { upsert: mocks.skipUpsert },
+    invoice: { updateMany: mocks.invoiceUpdateMany, count: mocks.invoiceCount },
   };
   return { prisma: client, default: client };
 });
@@ -73,7 +78,13 @@ vi.mock('@/lib/receita-nfse-client', async (importOriginal) => {
 
 vi.mock('@/lib/parse-invoice-xml', () => ({ parseInvoiceXml: mocks.parseInvoiceXml }));
 vi.mock('@/lib/notification-outbox', () => ({ upsertInvoiceWithOutbox: mocks.upsert }));
-vi.mock('@/lib/nfe-cancellation', () => ({ applyNfeCancellation: mocks.applyNfeCancellation }));
+// Só o tri-estado é substituído; o resto do módulo fica real, para que o
+// controlo positivo (sefaz.ts original, que importa `applyNfeCancellation`)
+// reproduza o defeito e não um export em falta.
+vi.mock('@/lib/nfe-cancellation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/nfe-cancellation')>()),
+  applyNfeCancellationOutcome: mocks.applyNfeCancellationOutcome,
+}));
 vi.mock('@/lib/xml-file-store', () => ({ saveXmlToFile: vi.fn(async () => undefined) }));
 vi.mock('@/lib/product-aggregate-updater', () => ({
   updateProductAggregatesForInvoice: vi.fn(async () => undefined),
@@ -96,6 +107,23 @@ const CHAVE_C = '7'.repeat(44);
 
 function nfeDoc(nsuseq: string, chave: string) {
   return { nsuseq, chave, emitente: '', tipo: 'nfe' as const, xml: `<nfe>${chave}</nfe>`, schema: 'procNFe_v4.00.xsd' };
+}
+
+function eventoDoc(nsuseq: string, chave: string, xml = '<evento/>') {
+  return { nsuseq, chave, emitente: '', tipo: 'evento' as const, xml, schema: 'procEventoNFe_v1.00.xsd' };
+}
+
+/** Cancelamento (110111) homologado (cStat 135) — o mesmo XML da prova do auditor. */
+function procEventoCancelamento(chave: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<procEventoNFe versao="1.00">
+  <evento versao="1.00"><infEvento><chNFe>${chave}</chNFe><dhEvento>2026-08-20T14:00:00-03:00</dhEvento><tpEvento>110111</tpEvento></infEvento></evento>
+  <retEvento versao="1.00"><infEvento><tpEvento>110111</tpEvento><chNFe>${chave}</chNFe><cStat>135</cStat><dhRegEvento>2026-08-20T14:30:00-03:00</dhRegEvento></infEvento></retEvento>
+</procEventoNFe>`;
+}
+
+function uniqueViolation(target: string) {
+  return Object.assign(new Error('Unique constraint failed'), { code: 'P2002', meta: { target } });
 }
 
 function parsedInvoice(accessKey: string) {
@@ -137,7 +165,8 @@ describe('FISCAL-007 — SEFAZ DistDFe: cursor NSU não passa por documento falh
       return parsedInvoice(chave);
     });
     mocks.upsert.mockResolvedValue({ invoice: { id: 'inv-1' }, isNewInvoice: true });
-    mocks.applyNfeCancellation.mockResolvedValue(false);
+    mocks.applyNfeCancellationOutcome.mockResolvedValue('not-a-cancellation');
+    mocks.skipUpsert.mockResolvedValue({ id: 'skip-1' });
   });
 
   it('congela o NSU imediatamente antes do documento que falhou no meio do lote', async () => {
@@ -179,7 +208,7 @@ describe('FISCAL-007 — SEFAZ DistDFe: cursor NSU não passa por documento falh
       docs: [nfeDoc('000000000000006', CHAVE_A), nfeDoc('000000000000012', CHAVE_C)],
     });
     mocks.parseInvoiceXml.mockResolvedValue(null);
-    mocks.applyNfeCancellation.mockResolvedValue(false);
+    mocks.applyNfeCancellationOutcome.mockResolvedValue('not-a-cancellation');
 
     await runSefaz();
 
@@ -243,24 +272,115 @@ describe('FISCAL-007 — SEFAZ DistDFe: cursor NSU não passa por documento falh
     expect(mocks.release).toHaveBeenCalledTimes(1);
   });
 
-  it('evento não gravável não trava o cursor (ciência/carta de correção são a maioria)', async () => {
-    mocks.buscarNovosDocumentos.mockResolvedValue({
-      status: 'success',
-      cStat: '138',
-      xMotivo: 'Documento localizado',
-      ultNSU: '000000000000011',
-      maxNSU: '000000000000011',
-      failedNsus: [],
-      docs: [
-        { nsuseq: '000000000000010', chave: CHAVE_A, emitente: '', tipo: 'evento' as const, xml: '<evento/>', schema: 'resEvento_v1.01.xsd' },
-        nfeDoc('000000000000011', CHAVE_B),
-      ],
-    });
+  // REAUD-FISCAL-015 / REAUD-TEST-002: o teste antigo mockava o cancelamento a
+  // `false` e cobria, sem distinguir, a ciência (deve passar) e o cancelamento
+  // perdido (não deve). Com o tri-estado são dois casos — e a prova do auditor.
+  const LOTE_COM_EVENTO = {
+    status: 'success',
+    cStat: '138',
+    xMotivo: 'Documento localizado',
+    ultNSU: '000000000000011',
+    maxNSU: '000000000000011',
+    failedNsus: [],
+    docs: [eventoDoc('000000000000010', CHAVE_A), nfeDoc('000000000000011', CHAVE_B)],
+  };
+
+  it('ciência/carta de correção (not-a-cancellation) não trava o cursor', async () => {
+    mocks.buscarNovosDocumentos.mockResolvedValue(LOTE_COM_EVENTO);
+    mocks.applyNfeCancellationOutcome.mockResolvedValue('not-a-cancellation');
 
     await runSefaz();
 
     expect(persistedNsu()).toBe('000000000000011');
-    expect(syncLogPayload()).toMatchObject({ status: 'completed' });
+    expect(syncLogPayload()).toMatchObject({ status: 'completed', skippedDocs: 0 });
+  });
+
+  it('cancelamento perdido (lost) trava o cursor antes do evento', async () => {
+    mocks.buscarNovosDocumentos.mockResolvedValue(LOTE_COM_EVENTO);
+    mocks.applyNfeCancellationOutcome.mockResolvedValue('lost');
+
+    await runSefaz();
+
+    expect(persistedNsu()).toBe('000000000000009');
+    expect(syncLogPayload()).toMatchObject({ status: 'partial', skippedDocs: 1 });
+    expect(syncLogPayload()?.errorMessage).toContain('cancelamento_sem_nota');
+  });
+
+  // Prova do auditor, de ponta a ponta: procEventoNFe 110111/135 REAL, módulo
+  // de cancelamento REAL, `invoice.updateMany → {count:0}` e nota inexistente.
+  // Antes da correção: cursor `000000000000010`, `completed`, skippedDocs 0.
+  it('cancelamento real cuja nota não existe nesta base trava o cursor (prova do auditor)', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/nfe-cancellation')>('@/lib/nfe-cancellation');
+    mocks.applyNfeCancellationOutcome.mockImplementation(actual.applyNfeCancellationOutcome);
+    mocks.invoiceUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.invoiceCount.mockResolvedValue(0);
+    mocks.buscarNovosDocumentos.mockResolvedValue({
+      status: 'success',
+      cStat: '138',
+      xMotivo: 'Documento localizado',
+      ultNSU: '000000000000010',
+      maxNSU: '000000000000010',
+      failedNsus: [],
+      docs: [eventoDoc('000000000000010', CHAVE_A, procEventoCancelamento(CHAVE_A))],
+    });
+
+    await runSefaz();
+
+    expect(mocks.invoiceUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { companyId: 'company-1', accessKey: CHAVE_A, cancelledAt: null },
+    }));
+    expect(persistedNsu()).toBe('000000000000009');
+    expect(syncLogPayload()).toMatchObject({ status: 'partial', skippedDocs: 1 });
+  });
+
+  // REAUD-DATA-015: o unique parcial de NF-e emitida (20260901180000) transforma
+  // uma duplicata silenciosa numa P2002. Reter o cursor aqui é falha
+  // DETERMINÍSTICA — a corrida seguinte tropeça no mesmo NSU e a ingestão da
+  // empresa para até intervenção manual.
+  const LOTE_TRES = {
+    status: 'success',
+    cStat: '138',
+    xMotivo: 'Documento localizado',
+    ultNSU: '000000000000012',
+    maxNSU: '000000000000012',
+    failedNsus: [],
+    docs: [nfeDoc('000000000000010', CHAVE_A), nfeDoc('000000000000011', CHAVE_B), nfeDoc('000000000000012', CHAVE_C)],
+  };
+
+  it('P2002 no upsert regista skip durável por chave e o cursor segue', async () => {
+    mocks.buscarNovosDocumentos.mockResolvedValue(LOTE_TRES);
+    mocks.upsert.mockImplementation(async (args: { where: { accessKey: string } }) => {
+      if (args.where.accessKey === CHAVE_B) throw uniqueViolation('Invoice_issued_nfe_companyId_series_number_key');
+      return { invoice: { id: 'inv-1' }, isNewInvoice: true };
+    });
+
+    await runSefaz();
+
+    // O cursor passa por cima do documento — mas ele ficou gravado, com XML.
+    expect(persistedNsu()).toBe('000000000000012');
+    expect(mocks.skipUpsert).toHaveBeenCalledTimes(1);
+    expect(mocks.skipUpsert.mock.calls[0][0]).toMatchObject({
+      where: { companyId_accessKey: { companyId: 'company-1', accessKey: CHAVE_B } },
+      create: { companyId: 'company-1', accessKey: CHAVE_B, nsu: '000000000000011', reason: 'unique_violado', xmlContent: `<nfe>${CHAVE_B}</nfe>` },
+    });
+    expect(syncLogPayload()).toMatchObject({ status: 'partial', skippedDocs: 1, newDocs: 2 });
+    expect(syncLogPayload()?.errorMessage).toContain('unique_violado');
+    expect(syncLogPayload()?.errorMessage).toContain('Invoice_issued_nfe_companyId_series_number_key');
+  });
+
+  it('se o skip durável não grava, o cursor não avança (fail-closed)', async () => {
+    mocks.buscarNovosDocumentos.mockResolvedValue(LOTE_TRES);
+    mocks.upsert.mockImplementation(async (args: { where: { accessKey: string } }) => {
+      if (args.where.accessKey === CHAVE_B) throw uniqueViolation('Invoice_issued_nfe_companyId_series_number_key');
+      return { invoice: { id: 'inv-1' }, isNewInvoice: true };
+    });
+    mocks.skipUpsert.mockRejectedValue(new Error('relation "SyncSkippedDocument" does not exist'));
+
+    await runSefaz();
+
+    expect(persistedNsu()).toBe('000000000000005');
+    expect(syncLogPayload()).toMatchObject({ status: 'error' });
+    expect(mocks.release).toHaveBeenCalledTimes(1);
   });
 });
 

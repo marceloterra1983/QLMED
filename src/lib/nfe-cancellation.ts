@@ -123,25 +123,56 @@ export async function detectNfeCancellation(input: {
 }
 
 /**
- * `companyId` é obrigatório de propósito: a chave de acesso vem de XML/provedor
- * externo, então sem o filtro de empresa um evento de cancelamento marcava a
- * nota homónima de qualquer empresa. Sendo obrigatório, o compilador obriga
- * cada chamador a decidir o escopo em vez de esquecê-lo.
+ * Três desfechos, não um booleano (REAUD-FISCAL-015): o cursor NSU só pode
+ * travar em `'lost'`. Um `false` que juntava "não era cancelamento" (ciência,
+ * carta de correção — a maioria) com "era cancelamento e a nota não está nesta
+ * base" fazia o sync descartar o cancelamento e avançar o cursor por cima dele.
+ *
+ * - `'not-a-cancellation'`: nada a aplicar; nunca trava o cursor.
+ * - `'applied'`: a nota foi marcada agora, OU já estava cancelada. A reentrega
+ *   de um evento já aplicado é idempotente — contá-la como perdida travaria o
+ *   cursor para sempre no mesmo NSU.
+ * - `'lost'`: era cancelamento aceite e não existe nota para o receber. A SEFAZ
+ *   não reentrega: quem chama tem de reter o cursor.
  */
-export async function applyNfeCancellation(input: {
+export type NfeCancellationOutcome = 'not-a-cancellation' | 'applied' | 'lost';
+
+type ApplyNfeCancellationInput = {
   companyId: string;
   xml?: string | null;
   providerStatus?: string | null;
   documentType?: string | null;
   accessKey?: string | null;
-}): Promise<boolean> {
+};
+
+/**
+ * `companyId` é obrigatório de propósito: a chave de acesso vem de XML/provedor
+ * externo, então sem o filtro de empresa um evento de cancelamento marcava a
+ * nota homónima de qualquer empresa. Sendo obrigatório, o compilador obriga
+ * cada chamador a decidir o escopo em vez de esquecê-lo.
+ */
+export async function applyNfeCancellationOutcome(
+  input: ApplyNfeCancellationInput,
+): Promise<NfeCancellationOutcome> {
   const hit = await detectNfeCancellation(input);
   const accessKey = hit.accessKey;
-  if (!hit.cancelled || !hit.cancelledAt || !accessKey || !input.companyId) return false;
+  if (!hit.cancelled || !hit.cancelledAt || !accessKey || !input.companyId) return 'not-a-cancellation';
 
   const result = await prisma.invoice.updateMany({
     where: { companyId: input.companyId, accessKey, cancelledAt: null },
     data: { cancelledAt: hit.cancelledAt },
   });
-  return result.count > 0;
+  if (result.count > 0) return 'applied';
+
+  const exists = await prisma.invoice.count({ where: { companyId: input.companyId, accessKey } });
+  return exists > 0 ? 'applied' : 'lost';
+}
+
+/**
+ * `true` quando a nota está cancelada (marcada agora ou já antes). Colapsa
+ * `'not-a-cancellation'` e `'lost'` em `false` — quem precisa distinguir os
+ * dois (o cursor de sync) usa `applyNfeCancellationOutcome`.
+ */
+export async function applyNfeCancellation(input: ApplyNfeCancellationInput): Promise<boolean> {
+  return (await applyNfeCancellationOutcome(input)) === 'applied';
 }
