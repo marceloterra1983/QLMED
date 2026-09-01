@@ -8,7 +8,7 @@ import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updat
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { buildNfeAccessKey, nextInvoiceNumber } from './access-key';
-import { consultarNfeProtocolo, enviarNfeAutorizacao, wrapNfeProc } from './autorizacao-client';
+import { consultarNfeProtocolo, enviarNfeAutorizacao, isDeniedStat, wrapNfeProc } from './autorizacao-client';
 import { emitenteFromIssuedXml } from './emitente';
 import { destinatarioFromIssuedXml, mergeDestinatario } from './destinatario';
 import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
@@ -243,16 +243,19 @@ export async function authorizeInvoiceEmission(
   }
 
   if (result.outcome === 'rejected' || !result.xmlAutorizado) {
-    // Rejeição definitiva: a nota não foi autorizada e o número volta a ficar
-    // disponível para a próxima tentativa.
+    // Rejeição devolve o número ao pool; DENEGAÇÃO não. Denegada é decisão da
+    // SEFAZ sobre uma nota que passou a existir: número e chave ficam
+    // queimados, e reutilizá-los devolve 539 (duplicidade com diferença na
+    // chave). O caminho da consulta de protocolo já fazia esta distinção; este
+    // fazia o oposto, e os dois discordavam sobre o mesmo cStat.
+    const denied = isDeniedStat(result.cStat);
     await prisma.invoiceEmission.update({
       where: { id: emission.id },
       data: {
         status: 'rejected',
         sefazStat: result.cStat,
         sefazMotivo: result.xMotivo,
-        number: null,
-        accessKey: null,
+        ...(denied ? {} : { number: null, accessKey: null }),
       },
     });
     return { status: 'rejected' as const, cStat: result.cStat, xMotivo: result.xMotivo };
@@ -338,19 +341,31 @@ async function resolveSubmittedEmission(
   }
 
   if (consulta.outcome === 'absent') {
-    // Só agora é seguro liberar número e chave: a SEFAZ afirma que a nota
-    // não existe na base dela.
-    await prisma.invoiceEmission.update({
-      where: { id: ctx.emissionId },
+    // A SEFAZ afirma que a nota não existe: o rascunho volta a ser editável.
+    //
+    // Mas `number`, `accessKey` e `signedXml` NÃO são apagados. Um 217 pode ser
+    // transitório — o lote foi aceito com 103/104 e ainda está na fila, janela
+    // em que a consulta por chave devolve 217. Apagar destruía a única cópia da
+    // chave e do documento assinado, sem nada para reconciliar depois. A
+    // tentativa seguinte sobrescreve os três de qualquer maneira.
+    //
+    // O CAS impede duas consultas concorrentes de libertarem o mesmo rascunho
+    // e produzirem duas chaves para a mesma série e número.
+    const released = await prisma.invoiceEmission.updateMany({
+      where: { id: ctx.emissionId, companyId: ctx.companyId, status: 'submitted' },
       data: {
         status: 'draft',
         sefazStat: consulta.cStat,
         sefazMotivo: consulta.xMotivo,
-        number: null,
-        accessKey: null,
-        signedXml: null,
       },
     });
+    if (released.count === 0) {
+      return {
+        status: 'pending',
+        cStat: consulta.cStat,
+        xMotivo: 'Outra requisição já resolveu esta emissão; consulte o estado antes de tentar de novo.',
+      };
+    }
     return {
       status: 'pending',
       cStat: consulta.cStat,

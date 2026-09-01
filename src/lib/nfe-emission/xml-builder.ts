@@ -84,16 +84,16 @@ function icmsXml(item: NfeEmissionItem, crt: string, vProd: string): string {
   const orig = item.orig || '0';
   if (crt === '1' || crt === '2') {
     const csosn = item.csosn || '102';
-    return `<ICMS><ICMSSN102><orig>${orig}</orig><CSOSN>${csosn}</CSOSN></ICMSSN102></ICMS>`;
+    return `<ICMS><ICMSSN102><orig>${esc(orig)}</orig><CSOSN>${esc(csosn)}</CSOSN></ICMSSN102></ICMS>`;
   }
   const rate = item.pIcms ? Number(item.pIcms) : 0;
   if (!rate) {
     const cst = item.cstIcms || DEFAULT_ICMS_CST_ISENTO;
-    return `<ICMS><ICMS40><orig>${orig}</orig><CST>${esc(cst)}</CST></ICMS40></ICMS>`;
+    return `<ICMS><ICMS40><orig>${esc(orig)}</orig><CST>${esc(cst)}</CST></ICMS40></ICMS>`;
   }
   const vBc = vProd;
   const vIcms = money(new Decimal(vBc).mul(rate).div(100).toNumber());
-  return `<ICMS><ICMS00><orig>${orig}</orig><CST>${item.cstIcms || '00'}</CST><modBC>3</modBC><vBC>${vBc}</vBC><pICMS>${money(rate)}</pICMS><vICMS>${vIcms}</vICMS></ICMS00></ICMS>`;
+  return `<ICMS><ICMS00><orig>${esc(orig)}</orig><CST>${esc(item.cstIcms || '00')}</CST><modBC>3</modBC><vBC>${vBc}</vBC><pICMS>${money(rate)}</pICMS><vICMS>${vIcms}</vICMS></ICMS00></ICMS>`;
 }
 
 function aliquot4(value: string): string {

@@ -42,6 +42,14 @@ export type ConsultaResult = {
 const AUTHORIZED_STAT = new Set(['100', '150']);
 /** Denegada: a SEFAZ decidiu, a nota não vale, e a chave fica queimada. */
 const DENIED_STAT = new Set(['110', '301', '302', '303']);
+
+/**
+ * Denegação consome número e chave; rejeição comum não. Quem trata o desfecho
+ * precisa da distinção, senão devolve ao pool um número já queimado.
+ */
+export function isDeniedStat(cStat: string | undefined): boolean {
+  return Boolean(cStat && DENIED_STAT.has(cStat));
+}
 /** Lote aceito para processamento — não diz nada sobre a nota. */
 const BATCH_ACCEPTED_STAT = new Set(['103', '104']);
 

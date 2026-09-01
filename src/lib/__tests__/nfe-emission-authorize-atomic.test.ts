@@ -78,11 +78,17 @@ const emissionDelegate = {
     return { ...emission };
   }),
   updateMany: vi.fn(async ({ where, data }: {
-    where: { id: string; status?: { in: string[] } };
+    where: { id: string; status?: string | { in: string[] } };
     data: Partial<EmissionRow>;
   }) => {
     if (where.id !== emission.id) return { count: 0 };
-    if (where.status?.in && !where.status.in.includes(emission.status)) return { count: 0 };
+    const want = where.status;
+    if (want) {
+      const ok = typeof want === 'string'
+        ? want === emission.status
+        : Boolean(want.in?.includes(emission.status));
+      if (!ok) return { count: 0 };
+    }
     Object.assign(emission, data);
     return { count: 1 };
   }),
@@ -313,7 +319,10 @@ describe('authorizeInvoiceEmission — reentrada em submitted', () => {
     expect(emission.status).toBe('authorized');
   });
 
-  it('cStat 217 devolve o rascunho e só então libera número e chave', async () => {
+  // Substituído pelo caso equivalente em "achados da re-auditoria": apagar
+  // chave e XML no 217 era o defeito REAUDIT-FISCAL-013, não o comportamento
+  // desejado. Este teste protegia o defeito.
+  it('cStat 217 devolve o rascunho para nova tentativa', async () => {
     emission = freshEmission({
       status: 'submitted',
       number: '7',
@@ -333,8 +342,6 @@ describe('authorizeInvoiceEmission — reentrada em submitted', () => {
     expect(send).not.toHaveBeenCalled();
     expect(result.status).toBe('pending');
     expect(emission.status).toBe('draft');
-    expect(emission.number).toBeNull();
-    expect(emission.accessKey).toBeNull();
   });
 
   it('consulta indisponível não reenvia nem mexe no estado', async () => {
@@ -354,5 +361,79 @@ describe('authorizeInvoiceEmission — reentrada em submitted', () => {
     expect(result.status).toBe('pending');
     expect(emission.status).toBe('submitted');
     expect(emission.number).toBe('7');
+  });
+});
+
+/**
+ * Achados da re-auditoria adversarial sobre o próprio item 1.
+ * REAUDIT-FISCAL-013 e REAUDIT-FISCAL-014.
+ */
+describe('authorizeInvoiceEmission — achados da re-auditoria', () => {
+  it('cStat 217 não destrói chave nem XML assinado: um 217 pode ser transitório', async () => {
+    const accessKey = '5026'.padEnd(44, '0');
+    emission = freshEmission({
+      status: 'submitted',
+      number: '7',
+      accessKey,
+      signedXml: '<NFe signed="1"/>',
+    });
+    const authorize = await loadAuthorize();
+    const consult = vi.fn(async () => ({
+      outcome: 'absent' as const,
+      cStat: '217',
+      xMotivo: 'NF-e não consta na base de dados da SEFAZ',
+    }));
+
+    await authorize(COMPANY_ID, EMISSION_ID, { send: vi.fn(), consult });
+
+    expect(emission.status).toBe('draft');
+    // A identidade sobrevive: sem ela não há como reconciliar se o 217 mentiu.
+    expect(emission.accessKey).toBe(accessKey);
+    expect(emission.signedXml).toBe('<NFe signed="1"/>');
+    expect(emission.number).toBe('7');
+  });
+
+  it('duas consultas concorrentes com 217 libertam o rascunho uma só vez', async () => {
+    emission = freshEmission({
+      status: 'submitted',
+      number: '7',
+      accessKey: '5026'.padEnd(44, '0'),
+      signedXml: '<NFe signed="1"/>',
+    });
+    const authorize = await loadAuthorize();
+    const consult = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return { outcome: 'absent' as const, cStat: '217', xMotivo: 'não consta' };
+    });
+
+    const results = await Promise.all([
+      authorize(COMPANY_ID, EMISSION_ID, { send: vi.fn(), consult }),
+      authorize(COMPANY_ID, EMISSION_ID, { send: vi.fn(), consult }),
+    ]);
+
+    const liberou = results.filter(
+      (r) => r.status === 'pending' && r.xMotivo.includes('foi liberado'),
+    );
+    expect(liberou).toHaveLength(1);
+  });
+
+  it('denegada não devolve o número ao pool; rejeição comum devolve', async () => {
+    const authorize = await loadAuthorize();
+
+    emission = freshEmission();
+    await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => ({ outcome: 'rejected' as const, cStat: '110', xMotivo: 'Uso Denegado' })),
+    });
+    expect(emission.status).toBe('rejected');
+    expect(emission.number).not.toBeNull();
+    expect(emission.accessKey).not.toBeNull();
+
+    emission = freshEmission();
+    invoices = [];
+    await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => ({ outcome: 'rejected' as const, cStat: '539', xMotivo: 'Duplicidade' })),
+    });
+    expect(emission.number).toBeNull();
+    expect(emission.accessKey).toBeNull();
   });
 });
