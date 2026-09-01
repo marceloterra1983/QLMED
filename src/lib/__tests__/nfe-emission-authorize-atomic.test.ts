@@ -6,6 +6,9 @@
  * status ainda está no `where`.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { encryptPfx } from '@/lib/certificate-secret';
+
+process.env.ENCRYPTION_KEY = 'test-encryption-key-for-vitest-32chars!';
 
 const EMISSION_ID = 'em1';
 const COMPANY_ID = 'co1';
@@ -97,7 +100,10 @@ const mockPrisma = {
   certificateConfig: {
     findUnique: vi.fn(async () => ({
       companyId: COMPANY_ID,
-      pfxData: Buffer.from('pfx'),
+      // Cifrado de verdade: o `decryptPfx` é fail-closed desde a folha L4 e
+      // recusa PFX em claro. Usar a cifra real aqui exercita o caminho de
+      // produção em vez de o contornar com um mock.
+      pfxData: encryptPfx(Buffer.from('pfx'), '11222333000181'),
       pfxPassword: 'enc',
       environment: 'homologation',
       validTo: new Date(Date.now() + 86400000),
@@ -116,9 +122,15 @@ const mockPrisma = {
 };
 
 vi.mock('@/lib/prisma', () => ({ default: mockPrisma, prisma: mockPrisma }));
-vi.mock('@/lib/crypto', () => ({ decrypt: () => 'pw' }));
+
 vi.mock('@/lib/certificate-manager', () => ({
   CertificateManager: { extractPems: () => ({ cert: 'CERT', key: 'KEY' }) },
+}));
+// Só o `decrypt` é substituído: `encryptPfx` usa `deriveKey` do módulo real,
+// e mockar o módulo inteiro tirava a cifra que este teste quer exercitar.
+vi.mock('@/lib/crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/crypto')>()),
+  decrypt: () => 'pw',
 }));
 vi.mock('@/lib/postgres-advisory-lock', () => ({
   acquirePostgresTransactionAdvisoryLock: async () => undefined,

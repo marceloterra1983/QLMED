@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { encryptPfx } from '@/lib/certificate-secret';
+
+process.env.ENCRYPTION_KEY = 'test-encryption-key-for-vitest-32chars!';
+
+/** O CNPJ é o AAD da cifra: tem de ser o mesmo que a estratégia passa. */
+const COMPANY_CNPJ = '22222222000191';
 
 // FISCAL-007: o cursor (NSU) não pode passar por cima de documento que não foi
 // gravado. Documento pulado com cursor à frente é documento fiscal perdido em
@@ -35,7 +41,12 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
   beginSyncRun: vi.fn(async () => ({ syncLogId: 'sync-log-1', release: mocks.release })),
 }));
 
-vi.mock('@/lib/crypto', () => ({ decrypt: (value: string) => value }));
+// Só o `decrypt` da senha é substituído: `encryptPfx` da fixture usa o
+// `deriveKey` real, e mockar o módulo inteiro tirava a cifra do caminho.
+vi.mock('@/lib/crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/crypto')>()),
+  decrypt: (value: string) => value,
+}));
 
 vi.mock('@/lib/certificate-manager', () => ({
   CertificateManager: {
@@ -71,7 +82,8 @@ vi.mock('@/lib/product-aggregate-updater', () => ({
 
 const CERT = {
   id: 'cert-1',
-  pfxData: Buffer.from('pfx'),
+  // Cifrado: `decryptPfx` é fail-closed desde a L4.
+  pfxData: encryptPfx(Buffer.from('pfx'), COMPANY_CNPJ),
   pfxPassword: 'senha',
   lastNsu: '000000000000005',
   environment: 'production',
@@ -264,7 +276,7 @@ describe('FISCAL-007 — Receita NFS-e: cursor NSU não passa por documento falh
       environment: 'production',
       baseUrl: null,
     },
-    certificate: { pfxData: Buffer.from('pfx'), pfxPassword: 'senha' },
+    certificate: { pfxData: encryptPfx(Buffer.from('pfx'), COMPANY_CNPJ), pfxPassword: 'senha' },
     maxSteps: 5,
     maxEmptySteps: 1,
   };
@@ -326,7 +338,7 @@ describe('FISCAL-007 — Receita NFS-e: cursor NSU não passa por documento falh
       '22222222000191',
       'QLMED',
       { id: 'receita-1', apiToken: null, lastNsu: '000000000000000', cnpjConsulta: '22222222000191', environment: 'production', baseUrl: null },
-      { pfxData: Buffer.from('pfx'), pfxPassword: 'senha' },
+      { pfxData: encryptPfx(Buffer.from('pfx'), COMPANY_CNPJ), pfxPassword: 'senha' },
       'sync-log-1',
     );
 

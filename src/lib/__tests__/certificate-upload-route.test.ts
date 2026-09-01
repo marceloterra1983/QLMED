@@ -50,7 +50,13 @@ function request(fields: Record<string, string> = {}) {
   form.append('file', new File([new Uint8Array(FAKE_PFX)], 'cert.pfx'), 'cert.pfx');
   form.append('password', 'senha-do-pfx');
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
-  return { formData: async () => form } as never;
+  // Request real, não um objeto com `formData`: a rota passou a ler o corpo
+  // pelo stream (`formDataWithLimit`, folha L5), e um duplo sem `headers`
+  // rebentava com 500 em vez de exercitar o caminho.
+  return new Request('http://localhost/api/certificate/upload', {
+    method: 'POST',
+    body: form,
+  }) as never;
 }
 
 function certInfo(overrides: Partial<{ cnpj: string | null; validTo: Date }> = {}) {
