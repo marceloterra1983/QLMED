@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { consumeWebhookNonce, verifyWebhookSignature } from '@/lib/n8n-webhook-security';
+import { readBodyWithLimit, PayloadTooLargeError } from '@/lib/upload-limits';
 
 const log = createLogger('webhooks/n8n');
 
@@ -66,6 +67,10 @@ async function forwardResponse(action: string, response: Response): Promise<Next
   );
 }
 
+// O corpo é bufferizado ANTES da validação de assinatura: sem teto, um POST
+// com api key válida e corpo gigante derruba o processo (mesma raiz do L5).
+const MAX_WEBHOOK_BODY = 1 * 1024 * 1024;
+
 export async function POST(req: NextRequest) {
   if (!validateApiKey(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -73,8 +78,12 @@ export async function POST(req: NextRequest) {
 
   let rawBody: string;
   try {
-    rawBody = await req.text();
-  } catch {
+    const bytes = await readBodyWithLimit(req, MAX_WEBHOOK_BODY);
+    rawBody = new TextDecoder().decode(bytes);
+  } catch (e) {
+    if (e instanceof PayloadTooLargeError) {
+      return NextResponse.json({ error: 'Payload muito grande' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 

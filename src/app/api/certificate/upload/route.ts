@@ -7,6 +7,11 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { certificateUploadFieldsSchema } from '@/lib/schemas/certificate';
+import { formDataWithLimit } from '@/lib/upload-limits';
+
+// O .pfx tem cap de 1MiB; o corpo multipart ganha folga para os outros campos.
+const MAX_CERT_SIZE = 1 * 1024 * 1024;
+const MAX_CERT_BODY_SIZE = MAX_CERT_SIZE + 64 * 1024;
 
 const log = createLogger('certificate/upload');
 
@@ -21,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
   try {
-    const formData = await request.formData();
+    const formData = await formDataWithLimit(request, MAX_CERT_BODY_SIZE);
     const file = formData.get('file') as File;
     const baseCompany = await getOrCreateSingleCompany(userId);
     const companyId = baseCompany.id;
@@ -43,7 +48,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file size (max 1MB)
-    const MAX_CERT_SIZE = 1 * 1024 * 1024;
     if (file.size > MAX_CERT_SIZE) {
       return NextResponse.json({ error: 'Arquivo muito grande. Limite: 1MB' }, { status: 400 });
     }

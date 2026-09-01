@@ -8,6 +8,8 @@ import ExcelJS from 'exceljs';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
+import { formDataWithLimit } from '@/lib/upload-limits';
+import { assertSafeXlsx, assertRowCount, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
 
 const log = createLogger('estoque/import-e509');
 
@@ -55,19 +57,22 @@ export async function POST(req: Request) {
     }
     const company = await getOrCreateSingleCompany(userId);
 
-    const formData = await req.formData();
+    const formData = await formDataWithLimit(req, MAX_XLSX_BYTES);
     const file = formData.get('file') as File | null;
     const fileSchema = z.object({ file: z.instanceof(File, { message: 'Arquivo e obrigatorio' }) });
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
     const arrayBuf = await fileParsed.data.file.arrayBuffer();
+    // Zip-bomb: medir o custo do unzip antes de o exceljs pagá-lo.
+    await assertSafeXlsx(arrayBuf);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuf);
     const ws = workbook.worksheets[0];
     if (!ws || ws.rowCount === 0) {
       return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
     }
+    assertRowCount(ws.rowCount);
 
     const lastRow = ws.rowCount - 1; // Convert to 0-based for existing loop
 

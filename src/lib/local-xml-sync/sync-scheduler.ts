@@ -5,7 +5,7 @@ import path from 'path';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import type { OneDriveItemEntry } from './sync-types';
-import { resolveConfiguredDir, isXmlFile, isPdfFile, shouldIgnoreByPath, getDelayUntilNextHalfHourMs } from './sync-utils';
+import { resolveConfiguredDir, isXmlFile, isPdfFile, shouldIgnoreByPath, getDelayUntilNextHalfHourMs, safeJoinUnderDir } from './sync-utils';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import {
   listOneDriveChildrenAll,
@@ -173,7 +173,12 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
     const xmlFiles = children.filter((entry) => entry.file && isXmlFile(entry.name || ''));
 
     for (const oneDriveFile of xmlFiles) {
-      const targetFilePath = path.join(copyTargetDir, monthFolder.name, oneDriveFile.name);
+      // Nome vem do OneDrive: sem conter o join, `../` escreve fora do alvo.
+      const targetFilePath = safeJoinUnderDir(copyTargetDir, monthFolder.name, oneDriveFile.name);
+      if (!targetFilePath) {
+        log.warn({ folder: monthFolder.name, file: oneDriveFile.name }, 'Nome de item OneDrive recusado (path traversal)');
+        continue;
+      }
       const copied = await copyOneDriveXmlFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
       if (!copied) continue;
 
@@ -199,7 +204,11 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
         const pdfFiles = children.filter((entry) => entry.file && isPdfFile(entry.name || ''));
 
         for (const oneDriveFile of pdfFiles) {
-          const targetFilePath = path.join(pdfTargetDir, monthFolder.name, oneDriveFile.name);
+          const targetFilePath = safeJoinUnderDir(pdfTargetDir, monthFolder.name, oneDriveFile.name);
+          if (!targetFilePath) {
+            log.warn({ folder: monthFolder.name, file: oneDriveFile.name }, 'Nome de item OneDrive recusado (path traversal)');
+            continue;
+          }
           const copied = await copyOneDrivePdfFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
           if (copied) {
             copiedPdfCount += 1;
