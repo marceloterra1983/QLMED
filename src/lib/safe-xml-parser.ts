@@ -70,9 +70,14 @@ export function getMaxXmlDepth(xmlContent: string): number {
       continue;
     }
 
-    // Tag de abertura: procura o '>' correspondente para ver se é self-closing.
-    const close = xmlContent.indexOf('>', i);
+    // Tag de abertura. O fecho tem de ser procurado RESPEITANDO ASPAS: um valor
+    // de atributo perfeitamente legal como b="/>" põe `/>` antes do primeiro
+    // `>`, e a busca ingénua concluía self-closing e não contava o nível.
+    // Provado pela re-auditoria: 300 000 níveis reais em 4,2 MB mediam 0 e
+    // passavam, com +291 MB de RSS no parse.
+    const close = findTagEnd(xmlContent, i);
     if (close === -1) break;
+    i = close;
     if (xmlContent[close - 1] === '/') continue; // <tag/>
 
     depth++;
@@ -80,6 +85,27 @@ export function getMaxXmlDepth(xmlContent: string): number {
   }
 
   return max;
+}
+
+/**
+ * Índice do `>` que fecha a tag aberta em `start`, ignorando os que estão
+ * dentro de valor de atributo. Devolve -1 se a tag não fecha.
+ */
+function findTagEnd(xml: string, start: number): number {
+  let quote: string | null = null;
+  for (let i = start + 1; i < xml.length; i++) {
+    const ch = xml[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === '>') return i;
+  }
+  return -1;
 }
 
 function rejectDeepNesting(xmlContent: string): void {

@@ -108,3 +108,28 @@ describe('assertRowCount (FILE-002 cap de linhas)', () => {
     expect(() => assertRowCount(MAX_XLSX_ROWS)).not.toThrow();
   });
 });
+
+/**
+ * REAUD-B-03. O portão anterior confiava no `uncompressedSize` DECLARADO. A
+ * re-auditoria forjou um `.xlsx` de 306 KB cuja folha de 300 MB declarava 1024:
+ * passava, e o exceljs alocava +461 MB antes de detetar a divergência.
+ */
+describe('REAUD-B-03 — o custo é medido, não declarado', () => {
+  async function declaresSmall(realBytes: number, lie: number): Promise<Uint8Array> {
+    const buf = Buffer.from(await zipBomb(realBytes));
+    for (let i = 0; i + 4 <= buf.length; i += 1) {
+      if (buf.readUInt32LE(i) === realBytes) buf.writeUInt32LE(lie, i);
+    }
+    return new Uint8Array(buf);
+  }
+
+  it('entrada que declara 1024 e infla 20MB é recusada antes do exceljs', async () => {
+    const forjado = await declaresSmall(20 * 1024 * 1024, 1024);
+
+    await expect(assertSafeXlsx(forjado)).rejects.toBeInstanceOf(XlsxTooLargeError);
+  });
+
+  it('a planilha real continua a passar — o portão não recusa tudo', async () => {
+    await expect(assertSafeXlsx(await realWorkbook())).resolves.toBeUndefined();
+  });
+});
