@@ -71,7 +71,7 @@ function sendHttps(
       method: 'POST',
       cert: certPem,
       key: keyPem,
-      ...sefazRequestTls(),
+      ...sefazRequestTls(parsed.host),
       headers: {
         'Content-Type': `application/soap+xml;charset=utf-8;action="${soapAction}"`,
         'Content-Length': Buffer.byteLength(envelope),

@@ -1,8 +1,8 @@
 # Gates — L4 segredos em repouso e observabilidade
 
 Folha L4 da auditoria QLMED `b177b072b51ed09cd0212fb24c0760eace924441`.
-Fecha 9 findings: FILE-007, OBS-001, OBS-003, OBS-004, OBS-005, PRIV-002,
-FISCAL-009, FISCAL-010, FISCAL-011.
+Fecha 8 findings: FILE-007, OBS-001, OBS-003, OBS-004, PRIV-002, FISCAL-009,
+FISCAL-010, FISCAL-011. Aberto: OBS-005 (G8, `ABANDON` no fim do ficheiro).
 
 Baseline medido antes de qualquer edição (`npm test`, 2026-09-01):
 

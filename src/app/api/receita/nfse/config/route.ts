@@ -5,6 +5,7 @@ import { openCertificatePems } from '@/lib/certificate-secret';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { incrementNsu, ReceitaNfseClient } from '@/lib/receita-nfse-client';
+import { receitaRequestTls } from '@/lib/ssl-verify';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { receitaNfseConfigSchema, receitaNfseTestSchema } from '@/lib/schemas/receita';
@@ -196,7 +197,7 @@ export async function PUT(request: NextRequest) {
       apiToken,
       certPem: cert,
       keyPem: key,
-      rejectUnauthorized: process.env.RECEITA_NFSE_VERIFY_SSL !== 'false',
+      ...receitaRequestTls(),
     });
 
     const probeNsu = incrementNsu('000000000000000');

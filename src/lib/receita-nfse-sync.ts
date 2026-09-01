@@ -4,6 +4,7 @@ import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { extractFirstCfop } from '@/lib/cfop';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
+import { receitaRequestTls } from '@/lib/ssl-verify';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
@@ -120,7 +121,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     apiToken,
     certPem: cert,
     keyPem: key,
-    rejectUnauthorized: process.env.RECEITA_NFSE_VERIFY_SSL !== 'false',
+    ...receitaRequestTls(),
   });
 
   let newDocs = 0;

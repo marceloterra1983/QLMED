@@ -3,6 +3,21 @@ services:
     image: postgres:18-alpine
     container_name: qlmed-db
     restart: unless-stopped
+    # REAUD-B-12: mesmo endurecimento que qlmed-app e qlmed-n8n já tinham. O
+    # conjunto de capabilities foi medido em container descartável (initdb em
+    # volume novo, recriação sobre dados existentes e `docker restart`): o
+    # entrypoint corre como root, faz chown/chmod no PGDATA e desce para
+    # `postgres` com su-exec. O servidor em si corre com CapEff=0.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -55,6 +70,16 @@ services:
     image: postgres:18-alpine
     container_name: qlmed-n8n-db
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     env_file:
       - ./env/n8n-db.env
     volumes:

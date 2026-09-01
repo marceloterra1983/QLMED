@@ -51,12 +51,14 @@ export async function renderHtmlToPdf(html: string, options: PDFOptions): Promis
     // O HTML é autocontido (CSS inline, sem imagem ou script remoto): nada
     // legítimo precisa de JS nem de rede. Com os dois desligados, um nome de
     // fornecedor vindo do XML deixa de poder buscar URL interna (SSRF) ou
-    // exfiltrar o conteúdo da nota.
+    // exfiltrar o conteúdo da nota. `data:` também cai: nenhum gerador emite
+    // imagem nem fonte inline, e é justamente o `data:` que reabre os
+    // decodificadores de imagem num Chromium `--no-sandbox` (REAUD-B-13).
     await page.setJavaScriptEnabled(false);
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       const url = request.url();
-      if (url.startsWith('data:') || url.startsWith('about:')) {
+      if (url.startsWith('about:')) {
         void request.continue();
         return;
       }
