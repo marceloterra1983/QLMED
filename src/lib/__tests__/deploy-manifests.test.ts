@@ -20,8 +20,13 @@ import yaml from 'js-yaml';
 const root = resolve(__dirname, '../../..');
 const read = (relative: string) => readFileSync(join(root, relative), 'utf8');
 
-/** Um segredo não pode ser build-arg: vira camada de imagem e `docker history`. */
-const SECRET_ARG = /^\s{4,}(\w*(?:KEY|SECRET|TOKEN|PASSWORD)\w*):\s*\$\{/im;
+/**
+ * Um segredo não pode ser build-arg: vira camada de imagem e `docker history`.
+ * Qualquer valor não-vazio conta — `${VAR}` e literal cravado leakam igual
+ * (re-auditoria: a versão anterior só apanhava `${` e só quatro nomes).
+ */
+const SECRET_ARG =
+  /^[ \t]{4,}(\w*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|SENHA|CREDENTIAL|PFX|DATABASE_URL)\w*):[ \t]*\S/im;
 
 function buildArgsBlocks(compose: string): string[] {
   // Recorta cada bloco `args:` de `build:` até a próxima chave de mesma indentação.
@@ -100,18 +105,32 @@ describe('QLMED-OPS-003 — segredo não entra como build-arg', () => {
     }
   });
 
+  const poisonedCompose = (arg: string) =>
+    ['services:', '  qlmed-app:', '    build:', '      context: ./app', '      args:', `        ${arg}`].join('\n');
+
   it('reprova um build-arg de segredo sintético (controlo positivo)', () => {
-    const poisoned = [
-      'services:',
-      '  qlmed-app:',
-      '    build:',
-      '      context: ./app',
-      '      args:',
-      '        QLMED_API_KEY: ${QLMED_API_KEY}',
-    ].join('\n');
-    const blocks = buildArgsBlocks(poisoned);
+    const blocks = buildArgsBlocks(poisonedCompose('QLMED_API_KEY: ${QLMED_API_KEY}'));
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toMatch(SECRET_ARG);
+  });
+
+  // SECRET_ARG (re-auditoria): o padrão antigo escapava valor literal e os
+  // outros nomes que carregam segredo neste repositório.
+  it.each([
+    ['valor literal', 'QLMED_API_KEY: sk-live-abc123'],
+    ['DATABASE_URL', 'DATABASE_URL: postgresql://qlmed:senha@db:5432/qlmed'],
+    ['SENHA_*', 'SENHA_CERTIFICADO: 123456'],
+    ['CREDENTIAL', 'GRAPH_CREDENTIAL: ${GRAPH_CREDENTIAL}'],
+    ['PFX_BASE64', 'PFX_BASE64: MIIKcQIBAzCCCjcGCSqGSIb3DQEHAaCCCig'],
+    ['PASSWD', 'DB_PASSWD: hunter2'],
+  ])('reprova build-arg %s (controlo negativo)', (_label, arg) => {
+    const [block] = buildArgsBlocks(poisonedCompose(arg));
+    expect(block).toMatch(SECRET_ARG);
+  });
+
+  it('não confunde metadado de build com segredo', () => {
+    const [block] = buildArgsBlocks(poisonedCompose('QLMED_BUILD_COMMIT_SHA: ${QLMED_BUILD_COMMIT_SHA:-unknown}'));
+    expect(block).not.toMatch(SECRET_ARG);
   });
 
   it('production/docker-compose.yml é o compose canônico e ops/ diz isso', () => {
@@ -218,30 +237,36 @@ describe('QLMED-OPS-005 — migrações novas são expand-only', () => {
   });
 });
 
+// QLMED-UI-003 (estoque cravado no relatório de válvulas) deixou de ser um
+// portão de fonte: o regex ficava verde com o defeito reposto sob outro nome
+// ou com ternário. Agora é `valvulas-importadas-row.test.ts`, que chama a
+// função com dados.
+
 /**
- * QLMED-UI-003 — o relatório de válvulas tinha um mapa `REAL_STOCK` com a
- * contagem física de fev/2026 e o `netQty` preferia esse número ao cálculo. A
- * tela chama a coluna de "Saldo" — o leitor entende comprado menos vendido.
- *
- * A ausência de uma tabela de dados cravada é uma propriedade do FONTE, não de
- * uma execução: não há entrada que faça um `const` aparecer. Por isso, e só
- * por isso, este portão lê o ficheiro. Onde havia comportamento para observar
- * (as listas fiscais), a verificação é render — ver os `.test.tsx`.
+ * REAUD-B-12: os dois Postgres corriam sem `no-new-privileges` nem `cap_drop`,
+ * enquanto o app e o n8n já tinham. O conjunto mínimo de capabilities foi
+ * medido num container descartável: o entrypoint corre como root, faz
+ * `chown`/`chmod` no PGDATA e desce para `postgres` com `su-exec`.
  */
-describe('QLMED-UI-003 — relatório de válvulas sem estoque cravado', () => {
-  const route = read('src/app/api/reports/valvulas-importadas/route.ts');
+describe('REAUD-B-12 — bancos de produção com no-new-privileges e cap_drop', () => {
+  type Service = { security_opt?: string[]; cap_drop?: string[]; cap_add?: string[] };
+  const services = (yaml.load(read('production/docker-compose.yml')) as { services: Record<string, Service> })
+    .services;
 
-  it('não tem mapa de estoque cravado sobrescrevendo o saldo', () => {
-    expect(route).not.toMatch(/REAL_STOCK\s*[:[]/);
-    expect(route).not.toMatch(/netQty:\s*\w+\[[^\]]*\]\s*\?\?/);
+  it.each(['qlmed-db', 'n8n-db'])('%s não ganha privilégio e larga todas as capabilities', (name) => {
+    const service = services[name];
+    expect(service, `${name} não existe no compose`).toBeTruthy();
+    expect(service.security_opt).toContain('no-new-privileges:true');
+    expect(service.cap_drop).toEqual(['ALL']);
+    // Só o que o entrypoint precisou para arrancar, medido — nada de SYS_ADMIN.
+    expect(service.cap_add).toEqual(['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID']);
   });
 
-  it('netQty é comprado menos vendido', () => {
-    expect(route).toMatch(/netQty:\s*Math\.round\(\(p\.purchasedQty - p\.soldQty\)/);
-  });
-
-  it('reprova um override sintético (controlo positivo)', () => {
-    const poisoned = 'netQty: REAL_STOCK[p.code] ?? Math.round((p.purchasedQty - p.soldQty) * 100) / 100,';
-    expect(poisoned).toMatch(/netQty:\s*\w+\[[^\]]*\]\s*\?\?/);
+  it('reprova um banco sintético sem cap_drop (controlo positivo)', () => {
+    const naked = yaml.load('services:\n  db:\n    image: postgres:18-alpine\n') as {
+      services: Record<string, Service>;
+    };
+    expect(naked.services.db.cap_drop).toBeUndefined();
+    expect(naked.services.db.security_opt ?? []).not.toContain('no-new-privileges:true');
   });
 });

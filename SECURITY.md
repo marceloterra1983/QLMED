@@ -23,6 +23,28 @@
   terceiros trancar o operador de fora. Isso é deliberado e não muda com a
   migração do store.
 
+### QLMED-RISK-2026-09-PG-DIGEST
+
+- **Owner:** Marcelo
+- **Accepted:** 2026-09-01
+- **Finding:** REAUD-B-12 (re-auditoria de b177b07)
+- **Severity:** low
+- **Affected path:** `production/docker-compose.yml` — `qlmed-db` e `n8n-db`
+  usam `postgres:18-alpine`, tag móvel; `qlmed-app` e `qlmed-n8n` estão pinados
+  por digest.
+- **Suposição que sustenta o controlo:** o deploy canônico
+  (`deploy-production.yml`) só constrói e sobe `qlmed-app`; nunca recria o
+  banco. Um `pull` da tag móvel só acontece por acção manual do dono.
+- **Por que não foi corrigido agora:** fixar o digest transformaria o próximo
+  `up -d` completo numa recriação do contentor de banco, e o digest vivo do
+  host não é observável a partir do repositório — pinar às cegas arrisca subir
+  um binário diferente do que está a servir os dados.
+- **Remediation trigger:** na próxima janela de manutenção combinada com o
+  dono, ou antes de qualquer `docker compose up -d` que recrie `qlmed-db`,
+  ler o digest em execução (`docker inspect --format '{{index .RepoDigests 0}}'
+  qlmed-db`) e gravá-lo no compose. O portão de digest em
+  `src/lib/__tests__/deploy-manifests.test.ts` passa então a cobrir os bancos.
+
 ## Remediated
 
 ### QLMED-RISK-2026-07-POSTCSS
@@ -51,12 +73,17 @@ unit/integration/build gates.
   produzirem imagens diferentes, e o rollback para `qlmed-app:previous` não
   reproduzia o que tinha sido testado. `src/lib/__tests__/deploy-manifests.test.ts`
   reprova se a tag móvel voltar ou se os estágios divergirem.
-- **`postgres:18-alpine` continua em tag móvel, por decisão** — o deploy
-  canônico (`deploy-production.yml`) só constrói e sobe `qlmed-app`; nunca toca
-  `qlmed-db`. Fixar o digest do banco transformaria o próximo `up -d` completo
-  numa recriação do contentor de banco, e o digest vivo do host não é
-  observável a partir do repositório. Pinagem fica para uma janela combinada
-  com o dono. O `qlmed-n8n` já está pinado por digest.
+- **`postgres:18-alpine` continua em tag móvel** — aceitação formal, com
+  owner, data e gatilho, em `QLMED-RISK-2026-09-PG-DIGEST` acima. O
+  `qlmed-n8n` já está pinado por digest.
+- **Os dois Postgres correm com `no-new-privileges:true`, `cap_drop: [ALL]` e
+  só `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID`** (REAUD-B-12) —
+  o mesmo endurecimento que `qlmed-app` e `qlmed-n8n` já tinham. O conjunto
+  foi medido em container descartável nos três caminhos (initdb em volume
+  novo, recriação sobre dados existentes, `docker restart`); sem
+  `DAC_OVERRIDE` a recriação sobre dados existentes falha no `find` do
+  entrypoint. O servidor corre como `postgres` com `CapEff=0`. O mesmo ficheiro
+  de teste reprova se o endurecimento sair do compose.
 - **Segredo nunca é build-arg** — `build.args` grava o valor numa camada da
   imagem e no `docker history`. Segredo entra por `env_file` no runtime. Portão
   no mesmo ficheiro de teste, sobre os três composes.

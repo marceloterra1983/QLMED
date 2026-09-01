@@ -91,7 +91,7 @@ export class SefazClient {
     const options = {
       cert: this.certPem,
       key: this.keyPem,
-      ...sefazRequestTls(),
+      ...sefazRequestTls(url.host),
       method: 'POST' as const,
       headers: {
         'Content-Type': 'application/soap+xml; charset=utf-8',

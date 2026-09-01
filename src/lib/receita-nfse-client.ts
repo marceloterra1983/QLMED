@@ -2,6 +2,7 @@ import https from 'https';
 import zlib from 'zlib';
 import { createLogger } from '@/lib/logger';
 import { assertAllowedHost } from '@/lib/http-allowlist';
+import { noteTlsVerificationDisabled } from '@/lib/ssl-verify';
 
 const log = createLogger('receita-nfse-client');
 
@@ -167,6 +168,8 @@ export interface ReceitaNfseClientOptions {
   certPem: string;
   keyPem: string;
   rejectUnauthorized?: boolean;
+  /** Bundle de CAs; sem ele o Node usa o store padrão. Ver `receitaRequestTls`. */
+  ca?: string[];
   timeoutMs?: number;
 }
 
@@ -188,6 +191,7 @@ export class ReceitaNfseClient {
   private readonly certPem: string;
   private readonly keyPem: string;
   private readonly rejectUnauthorized: boolean;
+  private readonly ca: string[] | undefined;
   private readonly timeoutMs: number;
 
   constructor(options: ReceitaNfseClientOptions) {
@@ -199,6 +203,7 @@ export class ReceitaNfseClient {
     this.certPem = options.certPem;
     this.keyPem = options.keyPem;
     this.rejectUnauthorized = options.rejectUnauthorized ?? true;
+    this.ca = options.ca;
     this.timeoutMs = options.timeoutMs ?? 25000;
   }
 
@@ -214,6 +219,7 @@ export class ReceitaNfseClient {
 
   private async request(path: string, cnpjConsulta?: string | null): Promise<{ statusCode: number; headers: HeaderMap; body: string }> {
     const url = this.buildUrl(path, cnpjConsulta);
+    if (!this.rejectUnauthorized) noteTlsVerificationDisabled(url.host);
     const headers: Record<string, string> = {
       Accept: 'application/json, application/xml, text/xml;q=0.9, */*;q=0.8',
     };
@@ -227,6 +233,7 @@ export class ReceitaNfseClient {
       cert: this.certPem,
       key: this.keyPem,
       rejectUnauthorized: this.rejectUnauthorized,
+      ca: this.ca,
       timeout: this.timeoutMs,
       headers,
     };

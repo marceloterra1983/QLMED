@@ -101,13 +101,27 @@ describe('renderHtmlToPdf', () => {
       expect(loopback.continue).not.toHaveBeenCalled();
     });
 
-    it('deixa passar o conteúdo inline que a página legitimamente usa', async () => {
+    // REAUD-B-13: nenhum gerador emite `data:` nem `<img>`; a permissão só
+    // servia para reabrir os decodificadores de imagem sem sandbox.
+    it('aborta `data:` — não há uso legítimo e é o que reabre os decodificadores de imagem', async () => {
       const { handlers } = fakeBrowser();
       await renderHtmlToPdf('<p>x</p>', {});
 
       const inline = requestVerdict(handlers, 'data:image/png;base64,iVBOR');
-      expect(inline.continue).toHaveBeenCalled();
-      expect(inline.abort).not.toHaveBeenCalled();
+      expect(inline.abort).toHaveBeenCalled();
+      expect(inline.continue).not.toHaveBeenCalled();
+
+      const svg = requestVerdict(handlers, 'data:image/svg+xml;utf8,<svg/>');
+      expect(svg.abort).toHaveBeenCalled();
+    });
+
+    it('só `about:` passa — é a página em branco do setContent', async () => {
+      const { handlers } = fakeBrowser();
+      await renderHtmlToPdf('<p>x</p>', {});
+
+      const blank = requestVerdict(handlers, 'about:blank');
+      expect(blank.continue).toHaveBeenCalled();
+      expect(blank.abort).not.toHaveBeenCalled();
     });
 
     it('dá timeout explícito ao setContent e ao pdf()', async () => {

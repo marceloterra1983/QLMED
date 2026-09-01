@@ -6,6 +6,7 @@ import { isImportEntryCfop, getCfopTagByCode } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { extractProductsFromXml, normalizeUnit } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
+import { toProductRow, type ImportProduct } from '@/lib/valvulas-importadas-row';
 
 const log = createLogger('reports/valvulas-importadas');
 
@@ -15,21 +16,6 @@ const CNPJ_MERGE_MAP: Record<string, string> = {
 };
 
 /* ── Types ── */
-
-interface ImportProduct {
-  key: string;        // internal cProd code (from issued import invoice)
-  code: string;
-  description: string;
-  shortName: string | null;
-  unit: string;
-  anvisa: string | null;
-  purchasedQty: number;
-  purchasedValue: number;
-  soldQty: number;
-  soldValue: number;
-  resaleQty: number;
-  resaleValue: number;
-}
 
 interface CustomerSale {
   customerName: string;
@@ -475,26 +461,10 @@ export async function GET(req: Request) {
       if (prod.purchasedValue < 0) prod.purchasedValue = 0;
     }
 
-    // Build response
+    // Build response — `netQty` vive em `toProductRow`, testado com dados (UI-003).
     const products = Array.from(importProductMap.values())
       .filter(p => p.purchasedQty > 0 || p.soldQty > 0)
-      .map(p => ({
-        key: p.key,
-        code: p.code,
-        description: p.description,
-        shortName: p.shortName,
-        unit: p.unit,
-        anvisa: p.anvisa,
-        purchasedQty: Math.round(p.purchasedQty * 100) / 100,
-        purchasedValue: Math.round(p.purchasedValue * 100) / 100,
-        soldQty: Math.round(p.soldQty * 100) / 100,
-        soldValue: Math.round(p.soldValue * 100) / 100,
-        resaleQty: Math.round(p.resaleQty * 100) / 100,
-        resaleValue: Math.round(p.resaleValue * 100) / 100,
-        netQty: Math.round((p.purchasedQty - p.soldQty) * 100) / 100,
-        avgPurchasePrice: p.purchasedQty > 0 ? Math.round((p.purchasedValue / p.purchasedQty) * 100) / 100 : null,
-        avgSalePrice: p.soldQty > 0 ? Math.round((p.soldValue / p.soldQty) * 100) / 100 : null,
-      }))
+      .map(toProductRow)
       .sort((a, b) => b.purchasedValue - a.purchasedValue);
 
     const totalPurchasedQty = products.reduce((s, p) => s + p.purchasedQty, 0);

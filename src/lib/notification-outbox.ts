@@ -659,7 +659,7 @@ export async function acknowledgeNotificationDeliveries(
   });
 }
 
-const OUTBOX_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const OUTBOX_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Fica registrado como `disabled` no /api/health enquanto não houver janela de
@@ -669,6 +669,7 @@ export async function startNotificationOutboxPurge(): Promise<void> {
   const retentionDays = getNotificationOutboxRetentionDays();
   markBackgroundServiceStarted('notification-outbox-purge', {
     enabled: retentionDays !== null,
+    heartbeatIntervalMs: OUTBOX_PURGE_INTERVAL_MS,
   });
   if (retentionDays === null) return;
 
