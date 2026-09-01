@@ -63,6 +63,13 @@ function formatCurrencyShort(value: number): string {
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 /**
+ * REAUD-DATA-014: tecto de voltas do laço de backfill. O servidor faz 200 notas
+ * por volta, logo 500 voltas = 100 mil NF-e. A cancela real é "uma volta não
+ * fez `remaining` cair"; esta é o cinto de segurança.
+ */
+export const BACKFILL_MAX_ROUNDS = 500;
+
+/**
  * Trimestres como mês-âncora. O backend deriva o trimestre de `month`
  * (Math.ceil(month / 3)), então escolher T3 equivale a mandar month = 7.
  */
@@ -172,19 +179,31 @@ export default function FiscalDashboardPage() {
     let totalProcessed = 0;
     let totalErrors = 0;
     try {
-      let remaining = 1; // start loop
-      while (remaining > 0) {
+      // REAUD-DATA-014: o servidor pode devolver o mesmo `remaining` para
+      // sempre (nota que nunca ganha item_count). Sem cancela, o browser
+      // martelava POST /api/invoices/backfill-tax indefinidamente. Duas
+      // cancelas: parar quando uma volta não fez `remaining` cair, e o tecto.
+      let remaining = Infinity;
+      for (let round = 0; remaining > 0 && round < BACKFILL_MAX_ROUNDS; round++) {
         setBackfillProgress(`Processando... (${totalProcessed} concluidos)`);
         const res = await fetch('/api/invoices/backfill-tax', { method: 'POST' });
         if (!res.ok) throw new Error('Erro na requisicao');
         const data = await res.json();
         totalProcessed += data.processed || 0;
         totalErrors += data.errors || 0;
-        remaining = data.remaining ?? 0;
+        const next: number = data.remaining ?? 0;
+        const stalled = next > 0 && next >= remaining;
+        remaining = next;
         setWithTaxData(prev => prev + (data.processed || 0));
         setBackfillProgress(`Processando... (${totalProcessed} concluidos, ${remaining} restantes)`);
+        if (stalled) break;
       }
-      toast.success(`Backfill concluido: ${totalProcessed} notas processadas${totalErrors > 0 ? `, ${totalErrors} erros` : ''}`);
+      const errorsLabel = totalErrors > 0 ? `, ${totalErrors} erros` : '';
+      if (remaining > 0) {
+        toast.warning(`Backfill interrompido com ${remaining} restantes (${totalProcessed} processadas${errorsLabel})`);
+      } else {
+        toast.success(`Backfill concluido: ${totalProcessed} notas processadas${errorsLabel}`);
+      }
       // Reload dashboard data
       loadDashboard();
       loadCfop();
