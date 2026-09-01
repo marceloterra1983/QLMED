@@ -122,7 +122,14 @@ export async function detectNfeCancellation(input: {
   return fromProviderStatus(input.documentType, input.providerStatus, fallbackKey) || empty;
 }
 
+/**
+ * `companyId` é obrigatório de propósito: a chave de acesso vem de XML/provedor
+ * externo, então sem o filtro de empresa um evento de cancelamento marcava a
+ * nota homónima de qualquer empresa. Sendo obrigatório, o compilador obriga
+ * cada chamador a decidir o escopo em vez de esquecê-lo.
+ */
 export async function applyNfeCancellation(input: {
+  companyId: string;
   xml?: string | null;
   providerStatus?: string | null;
   documentType?: string | null;
@@ -130,10 +137,10 @@ export async function applyNfeCancellation(input: {
 }): Promise<boolean> {
   const hit = await detectNfeCancellation(input);
   const accessKey = hit.accessKey;
-  if (!hit.cancelled || !hit.cancelledAt || !accessKey) return false;
+  if (!hit.cancelled || !hit.cancelledAt || !accessKey || !input.companyId) return false;
 
   const result = await prisma.invoice.updateMany({
-    where: { accessKey, cancelledAt: null },
+    where: { companyId: input.companyId, accessKey, cancelledAt: null },
     data: { cancelledAt: hit.cancelledAt },
   });
   return result.count > 0;

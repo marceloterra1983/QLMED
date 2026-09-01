@@ -120,6 +120,7 @@ export async function syncViaNsdocs(
           },
         });
         await applyNfeCancellation({
+          companyId,
           xml: xmlContent,
           providerStatus: doc.situacao,
           documentType: parsed.type,

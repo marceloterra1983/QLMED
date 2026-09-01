@@ -1,22 +1,13 @@
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { timingSafeEqual, createHash } from 'crypto';
+import { createHash } from 'crypto';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { effectiveApiKeyScopes } from '@/lib/api-key-scopes';
 
 const log = createLogger('auth');
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  try {
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
 
 function hashApiKey(raw: string): string {
   return createHash('sha256').update(raw, 'utf8').digest('hex');
@@ -39,9 +30,9 @@ export interface ApiKeyContext {
  *    but we always re-check here so header-spoofing alone can't authorize).
  * 2. SHA-256 hash the key and look up an active `ApiKey` row. Updates
  *    `lastUsedAt` fire-and-forget.
- * 3. Fallback: constant-time compare against the legacy QLMED_API_KEY env
- *    var and resolve to the `apikey-legacy-001` seed row (will be removed
- *    once integrations migrate off the env-supplied key).
+ *
+ * There is no env-var fallback: a key that is not a live, non-revoked `ApiKey`
+ * row authorizes nothing.
  */
 export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
   let rawKey: string | null = null;
@@ -79,17 +70,6 @@ export async function getApiKeyContext(): Promise<ApiKeyContext | null> {
     log.error({ err }, 'ApiKey lookup failed');
   }
 
-  // Legacy path: env-based compare (back-compat until integrations rotate).
-  const expectedEnv = process.env.QLMED_API_KEY;
-  if (expectedEnv && safeEqual(rawKey, expectedEnv)) {
-    const admin = await prisma.user.findFirst({
-      where: { role: 'admin', status: 'active' },
-      select: { id: true },
-    });
-    if (admin) {
-      return { keyId: 'legacy-env', userId: admin.id, scopes: ['admin'] };
-    }
-  }
   return null;
 }
 

@@ -1,3 +1,21 @@
+/**
+ * AUTH-008 — TETO CONHECIDO: este contador vive num `Map` do PROCESSO.
+ *
+ * Consequências, explícitas de propósito:
+ *  - com N instâncias da app, o limite efectivo é N x `maxRequests`, porque cada
+ *    processo conta o seu próprio balde;
+ *  - todo contador zera num restart/deploy;
+ *  - o limite de login é por IP (`getClientIp`) e global, nunca por identidade:
+ *    a ADR-0012 proíbe travar uma conta a partir de tentativas falhadas, para
+ *    que ninguém consiga trancar o operador de fora.
+ *
+ * O QLMED corre HOJE numa instância só, e é essa a suposição que sustenta o
+ * controlo. A aceitação está registada em `SECURITY.md`
+ * (QLMED-RISK-2026-09-RATELIMIT-INPROC) com o gatilho de remediação: no dia em
+ * que a app escalar para mais de um processo, este store tem de passar a ser
+ * partilhado (tabela em Postgres com `key`/`resetAt`), o que exige migração de
+ * schema.
+ */
 export interface RateLimitConfig {
   interval: number;   // Time window in milliseconds (e.g., 60000 for 1 min)
   maxRequests: number; // Max requests per window

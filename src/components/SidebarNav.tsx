@@ -54,7 +54,8 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
   const role = session?.user?.role || 'viewer';
   const isAdmin = role === 'admin';
   const allowedPages: string[] = session?.user?.allowedPages ?? [];
-  const hasPageAccess = (path: string) => isAdmin || allowedPages.length === 0 || allowedPages.includes(path);
+  // Default-deny, mirroring canAccessPage: an empty list grants nothing.
+  const hasPageAccess = (path: string) => isAdmin || allowedPages.includes(path);
 
   const allNavItems: NavGroup[] = [
     {

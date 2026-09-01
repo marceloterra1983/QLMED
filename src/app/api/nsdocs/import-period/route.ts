@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
             });
           });
           await applyNfeCancellation({
+            companyId,
             xml: xmlContent,
             providerStatus: doc.situacao,
             documentType: parsed.type,
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest) {
         }
 
         await applyNfeCancellation({
+          companyId,
           xml: xmlContent,
           providerStatus: doc.situacao,
           documentType: parsed.type,

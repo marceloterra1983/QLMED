@@ -95,7 +95,7 @@ export async function syncViaSefaz(
           if (!doc.xml) continue;
 
           if (doc.tipo === 'evento') {
-            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
             continue;
           }
 
@@ -103,7 +103,7 @@ export async function syncViaSefaz(
 
           const parsed = await parseInvoiceXml(doc.xml);
           if (!parsed) {
-            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
             continue;
           }
 

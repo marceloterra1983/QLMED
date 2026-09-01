@@ -160,33 +160,42 @@ describe('applyNfeCancellation', () => {
   });
 
   it('marca cancelledAt na nota existente sem sobrescrever xmlContent', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', '135') });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', '135') });
     expect(applied).toBe(true);
     expect(updateMany).toHaveBeenCalledTimes(1);
     const arg = updateMany.mock.calls[0][0] as {
       where: { accessKey: string; cancelledAt: null };
       data: Record<string, unknown>;
     };
-    expect(arg.where).toEqual({ accessKey: CHAVE, cancelledAt: null });
+    expect(arg.where).toEqual({ companyId: 'company-1', accessKey: CHAVE, cancelledAt: null });
     expect(arg.data.cancelledAt).toBeInstanceOf(Date);
     expect(arg.data).not.toHaveProperty('xmlContent');
   });
 
   it('usa chNFe do XML quando accessKey de entrada falta', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', '155') });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', '155') });
     expect(applied).toBe(true);
     const arg = updateMany.mock.calls[0][0] as { where: { accessKey: string } };
     expect(arg.where.accessKey).toBe(CHAVE);
   });
 
   it('nao aplica procEventoNFe sem cStat 135/155', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', null) });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', null) });
+    expect(applied).toBe(false);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  // AUTH-003: a chave de acesso vem de fonte externa. Sem o filtro de empresa
+  // um evento de cancelamento marcava a nota homónima de outra empresa.
+  it('nao aplica cancelamento sem companyId', async () => {
+    const applied = await applyNfeCancellation({ companyId: '', xml: procEvento('110111', '135') });
     expect(applied).toBe(false);
     expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('nao cria invoice quando o evento nao tem chave', async () => {
     const applied = await applyNfeCancellation({
+      companyId: 'company-1',
       xml: '<?xml version="1.0"?><procEventoNFe><evento><infEvento><tpEvento>110111</tpEvento></infEvento></evento><retEvento><infEvento><tpEvento>110111</tpEvento><cStat>135</cStat></infEvento></retEvento></procEventoNFe>',
     });
     expect(applied).toBe(false);
