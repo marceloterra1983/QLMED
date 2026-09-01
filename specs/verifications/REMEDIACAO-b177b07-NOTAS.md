@@ -236,3 +236,19 @@ e a leitura cruzada dos 14 call sites de `decrypt()` fecha em 6 colunas, todas
 cobertas. B-10 — `redirect: 'error'` no fetch do n8n. B-11 — o backfill de
 `allowedPages` filtra `active`, exige `--created-before`, e exclui `/sistema/*`
 por omissão. Thread P1 #4 do Codex respondida e resolvida.
+
+**R1 integrada** (`701bf76`): FISCAL-015 — `applyNfeCancellation` ganhou
+tri-estado (`not-a-cancellation | applied | lost`) e só `lost` trava o cursor;
+nota já cancelada conta como `applied`, senão a reentrega idempotente travava
+para sempre. TEST-002 — o teste selador saiu, e a prova do auditor entrou de
+ponta a ponta (`procEventoNFe` 110111/135 real): cursor `…009`, não `…010`.
+DATA-015 — P2002 no upsert vai com o XML para a tabela nova
+`SyncSkippedDocument` (unique por chave), e o cursor avança em `partial`; se a
+escrita durável falhar, o cursor não avança. FISCAL-016 — migração nova troca o
+índice parcial por `COALESCE("series",'')` e alinha a pré-checagem; medido no
+Postgres descartável: com o índice antigo, série NULL + número 77 entrava duas
+vezes; com o novo, `duplicate key`. 1234 testes.
+
+**Ordem de deploy, item 8 (novo):** a migração `20260903140100_sync_skipped_document`
+tem de estar aplicada antes do código novo servir — sem a tabela a escrita
+durável falha e o cursor de sync não avança, por desenho.
