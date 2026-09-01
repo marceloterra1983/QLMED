@@ -112,6 +112,12 @@ async function fetchPaginated<T>(
     let response: Response;
     try {
       response = await fetchImpl(url.toString(), {
+        // `fetch` segue redirect por omissão, e `X-N8N-API-KEY` é cabeçalho
+        // personalizado: o spec só remove Authorization/Cookie num salto entre
+        // origens. Um 302 da instância levaria a chave para outro host. Aqui um
+        // redirect vira erro (cai em `unavailable/network`), não um segundo
+        // pedido — a mesma regra da Evolution (whatsapp-evolution.ts). REAUD-B-10.
+        redirect: 'error',
         headers: { 'X-N8N-API-KEY': connection.apiToken, Accept: 'application/json' },
         signal: AbortSignal.timeout(N8N_REQUEST_TIMEOUT_MS),
       });

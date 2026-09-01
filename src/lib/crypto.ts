@@ -25,6 +25,19 @@ export function encrypt(text: string): string {
   return `${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
 }
 
+/**
+ * Forma exata do que `encrypt()` produz e `decrypt()` lê: salt, iv e authTag
+ * têm 16 bytes (32 hex cada), o ciphertext é hex de comprimento par (vazio
+ * para `encrypt('')`); o formato legado é o mesmo sem o salt. Contar `:` não
+ * chega — um segredo em claro com dois ou três dois-pontos passava por
+ * cifrado e a migração o pulava em silêncio (REAUD-B-08).
+ */
+const ENCRYPTED_TEXT = /^(?:[0-9a-f]{32}:){2,3}(?:[0-9a-f]{2})*$/i;
+
+export function isEncryptedText(value: string): boolean {
+  return ENCRYPTED_TEXT.test(value);
+}
+
 export function decrypt(encryptedText: string): string {
   const parts = encryptedText.split(':');
 

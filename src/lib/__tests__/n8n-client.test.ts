@@ -256,3 +256,50 @@ describe('fetchN8nWorkflows — paginação', () => {
     expect(r).not.toHaveProperty('workflows');
   });
 });
+
+// ---------------------------------------------------------------------------
+// REAUD-B-10: `fetch` segue redirect por omissão e `X-N8N-API-KEY` é cabeçalho
+// personalizado — o spec só remove Authorization/Cookie num salto entre
+// origens. Um 302 da instância levaria a chave para outro host.
+// ---------------------------------------------------------------------------
+describe('fetchN8nWorkflows — redirect', () => {
+  /**
+   * Emula o que o spec faz com um 302: com `redirect: 'error'` o fetch rejeita;
+   * sem ele, "segue" para o outro host LEVANDO os cabeçalhos personalizados.
+   * Cada chamada regista o host e a chave que chegou lá.
+   */
+  function redirectingFetch(calls: Array<{ host: string; apiKey: string | undefined }>): typeof fetch {
+    const impl = async (url: string, init?: RequestInit): Promise<Response> => {
+      const host = new URL(url).hostname;
+      calls.push({ host, apiKey: (init?.headers as Record<string, string> | undefined)?.['X-N8N-API-KEY'] });
+      if (host !== 'n8n.example') return jsonResponse({ data: [] });
+      if (init?.redirect === 'error') throw new TypeError('fetch failed: unexpected redirect');
+      return impl('https://evil.example/api/v1/workflows', init);
+    };
+    return impl as unknown as typeof fetch;
+  }
+
+  it('um 302 vira unavailable e a chave nunca chega ao segundo host', async () => {
+    const calls: Array<{ host: string; apiKey: string | undefined }> = [];
+
+    const r = await fetchN8nWorkflows(CONN, redirectingFetch(calls));
+
+    expect(r.state).toBe('unavailable');
+    expect(r).not.toHaveProperty('workflows');
+    expect(calls.map((c) => c.host)).toEqual(['n8n.example']);
+    expect(calls.some((c) => c.host === 'evil.example')).toBe(false);
+  });
+
+  it('pede redirect: "error" em TODA requisição, não só na primeira', async () => {
+    const inits: RequestInit[] = [];
+    const impl = ((url: string, init: RequestInit) => {
+      inits.push(init);
+      return Promise.resolve(jsonResponse({ data: [] }));
+    }) as unknown as typeof fetch;
+
+    await fetchN8nWorkflows(CONN, impl);
+
+    expect(inits.length).toBe(2);
+    for (const init of inits) expect(init.redirect).toBe('error');
+  });
+});
