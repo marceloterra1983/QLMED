@@ -1,8 +1,22 @@
 import https from 'https';
 import zlib from 'zlib';
 import { createLogger } from '@/lib/logger';
+import { assertAllowedHost } from '@/lib/http-allowlist';
 
 const log = createLogger('receita-nfse-client');
+
+/**
+ * Hosts do ADN que podem receber o certificado de cliente do e-CNPJ.
+ *
+ * `baseUrl` é campo de formulário gravado pelo admin e chega aqui como string
+ * livre. Como o `https.request` abaixo apresenta cert+key no handshake, um host
+ * arbitrário significa entregar o certificado da empresa a quem escolher a URL
+ * — antes de qualquer resposta. Daí a lista fechada, verificada no construtor.
+ */
+export const RECEITA_NFSE_ALLOWED_HOSTS = [
+  'adn.nfse.gov.br',
+  'adn.producaorestrita.nfse.gov.br',
+] as const;
 
 type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -177,6 +191,9 @@ export class ReceitaNfseClient {
   private readonly timeoutMs: number;
 
   constructor(options: ReceitaNfseClientOptions) {
+    // Falha na construção, não na requisição: o certificado nunca chega a ser
+    // apresentado a um host que não seja o ADN.
+    assertAllowedHost(options.baseUrl, RECEITA_NFSE_ALLOWED_HOSTS);
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.apiToken = options.apiToken?.trim() ? options.apiToken.trim() : null;
     this.certPem = options.certPem;

@@ -1,11 +1,24 @@
+import { assertAllowedHost } from '@/lib/http-allowlist';
+
 const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
+
+/** Único host que pode receber o Bearer do OneDrive. */
+export const GRAPH_ALLOWED_HOSTS = ['graph.microsoft.com'] as const;
 
 type GraphRequestOptions = {
   allowNotFound?: boolean;
 };
 
+/**
+ * Resolve o alvo da requisição.
+ *
+ * Caminho relativo é nosso e vai direto. URL absoluta vem de fora — é o
+ * `@odata.nextLink` da paginação — e precisa ser fixada no host do Graph antes
+ * de o token ser anexado: sem isso um `nextLink` forjado exfiltra a credencial.
+ */
 function graphEndpoint(resourcePath: string): string {
-  return resourcePath.startsWith('http') ? resourcePath : `${GRAPH_BASE_URL}${resourcePath}`;
+  if (!/^https?:\/\//i.test(resourcePath)) return `${GRAPH_BASE_URL}${resourcePath}`;
+  return assertAllowedHost(resourcePath, GRAPH_ALLOWED_HOSTS).toString();
 }
 
 function graphTimeoutSignal(): AbortSignal {
