@@ -1,0 +1,25 @@
+-- Auditoria b177b07, QLMED-DATA-007: o `remaining` do backfill de imposto era
+-- `COUNT(NFE) - COUNT(invoice_tax_totals)`. Uma nota com totais gravados e
+-- nenhuma linha em invoice_item_tax contava como coberta, e a rota respondia
+-- "Done! All processed" com cobertura de itens incompleta.
+--
+-- Contar `invoice_item_tax` diretamente não resolve: o cliente em
+-- src/app/(painel)/fiscal/dashboard/page-client.tsx roda `while (remaining > 0)`
+-- e uma NF-e cujo XML não produz item nenhum ficaria em `remaining` para
+-- sempre — laço infinito no navegador. item_count registra a cobertura por
+-- nota: NULL = nunca medido, 0 = medido e sem item. Assim `remaining` é honesto
+-- E termina.
+--
+-- Coluna nova e nullable: não falha por dado existente, e não precisa de
+-- pré-checagem de integridade. As linhas antigas nascem com NULL de propósito —
+-- é a marca de "cobertura de itens desconhecida", e a próxima passagem do
+-- backfill as reprocessa. Para dimensionar esse reprocessamento antes do
+-- deploy:
+--
+--   SELECT COUNT(*) AS totais_sem_cobertura_medida
+--     FROM invoice_tax_totals WHERE item_count IS NULL;
+--
+-- NEEDS AUTHORIZED LIVE EVIDENCE: não corrida contra o banco canônico.
+
+-- AlterTable
+ALTER TABLE "invoice_tax_totals" ADD COLUMN     "item_count" INTEGER;

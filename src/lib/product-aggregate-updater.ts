@@ -153,7 +153,11 @@ async function extractAndStoreTaxData(
     const { totals, items } = await extractAllTaxData(xmlContent);
 
     if (totals) {
-      await upsertTaxTotals({ invoiceId, companyId, ...totals });
+      // QLMED-DATA-007: quem grava totais grava a cobertura de itens junto. Sem
+      // isto a nota ingerida nasce com item_count NULL e volta ao backfill sem
+      // necessidade. Sem o `if (totals)`, CT-e e NFS-e ganhariam linha em
+      // invoice_tax_totals e inflariam a contagem de cobertura de NF-e.
+      await upsertTaxTotals({ invoiceId, companyId, ...totals, itemCount: items.length });
     }
 
     if (items.length > 0) {

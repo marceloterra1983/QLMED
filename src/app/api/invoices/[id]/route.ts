@@ -27,12 +27,36 @@ export async function GET(
     }
     const company = await getOrCreateSingleCompany(userId);
 
+    // QLMED-DATA-011: `select` explícito, nunca `include`. O XML fiscal inteiro
+    // saía nesta resposta a cada abertura do modal de detalhes, que só usa
+    // accessKey/number/type — o XML ele busca em /download, sob rota própria.
+    // Campo novo em Invoice não entra aqui de graça: tem de ser listado.
     const invoice = await prisma.invoice.findFirst({
       where: {
         id,
         companyId: company.id,
       },
-      include: { company: { select: { razaoSocial: true, cnpj: true } } },
+      select: {
+        id: true,
+        accessKey: true,
+        type: true,
+        direction: true,
+        number: true,
+        series: true,
+        issueDate: true,
+        senderCnpj: true,
+        senderName: true,
+        recipientCnpj: true,
+        recipientName: true,
+        totalValue: true,
+        status: true,
+        cancelledAt: true,
+        cfop: true,
+        companyId: true,
+        createdAt: true,
+        updatedAt: true,
+        company: { select: { razaoSocial: true, cnpj: true } },
+      },
     });
 
     if (!invoice) {
