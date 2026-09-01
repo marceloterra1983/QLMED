@@ -10,6 +10,11 @@ import {
   acquirePostgresTransactionAdvisoryLock,
   productAggregateLockKey,
 } from '@/lib/postgres-advisory-lock';
+import {
+  markBackgroundServiceError,
+  markBackgroundServiceHeartbeat,
+  markBackgroundServiceStarted,
+} from '@/lib/background-service-health';
 import { canAccessPage } from '@/lib/navigation';
 import { wantsNotification } from '@/lib/notification-preferences';
 import { normalizePushEndpoint } from '@/lib/push-subscriptions';
@@ -160,6 +165,26 @@ export function buildDeliveryIdempotencyKey(
 
 export function getRetryDelaySeconds(attempts: number): number {
   return Math.min(6 * 60 * 60, Math.max(60, 2 ** Math.max(0, attempts - 1) * 60));
+}
+
+/**
+ * JOB-005: o backoff satura em 6h mas nada nunca virava `dead`, então uma
+ * entrega envenenada antes do provedor (asset que não baixa, destinatário
+ * inválido que passou pela normalização) ficava tentando para sempre.
+ *
+ * O teto só vale para falha ANTES da submissão: depois dela o resultado no
+ * provedor é desconhecido e a decisão continua sendo humana, via `uncertain`.
+ */
+export const MAX_PRE_SUBMIT_ATTEMPTS = 5;
+
+export function resolveDeliveryOutcome(input: {
+  outcome: 'sent' | 'retry' | 'uncertain' | 'dead';
+  attempts: number;
+  submittingAt: Date | null;
+}): 'sent' | 'retry' | 'uncertain' | 'dead' {
+  if (input.outcome !== 'retry') return input.outcome;
+  if (input.submittingAt !== null) return 'retry';
+  return input.attempts >= MAX_PRE_SUBMIT_ATTEMPTS ? 'dead' : 'retry';
 }
 
 export function buildInvoiceNotificationDestinations(
@@ -525,6 +550,43 @@ export async function claimNotificationDeliveries(options: {
   });
 }
 
+/**
+ * JOB-005: nada expirava no outbox — evento fiscal de 2024 continua na tabela,
+ * com destinatário e mensagem, sem prazo. A janela é decisão do dono (retenção
+ * é matéria de LGPD, não de engenharia), então sem
+ * `NOTIFICATION_OUTBOX_RETENTION_DAYS` nada é apagado.
+ */
+export function getNotificationOutboxRetentionDays(
+  raw: string | undefined = process.env.NOTIFICATION_OUTBOX_RETENTION_DAYS,
+): number | null {
+  if (!raw?.trim()) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function purgeNotificationOutbox(options: {
+  retentionDays?: number | null;
+  now?: Date;
+} = {}): Promise<{ purged: number }> {
+  const retentionDays = options.retentionDays === undefined
+    ? getNotificationOutboxRetentionDays()
+    : options.retentionDays;
+  if (!retentionDays) return { purged: 0 };
+
+  const cutoff = new Date((options.now ?? new Date()).getTime() - retentionDays * 24 * 60 * 60 * 1000);
+  // `every` sobre relação vazia é verdadeiro no Prisma, e é o que se quer: o
+  // evento fora da janela anti-backlog nasce sem entrega nenhuma e também expira.
+  // Qualquer entrega ainda viva (pending/retry/processing/uncertain) segura o
+  // evento inteiro, por mais velho que seja — `uncertain` espera decisão humana.
+  const result = await prisma.notificationOutboxEvent.deleteMany({
+    where: {
+      createdAt: { lt: cutoff },
+      deliveries: { every: { status: { in: ['sent', 'dead'] } } },
+    },
+  });
+  return { purged: result.count };
+}
+
 export async function markNotificationDeliverySubmitting(delivery: {
   id: string;
   lockToken: string;
@@ -560,7 +622,7 @@ export async function acknowledgeNotificationDeliveries(
           status: 'processing',
           lockToken: delivery.lockToken,
         },
-        select: { attempts: true },
+        select: { attempts: true, submittingAt: true },
       });
 
       if (!current) {
@@ -568,6 +630,11 @@ export async function acknowledgeNotificationDeliveries(
         continue;
       }
 
+      const outcome = resolveDeliveryOutcome({
+        outcome: delivery.outcome,
+        attempts: current.attempts,
+        submittingAt: current.submittingAt,
+      });
       const retryAt = new Date(Date.now() + getRetryDelaySeconds(current.attempts) * 1000);
       const result = await tx.notificationDelivery.updateMany({
         where: {
@@ -576,9 +643,9 @@ export async function acknowledgeNotificationDeliveries(
           lockToken: delivery.lockToken,
         },
         data: {
-          status: delivery.outcome,
-          availableAt: delivery.outcome === 'retry' ? retryAt : new Date(),
-          sentAt: delivery.outcome === 'sent' ? new Date() : null,
+          status: outcome,
+          availableAt: outcome === 'retry' ? retryAt : new Date(),
+          sentAt: outcome === 'sent' ? new Date() : null,
           providerMessageId: delivery.providerMessageId,
           lastError: delivery.error ?? null,
           lockedAt: null,
@@ -590,4 +657,34 @@ export async function acknowledgeNotificationDeliveries(
 
     return response;
   });
+}
+
+const OUTBOX_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Fica registrado como `disabled` no /api/health enquanto não houver janela de
+ * retenção configurada: a ausência de purga precisa ser visível, não silenciosa.
+ */
+export async function startNotificationOutboxPurge(): Promise<void> {
+  const retentionDays = getNotificationOutboxRetentionDays();
+  markBackgroundServiceStarted('notification-outbox-purge', {
+    enabled: retentionDays !== null,
+  });
+  if (retentionDays === null) return;
+
+  const tick = async () => {
+    markBackgroundServiceHeartbeat('notification-outbox-purge');
+    try {
+      await purgeNotificationOutbox();
+    } catch (error) {
+      markBackgroundServiceError('notification-outbox-purge', error);
+    }
+  };
+
+  setTimeout(() => {
+    void tick();
+    setInterval(() => {
+      void tick();
+    }, OUTBOX_PURGE_INTERVAL_MS);
+  }, 20_000);
 }

@@ -1,6 +1,7 @@
 import { Decimal } from '@prisma/client-runtime-utils';
 import type { ImpcgParseStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { isUniqueViolation } from '@/lib/prisma-errors';
 import { centsToDecimal, decimalToCents, formatMoneyDecimal } from '@/lib/money';
 import type { ImpcgParseStatus as DomainParseStatus } from './constants';
 import {
@@ -475,8 +476,12 @@ export async function persistSourceOnly(input: {
         receivedAt: input.receivedAt,
       },
     });
-  } catch {
-    // unique (companyId, internetMessageId) — segunda caixa
+  } catch (error) {
+    // JOB-002: só a violação do unique (companyId, internetMessageId) é dedup
+    // legítimo — a mesma mensagem chegando pela segunda caixa. Um catch vazio
+    // transformava indisponibilidade do banco em "já existe" e a coleta seguia
+    // dando o ofício por guardado.
+    if (!isUniqueViolation(error)) throw error;
   }
 }
 

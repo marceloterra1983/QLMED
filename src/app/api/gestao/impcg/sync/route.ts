@@ -20,10 +20,14 @@ export async function POST() {
     if (result.busy) {
       return NextResponse.json({ ok: false, error: 'Coleta em andamento' }, { status: 409 });
     }
+    // JOB-004: a resposta omitia as falhas de upload, então uma coleta que
+    // perdeu ofícios chegava à tela indistinguível de uma coleta limpa.
     return NextResponse.json({
       ok: result.ok,
       processed: result.processed,
       skipped: result.skipped,
+      failedUploads: result.failedUploads,
+      failedPersists: result.failedPersists,
       failedMailboxes: result.failedMailboxes,
       lastCollectedAt: result.lastCollectedAt,
     });
