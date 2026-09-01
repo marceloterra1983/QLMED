@@ -205,7 +205,7 @@ export default function InvoicesPage() {
 
   const getSortIcon = (field: string) => {
     if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return <span className="material-symbols-outlined text-[16px] text-primary">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
+    return <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
   };
 
   const toggleSelect = (id: string) => {
@@ -242,9 +242,9 @@ export default function InvoicesPage() {
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <td colSpan={6} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-          <span className="text-xs text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
         </div>
       </td>
     </tr>
@@ -257,23 +257,23 @@ export default function InvoicesPage() {
     return (
       <tr key={invoice.id} className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
         <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-          <input className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} />
+          <input className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} />
         </td>
         <td className="px-2 py-1.5 whitespace-nowrap">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
-          <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{formatTime(invoice.issueDate)}</div>
         </td>
         <td className="px-2 py-1.5 whitespace-nowrap">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
-            {displayTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>{displayTag}</span>}
+            {displayTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>{displayTag}</span>}
           </div>
         </td>
         <td className="px-2 py-1.5 text-right whitespace-nowrap">
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
         </td>
         <td className="px-2 py-1.5">
-          {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-[10px] text-slate-400 dark:text-slate-500">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
+          {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-xs text-slate-500 dark:text-slate-400">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
         </td>
         <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
@@ -285,9 +285,9 @@ export default function InvoicesPage() {
   const renderMobileDivider = (key: string, label: string, count: number, mtotal: number) => (
     <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
-        <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="text-xs text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
       </div>
     </div>
   );
@@ -301,13 +301,13 @@ export default function InvoicesPage() {
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             {invoice.number}
-            {displayTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(displayTag, highlightRow)}`}>{displayTag === 'Consignação' ? 'Consig.' : displayTag}</span>}
+            {displayTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(displayTag, highlightRow)}`}>{displayTag === 'Consignação' ? 'Consig.' : displayTag}</span>}
           </span>
           <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
         </div>
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
-          <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
@@ -381,11 +381,11 @@ export default function InvoicesPage() {
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
-          <span className="text-xs sm:text-sm font-bold text-primary">{selected.size} selecionado(s)</span>
+          <span className="text-xs sm:text-sm font-bold text-primary dark:text-blue-400">{selected.size} selecionado(s)</span>
           <div className="hidden sm:block h-4 w-px bg-slate-300"></div>
-          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">download</span>XML</button>
-          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>PDF</button>
-          <button onClick={() => toast.info('Manifestação em lote ainda não implementada.')} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">fact_check</span>Manifestar</button>
+          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">download</span>XML</button>
+          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>PDF</button>
+          <button onClick={() => toast.info('Manifestação em lote ainda não implementada.')} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">fact_check</span>Manifestar</button>
           {canWrite && (<><div className="hidden sm:block h-4 w-px bg-slate-300"></div><button onClick={() => confirmDelete('bulk')} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-red-500 hover:text-red-700 transition-colors"><span className="material-symbols-outlined text-[16px] sm:text-[18px]">delete</span>Excluir</button></>)}
         </div>
       )}
@@ -400,12 +400,12 @@ export default function InvoicesPage() {
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
               <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
             </div>
             <div className="flex items-center gap-1 pt-2">
-              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
             </div>
           </>
@@ -422,8 +422,8 @@ export default function InvoicesPage() {
               }
               return allKeys.length > 1 ? (
                 <div className="flex justify-start gap-1.5 mb-2">
-                  <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
-                  <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
+                  <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
+                  <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
                 </div>
               ) : null;
             })()}
@@ -456,7 +456,7 @@ export default function InvoicesPage() {
               </>
             )}
             <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
-              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
             </div>
           </>
@@ -476,8 +476,8 @@ export default function InvoicesPage() {
           }
           return allKeys.length > 1 ? (
             <div className="flex justify-start gap-1.5 px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
-              <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
+              <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
+              <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
             </div>
           ) : null;
         })()}
@@ -487,7 +487,7 @@ export default function InvoicesPage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-2 py-2 w-px">
-                  <input className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.size === invoices.length && invoices.length > 0} onChange={toggleSelectAll} />
+                  <input className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.size === invoices.length && invoices.length > 0} onChange={toggleSelectAll} />
                 </th>
                 <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}><div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div></th>
                 <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}><div className="flex items-center gap-1">Número {getSortIcon('number')}</div></th>
@@ -510,7 +510,7 @@ export default function InvoicesPage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
                     <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
                     <Link href="/sistema/upload" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-md shadow-primary/30">
@@ -554,7 +554,7 @@ export default function InvoicesPage() {
         {/* Footer with year navigation */}
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
           <span className="text-xs text-slate-500">{total} nota(s)</span>

@@ -147,8 +147,8 @@ function SettingsModal({ onClose, onUpdated }: {
   const InlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
       <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
@@ -451,8 +451,8 @@ function SettingsModal({ onClose, onUpdated }: {
   const MfrInlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
       <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
@@ -477,7 +477,7 @@ function SettingsModal({ onClose, onUpdated }: {
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 dark:from-violet-500/30 dark:to-violet-500/10 flex items-center justify-center ring-1 ring-violet-500/20 dark:ring-violet-500/30">
                 <span className="material-symbols-outlined text-[18px] text-violet-500">settings</span>
               </div>
-              <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">Ajustes</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Ajustes</h2>
             </div>
 
             {/* Nav items */}
@@ -486,9 +486,9 @@ function SettingsModal({ onClose, onUpdated }: {
                 const isActive = activeSection === sec.key;
                 return (
                   <button key={sec.key} onClick={() => setActiveSection(sec.key)} className={`flex items-center gap-2.5 px-5 py-3 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-slate-50 dark:bg-slate-800/40 border-b-2 sm:border-b-0 sm:border-r-2 border-violet-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
-                    <span className={`material-symbols-outlined text-[18px] ${isActive ? sec.color : 'text-slate-400'}`}>{sec.icon}</span>
-                    <span className={`text-[13px] font-semibold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{sec.label}</span>
-                    {!loadingSettings && <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[22px] text-center tabular-nums ${isActive ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{sectionCounts[sec.key]}</span>}
+                    <span className={`material-symbols-outlined text-[18px] ${isActive ? sec.color : 'text-slate-500 dark:text-slate-400'}`}>{sec.icon}</span>
+                    <span className={`text-sm font-semibold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{sec.label}</span>
+                    {!loadingSettings && <span className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[22px] text-center tabular-nums ${isActive ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{sectionCounts[sec.key]}</span>}
                   </button>
                 );
               })}
@@ -500,8 +500,8 @@ function SettingsModal({ onClose, onUpdated }: {
 
             {/* Close button (top-right) */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
-              <h3 id="settings-modal-section-title" className="text-[14px] font-bold text-slate-900 dark:text-white">{SETTINGS_SECTIONS.find((s) => s.key === activeSection)!.label}</h3>
-              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <h3 id="settings-modal-section-title" className="text-sm font-bold text-slate-900 dark:text-white">{SETTINGS_SECTIONS.find((s) => s.key === activeSection)!.label}</h3>
+              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -511,7 +511,7 @@ function SettingsModal({ onClose, onUpdated }: {
               {loadingSettings ? (
                 <div className="flex flex-col items-center justify-center py-16 px-5">
                   <span className="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 animate-spin">progress_activity</span>
-                  <p className="mt-2 text-[13px] text-slate-400 dark:text-slate-500">Carregando ajustes...</p>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Carregando ajustes...</p>
                 </div>
               ) : (
                 <>
@@ -519,13 +519,13 @@ function SettingsModal({ onClose, onUpdated }: {
             {activeSection === 'lines' && (
               <div className="px-5 py-4 space-y-2">
                 <div className="relative">
-                  <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                  <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                   <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
                 </div>
                 {filteredTypes.length === 0 && (
                   <div className="flex flex-col items-center py-8">
                     <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                    <p className="text-[13px] text-slate-400 dark:text-slate-500">{linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'}</p>
                   </div>
                 )}
 
@@ -545,10 +545,10 @@ function SettingsModal({ onClose, onUpdated }: {
                         ) : (
                           <>
                             <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
-                            <span className="flex-1 text-[13px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>{type}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
-                            <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <span className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>{type}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
+                            <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
                         )}
                       </div>
@@ -570,10 +570,10 @@ function SettingsModal({ onClose, onUpdated }: {
                                           <span className="material-symbols-outlined text-[16px] transition-transform duration-200" style={{ transform: isSubExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                                         </button>
                                         <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
-                                        <span className="flex-1 text-[13px] text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)}>{sub}</span>
-                                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
-                                        <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
-                                        <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                        <span className="flex-1 text-sm text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)}>{sub}</span>
+                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
+                                        <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                        <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                       </>
                                     )}
                                   </div>
@@ -589,17 +589,17 @@ function SettingsModal({ onClose, onUpdated }: {
                                               ) : (
                                                 <>
                                                   <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
-                                                  <span className="flex-1 text-[12px] text-slate-500 dark:text-slate-400">{sg}</span>
-                                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 min-w-[20px] text-center">{sgCount}</span>
-                                                  <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
-                                                  <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
+                                                  <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">{sg}</span>
+                                                  <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 min-w-[20px] text-center">{sgCount}</span>
+                                                  <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
+                                                  <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
                                                 </>
                                               )}
                                             </div>
                                           );
                                         })
                                       ) : (
-                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 py-0.5">Nenhum subgrupo</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 py-0.5">Nenhum subgrupo</p>
                                       )}
                                       {newSubgroupFor === `${type}|${sub}` ? (
                                         <div className="py-1">
@@ -620,7 +620,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                           />
                                         </div>
                                       ) : (
-                                        <button onClick={() => { setNewSubgroupFor(`${type}|${sub}`); setNewSubgroupName(''); }} className="flex items-center gap-1.5 py-1 text-[11px] font-medium text-slate-400 hover:text-teal-500 transition-colors">
+                                        <button onClick={() => { setNewSubgroupFor(`${type}|${sub}`); setNewSubgroupName(''); }} className="flex items-center gap-1.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors">
                                           <span className="material-symbols-outlined text-[14px]">add_circle</span>Adicionar subgrupo
                                         </button>
                                       )}
@@ -630,7 +630,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               );
                             })
                           ) : (
-                            <p className="text-[12px] text-slate-400 dark:text-slate-500 pl-7 py-1">Nenhum grupo</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 pl-7 py-1">Nenhum grupo</p>
                           )}
                           {newSubtypeFor === type ? (
                             <div className="pl-7 py-1">
@@ -651,7 +651,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               />
                             </div>
                           ) : (
-                            <button onClick={() => { setNewSubtypeFor(type); setNewSubtypeName(''); }} className="flex items-center gap-1.5 pl-7 py-1.5 text-[12px] font-medium text-slate-400 hover:text-amber-500 transition-colors">
+                            <button onClick={() => { setNewSubtypeFor(type); setNewSubtypeName(''); }} className="flex items-center gap-1.5 pl-7 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors">
                               <span className="material-symbols-outlined text-[15px]">add_circle</span>Adicionar grupo
                             </button>
                           )}
@@ -675,7 +675,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     setNewTypeName('');
                   }} className="flex items-center gap-2">
                     <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
-                    <button type="submit" className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
+                    <button type="submit" className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-primary dark:text-blue-400 border border-primary/30 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                   </form>
                 </div>
               </div>
@@ -686,11 +686,11 @@ function SettingsModal({ onClose, onUpdated }: {
               <div className="flex flex-col h-full">
                 <div className="px-5 pt-4 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-800/50">
                   <div className="relative">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                     <input type="text" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
                   </div>
                   <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
-                    <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
+                    <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
                     <div className="flex gap-2">
                       <input placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
                       <button onClick={handleMfrAdd} disabled={addingNew || !newMfrName.trim()} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
@@ -702,7 +702,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   {filteredMfrs.length === 0 && (
                     <div className="flex flex-col items-center py-8">
                       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                      <p className="text-[13px] text-slate-400 dark:text-slate-500">Nenhum fabricante encontrado.</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum fabricante encontrado.</p>
                     </div>
                   )}
                   {filteredMfrs.map((mfr) => {
@@ -714,10 +714,10 @@ function SettingsModal({ onClose, onUpdated }: {
                         ) : (
                           <>
                             <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
-                            <span className="flex-1 text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate" title={mfr.name}>{mfr.name}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
-                            <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={mfr.name}>{mfr.name}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
+                            <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
                         )}
                       </div>
@@ -741,9 +741,9 @@ function SettingsModal({ onClose, onUpdated }: {
                       return (
                         <button key={tab.key} onClick={() => { setFiscalTab(tab.key); setFiscalEditItem(null); setNewFiscalName(''); setFiscalSearch(''); }}
                           className={`shrink-0 flex items-center gap-2 px-4 py-2.5 sm:py-2 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-amber-50/80 dark:bg-amber-900/15 border-b-2 sm:border-b-0 sm:border-r-2 border-amber-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
-                          <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-amber-500 dark:text-amber-400' : 'text-slate-400'}`}>{tab.icon}</span>
-                          <span className={`text-[12px] font-semibold ${isActive ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>{tab.label}</span>
-                          <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>{itemCount}</span>
+                          <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-amber-500 dark:text-amber-400' : 'text-slate-500'}`}>{tab.icon}</span>
+                          <span className={`text-xs font-semibold ${isActive ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>{tab.label}</span>
+                          <span className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{itemCount}</span>
                         </button>
                       );
                     })}
@@ -770,12 +770,12 @@ function SettingsModal({ onClose, onUpdated }: {
                             <div key={field} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 overflow-hidden">
                               <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-2">
                                 <span className={`material-symbols-outlined text-[15px] ${color}`}>percent</span>
-                                <span className={`text-[12px] font-bold uppercase tracking-wide ${color}`}>{label} %</span>
-                                <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{items.length} valor{items.length !== 1 ? 'es' : ''}</span>
+                                <span className={`text-xs font-bold uppercase tracking-wide ${color}`}>{label} %</span>
+                                <span className="ml-auto text-xs text-slate-500 dark:text-slate-400 tabular-nums">{items.length} valor{items.length !== 1 ? 'es' : ''}</span>
                               </div>
                               <div className="p-3 space-y-1">
                                 {items.length === 0 && (
-                                  <p className="text-[12px] text-slate-400 dark:text-slate-500 py-1 text-center">Nenhum valor</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 py-1 text-center">Nenhum valor</p>
                                 )}
                                 {items.map(([value, count]) => {
                                   const isEditing = fiscalEditItem?.field === field && fiscalEditItem.oldValue === value;
@@ -785,14 +785,14 @@ function SettingsModal({ onClose, onUpdated }: {
                                         <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
                                           <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
                                           <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[16px]">check</span></button>
-                                          <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
+                                          <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
                                         </form>
                                       ) : (
                                         <>
-                                          <span className="font-mono text-[13px] font-semibold text-slate-800 dark:text-slate-200 flex-1">{value}%</span>
-                                          <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold min-w-[22px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
-                                          <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
-                                          <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                          <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200 flex-1">{value}%</span>
+                                          <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[22px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                                          <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                          <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                         </>
                                       )}
                                     </div>
@@ -800,7 +800,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                 })}
                                 <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(field); }} className="flex items-center gap-1.5 pt-1">
                                   <input placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow font-mono" disabled={saving} />
-                                  <button type="submit" disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
+                                  <button type="submit" disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
                                 </form>
                               </div>
                             </div>
@@ -816,16 +816,16 @@ function SettingsModal({ onClose, onUpdated }: {
                   {/* Search + count header */}
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
-                      <span className="material-symbols-outlined text-[18px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                      <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                       <input type="text" placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
                     </div>
-                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap tabular-nums">{currentFiscalItems.length} {currentFiscalItems.length === 1 ? 'item' : 'itens'}</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">{currentFiscalItems.length} {currentFiscalItems.length === 1 ? 'item' : 'itens'}</span>
                   </div>
 
                   {currentFiscalItems.length === 0 && (
                     <div className="flex flex-col items-center py-8">
                       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                      <p className="text-[13px] text-slate-400 dark:text-slate-500">{fiscalSearch ? 'Nenhum resultado encontrado.' : 'Nenhum item cadastrado.'}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{fiscalSearch ? 'Nenhum resultado encontrado.' : 'Nenhum item cadastrado.'}</p>
                     </div>
                   )}
 
@@ -838,7 +838,7 @@ function SettingsModal({ onClose, onUpdated }: {
                           <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
                             <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
                             <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-                            <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+                            <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
                           </form>
                         ) : (
                           <>
@@ -849,7 +849,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               // CFOP with description from cache (raw code like "1918")
                               if (isCfop && dashIdx < 0 && cfopDescCache[value]) {
                                 return (
-                                  <span className="flex-1 text-[13px] min-w-0 break-words">
+                                  <span className="flex-1 text-sm min-w-0 break-words">
                                     <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{value}</span>
                                     <span className="ml-1.5 text-slate-500 dark:text-slate-400">{cfopDescCache[value]}</span>
                                   </span>
@@ -859,7 +859,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                 const code = value.slice(0, dashIdx);
                                 const desc = value.slice(dashIdx + 3);
                                 return (
-                                  <span className="flex-1 text-[13px] min-w-0 break-words">
+                                  <span className="flex-1 text-sm min-w-0 break-words">
                                     <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{code}</span>
                                     <span className="ml-1.5 text-slate-500 dark:text-slate-400">{desc}</span>
                                   </span>
@@ -875,10 +875,10 @@ function SettingsModal({ onClose, onUpdated }: {
                                 return (
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-[13px] shrink-0">{formatted}</span>
-                                      {ncmInfo && <span className="text-[12px] text-slate-600 dark:text-slate-300 truncate">{ncmInfo.descricao}</span>}
+                                      <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-sm shrink-0">{formatted}</span>
+                                      {ncmInfo && <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{ncmInfo.descricao}</span>}
                                       {hierarchy.length > 1 && (
-                                        <button onClick={toggleExpand} className="shrink-0 ml-auto text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
+                                        <button onClick={toggleExpand} className="shrink-0 ml-auto text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
                                           <span className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
                                         </button>
                                       )}
@@ -892,9 +892,9 @@ function SettingsModal({ onClose, onUpdated }: {
                                             : hCode.length === 4 ? hCode : h.codigo;
                                           const isLeaf = i === hierarchy.length - 1;
                                           return (
-                                            <div key={i} className="flex items-baseline gap-1.5 text-[11px]" style={{ paddingLeft: `${i * 10}px` }}>
-                                              <span className={`font-mono shrink-0 ${isLeaf ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>{hFormatted}</span>
-                                              <span className={isLeaf ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}>{h.descricao}</span>
+                                            <div key={i} className="flex items-baseline gap-1.5 text-xs" style={{ paddingLeft: `${i * 10}px` }}>
+                                              <span className={`font-mono shrink-0 ${isLeaf ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>{hFormatted}</span>
+                                              <span className={isLeaf ? 'text-slate-700 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}>{h.descricao}</span>
                                             </div>
                                           );
                                         })}
@@ -903,12 +903,12 @@ function SettingsModal({ onClose, onUpdated }: {
                                   </div>
                                 );
                               }
-                              return <span className={`flex-1 text-[13px] font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>;
+                              return <span className={`flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>;
                             })()}
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold min-w-[28px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'bg-transparent text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-bold min-w-[28px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'bg-transparent text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
                             {fiscalTab !== 'ncm' && (<>
-                            <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                             </>)}
                           </>
                         )}

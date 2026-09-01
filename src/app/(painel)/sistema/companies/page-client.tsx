@@ -45,7 +45,7 @@ export default function CompaniesPage() {
       />
 
       {loading && (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
           <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
           <p className="mt-2 text-sm">Carregando dados da empresa...</p>
         </div>

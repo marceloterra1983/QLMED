@@ -50,7 +50,7 @@ export default function ErrorsPage() {
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
           <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
           <p className="mt-2 text-sm">Carregando erros...</p>
         </div>
@@ -61,7 +61,7 @@ export default function ErrorsPage() {
         <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
           <span className="material-symbols-outlined text-emerald-400 dark:text-emerald-500 text-[48px]">check_circle</span>
           <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mt-4">Nenhum erro encontrado</h3>
-          <p className="text-sm text-slate-400 dark:text-slate-400 mt-2">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
             Tudo funcionando!
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function ErrorsPage() {
                     </p>
                     <div className="flex items-center gap-3 mt-3 flex-wrap">
                       {getSyncMethodBadge(log.syncMethod)}
-                      <span className="text-xs text-slate-400 dark:text-slate-400 flex items-center gap-1">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">schedule</span>
                         {formatDateTime(log.startedAt)}
                       </span>
@@ -100,7 +100,7 @@ export default function ErrorsPage() {
 
                 <Link
                   href="/sistema/sync"
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary dark:text-blue-400 rounded-lg text-xs font-bold transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">refresh</span>
                   Tentar Novamente

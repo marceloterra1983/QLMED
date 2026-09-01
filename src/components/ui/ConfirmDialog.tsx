@@ -68,7 +68,7 @@ export default function ConfirmDialog({
     ? 'bg-gradient-to-br from-red-500/20 to-red-500/5 dark:from-red-500/30 dark:to-red-500/10 ring-1 ring-red-500/20 dark:ring-red-500/30'
     : 'bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 ring-1 ring-primary/20 dark:ring-primary/30';
 
-  const iconColor = isDanger ? 'text-red-500' : 'text-primary';
+  const iconColor = isDanger ? 'text-red-500' : 'text-primary dark:text-blue-400';
   const iconName = isDanger ? 'warning' : 'help';
 
   const confirmCls = isDanger
@@ -94,7 +94,7 @@ export default function ConfirmDialog({
               <span className={`material-symbols-outlined text-[28px] ${iconColor}`}>{iconName}</span>
             </div>
             <h3 id={titleId} className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{title}</h3>
-            <p id={messageId} className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px]">{message}</p>
+            <p id={messageId} className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px]">{message}</p>
           </div>
         </div>
 

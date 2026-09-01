@@ -225,7 +225,7 @@ export default function NfseReceivedPage() {
       return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
     }
     return (
-      <span className="material-symbols-outlined text-[16px] text-primary">
+      <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">
         {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
       </span>
     );
@@ -313,7 +313,7 @@ export default function NfseReceivedPage() {
             </div>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
             <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
             <p className="mt-2 text-sm font-medium">Nenhuma NFS-e encontrada</p>
           </div>
@@ -329,7 +329,7 @@ export default function NfseReceivedPage() {
                   {showDivider && group && (
                     <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                       <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
-                        <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                       </div>
                     </div>
@@ -342,7 +342,7 @@ export default function NfseReceivedPage() {
                       </div>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{invoice.senderName || '-'}</p>
-                        <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
@@ -359,7 +359,7 @@ export default function NfseReceivedPage() {
 
       {/* Mobile Year Navigation */}
       <div className="sm:hidden flex items-center gap-1 pt-2 border-t border-slate-200 dark:border-slate-700">
-        <span className="text-xs text-slate-400 mr-1">Ano:</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
         {yearNavButtons}
       </div>
 
@@ -430,7 +430,7 @@ export default function NfseReceivedPage() {
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                             <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                               </div>
                             </td>
@@ -478,7 +478,7 @@ export default function NfseReceivedPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
           <span className="text-xs text-slate-500">{total} documento(s)</span>

@@ -84,7 +84,7 @@ export default function ProductTable({
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return <span className="material-symbols-outlined text-[16px] text-primary">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
+    return <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
   };
 
   const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy))));
@@ -97,37 +97,37 @@ export default function ProductTable({
         <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
           {selectionEnabled && (
             <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
-              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" />
+              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer" />
             </td>
           )}
           <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="flex items-center gap-1">
-              {product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-slate-500 shrink-0 not-italic" title="Fora de linha">block</span>}
-              <span className={`text-[12px] font-mono font-semibold hover:text-primary transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
+              {product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 shrink-0 not-italic" title="Fora de linha">block</span>}
+              <span className={`text-xs font-mono font-semibold hover:text-primary dark:hover:text-blue-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                 {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
                 {search ? highlightMatch(product.code || '-', search) : (product.code || '-')}
               </span>
             </div>
           </td>
           <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}>
-            <div className="hover:text-primary transition-colors">
+            <div className="hover:text-primary dark:hover:text-blue-400 transition-colors">
               {product.shortName ? (
-                <><span className={`text-[12px] font-semibold block leading-tight ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-[10px] block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>
+                <><span className={`text-xs font-semibold block leading-tight ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-xs block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>
               ) : (
-                <span className={`text-[12px] font-semibold ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>
+                <span className={`text-xs font-semibold ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>
               )}
             </div>
           </td>
           <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}>
-            <span className={`text-[12px] font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '\u2014', search) : (product.anvisa || '\u2014')}</span>
-            {(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}
+            <span className={`text-xs font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '\u2014', search) : (product.anvisa || '\u2014')}</span>
+            {(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-xs font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}
           </td>
-          <td className="px-3 py-1"><span className={`text-[12px] ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
-          <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-          <td className="px-3 py-1 text-right"><span className={`text-[12px] font-medium ${product.outOfLine ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
+          <td className="px-3 py-1"><span className={`text-xs ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
+          <td className="px-3 py-1 text-right"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
+          <td className="px-3 py-1 text-right"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
           <td className="px-3 py-1 text-center">
             <div className="flex items-center justify-center gap-0.5">
-              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
+              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
               <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
             </div>
           </td>
@@ -138,20 +138,20 @@ export default function ProductTable({
     return (
       <div key={product.key} className={`py-2 px-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
         <div className="flex items-center gap-2.5">
-          {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-1.5 mb-0.5">
-              <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0">
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
                 {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
                 {product.code || '-'}
               </p>
-              {product.outOfLine && <span className="px-1.5 py-0 rounded text-[9px] font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
+              {product.outOfLine && <span className="px-1.5 py-0 rounded text-xs font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
             </div>
-            <p className="font-bold text-[13px] text-slate-900 dark:text-white truncate leading-tight">{product.shortName || product.description}</p>
-            {product.shortName && <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{product.description}</p>}
+            <p className="font-bold text-sm text-slate-900 dark:text-white truncate leading-tight">{product.shortName || product.description}</p>
+            {product.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{product.description}</p>}
             <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
-              <span className="text-[10px] text-slate-400">{formatDate(product.lastIssueDate)} {'\u00B7'} <span className="font-medium text-slate-600 dark:text-slate-300">{formatAmount(product.lastPrice)}</span></span>
-              <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors">
+              <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(product.lastIssueDate)} {'\u00B7'} <span className="font-medium text-slate-600 dark:text-slate-300">{formatAmount(product.lastPrice)}</span></span>
+              <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors">
                 <span className="material-symbols-outlined text-[14px]">search</span>
                 Detalhes
               </button>
@@ -171,11 +171,11 @@ export default function ProductTable({
     if (showLine) {
       const lineContent = (
         <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
-          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
-          <span className="text-[13px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
-          <span className="text-[11px] font-bold text-indigo-500/80 dark:text-indigo-400/80 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full min-w-[28px] text-center">{lineCountMap.get(lineKey)}</span>
+          <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
+          <span className="text-xs font-bold text-indigo-500/80 dark:text-indigo-400/80 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full min-w-[28px] text-center">{lineCountMap.get(lineKey)}</span>
         </div>
       );
       elements.push(inTable ? <tr key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}><td colSpan={9} className="px-0 py-0">{lineContent}</td></tr> : <div key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>{lineContent}</div>);
@@ -184,11 +184,11 @@ export default function ProductTable({
     if (!lineCollapsed && showGrp) {
       const grpContent = (
         <div className="flex items-center gap-2 pl-8 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
-          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
-          <span className="text-[10px] font-bold text-amber-500/80 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(grpKey)}</span>
+          <span className="text-xs font-bold text-amber-500/80 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(grpKey)}</span>
         </div>
       );
       elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={9} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
@@ -198,7 +198,7 @@ export default function ProductTable({
       const subContent = (
         <div className="flex items-center gap-1.5 pl-14 pr-4 py-1 bg-gradient-to-r from-teal-50/60 to-transparent dark:from-teal-950/15 dark:to-transparent border-b border-teal-200/40 dark:border-teal-800/20">
           <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
         </div>
       );
       elements.push(inTable ? <tr key={`sub-${grpKey}-${subgroupName}`}><td colSpan={9} className="px-0 py-0">{subContent}</td></tr> : <div key={`sub-${grpKey}-${subgroupName}`}>{subContent}</div>);
@@ -213,7 +213,7 @@ export default function ProductTable({
         <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Indexando produtos...</p>
-          {inTable && <p className="text-xs text-slate-400">Primeira carga &#x2014; processando NF-e para montar a lista.</p>}
+          {inTable && <p className="text-xs text-slate-500 dark:text-slate-400">Primeira carga &#x2014; processando NF-e para montar a lista.</p>}
         </div>
       );
       return inTable ? <tr><td colSpan={9}>{content}</td></tr> : content;
@@ -226,7 +226,7 @@ export default function ProductTable({
     }
     if (visible.length === 0) {
       const content = (
-        <div className="px-6 py-12 text-center text-slate-400">
+        <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
           <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
           <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
           <p className="text-xs mt-1">{summary.totalProducts > 0 ? 'Tente ajustar os filtros de busca.' : 'A lista e montada automaticamente a partir das NF-e de entrada.'}</p>
@@ -275,11 +275,11 @@ export default function ProductTable({
           {showDivider && group && (() => {
             const divContent = (
               <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
-                {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer shrink-0" />}
-                <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(group)}</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(group)}</span>
               </div>
             );
             return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={9} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;
@@ -300,7 +300,7 @@ export default function ProductTable({
             <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
           </>
         )}
-        <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
+        <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary dark:text-blue-400 border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
         {canWrite && <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Linhas, fabricantes, dados fiscais"><span className="material-symbols-outlined text-[14px]">settings</span>Parametros</button>}
       </div>
 
@@ -309,7 +309,7 @@ export default function ProductTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-              {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-300 text-primary cursor-pointer" title="Selecionar todos visiveis" /></th>}
+              {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 cursor-pointer" title="Selecionar todos visiveis" /></th>}
               <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}><div className="flex items-center gap-1">Referencia <SortIcon field="code" /></div></th>
               <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}><div className="flex items-center gap-1">Produto <SortIcon field="description" /></div></th>
               <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('anvisa')}><div className="flex items-center gap-1">ANVISA <SortIcon field="anvisa" /></div></th>

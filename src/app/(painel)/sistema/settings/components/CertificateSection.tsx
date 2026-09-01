@@ -129,7 +129,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                   ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   disabled={!canManageSettings}
-                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary dark:file:text-blue-400 hover:file:bg-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -186,7 +186,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
           {/* Certificate Status */}
           <div>
             {!certInfo ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
                 <span className="material-symbols-outlined text-[48px] mb-2 opacity-50">no_encryption</span>
                 <p className="text-sm">Nenhum certificado instalado</p>
               </div>

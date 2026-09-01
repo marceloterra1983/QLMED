@@ -85,7 +85,7 @@ function periodRangeLabel(period: Period, year: number, month: number): string {
 
 function PeriodBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
       <span className="material-symbols-outlined text-[12px]">date_range</span>
       {label}
     </span>
@@ -100,7 +100,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
           <span className="material-symbols-outlined text-[20px]">{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
           <p className="text-lg font-bold text-slate-800 dark:text-slate-100 tabular-nums">{formatCurrencyShort(value)}</p>
         </div>
       </div>
@@ -309,7 +309,7 @@ export default function FiscalDashboardPage() {
           <StatCard label="Trib. Aprox." value={totals.tribAprox} icon="calculate" color="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" />
         </div>
       ) : !needsBackfill ? (
-        <div className="text-center py-12 text-slate-400">Sem dados fiscais para o periodo selecionado.</div>
+        <div className="text-center py-12 text-slate-500 dark:text-slate-400">Sem dados fiscais para o periodo selecionado.</div>
       ) : null}
 
       {/* Monthly Table */}
@@ -325,14 +325,14 @@ export default function FiscalDashboardPage() {
               <div key={`m-${row.year}-${row.month}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{MONTH_NAMES[row.month - 1]} {row.year}</span>
-                  <span className="text-xs font-mono text-slate-400">{row.invoiceCount} NF-e</span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.invoiceCount} NF-e</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.ipi)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Frete</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.frete)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.ipi)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Frete</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.frete)}</span></div>
                 </div>
               </div>
             ))}
@@ -342,13 +342,13 @@ export default function FiscalDashboardPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 uppercase">Mes</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">ICMS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">PIS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">COFINS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">IPI</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">Frete</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">NF-e</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Mes</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ICMS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">PIS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">COFINS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">IPI</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Frete</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">NF-e</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -383,7 +383,7 @@ export default function FiscalDashboardPage() {
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-slate-700 dark:text-slate-300">{row.cfop}</span>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
                       row.direction === 'entrada'
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -391,13 +391,13 @@ export default function FiscalDashboardPage() {
                       {row.direction === 'entrada' ? 'Entrada' : 'Saida'}
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-slate-400">{row.itemCount} itens</span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.itemCount} itens</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-400">Total</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.totalValue)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Total</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.totalValue)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
                 </div>
               </div>
             ))}
@@ -407,13 +407,13 @@ export default function FiscalDashboardPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 uppercase">CFOP</th>
-                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 uppercase">Direcao</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">Itens</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">Valor Total</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">ICMS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">PIS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">COFINS</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">CFOP</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Direcao</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Itens</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Valor Total</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ICMS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">PIS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">COFINS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -421,7 +421,7 @@ export default function FiscalDashboardPage() {
                   <tr key={row.cfop} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2 font-mono font-bold text-slate-700 dark:text-slate-300">{row.cfop}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
                         row.direction === 'entrada'
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -456,14 +456,14 @@ export default function FiscalDashboardPage() {
                 <div className="flex items-start justify-between mb-1.5">
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{s.name || 'N/A'}</div>
-                    <div className="text-[10px] font-mono text-slate-400">{s.cnpj}</div>
+                    <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{s.cnpj}</div>
                   </div>
-                  <span className="text-xs font-mono text-slate-400 ml-2 shrink-0">{s.invoiceCount} NF-e</span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400 ml-2 shrink-0">{s.invoiceCount} NF-e</span>
                 </div>
                 <div className="grid grid-cols-3 gap-x-2 text-xs">
-                  <div><span className="text-slate-400 block text-[10px]">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
                 </div>
               </div>
             ))}
@@ -473,19 +473,19 @@ export default function FiscalDashboardPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-[10px] font-bold text-slate-400 uppercase">Fornecedor</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">ICMS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">PIS+COFINS</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">IPI</th>
-                  <th className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">NF-e</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Fornecedor</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ICMS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">PIS+COFINS</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">IPI</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">NF-e</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {topSuppliers.map((s, i) => (
                   <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2">
-                      <div className="font-medium text-slate-700 dark:text-slate-300 text-[13px]">{s.name || 'N/A'}</div>
-                      <div className="text-[10px] font-mono text-slate-400">{s.cnpj}</div>
+                      <div className="font-medium text-slate-700 dark:text-slate-300 text-sm">{s.name || 'N/A'}</div>
+                      <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{s.cnpj}</div>
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.icms)}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.pisCofins)}</td>

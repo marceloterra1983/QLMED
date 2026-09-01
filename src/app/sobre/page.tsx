@@ -59,7 +59,7 @@ export default function SobrePage() {
             <p className="text-slate-600">
               Para informa&ccedil;&otilde;es sobre a empresa ou suporte t&eacute;cnico do sistema,
               entre em contato pelo e-mail{' '}
-              <a href="mailto:contato@qlmed.com.br" className="text-primary hover:underline">
+              <a href="mailto:contato@qlmed.com.br" className="text-primary dark:text-blue-400 hover:underline">
                 contato@qlmed.com.br
               </a>
             </p>
@@ -67,12 +67,12 @@ export default function SobrePage() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-primary hover:text-primary-dark font-medium">
+          <Link href="/login" className="text-sm text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 font-medium">
             Ir para o login
           </Link>
         </div>
 
-        <div className="mt-8 text-center text-xs text-slate-400 space-y-1">
+        <div className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1">
           <p>&copy; {new Date().getFullYear()} QL MED Produtos Hospitalares LTDA. Todos os direitos reservados.</p>
         </div>
       </div>

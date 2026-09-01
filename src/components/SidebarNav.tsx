@@ -193,7 +193,7 @@ export default function SidebarNav({
           <div key={groupIdx}>
             {group.section && !collapsed && (
               <div className="px-3 pt-4 pb-2">
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {group.section}
                 </p>
               </div>
@@ -221,7 +221,7 @@ export default function SidebarNav({
                     className={`material-symbols-outlined text-[22px] ${
                       isActive
                         ? ''
-                        : 'text-slate-400 group-hover:text-primary dark:text-slate-500 dark:group-hover:text-primary-dark'
+                        : 'text-slate-500 dark:text-slate-400 group-hover:text-primary dark:group-hover:text-blue-400'
                     }`}
                   >
                     {item.icon}

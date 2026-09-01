@@ -33,7 +33,7 @@ export default function CollapsibleCard({
 
   const iconClass = isDanger
     ? 'text-red-500 dark:text-red-400'
-    : 'text-primary';
+    : 'text-primary dark:text-blue-400';
 
   const badgeColors = {
     green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -50,7 +50,7 @@ export default function CollapsibleCard({
       >
         <div className="flex items-center gap-2.5">
           <span className={`material-symbols-outlined text-[22px] ${iconClass}`}>{icon}</span>
-          <h3 className={`font-bold text-[15px] ${titleClass}`}>{title}</h3>
+          <h3 className={`font-bold text-base ${titleClass}`}>{title}</h3>
           {badge && (
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${badgeColors[badge.color]}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${
@@ -61,7 +61,7 @@ export default function CollapsibleCard({
           )}
         </div>
         <span
-          className={`material-symbols-outlined text-[20px] text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+          className={`material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
             open ? 'rotate-180' : ''
           }`}
         >

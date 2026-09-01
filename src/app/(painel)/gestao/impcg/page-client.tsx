@@ -65,7 +65,7 @@ function ParseBadge({ status }: { status: ParseStatus }) {
   const isFail = status === 'falha';
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0 ${
         isFail
           ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
@@ -346,7 +346,7 @@ export default function ImpcgPageClient() {
                             event.stopPropagation();
                             setSelectedId(item.id);
                           }}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10"
                           title={item.fileName}
                           aria-label={`Abrir arquivo da ordem ${item.oficioNumber}`}
                         >
@@ -476,10 +476,10 @@ export default function ImpcgPageClient() {
                 </ReadFieldEditor>
               </div>
               <div>
-                <dt className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <dt className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Total
                   {isOficioFieldEdited(detail.editedFields, 'totalAmount') ? (
-                    <span className="normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+                    <span className="normal-case font-medium tracking-normal text-xs text-slate-500 dark:text-slate-400/80">
                       editado
                     </span>
                   ) : null}
@@ -499,7 +499,7 @@ export default function ImpcgPageClient() {
                       onClick={() => {
                         if (totalDraft.trim()) void savePatch({ totalAmount: totalDraft.trim() });
                       }}
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+                      className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 disabled:opacity-50"
                     >
                       Salvar total
                     </button>
@@ -511,7 +511,7 @@ export default function ImpcgPageClient() {
                 )}
               </div>
               <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Leitura</dt>
+                <dt className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Leitura</dt>
                 <dd className="flex items-center gap-2 flex-wrap">
                   {detail.parseStatus === 'ok' ? (
                     'Ok'

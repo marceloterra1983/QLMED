@@ -25,10 +25,10 @@ export default function ReadFieldEditor({
 
   return (
     <div>
-      <dt className="flex items-center gap-0.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <dt className="flex items-center gap-0.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         <span>{label}</span>
         {edited ? (
-          <span className="normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+          <span className="normal-case font-medium tracking-normal text-xs text-slate-500 dark:text-slate-400/80">
             editado
           </span>
         ) : null}
@@ -59,7 +59,7 @@ export default function ReadFieldEditor({
               onSave();
               setOpen(false);
             }}
-            className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+            className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 disabled:opacity-50"
           >
             ok
           </button>

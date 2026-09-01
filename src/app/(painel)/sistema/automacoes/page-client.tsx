@@ -191,7 +191,7 @@ export default function AutomacoesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="font-semibold text-slate-900 dark:text-white text-sm min-w-0 truncate">{w.name}</h3>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
                           w.active
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                             : 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400'
@@ -203,7 +203,7 @@ export default function AutomacoesPage() {
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Última execução
                       </p>
                       {w.lastExecution && ui ? (

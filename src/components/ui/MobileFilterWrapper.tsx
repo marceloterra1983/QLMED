@@ -26,16 +26,16 @@ export default function MobileFilterWrapper({
         className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors md:hidden"
       >
         <div className="flex items-center gap-2.5">
-          <span className="material-symbols-outlined text-[20px] text-primary">{icon}</span>
+          <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">{icon}</span>
           <span className="font-bold text-sm text-slate-900 dark:text-white">{title}</span>
           {activeFilterCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold">
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-xs font-bold">
               {activeFilterCount}
             </span>
           )}
         </div>
         <span
-          className={`material-symbols-outlined text-[20px] text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+          className={`material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
             open ? 'rotate-180' : ''
           }`}
         >

@@ -67,7 +67,7 @@ function TabCte({ data }: { data: CteDetails }) {
         </div>
       </SectionBlock>
 
-      <SectionBlock title="Transporte" icon="route" iconColor="text-primary">
+      <SectionBlock title="Transporte" icon="route" iconColor="text-primary dark:text-blue-400">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modal" value={cte.modal} />
           <Field label="Tomador do Serviço" value={cte.tomador} />
@@ -98,7 +98,7 @@ function TabCte({ data }: { data: CteDetails }) {
             <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                  <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                     <th className="px-3 py-2.5 text-left">Componente</th>
                     <th className="px-3 py-2.5 text-right">Valor</th>
                   </tr>
@@ -132,7 +132,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: CteDetails
   if (!entity || !entity.cnpj) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">person_off</span>
-      <span className="text-[13px] text-slate-400">Dados não disponíveis</span>
+      <span className="text-sm text-slate-500 dark:text-slate-400">Dados não disponíveis</span>
     </div>
   );
 
@@ -173,7 +173,7 @@ function TabCarga({ data }: { data: CteDetails }) {
   if (!carga) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">package_2</span>
-      <span className="text-[13px] text-slate-400">Dados de carga não disponíveis</span>
+      <span className="text-sm text-slate-500 dark:text-slate-400">Dados de carga não disponíveis</span>
     </div>
   );
 
@@ -195,7 +195,7 @@ function TabCarga({ data }: { data: CteDetails }) {
               <div key={`m-${i}`} className="flex items-center justify-between rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{m.tipoMedida || '-'}</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{m.unidade}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{m.unidade}</span>
                 </div>
                 <span className="text-xs font-bold text-slate-900 dark:text-white">{m.quantidade}</span>
               </div>
@@ -205,7 +205,7 @@ function TabCarga({ data }: { data: CteDetails }) {
           <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-3 py-2.5 text-left">Tipo Medida</th>
                   <th className="px-3 py-2.5 text-left">Unidade</th>
                   <th className="px-3 py-2.5 text-right">Quantidade</th>
@@ -246,7 +246,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">description</span>
-        <span className="text-[13px] text-slate-400">Nenhum documento referenciado</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum documento referenciado</span>
       </div>
     );
   }
@@ -254,13 +254,13 @@ function TabDocumentos({ data }: { data: CteDetails }) {
   return (
     <div className="space-y-4">
       {docs.nfeRefs?.length > 0 && (
-        <SectionBlock title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long" iconColor="text-primary">
+        <SectionBlock title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long" iconColor="text-primary dark:text-blue-400">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
             {docs.nfeRefs.map((n: CteNfeRef, i: number) => (
               <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
-                <span className="text-[10px] text-slate-400">#{i + 1}</span>
-                <p className="text-[10px] font-mono text-slate-800 dark:text-slate-200 break-all">{n.chave || '-'}</p>
+                <span className="text-xs text-slate-500 dark:text-slate-400">#{i + 1}</span>
+                <p className="text-xs font-mono text-slate-800 dark:text-slate-200 break-all">{n.chave || '-'}</p>
               </div>
             ))}
           </div>
@@ -268,7 +268,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
           <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-3 py-2.5 text-left">#</th>
                   <th className="px-3 py-2.5 text-left">Chave de Acesso</th>
                 </tr>
@@ -297,11 +297,11 @@ function TabDocumentos({ data }: { data: CteDetails }) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Nº {n.numero || '-'}</span>
-                    <span className="text-[10px] text-slate-400">Série {n.serie || '-'}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Série {n.serie || '-'}</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(n.valorTotal)}</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">{n.dataEmissao || '-'}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{n.dataEmissao || '-'}</span>
               </div>
             ))}
           </div>
@@ -309,7 +309,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
           <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-3 py-2.5 text-left">Série</th>
                   <th className="px-3 py-2.5 text-left">Número</th>
                   <th className="px-3 py-2.5 text-left">Data Emissão</th>
@@ -340,11 +340,11 @@ function TabDocumentos({ data }: { data: CteDetails }) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{o.descricao || '-'}</span>
-                    <span className="text-[10px] text-slate-400">{o.tipo || '-'}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{o.tipo || '-'}</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(o.valor)}</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">Nº {o.numero || '-'}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Nº {o.numero || '-'}</span>
               </div>
             ))}
           </div>
@@ -352,7 +352,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
           <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-slate-200/50 dark:ring-slate-800/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-400 dark:text-slate-500 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-3 py-2.5 text-left">Tipo</th>
                   <th className="px-3 py-2.5 text-left">Descrição</th>
                   <th className="px-3 py-2.5 text-left">Número</th>
@@ -382,14 +382,14 @@ function TabImpostos({ data }: { data: CteDetails }) {
   if (!imp) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
       <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">calculate</span>
-      <span className="text-[13px] text-slate-400">Dados de impostos não disponíveis</span>
+      <span className="text-sm text-slate-500 dark:text-slate-400">Dados de impostos não disponíveis</span>
     </div>
   );
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 ring-1 ring-blue-500/15 dark:from-blue-500/20 dark:to-blue-500/10 dark:ring-blue-500/25 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-wider mb-3 text-blue-600 dark:text-blue-400">ICMS</p>
+        <p className="text-xs font-bold uppercase tracking-wider mb-3 text-blue-600 dark:text-blue-400">ICMS</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CST" value={imp.icms?.cst} />
           <Field label="Base de Cálculo" value={formatMoney(imp.icms?.baseCalculo)} />
@@ -417,7 +417,7 @@ function TabInfAdicionais({ data }: { data: CteDetails }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">info</span>
-        <span className="text-[13px] text-slate-400">Sem informações adicionais</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Sem informações adicionais</span>
       </div>
     );
   }
@@ -426,13 +426,13 @@ function TabInfAdicionais({ data }: { data: CteDetails }) {
     <div className="space-y-4">
       {inf.infCpl && (
         <SectionBlock title="Informações Complementares" icon="article" iconColor="text-indigo-500">
-          <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infCpl}</p>
+          <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infCpl}</p>
         </SectionBlock>
       )}
 
       {inf.infAdFisco && (
         <SectionBlock title="Informações do Fisco" icon="gavel" iconColor="text-amber-500">
-          <p className="text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infAdFisco}</p>
+          <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infAdFisco}</p>
         </SectionBlock>
       )}
     </div>
@@ -520,11 +520,11 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
                 <span className="material-symbols-outlined text-[22px] text-teal-500">local_shipping</span>
               </div>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                   {data ? `CT-e ${data.number}` : 'Detalhes do CT-e'}
                 </h3>
                 {data?.series && (
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Série {data.series}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Série {data.series}</span>
                 )}
               </div>
             </div>
@@ -532,7 +532,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
             <button
               onClick={onClose}
               aria-label="Fechar"
-              className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
               title="Fechar"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
@@ -542,14 +542,14 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
           {/* Access Key Bar */}
           {data?.accessKey && (
             <div className="flex items-center gap-2.5 mt-3 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/50">
-              <span className="material-symbols-outlined text-[14px] text-slate-400">key</span>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Chave</span>
-              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
+              <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400">key</span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Chave</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
                 {data.accessKey.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim()}
               </span>
               <button
                 onClick={copyAccessKey}
-                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:text-teal-500 transition-colors"
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
                 title="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
@@ -562,7 +562,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
         <div className="flex items-center border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-1 shrink-0">
           <button
             onClick={() => scrollTabs('left')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll esquerda"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -576,10 +576,10 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
                     ? 'text-teal-600 dark:text-teal-400 border-teal-500 bg-teal-500/5 dark:bg-teal-500/10'
-                    : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                    : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
@@ -589,7 +589,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
           </div>
           <button
             onClick={() => scrollTabs('right')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll direita"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -603,7 +603,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
               <div className="w-14 h-14 rounded-2xl bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30">
                 <span className="material-symbols-outlined text-[28px] text-teal-500 animate-spin">progress_activity</span>
               </div>
-              <p className="text-[13px] font-medium text-slate-400">Carregando detalhes...</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
             </div>
           )}
           {error && (
@@ -611,7 +611,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
               <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
                 <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
               </div>
-              <p className="text-[13px] font-medium text-red-400">{error}</p>
+              <p className="text-sm font-medium text-red-400">{error}</p>
             </div>
           )}
           {data && !loading && renderTabContent()}

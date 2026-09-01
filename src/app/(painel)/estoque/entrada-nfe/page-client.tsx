@@ -145,12 +145,12 @@ function PendencyBadges({ inv }: { inv: InvoiceEntry }) {
   return (
     <>
       {inv.unmatchedCount != null && inv.unmatchedCount > 0 && (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
           {inv.unmatchedCount} s/ cód.
         </span>
       )}
       {inv.missingLotCount != null && inv.missingLotCount > 0 && (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
           {inv.missingLotCount} s/ lote
         </span>
       )}
@@ -453,7 +453,7 @@ export default function EntradaNfePage() {
 
   const getSortIcon = (field: string) => {
     if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return <span className="material-symbols-outlined text-[16px] text-primary">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
+    return <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
   };
 
   const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
@@ -482,9 +482,9 @@ export default function EntradaNfePage() {
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <td colSpan={7} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-          <span className="text-xs text-slate-400">· {count} {count === 1 ? 'nota' : 'notas'}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">· {count} {count === 1 ? 'nota' : 'notas'}</span>
         </div>
       </td>
     </tr>
@@ -493,9 +493,9 @@ export default function EntradaNfePage() {
   const renderMobileDivider = (key: string, label: string, count: number, _mtotal: number) => (
     <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
       <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
-        <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
         <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="text-xs text-slate-400 ml-1">· {count} {count === 1 ? 'nota' : 'notas'}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">· {count} {count === 1 ? 'nota' : 'notas'}</span>
       </div>
     </div>
   );
@@ -509,7 +509,7 @@ export default function EntradaNfePage() {
       <React.Fragment key={inv.id}>
         <tr className={`group transition-colors cursor-pointer ${pending ? 'bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-900/10 dark:hover:bg-amber-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => toggleExpand(inv.id)}>
           <td className="px-2 py-2.5 text-center">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
           </td>
           <td className="px-2 py-2.5">
             <span className="text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{inv.issueDate ? formatDate(inv.issueDate) : '-'}</span>
@@ -530,19 +530,19 @@ export default function EntradaNfePage() {
             {inv.totalItems != null ? (
               <span className="text-xs text-slate-500">{inv.matchedItems}/{inv.totalItems}</span>
             ) : (
-              <span className="text-xs text-slate-400">-</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">-</span>
             )}
           </td>
           <td className="px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-1">
               <button
                 onClick={() => setLotModalInvoiceId(inv.id)}
-                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary transition-colors"
+                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors"
                 title={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
               >
                 <span className="material-symbols-outlined text-[18px]">{isRegistered ? 'edit_note' : 'assignment'}</span>
               </button>
-              <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200 cursor-pointer" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} onClick={() => toggleExpand(inv.id)}>expand_more</span>
+              <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 cursor-pointer" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} onClick={() => toggleExpand(inv.id)}>expand_more</span>
             </div>
           </td>
         </tr>
@@ -563,16 +563,16 @@ export default function EntradaNfePage() {
         <div className={`border rounded-xl p-3 cursor-pointer ${pending ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-900/10 dark:border-amber-800' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`} onClick={() => toggleExpand(inv.id)}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
               <span className="text-xs font-bold text-slate-900 dark:text-white">
                 {inv.issueDate ? formatDate(inv.issueDate) : '-'}
-                <span className="text-slate-400 font-normal ml-2">#{inv.number || '-'}</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal ml-2">#{inv.number || '-'}</span>
               </span>
             </div>
             <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
               <button
                 onClick={() => setLotModalInvoiceId(inv.id)}
-                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary transition-colors"
+                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors"
                 title={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
               >
                 <span className="material-symbols-outlined text-[16px]">{isRegistered ? 'edit_note' : 'assignment'}</span>
@@ -585,7 +585,7 @@ export default function EntradaNfePage() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{inv.totalValue != null ? formatAmount(inv.totalValue) : '-'}</span>
-            <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>expand_more</span>
+            <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>expand_more</span>
           </div>
         </div>
         {isExpanded && renderExpandedDetail(inv)}
@@ -667,7 +667,7 @@ export default function EntradaNfePage() {
               value={lotDraft.lot}
               onChange={e => setLotDraft(d => ({ ...d, lot: e.target.value }))}
               placeholder="Lote"
-              className="w-full px-1.5 py-1 text-[10px] border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
+              className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
               onClick={e => e.stopPropagation()}
             />
           </td>
@@ -677,13 +677,13 @@ export default function EntradaNfePage() {
               value={lotDraft.expiry}
               onChange={e => setLotDraft(d => ({ ...d, expiry: e.target.value }))}
               placeholder="YYYY-MM-DD"
-              className="w-full px-1.5 py-1 text-[10px] border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
+              className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
               onClick={e => e.stopPropagation()}
             />
           </td>
           <td className="px-2 py-1.5 text-right">
             {item.quantity === 1 ? (
-              <span className="text-[10px] text-slate-500">1</span>
+              <span className="text-xs text-slate-500">1</span>
             ) : (
               <input
                 type="number"
@@ -692,7 +692,7 @@ export default function EntradaNfePage() {
                 placeholder="Qtd"
                 max={item.quantity}
                 min={1}
-                className="w-20 px-1.5 py-1 text-[10px] text-right border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
+                className="w-20 px-1.5 py-1 text-xs text-right border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary"
                 onClick={e => e.stopPropagation()}
               />
             )}
@@ -709,7 +709,7 @@ export default function EntradaNfePage() {
               </button>
               <button
                 onClick={e => { e.stopPropagation(); setEditingLotItem(null); }}
-                className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
+                className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
                 title="Cancelar"
               >
                 <span className="material-symbols-outlined text-[16px]">close</span>
@@ -731,49 +731,49 @@ export default function EntradaNfePage() {
           {hasLot ? (
             <div className="flex flex-col gap-0.5">
               {item.batches.map((b, bi) => (
-                <span key={bi} className="text-[10px]">
+                <span key={bi} className="text-xs">
                   {b.serial ? `${b.lot} / ${b.serial}` : b.lot}
                 </span>
               ))}
             </div>
           ) : isPersisted ? (
-            <span className="text-[10px] text-amber-500 dark:text-amber-400 font-medium">--</span>
+            <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">--</span>
           ) : null}
         </td>
         <td className={`px-2 py-1.5 text-slate-600 dark:text-slate-400 ${emptyLotHighlight}`}>
           {hasLot ? (
             <div className="flex flex-col gap-0.5">
               {item.batches.map((b, bi) => (
-                <span key={bi} className="text-[10px]">{formatBatchDate(b.expiry) || '-'}</span>
+                <span key={bi} className="text-xs">{formatBatchDate(b.expiry) || '-'}</span>
               ))}
             </div>
           ) : isPersisted ? (
-            <span className="text-[10px] text-amber-500 dark:text-amber-400 font-medium">--</span>
+            <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">--</span>
           ) : null}
         </td>
         <td className={`px-2 py-1.5 text-right font-mono text-slate-600 dark:text-slate-400 ${emptyLotHighlight}`}>
           {hasLot ? (
             <div className="flex flex-col gap-0.5">
               {item.batches.map((b, bi) => (
-                <span key={bi} className="text-[10px]">{b.quantity != null ? b.quantity : '-'}</span>
+                <span key={bi} className="text-xs">{b.quantity != null ? b.quantity : '-'}</span>
               ))}
             </div>
           ) : isPersisted ? (
-            <span className="text-[10px] text-amber-500 dark:text-amber-400 font-medium">--</span>
+            <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">--</span>
           ) : null}
         </td>
         <td className={`px-2 py-1.5 ${emptyLotHighlight}`}>
           {isPersisted && canWrite && (
             <button
               onClick={e => { e.stopPropagation(); startEditLot(item); }}
-              className={`p-0.5 rounded ${hasLot ? 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600' : 'hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-500 hover:text-amber-700'}`}
+              className={`p-0.5 rounded ${hasLot ? 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-600' : 'hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-500 hover:text-amber-700'}`}
               title={hasLot ? 'Editar lote' : 'Adicionar lote'}
             >
               <span className="material-symbols-outlined text-[14px]">{hasLot ? 'edit' : 'add_circle'}</span>
             </button>
           )}
           {expandedSource === 'xml' && !hasLot && (
-            <span className="text-[9px] text-slate-400 italic" title="Registre a entrada para editar lotes">Registre</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 italic" title="Registre a entrada para editar lotes">Registre</span>
           )}
         </td>
       </>
@@ -801,14 +801,14 @@ export default function EntradaNfePage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] text-slate-400">#{item.index}</span>
-                        {item.code && <span className="text-[10px] font-mono text-slate-500">{item.code}</span>}
+                        <span className="text-xs text-slate-500 dark:text-slate-400">#{item.index}</span>
+                        {item.code && <span className="text-xs font-mono text-slate-500">{item.code}</span>}
                       </div>
                       <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{item.description}</p>
                       {item.batches && item.batches.length > 0 && (
                         <div className="flex flex-col gap-0.5 mt-1">
                           {item.batches.map((b, bi) => (
-                            <div key={bi} className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400">
+                            <div key={bi} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                               <span className="font-mono font-bold">{b.lot}</span>
                               {b.expiry && <span>val. {formatBatchDate(b.expiry)}</span>}
                               {b.quantity != null && <span>qtd. {b.quantity}</span>}
@@ -820,19 +820,19 @@ export default function EntradaNfePage() {
                         <div className="mt-0.5 flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-[12px] text-emerald-500">check_circle</span>
                           <span
-                            className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
+                            className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
                             title={item.registryDescription || ''}
                           >
                             {item.codigoInterno}
                           </span>
                         </div>
                       ) : (
-                        <p className="text-[10px] text-red-500 dark:text-red-400 mt-0.5">Sem correspondência</p>
+                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">Sem correspondência</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">{formatAmount(item.totalValue)}</div>
-                      <div className="text-[10px] text-slate-400">{item.quantity} {item.unit}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{item.quantity} {item.unit}</div>
                     </div>
                   </div>
                 </div>
@@ -856,16 +856,16 @@ export default function EntradaNfePage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">#</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">Código NF-e</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">Descrição</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">UN</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase text-right">Qtd</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">Lote</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">Validade</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase text-right">Qtd Lote</th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase w-6"></th>
-                  <th className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 uppercase">Código Interno</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">#</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Código NF-e</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Descrição</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">UN</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase text-right">Qtd</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Lote</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Validade</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase text-right">Qtd Lote</th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase w-6"></th>
+                  <th className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Código Interno</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -877,7 +877,7 @@ export default function EntradaNfePage() {
                       : 'bg-red-50/40 dark:bg-red-900/10'
                     }
                   >
-                    <td className="px-2 py-1.5 text-slate-400">{item.index}</td>
+                    <td className="px-2 py-1.5 text-slate-500 dark:text-slate-400">{item.index}</td>
                     <td className="px-2 py-1.5 font-mono text-slate-600 dark:text-slate-400">{item.code || '-'}</td>
                     <td className="px-2 py-1.5 text-slate-800 dark:text-slate-200 max-w-[300px] truncate">{item.description}</td>
                     <td className="px-2 py-1.5 text-slate-500">{item.unit}</td>
@@ -888,7 +888,7 @@ export default function EntradaNfePage() {
                         <div className="flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-[14px] text-emerald-500">check_circle</span>
                           <span
-                            className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
+                            className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
                             title={item.registryDescription || ''}
                           >
                             {item.codigoInterno}
@@ -997,12 +997,12 @@ export default function EntradaNfePage() {
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[48px] opacity-30">inventory</span>
               <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
             </div>
             <div className="flex items-center gap-1 pt-2">
-              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
             </div>
           </>
@@ -1026,7 +1026,7 @@ export default function EntradaNfePage() {
             })()}
             {renderGroupedMobileCards()}
             <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
-              <span className="text-xs text-slate-400 mr-1">Ano:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
             </div>
           </>
@@ -1079,7 +1079,7 @@ export default function EntradaNfePage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">inventory</span>
                     <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
                     <p className="text-xs mt-1">Ajuste os filtros ou sincronize novas NF-e</p>
@@ -1093,7 +1093,7 @@ export default function EntradaNfePage() {
         {/* Footer with year navigation */}
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
           <span className="text-xs text-slate-500">{total} nota(s)</span>
@@ -1119,7 +1119,7 @@ export default function EntradaNfePage() {
             type="file"
             accept=".ods,.xlsx,.xls"
             onChange={e => setImportFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary dark:file:text-blue-400 hover:file:bg-primary/20"
           />
         </div>
         {importFile && (

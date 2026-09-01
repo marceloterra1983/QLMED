@@ -57,21 +57,21 @@ function SupplierRowDetail({ row, priceLabel, dateLabel }: { row: PriceRow; pric
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
       <div className="px-4 py-3">
-        <p className="text-[10px] font-mono text-slate-400 mb-0.5">{row.code}</p>
+        <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-0.5">{row.code}</p>
         <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{row.shortName || row.description}</p>
-        {row.shortName && <p className="text-xs text-slate-400 mt-0.5">{row.description}</p>}
+        {row.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.description}</p>}
       </div>
       <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Unidade</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-medium">Unidade</p>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">{row.unit || '-'}</p>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{priceLabel}</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-medium">{priceLabel}</p>
           <p className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(row.lastPrice)}</p>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{dateLabel}</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-medium">{dateLabel}</p>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</p>
         </div>
       </div>
@@ -103,7 +103,7 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
 
   const pctLabel = (v: number | null) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '-');
   const colorClass = (v: number | null) =>
-    v == null ? 'text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
+    v == null ? 'text-slate-500 dark:text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
 
   const taxParts: string[] = [];
   if (icms) taxParts.push(`ICMS ${icms}%`);
@@ -115,9 +115,9 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
   return (
     <>
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
-        <p className="text-[10px] font-mono text-slate-400 mb-0.5">{row.code} · {row.unit}</p>
+        <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-0.5">{row.code} · {row.unit}</p>
         <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{row.shortName || row.description}</p>
-        {row.shortName && <p className="text-xs text-slate-400 mt-0.5">{row.description}</p>}
+        {row.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.description}</p>}
       </div>
 
       {loadingRegistry ? (
@@ -131,7 +131,7 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-xs text-slate-500 dark:text-slate-400">Valor de Compra</span>
             <span className="text-xs font-semibold text-slate-900 dark:text-white">
-              {hasPurchase ? formatPrice(purchasePrice) : <span className="text-slate-400 italic">não cadastrado</span>}
+              {hasPurchase ? formatPrice(purchasePrice) : <span className="text-slate-500 dark:text-slate-400 italic">não cadastrado</span>}
             </span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 dark:bg-slate-900/20">
@@ -144,11 +144,11 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
           <div className="flex items-start justify-between px-4 py-2.5">
             <div className="min-w-0">
               <span className="text-xs text-slate-500 dark:text-slate-400">Impostos na Venda</span>
-              {taxParts.length > 0 && <p className="text-[10px] text-slate-400 mt-0.5">{taxParts.join(' + ')}</p>}
-              {taxParts.length === 0 && registry && <p className="text-[10px] text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>}
+              {taxParts.length > 0 && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{taxParts.join(' + ')}</p>}
+              {taxParts.length === 0 && registry && <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>}
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-3">
-              <span className="text-xs text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{totalTaxPct > 0 ? formatPrice(taxOnSale) : '-'}</span>
             </div>
           </div>
@@ -162,7 +162,7 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
         </div>
       )}
 
-      <p className="text-[10px] text-slate-400 text-right">
+      <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
         Última venda: {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
       </p>
     </>
@@ -312,7 +312,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
             <div className="space-y-3">
               <button
                 onClick={() => setDetailRow(null)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 transition-colors"
               >
                 <span className="material-symbols-outlined text-[14px]">arrow_back</span>
                 Voltar para lista
@@ -326,18 +326,18 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
           ) : (
             <>
               {details.priceTable.length === 0 ? (
-                <div className="px-4 py-10 text-center text-slate-400 text-sm">Sem itens para compor tabela de preço.</div>
+                <div className="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">Sem itens para compor tabela de preço.</div>
               ) : (
                 <>
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <div className="relative w-full max-w-md">
-                      <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                       <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Filtrar por nome ou código"
-                        className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40"
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
@@ -346,7 +346,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                   </div>
 
                   {filteredAndSortedRows.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-slate-400 text-sm">
+                    <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                       Nenhum produto encontrado para o filtro informado.
                     </div>
                   ) : (
@@ -362,10 +362,10 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                               <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatPrice(row.lastPrice)}</span>
                             </div>
                             <div className="flex items-center justify-between mt-1">
-                              <span className="text-[10px] text-slate-400">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
                               <button
                                 onClick={() => setDetailRow(row)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[13px]">search</span>
                                 Detalhes
@@ -379,7 +379,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                       <div className="hidden sm:block overflow-x-auto max-h-[420px] rounded-xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-left border-collapse">
                           <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                               <th className="px-3 py-2">
                                 <button type="button" onClick={() => toggleSort('description')} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors whitespace-nowrap">
                                   Produto
@@ -406,7 +406,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                               <tr key={`${row.code}-${row.description}-${row.unit}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                                 <td className="px-3 py-1.5">
                                   <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.shortName || row.description}</div>
-                                  <div className="text-[10px] font-mono text-slate-400">{row.code}</div>
+                                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.code}</div>
                                 </td>
                                 <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
                                   {formatPrice(row.lastPrice)}
@@ -417,7 +417,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                                 <td className="px-3 py-1.5 text-center">
                                   <button
                                     onClick={() => setDetailRow(row)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
                                   >
                                     <span className="material-symbols-outlined text-[13px]">search</span>
                                     Detalhes
@@ -444,7 +444,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
       )}
 
       {!loading && !head && (
-        <div className="py-10 text-center text-slate-400">
+        <div className="py-10 text-center text-slate-500 dark:text-slate-400">
           <span className="material-symbols-outlined text-[44px] opacity-40">{cfg.priceModalEmptyIcon}</span>
           <p className="mt-2 text-sm font-medium">Sem dados para este {cfg.noun}</p>
         </div>

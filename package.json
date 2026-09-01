@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "ci:verify": "bash ./scripts/verify-ci-hardening.sh && bash ./scripts/test-ci-hardening.sh",
+    "ui:verify": "node ./scripts/verify-ui-tokens.mjs",
+    "ui:verify:test": "bash ./scripts/test-ui-tokens-verifier.sh",
     "docs:validate": "node ./scripts/validate-docs.mjs",
     "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "ai-tooling:check": "node ./scripts/check-ai-tooling.mjs",

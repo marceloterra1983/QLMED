@@ -87,9 +87,9 @@ export default function ImpcgItemsEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Itens aprovados</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Itens aprovados</p>
         {edited ? (
-          <span className="normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+          <span className="normal-case font-medium tracking-normal text-xs text-slate-500 dark:text-slate-400/80">
             editado
           </span>
         ) : null}
@@ -126,7 +126,7 @@ export default function ImpcgItemsEditor({
             {open && canEdit ? (
               drafts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center text-slate-400">
+                  <td colSpan={7} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
                     Nenhum item. Adicione uma linha.
                   </td>
                 </tr>
@@ -185,7 +185,7 @@ export default function ImpcgItemsEditor({
                       <button
                         type="button"
                         onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}
-                        className="p-1 text-slate-400 hover:text-rose-600"
+                        className="p-1 text-slate-500 dark:text-slate-400 hover:text-rose-600"
                         aria-label={`Remover item ${index + 1}`}
                       >
                         <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -196,7 +196,7 @@ export default function ImpcgItemsEditor({
               )
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-slate-400">
+                <td colSpan={6} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
                   Nenhum item extraído.
                 </td>
               </tr>
@@ -221,7 +221,7 @@ export default function ImpcgItemsEditor({
           <button
             type="button"
             onClick={() => setDrafts((current) => [...current, emptyRow()])}
-            className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary"
+            className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400"
           >
             Adicionar item
           </button>
@@ -232,7 +232,7 @@ export default function ImpcgItemsEditor({
               onSave(drafts.filter((row) => row.description.trim()));
               setOpen(false);
             }}
-            className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+            className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 disabled:opacity-50"
           >
             ok
           </button>
@@ -240,10 +240,10 @@ export default function ImpcgItemsEditor({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Total do ofício
           {totalEdited ? (
-            <span className="ml-1 normal-case font-medium tracking-normal text-[10px] text-slate-400/80">
+            <span className="ml-1 normal-case font-medium tracking-normal text-xs text-slate-500 dark:text-slate-400/80">
               editado
             </span>
           ) : null}
@@ -261,7 +261,7 @@ export default function ImpcgItemsEditor({
               type="button"
               disabled={saving || !totalDraft.trim()}
               onClick={() => onSaveTotal(totalDraft.trim())}
-              className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-primary disabled:opacity-50"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 disabled:opacity-50"
             >
               Salvar total
             </button>
