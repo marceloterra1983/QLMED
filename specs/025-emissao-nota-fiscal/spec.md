@@ -364,6 +364,8 @@ status do serviço e não cria nota emitida.
   top. Com busca ativa, MUST devolver só matches filtrados
   (alfabéticos entre si); o restante do cadastro entra só via
   busca manual. Isolamento por `companyId` do servidor.
+  MUST NÃO exibir parágrafo de ajuda operacional junto ao
+  destinatário; o placeholder curto do campo (nome ou CNPJ) basta.
 - **FR-019**: Após selecionar o destinatário, a tela MUST mostrar o
   endereço de forma sucinta (cidade/UF, ou bairro e cidade/UF, ou
   logradouro curto e cidade/UF) em texto discreto, sem destaque
