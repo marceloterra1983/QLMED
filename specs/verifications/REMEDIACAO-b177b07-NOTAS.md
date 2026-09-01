@@ -263,3 +263,21 @@ banco agora expulsa as sessões de página, igual ao que a API já fazia. B-14 �
 `bcrypt.compare` a custo 12; `loginGlobal` 120 → 20, o que dá 37 s de CPU/min
 com 10 utilizadores e satura a partir de ~16 — acima disso é preciso baixar
 outra vez ou trocar por bcrypt nativo. 1265 testes; `middleware-acl` 6/6.
+
+**R5 integrada** (`1516e8d`): gate do UI-003 deixou de ser regex de fonte —
+`netQty` saiu para `valvulas-importadas-row.ts` e o teste prova
+`purchased − sold` com os códigos do mapa antigo (repondo o mapa: `expected 17
+to be 44`). L5/G14c ganhou teste que espia `Buffer.from` (0 chamadas acima do
+cap; sem o teto, 22,7 s a decodificar 14 MB). Codex P2 #5 — o purge passa
+`heartbeatIntervalMs` de 24 h. B-13 — `data:` abortado no Chromium. B-18 — o
+interruptor de TLS fica, mas loga `error` por request com o host, e a Receita
+passa a usar o `sefazCaBundle()`; `.env.example` diz "não desligue". B-12 —
+`no-new-privileges` e `cap_drop: [ALL]` nos dois Postgres, com o conjunto
+mínimo medido em container (`DAC_OVERRIDE` é obrigatório sobre dados
+existentes); `QLMED-RISK-2026-09-PG-DIGEST` em *Active risk acceptance*.
+`mem_limit` não adicionado de propósito. SECRET_ARG alargado com 6 negativos.
+1291 testes.
+
+**Segunda rodada fechada.** Dos 20 achados abertos após a re-auditoria, 19
+fechados e 1 parcial com número (B-16, custo de bcrypt). As três threads do
+Codex respondidas e resolvidas.
