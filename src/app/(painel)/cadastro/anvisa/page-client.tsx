@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Button from '@/components/ui/Button';
 import Field from '@/components/ui/Field';
 import PageHeader from '@/components/PageHeader';
 
@@ -86,15 +87,9 @@ export default function AnvisaPage() {
         subtitle="Pesquisa pública na base oficial da ANVISA"
         showTitleOnMobile
         actions={(
-          <a
-            href={selectedOption.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
-          >
-            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+          <Button href={selectedOption.url} external target="_blank" rel="noopener noreferrer" icon="open_in_new">
             Abrir no site da ANVISA
-          </a>
+          </Button>
         )}
       />
 
@@ -161,15 +156,9 @@ export default function AnvisaPage() {
               )}
 
               <div className="mt-5">
-                <a
-                  href={selectedOption.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30"
-                >
-                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                <Button href={selectedOption.url} external target="_blank" rel="noopener noreferrer" icon="open_in_new">
                   Abrir consulta da ANVISA
-                </a>
+                </Button>
               </div>
             </div>
           </div>

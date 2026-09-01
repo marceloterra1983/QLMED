@@ -1,8 +1,8 @@
 'use client';
+import React, { useState } from 'react';
 
-import React, { useCallback, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import type { ProductRow } from '../types';
 import { BulkFieldRow } from './DetailSectionCard';
 import { BULK_INPUT_CLS } from './product-utils';
@@ -33,10 +33,6 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const enabledCount = [bulkFields.enableType, bulkFields.enableSubtype, bulkFields.enableSubgroup, bulkFields.enableNcm, bulkFields.enableAnvisa, bulkFields.enableOutOfLine, bulkFields.enableCstIpi, bulkFields.enableCstPis, bulkFields.enableCstCofins].filter(Boolean).length;
-
-  const handleClose = useCallback(() => onClose(), [onClose]);
-  useModalBackButton(true, handleClose);
-
   const handleBulkSave = async () => {
     const fields: Record<string, string | null> = {};
     if (bulkFields.enableType) fields.productType = bulkFields.productType || null;
@@ -86,11 +82,16 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
   };
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
-      <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-md sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Editar em massa"
+      surface="sunken"
+      width="sm:max-w-md"
+      height="sm:h-auto sm:max-h-[92vh]"
+      bodyClassName=""
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
               <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">edit_note</span>
@@ -106,8 +107,27 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
             </button>
           </div>
         </div>
-
-        {/* Body */}
+      }
+      footer={
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+          <div className="flex flex-col gap-2 sm:hidden">
+            <Button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} loading={isBulkSaving} icon="save" block>
+              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
+            </Button>
+            <Button onClick={onClose} variant="soft" icon="arrow_back" block>Voltar</Button>
+          </div>
+          <div className="hidden sm:flex items-center justify-between">
+            <Button onClick={onClose} variant="ghost">
+              Cancelar
+            </Button>
+            <Button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} loading={isBulkSaving} icon="save">
+              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
+            </Button>
+          </div>
+        </div>
+      }
+    >
+{/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
           <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-900/10 ring-1 ring-blue-200/50 dark:ring-blue-800/30">
             <div className="w-6 h-6 rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -255,32 +275,6 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           </BulkFieldRow>
         </div>
 
-        {/* Footer */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-          <div className="flex flex-col gap-2 sm:hidden">
-            <button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none">
-              {isBulkSaving ? (
-                <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
-              ) : (
-                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>
-              )}
-            </button>
-            <Button onClick={onClose} variant="soft" icon="arrow_back" block>Voltar</Button>
-          </div>
-          <div className="hidden sm:flex items-center justify-between">
-            <Button onClick={onClose} variant="ghost">
-              Cancelar
-            </Button>
-            <button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none">
-              {isBulkSaving ? (
-                <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
-              ) : (
-                <><span className="material-symbols-outlined text-[16px]">save</span>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

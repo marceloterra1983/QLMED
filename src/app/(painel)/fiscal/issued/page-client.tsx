@@ -375,10 +375,9 @@ export default function IssuedInvoicesPage() {
             </select>
           </Field>
           <div className="flex gap-2">
-            <button onClick={() => loadInvoices()} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30">
-              <span className="material-symbols-outlined text-[20px]">filter_alt</span>
+            <Button onClick={() => loadInvoices()} icon="filter_alt" className="flex-1">
               Aplicar
-            </button>
+            </Button>
             <button onClick={clearFilters} className="px-3 py-2.5 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors">Limpar</button>
           </div>
         </div>

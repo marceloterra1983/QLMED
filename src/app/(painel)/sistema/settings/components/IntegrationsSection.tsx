@@ -488,14 +488,9 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
           )}
 
           <div className="flex justify-end pt-2">
-            <button
-              onClick={handleNsdocsSave}
-              disabled={nsdocsLoading || !apiToken || !canManageSettings}
-              className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">save</span>
+            <Button onClick={handleNsdocsSave} disabled={nsdocsLoading || !apiToken || !canManageSettings} icon="save">
               Salvar Configuração
-            </button>
+            </Button>
           </div>
         </div>
       </CollapsibleCard>

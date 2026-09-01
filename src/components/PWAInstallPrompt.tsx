@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -75,13 +76,9 @@ export function PWAInstallPrompt() {
                 Instale o app no seu celular para acesso r&aacute;pido.
               </p>
               <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleInstall}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-xs font-bold shadow-md shadow-primary/30"
-                >
-                  <span className="material-symbols-outlined text-[16px]">download</span>
+                <Button onClick={handleInstall} icon="download">
                   Instalar
-                </button>
+                </Button>
                 <button
                   onClick={handleDismiss}
                   className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"

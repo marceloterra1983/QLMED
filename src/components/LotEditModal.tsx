@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatDate, formatAmount, formatCnpj } from '@/lib/utils';
@@ -436,14 +437,21 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
     return ds.reduce((sum, d) => sum + (d.quantity ? Number(d.quantity) || 0 : 0), 0);
   };
 
+  // O diálogo não sai no meio de um salvamento — vale para o fundo, o Esc e o
+  // botão voltar, que agora passam todos pelo mesmo caminho.
+  const fecharSePossivel = () => { if (!saving && !registering) onClose(); };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (!saving && !registering) onClose(); }}>
-      <div
-        className="bg-white dark:bg-slate-900 w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:mx-4 sm:rounded-2xl shadow-xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+    <Modal
+      isOpen
+      onClose={fecharSePossivel}
+      title={`Lotes — NF-e ${invoice?.number || "..."}`}
+      surface="card"
+      width="sm:max-w-5xl"
+      height="sm:h-auto sm:max-h-[90vh]"
+      bodyClassName=""
+      header={
+<div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
@@ -475,8 +483,60 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
             </button>
           </div>
         </div>
-
-        {/* Body */}
+      }
+      footer={
+!loading && items.length > 0 ? (
+<div className="flex-shrink-0 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs text-slate-500 space-y-0.5">
+                {totalChanges > 0 && (
+                  <div className="font-medium text-amber-600 dark:text-amber-400">
+                    {totalChanges} alteraç{totalChanges === 1 ? 'ão pendente' : 'ões pendentes'}
+                  </div>
+                )}
+                {hasQtyErrors && (
+                  <div className="font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {qtyErrors.size === 1 ? '1 item' : `${qtyErrors.size} itens`} com qtd de lotes diferente da qtd total
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { if (!saving && !registering) onClose(); }}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                >
+                  Fechar
+                </button>
+                {canWrite && !isPersisted && (
+                  <Button
+                    onClick={handleRegister}
+                    disabled={saving || hasQtyErrors}
+                    loading={registering}
+                    size="sm"
+                    icon="check_circle"
+                  >
+                    {registering ? 'Registrando...' : 'Registrar Entrada'}
+                  </Button>
+                )}
+                {canWrite && isPersisted && (
+                  <Button
+                    onClick={handleSaveAll}
+                    disabled={registering || totalChanges === 0 || hasQtyErrors}
+                    loading={saving}
+                    size="sm"
+                    icon="save"
+                  >
+                    {saving ? 'Salvando...' : 'Salvar Alterações'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+      ) : null
+      }
+    >
+{/* Body */}
         <div className="flex-1 overflow-auto min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -795,58 +855,6 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
             </>
           )}
         </div>
-
-        {/* Footer */}
-        {!loading && items.length > 0 && (
-          <div className="flex-shrink-0 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-slate-500 space-y-0.5">
-                {totalChanges > 0 && (
-                  <div className="font-medium text-amber-600 dark:text-amber-400">
-                    {totalChanges} alteraç{totalChanges === 1 ? 'ão pendente' : 'ões pendentes'}
-                  </div>
-                )}
-                {hasQtyErrors && (
-                  <div className="font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {qtyErrors.size === 1 ? '1 item' : `${qtyErrors.size} itens`} com qtd de lotes diferente da qtd total
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { if (!saving && !registering) onClose(); }}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                >
-                  Fechar
-                </button>
-                {canWrite && !isPersisted && (
-                  <Button
-                    onClick={handleRegister}
-                    disabled={saving || hasQtyErrors}
-                    loading={registering}
-                    size="sm"
-                    icon="check_circle"
-                  >
-                    {registering ? 'Registrando...' : 'Registrar Entrada'}
-                  </Button>
-                )}
-                {canWrite && isPersisted && (
-                  <Button
-                    onClick={handleSaveAll}
-                    disabled={registering || totalChanges === 0 || hasQtyErrors}
-                    loading={saving}
-                    size="sm"
-                    icon="save"
-                  >
-                    {saving ? 'Salvando...' : 'Salvar Alterações'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    </Modal>
   );
 }

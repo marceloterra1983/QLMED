@@ -27,7 +27,10 @@ describe('login page contract (ADR-0012)', () => {
 
   it('mostra marca, Entrar e bloqueia envio vazio (planos TestSprite login)', () => {
     expect(loginPage).toMatch(/alt=["']QL MED Logo["']/);
-    expect(loginPage).toMatch(/^\s+Entrar$/m);
+    // O rótulo é uma string do JSX; a regra anterior exigia "Entrar" sozinho
+    // numa linha, um detalhe de formatação que a migração para <Button> mudou.
+    expect(loginPage).toMatch(/['"]Entrar['"]/);
+    expect(loginPage).toMatch(/<Button[^>]*type="submit"/);
     expect(loginPage).toMatch(/required/);
     expect(loginPage).toMatch(/setError\('Senha inválida'\)/);
     expect(loginPage).toMatch(/router\.push\('\/fiscal\/invoices'\)/);
