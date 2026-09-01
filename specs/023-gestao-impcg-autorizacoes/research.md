@@ -79,7 +79,13 @@ dois-pontos e sem linha `CRM:` (ex.: 1589, 1748, 2010, 2476). O
 parser aceita esse formato além de `MÉDICO:` / `CRM:`. Coleta da
 pasta re-preenche `doctorName`/`doctorCrm` nulos em `parcial`
 (`fillsDoctor` / `fillsCrm`), mesmo quando o rank permanece
-`parcial`.
+`parcial`. CRM não entra no critério de `ok` nem no texto de
+falta: ofícios antigos não trazem CRM.
+
+Tabelas antigas (ITEM QTD DESCRIÇÃO ANVISA no fim; descrição
+na linha de cima; pipes/OCR sujo tipo 11927/2830/3186) são
+lidas sem tratar ANVISA como quantidade. O total do ofício é
+editável à vista no popup (`12.550,00` ou `12550.00`).
 
 **Alternatives considered**:
 

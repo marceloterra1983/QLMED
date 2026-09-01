@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createLogger } from '@/lib/logger';
@@ -41,20 +41,29 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
     const prefix = join(dir, 'page');
     // 300 dpi + PSM 6: a data do cabeçalho some em 200 dpi / layout automático.
     run('pdftoppm', ['-png', '-r', '300', pdfPath, prefix]);
-    const pagePath = `${prefix}-1.png`;
-    try {
+    const pages = readdirSync(dir)
+      .filter((name) => name.startsWith('page') && name.endsWith('.png'))
+      .sort();
+    if (pages.length === 0) return '';
+
+    const chunks: string[] = [];
+    for (const page of pages) {
+      const pagePath = join(dir, page);
       readFileSync(pagePath);
-    } catch {
-      return '';
+      const primary = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '6']);
+      let text = primary.stdout.trim();
+      const firstPage = page.endsWith('-1.png');
+      if (
+        firstPage
+        && !(/data\s*[:\-]/i.test(text) || /\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{4}/.test(text))
+      ) {
+        const fallback = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '4']);
+        const extra = fallback.stdout.trim();
+        text = extra && extra.length > text.length ? `${text}\n${extra}` : text || extra;
+      }
+      if (text) chunks.push(text);
     }
-    const primary = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '6']);
-    const text = primary.stdout.trim();
-    if (/data\s*[:\-]/i.test(text) || /\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{4}/.test(text)) {
-      return text;
-    }
-    const fallback = run('tesseract', [pagePath, 'stdout', '-l', 'por', '--oem', '1', '--psm', '4']);
-    const extra = fallback.stdout.trim();
-    return extra && extra.length > text.length ? `${text}\n${extra}` : text || extra;
+    return chunks.join('\n');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

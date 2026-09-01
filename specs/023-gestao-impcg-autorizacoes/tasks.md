@@ -179,3 +179,5 @@ T021 upload gate
 5. Polish + land
 
 Não mergear só com spec/plan.
+
+- [x] T041 CRM opcional + parser de tabela antiga (11927/2830/3186) + total editável visível em `src/lib/impcg/parse-oficio.ts`, `src/components/gestao/ImpcgItemsEditor.tsx` e popup IMPCG (AC-008/AC-017/FR-006/FR-008)
