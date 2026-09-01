@@ -166,6 +166,20 @@ function stripHeaderTokens(token: string): boolean {
   return /^(item|tuss|c[oó]digo|unid\.?|descri[cç][aã]o|material|n[ºo°]|anvisa|vlr|unit\.?|total|r\$|de|do|da|e|-|ref\.?)$/i.test(token);
 }
 
+/** SPEC-038: só aceita QTD se qty × unitário fecha o total impresso; senão 1. */
+export function resolveLineQuantity(
+  candidates: readonly string[],
+  unitCents: number,
+  lineCents: number,
+): string {
+  for (const token of candidates) {
+    const qty = Number.parseInt(token, 10);
+    if (!Number.isInteger(qty) || qty < 1) continue;
+    if (qty * unitCents === lineCents) return String(qty);
+  }
+  return '1';
+}
+
 function parseItems(text: string): ParsedCassemsItem[] {
   const items: ParsedCassemsItem[] = [];
   const rowRe = /(\d{8,14})\s+(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})\s+(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})/g;
@@ -189,17 +203,18 @@ function parseItems(text: string): ParsedCassemsItem[] {
     const after = text.slice(end + match[0].length, end + match[0].length + 180);
     const window = before.replace(/\s+/g, ' ').trim();
 
-    let quantity = '1';
+    const quantityCandidates: string[] = [];
     const words: string[] = [];
     for (const token of window.split(' ')) {
       if (!token || stripHeaderTokens(token)) continue;
       if (/^\d{1,4}$/.test(token)) {
-        quantity = token;
+        quantityCandidates.push(token);
         continue;
       }
       if (/^\d{5,}$/.test(token) || /^\d+\.\d+(?:\.\d+)*$/.test(token)) continue;
       words.push(token.replace(/[^A-Za-zÀ-ÿ0-9.\-]/g, ''));
     }
+    const quantity = resolveLineQuantity(quantityCandidates, unitCents, lineCents);
 
     const joined = words.filter(Boolean).join(' ');
     const refFromAfter = /(\d{4,8})\s*-\s*([A-ZÁ-Ü]{3,})/i.exec(after);
