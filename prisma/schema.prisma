@@ -1034,6 +1034,18 @@ model CassemsIngestState {
   updatedAt           DateTime  @updatedAt
 }
 
+/// Nonce já consumido de webhook do n8n. Existe para o anti-replay do HMAC
+/// funcionar entre réplicas: a versão anterior guardava num `Map` de processo,
+/// então o mesmo nonce passava uma vez por processo. Quem resolve a corrida é a
+/// chave primária, no banco. A janela é de minutos e a limpeza é oportunista no
+/// próprio caminho de escrita — não precisa de job.
+model N8nWebhookNonce {
+  nonce     String   @id
+  expiresAt DateTime @db.Timestamptz(3)
+
+  @@index([expiresAt])
+}
+
 enum InvoiceEmissionStatus {
   draft
   submitted
