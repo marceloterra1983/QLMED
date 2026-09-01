@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { consumeWebhookNonce, verifyWebhookSignature } from '@/lib/n8n-webhook-security';
+import { readBodyWithLimit, PayloadTooLargeError } from '@/lib/upload-limits';
 
 const log = createLogger('webhooks/n8n');
 
@@ -29,38 +30,6 @@ const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 /** Orçamento do forward interno; sem ele a rota fica presa a um handler travado. */
 const FORWARD_TIMEOUT_MS = 30_000;
-
-class PayloadTooLargeError extends Error {}
-
-/**
- * Lê o corpo com teto, consumindo em pedaços.
- *
- * O `content-length` é do cliente e pode mentir (ou faltar, em chunked), então
- * a contagem real é aqui: passou do teto, aborta sem terminar de receber.
- */
-async function readBodyCapped(req: NextRequest): Promise<string> {
-  const body = req.body;
-  if (!body) return req.text();
-
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > MAX_BODY_BYTES) {
-        await reader.cancel().catch(() => {});
-        throw new PayloadTooLargeError();
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks).toString('utf-8');
-}
 
 /** Forward interno com timeout — a versão anterior podia esperar para sempre. */
 function forwardFetch(url: string, init: RequestInit): Promise<Response> {
@@ -134,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   let rawBody: string;
   try {
-    rawBody = await readBodyCapped(req);
+    rawBody = new TextDecoder().decode(await readBodyWithLimit(req, MAX_BODY_BYTES));
   } catch (err) {
     if (err instanceof PayloadTooLargeError) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });

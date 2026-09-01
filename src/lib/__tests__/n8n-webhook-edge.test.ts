@@ -96,6 +96,23 @@ describe('INT-001 — borda do webhook n8n', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    // Decisão de integração: a folha L5 tinha posto o teto do webhook em 1 MiB,
+    // que é MENOR que os 7 MiB de base64 que o próprio `process-xml` aceita —
+    // o teto de uma folha teria quebrado o contrato da outra em silêncio.
+    // Este teste fixa o limite inferior, que nenhum dos dois lados cobria.
+    it('process-xml com base64 grande e legítimo NÃO é recusado pelo teto', async () => {
+      process.env.N8N_WEBHOOK_SECRET = 'shared-secret';
+      // 6 MiB de base64: abaixo de MAX_BASE64_XML_LENGTH (7 MiB) e do corpo (8 MiB).
+      const xmlBase64 = 'a'.repeat(6 * 1024 * 1024);
+      const rawBody = JSON.stringify({ action: 'process-xml', payload: { xmlBase64 } });
+
+      const response = await POST(
+        request(rawBody, signedHeaders('shared-secret', rawBody, 'nonce-process-xml')),
+      );
+
+      expect(response.status).not.toBe(413);
+    });
+
     it('corpo dentro do teto continua passando', async () => {
       process.env.N8N_WEBHOOK_SECRET = 'shared-secret';
       const rawBody = JSON.stringify({ action: 'notify', payload: { x: 'a'.repeat(1024) } });

@@ -4,6 +4,8 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { z } from 'zod';
+import { formDataWithLimit } from '@/lib/upload-limits';
+import { assertSafeXlsx, assertRowCount, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
 
 export async function POST(req: Request) {
   try {
@@ -17,17 +19,20 @@ export async function POST(req: Request) {
 
     const company = await getOrCreateSingleCompany(userId);
 
-    const formData = await req.formData();
+    const formData = await formDataWithLimit(req, MAX_XLSX_BYTES);
     const file = formData.get('file') as File | null;
     const fileSchema = z.object({ file: z.instanceof(File, { message: 'Arquivo nao enviado' }) });
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
     const buf = await fileParsed.data.file.arrayBuffer();
+    // Zip-bomb: medir o custo do unzip antes de o exceljs pagá-lo.
+    await assertSafeXlsx(buf);
     const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
     const worksheet = workbook.worksheets[0];
+    assertRowCount(worksheet?.rowCount ?? 0);
 
     const allRows: string[][] = [];
     worksheet.eachRow({ includeEmpty: true }, (row) => {
