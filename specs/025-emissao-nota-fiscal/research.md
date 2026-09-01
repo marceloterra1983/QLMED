@@ -83,7 +83,9 @@ Não desligar `rejectUnauthorized` por causa disso.
 - `GET /api/customers` — lista de clientes da empresa.
 - `ContactFiscal` — IE, IM, CRT, UF, cidade por CNPJ.
 - `ContactOverride` — telefone, e-mail, logradouro, número, bairro, cidade, UF, CEP.
-- `ContactNickname` — nome curto na UI.
+- `ContactNickname` — nome curto na UI. Na caixa de destinatário
+  da Nova NF-e o rótulo visível é `shortName` quando existir;
+  senão `recipientName`. Payload/XML permanece com a razão social.
 - Tipos XML já modelados: `NFeDest`, `NFeEndereco` em `src/types/nfe-xml.ts`.
 
 ### Itens

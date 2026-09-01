@@ -43,3 +43,6 @@ Página única com âncoras e Concluir nesta etapa: FR-020, FR-021,
 AC-021–AC-025.
 Tons distintos por etapa (nav + card): FR-025 / AC-027.
 Presença do comprador fixa `indPres=9` sem campo na UI: FR-024.
+Apelido do destinatário na caixa da Nova NF-e (`shortName` se
+existir, senão razão): FR-026 / AC-028–AC-029. Payload `destName`
+permanece razão social.

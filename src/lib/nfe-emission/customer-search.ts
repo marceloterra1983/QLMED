@@ -1,10 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import { sumMoney } from '@/lib/money';
+import { recipientDisplayName } from '@/lib/nfe-emission/recipient-display-name';
 
 export type IssuedCustomerRow = {
   name: string;
   cnpj: string;
   tradeName?: string | null;
+  shortName?: string | null;
   companyId?: string;
 };
 
@@ -43,7 +45,8 @@ export function customerMatchesSearch(row: IssuedCustomerRow, search: string): b
   const q = term.toLocaleLowerCase('pt-BR');
   const name = row.name.toLocaleLowerCase('pt-BR');
   const trade = (row.tradeName || '').toLocaleLowerCase('pt-BR');
-  return name.includes(q) || trade.includes(q);
+  const nick = (row.shortName || '').toLocaleLowerCase('pt-BR');
+  return name.includes(q) || trade.includes(q) || nick.includes(q);
 }
 
 export function filterIssuedCustomersForCompany(
@@ -223,6 +226,7 @@ export function rankRecipientsByBilling(
 export type DestinatarioListItem = {
   cnpj: string;
   name: string;
+  shortName?: string;
   addressLine?: string;
   topBilled?: boolean;
 };
@@ -232,14 +236,21 @@ export type DestinatarioListItem = {
  * Com busca: matches filtrados em ordem alfabética (topBilled false).
  * O restante do cadastro só entra via busca manual.
  */
-export function orderDestinatariosForDropdown<T extends { cnpj: string; name: string }>(
+export function orderDestinatariosForDropdown<
+  T extends { cnpj: string; name: string; shortName?: string | null },
+>(
   customers: T[],
   topBilledOrdered: Array<{ cnpj: string; name?: string }>,
   searchActive: boolean,
 ): Array<T & { topBilled: boolean }> {
   if (searchActive) {
     return [...customers]
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+      .sort((a, b) =>
+        recipientDisplayName(a.name, a.shortName).localeCompare(
+          recipientDisplayName(b.name, b.shortName),
+          'pt-BR',
+        ),
+      )
       .map((row) => ({ ...row, topBilled: false }));
   }
 

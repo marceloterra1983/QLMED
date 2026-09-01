@@ -44,6 +44,13 @@ describe('busca de destinatário (nome + CNPJ)', () => {
     expect(customerMatchesSearch(HOSPITAL, 'Outra Clinica')).toBe(false);
   });
 
+  it('filtra também por shortName/apelido do cadastro', () => {
+    const withNick = { ...HOSPITAL, shortName: 'Vida' };
+    expect(customerMatchesSearch(withNick, 'vida')).toBe(true);
+    expect(customerMatchesSearch({ ...HOSPITAL, tradeName: null, shortName: 'Apelido Clinica' }, 'apelido')).toBe(true);
+    expect(customerMatchesSearch({ ...HOSPITAL, tradeName: null, shortName: null }, 'apelido')).toBe(false);
+  });
+
   it('filtra CNPJ com pontuação e só dígitos para o mesmo cadastro', () => {
     expect(customerMatchesSearch(HOSPITAL, '12.345.678/0001-99')).toBe(true);
     expect(customerMatchesSearch(HOSPITAL, '12345678000199')).toBe(true);
@@ -171,6 +178,15 @@ describe('busca ativa (resto via busca manual)', () => {
     expect(ordered.map((r) => r.name)).toEqual(['Alpha SA', 'Beta SA']);
     expect(ordered.every((r) => r.topBilled === false)).toBe(true);
     expect(ordered.some((r) => r.cnpj === '99999999000199')).toBe(false);
+  });
+
+  it('com busca ativa ordena pelo label visível (apelido se houver)', () => {
+    const matches = [
+      { cnpj: '11111111000111', name: 'Zebra Hospitalar SA', shortName: 'Alpha Clinica' },
+      { cnpj: '22222222000122', name: 'Beta SA' },
+    ];
+    const ordered = orderDestinatariosForDropdown(matches, [], true);
+    expect(ordered.map((r) => r.cnpj)).toEqual(['11111111000111', '22222222000122']);
   });
 });
 

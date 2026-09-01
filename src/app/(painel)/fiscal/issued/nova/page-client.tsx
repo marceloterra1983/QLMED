@@ -25,6 +25,7 @@ import {
   isSemPagamentoCfop,
 } from '@/lib/nfe-emission/issued-defaults';
 import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
+import { recipientDisplayName } from '@/lib/nfe-emission/recipient-display-name';
 import {
   NFE_FORM_STEPS,
   NFE_STEP_LABELS,
@@ -43,7 +44,7 @@ import {
   type NfeStepDraft,
 } from '@/lib/nfe-emission/form-steps';
 type Operation = { cfop: string; tag: string; natureza: string; ambito: string; featured?: boolean };
-type Customer = { cnpj: string; name: string; addressLine?: string; topBilled?: boolean };
+type Customer = { cnpj: string; name: string; shortName?: string | null; addressLine?: string; topBilled?: boolean };
 type Product = {
   id: string;
   code: string | null;
@@ -509,7 +510,7 @@ export default function EmitirNfePage() {
                   <div className="space-y-1.5">
                     <div className={`flex items-start justify-between gap-3 px-4 py-3 ${nfeStepPanelClass('dados')}`}>
                       <div>
-                        <div className="text-sm font-bold text-slate-900 dark:text-white">{dest.name}</div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">{recipientDisplayName(dest.name, dest.shortName)}</div>
                         <div className="text-xs text-slate-500 mt-0.5">{formatCnpj(dest.cnpj)}</div>
                       </div>
                       <button type="button" onClick={() => setDest(null)} className="text-xs font-bold text-slate-500 hover:text-rose-600">Trocar</button>
@@ -525,7 +526,7 @@ export default function EmitirNfePage() {
                       {customers.map((c) => (
                         <li key={c.cnpj}>
                           <button type="button" onClick={() => setDest(c)} className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <span className="font-bold text-slate-900 dark:text-white">{c.name}</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{recipientDisplayName(c.name, c.shortName)}</span>
                             <span className="text-slate-500 ml-2">{formatCnpj(c.cnpj)}</span>
                           </button>
                         </li>

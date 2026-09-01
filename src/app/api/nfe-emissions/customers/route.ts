@@ -13,6 +13,7 @@ import {
   orderDestinatariosForDropdown,
   rankRecipientsByBilling,
 } from '@/lib/nfe-emission/customer-search';
+import { applyRecipientShortNames } from '@/lib/nfe-emission/recipient-display-name';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
@@ -51,6 +52,13 @@ async function attachAddressLines<T extends { cnpj: string }>(
   });
 }
 
+async function loadCompanyNicknames(companyId: string) {
+  return prisma.contactNickname.findMany({
+    where: { companyId },
+    select: { cnpj: true, shortName: true },
+  });
+}
+
 export async function GET(req: Request) {
   try {
     const userId = await requireAuth();
@@ -73,11 +81,11 @@ export async function GET(req: Request) {
           totalValue: Number(row.totalValue),
         })),
       );
-      const ordered = orderDestinatariosForDropdown(
+      const withNick = applyRecipientShortNames(
         topBilled.map((row) => ({ cnpj: row.cnpj, name: row.name })),
-        topBilled,
-        false,
+        await loadCompanyNicknames(company.id),
       );
+      const ordered = orderDestinatariosForDropdown(withNick, topBilled, false);
       const customers = await attachAddressLines(company.id, ordered);
       return NextResponse.json({ customers });
     }
@@ -113,7 +121,11 @@ export async function GET(req: Request) {
       }))
       .filter((row) => row.cnpj.length === 14);
 
-    const ordered = orderDestinatariosForDropdown(baseCustomers, [], true);
+    const withNick = applyRecipientShortNames(
+      baseCustomers,
+      await loadCompanyNicknames(company.id),
+    );
+    const ordered = orderDestinatariosForDropdown(withNick, [], true);
     const customers = await attachAddressLines(
       company.id,
       ordered,
