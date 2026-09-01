@@ -1,0 +1,144 @@
+---
+title: Notas de remediação da auditoria b177b07
+status: ativo
+date: 2026-09-01
+---
+
+# Remediação b177b07 — o que o dono precisa decidir ou saber
+
+O que as folhas encontraram e que **não** se resolve dentro do código: quebras
+operacionais, achados novos fora dos 77, residuais deliberados, e decisões que
+são do dono e não da engenharia.
+
+## 1. Ordem de deploy — não é opcional
+
+| # | O que quebra se ignorar | Origem | Ação, antes de servir tráfego |
+|---|---|---|---|
+| 1 | Leitura de TODOS os segredos: emissão de NF-e, sync SEFAZ e sync Receita param. O `decrypt` é fail-closed agora. | L4, FILE-007 | Correr `scripts/migrate-plaintext-secrets.ts` (simula por omissão, grava com `--apply`). |
+| 2 | Todo não-admin perde o painel: `allowedPages = []` deixou de significar "todas". | L2, AUTH-005 | Correr `scripts/backfill-allowed-pages.ts` (tem `--dry-run`). |
+| 3 | Webhook do n8n devolve 401 em toda chamada. `N8N_WEBHOOK_SECRET` passa de opcional a obrigatório. | L3, INT-001 | Configurar o segredo nos DOIS lados. |
+| 4 | Webhook recusa toda chamada por falta da tabela de nonce. | Integração, INT-003 | A migração `20260902130000_n8n_webhook_nonce` tem de estar aplicada antes do código servir. |
+| 5 | `scripts/notification-outbox-worker.py`, `ops/scripts/qlmed-cte-dist-sync.js` e o que use `ops/compose/*.env.enc` deixam de autenticar. | L2, AUTH-006 | Emitir linha real em `ApiKey` por `/api/admin/api-keys`, escopo mínimo. |
+| 6 | As migrações **falham de propósito** se houver órfão ou duplicata herdada. | Item 1 + L8 | Rodar as queries de pré-checagem no cabeçalho de cada migração. Exige acesso autorizado ao banco. |
+| 7 | Planilhas E509 acima de 5 MiB passam a ser recusadas. | L5, FILE-002 | Confirmar que as reais cabem; se não, subir o teto. |
+
+## 2. Achados novos, fora dos 77
+
+Nenhum estava na auditoria original.
+
+### N-001 — Verificação de TLS desligável por variável de ambiente (alto)
+`SEFAZ_VERIFY_SSL=false` e `RECEITA_NFSE_VERIFY_SSL=false`
+(`src/lib/ssl-verify.ts:14`, `src/lib/receita-nfse-sync.ts:123`,
+`src/app/api/receita/nfse/config/route.ts:202`) põem `rejectUnauthorized: false`
+no `https.request` que carrega o e-CNPJ A1 como certificado de cliente — e, na
+Receita, o Bearer. Quem interceptar apresenta qualquer certificado e recebe os
+dois. O comentário no código trata isso como remendo para cadeia ICP-Brasil
+incompleta, necessidade real; mas o mecanismo é um interruptor permanente, sem
+validade, sem alarme e sem linha de log dizendo que a verificação está desligada.
+
+**Invariante quebrada:** uma credencial só é apresentada a um par cuja
+identidade foi verificada criptograficamente. O INT-010 fechou a metade do
+*destino* (o host tem de estar na allowlist); esta é a metade da *identidade*, e
+são independentes — host fixado com verificação desligada ainda entrega o
+certificado a quem atender.
+
+**Correção mínima:** apagar o override e confiar no `sefazCaBundle()`, que já
+anexa a raiz ICP-Brasil v10 às CAs do runtime e foi escrito exatamente para o
+problema de cadeia que o override existia para contornar. Se a saída de
+emergência tiver de sobreviver, que seja barulhenta e estreita: log em `error` a
+cada request feito com verificação desligada, e escopo de um host, não do
+cliente inteiro.
+
+**Alcançabilidade NÃO verificada.** `docker-compose.yml:12` alimenta a app por
+`env_file: .env`, então a variável chegaria ao processo. Se está definida como
+`false` em produção, não foi determinado — ler `.env` estava fora do escopo das
+folhas. **É a primeira coisa a checar.**
+
+### N-002 — PDF clínico pode ir para o grupo de WhatsApp FISCAL (alto)
+O destino resolve por
+`IMPCG_WHATSAPP_GROUP_JID ?? NOTIFICATION_WHATSAPP_GROUP ?? QLMED_WHATSAPP_GROUP_JID`.
+Com a variável específica ausente e o canal ligado, o ofício com nome de
+paciente, matrícula, CRM e procedimento vai para o grupo fiscal. Nada no repo
+registra quem está em qualquer um dos grupos.
+
+### N-003 — DELETE no OneDrive é lixeira, não expurgo (médio)
+A compensação de órfão do JOB-001 tira o PDF da pasta, mas o OneDrive retém na
+lixeira por ~30 dias. Para PHI, retenção não declarada.
+
+## 3. Correções à própria auditoria
+
+| Alegação do relatório | O que é verdade |
+|---|---|
+| FILE-003: `pdftoppm` sem `-l` | O `-l` **já existia** em `src/lib/cassems/extract-pdf-text.ts:47` em b177b07. O resto do finding (cap de bytes, deadline partilhado) sustenta-se. |
+
+## 4. Armadilhas que a remediação revelou
+
+- **DATA-007 quase criou laço infinito.** Fazer `remaining` contar
+  `invoice_item_tax` direto tornaria a métrica honesta e travaria
+  `fiscal/dashboard/page-client.tsx:170`, que roda `while (remaining > 0)`: uma
+  NF-e cujo XML não produz item ficaria em `remaining` para sempre. Resolvido
+  com `invoice_tax_totals.item_count` — NULL = nunca medido, 0 = medido e sem
+  item. Honesto **e** terminante.
+- **FISCAL-006 tinha uma divergência concreta**, não teórica: `esc()` escapava
+  `"` como `&quot;` em nó de texto; C14N 1.0 §2.3 escapa só `&`, `<`, `>` e
+  `#xD`. Uma aspa numa descrição de produto (`Cabo 5"`) fazia o nosso SHA-1
+  divergir do que a SEFAZ recalcula.
+- **Dois testes protegiam o defeito do JOB-004**: exigiam `ok === true` com as
+  caixas em 403.
+- **Um teste protegia o fallback de texto claro do `decrypt`**, com o nome
+  `returns unencrypted text as-is (backward compatibility)`.
+- **Espiar `process.stdout.write` não mede nada** com este logger: o pino
+  escreve por sonic-boom direto no fd. Qualquer teste que afirme "não aparece no
+  stdout" está a medir o vazio.
+
+## 5. Residuais deliberados — 11 caixas abertas, cada uma com motivo
+
+Nenhuma foi esquecida. Cada uma tem linha `ABANDON:` no relatório da folha em
+`leaf-reports/`.
+
+| Residual | Por que não fechou | O que quem fechar precisa |
+|---|---|---|
+| AUTH-008 store partilhado | Rate limit de login continua in-process; store partilhado exige tabela, e o schema era da folha L8 | Migração + testes de concorrência. Com uma réplica, o limite funciona |
+| OBS-005 nonce da CSP | Matcher do middleware esbarra na lógica de auth (`/login` entra em loop) e converte 26 páginas estáticas em dinâmicas | Já medido a favor: a app não tem script inline próprio, e o beacon do Cloudflare é externo. Falta o matcher e prova em browser |
+| PRIV-002 enum dedicado | `ALTER TYPE ADD VALUE` não roda em transação | O invariante (acesso atribuível) ESTÁ fechado; falta granularidade |
+| FILE-005 `--no-sandbox` | Sem Chromium nem Docker para medir o arranque no Alpine | JS e rede já desligados e testados |
+| FILE-008 migração do volume | Mover ficheiros gravados é operação de infra | A leitura tem fallback para o caminho antigo |
+| OPS-005 imagem N-1 | Exige docker no runner, que o hardening proíbe | O portão expand-only protege a propriedade |
+| SUPPLY-002 digest do postgres | Pinar o banco tornaria o próximo `up -d` uma recriação do contentor de dados | O `node:22-alpine` FOI pinado nos três estágios |
+| SUPPLY-003 `USER` no Dockerfile | Mudaria posse de volume vivo sem poder medir | `start.sh` já faz `exec su-exec nextjs` |
+| SUPPLY-003 `cap_drop` no db | Mudar postura do contentor de banco sem poder reiniciar e observar | — |
+| UI-002 laço do backfill | Não existe job; fechar no GET é o risco que o finding aponta | A UI já diz "Cobertura incompleta: N nota(s)" |
+| G11 do CASSEMS | Herdado do PR #248, fora deste escopo | Saúde de produção naquele SHA segue sem verificação |
+
+## 6. Decisões que são do dono
+
+1. **`NOTIFICATION_OUTBOX_RETENTION_DAYS`** — a purga existe, está ligada e
+   reporta `disabled` no `/api/health` até haver número. Apagar registro de
+   notificação fiscal é decisão de retenção. (L6)
+2. **Os cinco prazos de retenção** propostos em ADR-0014 (`status: proposed`).
+   `src/lib/data-retention.ts` tem o mecanismo, sem default numérico e sem nada
+   que o chame. Prazo chutado é perda de dado. (L8)
+3. **NFR-001 da SPEC-031** dizia "uma chamada Evolution por autorização, no
+   máximo". Com retry durável, um 500 persistente gera várias. (L6)
+4. **ADR-0009 supersedindo o ADR-0008** — a execução do sync deixou de estar
+   acoplada ao processo web; o lock cobre o run inteiro entre réplicas. (L7)
+5. **Retenção de PHI**: `ImpcgSourceMessage`, `CassemsSourceMessage`, as
+   autorizações e os PDFs no OneDrive não têm regra no schema. (L6)
+6. **Base legal** do envio de nome, matrícula, médico e PDF a um grupo de
+   WhatsApp: PRIV-001 está registado como aceito, mas não há documento que a
+   nomeie. (L6)
+7. **Spec Kit para JOB-003/JOB-004?** `ok`/`lastSuccessAt` e o retry do aviso são
+   mudança observável de contrato, tratada aqui como remediação de auditoria.
+
+## 7. Precisa de acesso autorizado ao banco
+
+Marcado pelas folhas como `NEEDS AUTHORIZED LIVE EVIDENCE`:
+
+1. Contagem de órfãos nos satélites — as 16 FKs falham se houver.
+2. Divergência real `Float` × `Decimal` em `invoice_duplicata`. A precedência
+   corrige a leitura daqui em diante; não mede o estrago acumulado, e essa
+   contagem decide se a ordem das fases de migração muda.
+3. `SELECT COUNT(*) ... item_count IS NULL`, para dimensionar o reprocessamento
+   do backfill no primeiro deploy.
+4. Duplicatas de série/número em `Invoice` e `InvoiceEmission` — as uniques do
+   item 1 falham se houver.
