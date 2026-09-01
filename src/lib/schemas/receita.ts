@@ -1,4 +1,31 @@
 import { z } from 'zod';
+import { assertAllowedHost } from '@/lib/http-allowlist';
+import { RECEITA_NFSE_ALLOWED_HOSTS } from '@/lib/receita-nfse-client';
+
+/**
+ * `baseUrl` override do ADN.
+ *
+ * Era `z.string()` — qualquer texto — e seguia para um `https.request` que
+ * apresenta o certificado de cliente do e-CNPJ. Vazio/ausente continua
+ * significando "usar o host padrão do ambiente"; qualquer valor explícito
+ * agora tem de ser um dos hosts do ADN.
+ */
+const receitaBaseUrlSchema = z
+  .string()
+  .optional()
+  .nullable()
+  .refine(
+    (value) => {
+      if (value === undefined || value === null || value.trim() === '') return true;
+      try {
+        assertAllowedHost(value, RECEITA_NFSE_ALLOWED_HOSTS);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: `baseUrl deve ser https em um dos hosts do ADN: ${RECEITA_NFSE_ALLOWED_HOSTS.join(', ')}` },
+  );
 
 /**
  * Schema para POST /api/receita/nfse/config
@@ -9,7 +36,7 @@ export const receitaNfseConfigSchema = z.object({
   autoSync: z.boolean().optional().default(true),
   syncInterval: z.coerce.number().int().positive().optional().default(60),
   environment: z.enum(['production', 'production-restricted']).optional().default('production'),
-  baseUrl: z.string().optional().nullable(),
+  baseUrl: receitaBaseUrlSchema,
   cnpjConsulta: z.string().optional().nullable(),
 });
 
@@ -20,7 +47,7 @@ export const receitaNfseConfigSchema = z.object({
 export const receitaNfseTestSchema = z.object({
   apiToken: z.string().optional().nullable(),
   environment: z.enum(['production', 'production-restricted']).optional().default('production'),
-  baseUrl: z.string().optional().nullable(),
+  baseUrl: receitaBaseUrlSchema,
   cnpjConsulta: z.string().optional().nullable(),
 });
 

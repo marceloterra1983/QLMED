@@ -1,4 +1,5 @@
 import { createLogger } from '@/lib/logger';
+import { assertAllowedHost } from '@/lib/http-allowlist';
 import {
   n8nWorkflowsEnvelopeSchema,
   n8nExecutionsEnvelopeSchema,
@@ -53,6 +54,28 @@ export interface N8nConnection {
   apiToken: string | null;
 }
 
+/**
+ * Host da instância n8n, ou `null` se o endereço não puder receber a chave.
+ *
+ * O `baseUrl` é auto-hospedado, então não existe lista fixa de hosts: a
+ * política é "o host que o admin gravou, e só ele". O que esta função recusa é
+ * o endereço em si — http:// em claro, credenciais embutidas, IP privado ou de
+ * metadados — que antes passava por só ser `z.string().url()`.
+ *
+ * Devolver `null` em vez de lançar mantém o contrato de `fetchN8nWorkflows`,
+ * e serve à rota de configuração, que rejeita a gravação com 400.
+ */
+export function resolveN8nHost(baseUrl: string): string | null {
+  const trimmed = (baseUrl || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+  try {
+    const { hostname } = new URL(trimmed);
+    return assertAllowedHost(trimmed, [hostname]).hostname;
+  } catch {
+    return null;
+  }
+}
+
 type FailureResult = Exclude<N8nStatusResult, { state: 'ok' }>;
 
 /** Página lida com sucesso, ou a falha que impediu a leitura. */
@@ -72,13 +95,17 @@ async function fetchPaginated<T>(
   path: string,
   parseEnvelope: (payload: unknown) => { data: T[]; nextCursor?: string | null } | null,
   fetchImpl: typeof fetch,
+  allowedHosts: readonly string[],
 ): Promise<PageOutcome<T>> {
   const base = connection.baseUrl.replace(/\/$/, '');
   const items: T[] = [];
   let cursor: string | null = null;
 
   for (let page = 0; page < N8N_MAX_PAGES; page++) {
-    const url = new URL(`${base}${path}`);
+    // O host gravado é a allowlist das próprias requisições: a chave do n8n só
+    // sai para a instância que o admin configurou. `allowedHosts` já foi
+    // validado por `resolveN8nHost` antes de chegar aqui.
+    const url = assertAllowedHost(`${base}${path}`, allowedHosts);
     url.searchParams.set('limit', String(N8N_PAGE_SIZE));
     if (cursor) url.searchParams.set('cursor', cursor);
 
@@ -160,6 +187,15 @@ export async function fetchN8nWorkflows(
     return { state: 'not_configured', reason: 'missing_credential' };
   }
 
+  // Endereço inválido é problema de CONFIGURAÇÃO, não da instância: vira
+  // estado, nunca exceção — esta função não pode lançar (ver doc acima).
+  const host = resolveN8nHost(connection.baseUrl);
+  if (!host) {
+    log.warn('n8n baseUrl rejected by egress policy');
+    return { state: 'not_configured', reason: 'missing_credential' };
+  }
+  const allowedHosts = [host];
+
   const conn = { ...connection, apiToken: connection.apiToken };
 
   const workflows = await fetchPaginated<N8nWorkflow>(
@@ -167,6 +203,7 @@ export async function fetchN8nWorkflows(
     '/api/v1/workflows',
     parseWorkflowsEnvelope,
     fetchImpl,
+    allowedHosts,
   );
   if (!workflows.ok) return workflows.failure;
 
@@ -175,6 +212,7 @@ export async function fetchN8nWorkflows(
     '/api/v1/executions',
     parseExecutionsEnvelope,
     fetchImpl,
+    allowedHosts,
   );
   if (!executions.ok) return executions.failure;
 

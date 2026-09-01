@@ -21,6 +21,52 @@ const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 // downstream 5MB per-file limit. Reject early before Buffer.from allocates.
 const MAX_BASE64_XML_LENGTH = 7 * 1024 * 1024;
 
+/**
+ * Teto do corpo do webhook. Tem de caber `MAX_BASE64_XML_LENGTH` mais o
+ * envelope JSON de `process-xml`, e nada além disso.
+ */
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+/** Orçamento do forward interno; sem ele a rota fica presa a um handler travado. */
+const FORWARD_TIMEOUT_MS = 30_000;
+
+class PayloadTooLargeError extends Error {}
+
+/**
+ * Lê o corpo com teto, consumindo em pedaços.
+ *
+ * O `content-length` é do cliente e pode mentir (ou faltar, em chunked), então
+ * a contagem real é aqui: passou do teto, aborta sem terminar de receber.
+ */
+async function readBodyCapped(req: NextRequest): Promise<string> {
+  const body = req.body;
+  if (!body) return req.text();
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new PayloadTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks).toString('utf-8');
+}
+
+/** Forward interno com timeout — a versão anterior podia esperar para sempre. */
+function forwardFetch(url: string, init: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(FORWARD_TIMEOUT_MS) });
+}
+
 function getApiKey(): string {
   const k = process.env.QLMED_API_KEY;
   if (!k) throw new Error('QLMED_API_KEY env var not set');
@@ -38,9 +84,17 @@ function validateApiKey(req: NextRequest): boolean {
   }
 }
 
+/**
+ * Verifica a assinatura HMAC do corpo.
+ *
+ * Era fail-OPEN: sem `N8N_WEBHOOK_SECRET` no ambiente a função devolvia `true`
+ * e QUALQUER corpo com a API key passava assinado. Um deploy que esquecesse a
+ * variável perdia a proteção sem nenhum sinal — o pior modo de falha possível,
+ * porque o sistema parece funcionar. Agora a ausência do segredo RECUSA.
+ */
 function validateWebhookSignature(req: NextRequest, body: string): boolean {
   const secret = process.env.N8N_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
 
   const timestamp = req.headers.get('x-qlmed-timestamp') || '';
   const nonce = req.headers.get('x-qlmed-nonce') || '';
@@ -71,10 +125,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // `req.text()` materializa o corpo INTEIRO na heap antes de qualquer
+  // validação. Sem teto, um POST autenticado de 2 GB derruba o processo.
+  const declaredLength = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   let rawBody: string;
   try {
-    rawBody = await req.text();
-  } catch {
+    rawBody = await readBodyCapped(req);
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
@@ -99,7 +163,7 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'sync-nfe': {
-        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
@@ -108,7 +172,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-cte': {
-        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
@@ -130,7 +194,7 @@ export async function POST(req: NextRequest) {
         const formData = new FormData();
         const buffer = Buffer.from(payload.xml, 'base64');
         formData.append('files', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
-        const res = await fetch(`${baseUrl}/api/invoices/upload`, {
+        const res = await forwardFetch(`${baseUrl}/api/invoices/upload`, {
           method: 'POST',
           headers: { 'x-api-key': getApiKey() },
           body: formData,
@@ -139,7 +203,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-ncm-bulk': {
-        const res = await fetch(`${baseUrl}/api/ncm/bulk-sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/ncm/bulk-sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
@@ -148,7 +212,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'backfill-tax-data': {
-        const res = await fetch(`${baseUrl}/api/invoices/backfill-tax`, {
+        const res = await forwardFetch(`${baseUrl}/api/invoices/backfill-tax`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
         });
@@ -156,7 +220,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'batch-cnpj-check': {
-        const res = await fetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
+        const res = await forwardFetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),

@@ -1,5 +1,7 @@
 import { createLogger } from '@/lib/logger';
 import { IMPCG_MAILBOX_TIMEOUT_MS, IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
+import { assertAllowedHost } from '@/lib/http-allowlist';
+import { GRAPH_ALLOWED_HOSTS } from '@/lib/onedrive-graph';
 
 const log = createLogger('graph-mail');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
@@ -105,7 +107,11 @@ async function graphJson<T>(
   resourcePath: string,
   signal: AbortSignal,
 ): Promise<{ status: number; body: T }> {
-  const url = resourcePath.startsWith('http') ? resourcePath : `${GRAPH_BASE}${resourcePath}`;
+  // `resourcePath` absoluto é o `@odata.nextLink` devolvido pelo Graph. Fixar o
+  // host antes de anexar o Bearer: um nextLink forjado levaria o token embora.
+  const url = /^https?:\/\//i.test(resourcePath)
+    ? assertAllowedHost(resourcePath, GRAPH_ALLOWED_HOSTS).toString()
+    : `${GRAPH_BASE}${resourcePath}`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
     cache: 'no-store',
