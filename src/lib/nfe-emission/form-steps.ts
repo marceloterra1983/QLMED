@@ -11,7 +11,11 @@ export const NFE_STEP_LABELS: Record<NfeFormStep, string> = {
   complementos: 'Complementos',
 };
 
-/** Tom visual por etapa (nav + cards). Ativo = preenchido/anel; inativo = muted da mesma família. */
+/** Tom visual por etapa (nav + cards).
+ * Ativo = fundo sólido escuro do tom + texto/ícone branco (nunca branco-em-pastel).
+ * Inativo = muted da mesma família + texto escuro.
+ * Classes em string aqui: Tailwind content MUST incluir `src/lib`.
+ */
 export type NfeStepToneClasses = {
   tone: 'blue' | 'emerald' | 'amber' | 'violet' | 'slate';
   navActive: string;
@@ -39,7 +43,7 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
   itens: {
     tone: 'emerald',
     navActive:
-      'bg-emerald-600 text-white font-extrabold shadow-md ring-2 ring-emerald-800 ring-offset-2 ring-offset-slate-100 dark:bg-emerald-500 dark:ring-emerald-200 dark:ring-offset-slate-800',
+      'bg-emerald-700 text-white font-extrabold shadow-md ring-2 ring-emerald-900 ring-offset-2 ring-offset-slate-100 dark:bg-emerald-600 dark:ring-emerald-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-emerald-50 text-emerald-900 font-medium border border-emerald-100/80 hover:bg-emerald-100/80 dark:bg-emerald-950/35 dark:text-emerald-200 dark:border-emerald-900/50 dark:hover:bg-emerald-950/55',
     section:
@@ -51,7 +55,7 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
   transporte: {
     tone: 'amber',
     navActive:
-      'bg-amber-600 text-white font-extrabold shadow-md ring-2 ring-amber-800 ring-offset-2 ring-offset-slate-100 dark:bg-amber-500 dark:text-white dark:ring-amber-200 dark:ring-offset-slate-800',
+      'bg-amber-800 text-white font-extrabold shadow-md ring-2 ring-amber-950 ring-offset-2 ring-offset-slate-100 dark:bg-amber-700 dark:text-white dark:ring-amber-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-amber-50 text-amber-950 font-medium border border-amber-100/80 hover:bg-amber-100/80 dark:bg-amber-950/35 dark:text-amber-100 dark:border-amber-900/50 dark:hover:bg-amber-950/55',
     section:

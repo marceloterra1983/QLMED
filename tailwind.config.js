@@ -5,6 +5,16 @@ module.exports = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // navActive/navIdle da Nova NF-e vivem em form-steps.ts — sem isto o JIT
+    // dropa bg-blue-600 e o ativo vira texto branco sobre pastel (forms plugin).
+    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  safelist: [
+    'bg-blue-600',
+    'bg-emerald-700',
+    'bg-amber-800',
+    'bg-violet-600',
+    'bg-slate-700',
   ],
   theme: {
     extend: {
