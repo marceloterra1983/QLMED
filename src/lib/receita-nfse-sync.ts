@@ -1,4 +1,4 @@
-import { CertificateManager } from '@/lib/certificate-manager';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { decrypt } from '@/lib/crypto';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
@@ -109,10 +109,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     maxEmptySteps = DEFAULT_EMPTY_LIMIT,
   } = options;
 
-  const { cert, key } = CertificateManager.extractPems(
-    certificate.pfxData,
-    decrypt(certificate.pfxPassword),
-  );
+  const { cert, key } = openCertificatePems(certificate, companyCnpj);
 
   const apiToken = config.apiToken ? decrypt(config.apiToken) : null;
   const baseUrl = getReceitaNfseBaseUrl(config.environment, config.baseUrl);

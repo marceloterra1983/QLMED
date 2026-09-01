@@ -42,9 +42,29 @@ describe('encrypt / decrypt round-trip', () => {
   });
 });
 
-describe('decrypt edge cases', () => {
-  it('returns unencrypted text as-is (backward compatibility)', () => {
-    expect(decrypt('plain-text-no-colons')).toBe('plain-text-no-colons');
+describe('decrypt fail-closed (FILE-007)', () => {
+  // Este bloco substitui o teste "returns unencrypted text as-is": ele fixava
+  // exatamente o defeito — devolver o input transformava um segredo gravado em
+  // claro num caminho de sucesso indistinguível de um segredo cifrado.
+  it('throws instead of returning plaintext without separators', () => {
+    expect(() => decrypt('plain-text-no-colons')).toThrow('formato desconhecido');
+  });
+
+  it('throws for a value with the wrong number of parts', () => {
+    expect(() => decrypt('a:b')).toThrow('formato desconhecido');
+    expect(() => decrypt('a:b:c:d:e')).toThrow('formato desconhecido');
+  });
+
+  it('throws for an empty value', () => {
+    expect(() => decrypt('')).toThrow('formato desconhecido');
+  });
+
+  it('throws for a tampered ciphertext instead of returning garbage', () => {
+    const encrypted = encrypt('segredo');
+    const parts = encrypted.split(':');
+    parts[3] = parts[3].replace(/^./, (c) => (c === 'a' ? 'b' : 'a'));
+
+    expect(() => decrypt(parts.join(':'))).toThrow();
   });
 });
 

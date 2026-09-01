@@ -2,12 +2,12 @@ import prisma from '@/lib/prisma';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import type { Prisma } from '@prisma/client';
-import { buildProductKey, normalizeUnit, type ProductFromXml } from './units';
+import { buildProductKey, normalizeUnit } from './units';
+import { buildResaleIndex, matchResaleProduct } from './resale-match';
 import { extractProductsFromXml } from './xml-products';
 import {
   INVOICE_PAGE_SIZE,
   XML_BATCH_SIZE,
-  normalizeDescriptionToken,
   normalizeToken,
 } from './shared';
 
@@ -306,53 +306,13 @@ export async function aggregateProductsFromInvoices(
 
   // ── Pass 3: deduct resale quantities (Navix / Prime) ──
   if (productMap.size > 0) {
-    const resaleIndex = new Map<string, string>();
-    productMap.forEach((agg, mapKey) => {
-      const codeToken = normalizeToken(agg.code);
-      const unitToken = normalizeUnit(agg.unit);
-      const eanToken = normalizeToken(agg.ean).replace(/\D/g, '');
-      const descToken = normalizeDescriptionToken(agg.description);
-
-      if (codeToken && codeToken !== '-') {
-        resaleIndex.set(`R_CODE_UNIT:${codeToken}::${unitToken}`, mapKey);
-      }
-      if (eanToken && eanToken !== '0') {
-        resaleIndex.set(`R_EAN:${eanToken}`, mapKey);
-      }
-      if (descToken && unitToken) {
-        resaleIndex.set(`R_DESC_UNIT:${descToken}::${unitToken}`, mapKey);
-      }
+    // Índice e sondagem vêm de resale-match.ts — a MESMA função que a
+    // agregação incremental usa (FISCAL-009). Antes eram dois algoritmos e o
+    // rebuild noturno mexia no estoque que o incremental tinha deixado.
+    const resaleIndex = buildResaleIndex(productMap.keys(), (mapKey) => {
+      const agg = productMap.get(mapKey)!;
+      return { code: agg.code, unit: agg.unit, ean: agg.ean, description: agg.description };
     });
-
-    const matchResaleProduct = (product: ProductFromXml): string | null => {
-      const unitToken = normalizeUnit(product.unit);
-      const codeToken = normalizeToken(product.code);
-
-      if (codeToken && codeToken !== '-') {
-        const hit = resaleIndex.get(`R_CODE_UNIT:${codeToken}::${unitToken}`);
-        if (hit) return hit;
-      }
-
-      const firstToken = normalizeToken(product.description.split(/[\s\-]+/)[0]);
-      if (firstToken && firstToken !== codeToken) {
-        const hit = resaleIndex.get(`R_CODE_UNIT:${firstToken}::${unitToken}`);
-        if (hit) return hit;
-      }
-
-      const eanToken = normalizeToken(product.ean).replace(/\D/g, '');
-      if (eanToken && eanToken !== '0') {
-        const hit = resaleIndex.get(`R_EAN:${eanToken}`);
-        if (hit) return hit;
-      }
-
-      const descToken = normalizeDescriptionToken(product.description);
-      if (descToken && unitToken) {
-        const hit = resaleIndex.get(`R_DESC_UNIT:${descToken}::${unitToken}`);
-        if (hit) return hit;
-      }
-
-      return null;
-    };
 
     for await (const resaleInvoiceMeta of iterateAggregationInvoices({
       companyId,
@@ -382,7 +342,7 @@ export async function aggregateProductsFromInvoices(
           if (!result) continue;
 
           for (const product of result.products) {
-            const mapKey = matchResaleProduct(product);
+            const mapKey = matchResaleProduct(resaleIndex, product);
             if (!mapKey) continue;
 
             const agg = productMap.get(mapKey);

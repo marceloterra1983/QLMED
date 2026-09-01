@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { CertificateManager } from '@/lib/certificate-manager';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { incrementNsu, ReceitaNfseClient } from '@/lib/receita-nfse-client';
@@ -189,10 +189,7 @@ export async function PUT(request: NextRequest) {
       ? apiTokenRaw
       : (existingConfig?.apiToken ? decrypt(existingConfig.apiToken) : null);
 
-    const { cert, key } = CertificateManager.extractPems(
-      certConfig.pfxData,
-      decrypt(certConfig.pfxPassword),
-    );
+    const { cert, key } = openCertificatePems(certConfig, company.cnpj);
 
     const client = new ReceitaNfseClient({
       baseUrl,

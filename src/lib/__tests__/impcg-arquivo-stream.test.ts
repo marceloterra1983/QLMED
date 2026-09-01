@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   connectionFindFirst: vi.fn(),
   ensureValidOneDriveAccessToken: vi.fn(),
   openOneDriveItemContent: vi.fn(),
+  accessLogCreate: vi.fn(),
   logged: [] as Array<Record<string, unknown>>,
 }));
 
@@ -30,6 +31,8 @@ vi.mock('@/lib/impcg/store', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     oneDriveConnection: { findFirst: mocks.connectionFindFirst },
+    // PRIV-002: o download de ofício agora grava trilha de acesso.
+    accessLog: { create: mocks.accessLogCreate },
   },
 }));
 
@@ -68,6 +71,7 @@ describe('IMPCG arquivo route (SPEC-032 FR-004, FR-005)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.logged.length = 0;
+    mocks.accessLogCreate.mockResolvedValue({});
     mocks.requireAuth.mockResolvedValue('user-1');
     mocks.requireImpcgPage.mockResolvedValue({ ok: true, companyId: 'company-1' });
     mocks.getImpcgAuthorization.mockResolvedValue({

@@ -49,3 +49,36 @@ describe('health authentication details', () => {
     expect(body.outbox).toBeDefined();
   });
 });
+
+// OBS-003: o health anônimo entregava o SHA do build e a latência do banco —
+// reconhecimento de versão e de infra para quem só sabe a URL.
+describe('health público não faz reconhecimento (OBS-003)', () => {
+  beforeEach(() => {
+    process.env.QLMED_BUILD_COMMIT_SHA = 'deadbeefcafe1234567890';
+  });
+
+  it('não expõe build nem latência do banco sem sessão', async () => {
+    mocks.requireAuth.mockRejectedValue(new Error('NOT_AUTHENTICATED'));
+
+    const response = await GET();
+    const body = await response.json();
+    const raw = JSON.stringify(body);
+
+    expect(body.build).toBeUndefined();
+    expect(body.db.latencyMs).toBeUndefined();
+    expect(raw).not.toContain('deadbeefcafe');
+    // O que o load balancer precisa continua lá.
+    expect(body.status).toBe('ok');
+    expect(body.db.status).toBe('connected');
+  });
+
+  it('continua entregando build e latência para quem tem sessão', async () => {
+    mocks.requireAuth.mockResolvedValue('user-1');
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.build.commitSha).toBe('deadbeefcafe1234567890');
+    expect(body.db.latencyMs).toEqual(expect.any(Number));
+  });
+});
