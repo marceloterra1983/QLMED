@@ -308,6 +308,40 @@ describe('IMPCG ACL (AC-003, AC-012)', () => {
       );
     });
 
+    it('lets editor PATCH totalAmount in BRL (AC-017)', async () => {
+      mocks.requireAuth.mockResolvedValue('user-editor');
+      mocks.userFindUnique.mockResolvedValue({
+        role: 'editor',
+        allowedPages: [PAGE],
+      });
+      mocks.updateImpcgMissingFields.mockResolvedValue({
+        id: 'clx1',
+        issuedAt: '2023-08-10T00:00:00.000Z',
+        oficioNumber: '17673',
+        patientName: 'PLINIO ANTONIO ARANHA JUNIOR',
+        patientRegistry: '66429737-4',
+        doctorName: 'RODRIGO LUIZ ROCHA CARDOSO',
+        doctorCrm: null,
+        procedureName: 'TROCA VALVAR',
+        hospitalName: 'HOSPITAL PRONCOR',
+        totalAmount: '12550.00',
+        fileName: 'OFICIO 17673.pdf',
+        parseStatus: 'ok',
+        parseMissingReason: null,
+        oneDriveItemId: 'item-1',
+        editedFields: ['totalAmount'],
+        items: [],
+      });
+
+      const res = await invokePatch('clx1', { totalAmount: '12.550,00' });
+      expect(res.status).toBe(200);
+      expect(mocks.updateImpcgMissingFields).toHaveBeenCalledWith(
+        'company-1',
+        'clx1',
+        expect.objectContaining({ totalCents: 1_255_000 }),
+      );
+    });
+
     it('lets editor fill the missing date', async () => {
       mocks.requireAuth.mockResolvedValue('user-editor');
       mocks.userFindUnique.mockResolvedValue({

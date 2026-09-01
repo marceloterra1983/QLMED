@@ -24,4 +24,13 @@ describe('login page contract (ADR-0012)', () => {
     expect(loginPage).toMatch(/Senha de acesso/);
     expect(loginPage).toMatch(/ADR-0012/);
   });
+
+  it('mostra marca, Entrar e bloqueia envio vazio (planos TestSprite login)', () => {
+    expect(loginPage).toMatch(/alt=["']QL MED Logo["']/);
+    expect(loginPage).toMatch(/^\s+Entrar$/m);
+    expect(loginPage).toMatch(/required/);
+    expect(loginPage).toMatch(/setError\('Senha inválida'\)/);
+    expect(loginPage).toMatch(/router\.push\('\/fiscal\/invoices'\)/);
+    expect(loginPage).not.toMatch(/signIn\(['"]google['"]/);
+  });
 });
