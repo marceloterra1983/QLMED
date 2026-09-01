@@ -28,10 +28,15 @@ export function apiError(e: unknown, context?: string): NextResponse {
   const meta: Record<string, unknown> = {};
   if (context) meta.context = context;
 
+  // A `msg` do pino NUNCA passa pelo `redact` — é string, não campo. Usar
+  // `e.message` ali punha o segredo em claro no log de 500 de praticamente
+  // todas as rotas: um erro de driver que ecoa a connection string, uma
+  // mensagem que cita o token. Rótulo fixo na `msg`; a mensagem vai dentro de
+  // `err`, onde o redact alcança. Achado REAUD-B-09.
   if (e instanceof Error) {
-    log.error({ ...meta, err: e }, e.message);
+    log.error({ ...meta, err: e }, 'Erro na rota');
   } else if (typeof e === 'string') {
-    log.error({ ...meta }, e);
+    log.error({ ...meta, raw: e }, 'Erro na rota');
   } else {
     log.error({ ...meta, raw: JSON.stringify(e) }, 'Erro desconhecido');
   }

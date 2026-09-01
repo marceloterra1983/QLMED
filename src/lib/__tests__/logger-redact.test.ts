@@ -89,3 +89,42 @@ describe('logger redact — o segredo não aparece na saída', () => {
     expect(out).toContain('42');
   });
 });
+
+/**
+ * REAUD-B-09. Cinco furos que a re-auditoria encontrou no redact, todos com o
+ * segredo literal presente na saída. O método é o do resto do ficheiro:
+ * capturar o que o logger REALMENTE emite e assertar a AUSÊNCIA da string.
+ */
+describe('REAUD-B-09 — furos do redact', () => {
+  const S = 'S3GR3D0-REAUDIT-B09';
+
+  it('campo aninhado em quatro níveis é redigido', () => {
+    const out = capture((log) => {
+      log.info({ err: { response: { headers: { authorization: S } } } }, 'x');
+    });
+    expect(out).not.toContain(S);
+  });
+
+  it('apiKey e apikey são redigidos nas duas caixas', () => {
+    const out = capture((log) => {
+      log.info({ cfg: { apiKey: S }, headers: { apikey: S } }, 'x');
+    });
+    expect(out).not.toContain(S);
+  });
+
+  it('a chave raw do handler de erro é redigida', () => {
+    const out = capture((log) => {
+      log.error({ raw: JSON.stringify({ token: S }) }, 'Erro desconhecido');
+    });
+    expect(out).not.toContain(S);
+  });
+
+  it('a msg do pino não pode carregar segredo: o redact não toca em string', () => {
+    // Este é o furo do `api-error.ts`, que usava `e.message` como msg. O teste
+    // fixa a propriedade: se alguém voltar a pôr a mensagem ali, isto acusa.
+    const out = capture((log) => {
+      log.error({ err: new Error(`postgres://user:${S}@host/db`) }, 'Erro na rota');
+    });
+    expect(out).not.toContain(`"msg":"postgres://user:${S}`);
+  });
+});

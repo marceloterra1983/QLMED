@@ -32,12 +32,26 @@ const SECRET_FIELDS = [
   'cookie',
   'clientSecret',
   'webhookSecret',
+  // Achado REAUD-B-09: nomes que existem no código e faltavam aqui.
+  // `apiKey` é o campo de `EvolutionConfig`; `apikey` é o header que a
+  // Evolution recebe — o `redact` do pino distingue caixa.
+  'apiKey',
+  'apikey',
+  'senha',
+  'pin',
+  'sessionToken',
+  'keyHash',
+  'privatePem',
+  'raw',
 ];
 
 const redactPaths = SECRET_FIELDS.flatMap((field) => [
   field,
   `*.${field}`,
   `*.*.${field}`,
+  // Quarto nível: o `err` serializado carrega objectos aninhados
+  // (`err.response.headers.authorization`), e três níveis não chegavam lá.
+  `*.*.*.${field}`,
 ]).concat([
   'req.headers.authorization',
   'req.headers.cookie',
