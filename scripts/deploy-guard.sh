@@ -42,9 +42,28 @@ qlmed_refuse_public_production() {
     return 1
   fi
 
+  # Normaliza antes de comparar. O guarda comparava strings cruas, então
+  # `//srv/qlmed`, `/srv//qlmed`, `/srv/./qlmed` e um caminho relativo eram o
+  # MESMO inode e passavam todos. Achado da re-auditoria adversarial.
+  local canonical_dir
+  canonical_dir="$(cd "$deploy_dir" 2>/dev/null && pwd -P)" || canonical_dir=""
+  if [[ -z "$canonical_dir" ]]; then
+    # Diretório inexistente ainda tem de ser julgado: recusar por não existir
+    # seria falso negativo no dia em que ele existir.
+    canonical_dir="$deploy_dir"
+    [[ "$canonical_dir" != /* ]] && canonical_dir="$PWD/$canonical_dir"
+  fi
+  # Colapsa SEMPRE, inclusive depois do `pwd -P`: o POSIX permite ao shell
+  # preservar duas barras iniciais, e `//srv/qlmed` voltava intacto de `pwd -P`
+  # — era o caso que continuava a passar.
+  while [[ "$canonical_dir" == *"//"* ]]; do canonical_dir="${canonical_dir//\/\///}"; done
+  while [[ "$canonical_dir" == *"/./"* ]]; do canonical_dir="${canonical_dir//\/.\///}"; done
+  canonical_dir="${canonical_dir%/}"
+  [[ -z "$canonical_dir" ]] && canonical_dir="/"
+
   local root
   for root in "${QLMED_PUBLIC_PRODUCTION_ROOTS[@]}"; do
-    if [[ "$deploy_dir" == "$root" || "$deploy_dir" == "$root"/* ]]; then
+    if [[ "$canonical_dir" == "$root" || "$canonical_dir" == "$root"/* ]]; then
       echo "Recusado: DEPLOY_DIR=${deploy_dir} é a raiz de produção pública." >&2
       echo "Produção pública só sai por 'gh workflow run deploy-production.yml'" >&2
       echo "(workflow_dispatch manual, com CI verde no SHA de origin/main)." >&2
@@ -58,9 +77,13 @@ qlmed_refuse_public_production() {
     return 1
   fi
 
+  # Hostname não distingue caixa: `APP.QLMED.COM.BR` é o mesmo endpoint.
+  local lower_url
+  lower_url="$(printf '%s' "$healthcheck_url" | tr '[:upper:]' '[:lower:]')"
+
   local pattern
   for pattern in "${QLMED_PUBLIC_ENDPOINT_PATTERNS[@]}"; do
-    if [[ "$healthcheck_url" == *"$pattern"* ]]; then
+    if [[ "$lower_url" == *"$pattern"* ]]; then
       echo "Recusado: DEPLOY_HEALTHCHECK_URL=${healthcheck_url} aponta para a" >&2
       echo "stack pública (${pattern}). ${script_name} não publica produção." >&2
       return 1

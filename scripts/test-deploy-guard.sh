@@ -54,6 +54,25 @@ expect_refuse "health público recusado" \
   /home/marce/qlmed/legacy-stack https://app.qlmed.com.br/api/health
 expect_refuse "porta pública :13000 recusada" \
   /home/marce/qlmed/legacy-stack http://127.0.0.1:13000/api/health
+
+# Grafias diferentes do MESMO inode. O guarda comparava strings cruas, então
+# estas cinco apontavam para a raiz de produção e passavam — achado da
+# re-auditoria adversarial. `pwd -P` sozinho não resolve: o POSIX permite
+# preservar as duas barras iniciais de `//srv/qlmed`.
+expect_refuse "barra dupla inicial recusada" \
+  //srv/qlmed http://127.0.0.1:19000/api/health
+expect_refuse "barra dupla no meio recusada" \
+  /srv//qlmed http://127.0.0.1:19000/api/health
+expect_refuse "ponto no caminho recusado" \
+  /srv/./qlmed http://127.0.0.1:19000/api/health
+expect_refuse "barra final recusada" \
+  /srv/qlmed/ http://127.0.0.1:19000/api/health
+
+# Hostname não distingue caixa: é o mesmo endpoint público.
+expect_refuse "host público em maiúsculas recusado" \
+  /home/marce/qlmed/legacy-stack https://APP.QLMED.COM.BR/api/health
+expect_refuse "host público em caixa mista recusado" \
+  /home/marce/qlmed/legacy-stack https://App.Qlmed.Com.Br/api/health
 expect_refuse "DEPLOY_DIR ausente recusado" \
   "" http://127.0.0.1:19000/api/health
 expect_refuse "DEPLOY_HEALTHCHECK_URL ausente recusado" \
