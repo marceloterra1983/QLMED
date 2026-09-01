@@ -77,6 +77,44 @@ function validateMetadata(file, content) {
   }
 }
 
+// Documentação de deploy não pode ensinar um caminho que o código não tem.
+//
+// Auditoria b177b07 (QLMED-DOC-001): `docs/deployment/qlmed-app.md` mandava
+// rodar `npm run db:push` (nunca foi script deste package.json, e `prisma db
+// push` altera DDL do banco de PRODUÇÃO sem gravar migração) e prometia deploy
+// automático via `workflow_run` (gatilho proibido por
+// scripts/verify-ci-hardening.sh desde 2026-08-17). Doc que descreve um
+// caminho inexistente é pior do que doc ausente: o leitor tenta executar.
+const DEPLOY_DOC_BANS = [
+  {
+    pattern: /\bdb:push\b/,
+    fencedOnly: true,
+    message: '`db:push` em bloco de comando: não existe como script e `prisma db push` altera o schema de produção sem migração — use `db:migrate:deploy`',
+  },
+  {
+    pattern: /\bworkflow_run\b/,
+    fencedOnly: false,
+    message: '`workflow_run`: gatilho proibido pelo hardening de CI; o deploy é `workflow_dispatch` manual',
+  },
+];
+
+function fencedBlocks(content) {
+  return [...content.matchAll(/^```[^\n]*\n([\s\S]*?)^```/gm)].map((match) => match[1]);
+}
+
+function validateDeployDocs(file, content) {
+  const rel = relative(root, file).replaceAll('\\', '/');
+  if (!/^docs\/deployment\//.test(rel)) return;
+
+  const blocks = fencedBlocks(content);
+  for (const ban of DEPLOY_DOC_BANS) {
+    const haystacks = ban.fencedOnly ? blocks : [content];
+    if (haystacks.some((text) => ban.pattern.test(text))) {
+      errors.push(`${rel}: ${ban.message}`);
+    }
+  }
+}
+
 function validateLinks(file, content) {
   const rel = relative(root, file);
   const linkPattern = /\[[^\]]*\]\(([^)]+)\)/g;
@@ -96,6 +134,7 @@ for (const file of markdownFiles) {
   const content = readFileSync(file, 'utf8');
   contents.set(file, content);
   validateMetadata(file, content);
+  validateDeployDocs(file, content);
   validateLinks(file, content);
 }
 

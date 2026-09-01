@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
+import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
@@ -239,8 +240,8 @@ export default function NfseReceivedPage() {
         subtitle="Notas de serviço recebidas e emitidas pela QLMED"
         actions={(
           <>
-            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-              {total} documento(s)
+            <div className="font-medium whitespace-nowrap">
+              <ListCount shown={invoices.length} total={total} noun="documento(s)" />
             </div>
             <button
               onClick={() => setHideValues(v => !v)}
@@ -481,7 +482,7 @@ export default function NfseReceivedPage() {
             <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
-          <span className="text-xs text-slate-500">{total} documento(s)</span>
+          <ListCount shown={invoices.length} total={total} noun="documento(s)" />
         </div>
       </div>
 

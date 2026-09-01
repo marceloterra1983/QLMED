@@ -1,8 +1,8 @@
 ---
 spec: qlmed-app
 sumario: Sistema de gestão fiscal e notas fiscais (NF-e, CT-e, NFS-e) da empresa QL MED Materiais Hospitalares LTDA (CNPJ 07.832.309/0001-97).
-versao: 1.16
-atualizado: 2026-08-07
+versao: 1.17
+atualizado: 2026-09-01
 status: producao
 maquina: server
 dependencias: [infra/networking]
@@ -114,9 +114,12 @@ SEFAZ NFe DistDFe (auto-sync in-app): intervalo/cooldown anti-656 via
 
 - **Serviço contínuo**: container `qlmed-app` (`restart: unless-stopped`),
   health check em `/api/health`.
-- **Deploy**: por evento — push na `main` → `QLMED CI` → `workflow_run` dispara
-  `deploy-production.yml` → aprovação manual no environment `production` →
-  runner self-hosted executa (ver `services/github-runner.spec.md`).
+- **Deploy**: **manual, nunca por evento**. Push na `main` roda o `QLMED CI` e
+  para aí. Publicar exige um `workflow_dispatch` explícito de
+  `deploy-production.yml`, com `confirm_production=DEPLOY` e o SHA de 40
+  caracteres do tip atual de `origin/main` que já tem CI verde; o runner
+  self-hosted `qlmed-prod` executa (ver `services/github-runner.spec.md`).
+  CI verde sozinho **não** implanta nada.
 - **Consumidor de notificações**: o código está em
   `/srv/qlmed/app/scripts/notification-outbox-worker.py`; o cron root NFE/CTE
   executa-o a cada 10 minutos (detalhes em `integrations/whatsapp.spec.md`).
@@ -190,23 +193,53 @@ cd /home/marce/qlmed/app && npm run dev
 
 ```bash
 cd /home/marce/qlmed/app
-npm run db:generate   # prisma generate
-npm run db:push       # prisma db push (fluxo padrão em dev até decisão formal de liberar migrate dev)
-npm run db:studio     # prisma studio
+npm run db:generate         # prisma generate
+npm run db:migrate:deploy   # prisma migrate deploy (aplica migrações versionadas)
+npm run db:migrate:verify   # replay do histórico de migrações
+npm run db:studio           # prisma studio
 ```
 
 ⚠️ Dev **não é isolado**: roda contra o mesmo database `postgres` da produção.
-Qualquer `db:push` ou script apontado para `DATABASE_URL` altera o schema/dados
-de produção. O script `/home/marce/qlmed/ops/scripts/qlmed-dev-reseed.sh` ainda
-existe no disco mas referencia o database removido `qlmed_dev`; não rodar sem
-revisar.
+Qualquer script apontado para `DATABASE_URL` altera o schema/dados de produção.
+O script `/home/marce/qlmed/ops/scripts/qlmed-dev-reseed.sh` ainda existe no
+disco mas referencia o database removido `qlmed_dev`; não rodar sem revisar.
+
+⚠️ **Não existe `npm run db:push`** — nem como script, nem como fluxo. O
+comando `prisma db push` sincroniza o schema sem gravar migração: contra este
+database, que é o de produção, ele altera DDL sem deixar histórico e sem passar
+pelo `migrate deploy` do arranque. O único caminho de schema é uma migração
+versionada em `prisma/migrations/`, aplicada por `migrate deploy`.
 
 ### Deploy via GitHub Actions
 
-Deploy por evento: push na `main` → workflow `QLMED CI` → `workflow_run` dispara
-`deploy-production.yml` → **aprovação manual** no environment `production` → o
-runner self-hosted (`qlmed-prod`) sincroniza, rebuilda, faz health-check
-(local + público + revisão) e reverte automaticamente em falha (trap ERR).
+Deploy é **manual e fail-closed**. Não há gatilho por evento: o hardening de CI
+proíbe `pull_request_target`, `issue_comment` e o gatilho encadeado de workflow
+em todo `.github/workflows/` (`scripts/verify-ci-hardening.sh`), justamente para
+que CI verde nunca implante sozinho.
+
+```bash
+# 1. publicar main (não implanta nada)
+npm run publish:server
+
+# 2. esperar o QLMED CI ficar verde para esse SHA
+
+# 3. despachar o deploy, com o SHA completo de 40 caracteres
+gh workflow run deploy-production.yml \
+  --ref main \
+  -f confirm_production=DEPLOY \
+  -f revision=<FULL_40_CHAR_SHA>
+
+# 4. depois do workflow verde
+npm run check:deploy
+```
+
+O runner self-hosted (`qlmed-prod`) sincroniza, rebuilda a imagem, para o
+`qlmed-app`, roda `migrate deploy` + `migrate diff --exit-code` dentro da
+janela de migração, sobe de novo, faz health-check (local + público + revisão)
+e reverte a imagem automaticamente em falha (trap ERR).
+
+O deploy aceita **apenas o tip atual de `origin/main`**, não um SHA histórico
+qualquer.
 
 ### Rollback
 
@@ -217,10 +250,15 @@ runner self-hosted (`qlmed-prod`) sincroniza, rebuilda, faz health-check
   `QLMED_BUILD_COMMIT_SHA=previous docker compose --project-name qlmed up -d --no-build qlmed-app`.
   Um step do workflow (`Verify manual rollback tag survived`) falha o deploy se
   a tag não sobreviver (já sumiu por prune uma vez — auditoria 2026-07-21).
-- **Aposentado**: `npm run rollback:server` / snapshots em `/srv/qlmed/app/releases`
-  e `/srv/qlmed/app/backups` — congelados em março/2026, podados para os 3 mais
+- **Aposentado**: os snapshots em `/srv/qlmed/app/releases` e
+  `/srv/qlmed/app/backups` — congelados em março/2026, podados para os 3 mais
   recentes; não são alvo de rollback viável (schema divergiu). Rollback de
-  imagem não desfaz migração de banco já aplicada.
+  imagem não desfaz migração de banco já aplicada — por isso migração nova é
+  expand-only (portão em `src/lib/__tests__/deploy-manifests.test.ts`).
+  Os atalhos `npm run deploy:server` / `npm run rollback:server` foram
+  **removidos** na auditoria b177b07: pré-passavam `--legacy` e apontavam para a
+  raiz de produção pública, contornando o caminho fail-closed acima. Os scripts
+  continuam em `scripts/`, mas recusam qualquer destino público.
 
 ## Riscos e problemas conhecidos
 
@@ -229,7 +267,7 @@ runner self-hosted (`qlmed-prod`) sincroniza, rebuilda, faz health-check
 3. **UI em português (pt-BR)** — Todo o texto da interface é em português.
 4. **Sem component library** — Todos os componentes UI são custom-built. Sem shadcn, Radix ou Material UI.
 5. **Puppeteer para PDF** — Requer Chromium no container. A imagem Docker é baseada em Alpine com Chromium instalado.
-6. **Login por PIN é padrão da empresa — decisão intencional, NÃO flagar em auditorias** — Todos os 7 usuários autenticam por PIN por decisão explícita do Marcelo ("é um padrão da empresa"). Auditorias de segurança não devem sugerir remover/substituir por senha ou TOTP — apenas proteger: PINs ficam na env var `PIN_MAP_JSON` (movidos do código na Fase 1 do hardening), rate limiting de 5 tentativas/min por IP, tentativas falhas logadas com IP e timestamp.
+6. **Login só por senha, sem campo de e-mail — decisão do dono, NÃO flagar em auditorias** — ADR-0012 / SPEC-019: o utilizador digita apenas a senha; o servidor resolve a identidade pelo hash. Não há segundo fator e a recusa é sempre a mesma mensagem ("Senha inválida"), de propósito — nunca revelar se a conta existe. Auditorias não devem propor TOTP nem campo de e-mail; devem verificar as proteções vigentes: bloqueio progressivo (3 tentativas → 15 min; 10 → 24 h), `failedAttempts`/`lockedUntil` por utilizador, `AccessLog` com `login_failed` e `account_locked`, e nunca registar a senha tentada. O `PIN_MAP_JSON` sobrevive como caminho legado de compatibilidade (mapeia PIN → e-mail) e herda o mesmo bloqueio; não é o fluxo documentado de login.
 7. **SEFAZ 656** — Mitigado 2026-07-27 (cooldown 6h+/backoff + timer CT-e 3h). Monitorar SyncLog `sefaz` nos próximos dias.
 8. **Tag Docker sem pin de release** — o container atual usa `qlmed-app:local`
    com revisão de label desconhecida (`manual-recovery-realign`), embora o
@@ -241,6 +279,7 @@ runner self-hosted (`qlmed-prod`) sincroniza, rebuilda, faz health-check
 
 | Data | Evento |
 |---|---|
+| 2026-09-01 | v1.17 — Auditoria b177b07 (QLMED-DOC-001): removida a promessa de deploy automático por gatilho encadeado de workflow (o hardening de CI proíbe esse gatilho desde 2026-08-17 — o doc ensinava um caminho que não existia mais) e removida a instrução de `prisma db push` (nunca foi script deste `package.json`, e altera DDL do banco de produção sem gravar migração). Deploy documentado como despacho manual, com os passos reais. Atalhos `deploy:server`/`rollback:server` marcados como removidos. O próprio `validate-docs.mjs` passa a reprovar os dois padrões em `docs/deployment/`. |
 | 2026-08-07 | v1.16 — Isolamento de dev revertido na descrição: o database `qlmed_dev` (v1.6, 2026-07-11) **não existe mais** — verificado ao vivo, `pg_database` lista só `postgres`. Dev e produção compartilham o mesmo database; risco 1 reescrito para nomear a ausência de rede de segurança. `qlmed-dev-reseed.sh` marcado como quebrado (referencia o database removido). |
 | 2026-08-04 | v1.15 — Backups reconciliados: o cron dedicado das 03:00/19:00 UTC não existe mais neste host; a cobertura é o snapshot `server-backup` (04:30) + `server-backup-offsite` (05:10), e `qlmed-pg-backup.sh` fica só como fallback manual. A divergência mantinha a SONDA 4 do silent-watchdog alertando diariamente. |
 | 2026-08-03 | v1.14 — Desenvolvimento reconciliado: `npm run dev` usa a porta 3000; a porta 3001 do compose está ocupada pelo Uptime Kuma; removida a instrução inexistente `qldev`. |

@@ -91,6 +91,9 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
   const { canWrite } = useRole();
   const [duplicatas, setDuplicatas] = useState<Duplicata[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  // QLMED-UI-002: quantas NF-e ainda não viraram duplicata. Enquanto for > 0 a
+  // lista está incompleta e a tela precisa dizer isso.
+  const [coverageRemaining, setCoverageRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -153,6 +156,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
       const loaded: Duplicata[] = data.duplicatas || [];
       setDuplicatas(loaded);
       setSummary(data.summary);
+      setCoverageRemaining(Number(data.coverage?.remaining) || 0);
       setTotal(data.pagination.total);
       if (!collapsedInitialized && loaded.length > 0) {
         const groupOrder: string[] = [];
@@ -381,6 +385,20 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
           </button>
         )}
       />
+
+      {coverageRemaining > 0 && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <span className="material-symbols-outlined text-[16px] leading-none">warning</span>
+          <span>
+            Cobertura incompleta: {coverageRemaining} nota(s) fiscal(is) ainda não
+            tiveram as duplicatas extraídas. Os totais abaixo estão parciais e vão
+            crescer conforme o histórico é processado.
+          </span>
+        </div>
+      )}
 
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">

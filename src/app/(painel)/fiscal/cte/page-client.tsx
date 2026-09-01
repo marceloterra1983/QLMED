@@ -10,6 +10,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
@@ -758,7 +759,7 @@ export default function CtePage() {
             <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
-          <span className="text-xs text-slate-500">{total} CT-e(s)</span>
+          <ListCount shown={invoices.length} total={total} noun="CT-e(s)" />
         </div>
       </div>
       <InvoiceDetailsModal

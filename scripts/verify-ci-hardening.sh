@@ -170,6 +170,19 @@ if ! grep -q 'reset-ci-database.mjs' "$workflow"; then
   exit 1
 fi
 
+# ── O filtro de caminhos cobre a superfície operacional ──────────────────────
+# Auditoria b177b07 (QLMED-OPS-001): o filtro nasceu pensando em `src/` e
+# `prisma/`, então um PR que só mexia em `ops/`, `production/`,
+# `docker-compose.yml` ou no Dependabot caía no job `docs` e era mesclado sem
+# nenhum portão de app. É a mudança de compose/systemd que derruba produção,
+# não a de componente React. Os padrões abaixo são o piso, não a lista toda.
+for filter_path in 'ops/\*\*' 'production/\*\*' 'docker-compose.yml' '.github/dependabot.yml' '.github/workflows/\*\*'; do
+  if ! grep -q "^ *- '${filter_path}'$" "$workflow"; then
+    echo "CI hardening: o filtro app do ci.yml deve cobrir ${filter_path//\\/}" >&2
+    exit 1
+  fi
+done
+
 # Guarda de origem (defesa em profundidade; a fronteira real é
 # all_external_contributors). Igual ao Farol.
 if ! grep -q 'github.event.pull_request.head.repo.full_name == github.repository' "$workflow"; then

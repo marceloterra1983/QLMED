@@ -3,19 +3,27 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/deploy-server.sh --legacy
+Usage: DEPLOY_DIR=<raiz não pública> DEPLOY_CONFIRM=DEPLOY-LEGACY \
+       scripts/deploy-server.sh --legacy
 
-Deploys the current Git HEAD to the legacy/manual compose stack on the server.
-Public production at https://app.qlmed.com.br is published by GitHub Actions
-QLMED Production Deploy (manual workflow_dispatch after CI on main), typically
-started after scripts/publish-server.sh pushes main.
+Deploys the current Git HEAD to a legacy/manual compose stack on the server.
+
+This script CANNOT publish public production any more. Public production at
+https://app.qlmed.com.br is published only by GitHub Actions QLMED Production
+Deploy (manual workflow_dispatch, on a SHA that already has green CI on main),
+typically after scripts/publish-server.sh pushes main.
+
+Required (no defaults — the old defaults pointed at public production):
+  DEPLOY_DIR              raiz da stack legada; nunca /srv/qlmed nem
+                          /home/marce/qlmed/production
+  DEPLOY_CONFIRM          literal DEPLOY-LEGACY
+  DEPLOY_HEALTHCHECK_URL  saúde da stack legada; nunca app.qlmed.com.br
+                          nem a porta :13000 da stack pública
 
 Defaults:
   DEPLOY_HOST=server
-  DEPLOY_DIR=/home/marce/qlmed/production
-  DEPLOY_PROJECT_NAME=qlmed
+  DEPLOY_PROJECT_NAME=qlmed-legacy
   DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
-  DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
 
@@ -42,6 +50,16 @@ if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
   exit 1
 fi
 
+# QLMED-OPS-002: `--legacy` sozinho nunca foi portão — o npm script já o
+# passava. A guarda de destino roda ANTES de git/ssh/curl, para que uma
+# invocação errada morra sem tocar em nada.
+# shellcheck source=scripts/deploy-guard.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-guard.sh"
+qlmed_refuse_public_production \
+  "${DEPLOY_DIR:-}" \
+  "${DEPLOY_HEALTHCHECK_URL:-}" \
+  "scripts/deploy-server.sh"
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2
@@ -62,26 +80,13 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
-DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/qlmed/production}"
-DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
+DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed-legacy}"
 DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
-DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 COMMIT_SHA="$(git rev-parse --short=12 HEAD)"
 BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
 DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RELEASE_NAME="$(date -u +%Y%m%d%H%M%S)-${COMMIT_SHA}"
-
-commit_matches() {
-  local left="$1"
-  local right="$2"
-
-  if [[ -z "$left" || -z "$right" ]]; then
-    return 1
-  fi
-
-  [[ "$left" == "$right" || "$left" == "$right"* || "$right" == "$left"* ]]
-}
 
 read -r -d '' REMOTE_SCRIPT <<EOF || true
 set -euo pipefail
@@ -214,19 +219,7 @@ EOF
 echo "Streaming ${BRANCH_NAME}@${COMMIT_SHA} to ${DEPLOY_HOST}..."
 git archive --format=tar.gz HEAD | ssh "$DEPLOY_HOST" "bash -lc $(printf '%q' "$REMOTE_SCRIPT")"
 
-echo "Verifying public health..."
-PUBLIC_COMMIT_SHA=""
-for _ in $(seq 1 30); do
-  PUBLIC_HEALTH="$(curl -fsS "https://app.qlmed.com.br/api/health" || true)"
-  PUBLIC_COMMIT_SHA="$(printf '%s' "$PUBLIC_HEALTH" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
-  if commit_matches "$PUBLIC_COMMIT_SHA" "$COMMIT_SHA"; then
-    break
-  fi
-  sleep 2
-done
-
-if ! commit_matches "$PUBLIC_COMMIT_SHA" "$COMMIT_SHA"; then
-  echo "Public health revision mismatch: expected ${COMMIT_SHA}, got ${PUBLIC_COMMIT_SHA:-missing}" >&2
-  exit 1
-fi
-echo "Deploy complete: ${COMMIT_SHA}"
+# A verificação de revisão pública (https://app.qlmed.com.br/api/health) foi
+# removida junto com o caminho: era ela que provava que este script publicava
+# produção. O remoto já valida DEPLOY_HEALTHCHECK_URL e faz rollback sozinho.
+echo "Legacy stack deploy complete: ${COMMIT_SHA}"

@@ -1,12 +1,20 @@
+# Imagem base pinada por digest (auditoria b177b07, QLMED-SUPPLY-002).
+# `node:22-alpine` é uma tag móvel: dois deploys do mesmo SHA de código podiam
+# produzir imagens diferentes, e o rollback para `qlmed-app:previous` não
+# reproduzia o que tinha sido testado. O digest abaixo é o que a tag resolvia
+# em 2026-09-01; para bumpar, resolva a tag no registry e troque os três
+# estágios juntos (o teste em src/lib/__tests__/deploy-manifests.test.ts exige
+# que sejam iguais).
+#
 # Stage 1: Install dependencies
-FROM node:22-alpine AS deps
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
 # Stage 2: Build application
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS builder
 WORKDIR /app
 
 RUN apk add --no-cache openssl
@@ -19,7 +27,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 3: Production runner
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runner
 WORKDIR /app
 
 ARG QLMED_BUILD_COMMIT_SHA="unknown"
@@ -74,6 +82,18 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/database-config.ts ./src/
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy entrypoint script
+#
+# Sem `USER nextjs` de propósito (auditoria b177b07, QLMED-SUPPLY-003).
+# O contentor arranca como root só para o `start.sh` fazer `chown -R
+# nextjs:nodejs` em /app/storage e /app/xml_backup — que são volumes MONTADOS
+# (`qlmed_app_storage`), cujo conteúdo já existe no host e não é reescrito por
+# este build. O `start.sh` faz `exec su-exec nextjs` logo a seguir, então o
+# processo Next.js e o `prisma migrate deploy` nunca correm como root.
+# Trocar para `USER nextjs` sem antes provar a posse do volume vivo troca uma
+# defesa em profundidade por uma indisponibilidade: se algum ficheiro lá dentro
+# for de root, o app deixa de conseguir escrever e não há mais o chown de
+# arranque para o corrigir. O compose já limita o resto: `no-new-privileges`,
+# `mem_limit`, e nenhuma porta fora de 127.0.0.1.
 COPY --chown=nextjs:nodejs --chmod=755 start.sh ./start.sh
 
 # Create writable directories used both with and without mounted volumes
