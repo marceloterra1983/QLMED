@@ -252,3 +252,14 @@ vezes; com o novo, `duplicate key`. 1234 testes.
 **Ordem de deploy, item 8 (novo):** a migração `20260903140100_sync_skipped_document`
 tem de estar aplicada antes do código novo servir — sem a tabela a escrita
 durável falha e o cursor de sync não avança, por desenho.
+
+**R4 integrada** (`d4dc2ef`): B-06 — 24 negativos HTTP reais nos 15 handlers
+sob `/api/users`, `/api/admin` e `/api/integrations`, com o guarda real; o
+`catch {}` vazio em `GET /api/users` passa a dar `expected 200 to be 401`.
+B-17 — o `catch` do callback `jwt` devolve `{}` como no mismatch; um piscar do
+banco agora expulsa as sessões de página, igual ao que a API já fazia. B-14 —
+`latencyMs` só autenticado também no 503. B-15 — limite dedicado de 30/min em
+`/r/[deliveryId]`, sem tocar no matcher. B-16 parcial, com número: 185 ms por
+`bcrypt.compare` a custo 12; `loginGlobal` 120 → 20, o que dá 37 s de CPU/min
+com 10 utilizadores e satura a partir de ~16 — acima disso é preciso baixar
+outra vez ou trocar por bcrypt nativo. 1265 testes; `middleware-acl` 6/6.
