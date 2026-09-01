@@ -222,3 +222,9 @@ correção estar na branch, não antes.
 banco. Primeiro veredito de CI sobre as oito correções da re-auditoria. O
 despacho de eventos `pull_request` só voltou com um PR novo; o #250 ficou sem
 check suite do Actions em nove commits seguidos.
+
+**R2 integrada** (`20988be`): DATA-014 fechado nas duas metades — nota
+ilegível grava `item_count = -1` e o cliente para em 500 voltas ou sem
+progresso; TEST-001 reescrito com store em memória e caso que rejeita. Sonda de
+8 chamadas com nota truncada: `[1,1,1,1,1,1,1,1]` → `[0,0,0,0,0,0,0,0]`. Thread
+P1 #3 do Codex respondida e resolvida.
