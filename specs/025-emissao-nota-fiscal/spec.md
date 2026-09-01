@@ -227,10 +227,11 @@ natureza avança para Itens.
    botões de etapa no topo e os cards ao longo da página, then
    cada etapa tem um tom de cor próprio (Dados, Itens,
    Transporte, Pagamento, Complementos distintos entre si). O
-   botão ativo usa o tom da etapa com preenchimento, peso
-   tipográfico e anel; o inativo usa versão muted do mesmo tom.
-   O card da seção correspondente usa borda, fundo sutil e
-   título/accent no mesmo tom.
+   botão ativo usa o tom da etapa com fundo sólido escuro,
+   texto/ícone brancos, peso tipográfico e anel (nunca branco
+   sobre pastel); o inativo usa versão muted do mesmo tom com
+   texto escuro. O card da seção correspondente usa borda, fundo
+   sutil e título/accent no mesmo tom.
 
 ### User Story 4 — Viewer não envia (Priority: P2)
 
@@ -410,7 +411,11 @@ status do serviço e não cria nota emitida.
   conferência) MUST usar o mesmo mapa de tons (leve, legível em
   light e dark; sem neon nem sombra multi-layer). MUST NÃO usar a
   mesma cor primária única para todas as etapas. Contraste do texto
-  MUST atender AA.
+  MUST atender AA. O botão ativo MUST usar fundo sólido escuro do
+  tom da etapa (Dados: `bg-blue-600` ou primary equivalente) com
+  texto e ícone brancos e anel/borda coerente. MUST NÃO usar texto
+  ou ícone branco sobre fundo pastel/lavanda (branco-em-pastel).
+  O inativo MAY continuar muted colorido com texto escuro.
 
 ### Failure cases
 

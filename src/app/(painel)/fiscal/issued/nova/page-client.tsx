@@ -478,6 +478,7 @@ export default function EmitirNfePage() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
         <div className="space-y-4 min-w-0">
           <div className="sticky top-0 z-10 flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+            {/* JIT: bg-blue-600 bg-emerald-700 bg-amber-800 bg-violet-600 bg-slate-700 text-white */}
             {STEP_NAV.map((t) => (
               <button
                 key={t.id}

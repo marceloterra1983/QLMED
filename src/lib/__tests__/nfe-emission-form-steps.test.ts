@@ -102,6 +102,29 @@ describe('Nova NF-e: página única e etapas', () => {
     expect(src).not.toMatch(/bg-primary text-white font-extrabold/);
   });
 
+  it('contraste do botão ativo: fundo sólido escuro + branco; inativo sem branco-em-pastel', () => {
+    const activeSolid: Record<(typeof NFE_FORM_STEPS)[number], RegExp> = {
+      dados: /bg-blue-600/,
+      itens: /bg-emerald-700/,
+      transporte: /bg-amber-800/,
+      pagamento: /bg-violet-600/,
+      complementos: /bg-slate-700/,
+    };
+    for (const step of NFE_FORM_STEPS) {
+      const active = nfeStepNavClass(step, true);
+      const idle = nfeStepNavClass(step, false);
+      expect(active).toMatch(activeSolid[step]);
+      expect(active).toMatch(/text-white/);
+      expect(active).not.toMatch(/bg-(blue|emerald|amber|violet|slate)-(50|100)\b/);
+      expect(idle).not.toMatch(/text-white/);
+      expect(idle).toMatch(/text-(blue|emerald|amber|violet|slate)-/);
+    }
+    const tw = readFileSync(resolve(__dirname, '../../../tailwind.config.js'), 'utf8');
+    expect(tw).toMatch(/src\/lib\/\*\*\/\*\.\{js,ts/);
+    expect(tw).toMatch(/safelist/);
+    expect(tw).toMatch(/bg-blue-600/);
+  });
+
   it('tons por etapa: mapa distinto e UI usa accent de seção', () => {
     const tones = NFE_FORM_STEPS.map((step) => NFE_STEP_TONE[step].tone);
     expect(new Set(tones).size).toBe(5);
