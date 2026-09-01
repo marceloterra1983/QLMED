@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
@@ -110,17 +111,16 @@ export default function CertificateSefazPanel({
         </p>
       </div>
 
-      <button
-        type="button"
+      <Button
         onClick={handleStatusTest}
-        disabled={locked || statusLoading || expired}
-        className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={locked || expired}
+        loading={statusLoading}
+        variant="ghost"
+        icon="wifi_tethering"
+        block
       >
-        <span className={`material-symbols-outlined text-[18px] ${statusLoading ? 'animate-spin' : ''}`}>
-          {statusLoading ? 'sync' : 'wifi_tethering'}
-        </span>
         {statusLoading ? 'Consultando SEFAZ...' : 'Testar conexão'}
-      </button>
+      </Button>
       {statusResult && (
         <div className={`p-3 rounded-lg text-sm border ${
           statusResult.online

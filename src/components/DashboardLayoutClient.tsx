@@ -69,7 +69,7 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
           </button>
           {page ? (
             <div className="flex items-center gap-2 min-w-0">
-              <span className="material-symbols-outlined text-[20px] text-primary">{page.icon}</span>
+              <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">{page.icon}</span>
               <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{page.label}</span>
             </div>
           ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
@@ -392,7 +393,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               <div>
                 <h4 className="font-bold text-blue-900 dark:text-blue-300 text-xs">Como obter o Token da API</h4>
                 <ol className="text-xs text-blue-800 dark:text-blue-400 mt-1 space-y-0.5 list-decimal list-inside">
-                  <li>Acesse <a href="https://app.nsdocs.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-primary">app.nsdocs.com.br</a></li>
+                  <li>Acesse <a href="https://app.nsdocs.com.br" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-primary dark:hover:text-blue-400">app.nsdocs.com.br</a></li>
                   <li>Vá em <strong>Configurações → Integração via API</strong></li>
                   <li>Copie o <strong>Token de API</strong> gerado</li>
                   <li>Cole aqui abaixo e salve</li>
@@ -415,14 +416,14 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 placeholder="Cole o token da API aqui..."
                 className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <button
+              <Button
                 onClick={handleTestConnection}
                 disabled={nsdocsLoading || !apiToken || !canManageSettings}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                variant="ghost"
+                icon="wifi_tethering"
               >
-                <span className="material-symbols-outlined text-[18px]">wifi_tethering</span>
                 Testar
-              </button>
+              </Button>
             </div>
 
             {testResult && (
@@ -527,14 +528,14 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 placeholder="Bearer token, se exigido no seu ambiente"
                 className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <button
+              <Button
                 onClick={handleReceitaTestConnection}
                 disabled={receitaLoading || !canManageSettings}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                variant="ghost"
+                icon="wifi_tethering"
               >
-                <span className="material-symbols-outlined text-[18px]">wifi_tethering</span>
                 Testar
-              </button>
+              </Button>
             </div>
 
             {receitaTestResult && (
@@ -669,14 +670,14 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               placeholder="email da conta Microsoft"
               className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
             />
-            <button
+            <Button
               onClick={handleConnectOneDrive}
-              disabled={oneDriveLoading || !canManageSettings}
-              className="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={!canManageSettings}
+              loading={oneDriveLoading}
+              icon="link"
             >
-              <span className="material-symbols-outlined text-[18px]">link</span>
               Conectar Conta
-            </button>
+            </Button>
           </div>
 
           {oneDriveConnections.length === 0 ? (

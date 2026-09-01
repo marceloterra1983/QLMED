@@ -10,7 +10,7 @@ export default function GestaoPatientHospital({ patientName, hospitalName }: Pro
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
         {patientName}
       </p>
-      <p className="text-xs font-normal text-slate-400 dark:text-slate-500 truncate mt-0.5">
+      <p className="text-xs font-normal text-slate-500 dark:text-slate-400 truncate mt-0.5">
         {hospitalName || '—'}
       </p>
     </div>

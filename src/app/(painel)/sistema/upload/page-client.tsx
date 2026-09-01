@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
@@ -180,22 +181,22 @@ export default function UploadPage() {
               onChange={handleFolderSelect}
               {...({ webkitdirectory: '', directory: '', multiple: true } as any)}
             />
-            <span className={`material-symbols-outlined text-[64px] mb-4 transition-colors ${dragActive ? 'text-primary' : 'text-slate-300'}`}>
+            <span className={`material-symbols-outlined text-[64px] mb-4 transition-colors ${dragActive ? 'text-primary dark:text-blue-400' : 'text-slate-300'}`}>
               cloud_upload
             </span>
             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-2">
               Arraste e solte seus XMLs ou pastas aqui
             </h3>
-            <p className="text-sm text-slate-400 mb-4">ou use os botões abaixo para selecionar</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">ou use os botões abaixo para selecionar</p>
             <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-              <button
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!canWrite}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg text-sm font-bold hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="soft"
+                icon="description"
               >
-                <span className="material-symbols-outlined text-[18px]">description</span>
                 Selecionar Arquivos
-              </button>
+              </Button>
               <button
                 onClick={() => folderInputRef.current?.click()}
                 disabled={!canWrite}
@@ -216,7 +217,7 @@ export default function UploadPage() {
                 </h3>
                 <button
                   onClick={() => setFiles([])}
-                  className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors"
+                  className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors"
                 >
                   Limpar todos
                 </button>
@@ -225,7 +226,7 @@ export default function UploadPage() {
                 {files.map((file, idx) => (
                   <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-[20px] text-primary">description</span>
+                      <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">description</span>
                       <div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{file.name}</p>
                         <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -270,15 +271,15 @@ export default function UploadPage() {
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4">Como importar</h3>
             <div className="space-y-4">
               <div className="flex gap-3">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">1</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-bold flex-shrink-0">1</span>
                 <p className="text-sm text-slate-500">Selecione os arquivos XML (ou uma pasta)</p>
               </div>
               <div className="flex gap-3">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">2</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-bold flex-shrink-0">2</span>
                 <p className="text-sm text-slate-500">Arraste para a área de upload ou use os botões</p>
               </div>
               <div className="flex gap-3">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">3</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-bold flex-shrink-0">3</span>
                 <p className="text-sm text-slate-500">Clique em &quot;Importar&quot; e aguarde o processamento</p>
               </div>
             </div>

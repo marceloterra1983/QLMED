@@ -28,7 +28,7 @@ export default function PageHeader({
     <div data-page-header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${PAGE_HEADER_CHROME}`}>
       <div className={titleWrap}>
         {icon ? (
-          <span className="material-symbols-outlined text-[28px] text-primary flex-shrink-0">{icon}</span>
+          <span className="material-symbols-outlined text-[28px] text-primary dark:text-blue-400 flex-shrink-0">{icon}</span>
         ) : null}
         <div className="min-w-0">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">

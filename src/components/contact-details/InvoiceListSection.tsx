@@ -22,7 +22,7 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">receipt</span>
-        <span className="text-[13px] text-slate-400">{emptyLabel}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{emptyLabel}</span>
       </div>
     );
   }
@@ -39,12 +39,12 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-900 dark:text-white">N. {inv.number}</span>
-                  <span className="text-[10px] text-slate-400">{formatDate(inv.issueDate)}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(inv.issueDate)}</span>
                 </div>
                 <span className="text-xs font-bold text-slate-900 dark:text-white">{formatAmount(inv.totalValue)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">{total}x — Venc: {due}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{total}x — Venc: {due}</span>
                 <RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} />
               </div>
             </div>
@@ -97,7 +97,7 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">swap_horiz</span>
-        <span className="text-[13px] text-slate-400">Nenhuma movimentação encontrada</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhuma movimentação encontrada</span>
       </div>
     );
   }
@@ -110,12 +110,12 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-900 dark:text-white">N. {inv.number}</span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span>
+                <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span>
               </div>
               <span className="text-xs font-bold text-slate-900 dark:text-white">{formatAmount(inv.totalValue)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-slate-400">{formatDate(inv.issueDate)}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(inv.issueDate)}</span>
               <RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} />
             </div>
           </div>
@@ -134,7 +134,7 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
               <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
                 <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{inv.number}</td>
                 <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
-                <td className={tdCls}><span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span></td>
+                <td className={tdCls}><span className="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span></td>
                 <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>{formatAmount(inv.totalValue)}</td>
                 <td className={`${tdCls} text-center`}><RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} /></td>
               </tr>
@@ -157,7 +157,7 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">money_off</span>
-        <span className="text-[13px] text-slate-400">Nenhuma duplicata encontrada</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhuma duplicata encontrada</span>
       </div>
     );
   }
@@ -172,11 +172,11 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{dup.invoiceNumber}</span>
-                  <span className="text-[10px] font-mono text-slate-400">{formatInstallmentDisplay(dup.installmentNumber, dup.installmentTotal)}</span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatInstallmentDisplay(dup.installmentNumber, dup.installmentTotal)}</span>
                 </div>
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ${status.classes}`}>{status.label}</span>
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold ${status.classes}`}>{status.label}</span>
               </div>
-              <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Venc: {formatDueDate(dup.dueDate)}</span>
                 <span className="font-bold text-slate-900 dark:text-white">{formatAmount(dup.installmentValue)}</span>
               </div>
@@ -201,7 +201,7 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
                   <td className={`${tdCls} text-xs font-mono text-slate-600 dark:text-slate-300`}>{formatInstallmentDisplay(dup.installmentNumber, dup.installmentTotal)}</td>
                   <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDueDate(dup.dueDate)}</td>
                   <td className={`${tdCls} text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white`}>{formatAmount(dup.installmentValue)}</td>
-                  <td className={`${tdCls} text-center`}><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${status.classes}`}>{status.label}</span></td>
+                  <td className={`${tdCls} text-center`}><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${status.classes}`}>{status.label}</span></td>
                 </tr>
               );
             })}

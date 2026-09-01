@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -35,7 +36,7 @@ const SUMMARY_CARDS: Array<{
   icon: string;
   iconClasses: string;
 }> = [
-  { key: 'totalProducts', label: 'Total de Produtos', icon: 'inventory_2', iconClasses: 'bg-primary/10 text-primary' },
+  { key: 'totalProducts', label: 'Total de Produtos', icon: 'inventory_2', iconClasses: 'bg-primary/10 text-primary dark:text-blue-400' },
   { key: 'productsWithAnvisa', label: 'Com ANVISA', icon: 'medication', iconClasses: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' },
   { key: 'totalQuantity', label: 'Quantidade Total', icon: 'inventory', iconClasses: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
 ];
@@ -53,7 +54,7 @@ function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
               <span className="material-symbols-outlined text-[20px]">{icon}</span>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
+              <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
               <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate">
                 {summary[key].toLocaleString('pt-BR')}
               </p>
@@ -359,16 +360,17 @@ export default function ProdutosPage() {
         subtitle="Cadastro automatico por produtos das NF-e de entrada, sem duplicar itens repetidos"
         actions={(
           <>
-            <a
+            <Button
               href={ANVISA_PRODUTOS_SAUDE_URL}
+              external
               target="_blank"
               rel="noopener noreferrer"
               title="Abrir consulta de Produtos para Saúde no site da ANVISA"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              variant="secondary"
+              icon="open_in_new"
             >
-              <span className="material-symbols-outlined text-[20px]">open_in_new</span>
               Consulta ANVISA
-            </a>
+            </Button>
             <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
           </>
         )}
@@ -451,14 +453,13 @@ export default function ProdutosPage() {
       {/* Bulk action toolbar */}
       {selectedKeys.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shadow-2xl border border-slate-700">
-          <span className="material-symbols-outlined text-[20px] text-primary">checklist</span>
+          <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">checklist</span>
           <span className="text-sm font-semibold">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</span>
           <div className="w-px h-5 bg-slate-600" />
           {canWrite && (
-            <button onClick={() => setBulkEditOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-colors">
-              <span className="material-symbols-outlined text-[16px]">edit</span>
+            <Button onClick={() => setBulkEditOpen(true)} size="sm" icon="edit">
               Editar em massa
-            </button>
+            </Button>
           )}
           <button onClick={() => setSelectedKeys(new Set())} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
             <span className="material-symbols-outlined text-[16px]">close</span>
@@ -477,20 +478,20 @@ export default function ProdutosPage() {
                   <span className="material-symbols-outlined text-[20px] text-amber-500">auto_fix_high</span>
                   Auto-classificacao — Preview
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">{autoClassifyPreview.updatesFound} alteracao(oes) encontrada(s) de {autoClassifyPreview.totalProducts} produtos</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{autoClassifyPreview.updatesFound} alteracao(oes) encontrada(s) de {autoClassifyPreview.totalProducts} produtos</p>
               </div>
-              <button onClick={() => setAutoClassifyPreview(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+              <button onClick={() => setAutoClassifyPreview(null)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
             </div>
             <div className="overflow-y-auto flex-1">
               {autoClassifyPreview.updatesFound === 0 ? (
-                <div className="px-6 py-12 text-center text-slate-400">
+                <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[48px] opacity-30">check_circle</span>
                   <p className="mt-2 text-sm font-medium">Nenhum preenchimento automatico encontrado</p>
                 </div>
               ) : (
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0">
-                    <tr className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                    <tr className="text-xs uppercase tracking-wider font-bold text-slate-500">
                       <th className="px-4 py-2">Produto</th>
                       <th className="px-4 py-2">Alteracoes</th>
                       <th className="px-4 py-2">Motivo</th>
@@ -499,15 +500,15 @@ export default function ProdutosPage() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {(autoClassifyPreview.preview || []).map((item: { description: string; code?: string; fields: Record<string, string | undefined>; reason: string }, i: number) => (
                       <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="px-4 py-2 max-w-[200px]"><p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.description}</p>{item.code && <p className="text-[10px] font-mono text-slate-400">{item.code}</p>}</td>
+                        <td className="px-4 py-2 max-w-[200px]"><p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.description}</p>{item.code && <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{item.code}</p>}</td>
                         <td className="px-4 py-2">
                           <div className="flex flex-wrap gap-1">
-                            {item.fields.anvisa_code && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800">ANVISA: {item.fields.anvisa_code}</span>}
-                            {item.fields.product_type && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">Linha: {item.fields.product_type}</span>}
-                            {item.fields.product_subtype && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-800">Grupo: {item.fields.product_subtype}</span>}
+                            {item.fields.anvisa_code && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800">ANVISA: {item.fields.anvisa_code}</span>}
+                            {item.fields.product_type && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">Linha: {item.fields.product_type}</span>}
+                            {item.fields.product_subtype && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-800">Grupo: {item.fields.product_subtype}</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-2"><p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[280px]">{item.reason}</p></td>
+                        <td className="px-4 py-2"><p className="text-xs text-slate-500 dark:text-slate-400 max-w-[280px]">{item.reason}</p></td>
                       </tr>
                     ))}
                   </tbody>

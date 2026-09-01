@@ -65,7 +65,7 @@ export function PWAInstallPrompt() {
   return (
     <div className="mt-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-none">
       <div className="flex items-start gap-3">
-        <span className="material-symbols-outlined text-primary text-[24px] mt-0.5">install_mobile</span>
+        <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[24px] mt-0.5">install_mobile</span>
         <div className="flex-1">
           <p className="text-sm font-bold text-slate-800 dark:text-white">Instalar o QLMED</p>
 
@@ -95,7 +95,7 @@ export function PWAInstallPrompt() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                 No Safari, toque em{' '}
                 <span className="inline-flex items-center align-middle">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary inline">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary dark:text-blue-400 inline">
                     <rect x="5" y="5" width="14" height="14" rx="2" />
                     <path d="M12 5V2M9 4l3-2 3 2" />
                   </svg>

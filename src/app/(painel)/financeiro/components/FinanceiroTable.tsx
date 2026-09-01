@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
 import {
@@ -31,7 +32,7 @@ interface FinanceiroTableProps {
 
 function SortIcon({ col, sortBy, sortOrder }: { col: string; sortBy: string; sortOrder: string }) {
   return (
-    <span className={`material-symbols-outlined text-[14px] ml-0.5 ${sortBy === col ? 'text-primary' : 'text-slate-300 dark:text-slate-600'}`}>
+    <span className={`material-symbols-outlined text-[14px] ml-0.5 ${sortBy === col ? 'text-primary dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`}>
       {sortBy === col && sortOrder === 'desc' ? 'arrow_downward' : 'arrow_upward'}
     </span>
   );
@@ -120,7 +121,7 @@ export default function FinanceiroTable({
                           <tr className="cursor-pointer select-none" onClick={() => onToggleGroup(group)}>
                             <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                               </div>
                             </td>
@@ -133,8 +134,8 @@ export default function FinanceiroTable({
                           >
                             <td className="px-3 py-2 whitespace-nowrap">
                               <div className={`text-sm font-medium ${dup.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatVencimento(dup.dupVencimento)}</div>
-                              {dup.status === 'overdue' && <div className="text-[11px] text-red-500">{dup.diasAtraso}d atraso</div>}
-                              {dup.status === 'due_soon' && <div className="text-[11px] text-orange-500">em {dup.diasParaVencer}d</div>}
+                              {dup.status === 'overdue' && <div className="text-xs text-red-500">{dup.diasAtraso}d atraso</div>}
+                              {dup.status === 'due_soon' && <div className="text-xs text-orange-500">em {dup.diasParaVencer}d</div>}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</span>
@@ -155,7 +156,7 @@ export default function FinanceiroTable({
                               </span>
                             </td>
                             <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => onOpenDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Visualizar e editar">
+                              <button onClick={() => onOpenDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar e editar">
                                 <span className="material-symbols-outlined text-[18px]">search</span>
                               </button>
                             </td>
@@ -190,7 +191,7 @@ export default function FinanceiroTable({
                     {showDivider && group && (
                       <div className="cursor-pointer select-none" onClick={() => onToggleGroup(group)}>
                         <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
-                          <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                           <span className={`text-xs font-bold ml-auto ${valorColor}`}>{formatAmount(groupTotals.get(group) || 0)}</span>
                         </div>
@@ -213,19 +214,20 @@ export default function FinanceiroTable({
                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-bold font-mono ${valorColor}`}>{formatAmount(dup.dupValor)}</span>
-                            <span className="text-[10px] font-mono text-slate-400">{parcelaLabel}</span>
+                            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{parcelaLabel}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {isOverdue && (
-                              <span className="text-[10px] text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
+                              <span className="text-xs text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
                             )}
-                            <button
+                            <Button
                               onClick={(e) => { e.stopPropagation(); onOpenDetails(dup); }}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="search"
                             >
-                              <span className="material-symbols-outlined text-[14px]">search</span>
                               Detalhes
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -238,7 +240,7 @@ export default function FinanceiroTable({
 
           {/* Total count */}
           <div className="flex items-center justify-center px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-            <span className="text-xs text-slate-400">{total} registros</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{total} registros</span>
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Button from '@/components/ui/Button';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
@@ -142,7 +143,7 @@ export default function PreferencesSection() {
               Sistema
             </button>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             Escolha entre tema claro, escuro ou siga a preferência do seu sistema operacional.
           </p>
         </div>
@@ -188,7 +189,7 @@ export default function PreferencesSection() {
                 </div>
               );
             })}
-            <p className="text-xs text-slate-400 dark:text-slate-500 px-3 pt-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 px-3 pt-2">
               Alterações são salvas automaticamente.
             </p>
           </div>
@@ -223,13 +224,9 @@ export default function PreferencesSection() {
       <CollapsibleCard icon="storage" title="Dados e Exportação">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative group">
-            <button
-              disabled
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
-            >
-              <span className="material-symbols-outlined text-[18px]">download</span>
+            <Button disabled variant="secondary" icon="download">
               Exportar todos os dados (CSV)
-            </button>
+            </Button>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 dark:bg-slate-700 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               Em breve
               <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
@@ -237,13 +234,9 @@ export default function PreferencesSection() {
           </div>
 
           <div className="relative group">
-            <button
-              disabled
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl font-semibold text-sm cursor-not-allowed border border-slate-200 dark:border-slate-700"
-            >
-              <span className="material-symbols-outlined text-[18px]">folder_zip</span>
+            <Button disabled variant="secondary" icon="folder_zip">
               Exportar XMLs em lote
-            </button>
+            </Button>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 dark:bg-slate-700 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               Em breve
               <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />

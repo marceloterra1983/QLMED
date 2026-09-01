@@ -6,6 +6,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCurrencyShort } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 interface SystemUser {
   id: string;
@@ -145,7 +146,7 @@ export default function ValvulasImportadasPage() {
         </span>
       );
     return (
-      <span className="material-symbols-outlined text-[14px] text-primary print:hidden">
+      <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-400 print:hidden">
         {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
       </span>
     );
@@ -212,13 +213,9 @@ export default function ValvulasImportadasPage() {
               <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
               Exportar PDF
             </button>
-            <button
-              onClick={openEmailModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">mail</span>
+            <Button onClick={openEmailModal} size="sm" icon="mail">
               Enviar por Email
-            </button>
+            </Button>
           </div>
         ) : undefined}
       />
@@ -229,7 +226,7 @@ export default function ValvulasImportadasPage() {
           <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Enviar Relatório por Email</h3>
-              <button onClick={() => setEmailModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button onClick={() => setEmailModalOpen(false)} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
@@ -237,28 +234,29 @@ export default function ValvulasImportadasPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Selecione o destinatário:</p>
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-6">
-                  <span className="material-symbols-outlined text-[20px] text-slate-400 animate-spin">progress_activity</span>
+                  <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400 animate-spin">progress_activity</span>
                 </div>
               ) : users.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">Nenhum usuário ativo encontrado</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">Nenhum usuário ativo encontrado</p>
               ) : (
                 <div className="flex flex-col gap-1 max-h-[240px] overflow-y-auto">
                   {users.map(u => (
                     <button
                       key={u.id}
                       onClick={() => setSelectedUserId(u.id)}
+                      aria-pressed={selectedUserId === u.id}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
                         selectedUserId === u.id
                           ? 'bg-primary/10 border border-primary/30'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent'
                       }`}
                     >
-                      <span className={`material-symbols-outlined text-[16px] ${selectedUserId === u.id ? 'text-primary' : 'text-slate-400'}`}>
+                      <span className={`material-symbols-outlined text-[16px] ${selectedUserId === u.id ? 'text-primary dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
                         {selectedUserId === u.id ? 'radio_button_checked' : 'radio_button_unchecked'}
                       </span>
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{u.name}</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{u.email}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{u.email}</div>
                       </div>
                     </button>
                   ))}
@@ -267,14 +265,9 @@ export default function ValvulasImportadasPage() {
             </div>
             {/* Mobile footer */}
             <div className="sm:hidden border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-2">
-              <button
-                onClick={handleSendEmail}
-                disabled={!selectedUserId || sendingEmail}
-                className="flex items-center justify-center gap-1.5 w-full px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingEmail && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+              <Button onClick={handleSendEmail} disabled={!selectedUserId} loading={sendingEmail} block>
                 {sendingEmail ? 'Enviando...' : 'Enviar'}
-              </button>
+              </Button>
               <button
                 onClick={() => setEmailModalOpen(false)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -290,14 +283,9 @@ export default function ValvulasImportadasPage() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleSendEmail}
-                disabled={!selectedUserId || sendingEmail}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingEmail && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}
+              <Button onClick={handleSendEmail} disabled={!selectedUserId} loading={sendingEmail} size="sm">
                 {sendingEmail ? 'Enviando...' : 'Enviar'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -329,7 +317,7 @@ export default function ValvulasImportadasPage() {
                   <span className="material-symbols-outlined text-[16px]">{card.icon}</span>
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-tight">{card.label}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider leading-tight">{card.label}</p>
                   <p className={`text-xl font-bold leading-tight ${highlightClass}`}>
                     {card.value === null ? <Skeleton className="h-4 w-14" /> : card.value}
                   </p>
@@ -352,7 +340,7 @@ export default function ValvulasImportadasPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                       <th className="px-2 py-1.5">Cliente</th>
                       {data.customerYearlySales.years.map((y) => (
                         <th key={y} className="px-2 py-1.5 text-right">{y}</th>
@@ -376,7 +364,7 @@ export default function ValvulasImportadasPage() {
                                   <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                                     {entry.qty.toLocaleString('pt-BR')}
                                   </div>
-                                  <div className="text-[9px] font-mono text-slate-400 leading-tight">
+                                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400 leading-tight">
                                     {formatAmount(entry.value)}
                                   </div>
                                 </div>
@@ -390,7 +378,7 @@ export default function ValvulasImportadasPage() {
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
                             {c.totalQty.toLocaleString('pt-BR')}
                           </div>
-                          <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                          <div className="text-xs font-mono text-slate-500 leading-tight">
                             {formatAmount(c.totalValue)}
                           </div>
                         </td>
@@ -411,7 +399,7 @@ export default function ValvulasImportadasPage() {
                               <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                                 {yearQty.toLocaleString('pt-BR')}
                               </div>
-                              <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                              <div className="text-xs font-mono text-slate-500 leading-tight">
                                 {formatAmount(yearVal)}
                               </div>
                             </td>
@@ -421,7 +409,7 @@ export default function ValvulasImportadasPage() {
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
                             {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
                           </div>
-                          <div className="text-[9px] font-mono text-slate-500 leading-tight">
+                          <div className="text-xs font-mono text-slate-500 leading-tight">
                             {formatAmount(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
                           </div>
                         </td>
@@ -448,20 +436,20 @@ export default function ValvulasImportadasPage() {
                     </p>
                     <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
                       <div>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Qtd</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Qtd</p>
                         <p className="text-sm font-mono font-bold text-slate-900 dark:text-white">
                           {c.totalQty.toLocaleString('pt-BR')}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Valor</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Valor</p>
                         <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                           {formatAmount(c.totalValue)}
                         </p>
                       </div>
                       {c.lastUnitPrice != null && (
                         <div className="col-span-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Últ. Preço Unit.</p>
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Últ. Preço Unit.</p>
                           <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                             {formatAmount(c.lastUnitPrice)}
                           </p>
@@ -474,13 +462,13 @@ export default function ValvulasImportadasPage() {
                           const entry = c.byYear[String(y)];
                           return (
                             <div key={y} className="bg-slate-50 dark:bg-slate-800/40 rounded-md px-2 py-1.5">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{y}</p>
+                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{y}</p>
                               {entry && entry.qty > 0 ? (
                                 <>
                                   <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                                     {entry.qty.toLocaleString('pt-BR')}
                                   </p>
-                                  <p className="text-[9px] font-mono text-slate-400 leading-tight">
+                                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400 leading-tight">
                                     {formatAmount(entry.value)}
                                   </p>
                                 </>
@@ -506,7 +494,7 @@ export default function ValvulasImportadasPage() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Detalhamento por Produto
               </h3>
-              <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+              <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
                 {data?.products.length || 0}
               </span>
             </div>
@@ -515,7 +503,7 @@ export default function ValvulasImportadasPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   <th className="px-2 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
                     <div className="flex items-center gap-0.5">Cód {getSortIcon('code')}</div>
                   </th>
@@ -556,7 +544,7 @@ export default function ValvulasImportadasPage() {
                   ))
                 ) : sortedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                       <span className="material-symbols-outlined text-[36px] opacity-30">search_off</span>
                       <p className="mt-1 text-xs font-medium">Nenhum produto encontrado</p>
                     </td>
@@ -637,7 +625,7 @@ export default function ValvulasImportadasPage() {
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Detalhamento por Produto
             </h3>
-            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
               {data?.products.length || 0}
             </span>
           </div>
@@ -657,7 +645,7 @@ export default function ValvulasImportadasPage() {
               ))}
             </div>
           ) : sortedProducts.length === 0 ? (
-            <div className="px-4 py-8 text-center text-slate-400">
+            <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[36px] opacity-30">search_off</span>
               <p className="mt-1 text-xs font-medium">Nenhum produto encontrado</p>
             </div>
@@ -668,34 +656,34 @@ export default function ValvulasImportadasPage() {
                   <p className="text-xs font-bold text-slate-900 dark:text-white" title={p.description}>
                     {p.shortName || p.description}
                   </p>
-                  <p className="text-[10px] font-mono text-slate-400 mt-0.5">{p.code}</p>
+                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{p.code}</p>
                   <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2">
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Qt Comprada</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qt Comprada</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {p.purchasedQty.toLocaleString('pt-BR')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Comprado</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Vl Comprado</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {formatAmount(p.purchasedValue)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Qt Vendida</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qt Vendida</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {p.soldQty.toLocaleString('pt-BR')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vl Vendido</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Vl Vendido</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {formatAmount(p.soldValue)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Saldo</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo</p>
                       <p className={`text-sm font-mono font-bold ${
                         p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                       }`}>
@@ -703,13 +691,13 @@ export default function ValvulasImportadasPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Compra</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">PM Compra</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {p.avgPurchasePrice != null ? formatAmount(p.avgPurchasePrice) : '—'}
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">PM Venda</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">PM Venda</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
                         {p.avgSalePrice != null ? formatAmount(p.avgSalePrice) : '—'}
                       </p>

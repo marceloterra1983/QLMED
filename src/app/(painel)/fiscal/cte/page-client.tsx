@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
@@ -16,6 +16,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 export default function CtePage() {
   const { canWrite } = useRole();
@@ -100,7 +101,7 @@ export default function CtePage() {
   };
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -360,7 +361,7 @@ export default function CtePage() {
   const getSortIcon = (field: string) => {
     if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
     return (
-      <span className="material-symbols-outlined text-[16px] text-primary">
+      <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">
         {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
       </span>
     );
@@ -424,21 +425,23 @@ export default function CtePage() {
         subtitle="Conhecimentos de transporte eletrônicos"
         actions={(
           <>
-            <button
+            <Button
               onClick={() => setHideValues(v => !v)}
-              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              variant="secondary"
+              icon={hideValues ? 'visibility' : 'visibility_off'}
               title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-            >
-              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-            </button>
-            <button
+              aria-label={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+              className="hidden sm:inline-flex"
+            />
+            <Button
               onClick={handleExport}
               disabled={invoices.length === 0}
-              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+              variant="secondary"
+              icon="download"
+              className="hidden sm:inline-flex"
             >
-              <span className="material-symbols-outlined text-[20px]">download</span>
               Exportar
-            </button>
+            </Button>
           </>
         )}
       />
@@ -446,8 +449,7 @@ export default function CtePage() {
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={[search, statusFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-          <div className="lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Emitente</label>
+          <Field label="CNPJ / Nome Emitente" className="lg:col-span-2">
             <input
               type="text"
               placeholder="ex: 00.000.000/0001-91"
@@ -455,27 +457,24 @@ export default function CtePage() {
               onChange={(e) => setSearchInput(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
+          </Field>
+          <Field label="Data Início">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
+          </Field>
+          <Field label="Data Fim">
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Manifestação</label>
+          </Field>
+          <Field label="Manifestação">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -486,7 +485,7 @@ export default function CtePage() {
               <option value="rejected">Desacordo</option>
               <option value="confirmed">Desacordo cancelado</option>
             </select>
-          </div>
+          </Field>
           <div className="flex gap-2">
             <button
               onClick={() => loadInvoices()}
@@ -508,20 +507,20 @@ export default function CtePage() {
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
-          <span className="text-xs sm:text-sm font-bold text-primary">{selected.size} selecionado(s)</span>
+          <span className="text-xs sm:text-sm font-bold text-primary dark:text-blue-400">{selected.size} selecionado(s)</span>
           <div className="hidden sm:block h-4 w-px bg-slate-300"></div>
-          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+          <button onClick={handleBulkDownloadXml} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors">
             <span className="material-symbols-outlined text-[16px] sm:text-[18px]">download</span>
             XML
           </button>
-          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+          <button onClick={handleBulkDownloadPdf} className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors">
             <span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>
             PDF
           </button>
           {canWrite && (
             <button
               onClick={handleBulkManifest}
-              className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+              className="flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary dark:hover:text-blue-400 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px] sm:text-[18px]">fact_check</span>
               <span className="hidden sm:inline">{manifestButtonLabel}</span>
@@ -551,7 +550,7 @@ export default function CtePage() {
             </div>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-400">
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
             <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
             <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
           </div>
@@ -567,7 +566,7 @@ export default function CtePage() {
                 {showDivider && group && (
                   <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                     <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
-                      <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                     </div>
                   </div>
@@ -580,14 +579,14 @@ export default function CtePage() {
                     </div>
                     <div className="flex items-center justify-between mb-0.5">
                       <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.senderCnpj, invoice.senderName).display}</p>
-                      <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-0.5">
                       <span className="truncate">{flow.remetente}</span>
-                      <span className="material-symbols-outlined text-[12px] text-primary shrink-0">local_shipping</span>
+                      <span className="material-symbols-outlined text-[12px] text-primary dark:text-blue-400 shrink-0">local_shipping</span>
                       <span className="truncate">{flow.recebedor}</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Tomador: {abbreviateQlMed(invoice.recipientName || '-')}</p>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
                       <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
@@ -600,7 +599,7 @@ export default function CtePage() {
         })()}
         {invoices.length > 0 && (
           <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
-            <span className="text-xs text-slate-400 mr-1">Ano:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
             {yearNavButtons}
           </div>
         )}
@@ -615,7 +614,7 @@ export default function CtePage() {
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-2 py-2 w-px">
                   <input
-                    className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                    className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                     type="checkbox"
                     checked={selected.size === invoices.length && invoices.length > 0}
                     onChange={toggleSelectAll}
@@ -656,16 +655,12 @@ export default function CtePage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
                     <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
-                    <Link
-                      href="/sistema/upload"
-                      className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-md shadow-primary/30"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                    <Button href="/sistema/upload" icon="cloud_upload" className="mt-4">
                       Importar XML
-                    </Link>
+                    </Button>
                   </td>
                 </tr>
               ) : (
@@ -683,7 +678,7 @@ export default function CtePage() {
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                             <td colSpan={8} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                               </div>
                             </td>
@@ -693,7 +688,7 @@ export default function CtePage() {
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
                           <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <input
-                              className="rounded border-slate-300 text-primary focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                              className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
                               type="checkbox"
                               checked={selected.has(invoice.id)}
                               onChange={() => toggleSelect(invoice.id)}
@@ -701,7 +696,7 @@ export default function CtePage() {
                           </td>
                           <td className="px-2 py-1.5 whitespace-nowrap">
                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
-                            <div className="text-[11px] text-slate-400">{formatTime(invoice.issueDate)}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">{formatTime(invoice.issueDate)}</div>
                           </td>
                           <td className="px-2 py-1.5 whitespace-nowrap">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
@@ -712,23 +707,23 @@ export default function CtePage() {
 	                          <td className="px-2 py-1.5">
                               <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
                                 <span className="truncate">{flow.remetente}</span>
-                                <span className="material-symbols-outlined text-[14px] text-primary shrink-0">local_shipping</span>
+                                <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-400 shrink-0">local_shipping</span>
                                 <span className="truncate">{flow.recebedor}</span>
                               </div>
                               {(() => { const e = getNick(invoice.senderCnpj, invoice.senderName); return e.full ? (
                                 <>
                                   <span className="text-sm font-bold text-slate-900 dark:text-white">{e.display}</span>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">{e.full}</div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">{e.full}</div>
                                 </>
                               ) : (
-                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{e.display}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{e.display}</span>
                               ); })()}
 	                          </td>
 	                          <td className="px-2 py-1.5">
                               {(() => { const r = getNick(invoice.recipientCnpj, invoice.recipientName || '-'); return r.full ? (
                                 <>
                                   <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
-                                  <div className="text-[10px] text-slate-400 dark:text-slate-500">{r.full}</div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">{r.full}</div>
                                 </>
                               ) : (
                                 <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
@@ -756,7 +751,7 @@ export default function CtePage() {
         {/* Footer with year navigation */}
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-400 mr-1.5">Ano:</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
           <ListCount shown={invoices.length} total={total} noun="CT-e(s)" />

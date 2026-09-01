@@ -77,7 +77,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
         <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">table_rows</span>
-        <span className="text-[13px] text-slate-400">Sem itens para compor tabela de preco</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Sem itens para compor tabela de preco</span>
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
     <>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="relative w-full max-w-md">
-          <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">
+          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">
             search
           </span>
           <input
@@ -94,10 +94,10 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Filtrar por nome ou código"
-            className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
+            className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
           />
         </div>
-        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap tabular-nums">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
           {filteredAndSorted.length.toLocaleString('pt-BR')} itens
         </span>
       </div>
@@ -105,7 +105,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
       {filteredAndSorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 gap-2">
           <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">search_off</span>
-          <span className="text-[13px] text-slate-400">Nenhum produto encontrado</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum produto encontrado</span>
         </div>
       ) : (
         <>
@@ -114,12 +114,12 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
               <div key={`m-${row.code}-${row.description}-${row.unit}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div className="min-w-0">
-                    <span className="text-[10px] font-mono text-slate-400">{row.code}</span>
+                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.code}</span>
                     <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{row.description}</p>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatPrice(row.lastPrice)}</span>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <span>Qtd: {formatQuantity(row.totalQuantity)}</span>
                   <span>{row.lastInvoiceNumber || '-'} {row.lastIssueDate ? formatDate(row.lastIssueDate) : ''}</span>
                 </div>
@@ -154,7 +154,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
                       <div className="text-xs text-slate-600 dark:text-slate-300">
                         {row.lastInvoiceNumber || '-'}
                       </div>
-                      <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
                       </div>
                     </td>

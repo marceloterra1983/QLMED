@@ -3,8 +3,8 @@ import React from 'react';
 export function Field({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 break-words">{value || '-'}</p>
     </div>
   );
 }
@@ -21,8 +21,9 @@ const bgMap: Record<string, string> = {
   'text-blue-500': 'bg-blue-500/10 dark:bg-blue-500/20 ring-blue-500/20 dark:ring-blue-500/30',
 };
 
-export function SectionBlock({ title, icon, iconColor = 'text-primary', children }: { title: string; icon: string; iconColor?: string; children: React.ReactNode }) {
-  const bg = bgMap[iconColor] || bgMap['text-primary'];
+export function SectionBlock({ title, icon, iconColor = 'text-primary dark:text-blue-400', children }: { title: string; icon: string; iconColor?: string; children: React.ReactNode }) {
+  // iconColor carrega o par claro/escuro; a chave do mapa é só o primeiro token.
+  const bg = bgMap[iconColor.split(' ')[0]] || bgMap['text-primary'];
 
   return (
     <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
@@ -30,7 +31,7 @@ export function SectionBlock({ title, icon, iconColor = 'text-primary', children
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${bg}`}>
           <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>
         </div>
-        <h4 className="text-[13px] font-bold text-slate-900 dark:text-white">{title}</h4>
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{title}</h4>
       </div>
       <div className="p-4">{children}</div>
     </div>

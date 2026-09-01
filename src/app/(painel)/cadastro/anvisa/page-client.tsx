@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Field from '@/components/ui/Field';
 import PageHeader from '@/components/PageHeader';
 
 type AnvisaSourceKey = 'produtos_saude' | 'medicamentos';
@@ -99,10 +100,7 @@ export default function AnvisaPage() {
 
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              Base de consulta
-            </label>
+          <Field label="Base de consulta" className="md:col-span-2">
             <select
               value={source}
               onChange={(event) => setSource(event.target.value as AnvisaSourceKey)}
@@ -114,7 +112,7 @@ export default function AnvisaPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {selectedOption.description}
           </div>
@@ -124,7 +122,7 @@ export default function AnvisaPage() {
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-none">
         {checkingEmbed ? (
           <div className="p-8 text-center">
-            <span className="material-symbols-outlined text-[40px] text-slate-400">hourglass_top</span>
+            <span className="material-symbols-outlined text-[40px] text-slate-500 dark:text-slate-400">hourglass_top</span>
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               Verificando disponibilidade do embed da ANVISA...
             </p>
@@ -157,7 +155,7 @@ export default function AnvisaPage() {
                 Para manter estabilidade, a consulta é aberta diretamente no portal oficial.
               </p>
               {embedStatus?.reason && (
-                <p className="mt-2 text-xs text-slate-400 font-mono break-all">
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 font-mono break-all">
                   Detalhe técnico: {embedStatus.reason}
                 </p>
               )}

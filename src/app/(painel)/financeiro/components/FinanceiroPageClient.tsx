@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -375,14 +376,15 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
         title={cfg.title}
         subtitle={cfg.subtitle}
         actions={(
-          <button
+          <Button
             onClick={handleExport}
             disabled={duplicatas.length === 0}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
+            variant="secondary"
+            icon="download"
+            className="hidden sm:inline-flex flex-shrink-0"
           >
-            <span className="material-symbols-outlined text-[18px]">download</span>
             Exportar CSV
-          </button>
+          </Button>
         )}
       />
 
@@ -414,9 +416,9 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
                   <span className={`material-symbols-outlined text-${color}-600 dark:text-${color}-400 text-[20px]`}>{icon}</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
+                  <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
                   <p className={`text-sm sm:text-lg font-bold text-${color}-600 dark:text-${color}-400 truncate`}>{formatAmount(value)}</p>
-                  <p className="text-[10px] sm:text-xs text-slate-400">{count} dup.</p>
+                  <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{count} dup.</p>
                 </div>
               </div>
             </div>
@@ -428,13 +430,13 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
         <MobileFilterWrapper activeFilterCount={[search, statusFilter].filter(Boolean).length} title="Filtros" icon="payments">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-[20px]">search</span>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={cfg.searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
               />
             </div>
             <select

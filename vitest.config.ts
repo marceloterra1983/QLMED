@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  // Necessário para os testes de render (.test.tsx): sem o transform de JSX o
-  // vitest não consegue montar componente nenhum. Ficheiros .ts não passam
-  // pelo plugin, então a suíte existente não muda de comportamento.
+  // `tsconfig.json` deixa o JSX em `preserve` para o Next; sem este plugin o
+  // vitest recebe TSX cru e falha na análise de importação.
+  // Ficheiros .ts não passam pelo plugin: a suíte existente não muda.
   plugins: [react()],
   test: {
     // Padrão continua node. Os testes de render declaram

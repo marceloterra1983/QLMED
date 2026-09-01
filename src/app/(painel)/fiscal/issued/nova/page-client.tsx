@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Field from '@/components/ui/Field';
+import Button from '@/components/ui/Button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -90,24 +92,6 @@ function lineNet(item: Line): number {
   return addMoney(roundMoney(Number(item.qCom || 0) * Number(item.vUnCom || 0)), -roundMoney(Number(item.vDesc || 0)));
 }
 
-function Field({
-  label,
-  children,
-  className = '',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function StepCompleteFooter({
   step,
@@ -447,7 +431,7 @@ export default function EmitirNfePage() {
         <div className="flex items-start gap-3 min-w-0">
           <Link
             href="/fiscal/issued"
-            className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary"
+            className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary dark:hover:text-blue-400"
             aria-label="Voltar às emitidas"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -460,16 +444,16 @@ export default function EmitirNfePage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {emissionId ? 'Rascunho salvo' : 'Rascunho'}
           </span>
           {ambiente === 'production' && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/25 dark:text-amber-100">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/25 dark:text-amber-100">
               Produção SEFAZ
             </span>
           )}
           {ambiente === 'homologation' && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-100 text-sky-900 dark:bg-sky-500/25 dark:text-sky-100">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-900 dark:bg-sky-500/25 dark:text-sky-100">
               Homologação
             </span>
           )}
@@ -545,7 +529,7 @@ export default function EmitirNfePage() {
                               <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">
                                 {recipientDisplayName(c.name, c.shortName)}
                               </span>
-                              <span className="mt-0.5 block text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                              <span className="mt-0.5 block text-xs tabular-nums text-slate-500 dark:text-slate-400">
                                 {formatCnpj(c.cnpj)}
                               </span>
                             </button>
@@ -620,7 +604,7 @@ export default function EmitirNfePage() {
                     <li key={p.id}>
                       <button type="button" onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <span className="font-medium">{p.description}</span>
-                        <span className="text-slate-400 ml-2">{p.code} · NCM {p.ncm || '—'}</span>
+                        <span className="text-slate-500 dark:text-slate-400 ml-2">{p.code} · NCM {p.ncm || '—'}</span>
                       </button>
                     </li>
                   ))}
@@ -629,7 +613,7 @@ export default function EmitirNfePage() {
               <div className={`overflow-x-auto p-3 ${nfeStepPanelClass('itens')}`}>
                 <table className="w-full text-sm min-w-[720px]">
                   <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500">
+                    <tr className="text-left text-xs uppercase tracking-wider text-slate-500">
                       <th className="py-2 pr-2">Produto</th>
                       <th className="pr-2">NCM</th>
                       <th className="pr-2">CFOP</th>
@@ -646,7 +630,7 @@ export default function EmitirNfePage() {
                         <tr className="border-t border-slate-100 dark:border-slate-800 align-top">
                           <td className="py-2 pr-2">
                             <div className="font-medium text-slate-900 dark:text-white">{item.xProd}</div>
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
                               {item.cProd}
                               {item.anvisa ? ` · ANVISA ${item.anvisa}` : ''}
                               {item.cest ? ` · CEST ${item.cest}` : ''}
@@ -669,7 +653,7 @@ export default function EmitirNfePage() {
                           </td>
                           <td className="pr-2 pt-3 text-right font-bold tabular-nums">{formatAmount(lineNet(item))}</td>
                           <td className="pt-3 whitespace-nowrap">
-                            <button type="button" onClick={() => setOpenItem(openItem === idx ? null : idx)} className="text-xs text-primary font-bold mr-2">
+                            <button type="button" onClick={() => setOpenItem(openItem === idx ? null : idx)} className="text-xs text-primary dark:text-blue-400 font-bold mr-2">
                               {openItem === idx ? 'Fechar' : 'Fiscal'}
                             </button>
                             <button type="button" onClick={() => setItems((rows) => rows.filter((_, i) => i !== idx))} className="text-xs text-rose-600 font-bold">
@@ -826,7 +810,7 @@ export default function EmitirNfePage() {
             ))}
             <div className="flex justify-between text-sm pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="font-bold">Total da nota</span>
-              <span className="tabular-nums font-bold text-primary">{formatAmount(vNf)}</span>
+              <span className="tabular-nums font-bold text-primary dark:text-blue-400">{formatAmount(vNf)}</span>
             </div>
           </div>
 
@@ -859,14 +843,14 @@ export default function EmitirNfePage() {
               >
                 {saving ? 'Salvando…' : 'Salvar rascunho'}
               </button>
-              <button
-                type="button"
-                disabled={sending || pendencias.length > 0}
+              <Button
+                disabled={pendencias.length > 0}
+                loading={sending}
                 onClick={() => setConfirmSend(true)}
-                className="w-full px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-50"
+                block
               >
                 {sending ? 'Enviando…' : 'Transmitir à SEFAZ'}
-              </button>
+              </Button>
             </div>
           )}
         </aside>

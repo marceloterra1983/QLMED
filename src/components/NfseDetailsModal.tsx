@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfseDetails } from '@/types/invoice-details';
+import Button from '@/components/ui/Button';
 
 interface NfseDetailsModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ function TabNfse({ data }: { data: NfseDetails }) {
   const n = data.nfse;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados da NFS-e" icon="receipt_long" iconColor="text-primary">
+      <SectionBlock title="Dados da NFS-e" icon="receipt_long" iconColor="text-primary dark:text-blue-400">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Número" value={n.numero} />
           <Field label="Data de Emissão" value={formatDateBr(n.dataEmissao)} />
@@ -65,7 +66,7 @@ function TabNfse({ data }: { data: NfseDetails }) {
 
 function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetails; partyKey: 'prestador' | 'tomador'; title: string; icon: string; iconColor: string }) {
   const party = data[partyKey];
-  if (!party) return <p className="text-sm text-slate-400 text-center py-8">Dados não disponíveis</p>;
+  if (!party) return <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
     <div className="space-y-4">
       <SectionBlock title={title} icon={icon} iconColor={iconColor}>
@@ -95,7 +96,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetail
 
 function TabServico({ data }: { data: NfseDetails }) {
   const s = data.servico;
-  if (!s) return <p className="text-sm text-slate-400 text-center py-8">Dados não disponíveis</p>;
+  if (!s) return <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
     <div className="space-y-4">
       <SectionBlock title="Descrição do Serviço" icon="handyman" iconColor="text-violet-500">
@@ -196,7 +197,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
                 <span className="material-symbols-outlined text-[22px] text-violet-500">receipt_long</span>
               </div>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-slate-900 dark:text-white leading-tight">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                   {data ? `NFS-e ${data.number}` : 'Detalhes da NFS-e'}
                 </h3>
               </div>
@@ -204,7 +205,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
             <button
               onClick={onClose}
               aria-label="Fechar"
-              className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -212,14 +213,14 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
 
           {data?.accessKey && (
             <div className="flex items-center gap-2.5 mt-3 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/50">
-              <span className="material-symbols-outlined text-[14px] text-slate-400">key</span>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Chave</span>
-              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
+              <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400">key</span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Chave</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-300 tracking-wider truncate select-all">
                 {data.accessKey.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim()}
               </span>
               <button
                 onClick={copyAccessKey}
-                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-400 hover:text-violet-500 transition-colors"
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-violet-500 transition-colors"
                 title="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
@@ -232,7 +233,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
         <div className="flex items-center border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-1 shrink-0">
           <button
             onClick={() => scrollTabs('left')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll esquerda"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -242,10 +243,10 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
                     ? 'text-violet-600 dark:text-violet-400 border-violet-500 bg-violet-500/5 dark:bg-violet-500/10'
-                    : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                    : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
@@ -255,7 +256,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
           </div>
           <button
             onClick={() => scrollTabs('right')}
-            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-shrink-0 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Scroll direita"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -269,7 +270,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
               <div className="w-14 h-14 rounded-2xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center ring-1 ring-violet-500/20 dark:ring-violet-500/30">
                 <span className="material-symbols-outlined text-[28px] text-violet-500 animate-spin">progress_activity</span>
               </div>
-              <p className="text-[13px] font-medium text-slate-400">Carregando detalhes...</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
             </div>
           )}
           {error && (
@@ -277,7 +278,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
               <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
                 <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
               </div>
-              <p className="text-[13px] font-medium text-red-400">{error}</p>
+              <p className="text-sm font-medium text-red-400">{error}</p>
             </div>
           )}
           {data && !loading && renderTabContent()}
@@ -285,13 +286,9 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
 
         {/* Footer - mobile only */}
         <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={onClose}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

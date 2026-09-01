@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { formatAmount } from '@/lib/utils';
 import { buildProductExportUrl, escapeCsvValue, type ProductExportQuery } from '@/lib/product-export';
@@ -66,13 +67,15 @@ export default function ExportCSVButton({ filteredCount, query }: ExportCSVButto
   };
 
   return (
-    <button
+    <Button
       onClick={handleExport}
-      disabled={filteredCount === 0 || isExporting}
-      className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+      disabled={filteredCount === 0}
+      loading={isExporting}
+      variant="secondary"
+      icon="download"
+      className="hidden sm:inline-flex"
     >
-      <span className="material-symbols-outlined text-[20px]">download</span>
       Exportar
-    </button>
+    </Button>
   );
 }

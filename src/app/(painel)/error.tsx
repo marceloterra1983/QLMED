@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Button from '@/components/ui/Button';
 
 export default function DashboardError({
   error,
@@ -21,20 +22,12 @@ export default function DashboardError({
         Não foi possível carregar esta página. Tente novamente.
       </p>
       <div className="flex items-center gap-3">
-        <button
-          onClick={reset}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30"
-        >
-          <span className="material-symbols-outlined text-[18px]">refresh</span>
+        <Button onClick={reset} icon="refresh">
           Tentar novamente
-        </button>
-        <a
-          href="/fiscal/invoices"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-        >
-          <span className="material-symbols-outlined text-[18px]">dashboard</span>
+        </Button>
+        <Button href="/fiscal/invoices" external variant="ghost" icon="dashboard">
           Painel
-        </a>
+        </Button>
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export default function UserProfile({ session, collapsed }: UserProfileProps) {
       <div className={`flex items-center ${collapsed ? 'justify-center mb-2' : 'gap-3 mb-3'}`}>
         <div className="relative flex-shrink-0">
           <div className={`rounded-full border-2 border-primary/30 bg-primary/10 flex items-center justify-center ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}>
-            <span className="material-symbols-outlined text-primary text-[20px]">person</span>
+            <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[20px]">person</span>
           </div>
           <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent rounded-full border-2 border-white dark:border-card-dark" />
         </div>
@@ -39,7 +39,7 @@ export default function UserProfile({ session, collapsed }: UserProfileProps) {
               <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
                 {session?.user?.name || 'Usuário'}
               </span>
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${ROLE_BADGE_COLORS[role] || ROLE_BADGE_COLORS.viewer}`}>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold leading-none ${ROLE_BADGE_COLORS[role] || ROLE_BADGE_COLORS.viewer}`}>
                 {ROLE_LABELS[role] || role}
               </span>
             </div>
@@ -55,7 +55,7 @@ export default function UserProfile({ session, collapsed }: UserProfileProps) {
         <button
           onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login'; })}
           title="Trocar conta"
-          className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors ${
+          className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors ${
             collapsed ? 'p-2' : 'flex-1 px-3 py-2'
           }`}
         >

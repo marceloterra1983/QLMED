@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -129,7 +130,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                   ref={fileInputRef}
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   disabled={!canManageSettings}
-                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary dark:file:text-blue-400 hover:file:bg-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -150,23 +151,15 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={certLoading || !file || !certPassword || !canManageSettings}
-                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={!file || !certPassword || !canManageSettings}
+                loading={certLoading}
+                icon="cloud_upload"
+                block
               >
-                {certLoading ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
-                    Instalar Certificado
-                  </>
-                )}
-              </button>
+                {certLoading ? 'Enviando...' : 'Instalar Certificado'}
+              </Button>
             </form>
 
             {certMessage && (
@@ -186,7 +179,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
           {/* Certificate Status */}
           <div>
             {!certInfo ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
                 <span className="material-symbols-outlined text-[48px] mb-2 opacity-50">no_encryption</span>
                 <p className="text-sm">Nenhum certificado instalado</p>
               </div>

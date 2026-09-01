@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
 const ContactPriceTableModal = dynamic(() => import('@/components/ContactPriceTableModal'), { ssr: false });
@@ -226,7 +228,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
       );
     }
     return (
-      <span className="material-symbols-outlined text-[16px] text-primary">
+      <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">
         {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
       </span>
     );
@@ -346,26 +348,27 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         title={cfg.title}
         subtitle={cfg.subtitle}
         titleExtra={cnpjChanges > 0 ? (
-          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
+          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
             {cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ
           </span>
         ) : null}
         actions={(
-          <button
+          <Button
             onClick={handleExport}
-            disabled={rows.length === 0 || isExporting}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+            disabled={rows.length === 0}
+            loading={isExporting}
+            variant="secondary"
+            icon="download"
+            className="hidden sm:inline-flex"
           >
-            <span className={`material-symbols-outlined text-[20px] ${isExporting ? 'animate-spin' : ''}`}>{isExporting ? 'progress_activity' : 'download'}</span>
             {isExporting ? 'Exportando...' : 'Exportar'}
-          </button>
+          </Button>
         )}
       />
 
       <MobileFilterWrapper activeFilterCount={[search, sortBy !== 'lastIssue' ? sortBy : ''].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
-          <div className="sm:col-span-2 md:col-span-3">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{cfg.searchLabel}</label>
+          <Field label={cfg.searchLabel} className="sm:col-span-2 md:col-span-3">
             <input
               type="text"
               placeholder="ex: 00.000.000/0001-91"
@@ -373,9 +376,8 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               onChange={(e) => setSearchInput(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
+          </Field>
+          <Field label="Ordenar por">
             <select
               value={sortBy}
               onChange={(e) => {
@@ -390,11 +392,10 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               {cfg.showCity && <option value="city">Cidade</option>}
               <option value="lastIssue">Última NF-e</option>
             </select>
-          </div>
-          <button onClick={clearFilters} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+          </Field>
+          <Button onClick={clearFilters} variant="secondary" icon="filter_alt_off" block>
             Limpar
-          </button>
+          </Button>
         </div>
       </MobileFilterWrapper>
 
@@ -417,7 +418,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 <th className="px-4 py-1.5 text-center">
                   <div className="flex flex-col items-center leading-tight">
                     <span>Tabela de Preço</span>
-                    <span className="text-[10px] normal-case tracking-normal text-slate-400 dark:text-slate-500">(itens)</span>
+                    <span className="text-xs normal-case tracking-normal text-slate-500 dark:text-slate-400">(itens)</span>
                   </div>
                 </th>
                 <th className="px-4 py-1.5 text-center">Ações</th>
@@ -436,7 +437,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={colSpan} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">{cfg.icon}</span>
                     <p className="mt-2 text-sm font-medium">{cfg.emptyTitle}</p>
                     <p className="text-xs mt-1">{cfg.emptyHint}</p>
@@ -463,10 +464,10 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                             <td colSpan={colSpan} className="px-4 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                                 {cityCountsForPage && (
-                                  <span className="text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{cityCountsForPage.get(group) || 0}</span>
+                                  <span className="text-xs font-bold bg-primary/10 text-primary dark:text-blue-400 px-1.5 py-0.5 rounded-full">{cityCountsForPage.get(group) || 0}</span>
                                 )}
                               </div>
                             </td>
@@ -475,28 +476,28 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                         {!collapsedGroups.has(group) && (
                           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                             <td className="px-4 py-1">
-                              <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
                             </td>
                             <td className="px-4 py-1">
-                              <div className="text-[13px] font-bold leading-tight text-slate-900 dark:text-white hover:text-primary transition-colors">{displayName(row)}</div>
+                              <div className="text-sm font-bold leading-tight text-slate-900 dark:text-white hover:text-primary dark:hover:text-blue-400 transition-colors">{displayName(row)}</div>
                             </td>
                             {cfg.showCity && (
-                              <td className="px-4 py-1"><span className="text-[12px] text-slate-600 dark:text-slate-300">{row.city || '-'}</span></td>
+                              <td className="px-4 py-1"><span className="text-xs text-slate-600 dark:text-slate-300">{row.city || '-'}</span></td>
                             )}
                             <td className="px-4 py-1" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
-                                <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? row.priceItemCount.toLocaleString('pt-BR') : '-'}</span>
-                                <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço">
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? row.priceItemCount.toLocaleString('pt-BR') : '-'}</span>
+                                <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço">
                                   <span className="material-symbols-outlined text-[20px]">table_view</span>
                                 </button>
                               </div>
                             </td>
                             <td className="px-4 py-1" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
-                                <button onClick={() => { setSelected(row); setIsDetailsOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title={cfg.detailsAria}>
+                                <button onClick={() => { setSelected(row); setIsDetailsOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title={cfg.detailsAria}>
                                   <span className="material-symbols-outlined text-[20px]">search</span>
                                 </button>
-                                <button onClick={() => openInNewTab(row)} className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors" title="Abrir detalhes em nova aba">
+                                <button onClick={() => openInNewTab(row)} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Abrir detalhes em nova aba">
                                   <span className="material-symbols-outlined text-[20px]">open_in_new</span>
                                 </button>
                               </div>
@@ -524,7 +525,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-400">
+            <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[48px] opacity-30">{cfg.icon}</span>
               <p className="mt-2 text-sm font-medium">{cfg.emptyTitle}</p>
               <p className="text-xs mt-1">{cfg.emptyHint}</p>
@@ -546,7 +547,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                       {showDivider && (
                         <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
                           <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
-                            <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                            <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                           </div>
                         </div>
@@ -555,7 +556,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                         <div className="p-3 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold text-slate-900 dark:text-white truncate text-[13px]">{label || row.name}</p>
+                              <p className="font-bold text-slate-900 dark:text-white truncate text-sm">{label || row.name}</p>
                             </div>
                             {st && st.toUpperCase() !== 'ATIVA' && (() => {
                               const upper = st.toUpperCase();
@@ -564,34 +565,38 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                                 : upper.includes('BAIXA') || upper.includes('INAPT')
                                   ? 'text-red-600 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                                   : 'text-slate-500 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
-                              return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full border ${color}`}>{st}</span>;
+                              return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-xs font-bold rounded-full border ${color}`}>{st}</span>;
                             })()}
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-[10px] mb-1.5">
+                          <div className="grid grid-cols-2 gap-2 text-xs mb-1.5">
                             <div>
-                              <p className="text-slate-400">Última NF-e</p>
+                              <p className="text-slate-500 dark:text-slate-400">Última NF-e</p>
                               <p className="font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</p>
                             </div>
                             <div>
-                              <p className="text-slate-400">Tabela de Preço</p>
+                              <p className="text-slate-500 dark:text-slate-400">Tabela de Preço</p>
                               <p className="font-medium text-slate-700 dark:text-slate-300">{row.priceItemCount != null ? `${row.priceItemCount.toLocaleString('pt-BR')} itens` : '-'}</p>
                             </div>
                           </div>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <button
+                            <Button
                               onClick={() => { setSelected(row); setIsDetailsOpen(true); }}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="search"
+                              className="flex-1"
                             >
-                              <span className="material-symbols-outlined text-[16px]">search</span>
                               Detalhes
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="table_view"
+                              className="flex-1"
                             >
-                              <span className="material-symbols-outlined text-[16px]">table_view</span>
                               Tabela
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -633,6 +638,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 <button
                   key={pageNumber}
                   onClick={() => setPage(pageNumber)}
+                  aria-current={pageNumber === page ? 'page' : undefined}
                   className={`hidden sm:flex w-9 h-9 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
                     pageNumber === page
                       ? 'bg-primary text-white shadow-md shadow-primary/30'

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatDate, formatAmount, formatCnpj } from '@/lib/utils';
+import Button from '@/components/ui/Button';
 
 interface LotEditModalProps {
   isOpen: boolean;
@@ -462,14 +463,14 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                     <span className="font-bold text-slate-700 dark:text-slate-300">{itemsWithLot}</span> de <span className="font-bold">{items.length}</span> itens com lote
                   </span>
                   {!isPersisted && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                       Pendente de registro
                     </span>
                   )}
                 </div>
               )}
             </div>
-            <button onClick={() => { if (!saving && !registering) onClose(); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0">
+            <button onClick={() => { if (!saving && !registering) onClose(); }} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0">
               <span className="material-symbols-outlined text-[24px]">close</span>
             </button>
           </div>
@@ -479,10 +480,10 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
         <div className="flex-1 overflow-auto min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <span className="material-symbols-outlined text-[32px] text-primary animate-spin">progress_activity</span>
+              <span className="material-symbols-outlined text-[32px] text-primary dark:text-blue-400 animate-spin">progress_activity</span>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
               <p className="mt-2 text-sm">Nenhum item encontrado</p>
             </div>
@@ -493,14 +494,14 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/80 backdrop-blur-sm">
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase w-8">#</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase">Cód. NF-e</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase">Descrição (XML)</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase text-right w-14">Qtd</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase w-[140px]">Lote</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase w-[110px]">Validade</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase text-right w-[70px]">Qtd Lote</th>
-                      <th className="px-2 py-2 text-[10px] font-semibold text-slate-400 uppercase w-[100px]">Cód. Int.</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase w-8">#</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cód. NF-e</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Descrição (XML)</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase text-right w-14">Qtd</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase w-[140px]">Lote</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase w-[110px]">Validade</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase text-right w-[70px]">Qtd Lote</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase w-[100px]">Cód. Int.</th>
                       <th className="px-1 py-2 w-6"></th>
                     </tr>
                   </thead>
@@ -531,13 +532,13 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                 {/* Item cols — only on first row, rowSpan */}
                                 {isFirst && (
                                   <>
-                                    <td className="px-2 py-1.5 text-slate-400 font-mono align-top" rowSpan={batchDrafts.length + 1}>{item.index}</td>
-                                    <td className="px-2 py-1.5 font-mono text-slate-600 dark:text-slate-400 text-[10px] align-top" rowSpan={batchDrafts.length + 1}>{item.code || '-'}</td>
+                                    <td className="px-2 py-1.5 text-slate-500 dark:text-slate-400 font-mono align-top" rowSpan={batchDrafts.length + 1}>{item.index}</td>
+                                    <td className="px-2 py-1.5 font-mono text-slate-600 dark:text-slate-400 text-xs align-top" rowSpan={batchDrafts.length + 1}>{item.code || '-'}</td>
                                     <td className="px-2 py-1.5 text-slate-800 dark:text-slate-200 max-w-[250px] truncate align-top" rowSpan={batchDrafts.length + 1} title={item.description}>{item.description}</td>
                                     <td className={`px-2 py-1.5 text-right font-mono align-top ${hasError ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`} rowSpan={batchDrafts.length + 1}>
                                       <div>{item.quantity}</div>
                                       {item.quantity > 1 && batchDrafts.length > 0 && allocated > 0 && (
-                                        <div className={`text-[9px] mt-0.5 font-semibold ${remaining > 0 ? 'text-amber-500' : remaining === 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                        <div className={`text-xs mt-0.5 font-semibold ${remaining > 0 ? 'text-amber-500' : remaining === 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                           {remaining > 0 ? `falta ${remaining}` : remaining === 0 ? 'OK' : `excede ${-remaining}`}
                                         </div>
                                       )}
@@ -555,10 +556,10 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'lot', e.target.value)}
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="Lote"
-                                      className="w-full px-1.5 py-1 text-[11px] border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                                     />
                                   ) : (
-                                    <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">{bd.lot || '--'}</span>
+                                    <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{bd.lot || '--'}</span>
                                   )}
                                 </td>
 
@@ -572,17 +573,17 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'expiry', e.target.value)}
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="YYYY-MM-DD"
-                                      className="w-full px-1.5 py-1 text-[11px] border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                                     />
                                   ) : (
-                                    <span className="text-[10px] text-slate-600 dark:text-slate-400">{formatBatchDate(bd.expiry) || '--'}</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-400">{formatBatchDate(bd.expiry) || '--'}</span>
                                   )}
                                 </td>
 
                                 {/* Lot Qty */}
                                 <td className={`px-1.5 py-1 text-right ${cellHighlight}`}>
                                   {item.quantity === 1 ? (
-                                    <span className="text-[11px] text-slate-500 font-mono">1</span>
+                                    <span className="text-xs text-slate-500 font-mono">1</span>
                                   ) : canWrite ? (
                                     <input
                                       ref={el => setInputRef(`${bd.batchId}-quantity`, el)}
@@ -592,10 +593,10 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="Qtd"
                                       min={1}
-                                      className="w-full px-1.5 py-1 text-[11px] text-right border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs text-right border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                                     />
                                   ) : (
-                                    <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">{bd.quantity || '--'}</span>
+                                    <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{bd.quantity || '--'}</span>
                                   )}
                                 </td>
 
@@ -604,13 +605,13 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                   <td className="px-2 py-1.5 align-top" rowSpan={batchDrafts.length + 1}>
                                     {item.matchStatus === 'matched' ? (
                                       <span
-                                        className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 cursor-default"
                                         title={item.registryDescription || ''}
                                       >
                                         {item.codigoInterno}
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600 dark:text-red-400">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-xs font-bold text-red-600 dark:text-red-400">
                                         sem cód.
                                       </span>
                                     )}
@@ -640,7 +641,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                               {canWrite && item.quantity > 1 && (
                                 <button
                                   onClick={() => addBatchRow(item)}
-                                  className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+                                  className="inline-flex items-center gap-0.5 text-xs text-primary dark:text-blue-400 hover:text-primary dark:hover:text-blue-400/80 font-medium transition-colors"
                                 >
                                   <span className="material-symbols-outlined text-[14px]">add</span>
                                   Lote
@@ -680,9 +681,9 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[10px] text-slate-400 font-mono">#{item.index}</span>
-                            {item.code && <span className="text-[10px] font-mono text-slate-500">{item.code}</span>}
-                            <span className={`text-[10px] ${hasError ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">#{item.index}</span>
+                            {item.code && <span className="text-xs font-mono text-slate-500">{item.code}</span>}
+                            <span className={`text-xs ${hasError ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
                               {item.quantity} {item.unit}
                               {item.quantity > 1 && allocated > 0 && (
                                 <span className={`ml-1 font-semibold ${remaining > 0 ? 'text-amber-500' : remaining === 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -695,13 +696,13 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                         </div>
                         {item.matchStatus === 'matched' ? (
                           <span
-                            className="flex-shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300"
+                            className="flex-shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300"
                             title={item.registryDescription || ''}
                           >
                             {item.codigoInterno}
                           </span>
                         ) : (
-                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600 dark:text-red-400">
+                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-xs font-bold text-red-600 dark:text-red-400">
                             sem cód.
                           </span>
                         )}
@@ -715,7 +716,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                             {canWrite ? (
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                  <label className="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Lote</label>
+                                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Lote</label>
                                   <input
                                     type="text"
                                     value={bd.lot}
@@ -725,7 +726,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Validade</label>
+                                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Validade</label>
                                   <input
                                     type="text"
                                     value={bd.expiry}
@@ -736,7 +737,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                 </div>
                                 <div className="flex items-end gap-1">
                                   <div className="flex-1">
-                                    <label className="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Qtd</label>
+                                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Qtd</label>
                                     {item.quantity === 1 ? (
                                       <div className="px-2 py-1.5 text-xs text-slate-500 font-mono">1</div>
                                     ) : (
@@ -761,7 +762,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
                                 {bd.lot.trim() ? (
                                   <>
                                     <span>Lote: <span className="font-mono font-bold">{bd.lot}</span></span>
@@ -781,7 +782,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                       {canWrite && item.quantity > 1 && (
                         <button
                           onClick={() => addBatchRow(item)}
-                          className="inline-flex items-center gap-0.5 mt-2 text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="inline-flex items-center gap-0.5 mt-2 text-xs text-primary dark:text-blue-400 hover:text-primary dark:hover:text-blue-400/80 font-medium transition-colors"
                         >
                           <span className="material-symbols-outlined text-[14px]">add</span>
                           Adicionar lote
@@ -820,32 +821,26 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                   Fechar
                 </button>
                 {canWrite && !isPersisted && (
-                  <button
+                  <Button
                     onClick={handleRegister}
-                    disabled={registering || saving || hasQtyErrors}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    disabled={saving || hasQtyErrors}
+                    loading={registering}
+                    size="sm"
+                    icon="check_circle"
                   >
-                    {registering ? (
-                      <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                    )}
                     {registering ? 'Registrando...' : 'Registrar Entrada'}
-                  </button>
+                  </Button>
                 )}
                 {canWrite && isPersisted && (
-                  <button
+                  <Button
                     onClick={handleSaveAll}
-                    disabled={saving || registering || totalChanges === 0 || hasQtyErrors}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    disabled={registering || totalChanges === 0 || hasQtyErrors}
+                    loading={saving}
+                    size="sm"
+                    icon="save"
                   >
-                    {saving ? (
-                      <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-[14px]">save</span>
-                    )}
                     {saving ? 'Salvando...' : 'Salvar Alterações'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

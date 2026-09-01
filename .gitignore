@@ -107,3 +107,6 @@ actions-runner-qlmed-prod
 # Python bytecode cache
 __pycache__/
 *.pyc
+
+# galeria de UI gerada por scripts/render-ui-gallery.mjs
+.ui-gallery/

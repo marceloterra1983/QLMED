@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Button from '@/components/ui/Button';
 
 export default function Error({
   error,
@@ -24,20 +25,12 @@ export default function Error({
           Ocorreu um erro inesperado. Tente novamente ou volte à página inicial.
         </p>
         <div className="flex items-center justify-center gap-3">
-          <button
-            onClick={reset}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg"
-          >
-            <span className="material-symbols-outlined text-[18px]">refresh</span>
+          <Button onClick={reset} icon="refresh" size="lg">
             Tentar novamente
-          </button>
-          <a
-            href="/fiscal/invoices"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px]">home</span>
+          </Button>
+          <Button href="/fiscal/invoices" external variant="ghost" icon="home" size="lg">
             Início
-          </a>
+          </Button>
         </div>
       </div>
     </div>
