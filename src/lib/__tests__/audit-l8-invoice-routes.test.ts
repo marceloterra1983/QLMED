@@ -139,7 +139,7 @@ describe('QLMED-DATA-011 — GET /api/invoices/:id não serializa o XML fiscal',
 });
 
 // ---------------------------------------------------------------------------
-// QLMED-DATA-007
+// QLMED-DATA-007 · REAUD-DATA-014 · REAUD-TEST-001
 // ---------------------------------------------------------------------------
 
 /**
@@ -163,6 +163,59 @@ function routeInvoiceFindMany(nfeIds: string[], xmlById: Record<string, string |
   };
 }
 
+/** O filtro `itemCount` que a rota passa ao Prisma, aplicado a uma linha. */
+function matchesItemCount(value: number | null, filter: unknown): boolean {
+  if (filter === undefined) return true;
+  if (typeof filter === 'number') return value === filter;
+  if (filter && typeof filter === 'object' && 'not' in filter) {
+    return value !== (filter as { not: unknown }).not;
+  }
+  throw new Error(`filtro itemCount sem suporte no store: ${JSON.stringify(filter)}`);
+}
+
+/**
+ * REAUD-TEST-001: a versão anterior deste bloco mockava `taxTotalsCount` com o
+ * número que o teste queria e `extractAllTaxData` nunca rejeitava, portanto
+ * `remaining` era aritmética sobre mocks, não consequência da escrita.
+ *
+ * Aqui invoice_tax_totals é um Map (invoiceId → item_count): o que
+ * `upsertTaxTotals` grava é o que `findMany`/`count` lêem, com o filtro
+ * `itemCount` que a rota passa. `remaining` passa a ser medido.
+ */
+function memoryTaxTotals(
+  nfeIds: string[],
+  xmlById: Record<string, string | null>,
+  seed: Record<string, number | null> = {},
+) {
+  const rows = new Map<string, number | null>(Object.entries(seed));
+  mocks.invoiceFindMany.mockImplementation(routeInvoiceFindMany(nfeIds, xmlById));
+  mocks.invoiceCount.mockResolvedValue(nfeIds.length);
+  mocks.upsertTaxTotals.mockImplementation(
+    async (data: { invoiceId: string; itemCount: number }) => {
+      rows.set(data.invoiceId, data.itemCount);
+    },
+  );
+  mocks.taxTotalsFindMany.mockImplementation(
+    async (args: { where: { invoiceId: { in: string[] }; itemCount?: unknown } }) =>
+      [...rows]
+        .filter(
+          ([id, value]) =>
+            args.where.invoiceId.in.includes(id) && matchesItemCount(value, args.where.itemCount),
+        )
+        .map(([invoiceId]) => ({ invoiceId })),
+  );
+  mocks.taxTotalsCount.mockImplementation(
+    async (args: { where: { itemCount?: unknown } }) =>
+      [...rows.values()].filter((value) => matchesItemCount(value, args.where.itemCount)).length,
+  );
+  return rows;
+}
+
+async function callBackfill() {
+  const res = await backfillTax(backfillRequest());
+  return res.json();
+}
+
 describe('QLMED-DATA-007 — o remaining do backfill considera cobertura de itens', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -171,72 +224,72 @@ describe('QLMED-DATA-007 — o remaining do backfill considera cobertura de iten
     mocks.itemTaxFindMany.mockResolvedValue([]);
     mocks.productRegistryFindMany.mockResolvedValue([]);
     mocks.extractAllTaxData.mockResolvedValue({ totals: { vbc: 1 }, items: [{ itemNumber: 1 }] });
-    mocks.upsertTaxTotals.mockResolvedValue(undefined);
     mocks.upsertItemTaxes.mockResolvedValue(undefined);
   });
 
-  it('nota com totais e sem itens medidos volta ao lote e conta em remaining', async () => {
-    // 3 NF-e. Uma já foi medida (item_count preenchido); as outras duas têm
-    // linha de totais mas item_count NULL — o defeito antigo as dava por prontas.
-    mocks.invoiceFindMany.mockImplementation(
-      routeInvoiceFindMany(['inv-1', 'inv-2', 'inv-3'], {
-        'inv-2': '<xml/>',
-        'inv-3': '<xml/>',
-      }),
-    );
-    mocks.taxTotalsFindMany.mockResolvedValue([{ invoiceId: 'inv-1' }]);
-    mocks.invoiceCount.mockResolvedValue(3);
-    // Depois desta passagem só inv-1 continua medida no mock de contagem.
-    mocks.taxTotalsCount.mockImplementation(async (args: { where?: { itemCount?: unknown } }) =>
-      JSON.stringify(args.where?.itemCount) === '{"not":null}' ? 1 : 0,
+  it('linha antiga com item_count NULL volta ao lote exatamente uma vez', async () => {
+    // 3 NF-e. inv-1 já medida; inv-2 e inv-3 têm linha de totais com
+    // item_count NULL — o defeito antigo as dava por prontas.
+    const rows = memoryTaxTotals(
+      ['inv-1', 'inv-2', 'inv-3'],
+      { 'inv-2': '<xml/>', 'inv-3': '<xml/>' },
+      { 'inv-1': 1, 'inv-2': null, 'inv-3': null },
     );
 
-    const res = await backfillTax(backfillRequest());
-    const body = await res.json();
+    const first = await callBackfill();
 
     // O filtro de seleção é por cobertura medida, não por "tem linha de totais".
     expect(mocks.taxTotalsFindMany.mock.calls[0][0].where.itemCount).toEqual({ not: null });
-    expect(body.processed).toBe(2);
-    expect(body.remaining).toBe(2);
-    expect(body.message).toContain('remaining');
+    expect(first.processed).toBe(2);
+    expect(rows.get('inv-2')).toBe(1);
+    expect(rows.get('inv-3')).toBe(1);
+    expect(first.remaining).toBe(0);
+
+    const second = await callBackfill();
+    expect(second.processed).toBe(0);
+    expect(second.remaining).toBe(0);
+    expect(second.message).toBe('All invoices already have tax data');
+  });
+
+  it('lote cheio: a 1ª chamada deixa remaining medido e pede continuação; a 2ª fecha', async () => {
+    // BATCH_SIZE é 200. Com 201 NF-e a primeira chamada tem de deixar 1 e
+    // dizê-lo; a segunda apanha a que sobrou.
+    const ids = Array.from({ length: 201 }, (_, i) => `inv-${i}`);
+    memoryTaxTotals(ids, Object.fromEntries(ids.map((id) => [id, '<xml/>'])));
+
+    const first = await callBackfill();
+    expect(first.processed).toBe(200);
+    expect(first.remaining).toBe(1);
+    expect(first.message).toContain('remaining');
+
+    const second = await callBackfill();
+    expect(second.processed).toBe(1);
+    expect(second.remaining).toBe(0);
   });
 
   it('grava item_count em toda nota processada, para o laço do dashboard terminar', async () => {
-    mocks.invoiceFindMany.mockImplementation(
-      routeInvoiceFindMany(['inv-1'], { 'inv-1': '<xml/>' }),
-    );
-    mocks.taxTotalsFindMany.mockResolvedValue([]);
-    mocks.invoiceCount.mockResolvedValue(1);
-    mocks.taxTotalsCount.mockResolvedValue(1);
+    const rows = memoryTaxTotals(['inv-1'], { 'inv-1': '<xml/>' });
     mocks.extractAllTaxData.mockResolvedValue({
       totals: { vbc: 10 },
       items: [{ itemNumber: 1 }, { itemNumber: 2 }],
     });
 
-    const res = await backfillTax(backfillRequest());
-    const body = await res.json();
+    const body = await callBackfill();
 
     expect(mocks.upsertTaxTotals).toHaveBeenCalledWith(
       expect.objectContaining({ invoiceId: 'inv-1', itemCount: 2 }),
     );
+    expect(rows.get('inv-1')).toBe(2);
     expect(body.remaining).toBe(0);
   });
 
   it('XML sem item nenhum é medido como item_count 0 e sai de remaining', async () => {
     // É o caso que faria `while (remaining > 0)` girar para sempre se remaining
     // fosse "notas sem linha em invoice_item_tax".
-    mocks.invoiceFindMany.mockImplementation(
-      routeInvoiceFindMany(['inv-1'], { 'inv-1': '<xml/>' }),
-    );
-    mocks.taxTotalsFindMany.mockResolvedValue([]);
-    mocks.invoiceCount.mockResolvedValue(1);
-    mocks.taxTotalsCount.mockImplementation(async (args: { where?: { itemCount?: unknown } }) =>
-      JSON.stringify(args.where?.itemCount) === '{"not":null}' ? 1 : 1,
-    );
+    const rows = memoryTaxTotals(['inv-1'], { 'inv-1': '<xml/>' });
     mocks.extractAllTaxData.mockResolvedValue({ totals: null, items: [] });
 
-    const res = await backfillTax(backfillRequest());
-    const body = await res.json();
+    const first = await callBackfill();
 
     // Totais gravados mesmo sem ICMSTot: é a marca de "o backfill olhou".
     expect(mocks.upsertTaxTotals).toHaveBeenCalledWith(
@@ -245,9 +298,58 @@ describe('QLMED-DATA-007 — o remaining do backfill considera cobertura de iten
     // E os itens são reescritos mesmo com lista vazia, o que limpa linhas
     // obsoletas de uma passagem anterior.
     expect(mocks.upsertItemTaxes).toHaveBeenCalledWith('inv-1', COMPANY.id, []);
-    expect(body.remaining).toBe(0);
+    expect(rows.get('inv-1')).toBe(0);
+    expect(first.remaining).toBe(0);
     // A cobertura incompleta aparece na resposta em vez de sumir no "Done!".
-    expect(body.withoutItems).toBe(1);
-    expect(body.message).toContain('without extractable items');
+    expect(first.withoutItems).toBe(1);
+    expect(first.message).toContain('without extractable items');
+
+    const second = await callBackfill();
+    expect(second.processed).toBe(0);
+    expect(second.remaining).toBe(0);
+  });
+
+  // REAUD-DATA-014: os dois caminhos em que a rota antiga não gravava nada e
+  // a nota voltava a todos os lotes seguintes — `remaining` medido em oito
+  // chamadas seguidas dava [1,1,1,1,1,1,1,1].
+
+  it('REAUD-DATA-014: XML que não parseia ganha item_count -1 e não volta ao lote', async () => {
+    const rows = memoryTaxTotals(['inv-1'], { 'inv-1': '<nfeProc><!-- truncado' });
+    mocks.extractAllTaxData.mockRejectedValue(new Error('XML truncado'));
+
+    const first = await callBackfill();
+
+    expect(mocks.extractAllTaxData).toHaveBeenCalledTimes(1);
+    expect(first.processed).toBe(0);
+    expect(first.errors).toBe(1);
+    // A marca de "olhei e não consegui" é gravada fora do try que parseia.
+    expect(rows.get('inv-1')).toBe(-1);
+    expect(mocks.upsertItemTaxes).toHaveBeenCalledWith('inv-1', COMPANY.id, []);
+    expect(first.remaining).toBe(0);
+
+    const second = await callBackfill();
+    // Não foi reselecionada: nem parse nem escrita de novo.
+    expect(mocks.extractAllTaxData).toHaveBeenCalledTimes(1);
+    expect(mocks.upsertTaxTotals).toHaveBeenCalledTimes(1);
+    expect(second.processed).toBe(0);
+    expect(second.errors).toBe(0);
+    expect(second.remaining).toBe(0);
+  });
+
+  it('REAUD-DATA-014: xmlContent vazio ganha item_count -1 e conta como erro, não como processada', async () => {
+    const rows = memoryTaxTotals(['inv-1'], { 'inv-1': null });
+
+    const first = await callBackfill();
+
+    expect(mocks.extractAllTaxData).not.toHaveBeenCalled();
+    expect(first.processed).toBe(0);
+    expect(first.errors).toBe(1);
+    expect(rows.get('inv-1')).toBe(-1);
+    expect(first.remaining).toBe(0);
+
+    const second = await callBackfill();
+    expect(mocks.upsertTaxTotals).toHaveBeenCalledTimes(1);
+    expect(second.processed).toBe(0);
+    expect(second.remaining).toBe(0);
   });
 });

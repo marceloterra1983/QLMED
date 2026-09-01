@@ -10,6 +10,16 @@ const log = createLogger('invoices/backfill-tax');
 
 const BATCH_SIZE = 200;
 
+/**
+ * REAUD-DATA-014: `item_count` da nota cujo XML não dá para ler (truncado,
+ * `<!DOCTYPE>`, >10 MB, profundidade >100, ou `xmlContent` vazio). Não é NULL
+ * (por medir) nem 0 (medida, sem itens): é "olhei e não consegui". Conta como
+ * coberta em `remaining` (`itemCount: { not: null }`), por isso a nota sai do
+ * lote em vez de voltar a cada chamada. Para reprocessar depois de corrigir o
+ * parser: `UPDATE invoice_tax_totals SET item_count = NULL WHERE item_count = -1`.
+ */
+const UNREADABLE_ITEM_COUNT = -1;
+
 export async function POST(req: NextRequest) {
   let userId: string;
   try {
@@ -57,6 +67,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       processed: 0,
+      errors: 0,
+      remaining: 0,
       message: 'All invoices already have tax data',
     });
   }
@@ -73,12 +85,21 @@ export async function POST(req: NextRequest) {
     const chunk = fullInvoices.slice(i, i + CHUNK_SIZE);
     const results = await Promise.allSettled(
       chunk.map(async (full) => {
-        if (!full.xmlContent) return;
-        const { totals, items } = await extractAllTaxData(full.xmlContent);
+        let extracted: Awaited<ReturnType<typeof extractAllTaxData>> | null = null;
+        try {
+          if (!full.xmlContent) throw new Error('xmlContent vazio');
+          extracted = await extractAllTaxData(full.xmlContent);
+        } catch (err) {
+          log.error({ err, invoiceId: full.id }, 'backfill-tax: XML ilegível');
+        }
+        const totals = extracted?.totals ?? null;
+        const items = extracted?.items ?? [];
         // A linha de totais é gravada mesmo quando o XML não tem ICMSTot (CT-e ou
-        // NFS-e classificada como NFE, XML truncado). Ela é a marca de "o backfill
-        // olhou esta nota": sem ela, `remaining` nunca cai e o laço
-        // `while (remaining > 0)` do dashboard nunca termina.
+        // NFS-e classificada como NFE) e — REAUD-DATA-014 — mesmo quando o XML
+        // não parseia ou está vazio. Ela é a marca de "o backfill olhou esta
+        // nota": sem ela a nota fica com item_count NULL, entra em todos os
+        // lotes seguintes e o laço `while (remaining > 0)` do dashboard nunca
+        // termina. Por isso a escrita fica FORA do try que parseia.
         await upsertTaxTotals({
           invoiceId: full.id,
           companyId: full.companyId,
@@ -94,17 +115,20 @@ export async function POST(req: NextRequest) {
           vtottrib: totals?.vtottrib ?? null,
           vfcp: totals?.vfcp ?? null,
           vicmsSt: totals?.vicmsSt ?? null,
-          itemCount: items.length,
+          itemCount: extracted ? items.length : UNREADABLE_ITEM_COUNT,
         });
         // Incondicional: com zero itens ela limpa linhas obsoletas de uma
         // passagem anterior, o que o `if (items.length > 0)` deixava para trás.
         await upsertItemTaxes(full.id, full.companyId, items);
+        return extracted !== null;
       }),
     );
     for (const r of results) {
-      if (r.status === 'fulfilled') processed++;
+      // Ilegível fica gravada (não volta ao lote) mas conta como erro, não
+      // como processada — antes o xmlContent vazio contava como `processed`.
+      if (r.status === 'fulfilled' && r.value) processed++;
       else {
-        log.error({ err: r.reason }, 'backfill-tax error');
+        if (r.status === 'rejected') log.error({ err: r.reason }, 'backfill-tax error');
         errors++;
       }
     }
