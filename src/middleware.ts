@@ -69,6 +69,16 @@ export function allowsRouteLevelApiKeyAuth(pathname: string): boolean {
   return false;
 }
 
+/** Nomes de cookie que indicam sessão de browser (não worker). */
+const SESSION_COOKIE_NAMES = [
+  'next-auth.session-token',
+  '__Secure-next-auth.session-token',
+];
+
+function hasSessionCookie(req: NextRequest): boolean {
+  return SESSION_COOKIE_NAMES.some((name) => Boolean(req.cookies.get(name)?.value));
+}
+
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
   '__Secure-next-auth.session-token',
@@ -194,7 +204,12 @@ export async function middleware(req: NextRequest) {
   // have route-level guards, and strips any spoofed validation marker.
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
-    if (apiKey && allowsRouteLevelApiKeyAuth(req.nextUrl.pathname)) {
+    // A passagem é para WORKER, não para browser. Sem esta condição, uma sessão
+    // válida bastava acrescentar `x-api-key: qualquer-lixo` para saltar o
+    // `canAccessApi` inteiro: o `return` acontece antes do `getToken()`, e a
+    // rota cai no cookie pelo `requireAuth`. Um header escolhido pelo cliente
+    // desligava a ACL — anulava AUTH-005, -013 e -014 na prática.
+    if (apiKey && !hasSessionCookie(req) && allowsRouteLevelApiKeyAuth(req.nextUrl.pathname)) {
       const requestHeaders = new Headers(req.headers);
       requestHeaders.delete('x-api-key-validated');
       requestHeaders.delete(API_KEY_REQUEST_PATH_HEADER);

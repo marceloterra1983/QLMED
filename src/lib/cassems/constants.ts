@@ -36,10 +36,13 @@ export function isCassemsWhatsAppEnabled(): boolean {
  */
 export function getCassemsWhatsAppGroupRaw(): string | null {
   return (
-    process.env.CASSEMS_WHATSAPP_GROUP_JID
-    ?? process.env.NOTIFICATION_WHATSAPP_GROUP
-    ?? process.env.QLMED_WHATSAPP_GROUP_JID
-    ?? null
+    // Sem fallback para os grupos partilhados, de propósito. Os dois que
+    // estavam aqui — NOTIFICATION_WHATSAPP_GROUP e QLMED_WHATSAPP_GROUP_JID —
+    // são o grupo FISCAL. Com a variável própria ausente e o canal ligado, o
+    // ofício ia para lá com nome do paciente, matrícula, CRM e o PDF clínico
+    // anexo. O comentário acima já dizia "separado do grupo fiscal"; o código
+    // fazia o contrário. Sem destino próprio, o canal fica desligado.
+    process.env.CASSEMS_WHATSAPP_GROUP_JID ?? null
   );
 }
 
