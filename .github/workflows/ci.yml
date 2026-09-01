@@ -210,7 +210,9 @@ jobs:
         run: npm run build
 
       - name: Dependency audit
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          npm run audit:verify:test
+          npm run audit:verify
 
   # Required check name for branch protection on main.
   quality:

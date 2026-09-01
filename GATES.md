@@ -70,3 +70,20 @@ Rodar com o cwd no worktree.
   CHECK: npm run typecheck >/dev/null 2>&1 && npm run lint >/dev/null 2>&1 && echo G10_TSC_LINT_OK
   EXPECT: G10_TSC_LINT_OK
   EVIDENCE: G10_TSC_LINT_OK
+
+- [x] G11: Dispensa do audit é nominal — só o GHSA-3f6p-5ww8-9rcr do mysql2,
+  com motivo e validade; qualquer outro high/critical continua reprovando.
+  CHECK: npm run audit:verify --silent
+  EXPECT: /GHSA-3f6p-5ww8-9rcr/
+  EVIDENCE: Dispensado até 2026-12-01: GHSA-3f6p-5ww8-9rcr (mysql2) | Dependency audit OK
+
+- [x] G12: Controlo positivo do portão de dependências — sem dispensa, com
+  dispensa vencida e com dispensa morta, ele reprova.
+  CHECK: bash scripts/test-dependency-audit.sh
+  EXPECT: /OK \(4 casos\)/
+  EVIDENCE: test-dependency-audit: OK (4 casos)
+
+- [x] G13: O guard de hardening do CI continua passando com o step trocado.
+  CHECK: bash scripts/verify-ci-hardening.sh && bash scripts/test-ci-hardening.sh >/dev/null && echo G13_HARDENING_OK
+  EXPECT: G13_HARDENING_OK
+  EVIDENCE: CI hardening policy OK | G13_HARDENING_OK
