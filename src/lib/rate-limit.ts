@@ -79,8 +79,18 @@ export function getRateLimitHeaders(remaining: number, resetAt: number): Record<
 
 export const RATE_LIMITS = {
   login: { interval: 60_000, maxRequests: 5 },
-  loginGlobal: { interval: 60_000, maxRequests: 120 },
+  // REAUD-B-16: a senha é a identidade (ADR-0012), então cada tentativa faz
+  // `bcrypt.compare` contra TODOS os utilizadores antes de qualquer bloqueio.
+  // Medido: 185 ms por compare a custo 12 (bcryptjs, JS puro, na thread
+  // principal). Teto de CPU por minuto = N × maxRequests × 0,185 s. Com 120
+  // e 10 utilizadores eram 222 s de CPU por minuto — 3,7 threads que o Node
+  // não tem. Com 20, 10 utilizadores custam 37 s (62% da thread) e a app só
+  // satura a partir de ~16 utilizadores. O middleware devolve 429 antes de o
+  // `authorize` correr, então o laço de bcrypt nunca arranca acima do teto.
+  loginGlobal: { interval: 60_000, maxRequests: 20 },
   loginAccount: { interval: 15 * 60_000, maxRequests: 10 },
   upload: { interval: 60_000, maxRequests: 10 },
   webhook: { interval: 60_000, maxRequests: 60 },
+  // REAUD-B-15: link público de notificação, fora do matcher do middleware.
+  notificationClick: { interval: 60_000, maxRequests: 30 },
 } as const satisfies Record<string, RateLimitConfig>;

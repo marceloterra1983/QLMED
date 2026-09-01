@@ -226,6 +226,35 @@ describe('NextAuth regressions', () => {
     expect(result).toEqual({});
     expect(result).not.toMatchObject({ tokenVersion: 9 });
   });
+
+  // REAUD-B-17: com o banco em baixo, o catch só logava e devolvia o token
+  // INALTERADO — papel, estado e allowedPages velhos continuavam válidos nas
+  // páginas do painel, enquanto as rotas de API já fechavam (requireAuth
+  // propaga). Assimetria página/API; agora fecha dos dois lados.
+  it('fails closed when the DB lookup throws: the token comes back without role', async () => {
+    mocks.userFindUnique.mockRejectedValueOnce(new Error('connection refused'));
+
+    const jwtCallback = authOptions.callbacks?.jwt;
+    const result = await jwtCallback!({
+      token: {
+        id: 'user-1',
+        role: 'admin',
+        status: 'active',
+        allowedPages: ['/sistema/usuarios'],
+        tokenVersion: 2,
+      },
+      user: undefined,
+      account: null,
+      profile: undefined,
+      trigger: undefined,
+      isNewUser: false,
+      session: undefined,
+    } as never);
+
+    expect(mocks.userFindUnique).toHaveBeenCalledTimes(1);
+    expect(result).not.toHaveProperty('role');
+    expect(result).toEqual({});
+  });
 });
 
 function authorize(credentials: Record<string, string> | undefined) {
