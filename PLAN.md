@@ -47,6 +47,11 @@ cobertura vira gate meu na integração.
 - 2026-09-01: PR #249 aberto (item 1). CI verde exceto `Dependency audit`.
 - 2026-09-01: dispensa nominal do GHSA-3f6p-5ww8-9rcr commitada; portão de
   dependências passa a ser `scripts/verify-dependency-audit.mjs`.
+- 2026-09-01 20:36Z: **PR #249 mesclado** em `main` como `5971adc`. CI toda
+  verde, incluindo "Replay and verify migration history" (a migração aplicou
+  contra Postgres real) e o portão novo de dependências. Item 1 fechado.
+- 2026-09-01: 8 folhas despachadas em paralelo, cada uma no seu worktree,
+  a partir de `fix/nfe-emissao-atomica` (que já contém o item 1).
 
 ## Findings deliberadamente fora das folhas
 
@@ -61,3 +66,35 @@ cobertura vira gate meu na integração.
 | INFO-003 | Graphify stale: regenerar é operação, não código. |
 
 Cobertura: 72 de 77 atribuídos (5 do item 1 já fechados no PR #249) + 5 acima.
+
+## Erro meu no fan-out, e a correção
+
+Os worktrees dos agentes saíram de `b177b07` **sem** `PLAN.md` nem
+`specs/leaf-briefs/`, porque o harness cria o worktree a partir do repo em
+`/home/marce/qlmed/app`, não da minha branch. As 8 folhas começaram a
+trabalhar só com o que eu tinha inlinado no prompt.
+
+Corrigido por mensagem: cada folha recebeu o seu brief integral. As duas que
+já tinham terminado (L3 e L5) foram retomadas com os findings que lhes
+faltavam. Nenhuma inventou finding — as duas declararam explicitamente o que
+não conseguiam verificar, que é o comportamento certo.
+
+## Correções à própria auditoria, vindas das folhas
+
+| Origem | O que a auditoria dizia | O que é verdade |
+|---|---|---|
+| L5 | FILE-003: `tesseract`/`pdftoppm` sem `-l` | O `-l` **já existia** em `src/lib/cassems/extract-pdf-text.ts:47` em b177b07. A sub-alegação não se sustenta; o resto do finding (cap de bytes, deadline partilhado) sustenta-se. |
+
+## Achados novos, fora dos 77
+
+| Origem | Achado |
+|---|---|
+| L3 | `RECEITA_NFSE_VERIFY_SSL=false` e `SEFAZ_VERIFY_SSL=false` desligam a verificação de TLS por variável de ambiente (`receita-nfse-sync.ts:123`, `ssl-verify.ts:14`). Não está nos 77. Vai para a re-auditoria. |
+
+## Consequências de implantação a relatar ao dono
+
+- **`N8N_WEBHOOK_SECRET` passa de opcional a obrigatório** (L3, INT-001). Sem
+  ele o webhook devolve 401 em toda chamada. Se o n8n hoje chama sem assinar,
+  isto quebra a integração até o segredo estar configurado dos dois lados.
+- `MAX_XLSX_BYTES` = 15 MiB (L5) vira teto rígido para planilhas E509
+  legítimas. Se as reais forem maiores, o número tem de subir.
