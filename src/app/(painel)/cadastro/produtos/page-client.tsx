@@ -457,10 +457,9 @@ export default function ProdutosPage() {
           <span className="text-sm font-semibold">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</span>
           <div className="w-px h-5 bg-slate-600" />
           {canWrite && (
-            <button onClick={() => setBulkEditOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-colors">
-              <span className="material-symbols-outlined text-[16px]">edit</span>
+            <Button onClick={() => setBulkEditOpen(true)} size="sm" icon="edit">
               Editar em massa
-            </button>
+            </Button>
           )}
           <button onClick={() => setSelectedKeys(new Set())} className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
             <span className="material-symbols-outlined text-[16px]">close</span>

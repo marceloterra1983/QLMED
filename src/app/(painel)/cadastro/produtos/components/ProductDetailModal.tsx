@@ -490,10 +490,9 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     </div>
                   ))}
                   {canWrite && (
-                    <button type="button" onClick={() => setDetailRefs([...detailRefs, ''])} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-primary/40 text-primary dark:text-blue-400 hover:bg-primary/5 transition-colors text-xs font-medium">
-                      <span className="material-symbols-outlined text-[13px]">add</span>
+                    <Button onClick={() => setDetailRefs([...detailRefs, ''])} variant="soft" size="sm" icon="add">
                       Adicionar
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

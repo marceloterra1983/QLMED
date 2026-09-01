@@ -440,13 +440,14 @@ export default function UsuariosPage() {
                     <span className="material-symbols-outlined text-[16px]">check</span>
                     Aprovar
                   </button>
-                  <button
+                  <Button
                     onClick={() => setConfirmAction({ user, action: 'reject' })}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                    variant="danger"
+                    size="sm"
+                    icon="close"
                   >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
                     Rejeitar
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -577,13 +578,14 @@ export default function UsuariosPage() {
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       onClick={() => openEdit(user)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-primary dark:text-blue-400 bg-primary/10 hover:bg-primary/20 transition-colors"
+                      variant="soft"
+                      size="sm"
+                      icon="edit"
                     >
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
                       Editar
-                    </button>
+                    </Button>
                     <button
                       onClick={() => openPages(user)}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-violet-600 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"

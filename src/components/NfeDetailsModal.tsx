@@ -695,6 +695,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                aria-pressed={activeTab === tab.id}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
                     ? 'text-primary dark:text-blue-400 border-primary bg-primary/5 dark:bg-primary/10'

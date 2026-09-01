@@ -11,7 +11,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'reac
  * `focus:ring-*` por cima.
  */
 export type ButtonVariant = 'primary' | 'soft' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-primary hover:bg-primary-dark text-white font-bold',
@@ -27,6 +27,11 @@ const VARIANT: Record<ButtonVariant, string> = {
 
 /** Alturas: 44px é o piso de alvo de toque, por isso `lg` no celular. */
 const SIZE: Record<ButtonSize, string> = {
+  // ponytail: 28px fica abaixo do alvo de toque de 44px. É deliberado: são as
+  // ações dentro de linha de tabela densa, que já viviam em ~26px. Crescer
+  // todas para 32px engordaria cada linha da lista. Se a densidade da tabela
+  // for revista, `xs` sai junto.
+  xs: 'h-7 px-2 gap-1 text-xs',
   sm: 'h-8 px-3 gap-1.5 text-sm',
   md: 'h-10 px-4 gap-2 text-sm',
   lg: 'h-11 px-5 gap-2 text-base',
@@ -34,6 +39,7 @@ const SIZE: Record<ButtonSize, string> = {
 
 /** Classe completa do glifo: px cru aqui dimensiona ícone, não texto. */
 const ICON_SIZE: Record<ButtonSize, string> = {
+  xs: 'material-symbols-outlined text-[14px]',
   sm: 'material-symbols-outlined text-[16px]',
   md: 'material-symbols-outlined text-[18px]',
   lg: 'material-symbols-outlined text-[20px]',

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Field from '@/components/ui/Field';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { SortField } from '../types';
 import type { HierOptions } from './product-utils';
@@ -33,10 +34,7 @@ export default function ProductFilters({
   return (
     <MobileFilterWrapper activeFilterCount={[search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter !== 'all' ? lineStatusFilter : ''].filter(Boolean).length} title="Filtros" icon="inventory_2">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
-        <div className="w-full md:flex-1">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-            Buscar por codigo, descricao, NCM, ANVISA ou fornecedor
-          </label>
+        <Field label="Buscar por codigo, descricao, NCM, ANVISA ou fornecedor" className="w-full md:flex-1">
           <div className="relative">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-500 dark:text-slate-400">search</span>
             <input
@@ -52,10 +50,9 @@ export default function ProductFilters({
               </button>
             )}
           </div>
-        </div>
+        </Field>
         <div className="grid grid-cols-2 gap-3 md:contents">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Linha</label>
+          <Field label="Linha">
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); setSubgroupFilter(''); }}
@@ -64,10 +61,9 @@ export default function ProductFilters({
               <option value="">Todos</option>
               {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-          </div>
+          </Field>
           {typeFilter && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Grupo</label>
+            <Field label="Grupo">
               <select
                 value={subtypeFilter}
                 onChange={(e) => { setSubtypeFilter(e.target.value); setSubgroupFilter(''); }}
@@ -76,13 +72,12 @@ export default function ProductFilters({
                 <option value="">Todos</option>
                 {hierOptions.groupsFor(typeFilter).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
-            </div>
+            </Field>
           )}
           {subtypeFilter && (() => {
             const subgroups = hierOptions.subgroupsFor(typeFilter, subtypeFilter);
             return subgroups.length > 0 ? (
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subgrupo</label>
+              <Field label="Subgrupo">
                 <select
                   value={subgroupFilter}
                   onChange={(e) => setSubgroupFilter(e.target.value)}
@@ -91,11 +86,10 @@ export default function ProductFilters({
                   <option value="">Todos</option>
                   {subgroups.map((s) => <option key={s!} value={s!}>{s}</option>)}
                 </select>
-              </div>
+              </Field>
             ) : null;
           })()}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
+          <Field label="Ordenar por">
             <div className="flex gap-1">
               <select
                 value={sortBy}
@@ -120,14 +114,15 @@ export default function ProductFilters({
                 <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
               </button>
             </div>
-          </div>
+          </Field>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <span id="filtro-status" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Status</span>
+            <div role="group" aria-labelledby="filtro-status" className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               {([['all', 'Todos'], ['active', 'Em Linha'], ['outOfLine', 'Fora de Linha']] as const).map(([val, label]) => (
                 <button
                   key={val}
                   onClick={() => setLineStatusFilter(val)}
+                  aria-pressed={lineStatusFilter === val}
                   className={`px-3 py-2 text-sm font-medium transition-colors ${lineStatusFilter === val ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 >
                   {label}

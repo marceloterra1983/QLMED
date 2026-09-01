@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
@@ -188,14 +189,14 @@ export default function UploadPage() {
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">ou use os botões abaixo para selecionar</p>
             <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-              <button
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!canWrite}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary dark:text-blue-400 rounded-lg text-sm font-bold hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="soft"
+                icon="description"
               >
-                <span className="material-symbols-outlined text-[18px]">description</span>
                 Selecionar Arquivos
-              </button>
+              </Button>
               <button
                 onClick={() => folderInputRef.current?.click()}
                 disabled={!canWrite}

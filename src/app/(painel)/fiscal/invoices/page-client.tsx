@@ -319,7 +319,7 @@ export default function InvoicesPage() {
   };
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -359,13 +359,12 @@ export default function InvoicesPage() {
           <Field label="Data Fim">
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
           </Field>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tipo de NF-e</label>
+          <Field label="Tipo de NF-e">
             <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={FILTER_INPUT_CLS}>
               <option value="">Todos</option>
               {getCfopTagOptions().map((tag) => <option key={tag} value={tag}>{getReceivedTagLabel(tag)}</option>)}
             </select>
-          </div>
+          </Field>
           <div className="flex gap-2">
             <button onClick={() => loadInvoices()} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold transition-all shadow-md shadow-primary/30">
               <span className="material-symbols-outlined text-[20px]">filter_alt</span>

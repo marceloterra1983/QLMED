@@ -58,6 +58,18 @@ caso botao-cru fail \
 caso botao-perigo-cru fail \
   'export const A = () => <a className="px-4 py-2 bg-red-600 text-white rounded-lg">Excluir</a>;'
 
+caso botao-superficie-em-const fail \
+  'const cls = "px-4 py-2.5 bg-primary text-white rounded-lg";
+export const A = () => <button className={cls}>Salvar</button>;'
+
+caso botao-superficie-em-ternario fail \
+  'const isDanger = true;
+const confirmCls = isDanger ? "bg-red-600 text-white" : "bg-primary text-white";
+export const A = () => <button className={`flex-1 px-4 py-2.5 ${confirmCls}`}>Confirmar</button>;'
+
+caso botao-escondido-atras-de-arrow fail \
+  'export const A = () => <button onClick={() => salvar()} className="px-4 py-2.5 bg-primary text-white rounded-lg">Salvar</button>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -69,6 +81,8 @@ export const A = () => (
     <span className={bgMap["text-primary"]}>d</span>
     <button className="p-1.5 rounded-md hover:bg-primary/10" aria-label="Ver"><span className="material-symbols-outlined text-[18px]">search</span></button>
     <button role="switch" aria-checked="false" aria-label="Avisar" className="w-12 h-6 rounded-full bg-primary">x</button>
+    <button onClick={() => ir(2)} aria-pressed={true} className="px-3 py-1 rounded-md bg-primary text-white">2026</button>
+    <button onClick={() => sair()} className="px-3 py-2 rounded-lg text-slate-500 hover:bg-primary/10">Trocar conta</button>
   </>
 );'
 
@@ -77,4 +91,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 8 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 11 violações reprovadas, fixture limpo aprovado"

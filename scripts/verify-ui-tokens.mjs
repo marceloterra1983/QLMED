@@ -124,23 +124,81 @@ for (const file of files) {
 // desabilitado; `components/ui/Button.tsx` é a única fonte agora.
 // Fora do alvo: item de navegação, ação só-ícone de linha, item de menu e
 // controles com papel próprio (`role="switch"`, cabeçalho de acordeão).
-const BOTAO_ABRE = /<(button|Link|a)\b([^>]*?)>/gs;
-const SUPERFICIE = /\bbg-(primary|red-600|red-500)\b/;
+const BOTAO_ABRE = /<(button|Link|a)\b/g;
+
+/**
+ * Atributos da tag, do nome até o `>` que a fecha, contando chaves.
+ * `[^>]*?>` truncava em qualquer `=>` de arrow function — e um
+ * `onClick={() => ...}` antes da className escondia o botão inteiro da regra.
+ */
+function atributosDe(src, apos) {
+  let chaves = 0;
+  for (let i = apos; i < src.length && i < apos + 4000; i++) {
+    const c = src[i];
+    if (c === '{') chaves++;
+    else if (c === '}') chaves--;
+    else if (c === '>' && chaves === 0) return { attrs: src.slice(apos, i), fim: i + 1 };
+  }
+  return null;
+}
+// Superfície em REPOUSO, sem prefixo de variante: `hover:bg-primary/10` é
+// afordância de passagem do mouse, não fundo de botão — contá-la fazia a regra
+// acusar os atalhos da barra lateral.
+const SUPERFICIE = /(?<![-\w:])bg-(primary|red-600|red-500)\b/;
 const classeDe = (attrs) => {
   const m = attrs.match(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{([^}]*)\})/s);
   return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
 };
 
+/**
+ * Ligações locais de classe: `const X = '…'` e `const X = cond ? '…' : '…'`.
+ * Sem isto a regra lê só o literal da className e uma superfície montada numa
+ * variável passa — foi assim que o `ConfirmDialog` escapou na etapa 2.
+ * Escopo deliberado: um ficheiro, um nível, sem seguir import. Resolver mais
+ * exigiria um analisador de verdade, e o retorno não paga.
+ */
+function ligacoesDe(src) {
+  const mapa = new Map();
+  const SIMPLES = /\bconst\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(['"`])([^'"`\n]*)\2/g;
+  for (const m of src.matchAll(SIMPLES)) mapa.set(m[1], [m[3]]);
+  const TERNARIO = /\bconst\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*[^;]*?\?\s*(['"`])([^'"`]*)\2\s*:\s*(['"`])([^'"`]*)\4/gs;
+  for (const m of src.matchAll(TERNARIO)) mapa.set(m[1], [m[3], m[5]]);
+  return mapa;
+}
+
+/** Troca `${ident}` pelo que a ligação pode valer; o desconhecido some. */
+function expandir(expr, ligacoes) {
+  let saida = expr;
+  for (let volta = 0; volta < 2; volta++) {
+    saida = saida.replace(/\$\{\s*([A-Za-z_$][\w$]*)\s*\}/g, (m, nome) =>
+      ligacoes.has(nome) ? ' ' + ligacoes.get(nome).join(' ') + ' ' : m,
+    );
+    saida = saida.replace(/\b([A-Za-z_$][\w$]*)\b/g, (m, nome) =>
+      ligacoes.has(nome) && !m.includes('-') ? ligacoes.get(nome).join(' ') : m,
+    );
+  }
+  return saida;
+}
+
 for (const file of files) {
   if (!file.endsWith('.tsx')) continue;
   if (file.endsWith('components/ui/Button.tsx')) continue;
   const src = semComentarios(readFileSync(file, 'utf8'));
+  const ligacoes = ligacoesDe(src);
   for (const m of src.matchAll(BOTAO_ABRE)) {
-    const [raw, tagName, attrs] = m;
-    const c = classeDe(attrs);
+    const tagName = m[1];
+    const lido = atributosDe(src, m.index + m[0].length);
+    if (!lido) continue;
+    const { attrs, fim: fimDaTag } = lido;
+    if (attrs.trimEnd().endsWith('/')) continue; // auto-fechada: sem rótulo
+    const c = expandir(classeDe(attrs), ligacoes);
     if (!SUPERFICIE.test(c)) continue;
     if (/role="(switch|tab|menuitem)"/.test(attrs)) continue;
-    const resto = src.slice(m.index + raw.length);
+    // Controle de seleção (aba, segmentado, paginação, navegação de ano): tem
+    // estado, não ação. A marcação semântica é o que o torna legível sem cor —
+    // é ela que compra a isenção, não o formato do botão.
+    if (/aria-(pressed|current|selected)=/.test(attrs)) continue;
+    const resto = src.slice(fimDaTag);
     const fim = resto.indexOf(`</${tagName}>`);
     if (fim < 0 || fim > 900) continue;
     const corpo = resto.slice(0, fim);

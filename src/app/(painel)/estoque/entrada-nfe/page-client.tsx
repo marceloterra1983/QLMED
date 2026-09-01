@@ -473,7 +473,7 @@ export default function EntradaNfePage() {
   const yearMonths = useMemo(() => selectedYear !== null ? buildYearMonths(invoices) : [], [invoices, selectedYear]);
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -963,15 +963,14 @@ export default function EntradaNfePage() {
           <Field label="Fornecedor / Número" className="lg:col-span-2">
             <input type="text" placeholder="ex: LABCOR, 38841..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </Field>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+          <Field label="Status">
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_INPUT_CLS}>
               <option value="">Todas</option>
               <option value="pending">Pendentes</option>
               <option value="partial">Parciais</option>
               <option value="registered">Registradas</option>
             </select>
-          </div>
+          </Field>
           <div className="flex gap-2 items-end">
             <Field label="Data Início" className="flex-1">
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />

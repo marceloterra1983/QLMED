@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
 import {
@@ -219,13 +220,14 @@ export default function FinanceiroTable({
                             {isOverdue && (
                               <span className="text-xs text-red-500 font-medium">{dup.diasAtraso}d atraso</span>
                             )}
-                            <button
+                            <Button
                               onClick={(e) => { e.stopPropagation(); onOpenDetails(dup); }}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="search"
                             >
-                              <span className="material-symbols-outlined text-[14px]">search</span>
                               Detalhes
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>

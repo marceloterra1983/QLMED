@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Field from '@/components/ui/Field';
+import Button from '@/components/ui/Button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -90,24 +92,6 @@ function lineNet(item: Line): number {
   return addMoney(roundMoney(Number(item.qCom || 0) * Number(item.vUnCom || 0)), -roundMoney(Number(item.vDesc || 0)));
 }
 
-function Field({
-  label,
-  children,
-  className = '',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function StepCompleteFooter({
   step,
@@ -859,14 +843,14 @@ export default function EmitirNfePage() {
               >
                 {saving ? 'Salvando…' : 'Salvar rascunho'}
               </button>
-              <button
-                type="button"
-                disabled={sending || pendencias.length > 0}
+              <Button
+                disabled={pendencias.length > 0}
+                loading={sending}
                 onClick={() => setConfirmSend(true)}
-                className="w-full px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-50"
+                block
               >
                 {sending ? 'Enviando…' : 'Transmitir à SEFAZ'}
-              </button>
+              </Button>
             </div>
           )}
         </aside>
