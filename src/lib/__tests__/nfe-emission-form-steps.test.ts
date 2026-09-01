@@ -157,6 +157,9 @@ describe('Nova NF-e: página única e etapas', () => {
     expect(src).toContain("nfeStepPanelClass('complementos')");
     expect(src).toContain('data-nfe-aside-card="totais"');
     expect(src).toContain('data-nfe-aside-card="conferencia"');
+    expect(src).not.toMatch(/10 mais faturados|Somente cliente PJ já presente nas emitidas/);
+    expect(src).toContain('placeholder="Nome ou CNPJ"');
+    expect(src).toContain('data-destinatario-list');
     for (const step of NFE_FORM_STEPS) {
       expect(src).toContain(`nfeStepSectionClass('${step}')`);
     }

@@ -506,7 +506,6 @@ export default function EmitirNfePage() {
           >
               <div className={`space-y-3 p-4 ${nfeStepPanelClass('dados')}`}>
                 <h3 className={`text-sm font-bold ${nfeStepHeadingClass('dados')}`}>Destinatário</h3>
-                <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Sem digitar, vê os 10 mais faturados (6 meses). Para os demais, busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
                   <div className="space-y-1.5">
                     <div className={`flex items-start justify-between gap-3 px-4 py-3 ${nfeStepPanelClass('dados')}`}>
@@ -523,16 +522,29 @@ export default function EmitirNfePage() {
                 ) : (
                   <>
                     <input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Nome ou CNPJ" className={FILTER_INPUT_CLS} />
-                    <ul className={`divide-y divide-blue-200/70 dark:divide-blue-800/60 max-h-48 overflow-auto ${nfeStepPanelClass('dados')}`}>
-                      {customers.map((c) => (
-                        <li key={c.cnpj}>
-                          <button type="button" onClick={() => setDest(c)} className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <span className="font-bold text-slate-900 dark:text-white">{recipientDisplayName(c.name, c.shortName)}</span>
-                            <span className="text-slate-500 ml-2">{formatCnpj(c.cnpj)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    {customers.length > 0 ? (
+                      <ul
+                        data-destinatario-list
+                        className="mt-1 max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
+                      >
+                        {customers.map((c) => (
+                          <li key={c.cnpj} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setDest(c)}
+                              className="w-full px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                            >
+                              <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">
+                                {recipientDisplayName(c.name, c.shortName)}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                                {formatCnpj(c.cnpj)}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </>
                 )}
               </div>
