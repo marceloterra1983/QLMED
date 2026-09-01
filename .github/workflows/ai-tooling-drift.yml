@@ -30,6 +30,8 @@ jobs:
     env:
       # O fetch nativo do Node ignora HTTPS_PROXY; sem isto o runner só vê EAI_AGAIN.
       NODE_USE_ENV_PROXY: "1"
+      # O script abre a issue de drift pela REST API (os runners não têm gh).
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
