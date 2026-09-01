@@ -197,3 +197,22 @@ L2 recusou o FILE-008 alegando que quebraria o leitor do `local-xml-sync`. **A
 alegação é falsa**: `sync-scheduler.ts` só escreve, não lê o layout do store. A
 L5 fez a mudança. Duas folhas chegaram a vereditos opostos sobre o mesmo achado
 e ambas foram dadas por concluídas.
+
+---
+
+# 9. Segunda rodada — os achados abertos, em cinco folhas paralelas
+
+Despachadas a partir de `1ad4007` (base já mesclada com `main`), cada uma em
+ficheiros disjuntos, com gates próprios e controlo positivo obrigatório.
+
+| Folha | Achados | Superfície |
+|---|---|---|
+| R1 | FISCAL-015, TEST-002, DATA-015, FISCAL-016 | `sefaz.ts`, `nfe-cancellation.ts`, migração nova |
+| R2 | DATA-014 (= Codex P1 #3), TEST-001 | `backfill-tax/route.ts`, dashboard `page-client.tsx` |
+| R3 | B-07, B-08 (= Codex P1 #4), B-10, B-11 | `migrate-plaintext-secrets.ts`, `n8n-client.ts`, `backfill-allowed-pages.ts` |
+| R4 | B-06, B-14, B-15, B-16, B-17 | `auth-options.ts`, `health/route.ts`, `/r/[deliveryId]`, `api-route-guards.test.ts` |
+| R5 | gate UI-003, L5/G14c, Codex P2 #5, B-12, B-13, B-18, B-19, SECRET_ARG | compose, `render.ts`, `ssl-verify.ts`, outbox purge, `deploy-manifests.test.ts` |
+
+Os dois P1 do Codex no PR #252 coincidem com REAUD-DATA-014 e REAUD-B-08, que
+a re-auditoria já tinha em aberto. As respostas nas threads saem depois de a
+correção estar na branch, não antes.
