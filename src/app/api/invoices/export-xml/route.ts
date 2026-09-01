@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { InvoiceType, InvoiceDirection } from '@prisma/client';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 import { invoiceExportXmlSchema } from '@/lib/schemas/invoice';
@@ -9,12 +10,16 @@ const VALID_TYPES = new Set<string>(Object.values(InvoiceType));
 const VALID_DIRECTIONS = new Set<string>(Object.values(InvoiceDirection));
 
 export async function POST(request: NextRequest) {
+  let userId: string;
   try {
-    await requireEditor();
+    ({ userId } = await requireEditor());
   } catch (err) {
     if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
     return unauthorizedResponse();
   }
+
+  // Sem companyId o export percorre as notas de TODAS as empresas.
+  const company = await getOrCreateSingleCompany(userId);
 
   const body = await request.json().catch(() => ({}));
   const parsedBody = invoiceExportXmlSchema.safeParse(body);
@@ -29,14 +34,15 @@ export async function POST(request: NextRequest) {
   const since = new Date();
   since.setFullYear(since.getFullYear() - years);
 
-  const totalCount = await prisma.invoice.count({
-    where: {
-      issueDate: { gte: since },
-      type: { in: types },
-      direction: { in: directions },
-      xmlContent: { not: '' },
-    },
-  });
+  const invoiceFilter = {
+    companyId: company.id,
+    issueDate: { gte: since },
+    type: { in: types },
+    direction: { in: directions },
+    xmlContent: { not: '' },
+  };
+
+  const totalCount = await prisma.invoice.count({ where: invoiceFilter });
 
   // Process in background — return immediately with count
   const encoder = new TextEncoder();
@@ -50,12 +56,7 @@ export async function POST(request: NextRequest) {
       try {
         while (true) {
           const invoices = await prisma.invoice.findMany({
-            where: {
-              issueDate: { gte: since },
-              type: { in: types },
-              direction: { in: directions },
-              xmlContent: { not: '' },
-            },
+            where: invoiceFilter,
             select: {
               id: true,
               accessKey: true,

@@ -13,9 +13,10 @@ describe('navigation ACL helpers', () => {
       expect(canAccessPage('admin', ['/fiscal/invoices'], '/sistema/usuarios')).toBe(true);
     });
 
-    it('empty allowedPages grants full access (legacy users)', () => {
-      expect(canAccessPage('viewer', [], '/fiscal/dashboard')).toBe(true);
-      expect(canAccessPage('viewer', undefined, '/fiscal/dashboard')).toBe(true);
+    // AUTH-005: era "utilizador legado ganha tudo". Passou a negar.
+    it('empty allowedPages grants nothing', () => {
+      expect(canAccessPage('viewer', [], '/fiscal/dashboard')).toBe(false);
+      expect(canAccessPage('viewer', undefined, '/fiscal/dashboard')).toBe(false);
     });
 
     it('explicit list restricts a viewer', () => {
@@ -54,8 +55,8 @@ describe('navigation ACL helpers', () => {
       expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/contacts/search')).toBe(false);
     });
 
-    it('empty allowedPages legacy path grants access', () => {
-      expect(canAccessApi('viewer', [], '/api/users')).toBe(true);
+    it('empty allowedPages denies a page-gated API', () => {
+      expect(canAccessApi('viewer', [], '/api/users')).toBe(false);
     });
   });
 

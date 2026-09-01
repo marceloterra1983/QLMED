@@ -204,16 +204,16 @@ export const authOptions: AuthOptions = {
         // login accessLog now written by recordSuccessfulLogin with
         // failedAttempts reset — no duplicate write here.
       }
-      // Always refresh role/status/tokenVersion from DB if stale (>5 min) or
-      // missing valid role / tokenVersion.
-      const validRoles = ['admin', 'editor', 'viewer'];
-      const staleMs = 5 * 60 * 1000;
+      // AUTH-012: revalidar SEMPRE, sem janela de frescura.
+      //
+      // O middleware corre no Edge e não fala com o banco: tudo o que ele
+      // consegue verificar é que `tokenVersion` é um número. Quem compara com o
+      // banco é este callback e o `requireAuth` das rotas. Com a janela de 5 min
+      // que existia aqui, um logout-everywhere (ou uma mudança de papel/estado)
+      // só expulsava a sessão das PÁGINAS do painel até 5 minutos depois — as
+      // rotas de API fechavam na hora, as páginas não.
       const hasTokenVersion = typeof token.tokenVersion === 'number';
-      const needsRefresh = !validRoles.includes(token.role as string)
-        || !token.dbRefreshedAt
-        || (Date.now() - (token.dbRefreshedAt as number)) > staleMs
-        || !hasTokenVersion;
-      if (needsRefresh && token.id) {
+      if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },

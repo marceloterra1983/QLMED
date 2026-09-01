@@ -40,6 +40,7 @@ describe('applyLocalXmlCancellation', () => {
 
   it('marca a nota existente a partir do XML de evento no nome do arquivo', async () => {
     const applied = await applyLocalXmlCancellation(
+      'company-1',
       PROC_EVENTO,
       `/backup/2026_08/${CHAVE}-nfe.xml`,
     );
@@ -49,12 +50,13 @@ describe('applyLocalXmlCancellation', () => {
       where: { accessKey: string; cancelledAt: null };
       data: Record<string, unknown>;
     };
-    expect(arg.where).toEqual({ accessKey: CHAVE, cancelledAt: null });
+    expect(arg.where).toEqual({ companyId: 'company-1', accessKey: CHAVE, cancelledAt: null });
     expect(arg.data).not.toHaveProperty('xmlContent');
   });
 
   it('nao inventa cancelamento em XML autorizado sem evento', async () => {
     const applied = await applyLocalXmlCancellation(
+      'company-1',
       '<?xml version="1.0"?><nfeProc><NFe><infNFe Id="NFe35241012345678000199550010000012341123456789"></infNFe></NFe></nfeProc>',
       `/backup/${CHAVE}-nfe.xml`,
     );

@@ -62,24 +62,14 @@ export async function getTargetCompany(): Promise<TargetCompany | null> {
     return cachedCompany;
   }
 
-  const firstCompany = await prisma.company.findFirst({
-    orderBy: { createdAt: 'asc' },
-    select: { id: true, cnpj: true },
-  });
-
-  if (!firstCompany) {
-    if (!warnedMissingCompany) {
-      warnedMissingCompany = true;
-      log.warn('Nenhuma empresa cadastrada ainda; importacao automatica pausada');
-    }
-    cachedCompany = null;
-    return null;
+  // Sem a empresa canónica a importação PAUSA. O fallback antigo pegava a
+  // empresa mais antiga do banco e gravava XML fiscal alheio nela.
+  if (!warnedMissingCompany) {
+    warnedMissingCompany = true;
+    log.warn({ expectedCnpj: targetCompanyCnpj }, 'Empresa canonica ausente; importacao automatica pausada');
   }
-
-  warnedMissingCompany = false;
-  cachedCompany = firstCompany;
-  log.warn({ expectedCnpj: targetCompanyCnpj, usedCnpj: firstCompany.cnpj }, 'Empresa nao encontrada; usando primeira empresa');
-  return cachedCompany;
+  cachedCompany = null;
+  return null;
 }
 
 export async function getNewestMonthFolder(rootDir: string): Promise<string> {
@@ -218,7 +208,7 @@ async function importXmlFile(filePath: string): Promise<void> {
     const xmlContent = await fs.readFile(absolutePath, 'utf-8');
     const parsed = await parseInvoiceXml(xmlContent);
     if (!parsed) {
-      const cancelled = await applyLocalXmlCancellation(xmlContent, absolutePath);
+      const cancelled = await applyLocalXmlCancellation(company.id, xmlContent, absolutePath);
       if (cancelled) {
         rememberFileFingerprint(absolutePath, fingerprint);
         parseFailureCooldown.delete(absolutePath);

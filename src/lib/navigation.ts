@@ -107,6 +107,8 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   { prefix: '/api/gestao/impcg',   pages: ['/gestao/impcg'] },
   // Relatórios
   { prefix: '/api/reports',   pages: ['/relatorios/valvulas-importadas'] },
+  // Integrações
+  { prefix: '/api/integrations', pages: ['/sistema/automacoes'] },
   // Sistema
   { prefix: '/api/users',      pages: ['/sistema/usuarios'] },
   { prefix: '/api/access-log', pages: ['/sistema/usuarios'] },
@@ -117,14 +119,50 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
 ];
 
 /**
+ * Panel pages that live under a middleware-matched prefix but are NOT their own
+ * entry in PAGE_GROUPS (so they never appear in the sidebar or in the admin's
+ * page picker). Each one is gated by the canonical page that owns its data, so
+ * an unmapped panel route can no longer skip the allowedPages check entirely.
+ */
+const PANEL_PAGE_ALIASES: Record<string, string> = {
+  '/cadastro/anvisa': '/cadastro/produtos',
+  '/sistema/companies': '/sistema/settings',
+};
+
+/**
+ * APIs every ACTIVE session may call regardless of allowedPages: authentication
+ * itself, health, and the caller's own profile. Without the `/api/users/me`
+ * exemption a default-deny ACL would stop users from reading or writing their
+ * own notification preferences and push subscription, because `/api/users` is
+ * gated by the admin-only `/sistema/usuarios` page.
+ *
+ * Everything NOT listed here and NOT in API_PREFIX_TO_PAGES is denied.
+ */
+const UNGATED_API_PREFIXES = [
+  '/api/auth',
+  '/api/health',
+  '/api/users/me',
+];
+
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(prefix + '/');
+}
+
+/** True when the API is reachable by any active session, ignoring allowedPages. */
+export function isUngatedApi(pathname: string): boolean {
+  return UNGATED_API_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
+}
+
+/**
  * Returns the allowed pages for a given API pathname.
- * - Empty array = this API is not page-gated (public auth, webhooks, health).
+ * - Empty array = no mapping. Callers must treat that as DENY, not as
+ *   "ungated": the ungated set is the explicit UNGATED_API_PREFIXES list.
  * - Non-empty = the user must have AT LEAST ONE of these pages in allowedPages.
  */
 export function requiredPagesForApi(pathname: string): string[] {
   for (let i = 0; i < API_PREFIX_TO_PAGES.length; i++) {
     const entry = API_PREFIX_TO_PAGES[i];
-    if (pathname === entry.prefix || pathname.startsWith(entry.prefix + '/')) {
+    if (matchesPrefix(pathname, entry.prefix)) {
       return entry.pages;
     }
   }
@@ -132,9 +170,31 @@ export function requiredPagesForApi(pathname: string): string[] {
 }
 
 /**
+ * Maps a panel request path to the canonical gated page that governs it, or
+ * null when nothing governs it. A null result means DENY for non-admins — the
+ * middleware must not fall through to "no check".
+ */
+export function resolvePanelPagePath(pathname: string): string | null {
+  for (const group of PAGE_GROUPS) {
+    for (const page of group.pages) {
+      if (matchesPrefix(pathname, page.path)) {
+        return page.path;
+      }
+    }
+  }
+  for (const alias of Object.keys(PANEL_PAGE_ALIASES)) {
+    if (matchesPrefix(pathname, alias)) {
+      return PANEL_PAGE_ALIASES[alias];
+    }
+  }
+  return null;
+}
+
+/**
  * Checks whether an authenticated user is allowed to access a given page path.
  * - admin: always allowed (role bypass)
- * - empty allowedPages: legacy users with no explicit list get full access
+ * - empty/absent allowedPages: DENY. An empty list is "nothing granted yet",
+ *   never "everything granted".
  * - otherwise: pagePath must be literally present in allowedPages
  */
 export function canAccessPage(
@@ -143,14 +203,14 @@ export function canAccessPage(
   pagePath: string,
 ): boolean {
   if (role === 'admin') return true;
-  if (!allowedPages || allowedPages.length === 0) return true;
+  if (!allowedPages || allowedPages.length === 0) return false;
   return allowedPages.includes(pagePath);
 }
 
 /**
  * Checks whether an authenticated user is allowed to call a given API pathname.
- * Returns true if the API is not page-gated, OR if the user has any one of the
- * permitted page paths in their allowedPages list.
+ * Default-deny: only the explicit ungated list and an explicit page grant pass.
+ * An API prefix nobody mapped is denied, so a new route cannot ship open.
  */
 export function canAccessApi(
   role: string | undefined,
@@ -158,8 +218,9 @@ export function canAccessApi(
   apiPath: string,
 ): boolean {
   if (role === 'admin') return true;
+  if (isUngatedApi(apiPath)) return true;
   const required = requiredPagesForApi(apiPath);
-  if (required.length === 0) return true;
-  if (!allowedPages || allowedPages.length === 0) return true;
+  if (required.length === 0) return false;
+  if (!allowedPages || allowedPages.length === 0) return false;
   return required.some((p) => allowedPages.includes(p));
 }

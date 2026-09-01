@@ -138,7 +138,7 @@ export async function syncViaSefaz(
           if (doc.tipo === 'evento') {
             // Evento não é documento fiscal: a maioria (ciência, carta de
             // correção) não gera escrita e não pode travar o cursor.
-            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
             continue;
           }
 
@@ -151,7 +151,7 @@ export async function syncViaSefaz(
           if (!parsed) {
             // Último recurso: pode ser um cancelamento reconhecível. Se nem isso
             // gravou nada, o documento foi perdido — segura o cursor.
-            const applied = await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            const applied = await applyNfeCancellation({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
             if (!applied) skipDoc(doc.nsuseq, doc.chave, 'parse_falhou_schema_desconhecido');
             continue;
           }
