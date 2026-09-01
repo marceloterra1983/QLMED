@@ -8,8 +8,11 @@ Base medida antes de qualquer edição (`npm test` em b177b07 + branch limpa):
 `Test Files 94 passed | 3 skipped (97)` / `Tests 725 passed | 4 skipped (729)`.
 Depois: `Test Files 99 passed | 3 skipped (102)` / `Tests 785 passed | 4 skipped (789)`.
 
-Nota: `specs/leaf-briefs/L5-uploads.md` e `PLAN.md` **não existem** neste
-worktree; os gates saem do enunciado da folha, não do brief.
+Nota: o brief chegou depois da primeira passagem (o coordenador despachou sem
+ele). Esta versão está revista contra os locais e linhas exatos do brief. A
+correção maior foi o **FILE-006**, que eu tinha mapeado errado.
+
+Contagem: base b177b07 `94 files / 725 tests` → final `101 files / 810 tests`.
 
 ---
 
@@ -45,8 +48,9 @@ worktree; os gates saem do enunciado da folha, não do brief.
 - [x] G6: zip que declara descompressão muito acima do ficheiro é recusado antes do exceljs
   CHECK: `npx vitest run src/lib/__tests__/xlsx-zip-bomb.test.ts`
   EXPECT: ~51 KiB comprimidos declarando 50 MiB → recusa
-  EVIDENCE: `Tests 8 passed (8)`. Fixture medida: 51.084 bytes comprimidos,
-  52.428.800 declarados (razão ≈ 1028:1).
+  EVIDENCE: `Tests 10 passed (10)`. Fixture medida: 51.084 bytes comprimidos,
+  52.428.800 declarados (razão ≈ 1028:1). Cap ajustado de 15 MiB para **5 MiB**
+  conforme o brief ("cap 2–5 MiB").
 
 - [x] G7: a recusa acontece sem inflar — o heap não sobe
   EXPECT: crescimento de heap < 20 MiB ao rejeitar um bomb de 50 MiB
@@ -64,6 +68,12 @@ worktree; os gates saem do enunciado da folha, não do brief.
 - [x] G10: planilha legítima continua passando
   EVIDENCE: `excel-import-routes.test.ts` → `Tests 3 passed (3)` sem alteração.
 
+- [x] G11a: magic `PK\x03\x04` conferido antes de tudo (pedido do brief)
+  EVIDENCE: `%PDF-1.4` disfarçado de .xlsx → `/assinatura ZIP/`.
+
+- [x] G11b: o bomb é rejeitado em menos de 2s (critério do brief)
+  EVIDENCE: teste mede `Date.now()` à volta da chamada; `< 2000` ms.
+
 - [x] G11: controlo positivo — desligando `assertSafeXlsx`
   EVIDENCE: 5 testes VERMELHOS (`Tests 5 failed | 3 passed (8)`). Restaurado → 8 passed.
 
@@ -72,7 +82,8 @@ worktree; os gates saem do enunciado da folha, não do brief.
 - [x] G12: PDF acima do cap de bytes não chega a ser escrito em disco nem ao poppler
   CHECK: `npx vitest run src/lib/__tests__/pdf-ocr-limits.test.ts`
   EXPECT: buffer > 25 MiB → `''`, `spawnSync`/`mkdtempSync`/`writeFileSync` não chamados
-  EVIDENCE: `Tests 15 passed (15)`; vale para impcg e cassems (`describe.each`).
+  EVIDENCE: `Tests 21 passed (21)`; vale para impcg e cassems (`describe.each`).
+  Cap ajustado de 25 MiB para **10 MiB** conforme o brief.
 
 - [x] G13: contagem de páginas é limitada na origem (`pdftoppm -l N`) e na iteração
   EXPECT: 500 PNGs no diretório → no máximo `MAX_OCR_PAGES + 1` spawns de tesseract
@@ -90,6 +101,20 @@ worktree; os gates saem do enunciado da folha, não do brief.
   `git show b177b07:src/lib/cassems/extract-pdf-text.ts` linha 47 já tinha
   `'-l', 'por'`. Esta sub-alegação do achado não procedia; os testes agora
   travam a regressão.
+
+- [x] G14a: PDF de 9999 páginas aborta SEM chamar tesseract (critério do brief)
+  EXPECT: `tesseractCalls()` vazio e `pdftoppm` nunca chamado
+  EVIDENCE: `pdfinfo` reporta 9999 → `pdf_too_many_pages_ocr_skipped`, retorna
+  `''` e o OCR é abandonado; só o `pdftotext` fica valendo, como o brief pede.
+
+- [x] G14b: magic `%PDF` conferido antes de escrever em disco
+  EVIDENCE: `PK\x03\x04` disfarçado de .pdf → `writeFileSync` e `spawnSync`
+  não são chamados.
+
+- [x] G14c: o buffer do Graph tem teto (local `graph-mail-client.ts:229-234`)
+  EXPECT: anexo acima de `MAX_PDF_BYTES` não vira Buffer
+  EVIDENCE: o tamanho é estimado a partir do comprimento do base64
+  (`length*3/4`), então a recusa acontece **antes** de `Buffer.from` alocar.
 
 - [x] G16: controlo positivo — removendo cap de bytes e cap de páginas do impcg
   EVIDENCE: 3 testes VERMELHOS. Erro exato: `AssertionError: expected 501 to be
@@ -110,6 +135,15 @@ worktree; os gates saem do enunciado da folha, não do brief.
   CHECK: `grep -n safeJoinUnderDir src/lib/local-xml-sync/sync-scheduler.ts`
   EVIDENCE: linhas do laço de XML e do laço de PDF; nome recusado → `continue` + warn.
 
+- [x] G19a: a cópia local (linhas 257-259) também é confinada
+  EVIDENCE: `safeJoinUnderDir(copyTargetDir, ...relativePath.split(sep))`;
+  caminho recusado → `continue` + warn.
+
+- [x] G19b: download do OneDrive tem teto de bytes (`onedrive-graph.ts:65-78`)
+  EXPECT: `Content-Length` acima do teto → recusa sem chamar `arrayBuffer()`
+  EVIDENCE: `Tests 24 passed (24)`; o mock prova `arrayBuffer` não chamado, e
+  o caso chunked (sem header) é recusado depois de medir.
+
 - [x] G20: controlo positivo — voltando ao `path.join` cru
   EVIDENCE: 9 testes VERMELHOS (`Tests 9 failed | 12 passed (21)`). Erro exato:
   `AssertionError: expected '/srv/qlmed/evil.xml' to be '/srv/qlmed/xml_backup/2026_09/evil.xml'`.
@@ -122,7 +156,8 @@ worktree; os gates saem do enunciado da folha, não do brief.
   EVIDENCE: `Tests 8 passed (8)`; `setJavaScriptEnabled(false)` asserido.
 
 - [x] G22: qualquer request de rede é abortado (sem SSRF nem exfiltração)
-  EVIDENCE: `http://169.254.169.254/latest/meta-data/`, `https://evil.example/?leak=nota`
+  EVIDENCE: `http://127.0.0.1/` (o caso exato do brief),
+  `http://169.254.169.254/latest/meta-data/`, `https://evil.example/?leak=nota`
   e `file:///etc/passwd` → `request.abort()`; `data:` → `request.continue()`.
 
 - [x] G23: `setContent` e `pdf()` têm timeout explícito, e a opção do chamador vence
@@ -143,38 +178,86 @@ worktree; os gates saem do enunciado da folha, não do brief.
   `AssertionError: expected "vi.fn()" to be called with arguments: [ false ]`.
   Restaurado → 8 passed.
 
-## FILE-006 — (mapeamento NÃO VERIFICADO: brief ausente)
+## FILE-006 — parseXmlSafe: DOCTYPE por regex após buffer, sem depth cap — FECHADO
 
-- [x] G26: sem o brief, tratei os defeitos da mesma raiz encontrados no
-  varrimento das rotas que aceitam corpo do cliente
-  EVIDENCE: dois fechados —
-  (a) `POST /api/certificate/upload`: o `.pfx` era bufferizado por
-  `request.formData()` e só depois comparado ao cap de 1 MiB; agora o corpo
-  tem teto de 1 MiB + 64 KiB aplicado no stream.
-  (b) `POST /api/webhooks/n8n`: `await req.text()` sem teto **antes** da
-  validação de assinatura; agora 1 MiB no stream → 413.
-  O mapeamento destes para o identificador FILE-006 é **suposição minha**.
+Correção de rumo: o meu primeiro mapeamento (certificate/upload + webhook n8n)
+estava **errado**. Aquilo pertence ao FILE-001 e ficou lá. FILE-006 é o
+`src/lib/safe-xml-parser.ts`.
 
-## FILE-008 — caminho de XML/PDF sem separação por empresa — NÃO FECHADO
+- [x] G20a: o cap passa a ser em BYTES, não em caracteres
+  CHECK: `npx vitest run src/lib/__tests__/xml-depth-limit.test.ts`
+  EXPECT: 6 MiB de `ç` (≈12 MiB em UTF-8) recusado, mesmo com `.length` < 10 MiB
+  EVIDENCE: `Tests 6 passed (6)`; o teste assere `length < 10MiB` e
+  `Buffer.byteLength > 10MiB` antes de esperar a recusa.
 
-- [x] G27: estado real medido
-  CHECK: `grep -n "path.join(XML_BACKUP_DIR\|path.join(PDF_BACKUP_DIR" src/lib/xml-file-store.ts`
-  EVIDENCE: 4 ocorrências (linhas 53, 79, 114, 154), todas
-  `<BACKUP_DIR>/<AAAA_MM>/<ficheiro>`. **Nenhum segmento por empresa.**
-  Confirmado.
+- [x] G20b: limite de profundidade existe e corta antes do sax descer
+  EXPECT: 5.000 níveis → `/profundidade/`; NF-e real (6 níveis) passa
+  EVIDENCE: `getMaxXmlDepth` conta 6 numa NF-e e 30 em `nested(30)`; 5.000
+  níveis são recusados nos dois parsers (`parseXmlSafe` e `NoMerge`).
 
-- [ ] G28: separação por empresa implementada — **NÃO FECHADO**
-  MOTIVO: exige (1) mudar a assinatura de `saveXmlToFile`,
-  `saveIssuedPdfToFile`, `readIssuedPdfFromFile` e `resolveInvoiceXmlContent`
-  em 8 call sites que hoje não têm `companyId` à mão; (2) mudar o layout em
-  disco, no qual a cópia do OneDrive escreve direto
-  (`copyTargetDir/<mês>/<ficheiro>`) e a reconciliação varre; (3) migrar os
-  ficheiros já existentes no volume de produção. É migração de dados, não
-  correção de folha, e não consigo medi-la aqui.
-  Exposição hoje: o produto é mono-empresa (`getOrCreateSingleCompany`,
-  `SINGLE_COMPANY_CNPJ`) e `accessKey` é `@unique` global no schema
-  (`prisma/schema.prisma:293`), então não há colisão entre empresas hoje. O
-  risco é latente, para quando existir a segunda empresa.
+- [x] G20c: DOCTYPE com `file://` não vaza conteúdo
+  EVIDENCE: recusado com `/DOCTYPE/` antes de qualquer parse, nos dois parsers.
+
+- [x] G20d: **ISO-8859-1 não quebrou** (risco residual apontado no brief)
+  EXPECT: XML declarado `encoding="ISO-8859-1"` com acentos parseia igual
+  EVIDENCE: `CIRÚRGICA SÃO JOSÉ LTDA` volta intacto de `parseXmlSafe`. Nada foi
+  re-decodificado: as chamadas já recebem string, e mexer nisso é que partiria
+  o ISO-8859-1.
+
+- [x] G20e: o scanner de profundidade não conta tags dentro de comentário/CDATA
+  EVIDENCE: **o teste apanhou um defeito meu**: a primeira versão saltava só o
+  `<!--` e contava `<b><c>` de dentro do comentário (deu 3, esperado 1).
+  Corrigido saltando o bloco inteiro até `-->` / `]]>` / `?>`.
+
+- [x] G20f: controlo positivo — voltando ao cap por `.length` sem depth
+  EVIDENCE: 2 testes VERMELHOS. Erro exato: `AssertionError: promise resolved
+  "{ a: 'çççç…' }" instead of rejecting`. Restaurado → 6 passed.
+
+## FILE-008 — XML/PDF em path sem companyId — FECHADO (menos a migração)
+
+Separando o que é assinatura de função do que é migração de volume, como o
+coordenador pediu.
+
+- [x] G21: o path contém o companyId (critério de teste do brief)
+  CHECK: `npx vitest run src/lib/__tests__/xml-file-store-company.test.ts`
+  EXPECT: `<BACKUP_DIR>/<companyId>/<AAAA_MM>/<ficheiro>`
+  EVIDENCE: `Tests 7 passed (7)`; caminho medido
+  `.../company-abc/2026_03/<chave>-nfe.xml`.
+
+- [x] G22: duas empresas com a MESMA chave não partilham ficheiro
+  EVIDENCE: conteúdos distintos lidos de volta de cada caminho.
+
+- [x] G23: permissões 0600 e escrita tmp+rename
+  EXPECT: `mode & 0o777 === 0o600`; nenhum `.tmp` sobra
+  EVIDENCE: asserido; diretórios criados com 0700.
+
+- [x] G24: leitura cai no caminho legado, para não perder o que já está gravado
+  EVIDENCE: ficheiro escrito à mão em `<BACKUP_DIR>/<mês>/` é lido; quando os
+  dois existem, o novo (com empresa) vence.
+
+- [x] G25: as 8 chamadas foram convertidas — **todas tinham companyId à mão**
+  EVIDENCE: `nfe-emission/authorize.ts` (`finalizeAuthorized`, o mais
+  importante segundo o brief), `sync-strategies/nsdocs.ts`,
+  `sync-strategies/sefaz.ts`, `receita-nfse-sync.ts`, `original-issued-pdf.ts`
+  (2 chamadas, via `invoice.companyId`) e `api/invoices/export-xml/route.ts`
+  (passei a selecionar `companyId` na query e a usar `inv.companyId`).
+  Nenhuma ficou por converter.
+
+- [x] G26: `companyId` é validado como segmento de caminho, não confiado
+  EVIDENCE: `buildCompanySegment('../../etc')` → `null`, e o save devolve
+  `null` em vez de escrever fora.
+
+- [x] G27: controlo positivo — layout legado e escrita sem 0600
+  EVIDENCE: 4 testes VERMELHOS. Erros exatos:
+  `expected '/tmp/qlmed-xml-store-*/2026_03/…' to contain '/company-abc/'` e
+  `AssertionError: expected 420 to be 384` (0644 vs 0600). Restaurado → 7 passed.
+
+- [ ] G28: migração dos ficheiros já gravados no volume — **NÃO FECHADO**
+  MOTIVO: mover o que já existe em `<BACKUP_DIR>/<mês>/` para
+  `<BACKUP_DIR>/<companyId>/<mês>/` é operação sobre o volume de produção, com
+  a cópia do OneDrive a escrever no mesmo sítio ao mesmo tempo. O fallback de
+  leitura cobre o período entre as duas coisas, então nada se perde enquanto a
+  migração não corre.
 
 ## Portões finais
 
@@ -185,8 +268,8 @@ worktree; os gates saem do enunciado da folha, não do brief.
   EVIDENCE: `> eslint .` sem saída.
 
 - [x] G31: `npm test` verde, contagem acima da base
-  EVIDENCE: `Test Files 99 passed | 3 skipped (102)` /
-  `Tests 785 passed | 4 skipped (789)` — base era 94/725.
+  EVIDENCE: `Test Files 101 passed | 3 skipped (104)` /
+  `Tests 810 passed | 4 skipped (814)` — base era 94/725.
 
 - [x] G32: `npm run docs:validate` verde
   EVIDENCE: `Documentation validation passed (152 Markdown files, 46 IDs).`

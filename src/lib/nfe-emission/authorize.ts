@@ -201,7 +201,7 @@ export async function authorizeInvoiceEmission(
       companyId,
     },
   });
-  await saveXmlToFile(numbered.accessKey, 'NFE', xml, issueDate);
+  await saveXmlToFile(companyId, numbered.accessKey, 'NFE', xml, issueDate);
   await updateProductAggregatesForInvoice({
     companyId,
     invoiceId: created.invoice.id,

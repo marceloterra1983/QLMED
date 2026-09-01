@@ -77,6 +77,21 @@ describe('readBodyWithLimit (FILE-001)', () => {
     expect(bytes.every((b) => b === 7)).toBe(true);
   });
 
+  it('corpo chunked acima do cap não aumenta o RSS além de cap+epsilon', async () => {
+    // O teste que o brief pede: medir memória residente, não só bytes contados.
+    const CAP = 4 * 1024 * 1024;
+    global.gc?.();
+    const before = process.memoryUsage().rss;
+
+    const { stream } = endlessBody(256 * 1024);
+    await expect(readBodyWithLimit(request(stream), CAP))
+      .rejects.toBeInstanceOf(PayloadTooLargeError);
+
+    const grew = process.memoryUsage().rss - before;
+    // Sem o guard, o corpo interminável iria a 50 MiB antes de o teste abortar.
+    expect(grew).toBeLessThan(CAP + 16 * 1024 * 1024);
+  });
+
   it('formDataWithLimit continua parseando multipart normal', async () => {
     const form = new FormData();
     form.set('file', new File(['<xml/>'], 'nota.xml', { type: 'text/xml' }));

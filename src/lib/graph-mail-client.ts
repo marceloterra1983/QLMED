@@ -1,5 +1,6 @@
 import { createLogger } from '@/lib/logger';
 import { IMPCG_MAILBOX_TIMEOUT_MS, IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
+import { MAX_PDF_BYTES } from '@/lib/pdf/ocr-limits';
 
 const log = createLogger('graph-mail');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
@@ -231,6 +232,16 @@ export async function listImpcgPdfAttachments(
     const name = attachment.name || 'anexo.pdf';
     const isPdf = (attachment.contentType || '').toLowerCase().includes('pdf') || name.toLowerCase().endsWith('.pdf');
     if (!isFile || !isPdf || !attachment.contentBytes) continue;
+
+    // O anexo vem de e-mail: teto ANTES de materializar o Buffer. Base64 ocupa
+    // 4 bytes por 3 de conteúdo, então dá para recusar pelo tamanho da string
+    // sem decodificar nada (auditoria FILE-003).
+    const approxBytes = Math.floor((attachment.contentBytes.length * 3) / 4);
+    if (approxBytes > MAX_PDF_BYTES) {
+      log.warn({ name, approxBytes, limit: MAX_PDF_BYTES }, 'attachment_too_large');
+      continue;
+    }
+
     pdfs.push({ name, content: Buffer.from(attachment.contentBytes, 'base64') });
   }
   return pdfs;

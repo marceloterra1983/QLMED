@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
             },
             select: {
               id: true,
+              companyId: true,
               accessKey: true,
               type: true,
               issueDate: true,
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
           for (const inv of invoices) {
             try {
               const result = await saveXmlToFile(
+                inv.companyId,
                 inv.accessKey,
                 inv.type,
                 inv.xmlContent,

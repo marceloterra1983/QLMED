@@ -264,7 +264,13 @@ async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Pr
 
       for (const sourceFilePath of sourceFiles) {
         const relativePath = path.relative(sourceRoot, sourceFilePath);
-        const targetFilePath = path.join(copyTargetDir, relativePath);
+        // Confina também a cópia local: um symlink ou `..` na origem não pode
+        // fazer o destino sair de copyTargetDir (auditoria FILE-004).
+        const targetFilePath = safeJoinUnderDir(copyTargetDir, ...relativePath.split(path.sep));
+        if (!targetFilePath) {
+          log.warn({ relativePath }, 'Caminho de origem recusado (path traversal)');
+          continue;
+        }
         const copied = await copyXmlFileIfNeeded(sourceFilePath, targetFilePath);
         if (!copied) continue;
 

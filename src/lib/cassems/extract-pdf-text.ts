@@ -7,6 +7,8 @@ import {
   MAX_OCR_PAGES,
   MAX_PDF_BYTES,
   createOcrDeadline,
+  looksLikePdf,
+  parsePdfInfoPages,
   type OcrDeadline,
 } from '@/lib/pdf/ocr-limits';
 
@@ -31,13 +33,20 @@ function commandExists(command: string): boolean {
 /**
  * 1) pdftotext. 2) se vazio e os binários existirem, pdftoppm + tesseract -l por.
  *
- * Os tetos (bytes, páginas, orçamento de tempo total) valem antes de o PDF ser
- * escrito em disco e antes de cada spawn — ver `@/lib/pdf/ocr-limits`.
+ * Tetos (auditoria FILE-003), todos aplicados ANTES do custo:
+ * bytes e magic `%PDF` antes de escrever em disco; contagem de páginas via
+ * `pdfinfo` antes de rasterizar — acima de `MAX_OCR_PAGES` o OCR é abandonado
+ * de vez e fica só o `pdftotext`; orçamento de parede compartilhado por todos
+ * os spawns, em vez de 60s por processo.
  */
 export async function extractPdfText(pdf: Buffer): Promise<string> {
   if (pdf.length === 0) return '';
   if (pdf.length > MAX_PDF_BYTES) {
     log.warn({ bytes: pdf.length, limit: MAX_PDF_BYTES }, 'pdf_too_large');
+    return '';
+  }
+  if (!looksLikePdf(pdf)) {
+    log.warn({ bytes: pdf.length }, 'pdf_magic_missing');
     return '';
   }
 
@@ -55,6 +64,16 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
     if (!commandExists('pdftoppm') || !commandExists('tesseract')) {
       log.warn('ocr_binaries_missing');
       return '';
+    }
+
+    // Documento gigante: rasterizar/OCRar é o ataque. Abandona o OCR.
+    if (commandExists('pdfinfo')) {
+      const info = run('pdfinfo', [pdfPath], deadline);
+      const pageCount = parsePdfInfoPages(info.stdout);
+      if (pageCount !== null && pageCount > MAX_OCR_PAGES) {
+        log.warn({ pages: pageCount, limit: MAX_OCR_PAGES }, 'pdf_too_many_pages_ocr_skipped');
+        return '';
+      }
     }
 
     const prefix = join(dir, 'page');

@@ -233,7 +233,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
 
       if (isNewInvoice) {
         newDocs++;
-        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
+        saveXmlToFile(companyId, parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
       } else {
         updatedDocs++;
       }

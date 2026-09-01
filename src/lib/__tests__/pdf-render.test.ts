@@ -94,6 +94,11 @@ describe('renderHtmlToPdf', () => {
 
       const local = requestVerdict(handlers, 'file:///etc/passwd');
       expect(local.abort).toHaveBeenCalled();
+
+      // O caso exato do brief.
+      const loopback = requestVerdict(handlers, 'http://127.0.0.1/');
+      expect(loopback.abort).toHaveBeenCalled();
+      expect(loopback.continue).not.toHaveBeenCalled();
     });
 
     it('deixa passar o conteúdo inline que a página legitimamente usa', async () => {
