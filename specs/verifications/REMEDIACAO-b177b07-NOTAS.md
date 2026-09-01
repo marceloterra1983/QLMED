@@ -142,3 +142,58 @@ Marcado pelas folhas como `NEEDS AUTHORIZED LIVE EVIDENCE`:
    do backfill no primeiro deploy.
 4. Duplicatas de série/número em `Invoice` e `InvoiceEmission` — as uniques do
    item 1 falham se houver.
+
+---
+
+# 8. Re-auditoria adversarial — o que ela achou
+
+Três auditores que **não escreveram nenhuma linha** destas correções. Entre os
+três: 9 + 19 achados novos, dois portões de CI furados, e um crítico.
+
+## Corrigido nesta mesma branch
+
+| ID | Sev | O que era |
+|---|---|---|
+| REAUD-B-01 | **crítico** | A ACL inteira caía com um header inventado. O ramo de passagem por `x-api-key` no middleware devolvia antes do `getToken()`, então um viewer com sessão e `x-api-key: qualquer-lixo` alcançava `/api/financeiro/*`, `/api/fiscal/dashboard`, `/api/customers`, `/api/suppliers` e os PDFs. Anulava AUTH-005, -013 e -014 na prática. |
+| REAUD-B-02 | alto | **Nenhum teste invocava `middleware()`.** Dava para apagar o 403 do `canAccessApi`, repor o fail-open de página e remover o portão de `tokenVersion` — suíte verde nos quatro casos. |
+| REAUD-B-05 | alto | PHI para o grupo de WhatsApp FISCAL, e **nenhuma folha reclamou o finding**: erro de escopo meu, tirei PRIV-001 inteiro por "aceito pelo dono". O aceito é enviar por WhatsApp; o grupo errado nunca foi. |
+| REAUD-FISCAL-012 | alto | `csosn`, `cstIcms` e `orig` interpolados sem `esc()`. A guarda C14N da L8 só apanha escape a mais, não escape em falta. |
+| REAUD-FISCAL-013 | alto | O ramo `cStat 217` apagava chave e XML assinado sem CAS — e duas consultas concorrentes produziam duas chaves. **Defeito no meu próprio item 1.** |
+| REAUD-FISCAL-014 | médio | Denegada devolvia o número ao pool num caminho e não no outro. |
+| Portão de dependências | alto | Lia a severidade do NÓ, não do advisory: um `critical` num nó `moderate` passava. E o teste não tinha caso para advisory novo. **Portão meu.** |
+| `deploy-guard.sh` | alto | `//srv/qlmed`, `/srv//qlmed`, `/srv/./qlmed`, relativo e `APP.QLMED.COM.BR` passavam. `pwd -P` sozinho não resolve: o POSIX preserva duas barras iniciais. |
+
+## Aberto — vale uma segunda rodada
+
+| ID | Sev | O que é |
+|---|---|---|
+| REAUD-B-03 | alto | `xlsx-limits` confia no `uncompressedSize` **declarado pelo atacante**. Provado: `.xlsx` de 306 KB com campos reescritos passa o portão e o exceljs aloca **+461 MB**. |
+| REAUD-B-04 | alto | O contador de profundidade do XML é enganado por um atributo legal `b="/>"`. Provado: 300 000 níveis em 4,2 MB, profundidade medida **0**, aceite, **+291 MB** de RSS. |
+| REAUD-DATA-014 | alto | `while (remaining > 0)` no dashboard não termina com XML ilegível: a nota nunca grava `item_count` e volta em todos os lotes. |
+| REAUD-B-09 | médio | 5 furos no `redact`: `api-error.ts` usa `e.message` como **msg** (o redact não toca a msg), 4 níveis de aninhamento, `err.*` aninhado, chave `raw`, e faltam `apiKey`/`apikey`/`senha`/`keyHash`. |
+| REAUD-B-06 | médio | O detector de guardas só verifica que o nome é **citado**. Trocar o `catch` de `/api/users` por `catch {}` expõe e-mails e papéis — suíte verde. |
+| REAUD-B-07/08 | médio | `migrate-plaintext-secrets.ts` não cobre `N8nIntegrationConfig.apiToken`, e `looksEncrypted` só conta `:` — um segredo em claro com 2 `:` é pulado em silêncio e fica ilegível após o fail-closed. |
+| REAUD-B-10 | médio | O `fetch` do n8n segue redirect com `X-N8N-API-KEY`. A L3 corrigiu a Evolution e deixou este. |
+| REAUD-B-11 | médio | O backfill de `allowedPages` concede **`ALL_PAGES`** a todo não-admin do acervo, incluindo `/sistema/usuarios`. |
+| REAUD-FISCAL-015 | médio | O ramo de evento descarta o retorno de `applyNfeCancellation`; um cancelamento perdido não trava o cursor. |
+| REAUD-DATA-015 | médio | O P2002 do unique novo congela o cursor de sync **para sempre**: a ingestão fiscal da empresa para até intervenção. |
+| Gate do UI-003 | médio | Fica **verde com o defeito reposto**: o regex positivo é satisfeito pela própria linha comentada. |
+| REAUD-FISCAL-016 | baixo | O índice parcial deixa passar `series NULL`, e a pré-checagem do cabeçalho **sobre-reporta**. |
+| REAUD-B-12..19 | baixo | Postgres sem digest nem `cap_drop`/`no-new-privileges`; `data:` permitido no Chromium; latência do banco no ramo 503; `/r/[deliveryId]` fora do matcher; custo de bcrypt no login; `catch` do jwt devolve token velho; cabeçalho do gate da L4 contradiz o corpo. |
+
+## O que a re-auditoria confirmou que se sustenta
+
+- 14 controlos positivos refeitos independentemente nas 8 folhas, todos vermelhos.
+- 29 migrações replayadas do zero num Postgres descartável, `No difference detected`.
+- `logger-redact.test.ts` usa o método certo (stream de memória com as opções
+  reais), e **nenhum** teste espia `process.stdout.write`.
+- Nenhum `.only`, nenhum `.todo`, nenhum teste afrouxado para acomodar defeito.
+- Os 4 testes de render montam componentes de verdade.
+- `/api/users/me` é exceção estreita e correta — "a parte melhor feita do lote".
+
+## Contradição entre folhas, registada
+
+L2 recusou o FILE-008 alegando que quebraria o leitor do `local-xml-sync`. **A
+alegação é falsa**: `sync-scheduler.ts` só escreve, não lê o layout do store. A
+L5 fez a mudança. Duas folhas chegaram a vereditos opostos sobre o mesmo achado
+e ambas foram dadas por concluídas.
