@@ -52,3 +52,11 @@ confirmado no Graph; deduplica por `internetMessageId`.
 
 - [ ] G11: Produção saudável no SHA do merge
   EVIDENCE: pending
+
+ABANDON: G11 Gate herdado da tarefa CASSEMS (PR #248), já mesclada em b177b07,
+onde esta caixa já estava aberta no GATES.md da raiz. Arquivado aqui em
+2026-09-01 ao abrir a branch fix/nfe-emissao-atomica, que não toca em CASSEMS
+nem implanta nada — não há neste escopo o que verificar nem autorização para
+sondar produção (a auditoria b177b07 classificou acesso a produção como
+NEEDS AUTHORIZED LIVE EVIDENCE). Fica registado em aberto de propósito: a
+saúde de produção no SHA daquele merge continua sem verificação.
