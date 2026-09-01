@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { CertificateManager } from '@/lib/certificate-manager';
-import { decrypt } from '@/lib/crypto';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { UF_TO_CODE } from '@/lib/constants';
 import { acquirePostgresTransactionAdvisoryLock } from '@/lib/postgres-advisory-lock';
 import { createInvoiceWithOutbox } from '@/lib/notification-outbox';
@@ -67,8 +66,7 @@ export async function authorizeInvoiceEmission(
   if (cert.validTo && cert.validTo.getTime() < Date.now()) {
     throw new Error('Certificado digital vencido');
   }
-  const password = decrypt(cert.pfxPassword);
-  const pems = CertificateManager.extractPems(Buffer.from(cert.pfxData), password);
+  const pems = openCertificatePems(cert, company.cnpj);
   const environment = resolveEmissionEnvironment(cert.environment);
   const tpAmb = environment === 'production' ? '1' : '2';
   const cUf = UF_TO_CODE[emit.ender.UF];

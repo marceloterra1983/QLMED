@@ -260,9 +260,26 @@ async function sendEmail(to: string, pdfBuffer: Buffer): Promise<void> {
 
 /* ── Fetch report data from internal API ── */
 
+/**
+ * Este handler re-chama a própria API de dados repassando o Cookie da sessão.
+ * Duas correções da auditoria OBS-004:
+ *  - a origem vem só de NEXTAUTH_URL. O fallback `req.nextUrl.origin` deixava
+ *    um `Host` forjado escolher para onde o cookie da sessão seria enviado.
+ *  - o fetch tem AbortSignal. Sem ele a rota ficava pendurada indefinidamente
+ *    e segurava o worker do Next junto com o Chromium do puppeteer.
+ */
+const REPORT_FETCH_TIMEOUT_MS = 30_000;
+
+function reportDataOrigin(): string {
+  const configured = process.env.NEXTAUTH_URL?.trim();
+  if (!configured) {
+    throw new Error('NEXTAUTH_URL não configurado: sem ele a origem do relatório não é confiável');
+  }
+  return configured;
+}
+
 async function fetchReportData(req: NextRequest): Promise<ReportData> {
-  const origin = process.env.NEXTAUTH_URL || req.nextUrl.origin;
-  const url = new URL('/api/reports/valvulas-importadas', origin);
+  const url = new URL('/api/reports/valvulas-importadas', reportDataOrigin());
   const dateFrom = req.nextUrl.searchParams.get('dateFrom');
   const dateTo = req.nextUrl.searchParams.get('dateTo');
   if (dateFrom) url.searchParams.set('dateFrom', dateFrom);
@@ -270,6 +287,7 @@ async function fetchReportData(req: NextRequest): Promise<ReportData> {
   const cookie = req.headers.get('cookie') || '';
   const res = await fetch(url.toString(), {
     headers: { cookie },
+    signal: AbortSignal.timeout(REPORT_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Report API returned ${res.status}`);
   return res.json();

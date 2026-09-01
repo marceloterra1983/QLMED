@@ -94,16 +94,20 @@ export async function GET() {
       return NextResponse.json(errorResponse, { status: 503 });
     }
 
-    // Public response: status, db connectivity, build metadata, timestamp
+    // Resposta pública: só o suficiente para um load balancer decidir se o
+    // processo está vivo. O SHA do build e a latência do banco são
+    // reconhecimento de versão/infra e passaram para o ramo autenticado
+    // (auditoria OBS-003).
     const publicResponse: Record<string, unknown> = {
       status: 'ok',
-      db: { status: 'connected', latencyMs: dbLatency },
-      build,
+      db: { status: 'connected' },
       timestamp: new Date().toISOString(),
     };
 
     if (authenticated) {
-      // Authenticated response: add uptime, memory, integrity
+      // Authenticated response: add build, db latency, uptime, memory, integrity
+      publicResponse.build = build;
+      publicResponse.db = { status: 'connected', latencyMs: dbLatency };
       const [outboxCounts, oldestPending] = await Promise.all([
         prisma.notificationDelivery.groupBy({
           by: ['status'],

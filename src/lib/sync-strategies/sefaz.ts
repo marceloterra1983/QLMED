@@ -1,6 +1,5 @@
 import { SefazClient } from '../sefaz-client';
-import { CertificateManager } from '../certificate-manager';
-import { decrypt } from '../crypto';
+import { openCertificatePems } from '../certificate-secret';
 import { parseInvoiceXml } from '../parse-invoice-xml';
 import { resolveInvoiceDirection } from '../invoice-direction';
 import { updateProductAggregatesForInvoice } from '../product-aggregate-updater';
@@ -51,14 +50,13 @@ export async function syncViaSefaz(
   let ultNSU = cert.lastNsu || '0';
 
   try {
-    const pfxPassword = decrypt(cert.pfxPassword);
-    const { key, cert: certPem } = CertificateManager.extractPems(cert.pfxData, pfxPassword);
+    const { key, cert: certPem } = openCertificatePems(cert, cnpj);
 
     const sefaz = new SefazClient(
       certPem,
       key,
       cnpj,
-      distDfeIsProduction(),
+      distDfeIsProduction(cert.environment),
       getUfCode(cert.subject),
     );
 
