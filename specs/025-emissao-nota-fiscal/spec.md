@@ -382,11 +382,13 @@ status do serviço e não cria nota emitida.
   ativo MUST usar o tom da etapa com preenchimento, peso
   tipográfico e anel (não só mudança de cor). O botão inativo
   MUST usar versão muted do mesmo tom daquela etapa, ainda
-  distinguível das demais. O card da seção MUST refletir o
-  mesmo tom com borda, fundo sutil e título/accent alinhados
-  (leve, legível em light e dark; sem neon nem sombra
-  multi-layer). MUST NÃO usar a mesma cor primária única para
-  todas as etapas. Contraste do texto MUST atender AA.
+  distinguível das demais.   O card da seção MUST refletir o
+  mesmo tom com borda, fundo visível (não quase branco) e título
+  alinhados; painéis internos e cards laterais (totais /
+  conferência) MUST usar o mesmo mapa de tons (leve, legível em
+  light e dark; sem neon nem sombra multi-layer). MUST NÃO usar a
+  mesma cor primária única para todas as etapas. Contraste do texto
+  MUST atender AA.
 
 ### Failure cases
 
