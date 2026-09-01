@@ -143,8 +143,9 @@ function atributosDe(src, apos) {
 }
 // Superfície em REPOUSO, sem prefixo de variante: `hover:bg-primary/10` é
 // afordância de passagem do mouse, não fundo de botão — contá-la fazia a regra
-// acusar os atalhos da barra lateral.
-const SUPERFICIE = /(?<![-\w:])bg-(primary|red-600|red-500)\b/;
+// acusar os atalhos da barra lateral. Gradiente (`from-primary …`) é a mesma
+// superfície primária: não distingue nada, some no PDF e escapava da regra.
+const SUPERFICIE = /(?<![-\w:])(?:bg|from)-(primary|red-600|red-500)\b/;
 const classeDe = (attrs) => {
   const m = attrs.match(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{([^}]*)\})/s);
   return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';

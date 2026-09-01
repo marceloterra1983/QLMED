@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
@@ -241,17 +242,9 @@ export default function ImpcgPageClient() {
           </>
         )}
         actions={data?.canSync ? (
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold shadow-md shadow-primary/30 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              {syncing ? 'progress_activity' : 'sync'}
-            </span>
+          <Button type="button" onClick={handleSync} disabled={syncing} loading={syncing} icon="sync">
             Atualizar agora
-          </button>
+          </Button>
         ) : undefined}
       />
 

@@ -70,6 +70,9 @@ export const A = () => <button className={`flex-1 px-4 py-2.5 ${confirmCls}`}>Co
 caso botao-escondido-atras-de-arrow fail \
   'export const A = () => <button onClick={() => salvar()} className="px-4 py-2.5 bg-primary text-white rounded-lg">Salvar</button>;'
 
+caso botao-gradiente fail \
+  'export const A = () => <button className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-dark text-white">Salvar</button>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -91,4 +94,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 11 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 12 violações reprovadas, fixture limpo aprovado"

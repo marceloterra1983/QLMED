@@ -1,9 +1,9 @@
 'use client';
+import React, { useEffect, useState } from 'react';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { formatAmount } from '@/lib/utils';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import type { ProductRow } from '../types';
 import { formatQuantity, formatDate } from './product-utils';
 
@@ -67,10 +67,6 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedBatch, setExpandedBatch] = useState<Set<string>>(new Set());
-
-  const handleClose = useCallback(() => onClose(), [onClose]);
-  useModalBackButton(true, handleClose);
-
   useEffect(() => {
     if (!product.code) return;
     const params = new URLSearchParams({ code: product.code });
@@ -242,10 +238,16 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
   };
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
-      <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-4xl sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Histórico do produto"
+      surface="sunken"
+      width="sm:max-w-4xl"
+      height="sm:h-auto sm:max-h-[92vh]"
+      bodyClassName=""
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
               <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
@@ -265,8 +267,15 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
             <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
           </div>
         </div>
-
-        {/* Content */}
+      }
+      footer={
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+          <div className="sm:hidden"><Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button></div>
+          <div className="hidden sm:flex justify-end"><Button onClick={onClose} variant="ghost">Fechar</Button></div>
+        </div>
+      }
+    >
+{/* Content */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4">
           <HistSectionCard sectionKey="compras" defaultOpen={true} icon="shopping_cart" iconColor="text-blue-500" label="Historico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado." color="blue">
             <SummaryCards stats={calcStats(purchaseHistory)} color="blue" />
@@ -281,13 +290,6 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
             <HistoryTable items={consignmentHistory} nameKey="customerName" groupKey="consignment" color="purple" />
           </HistSectionCard>
         </div>
-
-        {/* Footer */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-          <div className="sm:hidden"><Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button></div>
-          <div className="hidden sm:flex justify-end"><Button onClick={onClose} variant="ghost">Fechar</Button></div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

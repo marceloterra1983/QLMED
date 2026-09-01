@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCurrencyShort } from '@/lib/utils';
@@ -222,15 +223,25 @@ export default function ValvulasImportadasPage() {
 
       {/* Email Modal */}
       {emailModalOpen && (
-        <div className="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-black/50 print:hidden" onClick={() => setEmailModalOpen(false)}>
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+        <Modal
+      isOpen
+      onClose={() => setEmailModalOpen(false)}
+      title="Enviar relatório por e-mail"
+      surface="card"
+      width="sm:max-w-sm"
+      height="sm:h-auto sm:max-h-[85vh]"
+      bodyClassName=""
+      header={
+<div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Enviar Relatório por Email</h3>
               <button onClick={() => setEmailModalOpen(false)} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
-            <div className="p-4">
+      }
+      footer={null}
+    >
+<div className="p-4">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Selecione o destinatário:</p>
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-6">
@@ -287,8 +298,7 @@ export default function ValvulasImportadasPage() {
                 {sendingEmail ? 'Enviando...' : 'Enviar'}
               </Button>
             </div>
-          </div>
-        </div>
+    </Modal>
       )}
 
       {/* Printable report area */}

@@ -245,23 +245,9 @@ export default function UploadPage() {
           )}
 
           {/* Upload Button */}
-          <button
-            onClick={handleUpload}
-            disabled={files.length === 0 || uploading || !canWrite}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-lg font-bold transition-all shadow-lg shadow-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {uploading ? (
-              <>
-                <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
-                Importando...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
-                Importar {files.length} Arquivo(s)
-              </>
-            )}
-          </button>
+          <Button onClick={handleUpload} disabled={files.length === 0 || uploading || !canWrite} loading={uploading} icon="cloud_upload" size="lg" block>
+            {uploading ? 'Importando...' : `Importar ${files.length} Arquivo(s)`}
+          </Button>
         </div>
 
         {/* Results Sidebar */}

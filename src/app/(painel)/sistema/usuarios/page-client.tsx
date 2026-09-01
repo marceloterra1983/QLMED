@@ -354,13 +354,9 @@ export default function UsuariosPage() {
         title="Usuários"
         subtitle="Gerenciar contas e permissões"
         actions={(
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
+          <Button onClick={() => setShowCreateModal(true)} icon="person_add">
             Novo Usuário
-          </button>
+          </Button>
         )}
       />
 
@@ -687,14 +683,9 @@ export default function UsuariosPage() {
             <Button onClick={closeCreateModal} variant="ghost">
               Cancelar
             </Button>
-            <button
-              type="submit"
-              disabled={createLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-bold rounded-lg shadow-md disabled:opacity-50 transition-all"
-            >
-              {createLoading && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+            <Button type="submit" disabled={createLoading} loading={createLoading}>
               Criar
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -785,14 +776,9 @@ export default function UsuariosPage() {
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={editLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-bold rounded-lg shadow-md disabled:opacity-50 transition-all"
-            >
-              {editLoading && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+            <Button type="submit" disabled={editLoading} loading={editLoading}>
               Salvar
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -895,15 +881,9 @@ export default function UsuariosPage() {
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={handleSavePages}
-              disabled={pagesLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-bold rounded-lg shadow-md disabled:opacity-50 transition-all"
-            >
-              {pagesLoading && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
+            <Button type="button" onClick={handleSavePages} disabled={pagesLoading} loading={pagesLoading}>
               Salvar
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

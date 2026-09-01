@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, Fragment } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfeDetails, NfeProduto, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, TaxFields } from '@/types/invoice-details';
 import { nfeProdutoExpandKey, retainExpandedIds } from '@/lib/list-collapse';
@@ -537,7 +537,6 @@ function TabInfAdicionais({ data }: { data: NfeDetails }) {
 // --- Main Modal ---
 
 export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab }: NfeDetailsModalProps) {
-  useModalBackButton(isOpen, onClose);
   const [data, setData] = useState<NfeDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -624,15 +623,16 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
 
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
-      <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
-      <div
-        className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
-        role="dialog"
-        aria-modal="true"
-      >
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Detalhes da NF-e"
+      surface="sunken"
+      width="sm:max-w-5xl"
+      height="sm:h-[92vh]"
+      bodyClassName=""
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
@@ -676,8 +676,16 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
             </div>
           )}
         </div>
-
-        {/* Tabs */}
+      }
+      footer={
+<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+          <Button onClick={onClose} icon="arrow_back" size="lg" block>
+            Voltar
+          </Button>
+        </div>
+      }
+    >
+{/* Tabs */}
         <div className="flex items-center border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-1 shrink-0">
           <button
             onClick={() => scrollTabs('left')}
@@ -736,14 +744,6 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           )}
           {data && !loading && renderTabContent()}
         </div>
-
-        {/* Footer - mobile only */}
-        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <Button onClick={onClose} icon="arrow_back" size="lg" block>
-            Voltar
-          </Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

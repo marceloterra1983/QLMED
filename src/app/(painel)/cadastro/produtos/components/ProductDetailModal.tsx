@@ -1,10 +1,10 @@
 'use client';
+import React, { useEffect, useState } from 'react';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow } from '../types';
 import { DetailSectionCard, DetailField } from './DetailSectionCard';
@@ -214,9 +214,6 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
   }, [detailNcm]);
 
   // Mobile back button
-  const handleClose = useCallback(() => onClose(), [onClose]);
-  useModalBackButton(!!initialProduct, handleClose);
-
   if (!detailProduct) return null;
 
   const detailDirty =
@@ -389,11 +386,16 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
     : 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
-      <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-6xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" onClick={(e) => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Detalhes do produto"
+      surface="sunken"
+      width="sm:max-w-6xl"
+      height="sm:h-auto sm:max-h-[90vh]"
+      bodyClassName=""
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           {detailProduct.outOfLine && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-400 via-red-500 to-red-400" />
           )}
@@ -442,8 +444,46 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
             </button>
           </div>
         </div>
-
-        {/* Body */}
+      }
+      footer={
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+          <div className="sm:hidden space-y-2">
+            <div className="flex gap-2">
+              <button onClick={() => onOpenHistory(detailProduct)} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors">
+                <span className="material-symbols-outlined text-[18px] text-blue-500">history</span>
+                Historico
+              </button>
+              {canWrite && (
+                <button onClick={handleSaveDetail} disabled={savingDetail || !detailDirty} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                  <span className="material-symbols-outlined text-[20px]">{savingDetail ? 'progress_activity' : 'save'}</span>
+                  {savingDetail ? 'Salvando...' : 'Salvar'}
+                </button>
+              )}
+            </div>
+            <Button onClick={onClose} icon="arrow_back" size="lg" block>
+              Voltar
+            </Button>
+          </div>
+          <div className="hidden sm:flex items-center justify-between">
+            <Button onClick={onClose} variant="ghost">
+              Fechar
+            </Button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => onOpenHistory(detailProduct)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Ver historico de compras e vendas">
+                <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
+                Historico
+              </button>
+              {canWrite && (
+                <Button onClick={handleSaveDetail} disabled={savingDetail || !detailDirty} loading={savingDetail} icon="save">
+                  {savingDetail ? 'Salvando...' : 'Salvar'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      }
+    >
+{/* Body */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
           {/* Card: Dados Gerais */}
           <DetailSectionCard id="geral" icon="analytics" iconColor="text-emerald-500" title="Dados Gerais" isOpen={detailOpenSections.has('geral')} onToggle={toggleDetailSection}>
@@ -961,48 +1001,6 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
             </div>
           </DetailSectionCard>
         </div>
-
-        {/* Footer */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-          <div className="sm:hidden space-y-2">
-            <div className="flex gap-2">
-              <button onClick={() => onOpenHistory(detailProduct)} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors">
-                <span className="material-symbols-outlined text-[18px] text-blue-500">history</span>
-                Historico
-              </button>
-              {canWrite && (
-                <button onClick={handleSaveDetail} disabled={savingDetail || !detailDirty} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
-                  <span className="material-symbols-outlined text-[20px]">{savingDetail ? 'progress_activity' : 'save'}</span>
-                  {savingDetail ? 'Salvando...' : 'Salvar'}
-                </button>
-              )}
-            </div>
-            <Button onClick={onClose} icon="arrow_back" size="lg" block>
-              Voltar
-            </Button>
-          </div>
-          <div className="hidden sm:flex items-center justify-between">
-            <Button onClick={onClose} variant="ghost">
-              Fechar
-            </Button>
-            <div className="flex items-center gap-2">
-              <button onClick={() => onOpenHistory(detailProduct)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Ver historico de compras e vendas">
-                <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>
-                Historico
-              </button>
-              {canWrite && (
-                <button onClick={handleSaveDetail} disabled={savingDetail || !detailDirty} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-primary/25 disabled:opacity-40 disabled:shadow-none">
-                  {savingDetail ? (
-                    <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Salvando...</>
-                  ) : (
-                    <><span className="material-symbols-outlined text-[16px]">save</span>Salvar</>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
