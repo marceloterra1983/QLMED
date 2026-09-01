@@ -4,7 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import { createLogger } from '@/lib/logger';
-import { getFinanceiroDuplicatas } from '@/lib/financeiro-duplicatas';
+import { getFinanceiroDuplicatas, getFinanceiroDuplicatasCoverage } from '@/lib/financeiro-duplicatas';
 import { normalizeForSearch, flexMatchAll } from '@/lib/utils';
 import prisma from '@/lib/prisma';
 import { apiValidationError } from '@/lib/api-error';
@@ -583,9 +583,15 @@ export async function handleContasGet(
     // Rename party fields to direction-specific names in output
     const renamedDuplicatas = paginated.map((d) => renamePartyFields(d as unknown as Record<string, unknown>, direction));
 
+    // QLMED-UI-002: o backfill de duplicatas é preguiçoso (um lote de 500 XML
+    // por GET). Enquanto `remaining > 0` a lista está incompleta, e a tela tem
+    // de dizer isso em vez de apresentar um total que parece final.
+    const coverage = await getFinanceiroDuplicatasCoverage(company.id);
+
     return NextResponse.json({
       duplicatas: renamedDuplicatas,
       summary,
+      coverage,
       pagination: { page: normalizedPage, limit, total, pages },
     });
   } catch (error) {

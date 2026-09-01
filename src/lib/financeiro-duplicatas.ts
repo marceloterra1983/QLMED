@@ -266,6 +266,44 @@ async function buildDuplicatas(
   return allDuplicatas;
 }
 
+export interface FinanceiroDuplicatasCoverage {
+  /** NF-e da empresa. */
+  nfeCount: number;
+  /** Quantas delas já têm linha de duplicata extraída do XML. */
+  withDuplicatas: number;
+  /** Quantas ainda faltam. Zero = cobertura histórica completa. */
+  remaining: number;
+}
+
+/**
+ * Quanto do histórico de NF-e já foi convertido em duplicatas.
+ *
+ * Auditoria b177b07 (QLMED-UI-002): o backfill é preguiçoso e limitado a um
+ * lote de 500 XML por GET (ver `backfillInvoiceDuplicatas`). Enquanto o
+ * histórico não fecha, a tela do financeiro mostra menos contas do que
+ * existem — e não dizia nada. Quem abria "Contas a pagar" via um total que
+ * parecia completo e não era. O número é caro de esconder e barato de mostrar.
+ */
+export async function getFinanceiroDuplicatasCoverage(
+  companyId: string
+): Promise<FinanceiroDuplicatasCoverage> {
+  const [nfeCount, dupGroups] = await Promise.all([
+    prisma.invoice.count({ where: { companyId, type: 'NFE' } }),
+    prisma.invoiceDuplicata.groupBy({
+      by: ['invoiceId'],
+      where: { companyId },
+      _count: true,
+    }),
+  ]);
+
+  const withDuplicatas = dupGroups.length;
+  return {
+    nfeCount,
+    withDuplicatas,
+    remaining: Math.max(0, nfeCount - withDuplicatas),
+  };
+}
+
 export async function getFinanceiroDuplicatas(
   companyId: string,
   direction: FinanceiroDirection,

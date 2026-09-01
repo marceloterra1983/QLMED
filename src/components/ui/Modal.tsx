@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useId } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
+import { useDialogKeydown, DIALOG_FOCUSABLE_SELECTOR } from '@/hooks/useDialogKeydown';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,8 +11,7 @@ interface ModalProps {
   width?: string;
 }
 
-const focusableSelector =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const focusableSelector = DIALOG_FOCUSABLE_SELECTOR;
 
 export default function Modal({ isOpen, onClose, title, subtitle, children, width = 'max-w-3xl' }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -20,42 +20,8 @@ export default function Modal({ isOpen, onClose, title, subtitle, children, widt
 
   useModalBackButton(isOpen, onClose);
 
-  // Focus trapping
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      if (e.key !== 'Tab' || !modalRef.current) return;
-
-      const focusableElements = Array.from(
-        modalRef.current.querySelectorAll<HTMLElement>(focusableSelector)
-      ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
-
-      if (focusableElements.length === 0) {
-        e.preventDefault();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement.focus();
-        }
-      } else {
-        if (document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement.focus();
-        }
-      }
-    },
-    [onClose]
-  );
+  // Escape + trap de Tab, partilhados com o ConfirmDialog.
+  useDialogKeydown(isOpen, modalRef, onClose);
 
   // Body scroll lock with previous value tracking
   useEffect(() => {
@@ -64,13 +30,10 @@ export default function Modal({ isOpen, onClose, title, subtitle, children, widt
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen]);
 
   // Focus management: save previous focus on open, restore on close
   useEffect(() => {
