@@ -191,5 +191,6 @@ worktree; os gates saem do enunciado da folha, não do brief.
 - [x] G32: `npm run docs:validate` verde
   EVIDENCE: `Documentation validation passed (152 Markdown files, 46 IDs).`
 
-- [ ] G33: branch `fix/audit-l5-uploads` empurrada para `origin`
-  EVIDENCE: pending
+- [x] G33: branch `fix/audit-l5-uploads` empurrada para `origin`
+  EVIDENCE: `* [new branch] fix/audit-l5-uploads -> fix/audit-l5-uploads`;
+  commit `1d909c1`; tracking `origin/fix/audit-l5-uploads`.
