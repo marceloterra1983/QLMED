@@ -3,9 +3,14 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   NFE_FORM_STEPS,
+  NFE_STEP_TONE,
   completeNfeStep,
   nfeSectionId,
   nfeStepGaps,
+  nfeStepHeadingClass,
+  nfeStepNavClass,
+  nfeStepPanelClass,
+  nfeStepSectionClass,
   scrollToNfeSection,
   type NfeStepDraft,
 } from '@/lib/nfe-emission/form-steps';
@@ -84,15 +89,53 @@ describe('Nova NF-e: página única e etapas', () => {
   });
 
   it('botão ativo da etapa usa preenchimento, peso e anel', () => {
+    const active = nfeStepNavClass('dados', true);
+    const idle = nfeStepNavClass('dados', false);
+    expect(active).toMatch(/font-extrabold/);
+    expect(active).toMatch(/ring-2/);
+    expect(active).toMatch(/text-white/);
+    expect(idle).toMatch(/font-medium/);
+    expect(idle).not.toMatch(/font-extrabold/);
+    expect(idle).not.toMatch(/ring-2/);
     const src = pageSrc();
-    const active = src.match(/activeStep === t\.id\s*\n\s*\? '([^']+)'/);
-    const idle = src.match(/activeStep === t\.id\s*\n\s*\? '[^']+'\s*\n\s*: '([^']+)'/);
-    expect(active?.[1]).toMatch(/bg-primary/);
-    expect(active?.[1]).toMatch(/text-white/);
-    expect(active?.[1]).toMatch(/font-extrabold/);
-    expect(active?.[1]).toMatch(/ring-2/);
-    expect(idle?.[1]).toMatch(/font-medium/);
-    expect(idle?.[1]).toMatch(/opacity-70/);
-    expect(idle?.[1]).not.toMatch(/bg-primary/);
+    expect(src).toContain('nfeStepNavClass(t.id, activeStep === t.id)');
+    expect(src).not.toMatch(/bg-primary text-white font-extrabold/);
+  });
+
+  it('tons por etapa: mapa distinto e UI usa accent de seção', () => {
+    const tones = NFE_FORM_STEPS.map((step) => NFE_STEP_TONE[step].tone);
+    expect(new Set(tones).size).toBe(5);
+    expect(tones).toEqual(['blue', 'emerald', 'amber', 'violet', 'slate']);
+    for (const step of NFE_FORM_STEPS) {
+      const active = nfeStepNavClass(step, true);
+      const idle = nfeStepNavClass(step, false);
+      const section = nfeStepSectionClass(step);
+      const heading = nfeStepHeadingClass(step);
+      expect(active).toMatch(/bg-/);
+      expect(active).toMatch(/ring-2/);
+      expect(idle).toMatch(/bg-/);
+      expect(section).toMatch(/border-t-\[?3?px\]?|border-t-2|border-t-\[3px\]/);
+      expect(section).toMatch(/\bborder\b/);
+      expect(section).toMatch(/bg-(blue|emerald|amber|violet|slate)-\d{2,3}(?!\/)/);
+      expect(nfeStepPanelClass(step)).toMatch(/bg-/);
+      expect(nfeStepPanelClass(step)).toMatch(/\bborder\b/);
+      expect(heading).toMatch(/text-/);
+    }
+    const src = pageSrc();
+    expect(src).toContain('NFE_STEP_TONE');
+    expect(src).toContain('nfeStepSectionClass');
+    expect(src).toContain('nfeStepPanelClass');
+    expect(src).toContain('nfeStepHeadingClass');
+    expect(src).not.toMatch(/bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5/);
+    expect(src).toContain("nfeStepPanelClass('dados')");
+    expect(src).toContain("nfeStepPanelClass('itens')");
+    expect(src).toContain("nfeStepPanelClass('transporte')");
+    expect(src).toContain("nfeStepPanelClass('pagamento')");
+    expect(src).toContain("nfeStepPanelClass('complementos')");
+    expect(src).toContain('data-nfe-aside-card="totais"');
+    expect(src).toContain('data-nfe-aside-card="conferencia"');
+    for (const step of NFE_FORM_STEPS) {
+      expect(src).toContain(`nfeStepSectionClass('${step}')`);
+    }
   });
 });

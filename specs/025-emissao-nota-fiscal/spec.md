@@ -74,9 +74,12 @@ todas persistem com o CFOP correspondente.
 
 Como editor, só escolho destinatário entre clientes pessoa jurídica
 já cadastrados. No mesmo campo, busco por razão social, nome
-fantasia ou CNPJ (com ou sem pontuação). Não digito um CNPJ solto
-nem CPF de particular. Depois de escolher, vejo o endereço em uma
-linha curta e discreta, só se o cadastro tiver município ou UF.
+fantasia (apelido do cadastro) ou CNPJ (com ou sem pontuação). Na
+lista e no campo já selecionado, vejo o nome abreviado quando o
+cadastro tiver apelido; se não tiver, vejo a razão social. Não
+digito um CNPJ solto nem CPF de particular. Depois de escolher,
+vejo o endereço em uma linha curta e discreta, só se o cadastro
+tiver município ou UF.
 
 **Why this priority**: Decisão explícita de produto.
 
@@ -118,6 +121,16 @@ da empresa autenticada.
 9. **AC-025** — Given clientes fora do top 10, when o operador
    digita nome ou CNPJ no campo único, then a lista mostra só os
    matches (ordem alfabética entre resultados) da própria empresa.
+10. **AC-028** — Given um cliente PJ com apelido (`shortName`)
+    cadastrado, when a caixa de destinatário lista o top 10 ou o
+    resultado da busca, then o rótulo visível é o apelido — não a
+    razão social. Depois de selecionar, o campo selecionado também
+    mostra o apelido.
+11. **AC-029** — Given um cliente PJ sem apelido (ausente, nulo ou
+    só espaços), when a lista ou o campo selecionado aparece, then
+    o rótulo é a razão social. O sistema MUST NÃO inventar
+    abreviação. A nota / payload continua com a razão social
+    (AC-004).
 
 ### User Story 3 — Enviar à SEFAZ (Priority: P1)
 
@@ -210,6 +223,14 @@ natureza avança para Itens.
 5. **AC-025** — Given a última seção (Complementos), when o
    operador chega ao fim, then não há Concluir nesta etapa; o
    rascunho e a transmissão seguem o fluxo já existente.
+6. **AC-027** — Given a tela Nova NF-e, when o operador compara os
+   botões de etapa no topo e os cards ao longo da página, then
+   cada etapa tem um tom de cor próprio (Dados, Itens,
+   Transporte, Pagamento, Complementos distintos entre si). O
+   botão ativo usa o tom da etapa com preenchimento, peso
+   tipográfico e anel; o inativo usa versão muted do mesmo tom.
+   O card da seção correspondente usa borda, fundo sutil e
+   título/accent no mesmo tom.
 
 ### User Story 4 — Viewer não envia (Priority: P2)
 
@@ -320,10 +341,19 @@ status do serviço e não cria nota emitida.
   permanecem depois desse trio. MUST NÃO alterar regra fiscal,
   schema de série, defaults XML nem outras telas.
 - **FR-018**: O campo único de busca de destinatário na Nova NF-e
-  MUST aceitar razão social, nome fantasia ou CNPJ (com ou sem
-  pontuação) e MUST filtrar apenas clientes pessoa jurídica da
-  empresa do usuário autenticado. MUST NÃO exigir um segundo campo
-  nem vazar destinatário de outra empresa.
+  MUST aceitar razão social, nome fantasia (apelido /
+  `ContactNickname.shortName`) ou CNPJ (com ou sem pontuação) e
+  MUST filtrar apenas clientes pessoa jurídica da empresa do
+  usuário autenticado. MUST NÃO exigir um segundo campo nem vazar
+  destinatário de outra empresa.
+- **FR-026**: Na caixa de seleção de destinatário da Nova NF-e
+  (top 10 sem busca, resultados da busca e campo já selecionado)
+  o rótulo visível MUST ser o apelido (`ContactNickname.shortName`)
+  quando existir texto não-vazio após trim; senão MUST ser a
+  razão social (`recipientName`). MUST NÃO inventar apelido.
+  MUST NÃO substituir a razão social no XML, no rascunho nem no
+  payload (`destName`). Escopo: só Nova NF-e; MUST NÃO espalhar
+  o mesmo rótulo para NF-e recebidas nesta fatia.
 - **FR-023**: Sem texto de busca, a caixa de seleção de destinatário
   MUST mostrar somente até 10 clientes com maior faturamento
   (Σ `Invoice.totalValue` de NF-e `type=NFE` `direction=issued`,
@@ -368,6 +398,19 @@ status do serviço e não cria nota emitida.
   select nem controle para alterar presença. Schema/API MUST
   forçar `9` mesmo se o client enviar outro valor. NF-e já
   autorizadas historicamente MUST permanecer inalteradas.
+- **FR-025**: Cada etapa da Nova NF-e (Dados, Itens, Transporte,
+  Pagamento, Complementos) MUST ter um tom de cor distinto na
+  navegação e no card/bloco da seção correspondente. O botão
+  ativo MUST usar o tom da etapa com preenchimento, peso
+  tipográfico e anel (não só mudança de cor). O botão inativo
+  MUST usar versão muted do mesmo tom daquela etapa, ainda
+  distinguível das demais.   O card da seção MUST refletir o
+  mesmo tom com borda, fundo visível (não quase branco) e título
+  alinhados; painéis internos e cards laterais (totais /
+  conferência) MUST usar o mesmo mapa de tons (leve, legível em
+  light e dark; sem neon nem sombra multi-layer). MUST NÃO usar a
+  mesma cor primária única para todas as etapas. Contraste do texto
+  MUST atender AA.
 
 ### Failure cases
 
@@ -401,6 +444,7 @@ status do serviço e não cria nota emitida.
 - Motor tributário completo de IBS/CBS além do grupo mínimo
   exigido para a operação autorizar.
 - Emissão para destinatário não cadastrado.
+- Trocar rótulo de fornecedor em NF-e recebidas (fora da Nova NF-e).
 
 ## Key entities
 
@@ -409,6 +453,8 @@ status do serviço e não cria nota emitida.
   existente.
 - **Cliente PJ**: contato de destinatário com CNPJ no cadastro de
   clientes.
+- **Apelido (`ContactNickname.shortName`)**: nome curto opcional
+  do cadastro; só label da caixa de destinatário na Nova NF-e.
 - **Operação de saída**: natureza + CFOP do catálogo do produto.
 
 ## Success Criteria
@@ -423,9 +469,11 @@ status do serviço e não cria nota emitida.
 - **SC-004**: Viewer não consegue autorizar pelo servidor.
 - **SC-005**: Admin grava Homologação sem reenviar o PFX e o teste
   de conexão devolve status do serviço sem criar NF-e.
-- **SC-006**: Editor localiza o destinatário pelo nome ou pelo CNPJ
-  no mesmo campo e, ao selecionar, reconhece a cidade/UF quando o
-  cadastro tem esse dado — sem bloco destacado de endereço.
+- **SC-006**: Editor localiza o destinatário pelo nome, apelido ou
+  CNPJ no mesmo campo; reconhece o apelido na lista e no
+  selecionado quando o cadastro tem esse dado; e, ao selecionar,
+  reconhece a cidade/UF quando o cadastro tem esse dado — sem
+  bloco destacado de endereço.
 - **SC-007**: Editor vê todas as seções da nota na mesma rolagem,
   usa o topo só para ir até uma seção, e só avança de etapa pelo
   botão Concluir nesta etapa quando o mínimo da etapa está ok.
