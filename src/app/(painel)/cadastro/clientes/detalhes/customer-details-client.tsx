@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
 import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ContactDetailsModal from '@/components/ContactDetailsModal';
@@ -23,13 +23,9 @@ export default function CustomerDetailsClient() {
           <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Detalhes do Cliente</h2>
         </div>
 
-        <Link
-          href="/cadastro/clientes"
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        <Button href="/cadastro/clientes" variant="secondary" size="sm" icon="arrow_back">
           Voltar
-        </Link>
+        </Button>
       </div>
 
       {!customer ? (

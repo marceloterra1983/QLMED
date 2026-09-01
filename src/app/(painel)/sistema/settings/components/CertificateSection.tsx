@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -150,23 +151,15 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={certLoading || !file || !certPassword || !canManageSettings}
-                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-primary/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={!file || !certPassword || !canManageSettings}
+                loading={certLoading}
+                icon="cloud_upload"
+                block
               >
-                {certLoading ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
-                    Instalar Certificado
-                  </>
-                )}
-              </button>
+                {certLoading ? 'Enviando...' : 'Instalar Certificado'}
+              </Button>
             </form>
 
             {certMessage && (

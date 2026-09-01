@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
+import Button from '@/components/ui/Button';
 
 interface InvoiceDetailsModalProps {
   isOpen: boolean;
@@ -303,22 +304,24 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
               {/* Action buttons */}
-              <button
+              <Button
                 onClick={handleDownloadPdf}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                variant="secondary"
+                size="sm"
                 title="Baixar PDF"
               >
-                <span className="material-symbols-outlined text-[14px] sm:text-[16px] text-rose-500">picture_as_pdf</span>
+                <span className="material-symbols-outlined text-[16px] text-rose-500">picture_as_pdf</span>
                 <span className="hidden md:inline">PDF</span>
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDownloadXml}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                variant="secondary"
+                size="sm"
                 title="Baixar XML"
               >
-                <span className="material-symbols-outlined text-[14px] sm:text-[16px] text-amber-500">data_object</span>
+                <span className="material-symbols-outlined text-[16px] text-amber-500">data_object</span>
                 <span className="hidden md:inline">XML</span>
-              </button>
+              </Button>
               <button
                 onClick={handlePrint}
                 className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 transition-all"
@@ -428,13 +431,9 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
 
         {/* Footer - mobile only */}
         <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={onClose}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

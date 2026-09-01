@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
@@ -15,6 +15,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 export default function CtePage() {
   const { canWrite } = useRole();
@@ -423,21 +424,23 @@ export default function CtePage() {
         subtitle="Conhecimentos de transporte eletrônicos"
         actions={(
           <>
-            <button
+            <Button
               onClick={() => setHideValues(v => !v)}
-              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+              variant="secondary"
+              icon={hideValues ? 'visibility' : 'visibility_off'}
               title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
-            >
-              <span className="material-symbols-outlined text-[20px]">{hideValues ? 'visibility' : 'visibility_off'}</span>
-            </button>
-            <button
+              aria-label={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+              className="hidden sm:inline-flex"
+            />
+            <Button
               onClick={handleExport}
               disabled={invoices.length === 0}
-              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+              variant="secondary"
+              icon="download"
+              className="hidden sm:inline-flex"
             >
-              <span className="material-symbols-outlined text-[20px]">download</span>
               Exportar
-            </button>
+            </Button>
           </>
         )}
       />
@@ -445,8 +448,7 @@ export default function CtePage() {
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={[search, statusFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-          <div className="lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">CNPJ / Nome Emitente</label>
+          <Field label="CNPJ / Nome Emitente" className="lg:col-span-2">
             <input
               type="text"
               placeholder="ex: 00.000.000/0001-91"
@@ -454,25 +456,23 @@ export default function CtePage() {
               onChange={(e) => setSearchInput(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Início</label>
+          </Field>
+          <Field label="Data Início">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Data Fim</label>
+          </Field>
+          <Field label="Data Fim">
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
+          </Field>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Manifestação</label>
             <select
@@ -658,13 +658,9 @@ export default function CtePage() {
                   <td colSpan={8} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
                     <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
-                    <Link
-                      href="/sistema/upload"
-                      className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-md shadow-primary/30"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                    <Button href="/sistema/upload" icon="cloud_upload" className="mt-4">
                       Importar XML
-                    </Link>
+                    </Button>
                   </td>
                 </tr>
               ) : (

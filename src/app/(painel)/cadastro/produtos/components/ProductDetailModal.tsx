@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -9,6 +10,7 @@ import type { ProductRow } from '../types';
 import { DetailSectionCard, DetailField } from './DetailSectionCard';
 import { DETAIL_INPUT_CLS, formatQuantity, formatDate } from './product-utils';
 import type { HierOptions } from './product-utils';
+import Button from '@/components/ui/Button';
 
 interface ProductDetailModalProps {
   product: ProductRow | null;
@@ -497,14 +499,12 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
               </div>
 
               <div className="flex gap-2 items-start">
-                <div className="shrink-0">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Codigo Interno</label>
+                <Field label="Codigo Interno" className="shrink-0">
                   <input type="text" value={detailProduct.codigo || '\u2014'} readOnly disabled className={`${DETAIL_INPUT_CLS} font-mono w-28`} />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Nome Abreviado</label>
+                </Field>
+                <Field label="Nome Abreviado" className="flex-1">
                   <input type="text" value={detailShortName} onChange={(e) => setDetailShortName(e.target.value)} maxLength={100} placeholder="Nome curto para identificacao rapida" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                </div>
+                </Field>
               </div>
 
               <DetailField label="Nome do Produto" colSpan2>
@@ -978,15 +978,14 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 </button>
               )}
             </div>
-            <button onClick={onClose} className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <Button onClick={onClose} icon="arrow_back" size="lg" block>
               Voltar
-            </button>
+            </Button>
           </div>
           <div className="hidden sm:flex items-center justify-between">
-            <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Button onClick={onClose} variant="ghost">
               Fechar
-            </button>
+            </Button>
             <div className="flex items-center gap-2">
               <button onClick={() => onOpenHistory(detailProduct)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Ver historico de compras e vendas">
                 <span className="material-symbols-outlined text-[16px] text-blue-500">history</span>

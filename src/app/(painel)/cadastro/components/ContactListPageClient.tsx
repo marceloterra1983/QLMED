@@ -7,6 +7,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
 const ContactPriceTableModal = dynamic(() => import('@/components/ContactPriceTableModal'), { ssr: false });
@@ -351,14 +352,16 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
           </span>
         ) : null}
         actions={(
-          <button
+          <Button
             onClick={handleExport}
-            disabled={rows.length === 0 || isExporting}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-40"
+            disabled={rows.length === 0}
+            loading={isExporting}
+            variant="secondary"
+            icon="download"
+            className="hidden sm:inline-flex"
           >
-            <span className={`material-symbols-outlined text-[20px] ${isExporting ? 'animate-spin' : ''}`}>{isExporting ? 'progress_activity' : 'download'}</span>
             {isExporting ? 'Exportando...' : 'Exportar'}
-          </button>
+          </Button>
         )}
       />
 
@@ -391,10 +394,9 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               <option value="lastIssue">Última NF-e</option>
             </select>
           </div>
-          <button onClick={clearFilters} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
-            <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+          <Button onClick={clearFilters} variant="secondary" icon="filter_alt_off" block>
             Limpar
-          </button>
+          </Button>
         </div>
       </MobileFilterWrapper>
 

@@ -1,7 +1,11 @@
+import react from '@vitejs/plugin-react';
 import { configDefaults, defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  // `tsconfig.json` deixa o JSX em `preserve` para o Next; sem este plugin o
+  // vitest recebe TSX cru e falha na análise de importação.
+  plugins: [react()],
   test: {
     environment: 'node',
     globals: true,

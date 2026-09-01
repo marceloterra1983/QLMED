@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -371,14 +372,15 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
         title={cfg.title}
         subtitle={cfg.subtitle}
         actions={(
-          <button
+          <Button
             onClick={handleExport}
             disabled={duplicatas.length === 0}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
+            variant="secondary"
+            icon="download"
+            className="hidden sm:inline-flex flex-shrink-0"
           >
-            <span className="material-symbols-outlined text-[18px]">download</span>
             Exportar CSV
-          </button>
+          </Button>
         )}
       />
 

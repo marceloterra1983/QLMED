@@ -21,6 +21,7 @@ import AddressSection from '@/components/contact-details/AddressSection';
 import FiscalSection from '@/components/contact-details/FiscalSection';
 import PriceTableSection from '@/components/contact-details/PriceTableSection';
 import { InvoiceTable, MovimentacoesTable, DuplicatasTable } from '@/components/contact-details/InvoiceListSection';
+import Button from '@/components/ui/Button';
 
 /**
  * A rota devolve o contato sob `customer` ou `supplier` conforme o tipo;
@@ -397,12 +398,10 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">{content}</div>
             <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
               <div className="sm:hidden">
-                <button onClick={onClose} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-base active:bg-primary-dark transition-colors shadow-sm">
-                  <span className="material-symbols-outlined text-[20px]">arrow_back</span>Voltar
-                </button>
+                <Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button>
               </div>
               <div className="hidden sm:flex items-center justify-end">
-                <button onClick={onClose} className="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Fechar</button>
+                <Button onClick={onClose} variant="secondary" size="sm">Fechar</Button>
               </div>
             </div>
           </div>

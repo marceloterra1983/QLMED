@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatDate, formatAmount, formatCnpj } from '@/lib/utils';
+import Button from '@/components/ui/Button';
 
 interface LotEditModalProps {
   isOpen: boolean;
@@ -820,32 +821,26 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                   Fechar
                 </button>
                 {canWrite && !isPersisted && (
-                  <button
+                  <Button
                     onClick={handleRegister}
-                    disabled={registering || saving || hasQtyErrors}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    disabled={saving || hasQtyErrors}
+                    loading={registering}
+                    size="sm"
+                    icon="check_circle"
                   >
-                    {registering ? (
-                      <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                    )}
                     {registering ? 'Registrando...' : 'Registrar Entrada'}
-                  </button>
+                  </Button>
                 )}
                 {canWrite && isPersisted && (
-                  <button
+                  <Button
                     onClick={handleSaveAll}
-                    disabled={saving || registering || totalChanges === 0 || hasQtyErrors}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    disabled={registering || totalChanges === 0 || hasQtyErrors}
+                    loading={saving}
+                    size="sm"
+                    icon="save"
                   >
-                    {saving ? (
-                      <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-[14px]">save</span>
-                    )}
                     {saving ? 'Salvando...' : 'Salvar Alterações'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
