@@ -58,6 +58,57 @@ function labeledValue(text: string, labels: RegExp): string | null {
   return match[1].replace(/\s+/g, ' ').trim() || null;
 }
 
+function isInstitutionDoctorName(name: string | null): boolean {
+  if (!name) return false;
+  if (/^(HOSPITAL|CAIXA DE ASSISTENCIA|UNIDADE)\b/i.test(name)) return true;
+  return /\bCASSEMS\b/.test(name) && /\b(HOSPITAL|UNIDADE|CAIXA)\b/.test(name);
+}
+
+function stripDoctorDecorations(raw: string): string {
+  return raw
+    .replace(/\s*n[ºo°]?\s*crm\b[\s:]*.*$/i, '')
+    .replace(/\s+local\s+de\s+execu[\s\S]*$/i, '')
+    .replace(/\s+procedimento[\s\S]*$/i, '')
+    .trim();
+}
+
+function crmInDoctorBlock(block: string): string | null {
+  const match = /\b(?:n[ºo°]?\s*)?crm\b[\s:]*([\d.\-\/]+)/i.exec(block);
+  if (!match?.[1]) return null;
+  const digits = match[1].replace(/\D/g, '');
+  if (digits.length < 4 || digits.length > 10) return null;
+  return digits;
+}
+
+function readDoctorCandidate(
+  text: string,
+  label: RegExp,
+): { name: string | null; crm: string | null } {
+  const match = label.exec(text);
+  if (!match) return { name: null, crm: null };
+  const restOfLine = (match[1] ?? '').replace(/\s+/g, ' ').trim();
+  const after = text.slice((match.index ?? 0) + match[0].length);
+  const next = (after.split('\n').find((line) => line.trim()) ?? '').replace(/\s+/g, ' ').trim();
+  const crmBlock = restOfLine
+    + (/\bcrm\b/i.test(next) && !/paciente|prestador|local|procedimento/i.test(next) ? ` ${next}` : '');
+  const name = normalizeName(stripDoctorDecorations(restOfLine));
+  const person = isInstitutionDoctorName(name) ? null : name;
+  return { name: person, crm: person ? crmInDoctorBlock(crmBlock) : null };
+}
+
+/** CASSEMS: médico = PRESTADOR SOLICITANTE. MEDICO fica só como fallback histórico. */
+export function extractCassemsDoctorFields(text: string): {
+  doctorName: string | null;
+  doctorCrm: string | null;
+} {
+  const prestador = readDoctorCandidate(text, /prestador\s+solicitante\s*:?\s*([^\n]*)/i);
+  const medico = readDoctorCandidate(text, /m[eé]dico\s*:?\s*([^\n]*)/i);
+  return {
+    doctorName: prestador.name || medico.name,
+    doctorCrm: prestador.crm || medico.crm,
+  };
+}
+
 function extractOficioNumber(text: string, subject: string): string | null {
   const fromAuth = /n[uú]mero\s+de\s+autoriza[cç][aã]o\s*:?\s*(\d{6,20})/i.exec(text);
   if (fromAuth?.[1]) return normalizeOficioNumber(fromAuth[1]);
@@ -267,12 +318,7 @@ export function parseOficio(text: string, subject = ''): ParsedCassemsOficio {
   const patientName = documentPatient || subjectPatient || 'PACIENTE';
   const patientRegistry = patientMatch?.[2]?.trim()
     || labeledValue(text, /matr[ií]cula\s*:?\s*([0-9.\-]+)/i);
-  const doctorRaw = labeledValue(text, /prestador\s+solicitante\s*:?\s*([^\n]+)/i)
-    || labeledValue(text, /m[eé]dico\s*:?\s*([^\n]+)/i);
-  const doctorName = normalizeName(
-    doctorRaw?.replace(/\s*n[ºo°]?\s*crm\b[\s:]*.*$/i, '') ?? null,
-  );
-  const doctorCrm = (labeledValue(text, /crm\s*:?\s*([0-9]+)/i) || '').replace(/\D/g, '') || null;
+  const { doctorName, doctorCrm } = extractCassemsDoctorFields(text);
   const procedureRaw = labeledValue(text, /procedimento\(s\)\s*:?\s*([^\n;]+)/i)
     || labeledValue(text, /procedimento\s*:?\s*([^\n;]+)/i);
   const procedureName = normalizeName(procedureRaw);
