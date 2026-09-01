@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
@@ -363,13 +364,9 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-xs text-slate-500 dark:text-slate-400">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
-                              <button
-                                onClick={() => setDetailRow(row)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[13px]">search</span>
+                              <Button onClick={() => setDetailRow(row)} variant="secondary" size="xs" icon="search">
                                 Detalhes
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -415,13 +412,9 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                                   {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
                                 </td>
                                 <td className="px-3 py-1.5 text-center">
-                                  <button
-                                    onClick={() => setDetailRow(row)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                                  >
-                                    <span className="material-symbols-outlined text-[13px]">search</span>
+                                  <Button onClick={() => setDetailRow(row)} variant="secondary" size="xs" icon="search">
                                     Detalhes
-                                  </button>
+                                  </Button>
                                 </td>
                               </tr>
                             ))}

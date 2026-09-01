@@ -244,6 +244,7 @@ export default function ValvulasImportadasPage() {
                     <button
                       key={u.id}
                       onClick={() => setSelectedUserId(u.id)}
+                      aria-pressed={selectedUserId === u.id}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
                         selectedUserId === u.id
                           ? 'bg-primary/10 border border-primary/30'

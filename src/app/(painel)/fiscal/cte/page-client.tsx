@@ -100,7 +100,7 @@ export default function CtePage() {
   };
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -473,8 +473,7 @@ export default function CtePage() {
               className={FILTER_INPUT_CLS}
             />
           </Field>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Manifestação</label>
+          <Field label="Manifestação">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -485,7 +484,7 @@ export default function CtePage() {
               <option value="rejected">Desacordo</option>
               <option value="confirmed">Desacordo cancelado</option>
             </select>
-          </div>
+          </Field>
           <div className="flex gap-2">
             <button
               onClick={() => loadInvoices()}

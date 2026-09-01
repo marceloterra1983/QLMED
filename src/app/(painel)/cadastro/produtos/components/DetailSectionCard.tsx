@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Field from '@/components/ui/Field';
 import { iconBgMap, bulkFieldIconMap } from './product-utils';
 
 export function DetailSectionCard({ id, icon, iconColor, title, badge, isOpen, onToggle, children }: { id: string; icon: string; iconColor: string; title: string; badge?: React.ReactNode; isOpen: boolean; onToggle: (id: string) => void; children: React.ReactNode }) {
@@ -30,10 +31,9 @@ export function DetailSectionCard({ id, icon, iconColor, title, badge, isOpen, o
 
 export function DetailField({ label, children, colSpan2 }: { label: string; children: React.ReactNode; colSpan2?: boolean }) {
   return (
-    <div className={`${colSpan2 ? 'col-span-2' : ''}`}>
-      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>
+    <Field label={label} className={colSpan2 ? 'col-span-2' : ''}>
       {children}
-    </div>
+    </Field>
   );
 }
 

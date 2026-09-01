@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
@@ -151,10 +152,9 @@ export default function ProductTable({
             {product.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{product.description}</p>}
             <div className="flex items-center justify-between mt-1" onClick={(e) => e.stopPropagation()}>
               <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(product.lastIssueDate)} {'\u00B7'} <span className="font-medium text-slate-600 dark:text-slate-300">{formatAmount(product.lastPrice)}</span></span>
-              <button onClick={() => openDetail(product)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors">
-                <span className="material-symbols-outlined text-[14px]">search</span>
+              <Button onClick={() => openDetail(product)} variant="secondary" size="xs" icon="search">
                 Detalhes
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ export default function ProductTable({
             <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
           </>
         )}
-        <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary dark:text-blue-400 border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
+        <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} aria-pressed={selectionEnabled} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary dark:text-blue-400 border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
         {canWrite && <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Linhas, fabricantes, dados fiscais"><span className="material-symbols-outlined text-[14px]">settings</span>Parametros</button>}
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
@@ -367,8 +368,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
 
       <MobileFilterWrapper activeFilterCount={[search, sortBy !== 'lastIssue' ? sortBy : ''].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
-          <div className="sm:col-span-2 md:col-span-3">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{cfg.searchLabel}</label>
+          <Field label={cfg.searchLabel} className="sm:col-span-2 md:col-span-3">
             <input
               type="text"
               placeholder="ex: 00.000.000/0001-91"
@@ -376,9 +376,8 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               onChange={(e) => setSearchInput(e.target.value)}
               className={FILTER_INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ordenar por</label>
+          </Field>
+          <Field label="Ordenar por">
             <select
               value={sortBy}
               onChange={(e) => {
@@ -393,7 +392,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               {cfg.showCity && <option value="city">Cidade</option>}
               <option value="lastIssue">Última NF-e</option>
             </select>
-          </div>
+          </Field>
           <Button onClick={clearFilters} variant="secondary" icon="filter_alt_off" block>
             Limpar
           </Button>
@@ -580,20 +579,24 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             </div>
                           </div>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <button
+                            <Button
                               onClick={() => { setSelected(row); setIsDetailsOpen(true); }}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="search"
+                              className="flex-1"
                             >
-                              <span className="material-symbols-outlined text-[16px]">search</span>
                               Detalhes
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                              variant="secondary"
+                              size="xs"
+                              icon="table_view"
+                              className="flex-1"
                             >
-                              <span className="material-symbols-outlined text-[16px]">table_view</span>
                               Tabela
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -635,6 +638,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 <button
                   key={pageNumber}
                   onClick={() => setPage(pageNumber)}
+                  aria-current={pageNumber === page ? 'page' : undefined}
                   className={`hidden sm:flex w-9 h-9 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
                     pageNumber === page
                       ? 'bg-primary text-white shadow-md shadow-primary/30'

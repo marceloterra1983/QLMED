@@ -242,6 +242,7 @@ export default function FiscalDashboardPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
+                aria-pressed={period === p}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                   period === p
                     ? 'bg-primary text-white'

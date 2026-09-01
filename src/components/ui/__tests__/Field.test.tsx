@@ -4,11 +4,10 @@ import Field, { FIELD_CONTROL_CLS } from '../Field';
 
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
-/** Extrai o par (for do label, id do controle) para provar que se amarram. */
-function amarracao(out: string) {
-  const label = out.match(/<label[^>]*for="([^"]+)"/);
-  const control = out.match(/<(?:input|select|textarea)[^>]*id="([^"]+)"/);
-  return { forAttr: label?.[1], idAttr: control?.[1] };
+/** O controle está DENTRO do <label>? É isso que amarra rótulo e campo. */
+function controleDentroDoLabel(out: string) {
+  const m = out.match(/<label\b[^>]*>([\s\S]*)<\/label>/);
+  return m ? /<(input|select|textarea)\b/.test(m[1]) : false;
 }
 
 describe('Field', () => {
@@ -18,46 +17,53 @@ describe('Field', () => {
         <input className={FIELD_CONTROL_CLS} />
       </Field>,
     );
-    const { forAttr, idAttr } = amarracao(out);
-    expect(forAttr).toBeTruthy();
-    expect(idAttr).toBe(forAttr);
+    expect(controleDentroDoLabel(out)).toBe(true);
   });
 
-  it('dois campos na mesma página não colidem de id', () => {
+  it('amarra também quando o controle vem embrulhado', () => {
+    // Caso real: input com ícone de busca dentro de um <div className="relative">.
+    // Com htmlFor o id cairia no <div>, que não é rotulável, e a amarração morreria.
     const out = html(
-      <>
-        <Field label="Data início">
+      <Field label="Buscar">
+        <div className="relative">
+          <span className="material-symbols-outlined">search</span>
           <input />
-        </Field>
-        <Field label="Data fim">
-          <input />
-        </Field>
-      </>,
-    );
-    const ids = [...out.matchAll(/<input[^>]*id="([^"]+)"/g)].map((m) => m[1]);
-    expect(ids).toHaveLength(2);
-    expect(ids[0]).not.toBe(ids[1]);
-  });
-
-  it('um id que o chamador já definiu tem precedência', () => {
-    const out = html(
-      <Field label="CNPJ">
-        <input id="cnpj-destinatario" />
+        </div>
       </Field>,
     );
-    expect(out).toContain('id="cnpj-destinatario"');
+    expect(controleDentroDoLabel(out)).toBe(true);
   });
 
-  it('a dica é anunciada por aria-describedby', () => {
+  it('não emite htmlFor órfão', () => {
+    const out = html(
+      <Field label="Série">
+        <input />
+      </Field>,
+    );
+    expect(out).not.toContain('for=');
+  });
+
+  it('a dica é anunciada por aria-describedby no controle', () => {
     const out = html(
       <Field label="CNPJ" hint="Aceita com ou sem pontuação.">
         <input />
       </Field>,
     );
-    const desc = out.match(/aria-describedby="([^"]+)"/)?.[1];
+    const desc = out.match(/<input[^>]*aria-describedby="([^"]+)"/)?.[1];
     expect(desc).toBeTruthy();
     expect(out).toContain(`id="${desc}"`);
     expect(out).toContain('Aceita com ou sem pontuação.');
+  });
+
+  it('a dica alcança o controle mesmo embrulhado', () => {
+    const out = html(
+      <Field label="Buscar" hint="Código, descrição ou NCM.">
+        <div className="relative">
+          <input />
+        </div>
+      </Field>,
+    );
+    expect(out).toMatch(/<input[^>]*aria-describedby=/);
   });
 
   it('o erro marca aria-invalid e substitui a dica', () => {
@@ -66,7 +72,7 @@ describe('Field', () => {
         <input />
       </Field>,
     );
-    expect(out).toContain('aria-invalid="true"');
+    expect(out).toMatch(/<input[^>]*aria-invalid="true"/);
     expect(out).toContain('A série precisa ser maior que zero.');
     expect(out).not.toContain('Entre 1 e 999.');
   });
@@ -77,8 +83,20 @@ describe('Field', () => {
         <input />
       </Field>,
     );
-    expect(out).toContain('aria-required="true"');
+    expect(out).toMatch(/<input[^>]*aria-required="true"/);
     expect(out).toContain('*');
+  });
+
+  it('marca só o primeiro controle quando há mais de um', () => {
+    const out = html(
+      <Field label="Intervalo" hint="Início e fim.">
+        <div>
+          <input name="de" />
+          <input name="ate" />
+        </div>
+      </Field>,
+    );
+    expect([...out.matchAll(/aria-describedby=/g)]).toHaveLength(1);
   });
 
   it('o rótulo respeita o piso de 12px e o par de tema', () => {
@@ -99,5 +117,10 @@ describe('Field', () => {
       </Field>,
     );
     expect(out).not.toContain('aria-describedby');
+  });
+
+  it('aceita rótulo dinâmico', () => {
+    const nome = 'Grupo';
+    expect(html(<Field label={nome}><select /></Field>)).toContain('Grupo');
   });
 });
