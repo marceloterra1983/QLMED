@@ -1,4 +1,9 @@
-export type BackgroundServiceName = 'auto-sync' | 'local-xml-sync' | 'impcg-mail-ingest' | 'cassems-mail-ingest';
+export type BackgroundServiceName =
+  | 'auto-sync'
+  | 'local-xml-sync'
+  | 'impcg-mail-ingest'
+  | 'cassems-mail-ingest'
+  | 'notification-outbox-purge';
 
 export interface BackgroundServiceStatus {
   status: 'running' | 'stale' | 'disabled' | 'error';

@@ -1,5 +1,6 @@
 import { createLogger } from '@/lib/logger';
 import {
+  deleteOneDriveItem,
   downloadOneDriveItemContent,
   ensureOneDriveFolder,
   uploadOneDriveFile,
@@ -52,6 +53,11 @@ export type ImpcgMailPort = {
 
 export type ImpcgDrivePort = {
   uploadPdf(input: { fileName: string; content: Buffer }): Promise<{ itemId: string }>;
+  /**
+   * JOB-001: compensação do upload. Opcional só para não quebrar portes de
+   * teste antigos — na ausência dela o órfão é contado como erro material.
+   */
+  deletePdf?(itemId: string): Promise<void>;
 };
 
 export type { ImpcgFolderPort };
@@ -121,11 +127,16 @@ export type PersistArgs = {
 };
 
 export type ImpcgIngestResult = {
+  /**
+   * JOB-004: sucesso do pipeline, não batimento do tick. Só é `true` quando
+   * caixa, upload, persistência e aviso passaram sem erro material.
+   */
   ok: boolean;
   busy?: boolean;
   processed: number;
   skipped: number;
   failedUploads: number;
+  failedPersists: number;
   failedMailboxes: string[];
   lastCollectedAt: string | null;
 };
@@ -174,6 +185,9 @@ async function defaultDrivePort(companyId: string): Promise<ImpcgDrivePort> {
         input.content,
       );
       return { itemId: uploaded.id };
+    },
+    async deletePdf(itemId) {
+      await deleteOneDriveItem(accessToken, driveId, itemId);
     },
   };
 }
@@ -299,6 +313,7 @@ export async function runImpcgIngest(
       processed: 0,
       skipped: 0,
       failedUploads: 0,
+      failedPersists: 0,
       failedMailboxes: [],
       lastCollectedAt: null,
     };
@@ -316,8 +331,38 @@ export async function runImpcgIngest(
   let processed = 0;
   let skipped = 0;
   let failedUploads = 0;
+  let failedPersists = 0;
   const failedMailboxes: string[] = [];
   const errors: string[] = [];
+  /**
+   * A mesma mensagem chega pelas duas caixas no mesmo tick. Entre uma e outra o
+   * marcador durável ainda pode não estar visível, então quem garante uma única
+   * tentativa por mensagem por tick é esta lista — o `whatsappSentAt` garante
+   * entre ticks.
+   */
+  const notifyAttempted = new Set<string>();
+
+  /**
+   * JOB-001: o PDF vai para o OneDrive antes de existir linha no banco. Se a
+   * persistência falha, o objeto fica órfão carregando dado clínico — e o tick
+   * seguinte reenviaria por cima. Apaga-se o que acabou de subir, exceto quando
+   * uma autorização já commitada aponta para o mesmo item.
+   */
+  const collectOrphanUpload = async (itemId: string, referencedItemId: string | null) => {
+    if (referencedItemId === itemId) return;
+    if (!resolved.drive.deletePdf) {
+      errors.push('PDF órfão no OneDrive sem coleta');
+      log.warn('impcg_orphan_pdf_uncollected');
+      return;
+    }
+    try {
+      await resolved.drive.deletePdf(itemId);
+      log.warn('impcg_orphan_pdf_collected');
+    } catch (error) {
+      errors.push(sanitizeError(error instanceof Error ? error.message : 'coleta de órfão'));
+      log.warn('impcg_orphan_pdf_collect_failed');
+    }
+  };
 
   try {
     for (const mailbox of IMPCG_MAILBOXES) {
@@ -340,7 +385,25 @@ export async function runImpcgIngest(
           companyId,
           message.internetMessageId,
         );
-        if (existingSource) {
+        /**
+         * JOB-003: origem persistida com aviso por entregar era perda definitiva
+         * — o tick seguinte via a origem e seguia em frente. `whatsappSentAt` já
+         * é o marcador durável de entrega; enquanto for nulo e a janela do aviso
+         * estiver aberta, a mensagem volta à fila. Fora da janela ou com o canal
+         * desligado nem busca o anexo: não se paga Graph por trabalho que não vai
+         * acontecer.
+         */
+        const retryNotification = Boolean(
+          existingSource
+            && !existingSource.whatsappSentAt
+            && resolved.whatsapp
+            // Sem `markWhatsAppSent` não existe marcador durável, e repetir sem
+            // marcador é reenviar para sempre, não entregar uma vez.
+            && resolved.store.markWhatsAppSent
+            && !notifyAttempted.has(message.internetMessageId)
+            && isWithinImpcgNotifyWindow(message.receivedAt),
+        );
+        if (existingSource && !retryNotification) {
           skipped += 1;
           continue;
         }
@@ -366,18 +429,8 @@ export async function runImpcgIngest(
         }
 
         const fileName = buildImpcgFileName(parsed.oficioNumber, parsed.patientName);
-        let itemId: string;
-        try {
-          const uploaded = await resolved.drive.uploadPdf({ fileName, content: pdf.content });
-          itemId = uploaded.itemId;
-        } catch (error) {
-          failedUploads += 1;
-          errors.push(sanitizeError(error instanceof Error ? error.message : 'upload'));
-          log.warn({ mailbox: mailboxLabel(mailbox) }, 'impcg_upload_failed');
-          continue;
-        }
 
-        const persistBase: PersistArgs = {
+        const persistBaseWithoutItem = {
           companyId,
           oficioNumber: parsed.oficioNumber,
           issuedAt: parsed.issuedAt,
@@ -390,7 +443,6 @@ export async function runImpcgIngest(
           totalCents: parsed.totalCents ?? 0,
           parseStatus: parsed.parseStatus,
           fileName,
-          oneDriveItemId: itemId,
           receivedAt: message.receivedAt,
           items: parsed.items,
           internetMessageId: message.internetMessageId,
@@ -402,6 +454,8 @@ export async function runImpcgIngest(
         const notifyWhatsApp = async () => {
           if (!resolved.whatsapp) return;
           if (!isWithinImpcgNotifyWindow(message.receivedAt)) return;
+          if (notifyAttempted.has(message.internetMessageId)) return;
+          notifyAttempted.add(message.internetMessageId);
 
           const result = await notifyImpcgAuthorization({
             target: resolved.whatsapp,
@@ -427,30 +481,73 @@ export async function runImpcgIngest(
           );
         };
 
+        // JOB-003: a origem já está no banco; só falta entregar o aviso.
+        if (existingSource) {
+          await notifyWhatsApp();
+          skipped += 1;
+          continue;
+        }
+
+        /**
+         * JOB-001: saber ANTES do upload se já existe autorização decide duas
+         * coisas — se o upload sequer precisa acontecer, e se a compensação pode
+         * apagar o objeto sem destruir o PDF que uma linha commitada referencia.
+         */
         const existingAuth = await resolved.store.findByOficioNumber(companyId, parsed.oficioNumber);
-        if (!existingAuth) {
-          await resolved.store.persistConfirmed(persistBase);
-          processed += 1;
-          await notifyWhatsApp();
+        const upgrades = existingAuth
+          ? shouldUpgrade(existingAuth.parseStatus, parsed.parseStatus)
+          : false;
+
+        if (existingAuth && !upgrades) {
+          // Nada muda na autorização: não se escreve PHI no OneDrive à toa.
+          try {
+            await resolved.store.persistSourceOnly({
+              companyId,
+              authorizationId: existingAuth.id,
+              mailbox,
+              graphMessageId: message.graphMessageId,
+              internetMessageId: message.internetMessageId,
+              receivedAt: message.receivedAt,
+            });
+          } catch (error) {
+            failedPersists += 1;
+            errors.push(sanitizeError(error instanceof Error ? error.message : 'origem'));
+            log.warn({ mailbox: mailboxLabel(mailbox) }, 'impcg_persist_failed');
+            continue;
+          }
+          skipped += 1;
           continue;
         }
 
-        if (shouldUpgrade(existingAuth.parseStatus, parsed.parseStatus)) {
-          await resolved.store.persistUpgrade({ ...persistBase, authorizationId: existingAuth.id });
-          processed += 1;
-          await notifyWhatsApp();
+        let itemId: string;
+        try {
+          const uploaded = await resolved.drive.uploadPdf({ fileName, content: pdf.content });
+          itemId = uploaded.itemId;
+        } catch (error) {
+          failedUploads += 1;
+          errors.push(sanitizeError(error instanceof Error ? error.message : 'upload'));
+          log.warn({ mailbox: mailboxLabel(mailbox) }, 'impcg_upload_failed');
           continue;
         }
 
-        await resolved.store.persistSourceOnly({
-          companyId,
-          authorizationId: existingAuth.id,
-          mailbox,
-          graphMessageId: message.graphMessageId,
-          internetMessageId: message.internetMessageId,
-          receivedAt: message.receivedAt,
-        });
-        skipped += 1;
+        const persistBase: PersistArgs = { ...persistBaseWithoutItem, oneDriveItemId: itemId };
+
+        try {
+          if (existingAuth) {
+            await resolved.store.persistUpgrade({ ...persistBase, authorizationId: existingAuth.id });
+          } else {
+            await resolved.store.persistConfirmed(persistBase);
+          }
+        } catch (error) {
+          failedPersists += 1;
+          errors.push(sanitizeError(error instanceof Error ? error.message : 'persistência'));
+          log.warn({ mailbox: mailboxLabel(mailbox) }, 'impcg_persist_failed');
+          await collectOrphanUpload(itemId, existingAuth?.oneDriveItemId ?? null);
+          continue;
+        }
+
+        processed += 1;
+        await notifyWhatsApp();
       }
     }
 
@@ -472,19 +569,31 @@ export async function runImpcgIngest(
 
     const now = new Date();
     const previous = await resolved.store.loadIngestState(companyId);
+    /**
+     * JOB-004: `ok` era sempre verdadeiro quando o lock era adquirido, e
+     * `lastSuccessAt` avançava por cima de uma coleta que perdeu mensagens. Um
+     * tick parcial não é sucesso: mantém o carimbo anterior, para a tela não
+     * afirmar "coletado agora" sobre dado que não chegou.
+     */
+    const ok = errors.length === 0
+      && failedUploads === 0
+      && failedPersists === 0
+      && failedMailboxes.length === 0;
     await resolved.store.saveIngestState(companyId, {
-      lastSuccessAt: now,
-      backfillCompletedAt: previous?.backfillCompletedAt ?? now,
+      ...(ok
+        ? { lastSuccessAt: now, backfillCompletedAt: previous?.backfillCompletedAt ?? now }
+        : {}),
       lastError: errors[0] ?? null,
     });
 
     return {
-      ok: true,
+      ok,
       processed,
       skipped,
       failedUploads,
+      failedPersists,
       failedMailboxes,
-      lastCollectedAt: now.toISOString(),
+      lastCollectedAt: ok ? now.toISOString() : previous?.lastSuccessAt?.toISOString() ?? null,
     };
   } finally {
     await lock.release();
