@@ -36,6 +36,7 @@ import {
   nfeStepFromSectionId,
   nfeStepHeadingClass,
   nfeStepNavClass,
+  nfeStepPanelClass,
   nfeStepSectionClass,
   scrollToNfeSection,
   type NfeFormStep,
@@ -501,12 +502,12 @@ export default function EmitirNfePage() {
             data-nfe-step-tone={NFE_STEP_TONE['dados'].tone}
             className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('dados')} space-y-5`}
           >
-              <div className="space-y-3">
+              <div className={`space-y-3 p-4 ${nfeStepPanelClass('dados')}`}>
                 <h3 className={`text-sm font-bold ${nfeStepHeadingClass('dados')}`}>Destinatário</h3>
                 <p className="text-xs text-slate-500">Somente cliente PJ já presente nas emitidas. Sem digitar, vê os 10 mais faturados (6 meses). Para os demais, busque por nome ou CNPJ. Endereço, IE e município IBGE vêm do cadastro e da última NF-e.</p>
                 {dest ? (
                   <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+                    <div className={`flex items-start justify-between gap-3 px-4 py-3 ${nfeStepPanelClass('dados')}`}>
                       <div>
                         <div className="text-sm font-bold text-slate-900 dark:text-white">{dest.name}</div>
                         <div className="text-xs text-slate-500 mt-0.5">{formatCnpj(dest.cnpj)}</div>
@@ -520,7 +521,7 @@ export default function EmitirNfePage() {
                 ) : (
                   <>
                     <input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Nome ou CNPJ" className={FILTER_INPUT_CLS} />
-                    <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-auto rounded-lg border border-slate-100 dark:border-slate-800">
+                    <ul className={`divide-y divide-blue-200/70 dark:divide-blue-800/60 max-h-48 overflow-auto ${nfeStepPanelClass('dados')}`}>
                       {customers.map((c) => (
                         <li key={c.cnpj}>
                           <button type="button" onClick={() => setDest(c)} className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -534,8 +535,8 @@ export default function EmitirNfePage() {
                 )}
               </div>
 
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificação da operação</h3>
+              <div className={`space-y-3 p-4 ${nfeStepPanelClass('dados')}`}>
+                <h3 className={`text-sm font-bold ${nfeStepHeadingClass('dados')}`}>Identificação da operação</h3>
                 <div className="space-y-4">
                   <Field label="Natureza / CFOP">
                     <select value={cfop} onChange={(e) => setCfop(e.target.value)} className={FILTER_INPUT_CLS}>
@@ -592,7 +593,7 @@ export default function EmitirNfePage() {
               </div>
               <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Buscar produto por código ou descrição" className={FILTER_INPUT_CLS} />
               {products.length > 0 && (
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-40 overflow-auto rounded-lg border border-slate-100 dark:border-slate-800">
+                <ul className={`divide-y divide-emerald-200/70 dark:divide-emerald-800/60 max-h-40 overflow-auto ${nfeStepPanelClass('itens')}`}>
                   {products.map((p) => (
                     <li key={p.id}>
                       <button type="button" onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -603,7 +604,7 @@ export default function EmitirNfePage() {
                   ))}
                 </ul>
               )}
-              <div className="overflow-x-auto">
+              <div className={`overflow-x-auto p-3 ${nfeStepPanelClass('itens')}`}>
                 <table className="w-full text-sm min-w-[720px]">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500">
@@ -655,7 +656,7 @@ export default function EmitirNfePage() {
                           </td>
                         </tr>
                         {openItem === idx && (
-                          <tr className="bg-slate-50/80 dark:bg-slate-900/40">
+                          <tr className="bg-emerald-50/90 dark:bg-emerald-950/40">
                             <td colSpan={8} className="px-3 py-3">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <Field label="CEST">
@@ -692,7 +693,7 @@ export default function EmitirNfePage() {
             className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('transporte')} space-y-4`}
           >
               <h3 className={`text-sm font-bold ${nfeStepHeadingClass('transporte')}`}>Transporte e volumes</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 ${nfeStepPanelClass('transporte')}`}>
                 <Field label="Modalidade do frete" className="md:col-span-2">
                   <select value={modFrete} onChange={(e) => setModFrete(e.target.value)} className={FILTER_INPUT_CLS}>
                     {MOD_FRETE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -743,7 +744,7 @@ export default function EmitirNfePage() {
           >
               <h3 className={`text-sm font-bold ${nfeStepHeadingClass('pagamento')}`}>Pagamento da NF-e</h3>
               <p className="text-xs text-slate-500">Grupo <span className="font-mono">pag</span> do XML — distinto do contas a receber interno.</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 ${nfeStepPanelClass('pagamento')}`}>
                 <Field label="Indicador">
                   <select value={indPag} onChange={(e) => setIndPag(e.target.value as '0' | '1')} className={FILTER_INPUT_CLS}>
                     <option value="0">À vista</option>
@@ -756,7 +757,7 @@ export default function EmitirNfePage() {
                   </select>
                 </Field>
               </div>
-              <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-sm">
+              <div className={`px-4 py-3 text-sm ${nfeStepPanelClass('pagamento')}`}>
                 Valor a informar no XML: <span className="font-bold tabular-nums">{tPag === '90' ? '0,00' : formatAmount(vNf)}</span>
               </div>
               <StepCompleteFooter
@@ -772,18 +773,23 @@ export default function EmitirNfePage() {
             className={`scroll-mt-14 rounded-xl p-5 ${nfeStepSectionClass('complementos')} space-y-4`}
           >
               <h3 className={`text-sm font-bold ${nfeStepHeadingClass('complementos')}`}>Informações adicionais</h3>
+              <div className={`space-y-4 p-4 ${nfeStepPanelClass('complementos')}`}>
               <Field label="Informações complementares (contribuinte / DANFE)">
                 <textarea value={infCpl} onChange={(e) => setInfCpl(e.target.value.slice(0, 2000))} rows={4} className={FILTER_INPUT_CLS} placeholder="Pedido, contrato, texto legal ao destinatário" />
               </Field>
               <Field label="Informações de interesse do fisco">
                 <textarea value={infAdFisco} onChange={(e) => setInfAdFisco(e.target.value.slice(0, 2000))} rows={3} className={FILTER_INPUT_CLS} />
               </Field>
+              </div>
             </section>
         </div>
 
         <aside className="xl:sticky xl:top-4 space-y-4">
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Totais da NF-e</h3>
+          <div
+            data-nfe-aside-card="totais"
+            className={`rounded-xl p-5 space-y-3 ${nfeStepSectionClass('pagamento')}`}
+          >
+            <h3 className={`text-sm font-bold ${nfeStepHeadingClass('pagamento')}`}>Totais da NF-e</h3>
             {[
               ['Produtos', vProd],
               ['Descontos', vDesc],
@@ -802,8 +808,11 @@ export default function EmitirNfePage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-2">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Conferência</h3>
+          <div
+            data-nfe-aside-card="conferencia"
+            className={`rounded-xl p-5 space-y-2 ${nfeStepSectionClass('complementos')}`}
+          >
+            <h3 className={`text-sm font-bold ${nfeStepHeadingClass('complementos')}`}>Conferência</h3>
             {pendencias.length === 0 ? (
               <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Pronta para transmitir.</p>
             ) : (

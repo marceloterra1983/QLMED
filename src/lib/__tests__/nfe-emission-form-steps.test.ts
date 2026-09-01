@@ -9,6 +9,7 @@ import {
   nfeStepGaps,
   nfeStepHeadingClass,
   nfeStepNavClass,
+  nfeStepPanelClass,
   nfeStepSectionClass,
   scrollToNfeSection,
   type NfeStepDraft,
@@ -113,16 +114,26 @@ describe('Nova NF-e: página única e etapas', () => {
       expect(active).toMatch(/bg-/);
       expect(active).toMatch(/ring-2/);
       expect(idle).toMatch(/bg-/);
-      expect(section).toMatch(/border-t-2/);
+      expect(section).toMatch(/border-t-\[?3?px\]?|border-t-2|border-t-\[3px\]/);
       expect(section).toMatch(/\bborder\b/);
-      expect(section).toMatch(/bg-/);
+      expect(section).toMatch(/bg-(blue|emerald|amber|violet|slate)-\d{2,3}(?!\/)/);
+      expect(nfeStepPanelClass(step)).toMatch(/bg-/);
+      expect(nfeStepPanelClass(step)).toMatch(/\bborder\b/);
       expect(heading).toMatch(/text-/);
     }
     const src = pageSrc();
     expect(src).toContain('NFE_STEP_TONE');
     expect(src).toContain('nfeStepSectionClass');
+    expect(src).toContain('nfeStepPanelClass');
     expect(src).toContain('nfeStepHeadingClass');
-    expect(src).not.toMatch(/bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5 \$\{nfeStepSectionClass/);
+    expect(src).not.toMatch(/bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-5/);
+    expect(src).toContain("nfeStepPanelClass('dados')");
+    expect(src).toContain("nfeStepPanelClass('itens')");
+    expect(src).toContain("nfeStepPanelClass('transporte')");
+    expect(src).toContain("nfeStepPanelClass('pagamento')");
+    expect(src).toContain("nfeStepPanelClass('complementos')");
+    expect(src).toContain('data-nfe-aside-card="totais"');
+    expect(src).toContain('data-nfe-aside-card="conferencia"');
     for (const step of NFE_FORM_STEPS) {
       expect(src).toContain(`nfeStepSectionClass('${step}')`);
     }

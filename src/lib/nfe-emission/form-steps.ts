@@ -11,13 +11,15 @@ export const NFE_STEP_LABELS: Record<NfeFormStep, string> = {
   complementos: 'Complementos',
 };
 
-/** Tom visual por etapa (nav + card da seção). Ativo = preenchido/anel; inativo = muted da mesma família. */
+/** Tom visual por etapa (nav + cards). Ativo = preenchido/anel; inativo = muted da mesma família. */
 export type NfeStepToneClasses = {
   tone: 'blue' | 'emerald' | 'amber' | 'violet' | 'slate';
   navActive: string;
   navIdle: string;
-  /** Card da seção: borda + fundo sutil + accent superior (mesmo tom da nav). */
+  /** Card/wrapper da seção: borda + fundo visível (não quase branco) + accent superior. */
   section: string;
+  /** Painéis internos (listas, sub-cards) no mesmo tom. */
+  panel: string;
   heading: string;
 };
 
@@ -28,7 +30,10 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
       'bg-blue-600 text-white font-extrabold shadow-md ring-2 ring-blue-800 ring-offset-2 ring-offset-slate-100 dark:bg-blue-500 dark:ring-blue-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-blue-50 text-blue-800 font-medium border border-blue-100/80 hover:bg-blue-100/80 dark:bg-blue-950/35 dark:text-blue-200 dark:border-blue-900/50 dark:hover:bg-blue-950/55',
-    section: 'border border-blue-200/90 bg-blue-50/45 border-t-2 border-t-blue-500 dark:border-blue-800/55 dark:bg-blue-950/30 dark:border-t-blue-400',
+    section:
+      'border border-blue-300 bg-blue-100 border-t-[3px] border-t-blue-600 dark:border-blue-700 dark:bg-blue-950/60 dark:border-t-blue-400',
+    panel:
+      'rounded-lg border border-blue-300/90 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/45',
     heading: 'text-blue-900 dark:text-blue-100',
   },
   itens: {
@@ -37,7 +42,10 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
       'bg-emerald-600 text-white font-extrabold shadow-md ring-2 ring-emerald-800 ring-offset-2 ring-offset-slate-100 dark:bg-emerald-500 dark:ring-emerald-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-emerald-50 text-emerald-900 font-medium border border-emerald-100/80 hover:bg-emerald-100/80 dark:bg-emerald-950/35 dark:text-emerald-200 dark:border-emerald-900/50 dark:hover:bg-emerald-950/55',
-    section: 'border border-emerald-200/90 bg-emerald-50/45 border-t-2 border-t-emerald-500 dark:border-emerald-800/55 dark:bg-emerald-950/30 dark:border-t-emerald-400',
+    section:
+      'border border-emerald-300 bg-emerald-100 border-t-[3px] border-t-emerald-600 dark:border-emerald-700 dark:bg-emerald-950/60 dark:border-t-emerald-400',
+    panel:
+      'rounded-lg border border-emerald-300/90 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/45',
     heading: 'text-emerald-900 dark:text-emerald-100',
   },
   transporte: {
@@ -46,7 +54,10 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
       'bg-amber-600 text-white font-extrabold shadow-md ring-2 ring-amber-800 ring-offset-2 ring-offset-slate-100 dark:bg-amber-500 dark:text-white dark:ring-amber-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-amber-50 text-amber-950 font-medium border border-amber-100/80 hover:bg-amber-100/80 dark:bg-amber-950/35 dark:text-amber-100 dark:border-amber-900/50 dark:hover:bg-amber-950/55',
-    section: 'border border-amber-200/90 bg-amber-50/45 border-t-2 border-t-amber-500 dark:border-amber-800/55 dark:bg-amber-950/30 dark:border-t-amber-400',
+    section:
+      'border border-amber-300 bg-amber-100 border-t-[3px] border-t-amber-600 dark:border-amber-700 dark:bg-amber-950/55 dark:border-t-amber-400',
+    panel:
+      'rounded-lg border border-amber-300/90 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/40',
     heading: 'text-amber-950 dark:text-amber-100',
   },
   pagamento: {
@@ -55,7 +66,10 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
       'bg-violet-600 text-white font-extrabold shadow-md ring-2 ring-violet-800 ring-offset-2 ring-offset-slate-100 dark:bg-violet-500 dark:ring-violet-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-violet-50 text-violet-900 font-medium border border-violet-100/80 hover:bg-violet-100/80 dark:bg-violet-950/35 dark:text-violet-200 dark:border-violet-900/50 dark:hover:bg-violet-950/55',
-    section: 'border border-violet-200/90 bg-violet-50/45 border-t-2 border-t-violet-500 dark:border-violet-800/55 dark:bg-violet-950/30 dark:border-t-violet-400',
+    section:
+      'border border-violet-300 bg-violet-100 border-t-[3px] border-t-violet-600 dark:border-violet-700 dark:bg-violet-950/60 dark:border-t-violet-400',
+    panel:
+      'rounded-lg border border-violet-300/90 bg-violet-50 dark:border-violet-700 dark:bg-violet-900/45',
     heading: 'text-violet-900 dark:text-violet-100',
   },
   complementos: {
@@ -64,7 +78,10 @@ export const NFE_STEP_TONE: Record<NfeFormStep, NfeStepToneClasses> = {
       'bg-slate-700 text-white font-extrabold shadow-md ring-2 ring-slate-900 ring-offset-2 ring-offset-slate-100 dark:bg-slate-500 dark:ring-slate-200 dark:ring-offset-slate-800',
     navIdle:
       'bg-slate-100 text-slate-700 font-medium border border-slate-200/80 hover:bg-slate-200/70 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800',
-    section: 'border border-slate-300/90 bg-slate-50/70 border-t-2 border-t-slate-500 dark:border-slate-600/70 dark:bg-slate-900/40 dark:border-t-slate-400',
+    section:
+      'border border-slate-400 bg-slate-200 border-t-[3px] border-t-slate-600 dark:border-slate-600 dark:bg-slate-800/70 dark:border-t-slate-400',
+    panel:
+      'rounded-lg border border-slate-400/80 bg-slate-100 dark:border-slate-600 dark:bg-slate-800/55',
     heading: 'text-slate-900 dark:text-slate-100',
   },
 };
@@ -80,6 +97,10 @@ export function nfeStepSectionClass(step: NfeFormStep): string {
 
 export function nfeStepHeadingClass(step: NfeFormStep): string {
   return NFE_STEP_TONE[step].heading;
+}
+
+export function nfeStepPanelClass(step: NfeFormStep): string {
+  return NFE_STEP_TONE[step].panel;
 }
 
 export function nfeSectionId(step: NfeFormStep): string {
