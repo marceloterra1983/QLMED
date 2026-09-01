@@ -1,13 +1,30 @@
 export type BackgroundServiceName = 'auto-sync' | 'local-xml-sync' | 'impcg-mail-ingest' | 'cassems-mail-ingest';
 
 export interface BackgroundServiceStatus {
-  status: 'running' | 'disabled' | 'error';
+  status: 'running' | 'stale' | 'disabled' | 'error';
   startedAt: string;
   lastHeartbeatAt: string | null;
+  /** Idade do último heartbeat na hora da leitura. Null quando nunca bateu. */
+  lastHeartbeatAgeMs: number | null;
+  /** Idade a partir da qual o serviço é declarado `stale`. */
+  staleAfterMs: number;
   lastError: string | null;
 }
 
-type HealthStore = Partial<Record<BackgroundServiceName, BackgroundServiceStatus>>;
+/** Estado guardado; `status` aqui nunca é 'stale' — stale é derivado na leitura. */
+interface HealthRecord {
+  status: 'running' | 'disabled' | 'error';
+  startedAt: string;
+  lastHeartbeatAt: string | null;
+  heartbeatIntervalMs: number;
+  lastError: string | null;
+}
+
+type HealthStore = Partial<Record<BackgroundServiceName, HealthRecord>>;
+
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 60_000;
+// Um ciclo pode atrasar por lentidão normal; dois ciclos perdidos é avaria.
+const STALE_CYCLES = 2;
 
 const globalForHealth = globalThis as typeof globalThis & {
   __qlmedBackgroundServiceHealth?: HealthStore;
@@ -17,15 +34,21 @@ function store(): HealthStore {
   return (globalForHealth.__qlmedBackgroundServiceHealth ??= {});
 }
 
+function staleAfter(record: HealthRecord): number {
+  return record.heartbeatIntervalMs * STALE_CYCLES;
+}
+
 export function markBackgroundServiceStarted(
   name: BackgroundServiceName,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; heartbeatIntervalMs?: number } = {},
 ): void {
   const now = new Date().toISOString();
+  const interval = Number(options.heartbeatIntervalMs);
   store()[name] = {
     status: options.enabled === false ? 'disabled' : 'running',
     startedAt: now,
     lastHeartbeatAt: now,
+    heartbeatIntervalMs: Number.isFinite(interval) && interval > 0 ? interval : DEFAULT_HEARTBEAT_INTERVAL_MS,
     lastError: null,
   };
 }
@@ -49,8 +72,31 @@ export function markBackgroundServiceError(name: BackgroundServiceName, error: u
   status.lastError = error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500);
 }
 
-export function getBackgroundServiceHealth(): HealthStore {
+/**
+ * Heartbeat só é sinal se souber envelhecer: um serviço 'running' cujo último
+ * batimento passou de `staleAfterMs` é reportado como 'stale' na leitura, sem
+ * depender de ninguém escrever nada. Serviço 'disabled' ou 'error' mantém o
+ * próprio estado — não há batimento a envelhecer.
+ */
+export function getBackgroundServiceHealth(now: number = Date.now()): Partial<Record<BackgroundServiceName, BackgroundServiceStatus>> {
   return Object.fromEntries(
-    Object.entries(store()).map(([name, status]) => [name, status ? { ...status } : status]),
-  ) as HealthStore;
+    Object.entries(store()).map(([name, record]) => {
+      if (!record) return [name, record];
+      const beatAt = record.lastHeartbeatAt ? Date.parse(record.lastHeartbeatAt) : NaN;
+      const ageMs = Number.isFinite(beatAt) ? Math.max(0, now - beatAt) : null;
+      const threshold = staleAfter(record);
+      const status = record.status === 'running' && ageMs !== null && ageMs > threshold
+        ? 'stale'
+        : record.status;
+
+      return [name, {
+        status,
+        startedAt: record.startedAt,
+        lastHeartbeatAt: record.lastHeartbeatAt,
+        lastHeartbeatAgeMs: ageMs,
+        staleAfterMs: threshold,
+        lastError: record.lastError,
+      } satisfies BackgroundServiceStatus];
+    }),
+  ) as Partial<Record<BackgroundServiceName, BackgroundServiceStatus>>;
 }

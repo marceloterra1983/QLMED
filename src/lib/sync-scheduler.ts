@@ -9,6 +9,7 @@ import {
   markBackgroundServiceHeartbeat,
   markBackgroundServiceStarted,
 } from './background-service-health';
+import { acquirePostgresAdvisoryLock, syncExecutionLockKey } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('auto-sync');
 
@@ -31,7 +32,8 @@ const SEFAZ_RATE_LIMIT_COOLDOWN_MINUTES = normalizeSyncIntervalMinutes(process.e
 // Bloqueios 656 consecutivos dobram o cooldown (6h → 12h → 24h...) até este teto.
 const SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES = normalizeSyncIntervalMinutes(process.env.SEFAZ_RATE_LIMIT_COOLDOWN_MAX_MINUTES || '1440');
 
-const STUCK_SYNC_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+// Piso de idade para SUSPEITAR de um sync preso. Não é veredito: ver recoverStuckSyncLogs.
+const STUCK_SYNC_TIMEOUT_MS = 30 * 60 * 1000;
 
 let started = false;
 
@@ -109,7 +111,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
     where: {
       companyId,
       syncMethod: 'sefaz',
-      status: { in: ['completed', 'error'] },
+      status: { in: ['completed', 'partial', 'error'] },
       completedAt: { not: null },
     },
     orderBy: { completedAt: 'desc' },
@@ -125,10 +127,14 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
   type SyncRun = (typeof recentRuns)[number];
   const is656 = (run: SyncRun) =>
     run.status === 'error' && (run.errorMessage || '').includes('656');
+  // 'partial' também é uma consulta que chegou à SEFAZ: conta para o cooldown
+  // exatamente como 'completed', senão um run parcial deixava o piso anti-656
+  // sem âncora e a próxima hora reconsultava.
+  const didReachSefaz = (run: SyncRun) => run.status === 'completed' || run.status === 'partial';
   const isEmptyCompleted = (run: SyncRun) =>
-    run.status === 'completed' && run.newDocs === 0 && run.updatedDocs === 0;
+    didReachSefaz(run) && run.newDocs === 0 && run.updatedDocs === 0;
   const isProductiveCompleted = (run: SyncRun) =>
-    run.status === 'completed' && (run.newDocs > 0 || run.updatedDocs > 0);
+    didReachSefaz(run) && (run.newDocs > 0 || run.updatedDocs > 0);
 
   const lastRun = recentRuns[0];
   if (!lastRun?.completedAt) {
@@ -195,7 +201,7 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
 export function startAutoSync() {
   if (started) return;
   started = true;
-  markBackgroundServiceStarted('auto-sync');
+  markBackgroundServiceStarted('auto-sync', { heartbeatIntervalMs: CHECK_INTERVAL_MS });
 
   log.info('Scheduler iniciado - verificando a cada 60s');
 
@@ -209,9 +215,17 @@ export function startAutoSync() {
   }, 30_000);
 }
 
-async function recoverStuckSyncLogs() {
+/**
+ * O tempo apenas ELEGE candidatos; quem decide é o lock de execução. Um sync
+ * legítimo pode passar de 30 min (janela grande do NSDocs, 50 páginas DistDFe
+ * espaçadas de 2s), e marcá-lo como 'error' libertava o guarda de concorrência
+ * para uma segunda corrida em paralelo com a primeira, ainda viva. O advisory
+ * lock de sessão do Postgres é largado pelo servidor quando a conexão morre:
+ * se ele está livre, o dono morreu mesmo.
+ */
+export async function recoverStuckSyncLogs(now: number = Date.now()) {
   try {
-    const cutoff = new Date(Date.now() - STUCK_SYNC_TIMEOUT_MS);
+    const cutoff = new Date(now - STUCK_SYNC_TIMEOUT_MS);
     const stuckLogs = await prisma.syncLog.findMany({
       where: {
         status: 'running',
@@ -220,22 +234,39 @@ async function recoverStuckSyncLogs() {
       include: { company: { select: { razaoSocial: true } } },
     });
 
-    if (stuckLogs.length > 0) {
-      for (const stuckLog of stuckLogs) {
+    let recovered = 0;
+    for (const stuckLog of stuckLogs) {
+      const runningMinutes = Math.round((now - stuckLog.startedAt.getTime()) / 60000);
+      const lock = await acquirePostgresAdvisoryLock(syncExecutionLockKey(stuckLog.companyId));
+      if (!lock) {
+        log.info(
+          { syncLogId: stuckLog.id, syncMethod: stuckLog.syncMethod, company: stuckLog.company.razaoSocial, runningMinutes },
+          'Sync passou do tempo mas continua vivo (lock de execução tomado) — não recuperado'
+        );
+        continue;
+      }
+
+      try {
         log.warn(
-          { syncLogId: stuckLog.id, syncMethod: stuckLog.syncMethod, company: stuckLog.company.razaoSocial, runningMinutes: Math.round((Date.now() - stuckLog.startedAt.getTime()) / 60000) },
+          { syncLogId: stuckLog.id, syncMethod: stuckLog.syncMethod, company: stuckLog.company.razaoSocial, runningMinutes },
           'Recovering stuck syncLog'
         );
         await prisma.syncLog.update({
           where: { id: stuckLog.id },
           data: {
             status: 'error',
-            errorMessage: 'Auto-recovered: sync timed out after 30 minutes',
+            errorMessage: `Auto-recovered: processo morreu (lock de execução livre) após ${runningMinutes} min em 'running'`,
             completedAt: new Date(),
           },
         });
+        recovered++;
+      } finally {
+        await lock.release();
       }
-      log.warn({ count: stuckLogs.length }, 'Recovered stuck syncLog(s)');
+    }
+
+    if (recovered > 0) {
+      log.warn({ count: recovered }, 'Recovered stuck syncLog(s)');
     }
   } catch (error) {
     log.error({ err: error }, 'Failed to recover stuck syncLogs');
@@ -415,7 +446,7 @@ async function checkAndSync() {
             where: {
               companyId: company.id,
               syncMethod: 'sefaz',
-              status: { in: ['completed', 'error'] },
+              status: { in: ['completed', 'partial', 'error'] },
             },
             orderBy: { completedAt: 'desc' },
             select: { completedAt: true },
@@ -479,7 +510,7 @@ async function checkAndSync() {
             where: {
               companyId: company.id,
               syncMethod: 'nsdocs',
-              status: { in: ['completed', 'error'] },
+              status: { in: ['completed', 'partial', 'error'] },
             },
             orderBy: { completedAt: 'desc' },
             select: { startedAt: true },
@@ -532,7 +563,7 @@ async function checkAndSync() {
             where: {
               companyId: company.id,
               syncMethod: 'receita_nfse',
-              status: { in: ['completed', 'error'] },
+              status: { in: ['completed', 'partial', 'error'] },
             },
             orderBy: { completedAt: 'desc' },
             select: { startedAt: true },

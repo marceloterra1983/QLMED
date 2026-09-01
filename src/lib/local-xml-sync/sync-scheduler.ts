@@ -464,7 +464,11 @@ export function startLocalXmlSync(): void {
   if (started) return;
   started = true;
   const hasCopySource = COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED;
-  markBackgroundServiceStarted('local-xml-sync', { enabled: localXmlWatchEnabled || hasCopySource });
+  markBackgroundServiceStarted('local-xml-sync', {
+    enabled: localXmlWatchEnabled || hasCopySource,
+    // Batimento vem do timer mais rápido que este arranque liga.
+    heartbeatIntervalMs: localXmlWatchEnabled ? RESCAN_INTERVAL_MS : COPY_FROM_SOURCE_INTERVAL_MS,
+  });
 
   // OneDrive/source copy runs independently of local filesystem watching,
   // so emitted invoices sync even when LOCAL_XML_WATCH_ENABLED=false (production).

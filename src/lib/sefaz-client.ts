@@ -30,6 +30,12 @@ export interface DistDFeResponse {
   cStat: string;
   xMotivo: string;
   docs: SefazDocument[];
+  /**
+   * NSUs que a SEFAZ entregou mas que este client não conseguiu abrir
+   * (base64/gunzip/parse). Sem isto o documento sumia aqui dentro e o chamador
+   * avançava o cursor por cima dele — perda fiscal silenciosa.
+   */
+  failedNsus: string[];
 }
 
 export class SefazClient {
@@ -203,17 +209,18 @@ export class SefazClient {
     const maxNSU = retDist.maxNSU;
 
     if (cStat === '137') {
-      return { status: 'empty', cStat, xMotivo, ultNSU, maxNSU, docs: [] };
+      return { status: 'empty', cStat, xMotivo, ultNSU, maxNSU, docs: [], failedNsus: [] };
     }
 
     if (cStat !== '138') {
-      return { status: 'error', cStat, xMotivo, ultNSU, maxNSU, docs: [] };
+      return { status: 'error', cStat, xMotivo, ultNSU, maxNSU, docs: [], failedNsus: [] };
     }
 
     // Processar documentos
     const lote = retDist.loteDistDFeInt?.docZip;
     const docList = Array.isArray(lote) ? lote : (lote ? [lote] : []);
     const docs: SefazDocument[] = [];
+    const failedNsus: string[] = [];
 
     for (const d of docList) {
       // Com mergeAttrs: NSU e schema ficam como propriedades diretas
@@ -222,7 +229,11 @@ export class SefazClient {
       const schema = d.schema || '';
       const base64Content = d._ || (typeof d === 'string' ? d : '');
 
-      if (!base64Content || typeof base64Content !== 'string') continue;
+      if (!base64Content || typeof base64Content !== 'string') {
+        log.error({ nsu }, 'docZip sem conteúdo base64');
+        failedNsus.push(nsu);
+        continue;
+      }
 
       try {
         const buffer = Buffer.from(base64Content, 'base64');
@@ -239,10 +250,11 @@ export class SefazClient {
         });
       } catch (err) {
         log.error({ err, nsu }, 'Erro ao processar doc NSU');
+        failedNsus.push(nsu);
       }
     }
 
-    return { status: 'success', cStat, xMotivo, ultNSU, maxNSU, docs };
+    return { status: 'success', cStat, xMotivo, ultNSU, maxNSU, docs, failedNsus };
   }
 
   async buscarNovosDocumentos(ultimoNSU: string): Promise<DistDFeResponse> {

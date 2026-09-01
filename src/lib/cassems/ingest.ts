@@ -412,7 +412,7 @@ export async function runCassemsIngest(
 
 export async function startCassemsMailIngest(): Promise<void> {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
-  markBackgroundServiceStarted('cassems-mail-ingest', { enabled: !disabled });
+  markBackgroundServiceStarted('cassems-mail-ingest', { enabled: !disabled, heartbeatIntervalMs: CASSEMS_INGEST_INTERVAL_MS });
   if (disabled) return;
 
   const tick = async () => {
