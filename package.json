@@ -14,6 +14,8 @@
     "ui:gallery": "node ./scripts/render-ui-gallery.mjs",
     "ui:gallery:check": "node ./scripts/render-ui-gallery.mjs --check",
     "ui:gallery:test": "bash ./scripts/test-ui-gallery.sh",
+    "ui:dialogs": "node ./scripts/verify-ui-dialogs.mjs",
+    "ui:dialogs:test": "bash ./scripts/test-ui-dialogs-verifier.sh",
     "docs:validate": "node ./scripts/validate-docs.mjs",
     "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "ai-tooling:check": "node ./scripts/check-ai-tooling.mjs",

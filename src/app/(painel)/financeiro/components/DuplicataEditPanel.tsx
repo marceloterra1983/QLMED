@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, formatCnpj, formatDate } from '@/lib/utils';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
@@ -87,11 +88,16 @@ export default function DuplicataEditPanel({
   const entityLabel = direction === 'pagar' ? 'Fornecedor' : 'Cliente';
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
-      <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
-      <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-4xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" role="dialog" aria-modal="true">
-        {/* Fixed Header */}
-        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Duplicatas da nota"
+      surface="sunken"
+      width="sm:max-w-4xl"
+      height="sm:h-auto sm:max-h-[90vh]"
+      bodyClassName=""
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
@@ -111,8 +117,40 @@ export default function DuplicataEditPanel({
             </button>
           </div>
         </div>
-
-        {/* Scrollable Content */}
+      }
+      footer={
+<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+          {/* Mobile */}
+          <div className="sm:hidden flex gap-2">
+            <Button onClick={onClose} icon="arrow_back" size="lg" className="flex-1">
+              Voltar
+            </Button>
+            {canWrite && (
+              <button
+                onClick={onSave}
+                disabled={!canSaveDetails}
+                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[20px]">save</span>
+                {savingDetails ? 'Salvando...' : 'Salvar'}
+              </button>
+            )}
+          </div>
+          {/* Desktop */}
+          <div className="hidden sm:flex items-center justify-end gap-2">
+            <Button onClick={onClose} disabled={savingDetails} variant="secondary" size="sm">
+              {canWrite ? 'Cancelar' : 'Fechar'}
+            </Button>
+            {canWrite && (
+              <Button onClick={onSave} disabled={!canSaveDetails} loading={savingDetails} size="sm">
+                {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            )}
+          </div>
+        </div>
+      }
+    >
+{/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -342,38 +380,6 @@ export default function DuplicataEditPanel({
             </div>
           </div>
         </div>
-
-        {/* Fixed Footer */}
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
-          {/* Mobile */}
-          <div className="sm:hidden flex gap-2">
-            <Button onClick={onClose} icon="arrow_back" size="lg" className="flex-1">
-              Voltar
-            </Button>
-            {canWrite && (
-              <button
-                onClick={onSave}
-                disabled={!canSaveDetails}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-base active:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <span className="material-symbols-outlined text-[20px]">save</span>
-                {savingDetails ? 'Salvando...' : 'Salvar'}
-              </button>
-            )}
-          </div>
-          {/* Desktop */}
-          <div className="hidden sm:flex items-center justify-end gap-2">
-            <Button onClick={onClose} disabled={savingDetails} variant="secondary" size="sm">
-              {canWrite ? 'Cancelar' : 'Fechar'}
-            </Button>
-            {canWrite && (
-              <Button onClick={onSave} disabled={!canSaveDetails} loading={savingDetails} size="sm">
-                {savingDetails ? 'Salvando...' : 'Salvar Alterações'}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
@@ -49,7 +49,6 @@ interface ContactDetailsModalProps {
 
 export default function ContactDetailsModal({ kind, isOpen, onClose, contact, inline = false }: ContactDetailsModalProps) {
   const cfg = CONTACT_KINDS[kind];
-  useModalBackButton(isOpen && !inline, onClose);
 
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<ContactDetailsResponse | null>(null);
@@ -372,10 +371,16 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
       {inline ? (
         <div className="space-y-3">{content}</div>
       ) : (
-        <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
-          <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
-          <div className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-6xl sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5" role="dialog" aria-modal="true">
-            <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+        <Modal
+      isOpen
+      onClose={onClose}
+      title="Detalhes do contato"
+      surface="sunken"
+      width="sm:max-w-6xl"
+      height="sm:h-auto sm:max-h-[90vh]"
+      bodyClassName="p-4 sm:p-6"
+      header={
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0 hidden sm:flex ${cfg.headerAvatarClass}`}>
@@ -395,8 +400,9 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">{content}</div>
-            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+      }
+      footer={
+<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
               <div className="sm:hidden">
                 <Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button>
               </div>
@@ -404,8 +410,10 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
                 <Button onClick={onClose} variant="secondary" size="sm">Fechar</Button>
               </div>
             </div>
-          </div>
-        </div>
+      }
+    >
+{content}
+    </Modal>
       )}
 
       <InvoiceDetailsModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} invoiceId={selectedInvoiceId} />

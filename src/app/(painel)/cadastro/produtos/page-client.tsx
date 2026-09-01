@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
@@ -470,9 +471,16 @@ export default function ProdutosPage() {
 
       {/* Auto-classify preview modal */}
       {autoClassifyPreview && (
-        <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={() => setAutoClassifyPreview(null)}>
-          <div className="absolute inset-0 sm:relative sm:inset-auto bg-white dark:bg-card-dark sm:rounded-2xl sm:shadow-2xl w-full sm:max-w-3xl sm:max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+        <Modal
+      isOpen
+      onClose={() => setAutoClassifyPreview(null)}
+      title="Auto-classificação — prévia"
+      surface="card"
+      width="sm:max-w-3xl"
+      height="sm:max-h-[85vh]"
+      bodyClassName=""
+      header={
+<div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-[20px] text-amber-500">auto_fix_high</span>
@@ -482,7 +490,10 @@ export default function ProdutosPage() {
               </div>
               <button onClick={() => setAutoClassifyPreview(null)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
             </div>
-            <div className="overflow-y-auto flex-1">
+      }
+      footer={null}
+    >
+<div className="overflow-y-auto flex-1">
               {autoClassifyPreview.updatesFound === 0 ? (
                 <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[48px] opacity-30">check_circle</span>
@@ -527,8 +538,7 @@ export default function ProdutosPage() {
                 <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">Fechar</button>
               )}
             </div>
-          </div>
-        </div>
+    </Modal>
       )}
 
       {/* Bulk edit modal */}

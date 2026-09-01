@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Modal from '@/components/ui/Modal';
 import type { ProductRow } from './types';
 
 /* ─── Settings Modal (Ajustes) ─── */
@@ -77,21 +78,6 @@ function SettingsModal({ onClose, onUpdated }: {
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null);
   const [settingsData, setSettingsData] = useState<ProductSettingsResponse | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !pendingDelete) onClose();
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose, pendingDelete]);
 
   const loadSettings = async () => {
     setLoadingSettings(true);
@@ -460,17 +446,23 @@ function SettingsModal({ onClose, onUpdated }: {
   const activeTabMeta = FISCAL_TABS.find((t) => t.key === fiscalTab)!;
 
   // ======================== RENDER ========================
-  return (
-    <>
-      <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm" onClick={onClose}>
-        <div
-          className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-5xl sm:h-auto sm:max-h-[88vh] flex flex-col sm:flex-row overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="settings-modal-section-title"
-        >
+  // Não sai do diálogo de ajustes enquanto a confirmação aninhada estiver
+  // aberta — vale para o fundo, o Esc e o botão voltar, pelo mesmo caminho.
+  const fechar = () => { if (!pendingDelete) onClose(); };
 
+  return (
+    <Modal
+      isOpen
+      onClose={fechar}
+      title="Ajustes de produtos"
+      surface="sunken"
+      direction="row"
+      width="sm:max-w-5xl"
+      height="sm:h-auto sm:max-h-[88vh]"
+      bodyClassName="flex flex-col"
+      footer={null}
+      header={
+        <>
           {/* ── Sidebar ── */}
           <div className="shrink-0 sm:w-56 bg-white dark:bg-card-dark border-b sm:border-b-0 sm:border-r border-slate-200 dark:border-slate-700 flex sm:flex-col">
             {/* Title */}
@@ -495,7 +487,9 @@ function SettingsModal({ onClose, onUpdated }: {
               })}
             </nav>
           </div>
-
+        </>
+      }
+    >
           {/* ── Content ── */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
@@ -961,8 +955,8 @@ function SettingsModal({ onClose, onUpdated }: {
               )}
             </div>
           </div>
-        </div>
-      </div>
+      {/* Dentro do diálogo de propósito: assim os botões da confirmação ficam
+          na lista de focáveis do trap em vez de fora dela. */}
       <ConfirmDialog
         isOpen={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
@@ -978,7 +972,7 @@ function SettingsModal({ onClose, onUpdated }: {
         confirmVariant="danger"
         loading={saving}
       />
-    </>
+    </Modal>
   );
 }
 

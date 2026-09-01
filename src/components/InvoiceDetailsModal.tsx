@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { useModalBackButton } from '@/hooks/useModalBackButton';
 import Button from '@/components/ui/Button';
 
 interface InvoiceDetailsModalProps {
@@ -121,7 +121,6 @@ const DOC_THEME: Record<string, { icon: string; label: string; gradient: string;
 const DEFAULT_THEME = DOC_THEME.NFE;
 
 export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: InvoiceDetailsModalProps) {
-  useModalBackButton(isOpen, onClose);
   const [view, setView] = useState<'danfe' | 'xml'>('danfe');
   const [xmlContent, setXmlContent] = useState<string | null>(null);
   const [loadingXml, setLoadingXml] = useState(false);
@@ -241,19 +240,16 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
   };
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-black/60 sm:backdrop-blur-sm">
-      <div
-        className="absolute inset-0 hidden sm:block"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        className="absolute inset-0 sm:relative sm:inset-auto bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl w-full sm:max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden sm:shadow-2xl sm:ring-1 ring-black/5 dark:ring-white/5"
-        role="dialog"
-        aria-modal="true"
-      >
-        {/* Header */}
-        <div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Detalhes da nota fiscal"
+      surface="sunken"
+      width="sm:max-w-5xl"
+      height="sm:h-[92vh]"
+      bodyClassName=""
+      header={
+<div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* Left: Icon + Title */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
@@ -322,14 +318,9 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 <span className="material-symbols-outlined text-[16px] text-amber-500">data_object</span>
                 <span className="hidden md:inline">XML</span>
               </Button>
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30 transition-all"
-                title="Imprimir"
-              >
-                <span className="material-symbols-outlined text-[14px] sm:text-[16px]">print</span>
+              <Button onClick={handlePrint} size="sm" title="Imprimir" icon="print">
                 <span className="hidden md:inline">Imprimir</span>
-              </button>
+              </Button>
 
               <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
@@ -362,8 +353,16 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
             </div>
           )}
         </div>
-
-        {/* Content */}
+      }
+      footer={
+<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+          <Button onClick={onClose} icon="arrow_back" size="lg" block>
+            Voltar
+          </Button>
+        </div>
+      }
+    >
+{/* Content */}
         <div className="flex-1 overflow-hidden">
           {view === 'danfe' ? (
             <div className="w-full h-full bg-slate-200 dark:bg-slate-900">
@@ -428,14 +427,6 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
             </div>
           )}
         </div>
-
-        {/* Footer - mobile only */}
-        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          <Button onClick={onClose} icon="arrow_back" size="lg" block>
-            Voltar
-          </Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

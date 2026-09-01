@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -143,23 +144,9 @@ export default function LoginPage() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white py-3 rounded-xl text-sm font-bold shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 transition-all disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  Entrando...
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]">login</span>
-                  Entrar
-                </>
-              )}
-            </button>
+            <Button type="submit" disabled={loading} loading={loading} icon="login" size="lg" block>
+              {loading ? 'Entrando...' : 'Entrar'}
+            </Button>
           </form>
 
         </div>
