@@ -216,3 +216,9 @@ ficheiros disjuntos, com gates próprios e controlo positivo obrigatório.
 Os dois P1 do Codex no PR #252 coincidem com REAUD-DATA-014 e REAUD-B-08, que
 a re-auditoria já tinha em aberto. As respostas nas threads saem depois de a
 correção estar na branch, não antes.
+
+**2026-09-01 — CI verde no PR #252** (run 33570778984, head `1ad4007` + docs):
+23/23 passos do job `app`, com replay das migrações e testes de integração com
+banco. Primeiro veredito de CI sobre as oito correções da re-auditoria. O
+despacho de eventos `pull_request` só voltou com um PR novo; o #250 ficou sem
+check suite do Actions em nove commits seguidos.
