@@ -493,7 +493,7 @@ export async function runImpcgIngest(
 
 export async function startImpcgMailIngest(): Promise<void> {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
-  markBackgroundServiceStarted('impcg-mail-ingest', { enabled: !disabled });
+  markBackgroundServiceStarted('impcg-mail-ingest', { enabled: !disabled, heartbeatIntervalMs: IMPCG_INGEST_INTERVAL_MS });
   if (disabled) return;
 
   const tick = async () => {
