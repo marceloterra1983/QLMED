@@ -109,7 +109,7 @@ vitest → `cp` do backup → `cmp`).
   EXPECT: exit 0 nos três; `Tests N passed` com N ≥ 1191 + testes novos
   EVIDENCE: `typecheck exit=0` · `lint exit=0` (ESLint ignora `scripts/**`; o typecheck cobre-os) · `Test Files 143 passed | 4 skipped (147)` · `Tests 1216 passed | 9 skipped (1225)` = 1191 + 25 novos (crypto 4, n8n-client 2, migrate 10, backfill 9), nenhum perdido.
 
-- [ ] **G8 — Commit e push confirmados no remoto**
+- [x] **G8 — Commit e push confirmados no remoto**
   CHECK: git ls-remote origin refs/heads/fix/reaudit-r3
   EXPECT: SHA igual a `git rev-parse HEAD`
-  EVIDENCE: pending
+  EVIDENCE: `5384ea216cda938228b33731f23d75c59fc9ca40 refs/heads/fix/reaudit-r3` = `git rev-parse HEAD`. Esta linha de evidência entra num commit seguinte (só o ledger), também empurrado.
