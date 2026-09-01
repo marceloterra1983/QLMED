@@ -64,7 +64,7 @@ Backups para os controlos positivos (restaurar por `cp`, nunca `git checkout`):
   EXPECT: exit 0 nos três; `Tests` > 1191 passed
   EVIDENCE: `typecheck exit=0`, `lint exit=0`, `Test Files 142 passed | 4 skipped (146)`, `Tests 1197 passed | 9 skipped (1206)` — +6 testes (+3 no L8, +3 no render novo), +1 ficheiro.
 
-- [ ] **G8 — Commit e push confirmados no remoto**
+- [x] **G8 — Commit e push confirmados no remoto**
   CHECK: git push -u origin fix/reaudit-r2 && git ls-remote origin fix/reaudit-r2 && git rev-parse HEAD
   EXPECT: o SHA do `ls-remote` é igual ao `rev-parse HEAD`
-  EVIDENCE: pending
+  EVIDENCE: `* [new branch] fix/reaudit-r2 -> fix/reaudit-r2`; `ls-remote` = `7337dcec5cb1214e2bf11fb4d6a2a42f513958c4` = `rev-parse HEAD`. (Esta linha entra num commit seguinte, `docs(gates)`, porque a evidência é o SHA do próprio commit.)
