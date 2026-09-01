@@ -233,6 +233,62 @@ Valor total com desconto    R$ 9.999,00
     })).toBe('Faltou: soma dos itens ≠ total');
   });
 
+  it('lê médico e CRM em PRESTADOR SOLICITANTE', () => {
+    const parsed = parseOficio(`
+Número de autorização: 2479000100
+PRESTADOR SOLICITANTE: MARIA HELENA COSTA                                                                            Nº CRM: 13716
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(parsed.doctorName).toBe('MARIA HELENA COSTA');
+    expect(parsed.doctorCrm).toBe('13716');
+  });
+
+  it('lê médico e CRM no rótulo histórico MEDICO', () => {
+    const parsed = parseOficio(`
+Número de autorização: 2479000101
+MEDICO: RODRIGO LUIZ ROCHA CARDOSO
+CRM: 13716
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(parsed.doctorName).toBe('RODRIGO LUIZ ROCHA CARDOSO');
+    expect(parsed.doctorCrm).toBe('13716');
+  });
+
+  it('não grava hospital nem razão social como médico', () => {
+    const hospital = parseOficio(`
+Número de autorização: 2479000102
+LOCAL DE EXECUÇÃO: HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE
+PRESTADOR SOLICITANTE: HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE                                                                            Nº CRM: 1393
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(hospital.doctorName).toBeNull();
+    expect(hospital.hospitalName).toBe('HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE');
+
+    const caixa = parseOficio(`
+Número de autorização: 2479000103
+PRESTADOR SOLICITANTE: CAIXA DE ASSISTENCIA DOS SERVIDORES DO ESTADO DE MATO GROSSO DO SUL
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(caixa.doctorName).toBeNull();
+  });
+
+  it('Nº CRM vazio não herda dígitos da data', () => {
+    const parsed = parseOficio(`
+Número de autorização: 2479000104
+PRESTADOR SOLICITANTE: JOAO DA SILVA                                                                            Nº CRM:
+
+28/08/2026
+paciente JOAO SILVA, matrícula 1
+Valor total com desconto    R$ 10,00
+`);
+    expect(parsed.doctorName).toBe('JOAO DA SILVA');
+    expect(parsed.doctorCrm).toBeNull();
+  });
+
   it('lê o texto extraído do PDF em /tmp quando o arquivo existir', () => {
     let diskText = '';
     try {
