@@ -85,10 +85,10 @@ Controlos positivos: restauro SEMPRE por cópia (`scratchpad/orig/*` e
   EXPECT: exit 0 nos três; contagem de testes > 1191 (medida, não estimada)
   EVIDENCE: `TYPECHECK_EXIT=0` · `LINT_FULL_EXIT=0` · `npm test` exit 0: `Test Files 141 passed | 4 skipped (145)` · `Tests 1203 passed | 9 skipped (1212)`. Antes: 1191. Diferença +12 = +6 unitários do tri-estado, +4 líquidos no cursor (−1 selador, +5), +2 do portão expand-only (`deploy-manifests.test.ts` faz `it.each` por migração nova; `DROP INDEX` não é DDL destrutivo para ele — só DROP TABLE/COLUMN).
 
-- [ ] **G7 — Commit e push**
+- [x] **G7 — Commit e push**
   CHECK: git ls-remote origin fix/reaudit-r1
   EXPECT: SHA do HEAD local aparece no remoto
-  EVIDENCE: pending
+  EVIDENCE: commit `a243f06` (`fix(sync): cancelamento perdido trava o cursor, P2002 vira skip durável, índice de série+número com COALESCE`); `git push -u origin fix/reaudit-r1` → `* [new branch] fix/reaudit-r1 -> fix/reaudit-r1`; `git ls-remote origin fix/reaudit-r1` → `a243f06e05da2fdec3f29c20714657d465aa4ad3 refs/heads/fix/reaudit-r1` = `git rev-parse HEAD`. Este registo entra num segundo commit só de gates, também empurrado.
 
 - [x] **G8 — Container derrubado, nada tocou produção**
   CHECK: docker ps -a --filter name=qlmed-r1-pg --format '{{.Names}}' | wc -l
