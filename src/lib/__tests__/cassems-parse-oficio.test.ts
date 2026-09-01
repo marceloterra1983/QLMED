@@ -59,6 +59,70 @@ Número do Fornecimento: 247932523
 const MODEL_FILE =
   'CASSEMS001 - Oficio de materiais OPME autorizados 28-08-2026-133128021.pdf';
 
+/**
+ * Texto real do pdftotext -layout do ofício 2439330021 (e-mail 24/06).
+ * Paciente e matrícula sintéticos — não commitar dado clínico real.
+ */
+export const OFICIO_2439330021_TEXT = `
+                        Oficio de materiais OPME
+
+                                                                                   CAMPO GRANDE / MS , 24/06/2026 12:08:04
+
+                                          Número de autorização: 2439330021
+
+ Autorizamos para o(a) paciente JOAO SILVA, matrícula 0010000000000000, guia de TISS - RESUMO DE
+INTERNACAO, material orçado e abaixo relacionado, que será utilizado no(s) procedimento(s):
+3.09.02.045-Plastia valvar;
+
+Item     TUSS        Código    Unid.          Descrição do material     Nº ANVISA Vlr Unit. R$                         Total R$
+                                       ENXERTO - PATCH ORGANICO DE
+  3    93.20.7328 93.20.7328      1    PERICARDIO BOVINO 10 X 5 CM (50 10171250038 9.600,00                             9.600,00
+                                       CM³)
+       1825967517 1825967517           SISTEMA PARA ECMO PEDIATRICO -
+  4                               1                                    81387390014 55.000,00                           55.000,00
+           95         95               REF. AG7861 - EUROSETS
+                                       CONJUNTO DE CIRCULAÇAO
+  1    93.48.1233 93.48.1233      1                                    80102510788 1.200,00                             1.200,00
+                                       ASSISTIDA
+                                       ENXERTO ARTERIAL VALVADO
+       0098069762 0098069762
+  2                               1    ORGANICO MONOCUSPIDE JP 12 -    10171250035 23.000,00                           23.000,00
+           24         24
+                                       REF. EAVMJP12 - LABCOR
+
+                                                                                               Total sem desconto   R$ 88.800,00
+                                                                                                        Desconto    R$ 0,00
+                                                                                        Valor total com desconto    R$ 88.800,00
+
+LOCAL DE EXECUÇÃO: HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE
+PRESTADOR SOLICITANTE: DR TESTE                                                                   Nº CRM:
+
+
+Colocamo-nos à disposição para quaisquer esclarecimentos.
+Cordialmente,
+                                                Jocimar Correa Pizolito
+                                                   OPME/CASSEMS
+
+
+
+
+AO
+QL MED MATERIAIS HOSPITALARES LTDA
+CONTATO: - FONE: 0067 33263520
+c/CÓPIA: HOSPITAL CASSEMS UNIDADE DE CAMPO GRANDE
+
+
+
+
+Usuário: 2944
+Número do Fornecimento: 243933002
+
+
+
+
+                                                Campo Grande / MS - Data/hora: 24/06/2026 12:11:37                   Pág.1
+`.trim();
+
 describe('parseOficio fixture 2479325231 (PDF real CASSEMS)', () => {
   it('extrai cabeçalho, dois itens e 476.000 centavos', () => {
     const parsed = parseOficio(OFICIO_2479325231_TEXT, MODEL_FILE);
@@ -287,6 +351,20 @@ Valor total com desconto    R$ 10,00
 `);
     expect(parsed.doctorName).toBe('JOAO DA SILVA');
     expect(parsed.doctorCrm).toBeNull();
+  });
+
+  it('escolhe qty 1 no ofício 2439330021 mesmo com JP 12 e 10 X 5 CM (SPEC-038 AC-001)', () => {
+    const parsed = parseOficio(OFICIO_2439330021_TEXT);
+    expect(parsed.oficioNumber).toBe('2439330021');
+    expect(parsed.items).toHaveLength(4);
+    expect(parsed.totalCents).toBe(8880000);
+    expect(parsed.items.every((item) => item.quantity === '1')).toBe(true);
+    const lineCents = parsed.items.map((item) => item.lineCents).sort((a, b) => a - b);
+    expect(lineCents).toEqual([120000, 960000, 2300000, 5500000]);
+    const itemSum = parsed.items.reduce((sum, item) => sum + item.lineCents, 0);
+    expect(itemSum).toBe(8880000);
+    expect(parsed.items.every((item) => item.quantity === '1' && item.unitCents === item.lineCents)).toBe(true);
+    expect(Number.isInteger(parsed.totalCents)).toBe(true);
   });
 
   it('lê o texto extraído do PDF em /tmp quando o arquivo existir', () => {
