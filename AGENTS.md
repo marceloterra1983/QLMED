@@ -199,6 +199,29 @@ que já serve `:3002` — não suba outro Next. UI nova: preview nessa porta
 - Diagnóstico refused: `ss` sem listen = processo morto. Curl local 200 +
   Windows refused = Tailscale/browser (IPv6: Next pode não ouvir `[::]`).
 
+### CI, runners e merge
+
+- `main` tem ruleset ativo (`main: CI verde antes do merge`, sem bypass):
+  só entra por PR, exige o check `quality` de `ci.yml`, sem push direto,
+  sem force-push, sem apagar. Push direto devolve `GH013`.
+- Mesclar: `gh pr merge --auto --squash <N>` logo após abrir a PR. Fica na
+  fila e mescla sozinho no verde. `gh pr merge` sem `--auto` com check
+  pendente é recusado.
+- CI corre nos runners self-hosted `qlmed-ci-linux-01..03` (containers,
+  2 CPU / 3 GB, profile `validation-linux-qlmed` no repo
+  `GitHub-Runners-Platform`). Saída à internet só pelo proxy squid com
+  allowlist (github.com, githubusercontent, ghcr, registry.npmjs.org,
+  binaries.prisma.sh, nodejs.org…). Não há `gh` no runner: script que
+  precisa da API usa `fetch` + `GITHUB_TOKEN`; `fetch` nativo do Node só
+  honra o proxy com `NODE_USE_ENV_PROXY=1` no `env` do job.
+- Não use `cache: npm` no `setup-node`: o runner limpa `/home/runner` a
+  cada job, o cache nunca restaura e só consome a cota de 10 GB. O cache
+  de `.next/cache` funciona e fica.
+- Deploy corre só no `qlmed-prod-runner` (label `qlmed-prod`, serviço
+  systemd no host). O `auto-update-packages.timer` do host está impedido de
+  reiniciá-lo (needrestart override em
+  `/etc/needrestart/conf.d/99-auto-update-safe.conf`).
+
 ### Infra notes específicas do host atual
 
 - Runner self-hosted com label `qlmed-prod`, roda como serviço systemd.
