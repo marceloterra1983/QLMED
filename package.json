@@ -30,6 +30,7 @@
     "db:config:verify": "node ./scripts/validate-database-config.mjs",
     "audit:verify": "node ./scripts/verify-dependency-audit.mjs",
     "audit:verify:test": "bash ./scripts/test-dependency-audit.sh",
+    "cte:pfx:test": "node ./scripts/test-cte-sync-pfx.cjs",
     "db:generate": "prisma generate",
     "test": "vitest run",
     "test:integration": "RUN_DB_INTEGRATION_TESTS=1 QLMED_DISABLE_BACKGROUND_SERVICES=true vitest run src/lib/__tests__/*.integration.test.ts",

@@ -215,6 +215,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Test · sync de CT-e abre pfxData cifrado
+        run: npm run cte:pfx:test
+
       - name: Test transactional outbox
         run: npm run test:integration
 

@@ -7,7 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const zlib = require('zlib');
-const forge = require('/app/node_modules/node-forge');
+// Carregado onde é usado: o caminho é do container, e um `require` no topo
+// impedia o teste de importar os helpers fora dele.
+function forgeLib() { return require(process.env.QLMED_FORGE_PATH || '/app/node_modules/node-forge'); }
 const { promisify } = require('util');
 const gunzip = promisify(zlib.gunzip);
 
@@ -47,6 +49,39 @@ function writeCooldown(ms = CTE_656_COOLDOWN_MS) {
   return until;
 }
 
+// Port fiel de src/lib/certificate-secret.ts: MAGIC(9)|salt(16)|iv(12)|tag(16)|ct,
+// AES-256-GCM, chave = scrypt(ENCRYPTION_KEY, salt, 32), AAD = CNPJ só dígitos.
+// A remediação b177b07 (FILE-007) passou a cifrar `pfxData`; este script lia
+// o blob cru e o node-forge morria em "Unparsed DER bytes remain" — foi assim
+// que o sync de CT-e ficou parado depois do deploy. DER cru continua aceite.
+const PFX_MAGIC = Buffer.from('QLMEDPFX1', 'ascii');
+const PFX_HEADER_LEN = PFX_MAGIC.length + 16 + 12 + 16;
+function isEncryptedPfx(buf) {
+  return buf.length > PFX_HEADER_LEN && buf.subarray(0, PFX_MAGIC.length).equals(PFX_MAGIC);
+}
+function cnpjAad(cnpj) {
+  const digits = String(cnpj || '').replace(/\D/g, '');
+  if (digits.length !== 14) throw new Error(`CNPJ inválido para o AAD do certificado: "${cnpj ?? ''}"`);
+  return Buffer.from(digits, 'ascii');
+}
+function decryptPfx(value, cnpj) {
+  const crypto = require('crypto');
+  const buf = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  if (!isEncryptedPfx(buf)) {
+    if (buf[0] === 0x30) return buf; // DER cru (pré-remediação)
+    throw new Error('pfxData nem cifrado (QLMEDPFX1) nem DER');
+  }
+  let o = PFX_MAGIC.length;
+  const salt = buf.subarray(o, (o += 16));
+  const iv = buf.subarray(o, (o += 12));
+  const tag = buf.subarray(o, (o += 16));
+  const ct = buf.subarray(o);
+  const d = crypto.createDecipheriv('aes-256-gcm', crypto.scryptSync(process.env.ENCRYPTION_KEY, salt, 32), iv);
+  d.setAAD(cnpjAad(cnpj));
+  d.setAuthTag(tag);
+  return Buffer.concat([d.update(ct), d.final()]);
+}
+
 function decrypt(t) {
   const crypto = require('crypto');
   const parts = t.trim().split(':');
@@ -67,6 +102,7 @@ function decrypt(t) {
 }
 
 function extractPems(pfxBuf, password) {
+  const forge = forgeLib();
   const p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(pfxBuf.toString('binary')), password);
   let keyBag = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
   if (!keyBag) keyBag = p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
@@ -216,17 +252,23 @@ async function loadPfxFromDb() {
   await client.connect();
   try {
     const { rows } = await client.query(
-      'SELECT "pfxData", "pfxPassword", subject FROM "CertificateConfig" ORDER BY "updatedAt" DESC LIMIT 1',
+      'SELECT c."pfxData", c."pfxPassword", c.subject, co.cnpj '
+      + 'FROM "CertificateConfig" c JOIN "Company" co ON co.id = c."companyId" '
+      + 'ORDER BY c."updatedAt" DESC LIMIT 1',
     );
     const cfg = rows[0];
     if (!cfg?.pfxData || !cfg.pfxPassword) throw new Error('CertificateConfig vazio');
-    fs.writeFileSync(PFX_PATH, Buffer.from(cfg.pfxData));
+    // O AAD é o CNPJ da empresa dona: um blob copiado para outra empresa não abre.
+    fs.writeFileSync(PFX_PATH, decryptPfx(Buffer.from(cfg.pfxData), cfg.cnpj));
     fs.writeFileSync(PASS_ENC, cfg.pfxPassword);
     console.log(new Date().toISOString(), 'cert_loaded_from_db', (cfg.subject || '').slice(0, 80));
   } finally {
     await client.end();
   }
 }
+
+module.exports = { decryptPfx, isEncryptedPfx, cnpjAad };
+if (require.main !== module) return;
 
 (async () => {
   const cooldownUntil = readCooldownUntil();
