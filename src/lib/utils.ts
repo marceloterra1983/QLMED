@@ -27,9 +27,10 @@ export function formatAmount(value: number): string {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function formatCurrencyShort(value: number): string {
+/** "R$ 1,2M" / "R$ 12k". `kDigits` = casas no `k` (o painel de impostos usa 1). */
+export function formatCurrencyShort(value: number, kDigits = 0): string {
   if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `R$ ${(value / 1000).toFixed(0)}k`;
+  if (value >= 1000) return `R$ ${(value / 1000).toFixed(kDigits)}k`;
   return formatCurrency(value);
 }
 
@@ -139,3 +140,46 @@ export function toNumber(value: unknown): number {
 // `placeholder-slate-500` no claro: slate-400 dá 2,56:1 sobre branco.
 export const FILTER_INPUT_CLS =
   'block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 text-sm transition-colors';
+
+/**
+ * Contagem inteira em pt-BR ("3.850"). Havia ~59 `toLocaleString('pt-BR')`
+ * espalhados; com o helper, a regra `format` do verificador pode proibir a
+ * chamada nua e a quantia sair sempre igual.
+ */
+export function formatInt(n: number): string {
+  return Math.round(n).toLocaleString('pt-BR');
+}
+
+/** Percentual com casas fixas e sinal opcional ("+12,5%", "3,00%"). */
+export function formatPercent(v: number, digits = 2, sign = false): string {
+  const txt = v.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${sign && v > 0 ? '+' : ''}${txt}%`;
+}
+
+/** Data e hora com segundos ("02/09/26 14:32:05") — carimbos SEFAZ. */
+export function formatDateTimeSeconds(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+/** Quantidade com até N casas, sem zeros à direita ("1.234,5", "3"). */
+export function formatQuantity(v: number, maxDigits = 4): string {
+  return v.toLocaleString('pt-BR', { maximumFractionDigits: maxDigits });
+}
+
+/** Data curta com ano de 2 dígitos ("02/09/26"); '-' para vazio ou inválida. */
+export function formatDateShort(value: string | null | undefined): string {
+  if (!value) return '-';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+/** Tamanho de ficheiro ("840 B", "12,3 KB", "1,2 MB"). */
+export function formatFileSize(bytes: number): string {
+  const unidades = ['B', 'KB', 'MB', 'GB'];
+  let v = bytes; let i = 0;
+  while (v >= 1024 && i < unidades.length - 1) { v /= 1024; i++; }
+  return `${v.toLocaleString('pt-BR', { maximumFractionDigits: i === 0 ? 0 : 1 })} ${unidades[i]}`;
+}

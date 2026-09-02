@@ -6,10 +6,11 @@ import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatAmount, formatCurrencyShort } from '@/lib/utils';
+import { formatAmount, formatCurrencyShort, formatInt } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 import SortableTh from '@/components/ui/SortableTh';
 
 interface SystemUser {
@@ -234,7 +235,7 @@ export default function ValvulasImportadasPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Selecione o destinatário:</p>
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-6">
-                  <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400 animate-spin">progress_activity</span>
+                  <Spinner size="md" label="Carregando usuários" />
                 </div>
               ) : users.length === 0 ? (
                 <EmptyState icon="inbox" title="Nenhum usuário ativo encontrado" compact />
@@ -297,13 +298,13 @@ export default function ValvulasImportadasPage() {
         {/* KPI Cards — 3 cols × 3 rows ultra-compact */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
-            { label: 'Qtd Comprada', value: loading ? null : (totals?.purchasedQty ?? 0).toLocaleString('pt-BR'), icon: 'call_received', color: 'emerald' },
+            { label: 'Qtd Comprada', value: loading ? null : formatInt(totals?.purchasedQty ?? 0), icon: 'call_received', color: 'emerald' },
             { label: 'Valor Comprado', value: loading ? null : formatCurrencyShort(totals?.purchasedValue ?? 0), icon: 'payments', color: 'blue' },
             { label: 'Preço Méd. Compra', value: loading ? null : formatAmount(totals?.avgPurchasePrice ?? 0), icon: 'price_check', color: 'indigo' },
-            { label: 'Qtd Vendida', value: loading ? null : (totals?.soldQty ?? 0).toLocaleString('pt-BR'), icon: 'call_made', color: 'purple' },
+            { label: 'Qtd Vendida', value: loading ? null : formatInt(totals?.soldQty ?? 0), icon: 'call_made', color: 'purple' },
             { label: 'Valor Vendido', value: loading ? null : formatCurrencyShort(totals?.soldValue ?? 0), icon: 'request_quote', color: 'amber' },
             { label: 'Preço Méd. Venda', value: loading ? null : formatAmount(totals?.avgSalePrice ?? 0), icon: 'sell', color: 'orange' },
-            { label: 'Saldo Estoque', value: loading ? null : (totals?.netQty ?? 0).toLocaleString('pt-BR'), icon: 'inventory', color: 'teal', highlight: (totals?.netQty ?? 0) > 0 ? 'emerald' : (totals?.netQty ?? 0) < 0 ? 'red' : null },
+            { label: 'Saldo Estoque', value: loading ? null : formatInt(totals?.netQty ?? 0), icon: 'inventory', color: 'teal', highlight: (totals?.netQty ?? 0) > 0 ? 'emerald' : (totals?.netQty ?? 0) < 0 ? 'red' : null },
             { label: 'Valor Estoque', value: loading ? null : formatCurrencyShort(totals?.stockValue ?? 0), icon: 'account_balance', color: 'cyan' },
             { label: 'Lucro Bruto', value: loading ? null : formatCurrencyShort(totals?.grossProfit ?? 0), icon: 'trending_up', color: 'green', highlight: (totals?.grossProfit ?? 0) >= 0 ? 'green' : 'red' },
           ].map((card, i) => {
@@ -362,7 +363,7 @@ export default function ValvulasImportadasPage() {
                               {entry && entry.qty > 0 ? (
                                 <div>
                                   <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                                    {entry.qty.toLocaleString('pt-BR')}
+                                    {formatInt(entry.qty)}
                                   </div>
                                   <div className="text-xs font-mono text-slate-500 dark:text-slate-400 leading-tight">
                                     {formatAmount(entry.value)}
@@ -376,7 +377,7 @@ export default function ValvulasImportadasPage() {
                         })}
                         <td className="px-2 py-3 text-right tabular-nums">
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                            {c.totalQty.toLocaleString('pt-BR')}
+                            {formatInt(c.totalQty)}
                           </div>
                           <div className="text-xs font-mono text-slate-500 leading-tight">
                             {formatAmount(c.totalValue)}
@@ -397,7 +398,7 @@ export default function ValvulasImportadasPage() {
                           return (
                             <td key={y} className="px-2 py-3 text-right tabular-nums">
                               <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                                {yearQty.toLocaleString('pt-BR')}
+                                {formatInt(yearQty)}
                               </div>
                               <div className="text-xs font-mono text-slate-500 leading-tight">
                                 {formatAmount(yearVal)}
@@ -407,7 +408,7 @@ export default function ValvulasImportadasPage() {
                         })}
                         <td className="px-2 py-3 text-right tabular-nums">
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                            {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
+                            {formatInt(data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0))}
                           </div>
                           <div className="text-xs font-mono text-slate-500 leading-tight">
                             {formatAmount(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
@@ -438,7 +439,7 @@ export default function ValvulasImportadasPage() {
                       <div>
                         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Qtd</p>
                         <p className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                          {c.totalQty.toLocaleString('pt-BR')}
+                          {formatInt(c.totalQty)}
                         </p>
                       </div>
                       <div>
@@ -466,7 +467,7 @@ export default function ValvulasImportadasPage() {
                               {entry && entry.qty > 0 ? (
                                 <>
                                   <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                                    {entry.qty.toLocaleString('pt-BR')}
+                                    {formatInt(entry.qty)}
                                   </p>
                                   <p className="text-xs font-mono text-slate-500 dark:text-slate-400 leading-tight">
                                     {formatAmount(entry.value)}
@@ -539,13 +540,13 @@ export default function ValvulasImportadasPage() {
                           </div>
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
-                          {p.purchasedQty.toLocaleString('pt-BR')}
+                          {formatInt(p.purchasedQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {formatAmount(p.purchasedValue)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
-                          {p.soldQty.toLocaleString('pt-BR')}
+                          {formatInt(p.soldQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {formatAmount(p.soldValue)}
@@ -553,7 +554,7 @@ export default function ValvulasImportadasPage() {
                         <td className={`px-2 py-3 text-xs text-right font-mono tabular-nums font-bold ${
                           p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                         }`}>
-                          {p.netQty > 0 ? '+' : ''}{p.netQty.toLocaleString('pt-BR')}
+                          {p.netQty > 0 ? '+' : ''}{formatInt(p.netQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {p.avgPurchasePrice != null ? formatAmount(p.avgPurchasePrice) : '—'}
@@ -567,13 +568,13 @@ export default function ValvulasImportadasPage() {
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-300 dark:border-slate-700 font-bold">
                         <td className="px-2 py-3 text-xs text-slate-900 dark:text-white" colSpan={2}>TOTAL</td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
-                          {totals.purchasedQty.toLocaleString('pt-BR')}
+                          {formatInt(totals.purchasedQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {formatAmount(totals.purchasedValue)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
-                          {totals.soldQty.toLocaleString('pt-BR')}
+                          {formatInt(totals.soldQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {formatAmount(totals.soldValue)}
@@ -581,7 +582,7 @@ export default function ValvulasImportadasPage() {
                         <td className={`px-2 py-3 text-xs text-right font-mono tabular-nums font-bold ${
                           totals.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : totals.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                         }`}>
-                          {totals.netQty > 0 ? '+' : ''}{totals.netQty.toLocaleString('pt-BR')}
+                          {totals.netQty > 0 ? '+' : ''}{formatInt(totals.netQty)}
                         </td>
                         <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {totals.purchasedQty > 0 ? formatAmount(totals.purchasedValue / totals.purchasedQty) : '—'}
@@ -635,7 +636,7 @@ export default function ValvulasImportadasPage() {
                     <div>
                       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qt Comprada</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {p.purchasedQty.toLocaleString('pt-BR')}
+                        {formatInt(p.purchasedQty)}
                       </p>
                     </div>
                     <div>
@@ -647,7 +648,7 @@ export default function ValvulasImportadasPage() {
                     <div>
                       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qt Vendida</p>
                       <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
-                        {p.soldQty.toLocaleString('pt-BR')}
+                        {formatInt(p.soldQty)}
                       </p>
                     </div>
                     <div>
@@ -661,7 +662,7 @@ export default function ValvulasImportadasPage() {
                       <p className={`text-sm font-mono font-bold ${
                         p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                       }`}>
-                        {p.netQty > 0 ? '+' : ''}{p.netQty.toLocaleString('pt-BR')}
+                        {p.netQty > 0 ? '+' : ''}{formatInt(p.netQty)}
                       </p>
                     </div>
                     <div>

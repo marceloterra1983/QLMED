@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
-import { formatAmount } from '@/lib/utils';
+import { formatAmount, formatInt } from '@/lib/utils';
 import { buildProductExportUrl, escapeCsvValue, type ProductExportQuery } from '@/lib/product-export';
 import type { ProductRow, ProductsResponse } from '../types';
 import { formatQuantity, formatDate, formatOptional } from './product-utils';
@@ -55,8 +55,8 @@ export default function ExportCSVButton({ filteredCount, query }: ExportCSVButto
       URL.revokeObjectURL(url);
       toast.success(
         data.exportLimited
-          ? `${all.length.toLocaleString('pt-BR')} produtos exportados (limite de segurança)`
-          : `${all.length.toLocaleString('pt-BR')} produtos exportados`,
+          ? `${formatInt(all.length)} produtos exportados (limite de segurança)`
+          : `${formatInt(all.length)} produtos exportados`,
         { id: toastId }
       );
     } catch {

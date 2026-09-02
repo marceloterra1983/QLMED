@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDate, formatAmount } from '@/lib/utils';
+import { formatDate, formatAmount, formatInt } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDueDate, getDuplicateStatus, formatInstallmentDisplay } from '@/lib/modal-helpers';
@@ -35,7 +35,7 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
         {invoices.map((inv) => {
           const s = installmentsMap.get(inv.id);
           const total = s?.totalInstallments || 0;
-          const due = s?.firstDueDate ? s.firstDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
+          const due = s?.firstDueDate ? formatDate(s.firstDueDate.toISOString()) : '-';
           return (
             <div key={inv.id} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
               <div className="flex items-center justify-between mb-1">
@@ -66,13 +66,13 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
             {invoices.map((inv) => {
               const s = installmentsMap.get(inv.id);
               const total = s?.totalInstallments || 0;
-              const due = s?.firstDueDate ? s.firstDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
+              const due = s?.firstDueDate ? formatDate(s.firstDueDate.toISOString()) : '-';
               return (
                 <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
                   <td className={`${tdCls} text-xs font-bold tabular-nums text-slate-800 dark:text-white`}>{inv.number}</td>
                   <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
                   <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>{formatAmount(inv.totalValue)}</td>
-                  <td className={`${tdCls} text-center text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300`}>{total.toLocaleString('pt-BR')}</td>
+                  <td className={`${tdCls} text-center text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300`}>{formatInt(total)}</td>
                   <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{due}</td>
                   <td className={`${tdCls} text-center`}><RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} /></td>
                 </tr>

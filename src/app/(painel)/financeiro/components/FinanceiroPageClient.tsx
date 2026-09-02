@@ -2,11 +2,12 @@
 
 import React, { useEffect, useCallback, useState } from 'react';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import { formatCurrency, formatAmount, getDateGroupLabel } from '@/lib/utils';
+import { formatCurrency, formatAmount, formatDate, getDateGroupLabel } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
@@ -202,7 +203,8 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
       d.nfNumero,
       d.faturaNumero,
       d.dupNumero,
-      new Date(d.dupVencimento + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+      formatDate(d.dupVencimento + 'T00:00:00'),
+      // ui-ok: CSV exportado, não exibição — mudar o separador mudaria o ficheiro
       d.dupValor.toFixed(2).replace('.', ','),
       ({ overdue: 'Vencida', due_today: 'Vence Hoje', due_soon: 'Próxima', upcoming: 'A Vencer' })[d.status] || d.status,
     ]);
@@ -410,7 +412,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
             { label: 'Este Mês', value: summary.esteMesValor, count: summary.esteMes, color: 'blue', icon: 'calendar_month' },
             { label: 'Próx. Mês', value: summary.proximoMesValor, count: summary.proximoMes, color: 'indigo', icon: 'event_repeat' },
           ].map(({ label, value, count, color, icon }) => (
-            <div key={label} className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden">
+            <Card padding="none" key={label} className="p-2.5 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className={`hidden sm:flex w-10 h-10 rounded-lg bg-${color}-50 dark:bg-${color}-900/30 items-center justify-center flex-shrink-0`}>
                   <span className={`material-symbols-outlined text-${color}-600 dark:text-${color}-400 text-[20px]`}>{icon}</span>
@@ -421,7 +423,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
                   <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{count} dup.</p>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

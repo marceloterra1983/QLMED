@@ -23,6 +23,7 @@ import type { Invoice } from '@/types';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import SortableTh from '@/components/ui/SortableTh';
 
 const AUTO_REFRESH_MS = 30_000;
@@ -396,15 +397,15 @@ export default function IssuedInvoicesPage() {
       <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+            <Card padding="sm" key={i} className="space-y-2">
               <Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /><Skeleton className="h-3 w-24" />
-            </div>
+            </Card>
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+            <Card padding="none">
               <EmptyState icon="output" title="Nenhuma NF-e emitida encontrada" />
-            </div>
+            </Card>
             <div className="flex items-center gap-1 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
@@ -465,7 +466,7 @@ export default function IssuedInvoicesPage() {
       </div>
 
       {/* Table (desktop) */}
-      <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+      <Card padding="none" className="hidden sm:block">
         {!loading && invoices.length > 0 && (() => {
           const allKeys: string[] = [];
           if (selectedYear !== null) {
@@ -560,7 +561,7 @@ export default function IssuedInvoicesPage() {
           </div>
           <ListCount shown={invoices.length} total={total} noun="nota(s)" />
         </div>
-      </div>
+      </Card>
 
       <InvoiceDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} invoiceId={selectedInvoiceId} />
       <NfeDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} invoiceId={detailsInvoiceId} initialTab={detailsInitialTab} />

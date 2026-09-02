@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
+import { formatDate, formatTime } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -364,7 +367,7 @@ export default function UsuariosPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        <Card>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
               <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[20px]">group</span>
@@ -374,7 +377,8 @@ export default function UsuariosPage() {
               <p className="text-xl font-bold text-slate-900 dark:text-white">{users.length}</p>
             </div>
           </div>
-        </div>
+        </Card>
+        {/* ui-ok: painel de aviso com borda de tom, não cartão neutro */}
         <div className="bg-white dark:bg-card-dark border border-amber-200 dark:border-amber-800/50 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
@@ -386,6 +390,7 @@ export default function UsuariosPage() {
             </div>
           </div>
         </div>
+        {/* ui-ok: painel de aviso com borda de tom, não cartão neutro */}
         <div className="bg-white dark:bg-card-dark border border-green-200 dark:border-green-800/50 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -397,7 +402,7 @@ export default function UsuariosPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        <Card>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
               <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-[20px]">block</span>
@@ -407,7 +412,7 @@ export default function UsuariosPage() {
               <p className="text-xl font-bold text-slate-700 dark:text-slate-300">{inactiveCount}</p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Pending users highlight */}
@@ -453,10 +458,10 @@ export default function UsuariosPage() {
       )}
 
       {/* Users table */}
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+      <Card padding="none">
         {loading ? (
           <div className="p-8 text-center">
-            <span className="material-symbols-outlined text-[24px] animate-spin text-slate-500 dark:text-slate-400">progress_activity</span>
+            <Spinner size="md" />
             <p className="text-sm text-slate-500 mt-2">Carregando...</p>
           </div>
         ) : users.length === 0 ? (
@@ -497,7 +502,7 @@ export default function UsuariosPage() {
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         <span className="text-sm text-slate-500">
-                          {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                          {formatDate(user.createdAt)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -560,7 +565,7 @@ export default function UsuariosPage() {
                     <div>
                       <span className="text-slate-500 dark:text-slate-400 font-medium">Criado em</span>
                       <p className="text-slate-700 dark:text-slate-300">
-                        {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                        {formatDate(user.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -595,7 +600,7 @@ export default function UsuariosPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       {/* Confirm approve/reject dialog */}
       <ConfirmDialog
@@ -887,7 +892,7 @@ export default function UsuariosPage() {
         <div className="space-y-3">
           {logsLoading && accessLogs.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <span className="material-symbols-outlined text-[24px] animate-spin text-slate-500 dark:text-slate-400">progress_activity</span>
+              <Spinner size="md" />
             </div>
           ) : accessLogs.length === 0 ? (
             <EmptyState icon="inbox" title="Nenhum registro de acesso" compact />
@@ -904,8 +909,7 @@ export default function UsuariosPage() {
                       )}
                     </div>
                     <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                      {new Date(log.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}{' '}
-                      {new Date(log.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      {formatDate(log.createdAt)} {formatTime(log.createdAt)}
                     </span>
                   </div>
                 ))}
@@ -917,7 +921,7 @@ export default function UsuariosPage() {
                   className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-primary dark:text-blue-400 hover:bg-primary/5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {logsLoading ? (
-                    <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                    <Spinner size="sm" />
                   ) : (
                     <span className="material-symbols-outlined text-[14px]">expand_more</span>
                   )}

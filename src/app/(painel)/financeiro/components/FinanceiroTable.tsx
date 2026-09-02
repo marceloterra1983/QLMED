@@ -3,6 +3,7 @@
 import React from 'react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
@@ -63,7 +64,7 @@ export default function FinanceiroTable({
   }
 
   return (
-    <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <Card padding="none">
       {loading ? (
         <div className="p-6 space-y-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -226,6 +227,6 @@ export default function FinanceiroTable({
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }

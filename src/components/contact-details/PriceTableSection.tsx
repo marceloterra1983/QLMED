@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import EmptyState from '@/components/ui/EmptyState';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatInt } from '@/lib/utils';
 import { formatQuantity, formatPrice } from '@/lib/modal-helpers';
 import { thCls, tdCls } from './contact-detail-utils';
 import type { ContactPriceRow, ContactMeta, PriceSortKey, SortDirection } from './contact-detail-types';
@@ -100,7 +100,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
           />
         </div>
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
-          {filteredAndSorted.length.toLocaleString('pt-BR')} itens
+          {formatInt(filteredAndSorted.length)} itens
         </span>
       </div>
 

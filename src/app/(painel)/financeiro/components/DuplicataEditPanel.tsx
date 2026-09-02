@@ -97,7 +97,7 @@ export default function DuplicataEditPanel({
       height="sm:h-auto sm:max-h-[90vh]"
       bodyClassName=""
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0 hidden sm:flex">
@@ -119,7 +119,7 @@ export default function DuplicataEditPanel({
         </div>
       }
       footer={
-<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">
           {/* Mobile */}
           <div className="sm:hidden flex gap-2">
             <Button onClick={onClose} icon="arrow_back" size="lg" className="flex-1">

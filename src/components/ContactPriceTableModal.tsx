@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatDate } from '@/lib/utils';
+import { formatCnpj, formatDate, formatInt, formatPercent } from '@/lib/utils';
 import { formatPrice } from '@/lib/modal-helpers';
 import { CONTACT_KINDS, type ContactKind } from '@/components/contact-details/contact-kinds';
 import type { ContactRef } from '@/components/contact-details/contact-detail-types';
@@ -103,7 +103,7 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
   const netProfit = grossProfit != null ? grossProfit - taxOnSale : null;
   const netMarginPct = netProfit != null && salePrice > 0 ? (netProfit / salePrice) * 100 : null;
 
-  const pctLabel = (v: number | null) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '-');
+  const pctLabel = (v: number | null) => (v != null ? formatPercent(v, 1, true) : '-');
   const colorClass = (v: number | null) =>
     v == null ? 'text-slate-500 dark:text-slate-400' : v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
 
@@ -150,7 +150,7 @@ function CustomerRowDetail({ row, registry, loadingRegistry }: { row: PriceRow; 
               {taxParts.length === 0 && registry && <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5">sem alíquotas cadastradas</p>}
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-3">
-              <span className="text-xs text-slate-500 dark:text-slate-400">{totalTaxPct > 0 ? `${totalTaxPct.toFixed(2)}%` : '-'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{totalTaxPct > 0 ? formatPercent(totalTaxPct) : '-'}</span>
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{totalTaxPct > 0 ? formatPrice(taxOnSale) : '-'}</span>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={details ? `TABELA DE PREÇO (${details.meta.totalPriceRows.toLocaleString('pt-BR')} ITENS)` : 'TABELA DE PREÇO'}
+      title={details ? `TABELA DE PREÇO (${formatInt(details.meta.totalPriceRows)} ITENS)` : 'TABELA DE PREÇO'}
       width="max-w-4xl"
     >
       {loading && (
@@ -344,7 +344,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
-                      {filteredAndSortedRows.length.toLocaleString('pt-BR')} itens
+                      {formatInt(filteredAndSortedRows.length)} itens
                     </p>
                   </div>
 

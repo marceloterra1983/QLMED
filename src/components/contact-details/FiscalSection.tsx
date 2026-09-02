@@ -2,6 +2,8 @@
 
 import type { CnpjResult } from '@/lib/cnpj-result';
 import Badge from '@/components/ui/Badge';
+import Spinner from '@/components/ui/Spinner';
+import { formatCurrency } from '@/lib/utils';
 
 interface FiscalSectionProps {
   cnpjData: CnpjResult;
@@ -36,7 +38,7 @@ export default function FiscalSection({ cnpjData, cnpjLoading, onSync, cnaeMisma
           className="flex items-center gap-1 text-xs font-medium text-blue-500 hover:text-blue-600 transition-colors disabled:opacity-40"
           title="Atualizar dados da Receita Federal"
         >
-          <span className={`material-symbols-outlined text-[13px] ${cnpjLoading ? 'animate-spin' : ''}`}>sync</span>
+          {cnpjLoading ? <Spinner size="sm" label="Sincronizando" /> : <span className="material-symbols-outlined text-[13px]">sync</span>}
           Sincronizar
         </button>
       </div>
@@ -64,7 +66,7 @@ export default function FiscalSection({ cnpjData, cnpjLoading, onSync, cnaeMisma
         )}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500 dark:text-slate-400">
           {cnpjData.porte && <span>{cnpjData.porte}</span>}
-          {cnpjData.capitalSocial != null && <span>Capital {cnpjData.capitalSocial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+          {cnpjData.capitalSocial != null && <span>Capital {formatCurrency(cnpjData.capitalSocial)}</span>}
           <span>Simples: {cnpjData.simplesNacional === true ? 'Sim' : cnpjData.simplesNacional === false ? 'Não' : '-'}</span>
           {cnpjData.mei != null && <span>MEI: {cnpjData.mei ? 'Sim' : 'Não'}</span>}
         </div>

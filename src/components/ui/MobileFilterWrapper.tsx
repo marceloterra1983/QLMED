@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
+import Card from '@/components/ui/Card';
 
 interface MobileFilterWrapperProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ export default function MobileFilterWrapper({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+    <Card padding="none">
       {/* Mobile toggle button */}
       <button
         type="button"
@@ -55,6 +56,6 @@ export default function MobileFilterWrapper({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

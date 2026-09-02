@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
+import { formatInt } from '@/lib/utils';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Modal from '@/components/ui/Modal';
@@ -363,7 +365,7 @@ function SettingsModal({ onClose, onUpdated }: {
     onConfirm: () => Promise<void>,
   ) => {
     const message = count > 0
-      ? `Este valor está associado a ${count.toLocaleString('pt-BR')} ${count === 1 ? 'produto' : 'produtos'}. A associação será removida.`
+      ? `Este valor está associado a ${formatInt(count)} ${count === 1 ? 'produto' : 'produtos'}. A associação será removida.`
       : 'Este item existe apenas no catálogo e será removido da lista.';
 
     setPendingDelete({ title, message, onConfirm });
@@ -507,7 +509,7 @@ function SettingsModal({ onClose, onUpdated }: {
             <div className="flex-1 overflow-y-auto">
               {loadingSettings ? (
                 <div className="flex flex-col items-center justify-center py-16 px-5">
-                  <span className="material-symbols-outlined text-[28px] text-slate-300 dark:text-slate-600 animate-spin">progress_activity</span>
+                  <Spinner size="lg" label="Carregando ajustes" />
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Carregando ajustes...</p>
                 </div>
               ) : (
@@ -913,7 +915,7 @@ function SettingsModal({ onClose, onUpdated }: {
                           const res = await fetch('/api/ncm/bulk-sync', { method: 'POST' });
                           const data = await res.json();
                           if (data.ok) {
-                            toast.success(`Tabela SISCOMEX sincronizada: ${data.total?.toLocaleString('pt-BR') || 0} NCMs`);
+                            toast.success(`Tabela SISCOMEX sincronizada: ${formatInt(data.total ?? 0)} NCMs`);
                             await refreshAfterMutation();
                           } else {
                             toast.error(data.error || 'Erro ao sincronizar SISCOMEX');
@@ -927,7 +929,7 @@ function SettingsModal({ onClose, onUpdated }: {
                       disabled={syncingNcmBulk}
                       className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"
                     >
-                      <span className={`material-symbols-outlined text-[18px] ${syncingNcmBulk ? 'animate-spin' : ''}`}>{syncingNcmBulk ? 'progress_activity' : 'cloud_download'}</span>
+                      {syncingNcmBulk ? <Spinner size="md" /> : <span className="material-symbols-outlined text-[18px]">cloud_download</span>}
                       {syncingNcmBulk ? 'Sincronizando SISCOMEX...' : 'Sincronizar tabela SISCOMEX'}
                     </button>
                   </div>

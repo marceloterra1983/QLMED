@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import PageHeader from '@/components/PageHeader';
 
 /**
@@ -53,6 +54,7 @@ function formatWhen(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
+  // ui-ok: dia/mês e hora sem ano, formato único desta lista
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -124,9 +126,9 @@ export default function AutomacoesPage() {
       />
 
       {loading && (
-        <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+        <Card padding="lg">
           <p className="text-sm text-slate-500 dark:text-slate-400">Consultando o n8n...</p>
-        </div>
+        </Card>
       )}
 
       {/* Integração não configurada — a ação é configurar a chave. */}
@@ -180,10 +182,7 @@ export default function AutomacoesPage() {
               {status.workflows.map((w) => {
                 const ui = w.lastExecution ? OUTCOME_UI[w.lastExecution.outcome] : null;
                 return (
-                  <div
-                    key={w.id}
-                    className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-xl p-4"
-                  >
+                  <Card key={w.id}>
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="font-semibold text-slate-900 dark:text-white text-sm min-w-0 truncate">{w.name}</h3>
                       <Badge tone={w.active ? 'success' : 'neutral'} className="shrink-0">
@@ -208,7 +207,7 @@ export default function AutomacoesPage() {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Nunca executado</p>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>

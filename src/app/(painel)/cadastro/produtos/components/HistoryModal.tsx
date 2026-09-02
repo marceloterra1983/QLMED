@@ -5,6 +5,7 @@ import EmptyState from '@/components/ui/EmptyState';
 
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow } from '../types';
 import { formatQuantity, formatDate } from './product-utils';
@@ -224,7 +225,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
           <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-800/60">
             {sectionLoading ? (
               <div className="flex flex-col items-center justify-center gap-2 py-8">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${cm.iconBg}`}><span className={`material-symbols-outlined text-[20px] ${cm.icon} animate-spin`}>progress_activity</span></div>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${cm.iconBg}`}><Spinner size="md" label="Carregando histórico" /></div>
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando historico...</p>
               </div>
             ) : empty ? (
@@ -246,7 +247,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
       height="sm:h-auto sm:max-h-[92vh]"
       bodyClassName=""
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
               <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
@@ -268,7 +269,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
         </div>
       }
       footer={
-<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">
           <div className="sm:hidden"><Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button></div>
           <div className="hidden sm:flex justify-end"><Button onClick={onClose} variant="ghost">Fechar</Button></div>
         </div>

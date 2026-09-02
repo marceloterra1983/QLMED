@@ -115,6 +115,21 @@ caso controle-sem-rotulo fail \
 caso texto-slate-300 fail \
   'export const A = () => <p className="text-slate-300">—</p>;'
 
+caso formato-nu fail \
+  'export const A = () => <p>{(n).toLocaleString("pt-BR")}</p>;'
+
+caso cartao-a-mao fail \
+  'export const A = () => <div className="bg-white dark:bg-card-dark border border-slate-200 rounded-xl p-4">x</div>;'
+
+caso spinner-a-mao fail \
+  'export const A = () => <span className="material-symbols-outlined animate-spin">progress_activity</span>;'
+
+caso sombra-cravada fail \
+  'export const A = () => <div className="shadow-[0_2px_8px_rgba(0,0,0,0.08)]">x</div>;'
+
+caso ui-ok-sem-motivo fail \
+  'export const A = () => <p>{n.toFixed(2)}</p>; // ui-ok'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -145,11 +160,19 @@ export const A = () => (
 );
     <button onClick={f}><span className="material-symbols-outlined">save</span><span>{tab.label}</span></button>
     <button aria-label="Recolher" className="p-1 rounded text-slate-300 hover:text-slate-500"><span className="material-symbols-outlined">chevron_left</span></button>
-    <DetailField label="Referência"><input value={r} onChange={f} /></DetailField>'
+    <DetailField label="Referência"><input value={r} onChange={f} /></DetailField>
+    <Card padding="sm">x</Card>
+    <Spinner size="sm" />
+    <div className="shadow-sheet-top">h</div>
+    <p>{formatInt(n)}</p>
+    <div className="bg-white dark:bg-card-dark sm:rounded-xl">i</div>
+    <p>{new Decimal(v).toDecimalPlaces(2).toFixed(2)}</p>
+    {/* ui-ok: payload da API, não exibição */}
+    <p>{vNf.toFixed(2)}</p>'
 
 echo
 if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 26 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 31 violações reprovadas, fixture limpo aprovado"

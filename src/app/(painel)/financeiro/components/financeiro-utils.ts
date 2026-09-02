@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/utils';
+import { formatDateShort } from '@/lib/utils';
 import type { BadgeTone } from '@/components/ui/Badge';
 import { roundMoney } from '@/lib/money';
 
@@ -154,8 +155,7 @@ export function createEditRowId(): string {
 }
 
 export function formatVencimento(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return formatDateShort(dateStr + 'T00:00:00');
 }
 
 export function formatParcela(dup: Duplicata): string {

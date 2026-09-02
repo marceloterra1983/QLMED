@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatQuantity as libFormatQuantity, formatDateShort, formatCurrency } from '@/lib/utils';
 
 export function normalizeSearch(s: string) {
   return s
@@ -9,13 +10,11 @@ export function normalizeSearch(s: string) {
 }
 
 export function formatQuantity(value: number) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  return libFormatQuantity(value);
 }
 
 export function formatDate(value: string | null) {
-  if (!value) return '-';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return formatDateShort(value);
 }
 
 export function getAnvisaExpirationBadge(expiration: string | null | undefined): { label: string; className: string } | null {
@@ -39,8 +38,7 @@ export function getAnvisaExpirationBadge(expiration: string | null | undefined):
 
 export function formatOptional(value: number | null) {
   if (value == null) return '-';
-  // Import formatAmount at call site to avoid circular
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return formatCurrency(value);
 }
 
 export function highlightMatch(text: string, query: string): React.ReactNode {

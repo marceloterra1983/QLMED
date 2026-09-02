@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -64,7 +65,7 @@ export function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="mt-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-none">
+    <Card padding="md" className="mt-4">
       <div className="flex items-start gap-3">
         <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[24px] mt-0.5">install_mobile</span>
         <div className="flex-1">
@@ -124,6 +125,6 @@ export function PWAInstallPrompt() {
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

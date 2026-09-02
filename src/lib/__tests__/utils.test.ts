@@ -9,6 +9,10 @@ import {
   formatAccessKey,
   formatCurrencyShort,
   FILTER_INPUT_CLS,
+  formatInt,
+  formatPercent,
+  formatDateTimeSeconds,
+  formatQuantity,
 } from '../utils';
 
 describe('cleanString', () => {
@@ -129,5 +133,34 @@ describe('FILTER_INPUT_CLS', () => {
     expect(FILTER_INPUT_CLS).not.toMatch(/focus:(ring|border|outline)/);
     expect(FILTER_INPUT_CLS).toContain('placeholder-slate-500');
     expect(FILTER_INPUT_CLS).toContain('placeholder-slate-400');
+  });
+});
+
+describe('formatInt / formatPercent', () => {
+  it('formatInt arredonda e separa milhar em pt-BR', () => {
+    expect(formatInt(3850)).toBe('3.850');
+    expect(formatInt(0)).toBe('0');
+    expect(formatInt(1234.6)).toBe('1.235');
+  });
+
+  it('formatPercent usa casas fixas e sinal só no positivo', () => {
+    expect(formatPercent(12.5)).toBe('12,50%');
+    expect(formatPercent(12.5, 1, true)).toBe('+12,5%');
+    expect(formatPercent(-3, 0, true)).toBe('-3%');
+    expect(formatPercent(0, 1, true)).toBe('0,0%');
+  });
+});
+
+describe('formatDateTimeSeconds / formatQuantity', () => {
+  it('data com segundos, ano de 2 dígitos', () => {
+    // O separador entre data e hora (vírgula ou não) é do ICU do Node; o que
+    // importa é o formato de cada parte, e é o mesmo que o formatDateBr local dava.
+    expect(formatDateTimeSeconds('2026-09-02T14:32:05')).toMatch(/^02\/09\/26,? 14:32:05$/);
+  });
+  it('quantidade sem zeros à direita, até 4 casas', () => {
+    expect(formatQuantity(1234.5)).toBe('1.234,5');
+    expect(formatQuantity(3)).toBe('3');
+    expect(formatQuantity(0.12345)).toBe('0,1235');
+    expect(formatQuantity(2.5, 0)).toBe('3');
   });
 });

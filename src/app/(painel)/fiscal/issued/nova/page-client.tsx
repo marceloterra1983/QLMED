@@ -346,6 +346,7 @@ export default function EmitirNfePage() {
       volume: qVol || esp || pesoB
         ? { qVol: qVol || undefined, esp: esp || undefined, pesoB: pesoB || undefined, pesoL: pesoL || undefined }
         : undefined,
+      // ui-ok: payload da API, não exibição
       pag: { indPag, tPag, vPag: tPag === '90' ? '0.00' : vNf.toFixed(2) },
       infCpl: infCpl || undefined,
       infAdFisco: infAdFisco || undefined,

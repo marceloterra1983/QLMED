@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import Badge, { type BadgeTone } from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
+import { formatDateTime } from '@/lib/utils';
 import EmptyState from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
@@ -289,13 +292,6 @@ export default function SyncPage() {
     addLog('Importação de histórico concluída.');
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
-  };
-
   const getStatusBadge = (status: string) => {
     const tones: Record<string, BadgeTone> = {
       running: 'info',
@@ -328,7 +324,7 @@ export default function SyncPage() {
     const isReceita = method === 'receita_nfse';
 
     return (
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <Card padding="none">
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
             isSefaz
@@ -375,7 +371,7 @@ export default function SyncPage() {
                   {methodLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="px-3 py-3 text-xs tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                        {formatDate(log.startedAt)}
+                        {formatDateTime(log.startedAt)}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-col gap-1">
@@ -408,7 +404,7 @@ export default function SyncPage() {
                 <div key={log.id} className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-1.5">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {formatDate(log.startedAt)}
+                      {formatDateTime(log.startedAt)}
                     </p>
                     {formatFailedCell(log.status)}
                   </div>
@@ -435,7 +431,7 @@ export default function SyncPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
     );
   };
 
@@ -490,7 +486,7 @@ export default function SyncPage() {
     const isBusy = methodState.state === 'syncing' || methodState.state === 'polling';
 
     return (
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <Card padding="none">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -509,9 +505,7 @@ export default function SyncPage() {
               disabled={disabled || isBusy}
               className={`px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${meta.buttonClass}`}
             >
-              <span className={`material-symbols-outlined text-[16px] ${isBusy ? 'animate-spin' : ''}`}>
-                {isBusy ? 'sync' : 'cloud_download'}
-              </span>
+              {isBusy ? <Spinner size="sm" /> : <span className="material-symbols-outlined text-[16px]">cloud_download</span>}
               {isBusy ? 'Consultando...' : `Sincronizar ${meta.title.replace('Sincronização ', '')}`}
             </button>
           </div>
@@ -562,7 +556,7 @@ export default function SyncPage() {
             </div>
           )}
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -595,7 +589,7 @@ export default function SyncPage() {
       </div>
 
       {/* Empresa fixa + Badges */}
-      <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <Card>
         <div className="flex-1">
           <p className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Empresa fixa</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -611,7 +605,7 @@ export default function SyncPage() {
 
           <Badge tone={hasReceitaConfig ? 'warning' : 'neutral'}>Receita NFS-e: {hasReceitaConfig ? 'Ativa' : 'Inativa'}</Badge>
         </div>
-      </div>
+      </Card>
 
       {/* No Config Warning */}
       {hasCertificate === false && hasNsdocsConfig === false && hasReceitaConfig === false && (
@@ -638,7 +632,7 @@ export default function SyncPage() {
       {renderSyncCard('receita_nfse', receitaState)}
 
       {/* CARD 4: Importar Histórico (NSDocs) */}
-      <div className={`bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden ${!hasNsdocsConfig ? 'opacity-60' : ''}`}>
+      <Card padding="none" className={!hasNsdocsConfig ? 'opacity-60' : ''}>
         <div className="p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-100 dark:bg-violet-900/30">
@@ -735,11 +729,11 @@ export default function SyncPage() {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* CARD 5: Histórico de Sincronizações */}
       <div className="space-y-3">
-        <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
+        <Card className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-[18px]">history</span>
             Histórico de Sincronizações
@@ -751,12 +745,12 @@ export default function SyncPage() {
             <span className="material-symbols-outlined text-[14px]">refresh</span>
             Atualizar
           </button>
-        </div>
+        </Card>
 
         {logs.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800">
+          <Card padding="none">
             <EmptyState icon="cloud_off" title="Nenhuma sincronização realizada" hint="Use os botões acima para sincronizar documentos fiscais" />
-          </div>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {renderHistoryCard('nsdocs', 'Histórico NSDocs', 'hub', nsdocsLogs)}

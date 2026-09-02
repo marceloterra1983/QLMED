@@ -8,6 +8,7 @@ import { BulkFieldRow } from './DetailSectionCard';
 import { BULK_INPUT_CLS } from './product-utils';
 import type { HierOptions } from './product-utils';
 import Button from '@/components/ui/Button';
+import { formatInt } from '@/lib/utils';
 
 interface BulkEditModalProps {
   selectedKeys: Set<string>;
@@ -91,7 +92,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
       height="sm:h-auto sm:max-h-[92vh]"
       bodyClassName=""
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
               <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">edit_note</span>
@@ -99,7 +100,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Editar em massa</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                <span className="font-bold text-primary dark:text-blue-400">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
+                <span className="font-bold text-primary dark:text-blue-400">{formatInt(selectedKeys.size)}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
               </p>
             </div>
             <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -109,7 +110,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
         </div>
       }
       footer={
-<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">
           <div className="flex flex-col gap-2 sm:hidden">
             <Button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} loading={isBulkSaving} icon="save" block>
               {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-lg bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}

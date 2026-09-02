@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { formatFileSize } from '@/lib/utils';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
@@ -210,7 +212,7 @@ export default function UploadPage() {
 
           {/* File List */}
           {files.length > 0 && (
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <Card padding="none">
               <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {files.length} arquivo(s) selecionado(s)
@@ -230,7 +232,7 @@ export default function UploadPage() {
                       <div>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{file.name}</p>
                         <p className="text-xs text-slate-600 dark:text-slate-400">
-                          {(file.size / 1024).toFixed(1)} KB
+                          {formatFileSize(file.size)}
                           {(file as any).webkitRelativePath && <span className="ml-2 text-slate-500">({(file as any).webkitRelativePath})</span>}
                         </p>
                       </div>
@@ -241,7 +243,7 @@ export default function UploadPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Upload Button */}
@@ -253,7 +255,7 @@ export default function UploadPage() {
         {/* Results Sidebar */}
         <div className="space-y-6">
           {/* Instructions */}
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+          <Card padding="lg">
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4">Como importar</h3>
             <div className="space-y-4">
               <div className="flex gap-3">
@@ -269,11 +271,11 @@ export default function UploadPage() {
                 <p className="text-sm text-slate-500">Clique em &quot;Importar&quot; e aguarde o processamento</p>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Upload Results */}
           {result && (
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+            <Card padding="lg">
               <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4">Resultado da Importação</h3>
               {result.success.length > 0 && (
                 <div className="mb-4">
@@ -299,7 +301,7 @@ export default function UploadPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           )}
         </div>
       </div>

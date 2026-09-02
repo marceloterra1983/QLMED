@@ -13,6 +13,7 @@ import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel } f
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 const NfseDetailsModal = dynamic(() => import('@/components/NfseDetailsModal'), { ssr: false });
@@ -309,16 +310,16 @@ export default function NfseReceivedPage() {
       <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+            <Card padding="sm" key={i} className="space-y-2">
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-3 w-44" />
               <Skeleton className="h-3 w-24" />
-            </div>
+            </Card>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+          <Card padding="none">
             <EmptyState icon="receipt_long" title="Nenhuma NFS-e encontrada" />
-          </div>
+          </Card>
         ) : (
           (() => {
             let lastGroup = '';
@@ -337,7 +338,7 @@ export default function NfseReceivedPage() {
                     </div>
                   )}
                   {!collapsedGroups.has(group) && (
-                    <div onClick={() => openDetails(invoice.id)} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 cursor-pointer">
+                    <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number || '-'}</span>
                         <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
@@ -350,7 +351,7 @@ export default function NfseReceivedPage() {
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
                         <RowActions invoiceId={invoice.id} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} />
                       </div>
-                    </div>
+                    </Card>
                   )}
                 </React.Fragment>
               );
@@ -366,7 +367,7 @@ export default function NfseReceivedPage() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden sm:block bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <Card padding="none" className="hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px]">
             <thead className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800">
@@ -485,7 +486,7 @@ export default function NfseReceivedPage() {
           </div>
           <ListCount shown={invoices.length} total={total} noun="documento(s)" />
         </div>
-      </div>
+      </Card>
 
       {selectedInvoiceId && (
         <InvoiceDetailsModal

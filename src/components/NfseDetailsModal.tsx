@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfseDetails } from '@/types/invoice-details';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
+import { formatAmount, formatDateTimeSeconds } from '@/lib/utils';
 
 interface NfseDetailsModalProps {
   isOpen: boolean;
@@ -17,17 +19,12 @@ function formatMoney(val: string) {
   if (!val || val === '') return '-';
   const n = parseFloat(val);
   if (isNaN(n)) return val;
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatAmount(n);
 }
 
 function formatDateBr(dateStr: string) {
   if (!dateStr) return '-';
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  } catch {
-    return dateStr;
-  }
+  return formatDateTimeSeconds(dateStr);
 }
 
 function formatCnpjDisplay(cnpj: string) {
@@ -190,7 +187,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
       height="sm:h-[92vh]"
       bodyClassName=""
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 dark:from-violet-500/30 dark:to-violet-500/10 flex items-center justify-center ring-1 ring-violet-500/20 dark:ring-violet-500/30 shrink-0 hidden sm:flex">
@@ -231,7 +228,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
         </div>
       }
       footer={
-<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom">
           <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
           </Button>
@@ -278,7 +275,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-14 h-14 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center ring-1 ring-violet-500/20 dark:ring-violet-500/30">
-                <span className="material-symbols-outlined text-[28px] text-violet-500 animate-spin">progress_activity</span>
+                <Spinner size="lg" label="Carregando detalhes" />
               </div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
             </div>
