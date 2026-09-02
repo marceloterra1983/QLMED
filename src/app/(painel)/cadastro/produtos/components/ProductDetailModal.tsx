@@ -406,8 +406,8 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                {detailProduct.codigo && <><span className="font-mono text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
-                {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
+                {detailProduct.codigo && <><span className="font-mono text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
+                {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
                 {detailProduct.description}
               </h3>
               {detailProduct.shortName && (
@@ -440,7 +440,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 )}
               </div>
             </div>
-            <button onClick={onClose} className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
@@ -517,14 +517,14 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 <div className="flex flex-wrap items-center gap-1.5">
                   <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Ref 1</span>
-                    <input type="text" value={detailProduct.code || '\u2014'} readOnly disabled size={Math.max(4, (detailProduct.code || '\u2014').length)} className="font-mono text-sm text-slate-600 dark:text-slate-300 bg-transparent border-0 outline-none p-0 min-w-0" />
+                    <input type="text" aria-label="Ref 1" value={detailProduct.code || '\u2014'} readOnly disabled size={Math.max(4, (detailProduct.code || '\u2014').length)} className="font-mono text-sm text-slate-600 dark:text-slate-300 bg-transparent border-0 outline-none p-0 min-w-0" />
                   </div>
                   {detailRefs.map((ref, idx) => (
                     <div key={idx} className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-shadow">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Ref {idx + 2}</span>
-                      <input type="text" value={ref} onChange={(e) => { const next = [...detailRefs]; next[idx] = e.target.value; setDetailRefs(next); }} size={Math.max(6, ref.length + 1)} maxLength={100} placeholder="\u2014" disabled={!canWrite} className="font-mono text-sm text-slate-800 dark:text-slate-200 bg-transparent border-0 outline-none p-0 min-w-0 disabled:cursor-not-allowed" />
+                      <input type="text" aria-label={`Ref ${idx + 2}`} value={ref} onChange={(e) => { const next = [...detailRefs]; next[idx] = e.target.value; setDetailRefs(next); }} size={Math.max(6, ref.length + 1)} maxLength={100} placeholder="\u2014" disabled={!canWrite} className="font-mono text-sm text-slate-800 dark:text-slate-200 bg-transparent border-0 outline-none p-0 min-w-0 disabled:cursor-not-allowed" />
                       {canWrite && (
-                        <button type="button" onClick={() => setDetailRefs(detailRefs.filter((_, i) => i !== idx))} className="shrink-0 ml-0.5 text-slate-300 hover:text-red-500 transition-colors" title="Remover">
+                        <button type="button" onClick={() => setDetailRefs(detailRefs.filter((_, i) => i !== idx))} className="shrink-0 ml-0.5 text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors" title="Remover" aria-label="Remover">
                           <span className="material-symbols-outlined text-[13px]">close</span>
                         </button>
                       )}
@@ -571,10 +571,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.type ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailType} onChange={(e) => setDetailType(e.target.value)} placeholder="Nova linha" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" aria-label="Fechar" onClick={() => { setDetailNewMode((m) => ({ ...m, type: false })); setDetailType(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
-                    <select value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                    <select aria-label="Linha" value={detailType} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, type: true })); setDetailType(''); } else { setDetailType(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                       <option value="">{'\u2014 Nenhuma \u2014'}</option>
                       {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
                       <option value="__new__">+ Criar nova...</option>
@@ -585,10 +585,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.subtype ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailSubtype} onChange={(e) => setDetailSubtype(e.target.value)} placeholder="Novo grupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" aria-label="Fechar" onClick={() => { setDetailNewMode((m) => ({ ...m, subtype: false })); setDetailSubtype(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
-                    <select value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                    <select aria-label="Grupo" value={detailSubtype} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subtype: true })); setDetailSubtype(''); } else { setDetailSubtype(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                       <option value="">{'\u2014 Nenhum \u2014'}</option>
                       {detailType ? (
                         hierOptions.groupsFor(detailType).map((s) => <option key={s} value={s}>{s}</option>)
@@ -614,10 +614,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   {detailNewMode.subgroup ? (
                     <div className="flex gap-1">
                       <input autoFocus type="text" value={detailSubgroup} onChange={(e) => setDetailSubgroup(e.target.value)} placeholder="Novo subgrupo" disabled={!canWrite} className={DETAIL_INPUT_CLS} />
-                      <button type="button" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
+                      <button type="button" aria-label="Fechar" onClick={() => { setDetailNewMode((m) => ({ ...m, subgroup: false })); setDetailSubgroup(''); }} className="px-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[16px]">close</span></button>
                     </div>
                   ) : (
-                    <select value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
+                    <select aria-label="Subgrupo" value={detailSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setDetailNewMode((m) => ({ ...m, subgroup: true })); setDetailSubgroup(''); } else { setDetailSubgroup(e.target.value); } }} disabled={!canWrite} className={DETAIL_INPUT_CLS}>
                       <option value="">{'\u2014 Nenhum \u2014'}</option>
                       {detailType && detailSubtype ? (
                         hierOptions.subgroupsFor(detailType, detailSubtype).map((s) => <option key={s} value={s}>{s}</option>)
@@ -886,7 +886,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 <div className="flex gap-2">
                   <input type="text" value={detailAnvisa} onChange={(e) => setDetailAnvisa(e.target.value)} maxLength={13} placeholder="11 digitos numericos" disabled={!canWrite} className={`flex-1 ${DETAIL_INPUT_CLS} font-mono`} />
                   {canWrite && detailAnvisa && (
-                    <button onClick={() => setDetailAnvisa('')} className="px-3 border border-red-200 dark:border-red-800/60 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm transition-colors" title="Limpar codigo ANVISA">
+                    <button onClick={() => setDetailAnvisa('')} className="px-3 border border-red-200 dark:border-red-800/60 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm transition-colors" title="Limpar codigo ANVISA" aria-label="Limpar codigo ANVISA">
                       <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
                   )}

@@ -96,7 +96,7 @@ export default function CertificateSefazPanel({
       <div>
         <span className="block text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-semibold">Ambiente SEFAZ</span>
         <select
-          value={current}
+          aria-label="Ambiente SEFAZ"          value={current}
           disabled={locked}
           onChange={(e) => handleEnvironmentChange(e.target.value as 'homologation' | 'production')}
           className="mt-1 w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm disabled:opacity-50"

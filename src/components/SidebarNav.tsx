@@ -174,6 +174,7 @@ export default function SidebarNav({
             onClick={onToggleCollapse}
             className="flex-shrink-0 p-1 rounded text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400 transition-colors"
             title="Colapsar sidebar"
+            aria-label="Colapsar sidebar"
           >
             <span className="material-symbols-outlined text-[16px]">chevron_left</span>
           </button>
@@ -183,6 +184,7 @@ export default function SidebarNav({
             onClick={onToggleCollapse}
             className="p-1 rounded text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400 transition-colors"
             title="Expandir sidebar"
+            aria-label="Expandir sidebar"
           >
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
           </button>

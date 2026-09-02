@@ -253,7 +253,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                {product.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{product.code}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">/</span></>}
+                {product.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{product.code}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
                 {product.description}
               </h3>
               {product.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{product.shortName}</p>}
@@ -263,7 +263,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                 {product.outOfLine && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400"><span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha</span>}
               </div>
             </div>
-            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+            <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
           </div>
         </div>
       }

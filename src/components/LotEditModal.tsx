@@ -479,7 +479,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                 </div>
               )}
             </div>
-            <button onClick={() => { if (!saving && !registering) onClose(); }} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0">
+            <button onClick={() => { if (!saving && !registering) onClose(); }} aria-label="Fechar" className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0">
               <span className="material-symbols-outlined text-[24px]">close</span>
             </button>
           </div>
@@ -609,6 +609,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                   {canWrite ? (
                                     <input
                                       ref={el => setInputRef(`${bd.batchId}-lot`, el)}
+                                      aria-label={`Lote de ${item.description}`}
                                       type="text"
                                       value={bd.lot}
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'lot', e.target.value)}
@@ -626,6 +627,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                   {canWrite ? (
                                     <input
                                       ref={el => setInputRef(`${bd.batchId}-expiry`, el)}
+                                      aria-label={`Validade de ${item.description}`}
                                       type="text"
                                       value={bd.expiry}
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'expiry', e.target.value)}
@@ -645,6 +647,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                   ) : canWrite ? (
                                     <input
                                       ref={el => setInputRef(`${bd.batchId}-quantity`, el)}
+                                      aria-label={`Quantidade do lote de ${item.description}`}
                                       type="number"
                                       value={bd.quantity}
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'quantity', e.target.value)}
@@ -683,6 +686,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onClick={() => removeBatchRow(item.index, bd.batchId, bd.isNew)}
                                       className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500 transition-colors"
                                       title="Remover lote"
+                                      aria-label="Remover lote"
                                     >
                                       <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
@@ -813,6 +817,8 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                     <button
                                       onClick={() => removeBatchRow(item.index, bd.batchId, bd.isNew)}
                                       className="p-1 mb-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500 transition-colors"
+                                      title="Remover lote"
+                                      aria-label="Remover lote"
                                     >
                                       <span className="material-symbols-outlined text-[16px]">close</span>
                                     </button>

@@ -236,6 +236,7 @@ export default function DuplicataEditPanel({
                             disabled={editingDuplicatas.length <= 1 || savingDetails}
                             className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-red-700 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 flex-shrink-0"
                             title="Remover parcela"
+                            aria-label="Remover parcela"
                           >
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                           </button>
@@ -304,6 +305,7 @@ export default function DuplicataEditPanel({
                           <td className="px-3 py-2">
                             <input
                               type="date"
+                              aria-label={`Vencimento da parcela ${idx + 1}`}
                               value={row.dupVencimento}
                               onChange={(e) => onUpdateRow(idx, 'dupVencimento', e.target.value)}
                               readOnly={!canWrite}
@@ -313,6 +315,7 @@ export default function DuplicataEditPanel({
                           <td className="px-3 py-2">
                             <input
                               type="text"
+                              aria-label={`Valor da parcela ${idx + 1}`}
                               inputMode="decimal"
                               value={row.dupValor}
                               onChange={(e) => onUpdateRow(idx, 'dupValor', e.target.value)}
@@ -325,6 +328,7 @@ export default function DuplicataEditPanel({
                           <td className="px-3 py-2">
                             <input
                               type="text"
+                              aria-label={`Desconto da parcela ${idx + 1}`}
                               inputMode="decimal"
                               value={row.dupDesconto}
                               onChange={(e) => onUpdateRow(idx, 'dupDesconto', e.target.value)}
@@ -342,6 +346,7 @@ export default function DuplicataEditPanel({
                               disabled={editingDuplicatas.length <= 1 || savingDetails}
                               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-700 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
                               title="Remover parcela"
+                              aria-label="Remover parcela"
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>

@@ -45,7 +45,7 @@ export default function ProductFilters({
               className="block w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 text-sm transition-all"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600">
+              <button onClick={() => setSearch('')} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             )}
@@ -110,6 +110,7 @@ export default function ProductFilters({
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/5 transition-colors"
                 title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
+                aria-label={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
               >
                 <span className="material-symbols-outlined text-[18px]">{sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
               </button>
@@ -140,7 +141,7 @@ export default function ProductFilters({
           {search && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-medium">
               &ldquo;{search}&rdquo;
-              <button onClick={() => setSearch('')} className="hover:opacity-70">
+              <button aria-label="Limpar busca" onClick={() => setSearch('')} className="hover:opacity-70">
                 <span className="material-symbols-outlined text-[13px]">close</span>
               </button>
             </span>
@@ -148,7 +149,7 @@ export default function ProductFilters({
           {typeFilter && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium dark:bg-indigo-900/30 dark:text-indigo-400">
               {typeFilter}
-              <button onClick={() => { setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
+              <button aria-label={`Remover filtro ${typeFilter}`} onClick={() => { setTypeFilter(''); setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
                 <span className="material-symbols-outlined text-[13px]">close</span>
               </button>
             </span>
@@ -156,7 +157,7 @@ export default function ProductFilters({
           {subtypeFilter && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium dark:bg-amber-900/30 dark:text-amber-400">
               {subtypeFilter}
-              <button onClick={() => { setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
+              <button aria-label={`Remover filtro ${subtypeFilter}`} onClick={() => { setSubtypeFilter(''); setSubgroupFilter(''); }} className="hover:opacity-70">
                 <span className="material-symbols-outlined text-[13px]">close</span>
               </button>
             </span>
@@ -164,7 +165,7 @@ export default function ProductFilters({
           {subgroupFilter && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 text-xs font-medium dark:bg-teal-900/30 dark:text-teal-400">
               {subgroupFilter}
-              <button onClick={() => setSubgroupFilter('')} className="hover:opacity-70">
+              <button aria-label={`Remover filtro ${subgroupFilter}`} onClick={() => setSubgroupFilter('')} className="hover:opacity-70">
                 <span className="material-symbols-outlined text-[13px]">close</span>
               </button>
             </span>

@@ -231,7 +231,7 @@ export default function FiscalDashboardPage() {
         actions={(
         <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <select
-            value={year}
+            aria-label="Ano"            value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-300"
           >

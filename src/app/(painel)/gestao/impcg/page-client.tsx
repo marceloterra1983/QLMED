@@ -382,6 +382,7 @@ export default function ImpcgPageClient() {
               >
                 <input
                   type="date"
+                  aria-label="Data"
                   value={issuedAtDraft}
                   onChange={(event) => setIssuedAtDraft(event.target.value)}
                   className={readFieldInputClass}
@@ -398,7 +399,7 @@ export default function ImpcgPageClient() {
                 }}
               >
                 <input
-                  value={patientDraft}
+                  aria-label="Paciente"                  value={patientDraft}
                   onChange={(event) => setPatientDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -412,7 +413,7 @@ export default function ImpcgPageClient() {
                 onSave={() => void savePatch({ patientRegistry: registryDraft.trim() })}
               >
                 <input
-                  value={registryDraft}
+                  aria-label="Matrícula"                  value={registryDraft}
                   onChange={(event) => setRegistryDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -428,7 +429,7 @@ export default function ImpcgPageClient() {
                 }}
               >
                 <input
-                  value={doctorDraft}
+                  aria-label="Médico"                  value={doctorDraft}
                   onChange={(event) => setDoctorDraft(event.target.value)}
                   className={readFieldInputClass}
                   placeholder="Nome"
@@ -445,7 +446,7 @@ export default function ImpcgPageClient() {
                 }}
               >
                 <input
-                  value={hospitalDraft}
+                  aria-label="Hospital"                  value={hospitalDraft}
                   onChange={(event) => setHospitalDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -462,7 +463,7 @@ export default function ImpcgPageClient() {
                   }}
                 >
                   <input
-                    value={procedureDraft}
+                    aria-label="Procedimento"                    value={procedureDraft}
                     onChange={(event) => setProcedureDraft(event.target.value)}
                     className={readFieldInputClass}
                   />

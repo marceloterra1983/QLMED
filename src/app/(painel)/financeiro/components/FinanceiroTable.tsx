@@ -4,6 +4,7 @@ import React from 'react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
 import {
   type Duplicata,
@@ -31,14 +32,6 @@ interface FinanceiroTableProps {
   onOpenDetails: (dup: Duplicata) => void;
 }
 
-
-function SortIcon({ col, sortBy, sortOrder }: { col: string; sortBy: string; sortOrder: string }) {
-  return (
-    <span className={`material-symbols-outlined text-[14px] ml-0.5 ${sortBy === col ? 'text-primary dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'}`}>
-      {sortBy === col && sortOrder === 'desc' ? 'arrow_downward' : 'arrow_upward'}
-    </span>
-  );
-}
 
 export default function FinanceiroTable({
   duplicatas,
@@ -89,22 +82,12 @@ export default function FinanceiroTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                  <th className="px-3 py-2.5 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => onSort('vencimento')}>
-                    <div className="flex items-center gap-1">Data <SortIcon col="vencimento" sortBy={sortBy} sortOrder={sortOrder} /></div>
-                  </th>
-                  <th className="px-3 py-2.5 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => onSort('nfNumero')}>
-                    <div className="flex items-center gap-1">NF-e <SortIcon col="nfNumero" sortBy={sortBy} sortOrder={sortOrder} /></div>
-                  </th>
-                  <th className="px-3 py-2.5 w-px whitespace-nowrap text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => onSort('valor')}>
-                    <div className="flex items-center justify-end gap-1">Valor <SortIcon col="valor" sortBy={sortBy} sortOrder={sortOrder} /></div>
-                  </th>
+                  <SortableTh col="vencimento" sortBy={sortBy} sortOrder={sortOrder as 'asc' | 'desc'} onSort={onSort} className="w-px whitespace-nowrap">Data</SortableTh>
+                  <SortableTh col="nfNumero" sortBy={sortBy} sortOrder={sortOrder as 'asc' | 'desc'} onSort={onSort} className="w-px whitespace-nowrap">NF-e</SortableTh>
+                  <SortableTh col="valor" sortBy={sortBy} sortOrder={sortOrder as 'asc' | 'desc'} onSort={onSort} align="right" className="w-px whitespace-nowrap">Valor</SortableTh>
                   <th className="px-3 py-2.5 w-px whitespace-nowrap">Parcela</th>
-                  <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => onSort('emitente')}>
-                    <div className="flex items-center gap-1">{entityLabel} <SortIcon col="emitente" sortBy={sortBy} sortOrder={sortOrder} /></div>
-                  </th>
-                  <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => onSort('status')}>
-                    <div className="flex items-center gap-1">Status <SortIcon col="status" sortBy={sortBy} sortOrder={sortOrder} /></div>
-                  </th>
+                  <SortableTh col="emitente" sortBy={sortBy} sortOrder={sortOrder as 'asc' | 'desc'} onSort={onSort}>{entityLabel}</SortableTh>
+                  <SortableTh col="status" sortBy={sortBy} sortOrder={sortOrder as 'asc' | 'desc'} onSort={onSort}>Status</SortableTh>
                   <th className="px-3 py-2.5 text-center">Ações</th>
                 </tr>
               </thead>
@@ -155,7 +138,7 @@ export default function FinanceiroTable({
                               <Badge tone={cfg.tone}>{cfg.label}</Badge>
                             </td>
                             <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => onOpenDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar e editar">
+                              <button onClick={() => onOpenDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar e editar" aria-label="Visualizar e editar">
                                 <span className="material-symbols-outlined text-[18px]">search</span>
                               </button>
                             </td>
