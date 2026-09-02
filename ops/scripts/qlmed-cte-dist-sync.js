@@ -7,7 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const zlib = require('zlib');
-const forge = require('/app/node_modules/node-forge');
+// Carregado onde é usado: o caminho é do container, e um `require` no topo
+// impedia o teste de importar os helpers fora dele.
+function forgeLib() { return require(process.env.QLMED_FORGE_PATH || '/app/node_modules/node-forge'); }
 const { promisify } = require('util');
 const gunzip = promisify(zlib.gunzip);
 
@@ -100,6 +102,7 @@ function decrypt(t) {
 }
 
 function extractPems(pfxBuf, password) {
+  const forge = forgeLib();
   const p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(pfxBuf.toString('binary')), password);
   let keyBag = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
   if (!keyBag) keyBag = p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
