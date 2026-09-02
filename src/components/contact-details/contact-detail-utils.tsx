@@ -1,7 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
-import Badge from '@/components/ui/Badge';
 import type { AddressDivergence } from './contact-detail-types';
 
 // --- Shared utility functions ---
@@ -63,61 +61,6 @@ export function EditableField({ label, value, field, draft, onChange }: {
   );
 }
 
-interface SectionCardProps {
-  title: string;
-  subtitle?: string;
-  icon: string;
-  iconColor?: string;
-  open: boolean;
-  onToggle: () => void;
-  badge?: string | number;
-  children: React.ReactNode;
-}
-
-export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary dark:text-blue-400', open, onToggle, badge, children }: SectionCardProps) {
-  const hasBeenOpened = useRef(open);
-  if (open && !hasBeenOpened.current) hasBeenOpened.current = true;
-
-  const iconBgMap: Record<string, string> = {
-    'text-primary': 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30',
-    'text-indigo-500': 'bg-indigo-500/10 dark:bg-indigo-500/20 ring-indigo-500/20 dark:ring-indigo-500/30',
-    'text-amber-500': 'bg-amber-500/10 dark:bg-amber-500/20 ring-amber-500/20 dark:ring-amber-500/30',
-    'text-teal-500': 'bg-teal-500/10 dark:bg-teal-500/20 ring-teal-500/20 dark:ring-teal-500/30',
-    'text-emerald-500': 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-emerald-500/20 dark:ring-emerald-500/30',
-    'text-rose-500': 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30',
-    'text-orange-500': 'bg-orange-500/10 dark:bg-orange-500/20 ring-orange-500/20 dark:ring-orange-500/30',
-  };
-  // iconColor carrega o par claro/escuro; a chave do mapa é só o primeiro token.
-  const iconBg = iconBgMap[iconColor.split(' ')[0]] || iconBgMap['text-primary'];
-
-  return (
-    <div className={`bg-white dark:bg-card-dark rounded-xl overflow-hidden ring-1 transition-all ${open ? 'ring-slate-200/80 dark:ring-slate-700/60 shadow-sm' : 'ring-slate-200/50 dark:ring-slate-800/50'}`}>
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
-      >
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ring-1 shrink-0 ${iconBg}`}>
-          <span className={`material-symbols-outlined text-[17px] ${open ? iconColor : 'text-slate-500 dark:text-slate-400'} transition-colors`}>{icon}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
-            {badge !== undefined && (
-              <Badge dot={false}>{badge}</Badge>
-            )}
-          </div>
-          {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>}
-        </div>
-        <span className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-          expand_more
-        </span>
-      </button>
-      <div className={`transition-all duration-200 ${open ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-        <div className="px-4 pb-4 pt-1">{hasBeenOpened.current ? children : null}</div>
-      </div>
-    </div>
-  );
-}
 
 export function StatCard({ label, value, icon, color = 'primary' }: { label: string; value: string; icon: string; color?: string }) {
   const colorMap: Record<string, { bg: string; text: string; ring: string }> = {

@@ -1,4 +1,5 @@
 import type { CnpjResult } from '@/lib/cnpj-result';
+import type { SectionTone } from '@/components/ui/Section';
 import { checkCnaeMismatch } from './cnae-mismatch';
 
 export type ContactKind = 'customer' | 'supplier';
@@ -22,7 +23,7 @@ export interface ContactKindConfig {
 
   registrationSubtitle: string;
   shortNamePlaceholder: string;
-  shortNameIconClass: string;
+  shortNameTone: SectionTone;
   shortNameButtonClass: string;
   addressAccent: string;
 
@@ -62,7 +63,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
 
     registrationSubtitle: 'Dados fiscais e endereço do destinatário',
     shortNamePlaceholder: 'Nome abreviado (ex: Farmácia ABC)...',
-    shortNameIconClass: 'text-indigo-500',
+    shortNameTone: 'indigo',
     shortNameButtonClass: 'bg-indigo-500 hover:bg-indigo-600',
     addressAccent: 'indigo',
 
@@ -97,7 +98,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
 
     registrationSubtitle: 'Dados fiscais e endereço do emitente',
     shortNamePlaceholder: 'Nome abreviado (ex: Distribuidora XYZ)...',
-    shortNameIconClass: 'text-orange-500',
+    shortNameTone: 'orange',
     shortNameButtonClass: 'bg-orange-500 hover:bg-orange-600',
     addressAccent: 'orange',
 

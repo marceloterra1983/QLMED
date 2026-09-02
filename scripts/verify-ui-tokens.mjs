@@ -119,10 +119,12 @@ const files = execFileSync(
 ).trim().split('\n').filter(Boolean).sort();
 
 const violations = {
+  section: [],
   primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [], pill: [], empty: [],
   sortable: [], iconbtn: [], label: [], faint: [], format: [], card: [], spinner: [], shadow: [],
 };
 const stats = {
+  section: 0,
   arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0,
   focus: 0, radius: 0, field: 0, pill: 0, empty: 0,
   sortable: 0, iconbtn: 0, label: 0, faint: 0, format: 0, card: 0, spinner: 0, shadow: 0,
@@ -363,6 +365,11 @@ for (const file of files) {
   if (file.endsWith('components/ui/Button.tsx')) continue;
   const src = semComentarios(readFileSync(file, 'utf8'));
   const ligacoes = ligacoesDe(src);
+  // Quatro cartões de seção viraram um: os nomes antigos não voltam.
+  for (const m of src.matchAll(/<(SectionBlock|CollapsibleCard|SectionCard|DetailSectionCard)\b/g)) {
+    stats.section++;
+    violations.section.push(`${file}:${lineOf(src, m.index)}  <${m[1]}> — use <Section> (ui/Section.tsx)`);
+  }
   for (const m of src.matchAll(BOTAO_ABRE)) {
     const tagName = m[1];
     const lido = atributosDe(src, m.index + m[0].length);

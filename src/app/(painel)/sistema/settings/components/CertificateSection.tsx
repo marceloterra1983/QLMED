@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Badge from '@/components/ui/Badge';
+import Section from '@/components/ui/Section';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { formatDateTimeSeconds } from '@/lib/utils';
 import { toast } from 'sonner';
-import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import CertificateSefazPanel from './CertificateSefazPanel';
 
@@ -28,6 +29,11 @@ interface CertificateSectionProps {
   company: Company | null;
   canManageSettings: boolean;
 }
+
+/** Os estados de integração ainda produzem `{ label, color }`; o Section quer um nó. */
+const TOM_DO_BADGE = { green: 'success', red: 'danger', yellow: 'warning' } as const;
+const badgeDe = (b?: { label: string; color: keyof typeof TOM_DO_BADGE }) =>
+  b ? <Badge tone={TOM_DO_BADGE[b.color]}>{b.label}</Badge> : undefined;
 
 export default function CertificateSection({ company, canManageSettings }: CertificateSectionProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -110,7 +116,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
 
   return (
     <>
-      <CollapsibleCard icon="verified_user" title="Certificado Digital" defaultOpen badge={certBadge}>
+      <Section icon="verified_user" title="Certificado Digital" defaultOpen badge={badgeDe(certBadge)}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Upload Form */}
           <div className="space-y-4">
@@ -236,7 +242,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
             )}
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}

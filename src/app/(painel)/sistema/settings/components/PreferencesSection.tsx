@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Section from '@/components/ui/Section';
 import Button from '@/components/ui/Button';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
-import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -103,7 +103,7 @@ export default function PreferencesSection() {
   return (
     <>
       {/* Aparência */}
-      <CollapsibleCard icon="palette" title="Aparência">
+      <Section icon="palette" title="Aparência" defaultOpen={false}>
         <div>
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
             Tema
@@ -147,10 +147,10 @@ export default function PreferencesSection() {
             Escolha entre tema claro, escuro ou siga a preferência do seu sistema operacional.
           </p>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       {/* Notificações */}
-      <CollapsibleCard icon="notifications" title="Notificações">
+      <Section icon="notifications" title="Notificações" defaultOpen={false}>
         {loadingPreferences ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 p-3">Carregando preferências...</p>
         ) : preferences.length === 0 ? (
@@ -194,10 +194,10 @@ export default function PreferencesSection() {
             </p>
           </div>
         )}
-      </CollapsibleCard>
+      </Section>
 
       {/* Perfil */}
-      <CollapsibleCard icon="person" title="Perfil">
+      <Section icon="person" title="Perfil" defaultOpen={false}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nome</label>
@@ -218,10 +218,10 @@ export default function PreferencesSection() {
             />
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       {/* Dados e Exportação */}
-      <CollapsibleCard icon="storage" title="Dados e Exportação">
+      <Section icon="storage" title="Dados e Exportação" defaultOpen={false}>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative group">
             <Button disabled variant="secondary" icon="download">
@@ -243,10 +243,10 @@ export default function PreferencesSection() {
             </div>
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       {/* Zona de Perigo */}
-      <CollapsibleCard icon="warning" title="Zona de Perigo" variant="danger">
+      <Section icon="warning" title="Zona de Perigo" variant="danger" defaultOpen={false}>
         <div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
             Ações irreversíveis que afetam permanentemente sua conta e todos os dados associados.
@@ -265,7 +265,7 @@ export default function PreferencesSection() {
             </div>
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
     </>
   );
 }

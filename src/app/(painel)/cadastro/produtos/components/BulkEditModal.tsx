@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import type { ProductRow } from '../types';
-import { BulkFieldRow } from './DetailSectionCard';
+import { BulkFieldRow } from './product-detail-fields';
 import { BULK_INPUT_CLS } from './product-utils';
 import type { HierOptions } from './product-utils';
 import Button from '@/components/ui/Button';

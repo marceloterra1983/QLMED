@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Section from '@/components/ui/Section';
+import type { SectionTone } from '@/components/ui/Section';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import { Field } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfseDetails } from '@/types/invoice-details';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
@@ -46,7 +48,7 @@ function TabNfse({ data }: { data: NfseDetails }) {
   const n = data.nfse;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados da NFS-e" icon="receipt_long" iconColor="text-primary dark:text-blue-400">
+      <Section title="Dados da NFS-e" icon="receipt_long">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Número" value={n.numero} />
           <Field label="Data de Emissão" value={formatDateBr(n.dataEmissao)} />
@@ -56,17 +58,17 @@ function TabNfse({ data }: { data: NfseDetails }) {
           <Field label="Valor do Serviço" value={n.valorServico ? `R$ ${formatMoney(n.valorServico)}` : '-'} />
           <Field label="Valor Líquido" value={n.valorLiquido ? `R$ ${formatMoney(n.valorLiquido)}` : '-'} />
         </div>
-      </SectionBlock>
+      </Section>
     </div>
   );
 }
 
-function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetails; partyKey: 'prestador' | 'tomador'; title: string; icon: string; iconColor: string }) {
+function TabParty({ data, partyKey, title, icon, tone }: { data: NfseDetails; partyKey: 'prestador' | 'tomador'; title: string; icon: string; tone?: SectionTone }) {
   const party = data[partyKey];
   if (!party) return <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
     <div className="space-y-4">
-      <SectionBlock title={title} icon={icon} iconColor={iconColor}>
+      <Section title={title} icon={icon} tone={tone}>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ/CPF" value={formatCnpjDisplay(party.cnpj)} />
           <Field label="Razão Social" value={party.razaoSocial} className="sm:col-span-2" />
@@ -74,10 +76,10 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetail
           {party.email && <Field label="E-mail" value={party.email} />}
           {party.telefone && <Field label="Telefone" value={party.telefone} />}
         </div>
-      </SectionBlock>
+      </Section>
 
       {(party.endereco || party.municipio) && (
-        <SectionBlock title="Endereço" icon="location_on" iconColor="text-teal-500">
+        <Section title="Endereço" icon="location_on" tone="teal">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             {party.endereco && <Field label="Endereço" value={party.endereco} className="sm:col-span-2" />}
             {party.bairro && <Field label="Bairro" value={party.bairro} />}
@@ -85,7 +87,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: NfseDetail
             {party.uf && <Field label="UF" value={party.uf} />}
             {party.cep && <Field label="CEP" value={party.cep} />}
           </div>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -96,16 +98,16 @@ function TabServico({ data }: { data: NfseDetails }) {
   if (!s) return <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Dados não disponíveis</p>;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Descrição do Serviço" icon="handyman" iconColor="text-violet-500">
+      <Section title="Descrição do Serviço" icon="handyman" tone="violet">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           {s.codigoNacional && <Field label="Código Nacional" value={s.codigoNacional} />}
           {s.codigoMunicipal && <Field label="Código Municipal" value={s.codigoMunicipal} />}
           {s.municipio && <Field label="Município de Prestação" value={s.municipio} />}
           {s.descricao && <Field label="Discriminação" value={s.descricao} className="col-span-2 sm:col-span-3" />}
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Valores e ISSQN" icon="calculate" iconColor="text-emerald-500">
+      <Section title="Valores e ISSQN" icon="calculate" tone="emerald">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Valor do Serviço" value={s.valorServico ? `R$ ${formatMoney(s.valorServico)}` : '-'} />
           <Field label="Valor Líquido" value={s.valorLiquido ? `R$ ${formatMoney(s.valorLiquido)}` : '-'} />
@@ -114,7 +116,7 @@ function TabServico({ data }: { data: NfseDetails }) {
           {s.valorIss && <Field label="Valor ISSQN" value={`R$ ${formatMoney(s.valorIss)}`} />}
           {s.issRetido && <Field label="ISS Retido" value={s.issRetido} />}
         </div>
-      </SectionBlock>
+      </Section>
     </div>
   );
 }
@@ -170,8 +172,8 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
     if (!data) return null;
     switch (activeTab) {
       case 'nfse': return <TabNfse data={data} />;
-      case 'prestador': return <TabParty data={data} partyKey="prestador" title="Dados do Prestador" icon="storefront" iconColor="text-orange-500" />;
-      case 'tomador': return <TabParty data={data} partyKey="tomador" title="Dados do Tomador" icon="person" iconColor="text-indigo-500" />;
+      case 'prestador': return <TabParty data={data} partyKey="prestador" title="Dados do Prestador" icon="storefront" tone="orange" />;
+      case 'tomador': return <TabParty data={data} partyKey="tomador" title="Dados do Tomador" icon="person" tone="indigo" />;
       case 'servico': return <TabServico data={data} />;
       default: return null;
     }
