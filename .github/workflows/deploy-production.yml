@@ -149,7 +149,6 @@ jobs:
           for env_file in \
             app.env \
             n8n.env \
-            n8n-legacy.env \
             n8n-automation.env \
             n8n-db.env
           do

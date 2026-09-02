@@ -22,7 +22,7 @@ case "$api_v1" in */api/v1) ;; *) api_v1="${api_v1%/}/api/v1" ;; esac
 
 state_root="${STATE_DIRECTORY:-/var/lib/qlmed-daily-summary-catchup}"
 safe_env="${OPS_SAFE_ENV:-/home/marce/ops/lib/safe-env.py}"
-qlmed_env="${CF_QLMED_ENV_FILE:-/srv/qlmed/env/n8n-legacy.env}"
+qlmed_env="${CF_QLMED_ENV_FILE:-/srv/qlmed/env/n8n.env}"
 log_file="${DAILY_SUMMARY_CATCHUP_LOG:-/srv/qlmed/ops/logs/qlmed-daily-summary-catchup.log}"
 
 dry_run=0

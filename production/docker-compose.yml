@@ -46,7 +46,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - ./env/n8n-legacy.env
       - ./env/n8n.env
       - ./env/n8n-automation.env
     volumes:

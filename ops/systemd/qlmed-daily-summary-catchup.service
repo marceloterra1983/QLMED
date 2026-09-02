@@ -12,7 +12,7 @@ StateDirectory=qlmed-daily-summary-catchup
 StateDirectoryMode=0700
 Environment=STATE_DIRECTORY=/var/lib/qlmed-daily-summary-catchup
 Environment=N8N_BASE_URL=http://127.0.0.1:5678
-Environment=CF_QLMED_ENV_FILE=/srv/qlmed/env/n8n-legacy.env
+Environment=CF_QLMED_ENV_FILE=/srv/qlmed/env/n8n.env
 Environment=OPS_SAFE_ENV=/home/marce/ops/lib/safe-env.py
 Environment=DAILY_SUMMARY_CATCHUP_LOG=/srv/qlmed/ops/logs/qlmed-daily-summary-catchup.log
 ExecStart=/home/marce/qlmed/ops/scripts/qlmed-daily-summary-catchup.sh
