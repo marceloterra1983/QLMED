@@ -291,3 +291,43 @@ teto em produção estava certo (o anexo grande faz `continue` antes do
 recebe o `contentBytes` DESTE anexo. Controlo positivo com o teto neutralizado:
 `2 failed`. Lição registada: um spy global sobre uma primitiva do runtime mede
 o runtime, não o código.
+
+---
+
+# 10. Deploy — primeira tentativa, 2026-09-02
+
+Pré-checagens do passo 6 **limpas** em produção (0 duplicatas de emissão; 0
+duplicatas em 18.006 NF-e emitidas sob `COALESCE`; 16 contagens de órfãos a
+zero). Passo 2 é no-op (0 utilizadores com `allowedPages` vazia). Passo 3: o
+webhook do n8n tem **zero** chamadas em 48 h — o segredo pode ser configurado
+depois sem quebrar nada vivo. Passo 5 feito **sem downtime**: duas chaves de
+escopo mínimo para o outbox (hash conferido contra `ApiKey`, `smoke http=200`
+no app antigo, `401` sem chave) e uma chave `admin` nomeada para o sync de
+CT-e (`/api/invoices/upload` exige `editor`, que por chave só `admin` alcança —
+estreitar é PR à parte).
+
+`pg_dump -Fc` fresco (`pre-remediacao-20260902T120020Z-1cc2837.dump`, 286
+objectos) e os 2 segredos cifrados às 12:00:20Z. Dispatch do workflow
+fail-closed. **Falhou duas vezes, nenhuma por código:**
+
+1. O `main` moveu-se entre dispatch e aprovação (10 min de espera humana) e o
+   portão de revisão recusou — por desenho. Resolvido com dispatch+aprovação
+   no mesmo script, gap de segundos.
+2. `npm ci` dentro do `docker build` deu `ETIMEDOUT` no runner de produção;
+   rollback automático recriou a imagem antiga. Transitório: `npm ping` de um
+   container efémero passa; os 3 runners de CI tinham acabado de reiniciar.
+
+A porta de sentido único custou **um** tick da Receita (`Unparsed DER` às
+12:22Z — a imagem antiga a ler o PFX cifrado). Como o caminho para a frente
+não era de minutos, **fechei a porta**: os 2 segredos foram decifrados de
+volta com verificação de round-trip; a simulação oficial volta a dizer "1 a
+cifrar". Produção está no estado exacto das 12:00.
+
+O que o timeout escondia: `scripts/verify-production-migration-window.cjs`
+pinava **uma** migração (`20260831230000`, SHA fixo) e recusava qualquer outra
+pendente. Com 7 novas, todo deploy desta remediação morreria em `verify
+before`. Reescrito para um conjunto pinado (âncora + 7, cada uma com SHA-256);
+o teste ganha o caso das 7 e o controlo positivo de que uma intrusa reprova
+com 78. A migração de fevereiro `20260220120000` tem uma linha falhada E uma
+bem-sucedida 30 s depois: o Prisma e o verificador leem a segunda — não
+bloqueia (`prisma migrate status`: exactamente as 7 pendentes).

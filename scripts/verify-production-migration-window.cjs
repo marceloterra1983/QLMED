@@ -7,8 +7,29 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { Client } = require('pg');
 
-const EXPECTED_MIGRATION = '20260831230000_add_cassems_whatsapp_notify';
-const EXPECTED_SQL_SHA256 = 'b5afb51980bae0f626e4d638cb493ec9a1b583011fcb03995c2b7c0eef20bc56';
+// Conjunto PINADO de migrações que este deploy pode aplicar. Cada entrada leva
+// o SHA-256 do seu SQL: mudar o ficheiro depois de pinado reprova. A versão
+// anterior pinava UMA migração — e a remediação da auditoria b177b07 traz sete
+// de uma vez; o portão recusava-as todas como "unexpected pending" antes de
+// sequer chegar ao `migrate deploy`. O modelo continua fail-closed: pendente
+// fora desta lista reprova; lista vazia de pendentes é "já aplicado".
+const EXPECTED_MIGRATIONS = [
+  { name: '20260831230000_add_cassems_whatsapp_notify', sha256: 'b5afb51980bae0f626e4d638cb493ec9a1b583011fcb03995c2b7c0eef20bc56' },
+  { name: '20260901180000_nfe_emission_atomic', sha256: 'ba10a69269e4b4437934487c86b8a462afec67045a5f2155f538514bb870a2b9' },
+  { name: '20260902100000_satellite_foreign_keys', sha256: 'a2ebb5f02222db6c63b98c19012ea25588e74a4645b4293fb1abc9b382a98acc' },
+  { name: '20260902110000_company_user_restrict', sha256: 'd598b629a5e5c7e128de4468e5776b0e0346181ac79d354551d621849d89cb6f' },
+  { name: '20260902120000_invoice_tax_totals_item_count', sha256: 'c3447fa4ad73b0acd8c17a4f83f424e920aded1c26a86e60b4a61fdb963bf76b' },
+  { name: '20260902130000_n8n_webhook_nonce', sha256: '9caf878f6c97f6fec190c279b70cb37446e5e656e38a71cf9fb37db4e74d4632' },
+  { name: '20260903140000_issued_nfe_series_coalesce', sha256: 'b645400645b306944dc0f910233a97956d410966330174c2888f6a7c3b6028f7' },
+  { name: '20260903140100_sync_skipped_document', sha256: '12fb3012e5e01dfef07ec694a38b8b3f07a72cc823467ccd9d3783f98edf1751' },
+];
+// Compatibilidade com quem ainda lê um nome só: a última da lista.
+const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
+const EXPECTED_SQL_SHA256 = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].sha256;
+// Identidade do conjunto, gravada no estado `before` e conferida no `after`.
+const EXPECTED_SET_DIGEST = crypto.createHash('sha256')
+  .update(EXPECTED_MIGRATIONS.map((m) => `${m.name}:${m.sha256}`).join('\n'))
+  .digest('hex');
 const TABLES = [
   'invoice_tax_totals', 'invoice_item_tax', 'contact_fiscal',
   'invoice_duplicata', 'ncm_cache', 'product_registry', 'stock_entry',
@@ -41,16 +62,20 @@ function localMigrations() {
 }
 
 function verifyExpectedSql() {
-  const sqlPath = path.join(process.cwd(), 'prisma', 'migrations', EXPECTED_MIGRATION, 'migration.sql');
-  const sql = fs.readFileSync(sqlPath);
-  const digest = crypto.createHash('sha256').update(sql).digest('hex');
-  if (digest !== EXPECTED_SQL_SHA256) fail('expected migration SQL hash drift');
+  for (const { name, sha256 } of EXPECTED_MIGRATIONS) {
+    const sqlPath = path.join(process.cwd(), 'prisma', 'migrations', name, 'migration.sql');
+    const sql = fs.readFileSync(sqlPath);
+    const digest = crypto.createHash('sha256').update(sql).digest('hex');
+    if (digest !== sha256) fail(`expected migration SQL hash drift: ${name}`);
+  }
 }
 
 function migrationState(pending) {
   if (pending.length === 0) return 'already-applied';
-  if (pending.length === 1 && pending[0] === EXPECTED_MIGRATION) return 'pending';
-  fail(`unexpected pending migrations: ${pending.join(',')}`);
+  const expected = new Set(EXPECTED_MIGRATIONS.map((m) => m.name));
+  const unexpected = pending.filter((name) => !expected.has(name));
+  if (unexpected.length === 0) return 'pending';
+  fail(`unexpected pending migrations: ${unexpected.join(',')}`);
 }
 
 async function snapshot(client) {
@@ -79,8 +104,8 @@ async function main() {
     if (mode === 'before') {
       const migrationStatus = migrationState(pending);
       fs.writeFileSync(statePath, JSON.stringify({
-        schemaVersion: 2,
-        migration: EXPECTED_MIGRATION,
+        schemaVersion: 3,
+        migration: EXPECTED_SET_DIGEST,
         migrationStatus,
         counts,
       }));
@@ -93,8 +118,8 @@ async function main() {
     if (pending.length !== 0) fail(`migrations remain pending: ${pending.join(',')}`);
     const before = JSON.parse(fs.readFileSync(statePath, 'utf8'));
     if (
-      before.schemaVersion !== 2
-      || before.migration !== EXPECTED_MIGRATION
+      before.schemaVersion !== 3
+      || before.migration !== EXPECTED_SET_DIGEST
       || !['pending', 'already-applied'].includes(before.migrationStatus)
     ) fail('pre-migration state binding invalid');
     // The approved expand adds sidecars and backfills them. Stable row counts
@@ -108,6 +133,8 @@ async function main() {
 }
 
 module.exports = {
+  EXPECTED_MIGRATIONS,
+  EXPECTED_SET_DIGEST,
   EXPECTED_MIGRATION,
   EXPECTED_SQL_SHA256,
   TABLES,
