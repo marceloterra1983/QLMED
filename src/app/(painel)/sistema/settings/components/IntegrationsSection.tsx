@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
@@ -92,6 +93,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
   const [oneDriveLoginHint, setOneDriveLoginHint] = useState('faturamento@qlmed.com.br');
   const [oneDriveConnections, setOneDriveConnections] = useState<OneDriveConnection[]>([]);
   const [oneDriveLoading, setOneDriveLoading] = useState(false);
+  const [pendingDisconnectId, setPendingDisconnectId] = useState<string | null>(null);
   const [oneDriveFilesLoading, setOneDriveFilesLoading] = useState(false);
   const [selectedOneDriveConnectionId, setSelectedOneDriveConnectionId] = useState<string | null>(null);
   const [oneDriveItems, setOneDriveItems] = useState<OneDriveItem[]>([]);
@@ -337,9 +339,9 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
     }
   };
 
-  const handleDisconnectOneDrive = async (connectionId: string) => {
-    const confirmed = window.confirm('Deseja remover esta conexão OneDrive?');
-    if (!confirmed) return;
+  const handleDisconnectOneDrive = async () => {
+    const connectionId = pendingDisconnectId;
+    if (!connectionId) return;
 
     setOneDriveLoading(true);
 
@@ -365,6 +367,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
       toast.error(message);
     } finally {
       setOneDriveLoading(false);
+      setPendingDisconnectId(null);
     }
   };
 
@@ -414,7 +417,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 onChange={(e) => setApiToken(e.target.value)}
                 disabled={!canManageSettings}
                 placeholder="Cole o token da API aqui..."
-                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Button
                 onClick={handleTestConnection}
@@ -468,7 +471,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               <select
                 value={syncInterval}
                 onChange={(e) => setSyncInterval(Number(e.target.value))}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white transition-all text-sm"
               >
                 <option value={30}>A cada 30 minutos</option>
                 <option value={60}>A cada 1 hora</option>
@@ -521,7 +524,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 onChange={(e) => setReceitaApiToken(e.target.value)}
                 disabled={!canManageSettings}
                 placeholder="Bearer token, se exigido no seu ambiente"
-                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Button
                 onClick={handleReceitaTestConnection}
@@ -554,7 +557,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 value={receitaEnvironment}
                 onChange={(e) => setReceitaEnvironment(e.target.value === 'production-restricted' ? 'production-restricted' : 'production')}
                 disabled={!canManageSettings}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white transition-all text-sm disabled:opacity-50"
               >
                 <option value="production">Produção</option>
                 <option value="production-restricted">Produção Restrita</option>
@@ -567,7 +570,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 onChange={(e) => setReceitaCnpjConsulta(e.target.value)}
                 disabled={!canManageSettings}
                 placeholder={company?.cnpj || 'Somente números'}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white transition-all text-sm disabled:opacity-50"
               />
             </div>
           </div>
@@ -581,7 +584,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               onChange={(e) => setReceitaBaseUrl(e.target.value)}
               disabled={!canManageSettings}
               placeholder="Ex.: https://adn.nfse.gov.br/contribuintes"
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm font-mono disabled:opacity-50"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white transition-all text-sm font-mono disabled:opacity-50"
             />
           </div>
 
@@ -613,7 +616,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                 value={receitaSyncInterval}
                 onChange={(e) => setReceitaSyncInterval(Number(e.target.value))}
                 disabled={!canManageSettings}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white transition-all text-sm disabled:opacity-50"
               >
                 <option value={30}>A cada 30 minutos</option>
                 <option value={60}>A cada 1 hora</option>
@@ -663,7 +666,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               value={oneDriveLoginHint}
               onChange={(e) => setOneDriveLoginHint(e.target.value)}
               placeholder="email da conta Microsoft"
-              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 transition-all text-sm"
             />
             <Button
               onClick={handleConnectOneDrive}
@@ -730,7 +733,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                       </a>
                     )}
                     <button
-                      onClick={() => handleDisconnectOneDrive(connection.id)}
+                      onClick={() => setPendingDisconnectId(connection.id)}
                       disabled={oneDriveLoading}
                       className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
                     >
@@ -781,6 +784,16 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
           )}
         </div>
       </CollapsibleCard>
+      <ConfirmDialog
+        isOpen={pendingDisconnectId !== null}
+        onClose={() => setPendingDisconnectId(null)}
+        onConfirm={handleDisconnectOneDrive}
+        title="Remover conexão OneDrive"
+        message="Deseja remover esta conexão OneDrive?"
+        confirmLabel="Remover"
+        confirmVariant="danger"
+        loading={oneDriveLoading}
+      />
     </>
   );
 }

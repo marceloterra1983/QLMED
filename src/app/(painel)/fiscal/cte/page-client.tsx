@@ -34,6 +34,7 @@ export default function CtePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<'bulk' | string | null>(null);
+  const [pendingBulk, setPendingBulk] = useState<{ ids: string[]; targetStatus: 'rejected' | 'confirmed'; actionLabel: string } | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsInvoiceId, setDetailsInvoiceId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -100,7 +101,7 @@ export default function CtePage() {
   };
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -220,7 +221,7 @@ export default function CtePage() {
     return { targetStatus: 'rejected', actionLabel: 'Registrar desacordo' };
   };
 
-  const handleBulkManifest = async () => {
+  const handleBulkManifest = () => {
     if (selected.size === 0) return;
 
     const action = resolveBulkManifestAction();
@@ -230,16 +231,19 @@ export default function CtePage() {
       return;
     }
 
-    const ids = Array.from(selected);
-    if (!window.confirm(`${action.actionLabel} para ${ids.length} CT-e(s) selecionado(s)?`)) {
-      return;
-    }
+    setPendingBulk({ ids: Array.from(selected), ...action });
+  };
+
+  const runBulkManifest = async () => {
+    if (!pendingBulk) return;
+    const { ids, targetStatus, actionLabel } = pendingBulk;
+    setPendingBulk(null);
 
     try {
       const res = await fetch('/api/cte/manifest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, targetStatus: action.targetStatus }),
+        body: JSON.stringify({ ids, targetStatus }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -248,7 +252,7 @@ export default function CtePage() {
         return;
       }
 
-      toast.success(`${action.actionLabel} aplicado em ${data.updated || 0} CT-e(s).`);
+      toast.success(`${actionLabel} aplicado em ${data.updated || 0} CT-e(s).`);
       if (data?.skipped > 0) {
         toast.info(`${data.skipped} item(ns) não elegível(is) foram ignorados.`);
       }
@@ -281,6 +285,7 @@ export default function CtePage() {
       if (res.ok) {
         const data = await res.json();
         toast.success(`${data.deleted} documento(s) excluído(s) com sucesso`);
+        setShowDeleteConfirm(false); // o diálogo ficava aberto depois de excluir
         setSelected(new Set());
         loadInvoices();
       } else {
@@ -609,7 +614,7 @@ export default function CtePage() {
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-2 py-2 w-px">
                   <input
-                    className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                    className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer"
                     type="checkbox"
                     checked={selected.size === invoices.length && invoices.length > 0}
                     onChange={toggleSelectAll}
@@ -683,7 +688,7 @@ export default function CtePage() {
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
                           <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <input
-                              className="rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary bg-white dark:bg-slate-800 dark:border-slate-600 w-4 h-4 cursor-pointer"
+                              className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer"
                               type="checkbox"
                               checked={selected.has(invoice.id)}
                               onChange={() => toggleSelect(invoice.id)}
@@ -772,6 +777,14 @@ export default function CtePage() {
           : 'Tem certeza que deseja excluir este CT-e? Esta ação não pode ser desfeita.'}
         confirmLabel="Excluir"
         confirmVariant="danger"
+      />
+      <ConfirmDialog
+        isOpen={pendingBulk !== null}
+        onClose={() => setPendingBulk(null)}
+        onConfirm={runBulkManifest}
+        title="Manifestar em lote"
+        message={pendingBulk ? `${pendingBulk.actionLabel} para ${pendingBulk.ids.length} CT-e selecionado(s)?` : ''}
+        confirmLabel={pendingBulk?.actionLabel}
       />
     </>
   );

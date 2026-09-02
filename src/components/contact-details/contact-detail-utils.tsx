@@ -55,7 +55,7 @@ export function EditableField({ label, value, field, draft, onChange }: {
         type="text"
         value={draft[field] ?? value ?? ''}
         onChange={(e) => onChange(field, e.target.value)}
-        className="w-full px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+        className="w-full px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all"
       />
     </div>
   );
@@ -89,7 +89,7 @@ export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary d
   const iconBg = iconBgMap[iconColor.split(' ')[0]] || iconBgMap['text-primary'];
 
   return (
-    <div className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden ring-1 transition-all ${open ? 'ring-slate-200/80 dark:ring-slate-700/60 shadow-sm' : 'ring-slate-200/50 dark:ring-slate-800/50'}`}>
+    <div className={`bg-white dark:bg-card-dark rounded-xl overflow-hidden ring-1 transition-all ${open ? 'ring-slate-200/80 dark:ring-slate-700/60 shadow-sm' : 'ring-slate-200/50 dark:ring-slate-800/50'}`}>
       <button
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"

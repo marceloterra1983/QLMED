@@ -24,7 +24,6 @@ export interface ContactKindConfig {
   shortNamePlaceholder: string;
   shortNameIconClass: string;
   shortNameButtonClass: string;
-  shortNameInputClass: string;
   addressAccent: string;
 
   generalSubtitle: string;
@@ -65,7 +64,6 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     shortNamePlaceholder: 'Nome abreviado (ex: Farmácia ABC)...',
     shortNameIconClass: 'text-indigo-500',
     shortNameButtonClass: 'bg-indigo-500 hover:bg-indigo-600',
-    shortNameInputClass: 'focus:ring-indigo-500/40 focus:border-indigo-500',
     addressAccent: 'indigo',
 
     generalSubtitle: 'Resumo consolidado das vendas',
@@ -101,7 +99,6 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     shortNamePlaceholder: 'Nome abreviado (ex: Distribuidora XYZ)...',
     shortNameIconClass: 'text-orange-500',
     shortNameButtonClass: 'bg-orange-500 hover:bg-orange-600',
-    shortNameInputClass: 'focus:ring-orange-500/40 focus:border-orange-500',
     addressAccent: 'orange',
 
     generalSubtitle: 'Resumo consolidado das compras',

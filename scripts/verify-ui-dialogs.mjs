@@ -3,26 +3,32 @@
  * Verifica que o painel tem um só diálogo.
  *
  *   overlay — `fixed inset-0` em literal de classe só existe em `ui/Modal.tsx`
- *             e `ui/ConfirmDialog.tsx`. Treze modais copiaram o overlay à mão
- *             e deixaram para trás foco preso, `Esc`, trava de rolagem e nome
- *             acessível; foram migrados para `<Modal>` e esta regra é o que
- *             impede que voltem.
+ *             (o `ConfirmDialog` é construído em cima dele). Treze modais
+ *             copiaram o overlay à mão e deixaram para trás foco preso, `Esc`,
+ *             trava de rolagem e nome acessível; foram migrados para `<Modal>`
+ *             e esta regra é o que impede que voltem.
  *   nome    — todo `role="dialog"` / `role="alertdialog"` tem `aria-labelledby`
  *             ou `aria-label` nos mesmos atributos. Sem isso o leitor de tela
  *             anuncia "diálogo" e mais nada. Sem isenção: `Modal.tsx` e
  *             `ConfirmDialog.tsx` também cumprem.
+ *   nativo  — `window.confirm(` / `window.alert(` e as chamadas nuas `confirm(`
+ *             / `alert(` trava a aba, ignora o tema e não diz quantos; a
+ *             confirmação do painel é `<ConfirmDialog>`. Vale para todo `.tsx`
+ *             e para o `.ts` de `app/**` e `components/**`.
  *
  * Uso: node scripts/verify-ui-dialogs.mjs [--stats] [raiz]
  */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { literaisDe } from './ui-literais.mjs';
 
 const STATS = process.argv.includes('--stats');
 // Raiz varrida; um caminho explícito serve ao harness de controle positivo.
 const ROOT = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'src';
 
 // Literais de string do TSX: "...", '...' e `...`.
-const LITERAL = /"([^"\\\n]*(?:\\.[^"\\\n]*)*)"|'([^'\\\n]*(?:\\.[^'\\\n]*)*)'|`([^`\\]*(?:\\.[^`\\]*)*)`/g;
+// Literais vêm de ./ui-literais.mjs: a regex antiga parava no primeiro
+// backtick e não via template aninhado nem regex com aspa dentro de ${…}.
 
 // Overlay em repouso, sem prefixo de variante: `sm:fixed inset-0` não é o
 // overlay de um diálogo que cobre a tela em todos os tamanhos.
@@ -30,21 +36,26 @@ const OVERLAY = /(?<![-\w:])fixed inset-0\b/g;
 const ROLE_DIALOGO = /\brole=\{?["'](dialog|alertdialog)["']\}?/;
 const NOME = /\baria-(labelledby|label)=/;
 const TAG_ABRE = /<[A-Za-z][\w.]*(?=[\s/>])/g;
+// `(?<![\w.$])` deixa passar `onConfirm(`, `setAlert(` e métodos `x.confirm(`.
+const NATIVO = /(?<![\w.$])(?:window\.)?(confirm|alert)\(/g;
 
-// Os únicos donos legítimos do overlay.
-const DIALOGOS = ['components/ui/Modal.tsx', 'components/ui/ConfirmDialog.tsx'];
+// O único dono legítimo do overlay.
+const DIALOGOS = ['components/ui/Modal.tsx'];
 // Não é diálogo: fundo do menu lateral no celular (`fixed inset-0 … z-30
 // lg:hidden`, `onClick={onCloseMobile}`), um drawer de navegação com fecho
 // próprio e sem `role="dialog"`. Migrá-lo para `<Modal>` seria errado.
 const DRAWERS = ['components/Sidebar.tsx'];
 
 const files = execFileSync(
-  'find', [ROOT, '-name', '*.tsx', '-not', '-path', '*/__tests__/*'],
+  'find', [
+    ROOT, '(', '-name', '*.tsx', '-o', '-path', `${ROOT}/app/*.ts`, '-o', '-path', `${ROOT}/components/*.ts`, ')',
+    '-not', '-path', '*/__tests__/*', '-not', '-name', '*.d.ts',
+  ],
   { encoding: 'utf8' }
 ).trim().split('\n').filter(Boolean).sort();
 
-const violations = { overlay: [], nome: [] };
-const stats = { arquivos: files.length, overlays: 0, dialogos: 0 };
+const violations = { overlay: [], nome: [], nativo: [] };
+const stats = { arquivos: files.length, overlays: 0, dialogos: 0, nativos: 0 };
 
 const lineOf = (src, at) => src.slice(0, at).split('\n').length;
 
@@ -76,13 +87,13 @@ for (const file of files) {
   const isento = [...DIALOGOS, ...DRAWERS].some((p) => file.endsWith(p));
 
   // ── overlay ────────────────────────────────────────────────────────────
-  for (const m of src.matchAll(LITERAL)) {
-    const lit = m[1] ?? m[2] ?? m[3];
+  for (const m of literaisDe(src)) {
+    const lit = m.lit;
     if (!lit) continue;
     for (const _ of lit.matchAll(OVERLAY)) {
       stats.overlays++;
       if (isento) continue;
-      violations.overlay.push(`${file}:${lineOf(src, m.index)}  overlay à mão fora de ui/Modal — use <Modal>`);
+      violations.overlay.push(`${file}:${lineOf(src, m.at)}  overlay à mão fora de ui/Modal — use <Modal>`);
     }
   }
 
@@ -94,6 +105,14 @@ for (const file of files) {
     if (NOME.test(lido.attrs)) continue;
     violations.nome.push(
       `${file}:${lineOf(src, m.index)}  role="dialog" sem aria-labelledby/aria-label — leitor de tela anuncia "diálogo" e mais nada`,
+    );
+  }
+
+  // ── nativo ─────────────────────────────────────────────────────────────
+  for (const m of src.matchAll(NATIVO)) {
+    stats.nativos++;
+    violations.nativo.push(
+      `${file}:${lineOf(src, m.index)}  window.confirm/alert — trava a aba, ignora o tema, não diz quantos; use ConfirmDialog`,
     );
   }
 }

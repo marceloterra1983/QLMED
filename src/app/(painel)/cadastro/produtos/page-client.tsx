@@ -453,7 +453,7 @@ export default function ProdutosPage() {
 
       {/* Bulk action toolbar */}
       {selectedKeys.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shadow-2xl border border-slate-700">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl shadow-2xl border border-slate-700">
           <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">checklist</span>
           <span className="text-sm font-semibold">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</span>
           <div className="w-px h-5 bg-slate-600" />

@@ -26,7 +26,7 @@ export function SectionBlock({ title, icon, iconColor = 'text-primary dark:text-
   const bg = bgMap[iconColor.split(' ')[0]] || bgMap['text-primary'];
 
   return (
-    <div className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+    <div className="bg-white dark:bg-card-dark rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/60">
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${bg}`}>
           <span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span>

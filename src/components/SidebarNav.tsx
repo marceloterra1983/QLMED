@@ -213,7 +213,7 @@ export default function SidebarNav({
                     collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'
                   } ${
                     isActive
-                      ? `bg-primary/10 text-primary ${collapsed ? '' : 'border-l-4 border-primary'}`
+                      ? `bg-primary/10 text-primary dark:text-blue-400 ${collapsed ? '' : 'shadow-[inset_4px_0_0_0_#2563eb] dark:shadow-[inset_4px_0_0_0_#60a5fa]'}`
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >

@@ -11,18 +11,29 @@
  *   scale   — nenhum tamanho de texto em pixel cru até 16px: a escala nomeada
  *             tem seis degraus e piso de 12px. Pixel cru continua legítimo em
  *             literal de ícone (`material-symbols-*`), onde dimensiona o glifo.
+ *   focus   — um anel de foco só, o do `globals.css` (`:focus-visible`).
+ *             `focus:ring-*`, `focus:border-*`, `focus:outline-none` e os
+ *             `focus-visible:*` equivalentes empilhavam um segundo sistema.
+ *             `focus-within:` é outro caso (contêiner) e fica.
+ *   radius  — três raios: `rounded-xl` (superfície), `rounded-lg` (controle),
+ *             `rounded-full` (pill). `rounded-sm|md|2xl|3xl` são violação.
+ *   field   — `<input|select|textarea>` usa a borda de campo
+ *             `border-slate-200 dark:border-slate-700` (a de `FIELD_CONTROL_CLS`);
+ *             `border-slate-300`/`dark:border-slate-600` nesses três é violação.
  *
  * Uso: node scripts/verify-ui-tokens.mjs [--stats]
  */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { literaisDe } from './ui-literais.mjs';
 
 const STATS = process.argv.includes('--stats');
 // Raiz varrida; um caminho explícito serve ao harness de controle positivo.
 const ROOT = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'src';
 
 // Literais de string do TSX: "...", '...' e `...`.
-const LITERAL = /"([^"\\\n]*(?:\\.[^"\\\n]*)*)"|'([^'\\\n]*(?:\\.[^'\\\n]*)*)'|`([^`\\]*(?:\\.[^`\\]*)*)`/g;
+// Literais vêm de ./ui-literais.mjs: a regex antiga parava no primeiro
+// backtick e não via template aninhado nem regex com aspa dentro de ${…}.
 
 // Prefixo de variante Tailwind (sm:, hover:, dark:group-hover: ...).
 const VARIANTS = '(?:[a-z][a-z0-9-]*:)*';
@@ -32,6 +43,19 @@ const PRIMARY_DARK = new RegExp(`(?<![-\\w])(${VARIANTS})text-primary-dark\\b`, 
 const SLATE400 = new RegExp(`(?<![-\\w])(${VARIANTS})text-slate-400\\b`, 'g');
 const DARK500 = /(?<![-\w])dark:text-slate-500\b/g;
 const PX = new RegExp(`(?<![-\\w])(${VARIANTS})text-\\[(\\d+)px\\]`, 'g');
+// `focus:`/`focus-visible:` seguido de ring, ring-offset, border ou outline-none.
+// Não casa `focus-within:` (o `(?:-visible)?` só admite esse sufixo).
+const FOCO = new RegExp(
+  `(?<![-\\w])${VARIANTS}focus(?:-visible)?:(?:ring|border|outline-none)(?:-[\\w/\\[\\].#%-]*)?`,
+  'g',
+);
+// Raio fora da escala, com variante e canto (`sm:rounded-t-2xl`) preservados.
+const RAIO = new RegExp(
+  `(?<![-\\w])(${VARIANTS}rounded(?:-(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|ee|es))?-)(sm|md|2xl|3xl)\\b`,
+  'g',
+);
+const RAIO_PARA = { sm: 'lg', md: 'lg', '2xl': 'xl', '3xl': 'xl' };
+const BORDA_CAMPO = /(?<![-\w])(?:border-slate-300|dark:border-slate-600)\b/g;
 
 const PX_FLOOR = 16; // até aqui é tamanho de texto; acima, só ícone usa px
 
@@ -40,8 +64,11 @@ const files = execFileSync(
   { encoding: 'utf8' }
 ).trim().split('\n').filter(Boolean).sort();
 
-const violations = { primary: [], muted: [], scale: [], button: [] };
-const stats = { arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0 };
+const violations = { primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [] };
+const stats = {
+  arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0,
+  focus: 0, radius: 0, field: 0,
+};
 
 /**
  * Chave de mapa, não classe: ou é chave de objeto (`'text-primary': ...`),
@@ -63,11 +90,11 @@ const semComentarios = (src) =>
 
 for (const file of files) {
   const src = semComentarios(readFileSync(file, 'utf8'));
-  for (const m of src.matchAll(LITERAL)) {
-    const lit = m[1] ?? m[2] ?? m[3];
+  for (const m of literaisDe(src)) {
+    const lit = m.lit;
     if (!lit) continue;
-    const at = m.index;
-    const raw = m[0];
+    const at = m.at;
+    const raw = m.raw;
     const line = () => `${file}:${lineOf(src, at)}`;
     const isIcon = /material-symbols/.test(lit);
     stats.literais++;
@@ -115,6 +142,18 @@ for (const file of files) {
         violations.scale.push(`${line()}  text-[${px}px] em literal de texto — use a escala nomeada`);
       }
     }
+
+    // ── focus ────────────────────────────────────────────────────────────
+    for (const f of lit.matchAll(FOCO)) {
+      stats.focus++;
+      violations.focus.push(`${line()}  ${f[0]} por cima do anel global — remova`);
+    }
+
+    // ── radius ───────────────────────────────────────────────────────────
+    for (const r of lit.matchAll(RAIO)) {
+      stats.radius++;
+      violations.radius.push(`${line()}  ${r[0]} — use ${r[1]}${RAIO_PARA[r[2]]}`);
+    }
   }
 }
 
@@ -125,6 +164,7 @@ for (const file of files) {
 // Fora do alvo: item de navegação, ação só-ícone de linha, item de menu e
 // controles com papel próprio (`role="switch"`, cabeçalho de acordeão).
 const BOTAO_ABRE = /<(button|Link|a)\b/g;
+const CAMPO_ABRE = /<(input|select|textarea)\b/g;
 
 /**
  * Atributos da tag, do nome até o `>` que a fecha, contando chaves.
@@ -213,6 +253,20 @@ for (const file of files) {
     violations.button.push(
       `${file}:${lineOf(src, m.index)}  <${tagName}> com superfície de botão fora de ui/Button`,
     );
+  }
+
+  // ── field ──────────────────────────────────────────────────────────────
+  // Só nos três controles de campo: num `<div>` a borda 300 pode ser legítima.
+  for (const m of src.matchAll(CAMPO_ABRE)) {
+    const lido = atributosDe(src, m.index + m[0].length);
+    if (!lido) continue;
+    const c = expandir(classeDe(lido.attrs), ligacoes);
+    for (const b of c.matchAll(BORDA_CAMPO)) {
+      stats.field++;
+      violations.field.push(
+        `${file}:${lineOf(src, m.index)}  <${m[1]}> com ${b[0]} — campo usa border-slate-200 dark:border-slate-700`,
+      );
+    }
   }
 }
 

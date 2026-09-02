@@ -198,6 +198,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: UI · regras e controles
+        run: npm run ui:check
+
       - name: Test
         run: npm test
 
@@ -206,6 +209,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: UI · galeria contra o CSS do build
+        run: |
+          npm run ui:gallery:check
+          npm run ui:gallery:test
 
       - name: Dependency audit
         run: |

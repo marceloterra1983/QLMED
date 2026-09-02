@@ -46,7 +46,7 @@ interface ModalProps {
 const SUPERFICIE = {
   card: 'bg-white dark:bg-card-dark sm:rounded-xl',
   sunken:
-    'bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl sm:ring-1 ring-black/5 dark:ring-white/5',
+    'bg-slate-50 dark:bg-surface-sunken sm:rounded-xl sm:ring-1 ring-black/5 dark:ring-white/5',
 } as const;
 
 export default function Modal({

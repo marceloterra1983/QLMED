@@ -216,7 +216,7 @@ export default function NfseReceivedPage() {
     : <>{formatAmount(amount)}</>;
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
-    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+    <button key={y ?? 'current'} onClick={() => selectYear(y)} aria-pressed={y === null ? selectedYear === null : selectedYear === y} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${(y === null ? selectedYear === null : selectedYear === y) ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'}`}>
       {y ?? new Date().getFullYear()}
     </button>
   ));
@@ -279,7 +279,7 @@ export default function NfseReceivedPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Número, prestador, CNPJ ou chave"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
             />
           </div>
           <div>
@@ -288,7 +288,7 @@ export default function NfseReceivedPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
             />
           </div>
           <div>
@@ -297,7 +297,7 @@ export default function NfseReceivedPage() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
             />
           </div>
         </div>

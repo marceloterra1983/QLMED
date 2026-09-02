@@ -162,7 +162,7 @@ export default function DuplicataEditPanel({
                   </p>
                   <button
                     onClick={() => onOpenInvoice((invoiceHeader?.id || selectedDuplicata?.invoiceId || ''))}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-primary dark:text-blue-400 border border-primary/30 hover:bg-primary/10 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold text-primary dark:text-blue-400 border border-primary/30 hover:bg-primary/10 transition-colors"
                     disabled={!(invoiceHeader?.id || selectedDuplicata?.invoiceId)}
                   >
                     <span className="material-symbols-outlined text-[14px]">open_in_new</span>

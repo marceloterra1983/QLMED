@@ -481,7 +481,7 @@ export default function EmitirNfePage() {
                 data-nfe-step-tone={NFE_STEP_TONE[t.id].tone}
               >
                 <span
-                  className={`material-symbols-outlined ${activeStep === t.id ? 'text-[18px]' : 'text-[16px]'}`}
+                  className={`material-symbols-outlined ${activeStep === t.id ? 'text-[18px]' : 'text-base'}`}
                   style={activeStep === t.id ? { fontVariationSettings: "'FILL' 1" } : undefined}
                 >
                   {t.icon}
@@ -562,7 +562,7 @@ export default function EmitirNfePage() {
                     <Field label="Série" className="max-w-[4.5rem] shrink-0">
                       <span
                         aria-readonly="true"
-                        className="inline-flex h-8 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex h-8 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-sm font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
                         {DEFAULT_SERIES}
                       </span>

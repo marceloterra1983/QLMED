@@ -125,7 +125,9 @@ describe('FILTER_INPUT_CLS', () => {
   it('keeps the fiscal filter contract', () => {
     expect(FILTER_INPUT_CLS).toContain('py-2.5');
     expect(FILTER_INPUT_CLS).toContain('rounded-lg');
-    expect(FILTER_INPUT_CLS).toContain('focus:ring-primary/50');
+    // O anel de foco é o do globals.css; um segundo aqui dava anel duplo (achado 07).
+    expect(FILTER_INPUT_CLS).not.toMatch(/focus:(ring|border|outline)/);
+    expect(FILTER_INPUT_CLS).toContain('placeholder-slate-500');
     expect(FILTER_INPUT_CLS).toContain('placeholder-slate-400');
   });
 });

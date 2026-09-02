@@ -99,7 +99,7 @@ export default function AnvisaPage() {
             <select
               value={source}
               onChange={(event) => setSource(event.target.value as AnvisaSourceKey)}
-              className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm transition-all"
             >
               {SOURCE_OPTIONS.map((option) => (
                 <option key={option.key} value={option.key}>

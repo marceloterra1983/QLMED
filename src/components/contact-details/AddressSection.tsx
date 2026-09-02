@@ -38,12 +38,12 @@ export default function AddressSection({
     orange: {
       editBtn: 'text-orange-500 hover:text-orange-600',
       saveBtn: 'bg-orange-500 hover:bg-orange-600',
-      ring: 'focus:ring-orange-500/40 focus:border-orange-500',
+      ring: '',
     },
     indigo: {
       editBtn: 'text-indigo-500 hover:text-indigo-600',
       saveBtn: 'bg-indigo-500 hover:bg-indigo-600',
-      ring: 'focus:ring-indigo-500/40 focus:border-indigo-500',
+      ring: '',
     },
   };
   const colors = colorClasses[accentColor] || colorClasses.orange;

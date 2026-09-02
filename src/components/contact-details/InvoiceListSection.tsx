@@ -134,7 +134,7 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
               <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
                 <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{inv.number}</td>
                 <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
-                <td className={tdCls}><span className="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span></td>
+                <td className={tdCls}><span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span></td>
                 <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>{formatAmount(inv.totalValue)}</td>
                 <td className={`${tdCls} text-center`}><RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} /></td>
               </tr>

@@ -145,7 +145,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                   value={certPassword}
                   onChange={(e) => setCertPassword(e.target.value)}
                   disabled={!canManageSettings}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="************"
                   required
                 />

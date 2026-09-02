@@ -414,26 +414,26 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
               )}
               <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 {detailProduct.outOfLine && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
                     <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
                   </span>
                 )}
                 {detailProduct.productType && (
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
                 )}
                 {detailProduct.productSubtype && (
-                  <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
                 )}
                 {detailProduct.productSubgroup && (
-                  <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
                 )}
                 {detailProduct.ean && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
                     EAN {detailProduct.ean}
                   </span>
                 )}
                 {detailProduct.anvisa && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
                     <span className="material-symbols-outlined text-[11px]">verified</span>{detailProduct.anvisa}
                   </span>
                 )}
@@ -495,7 +495,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 { label: 'Ultima Compra', value: formatDate(detailProduct.lastIssueDate), icon: 'calendar_month', color: 'text-violet-500 bg-violet-500/10 ring-violet-500/20' },
               ].map(s => (
                 <div key={s.label} className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center ring-1 shrink-0 ${s.color}`}>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ring-1 shrink-0 ${s.color}`}>
                     <span className="material-symbols-outlined text-[13px]">{s.icon}</span>
                   </div>
                   <div className="min-w-0">

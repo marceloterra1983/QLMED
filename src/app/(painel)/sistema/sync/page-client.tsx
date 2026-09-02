@@ -697,7 +697,7 @@ export default function SyncPage() {
                 value={importStartDate}
                 onChange={(e) => setImportStartDate(e.target.value)}
                 disabled={!hasNsdocsConfig || !canWrite}
-                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg transition-all disabled:opacity-50"
               />
             </div>
             <div>
@@ -709,7 +709,7 @@ export default function SyncPage() {
                 value={importEndDate}
                 onChange={(e) => setImportEndDate(e.target.value)}
                 disabled={!hasNsdocsConfig || !canWrite}
-                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
+                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg transition-all disabled:opacity-50"
               />
             </div>
           </div>

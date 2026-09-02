@@ -609,7 +609,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30">
+              <div className="w-14 h-14 rounded-xl bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center ring-1 ring-teal-500/20 dark:ring-teal-500/30">
                 <span className="material-symbols-outlined text-[28px] text-teal-500 animate-spin">progress_activity</span>
               </div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
@@ -617,7 +617,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
           )}
           {error && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
+              <div className="w-14 h-14 rounded-xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
                 <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
               </div>
               <p className="text-sm font-medium text-red-400">{error}</p>

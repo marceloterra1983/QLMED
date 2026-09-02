@@ -16,6 +16,7 @@
     "ui:gallery:test": "bash ./scripts/test-ui-gallery.sh",
     "ui:dialogs": "node ./scripts/verify-ui-dialogs.mjs",
     "ui:dialogs:test": "bash ./scripts/test-ui-dialogs-verifier.sh",
+    "ui:check": "npm run ui:verify && npm run ui:dialogs && npm run ui:verify:test && npm run ui:dialogs:test && bash ./scripts/test-ui-modal-trap.sh",
     "docs:validate": "node ./scripts/validate-docs.mjs",
     "docs:validate:test": "bash ./scripts/test-docs-validator.sh",
     "ai-tooling:check": "node ./scripts/check-ai-tooling.mjs",

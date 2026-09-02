@@ -73,6 +73,24 @@ caso botao-escondido-atras-de-arrow fail \
 caso botao-gradiente fail \
   'export const A = () => <button className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-dark text-white">Salvar</button>;'
 
+caso foco-ring fail \
+  'export const A = () => <input className="border rounded-lg focus:ring-2 focus:ring-primary/50" />;'
+
+caso foco-outline-none fail \
+  'export const A = () => <button className="focus:outline-none">x</button>;'
+
+caso raio-md fail \
+  'export const A = () => <div className="rounded-md">x</div>;'
+
+caso raio-2xl-com-canto fail \
+  'export const A = () => <div className="sm:rounded-t-2xl">x</div>;'
+
+caso campo-borda-300 fail \
+  'export const A = () => <input className="border border-slate-300 dark:border-slate-600" />;'
+
+caso classe-em-template-aninhado fail \
+  'export const A = ({ on }: { on: boolean }) => <a className={`px-3 ${on ? `bg-primary/10 text-primary` : "text-slate-600 dark:text-slate-300"}`}>x</a>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -82,10 +100,13 @@ export const A = () => (
     <span className="text-slate-500 dark:text-slate-400 text-xs">c</span>
     <span className="material-symbols-outlined text-[20px]">home</span>
     <span className={bgMap["text-primary"]}>d</span>
-    <button className="p-1.5 rounded-md hover:bg-primary/10" aria-label="Ver"><span className="material-symbols-outlined text-[18px]">search</span></button>
+    <button className="p-1.5 rounded-lg hover:bg-primary/10" aria-label="Ver"><span className="material-symbols-outlined text-[18px]">search</span></button>
     <button role="switch" aria-checked="false" aria-label="Avisar" className="w-12 h-6 rounded-full bg-primary">x</button>
-    <button onClick={() => ir(2)} aria-pressed={true} className="px-3 py-1 rounded-md bg-primary text-white">2026</button>
+    <button onClick={() => ir(2)} aria-pressed={true} className="px-3 py-1 rounded-lg bg-primary text-white">2026</button>
     <button onClick={() => sair()} className="px-3 py-2 rounded-lg text-slate-500 hover:bg-primary/10">Trocar conta</button>
+    <div className="border-slate-300 rounded-lg">e</div>
+    <div className="focus-within:ring-2">f</div>
+    <span className="rounded-full">g</span>
   </>
 );'
 
@@ -94,4 +115,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 12 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 18 violações reprovadas, fixture limpo aprovado"

@@ -49,12 +49,25 @@ caso dialogo-sem-nome-atras-de-arrow fail \
 caso alertdialog-sem-nome fail \
   'export const A = () => <div role="alertdialog">x</div>;'
 
+caso window-confirm fail \
+  'export const f = () => { if (!window.confirm('"'"'x'"'"')) return; };'
+
+caso alert-nu fail \
+  'export const f = () => { alert('"'"'x'"'"'); };'
+
 # `sm:fixed inset-0` passa: a regra só policia o overlay em repouso, sem prefixo
 # de variante — um `fixed` só a partir de `sm` não cobre a tela em todo tamanho.
 # `absolute inset-0` é o backdrop do próprio Modal, não overlay.
+# `onConfirm()` e `setAlert(1)` não são `confirm(`/`alert(` nativos.
+caso overlay-em-template-aninhado fail \
+  'export const A = ({ a }: { a: boolean }) => <div className={`x ${a ? `fixed inset-0 z-50` : ""}`}>…</div>;'
+
 caso limpo pass \
-  'export const A = () => (
+  'const onConfirm = () => 1;
+const setAlert = (n: number) => n;
+export const A = () => (
   <>
+    <button onClick={() => { onConfirm(); setAlert(1); }}>x</button>
     <div
       role="dialog"
       aria-modal="true"
@@ -71,4 +84,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 5 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 8 violações reprovadas, fixture limpo aprovado"

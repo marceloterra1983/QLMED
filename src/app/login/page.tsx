@@ -112,7 +112,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
           <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-4">
             Sistema interno de gestão da QL MED. Acesso restrito a colaboradores autorizados.
           </p>
@@ -140,7 +140,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 required
                 autoFocus
-                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 text-sm transition-all"
               />
             </div>
 

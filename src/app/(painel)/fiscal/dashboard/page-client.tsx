@@ -94,7 +94,7 @@ function PeriodBadge({ label }: { label: string }) {
 
 function StatCard({ label, value, icon, color }: { label: string; value: number; icon: string; color: string }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
           <span className="material-symbols-outlined text-[20px]">{icon}</span>
@@ -259,7 +259,7 @@ export default function FiscalDashboardPage() {
 
       {/* Backfill Banner */}
       {!loading && needsBackfill && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">sync</span>
             <div>
@@ -293,7 +293,7 @@ export default function FiscalDashboardPage() {
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+            <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
               <Skeleton className="h-10 w-10 rounded-xl mb-2" />
               <Skeleton className="h-3 w-16 mb-1" />
               <Skeleton className="h-6 w-24" />
@@ -315,7 +315,7 @@ export default function FiscalDashboardPage() {
 
       {/* Monthly Table */}
       {!loading && monthly.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Impostos por Mes</h2>
             <PeriodBadge label={rangeLabel} />
@@ -372,7 +372,7 @@ export default function FiscalDashboardPage() {
 
       {/* CFOP Table */}
       {!cfopLoading && cfopData.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Por CFOP</h2>
             <PeriodBadge label={rangeLabel} />
@@ -384,7 +384,7 @@ export default function FiscalDashboardPage() {
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-slate-700 dark:text-slate-300">{row.cfop}</span>
-                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
+                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                       row.direction === 'entrada'
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -422,7 +422,7 @@ export default function FiscalDashboardPage() {
                   <tr key={row.cfop} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2 font-mono font-bold text-slate-700 dark:text-slate-300">{row.cfop}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
+                      <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                         row.direction === 'entrada'
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -445,7 +445,7 @@ export default function FiscalDashboardPage() {
 
       {/* Top Suppliers */}
       {!loading && topSuppliers.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Top 10 Fornecedores por Imposto</h2>
             <PeriodBadge label={rangeLabel} />
