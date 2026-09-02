@@ -14,11 +14,12 @@ describe('Section', () => {
     expect(out).toContain('corpo');
   });
 
-  it('recolhível controlado fechado: botão com aria-expanded=false e sem corpo', () => {
+  it('recolhível nunca aberto: botão dentro de <h3>, aria-expanded=false, corpo não montado', () => {
     const out = html(<Section icon="x" title="T" open={false} onToggle={() => {}}><p>corpo</p></Section>);
     const btn = tag(out, /<button[^>]*>/);
     expect(btn).toContain('aria-expanded="false"');
     expect(btn).toMatch(/aria-controls="[^"]+"/);
+    expect(out).toMatch(/<h3[^>]*>\s*<button/);
     expect(out).not.toContain('corpo');
   });
 
