@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Section from '@/components/ui/Section';
 import { toast } from 'sonner';
-import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
 function urlBase64ToUint8Array(base64: string): BufferSource {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
@@ -108,7 +108,7 @@ export function PushDeviceToggle() {
   };
 
   return (
-    <CollapsibleCard icon="smartphone" title="Aviso neste aparelho">
+    <Section icon="smartphone" title="Aviso neste aparelho" defaultOpen={false}>
       {!ready ? (
         <p className="text-sm text-slate-500 dark:text-slate-400 p-3">Verificando este aparelho...</p>
       ) : !vapidPublicKey ? (
@@ -144,6 +144,6 @@ export function PushDeviceToggle() {
           </button>
         </div>
       )}
-    </CollapsibleCard>
+    </Section>
   );
 }

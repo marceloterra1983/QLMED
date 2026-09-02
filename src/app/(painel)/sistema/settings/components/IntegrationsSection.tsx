@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Section from '@/components/ui/Section';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { formatDateTimeSeconds, formatFileSize } from '@/lib/utils';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
-import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
 function formatBytes(bytes: number): string {
   return formatFileSize(bytes);
@@ -67,6 +67,11 @@ interface IntegrationsSectionProps {
   company: Company | null;
   canManageSettings: boolean;
 }
+
+/** Os estados de integração ainda produzem `{ label, color }`; o Section quer um nó. */
+const TOM_DO_BADGE = { green: 'success', red: 'danger', yellow: 'warning' } as const;
+const badgeDe = (b?: { label: string; color: keyof typeof TOM_DO_BADGE }) =>
+  b ? <Badge tone={TOM_DO_BADGE[b.color]}>{b.label}</Badge> : undefined;
 
 export default function IntegrationsSection({ company, canManageSettings }: IntegrationsSectionProps) {
   // NSDocs
@@ -387,7 +392,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
   return (
     <>
       {/* Integração NSDocs */}
-      <CollapsibleCard icon="hub" title="Integração NSDocs" defaultOpen badge={nsdocsBadge}>
+      <Section icon="hub" title="Integração NSDocs" defaultOpen badge={badgeDe(nsdocsBadge)}>
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <div className="flex items-start gap-2">
@@ -495,10 +500,10 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
             </Button>
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       {/* Integração Receita NFS-e */}
-      <CollapsibleCard icon="account_balance" title="Integração Receita NFS-e (ADN)" defaultOpen badge={receitaBadge}>
+      <Section icon="account_balance" title="Integração Receita NFS-e (ADN)" defaultOpen badge={badgeDe(receitaBadge)}>
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
             <div className="flex items-start gap-2">
@@ -647,10 +652,10 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
             </button>
           </div>
         </div>
-      </CollapsibleCard>
+      </Section>
 
       {/* Integração OneDrive */}
-      <CollapsibleCard icon="cloud_sync" title="Integração OneDrive" defaultOpen badge={oneDriveBadge}>
+      <Section icon="cloud_sync" title="Integração OneDrive" defaultOpen badge={badgeDe(oneDriveBadge)}>
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">
             <p className="text-xs text-indigo-900 dark:text-indigo-300 font-semibold">Conecte múltiplas contas Microsoft</p>
@@ -779,7 +784,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
             </div>
           )}
         </div>
-      </CollapsibleCard>
+      </Section>
       <ConfirmDialog
         isOpen={pendingDisconnectId !== null}
         onClose={() => setPendingDisconnectId(null)}

@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Section from '@/components/ui/Section';
 import Badge from '@/components/ui/Badge';
 
 import Modal from '@/components/ui/Modal';
@@ -8,7 +9,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow } from '../types';
-import { DetailSectionCard, DetailField } from './DetailSectionCard';
+import { DetailField } from './product-detail-fields';
 import { DETAIL_INPUT_CLS, formatQuantity, formatDate } from './product-utils';
 import type { HierOptions } from './product-utils';
 import Button from '@/components/ui/Button';
@@ -488,7 +489,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 {/* Body */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
           {/* Card: Dados Gerais */}
-          <DetailSectionCard id="geral" icon="analytics" iconColor="text-emerald-500" title="Dados Gerais" isOpen={detailOpenSections.has('geral')} onToggle={toggleDetailSection}>
+          <Section id="geral" icon="analytics" tone="emerald" title="Dados Gerais" open={detailOpenSections.has('geral')} onToggle={() => toggleDetailSection('geral')}>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
               {[
                 { label: 'Ultimo Preco', value: formatAmount(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
@@ -507,10 +508,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 </div>
               ))}
             </div>
-          </DetailSectionCard>
+          </Section>
 
           {/* Card: Dados do Cadastro */}
-          <DetailSectionCard id="cadastro" icon="edit_note" iconColor="text-primary dark:text-blue-400" title="Dados do Cadastro" isOpen={detailOpenSections.has('cadastro')} onToggle={toggleDetailSection}>
+          <Section id="cadastro" icon="edit_note" title="Dados do Cadastro" open={detailOpenSections.has('cadastro')} onToggle={() => toggleDetailSection('cadastro')}>
             <div className="space-y-2 mt-1">
               {/* Referencias */}
               <div>
@@ -671,10 +672,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 </label>
               </div>
             </div>
-          </DetailSectionCard>
+          </Section>
 
           {/* Card: Dados Fiscais */}
-          <DetailSectionCard id="fiscal" icon="receipt_long" iconColor="text-amber-500" title="Dados Fiscais" isOpen={detailOpenSections.has('fiscal')} onToggle={toggleDetailSection}>
+          <Section id="fiscal" icon="receipt_long" tone="amber" title="Dados Fiscais" open={detailOpenSections.has('fiscal')} onToggle={() => toggleDetailSection('fiscal')}>
             <div className="space-y-2 mt-1">
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
@@ -874,10 +875,10 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 </DetailField>
               </div>
             </div>
-          </DetailSectionCard>
+          </Section>
 
           {/* Card: Dados da ANVISA */}
-          <DetailSectionCard id="anvisa" icon="verified_user" iconColor="text-teal-500" title="Dados da ANVISA" isOpen={detailOpenSections.has('anvisa')} onToggle={toggleDetailSection}
+          <Section id="anvisa" icon="verified_user" tone="teal" title="Dados da ANVISA" open={detailOpenSections.has('anvisa')} onToggle={() => toggleDetailSection('anvisa')}
             badge={detailProduct.anvisaStatus ? (
               <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
             ) : undefined}
@@ -1001,7 +1002,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 </div>
               )}
             </div>
-          </DetailSectionCard>
+          </Section>
         </div>
     </Modal>
   );

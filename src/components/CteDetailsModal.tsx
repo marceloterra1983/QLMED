@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Section from '@/components/ui/Section';
+import type { SectionTone } from '@/components/ui/Section';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import { Field } from '@/components/ui/InvoiceDetailHelpers';
 import type { CteDetails, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
@@ -53,7 +55,7 @@ function TabCte({ data }: { data: CteDetails }) {
   const cte = data.cte;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados do CT-e" icon="receipt_long" iconColor="text-teal-500">
+      <Section title="Dados do CT-e" icon="receipt_long" tone="teal">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={cte.modelo} />
           <Field label="Série" value={cte.serie} />
@@ -64,9 +66,9 @@ function TabCte({ data }: { data: CteDetails }) {
           <Field label="Tipo CT-e" value={cte.tipoCte} />
           <Field label="Tipo de Serviço" value={cte.tipoServico} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Transporte" icon="route" iconColor="text-primary dark:text-blue-400">
+      <Section title="Transporte" icon="route">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modal" value={cte.modal} />
           <Field label="Tomador do Serviço" value={cte.tomador} />
@@ -75,9 +77,9 @@ function TabCte({ data }: { data: CteDetails }) {
           <Field label="Município Destino" value={cte.municipioDestino} />
           <Field label="UF Destino" value={cte.ufDestino} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Valores da Prestação" icon="payments" iconColor="text-emerald-500">
+      <Section title="Valores da Prestação" icon="payments" tone="emerald">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
           <Field label="Valor Total da Prestação" value={formatMoney(cte.valorPrestacao)} />
           <Field label="Valor a Receber" value={formatMoney(cte.valorReceber)} />
@@ -114,19 +116,19 @@ function TabCte({ data }: { data: CteDetails }) {
             </div>
           </>
         )}
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Protocolo de Autorização" icon="verified" iconColor="text-amber-500">
+      <Section title="Protocolo de Autorização" icon="verified" tone="amber">
         <div className="grid grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nº Protocolo" value={cte.protocolo} />
           <Field label="Data Autorização" value={formatDateBr(cte.dataAutorizacao)} />
         </div>
-      </SectionBlock>
+      </Section>
     </div>
   );
 }
 
-function TabParty({ data, partyKey, title, icon, iconColor }: { data: CteDetails; partyKey: 'emitente' | 'remetente' | 'destinatario' | 'expedidor' | 'recebedor'; title: string; icon: string; iconColor: string }) {
+function TabParty({ data, partyKey, title, icon, tone }: { data: CteDetails; partyKey: 'emitente' | 'remetente' | 'destinatario' | 'expedidor' | 'recebedor'; title: string; icon: string; tone?: SectionTone }) {
   const entity = data[partyKey];
   if (!entity || !entity.cnpj) return (
     <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -136,7 +138,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: CteDetails
   );
 
   return (
-    <SectionBlock title={title} icon={icon} iconColor={iconColor}>
+    <Section title={title} icon={icon} tone={tone}>
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nome / Razão Social" value={entity.razaoSocial} />
@@ -163,7 +165,7 @@ function TabParty({ data, partyKey, title, icon, iconColor }: { data: CteDetails
           <Field label="Email" value={entity.email} />
         </div>
       </div>
-    </SectionBlock>
+    </Section>
   );
 }
 
@@ -178,16 +180,16 @@ function TabCarga({ data }: { data: CteDetails }) {
 
   return (
     <div className="space-y-4">
-      <SectionBlock title="Informações da Carga" icon="package_2" iconColor="text-amber-500">
+      <Section title="Informações da Carga" icon="package_2" tone="amber">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Valor Total da Carga" value={formatMoney(carga.valorCarga)} />
           <Field label="Produto Predominante" value={carga.produtoPredominante} />
           <Field label="Outras Características" value={carga.outrCaract} />
         </div>
-      </SectionBlock>
+      </Section>
 
       {carga.medidas?.length > 0 && (
-        <SectionBlock title="Medidas" icon="straighten" iconColor="text-indigo-500">
+        <Section title="Medidas" icon="straighten" tone="indigo">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
             {carga.medidas.map((m: CargaMedida, i: number) => (
@@ -221,17 +223,17 @@ function TabCarga({ data }: { data: CteDetails }) {
               </tbody>
             </table>
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {data.seguro && (data.seguro.nomeSeguradora || data.seguro.apolice) && (
-        <SectionBlock title="Seguro" icon="shield" iconColor="text-rose-500">
+        <Section title="Seguro" icon="shield" tone="rose">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             <Field label="Responsável" value={data.seguro.responsavel} />
             <Field label="Seguradora" value={data.seguro.nomeSeguradora} />
             <Field label="Nº Apólice" value={data.seguro.apolice} />
           </div>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -250,7 +252,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
   return (
     <div className="space-y-4">
       {docs.nfeRefs?.length > 0 && (
-        <SectionBlock title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long" iconColor="text-primary dark:text-blue-400">
+        <Section title={`NF-e Referenciadas (${docs.nfeRefs.length})`} icon="receipt_long">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
             {docs.nfeRefs.map((n: CteNfeRef, i: number) => (
@@ -281,11 +283,11 @@ function TabDocumentos({ data }: { data: CteDetails }) {
               </tbody>
             </table>
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {docs.nfRefs?.length > 0 && (
-        <SectionBlock title={`NF Referenciadas (${docs.nfRefs.length})`} icon="article" iconColor="text-indigo-500">
+        <Section title={`NF Referenciadas (${docs.nfRefs.length})`} icon="article" tone="indigo">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
             {docs.nfRefs.map((n: CteNfRef, i: number) => (
@@ -324,11 +326,11 @@ function TabDocumentos({ data }: { data: CteDetails }) {
               </tbody>
             </table>
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {docs.outrosRefs?.length > 0 && (
-        <SectionBlock title={`Outros Documentos (${docs.outrosRefs.length})`} icon="folder_open" iconColor="text-amber-500">
+        <Section title={`Outros Documentos (${docs.outrosRefs.length})`} icon="folder_open" tone="amber">
           {/* Mobile */}
           <div className="sm:hidden space-y-1">
             {docs.outrosRefs.map((o: CteOutroRef, i: number) => (
@@ -367,7 +369,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
               </tbody>
             </table>
           </div>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -397,9 +399,9 @@ function TabImpostos({ data }: { data: CteDetails }) {
       </div>
 
       {imp.valorTotalTributos && (
-        <SectionBlock title="Total de Tributos" icon="account_balance" iconColor="text-violet-500">
+        <Section title="Total de Tributos" icon="account_balance" tone="violet">
           <Field label="Valor Total dos Tributos" value={formatMoney(imp.valorTotalTributos)} />
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -421,15 +423,15 @@ function TabInfAdicionais({ data }: { data: CteDetails }) {
   return (
     <div className="space-y-4">
       {inf.infCpl && (
-        <SectionBlock title="Informações Complementares" icon="article" iconColor="text-indigo-500">
+        <Section title="Informações Complementares" icon="article" tone="indigo">
           <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infCpl}</p>
-        </SectionBlock>
+        </Section>
       )}
 
       {inf.infAdFisco && (
-        <SectionBlock title="Informações do Fisco" icon="gavel" iconColor="text-amber-500">
+        <Section title="Informações do Fisco" icon="gavel" tone="amber">
           <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infAdFisco}</p>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -488,9 +490,9 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
     if (!data) return null;
     switch (activeTab) {
       case 'cte': return <TabCte data={data} />;
-      case 'emitente': return <TabParty data={data} partyKey="emitente" title="Dados do Emitente" icon="storefront" iconColor="text-orange-500" />;
-      case 'remetente': return <TabParty data={data} partyKey="remetente" title="Dados do Remetente" icon="warehouse" iconColor="text-teal-500" />;
-      case 'destinatario': return <TabParty data={data} partyKey="destinatario" title="Dados do Destinatário" icon="person" iconColor="text-indigo-500" />;
+      case 'emitente': return <TabParty data={data} partyKey="emitente" title="Dados do Emitente" icon="storefront" tone="orange" />;
+      case 'remetente': return <TabParty data={data} partyKey="remetente" title="Dados do Remetente" icon="warehouse" tone="teal" />;
+      case 'destinatario': return <TabParty data={data} partyKey="destinatario" title="Dados do Destinatário" icon="person" tone="indigo" />;
       case 'carga': return <TabCarga data={data} />;
       case 'documentos': return <TabDocumentos data={data} />;
       case 'impostos': return <TabImpostos data={data} />;

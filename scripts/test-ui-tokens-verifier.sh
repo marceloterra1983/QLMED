@@ -130,6 +130,9 @@ caso sombra-cravada fail \
 caso ui-ok-sem-motivo fail \
   'export const A = () => <p>{n.toFixed(2)}</p>; // ui-ok'
 
+caso cartao-de-secao-antigo fail \
+  'export const A = () => <CollapsibleCard icon="x" title="T">c</CollapsibleCard>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -168,11 +171,12 @@ export const A = () => (
     <div className="bg-white dark:bg-card-dark sm:rounded-xl">i</div>
     <p>{new Decimal(v).toDecimalPlaces(2).toFixed(2)}</p>
     {/* ui-ok: payload da API, não exibição */}
-    <p>{vNf.toFixed(2)}</p>'
+    <p>{vNf.toFixed(2)}</p>
+    <Section icon="x" title="T" defaultOpen>c</Section>'
 
 echo
 if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 31 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 32 violações reprovadas, fixture limpo aprovado"

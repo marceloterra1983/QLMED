@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, Fragment } from 'react';
+import Section from '@/components/ui/Section';
+import type { SectionTone } from '@/components/ui/Section';
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
+import { Field } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfeDetails, NfeProduto, NfeInfAdicionais, TransporteVolume, FormaPagamento, Duplicata, TaxFields } from '@/types/invoice-details';
 import { nfeProdutoExpandKey, retainExpandedIds } from '@/lib/list-collapse';
 import Button from '@/components/ui/Button';
@@ -86,7 +88,7 @@ function TabNfe({ data }: { data: NfeDetails }) {
   const nfe = data.nfe;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados da NF-e" icon="receipt_long" iconColor="text-primary dark:text-blue-400">
+      <Section title="Dados da NF-e" icon="receipt_long">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={nfe.modelo} />
           <Field label="Série" value={nfe.serie} />
@@ -95,50 +97,50 @@ function TabNfe({ data }: { data: NfeDetails }) {
           <Field label="Data Saída/Entrada" value={formatDateBr(nfe.dataSaidaEntrada)} />
           <Field label="Valor Total" value={formatMoney(nfe.valorTotal)} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Emitente" icon="storefront" iconColor="text-orange-500">
+      <Section title="Emitente" icon="storefront" tone="orange">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.emitente?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.emitente?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.emitente?.ie} />
           <Field label="UF" value={nfe.emitente?.uf} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Destinatário" icon="person" iconColor="text-indigo-500">
+      <Section title="Destinatário" icon="person" tone="indigo">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="CNPJ" value={formatCnpjDisplay(nfe.destinatario?.cnpj)} />
           <Field label="Nome/Razão Social" value={nfe.destinatario?.razaoSocial} />
           <Field label="Inscrição Estadual" value={nfe.destinatario?.ie} />
           <Field label="UF" value={nfe.destinatario?.uf} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Destino da Operação" icon="swap_horiz" iconColor="text-teal-500">
+      <Section title="Destino da Operação" icon="swap_horiz" tone="teal">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Destino da Operação" value={nfe.destinoOperacao} />
           <Field label="Consumidor Final" value={nfe.consumidorFinal} />
           <Field label="Presença do Comprador" value={nfe.presencaComprador} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Emissão" icon="settings" iconColor="text-amber-500">
+      <Section title="Emissão" icon="settings" tone="amber">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Processo" value={nfe.processo} />
           <Field label="Versão do Processo" value={nfe.versaoProcesso} />
           <Field label="Tipo de Emissão" value={nfe.tipoEmissao} />
           <Field label="Finalidade" value={nfe.finalidade} />
         </div>
-      </SectionBlock>
+      </Section>
 
-      <SectionBlock title="Operação" icon="assignment" iconColor="text-violet-500">
+      <Section title="Operação" icon="assignment" tone="violet">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Natureza da Operação" value={nfe.naturezaOperacao} />
           <Field label="Tipo da Operação" value={nfe.tipoOperacao} />
           <Field label="Digest Value da NF-e" value={nfe.digestValue} />
         </div>
-      </SectionBlock>
+      </Section>
     </div>
   );
 }
@@ -155,7 +157,7 @@ function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'des
   const isEmit = type === 'emitente';
   const title = isEmit ? 'Dados do Emitente' : 'Dados do Destinatário';
   const icon = isEmit ? 'storefront' : 'person';
-  const iconColor = isEmit ? 'text-orange-500' : 'text-indigo-500';
+  const tone: SectionTone = isEmit ? 'orange' : 'indigo';
 
   const crtMap: Record<string, string> = {
     '1': '1 - Simples Nacional',
@@ -164,7 +166,7 @@ function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'des
   };
 
   return (
-    <SectionBlock title={title} icon={icon} iconColor={iconColor}>
+    <Section title={title} icon={icon} tone={tone}>
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Nome / Razão Social" value={entity.razaoSocial} />
@@ -201,7 +203,7 @@ function TabEmitDest({ data, type }: { data: NfeDetails; type: 'emitente' | 'des
           </div>
         )}
       </div>
-    </SectionBlock>
+    </Section>
   );
 }
 
@@ -224,7 +226,7 @@ function TabProdutos({
   }
 
   return (
-    <SectionBlock title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" iconColor="text-emerald-500">
+    <Section title={`Produtos e Serviços (${produtos.length})`} icon="inventory_2" tone="emerald">
       {/* Mobile Cards */}
       <div className="sm:hidden space-y-1.5">
         {produtos.map((prod: NfeProduto, idx: number) => {
@@ -329,14 +331,14 @@ function TabProdutos({
           </tbody>
         </table>
       </div>
-    </SectionBlock>
+    </Section>
   );
 }
 
 function TabTotais({ data }: { data: NfeDetails }) {
   const t = data.totais || {};
   return (
-    <SectionBlock title="Totais da NF-e" icon="calculate" iconColor="text-emerald-500">
+    <Section title="Totais da NF-e" icon="calculate" tone="emerald">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
         <Field label="Base de Cálculo do ICMS" value={formatMoney(t.baseCalculoIcms)} />
         <Field label="Valor do ICMS" value={formatMoney(t.valorIcms)} />
@@ -362,7 +364,7 @@ function TabTotais({ data }: { data: NfeDetails }) {
         <Field label="Valor Total da NFe" value={formatMoney(t.valorTotalNfe)} />
         <Field label="Aprox. Tributos" value={formatMoney(t.valorAproximadoTributos)} />
       </div>
-    </SectionBlock>
+    </Section>
   );
 }
 
@@ -377,12 +379,12 @@ function TabTransporte({ data }: { data: NfeDetails }) {
 
   return (
     <div className="space-y-4">
-      <SectionBlock title="Dados do Transporte" icon="local_shipping" iconColor="text-teal-500">
+      <Section title="Dados do Transporte" icon="local_shipping" tone="teal">
         <Field label="Modalidade do Frete" value={transp.modalidadeFrete} />
-      </SectionBlock>
+      </Section>
 
       {transp.transportador?.cnpj && (
-        <SectionBlock title="Transportador" icon="badge" iconColor="text-indigo-500">
+        <Section title="Transportador" icon="badge" tone="indigo">
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
               <Field label="CNPJ" value={formatCnpjDisplay(transp.transportador.cnpj)} />
@@ -395,11 +397,11 @@ function TabTransporte({ data }: { data: NfeDetails }) {
               <Field label="UF" value={transp.transportador.uf} />
             </div>
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {transp.volumes?.length > 0 && (
-        <SectionBlock title="Volumes" icon="package_2" iconColor="text-amber-500">
+        <Section title="Volumes" icon="package_2" tone="amber">
           {transp.volumes.map((vol: TransporteVolume, i: number) => (
             <div key={i} className={`grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 ${i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}`}>
               <Field label="Quantidade" value={vol.quantidade} />
@@ -410,7 +412,7 @@ function TabTransporte({ data }: { data: NfeDetails }) {
               <Field label="Peso Bruto" value={vol.pesoBruto} />
             </div>
           ))}
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -432,7 +434,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
   return (
     <div className="space-y-4">
       {cobr.formasPagamento?.length > 0 && (
-        <SectionBlock title="Formas de Pagamento" icon="credit_card" iconColor="text-primary dark:text-blue-400">
+        <Section title="Formas de Pagamento" icon="credit_card">
           {cobr.formasPagamento.map((p: FormaPagamento, i: number) => (
             <div key={i} className={i > 0 ? 'mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60' : ''}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-3">
@@ -448,22 +450,22 @@ function TabCobranca({ data }: { data: NfeDetails }) {
               </div>
             </div>
           ))}
-        </SectionBlock>
+        </Section>
       )}
 
       {cobr.fatura && (
-        <SectionBlock title="Fatura" icon="receipt" iconColor="text-amber-500">
+        <Section title="Fatura" icon="receipt" tone="amber">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
             <Field label="Número" value={cobr.fatura.numero} />
             <Field label="Valor Original" value={formatMoney(cobr.fatura.valorOriginal)} />
             <Field label="Valor Desconto" value={formatMoney(cobr.fatura.valorDesconto)} />
             <Field label="Valor Líquido" value={formatMoney(cobr.fatura.valorLiquido)} />
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {cobr.duplicatas?.length > 0 && (
-        <SectionBlock title="Duplicatas" icon="payments" iconColor="text-rose-500">
+        <Section title="Duplicatas" icon="payments" tone="rose">
           {/* Mobile Cards */}
           <div className="sm:hidden space-y-1.5">
             {cobr.duplicatas.map((d: Duplicata, i: number) => (
@@ -497,7 +499,7 @@ function TabCobranca({ data }: { data: NfeDetails }) {
               </tbody>
             </table>
           </div>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );
@@ -507,23 +509,23 @@ function TabInfAdicionais({ data }: { data: NfeDetails }) {
   const inf = data.infAdicionais || {} as NfeInfAdicionais;
   return (
     <div className="space-y-4">
-      <SectionBlock title="Informações Adicionais" icon="info" iconColor="text-violet-500">
+      <Section title="Informações Adicionais" icon="info" tone="violet">
         <Field label="Formato de Impressão DANFE" value={inf.formatoImpressao} />
-      </SectionBlock>
+      </Section>
 
       {inf.infComplementar && (
-        <SectionBlock title="Informações Complementares" icon="article" iconColor="text-indigo-500">
+        <Section title="Informações Complementares" icon="article" tone="indigo">
           <div>
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Descrição</p>
             <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infComplementar}</p>
           </div>
-        </SectionBlock>
+        </Section>
       )}
 
       {inf.infFisco && (
-        <SectionBlock title="Informações do Fisco" icon="gavel" iconColor="text-amber-500">
+        <Section title="Informações do Fisco" icon="gavel" tone="amber">
           <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{inf.infFisco}</p>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   );

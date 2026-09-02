@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import Section, { SECTION_ICON_CLASS } from '@/components/ui/Section';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
@@ -15,7 +16,7 @@ import type {
   ContactDuplicate, ContactMeta, ContactFiscalData, ContactOverrideData,
 } from '@/components/contact-details/contact-detail-types';
 import { CONTACT_KINDS, type ContactKind } from '@/components/contact-details/contact-kinds';
-import { SectionCard, StatCard } from '@/components/contact-details/contact-detail-utils';
+import { StatCard } from '@/components/contact-details/contact-detail-utils';
 import ContactInfoSection from '@/components/contact-details/ContactInfoSection';
 import AddressSection from '@/components/contact-details/AddressSection';
 import FiscalSection from '@/components/contact-details/FiscalSection';
@@ -283,9 +284,9 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
 
       {!loading && details && contactData && (
         <div className="flex flex-col gap-3">
-          <SectionCard title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" iconColor={cfg.shortNameIconClass} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
+          <Section title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" tone={cfg.shortNameTone} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
             <div className="flex items-center gap-2 mb-3">
-              <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
+              <span className={`material-symbols-outlined text-[14px] ${SECTION_ICON_CLASS[cfg.shortNameTone]}`}>edit_note</span>
               <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} aria-label={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
               <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
                 {savingShortName && <Spinner size="sm" label="Salvando" />}
@@ -322,10 +323,10 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
                 </button>
               </div>
             )}
-          </SectionCard>
+          </Section>
 
           <div className="order-first">
-            <SectionCard title="Dados Gerais" subtitle={cfg.generalSubtitle} icon="analytics" iconColor="text-emerald-500" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
+            <Section title="Dados Gerais" subtitle={cfg.generalSubtitle} icon="analytics" tone="emerald" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 <StatCard label={cfg.statLabels[0]} value={formatInt(details.purchases.totalInvoices)} icon="receipt_long" color={cfg.firstStatColor} />
                 <StatCard label={cfg.statLabels[1]} value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
@@ -333,24 +334,24 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
                 <StatCard label={cfg.statLabels[3]} value={formatInt(details.purchases.totalProductsPurchased)} icon="inventory_2" color="amber" />
                 <StatCard label={cfg.statLabels[4]} value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'} icon="event" color="teal" />
               </div>
-            </SectionCard>
+            </Section>
           </div>
 
-          <SectionCard title="Tabela de Preço" subtitle={cfg.priceTableSubtitle} icon="table_chart" iconColor="text-teal-500" open={isPriceTableOpen} onToggle={() => setIsPriceTableOpen((prev) => !prev)} badge={details.priceTable.length || undefined}>
+          <Section title="Tabela de Preço" subtitle={cfg.priceTableSubtitle} icon="table_chart" tone="teal" open={isPriceTableOpen} onToggle={() => setIsPriceTableOpen((prev) => !prev)} badge={details.priceTable.length || undefined}>
             <PriceTableSection priceTable={details.priceTable} meta={details.meta} sortAccentColor={cfg.sortAccentColor} />
-          </SectionCard>
+          </Section>
 
-          <SectionCard title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" iconColor="text-primary dark:text-blue-400" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
+          <Section title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
             <InvoiceTable invoices={primaryInvoices} installmentsMap={invoiceInstallmentsMap} emptyLabel={cfg.invoicesEmptyLabel} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
-          </SectionCard>
+          </Section>
 
-          <SectionCard title="Movimentações" subtitle="Consignação, demonstração, remessa e outros" icon="swap_horiz" iconColor="text-amber-500" open={isMovimentacoesOpen} onToggle={() => setIsMovimentacoesOpen((prev) => !prev)} badge={movimentacaoInvoices.length || undefined}>
+          <Section title="Movimentações" subtitle="Consignação, demonstração, remessa e outros" icon="swap_horiz" tone="amber" open={isMovimentacoesOpen} onToggle={() => setIsMovimentacoesOpen((prev) => !prev)} badge={movimentacaoInvoices.length || undefined}>
             <MovimentacoesTable invoices={movimentacaoInvoices} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
-          </SectionCard>
+          </Section>
 
-          <SectionCard title="Duplicatas" subtitle="Parcelas encontradas nas notas fiscais" icon="account_balance" iconColor="text-rose-500" open={isDuplicatesOpen} onToggle={() => setIsDuplicatesOpen((prev) => !prev)} badge={details.duplicates.length || undefined}>
+          <Section title="Duplicatas" subtitle="Parcelas encontradas nas notas fiscais" icon="account_balance" tone="rose" open={isDuplicatesOpen} onToggle={() => setIsDuplicatesOpen((prev) => !prev)} badge={details.duplicates.length || undefined}>
             <DuplicatasTable duplicates={details.duplicates} />
-          </SectionCard>
+          </Section>
         </div>
       )}
 
