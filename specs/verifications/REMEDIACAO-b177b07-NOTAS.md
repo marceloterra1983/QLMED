@@ -281,3 +281,13 @@ existentes); `QLMED-RISK-2026-09-PG-DIGEST` em *Active risk acceptance*.
 **Segunda rodada fechada.** Dos 20 achados abertos após a re-auditoria, 19
 fechados e 1 parcial com número (B-16, custo de bcrypt). As três threads do
 Codex respondidas e resolvidas.
+
+**CI reprovou uma vez após a segunda rodada — e a causa era um teste, não o
+código.** `graph-mail-attachment-cap.test.ts` (L5/G14c, R5) afirmava "zero
+`Buffer.from(_, 'base64')` em todo o processo"; sob Node 22 uma internal de
+`fetch`/`Response` faz um decode que o Node 24 não faz, e o CI corre 22. O
+teto em produção estava certo (o anexo grande faz `continue` antes do
+`Buffer.from`). O teste passa a medir o invariante certo: `Buffer.from` nunca
+recebe o `contentBytes` DESTE anexo. Controlo positivo com o teto neutralizado:
+`2 failed`. Lição registada: um spy global sobre uma primitiva do runtime mede
+o runtime, não o código.

@@ -37,9 +37,17 @@ function graphFetch(attachments: Array<Record<string, unknown>>) {
 const spyBufferFrom = () => vi.spyOn(Buffer, 'from');
 type BufferFromSpy = ReturnType<typeof spyBufferFrom>;
 
-function base64Decodes(spy: BufferFromSpy) {
-  // `Buffer.from` é sobrecarregado; o tipo das chamadas fica no 1º overload.
-  return (spy.mock.calls as unknown[][]).filter((call) => call[1] === 'base64');
+/**
+ * Decodes base64 DO PRÓPRIO ANEXO. A versão anterior contava qualquer
+ * `Buffer.from(_, 'base64')` do processo e reprovou no CI sob Node 22 — uma
+ * internal (fetch/Response) faz um decode que o Node 24 não faz. "Nenhum
+ * base64 em lado nenhum" não é o invariante; "o teto corre antes de decodificar
+ * ESTE anexo" é.
+ */
+function base64DecodesOf(spy: BufferFromSpy, contentBytes: string) {
+  return (spy.mock.calls as unknown[][]).filter(
+    (call) => call[0] === contentBytes && call[1] === 'base64',
+  );
 }
 
 function fileAttachment(name: string, contentBytes: string) {
@@ -70,14 +78,15 @@ describe('graph-mail-client: teto do anexo antes de materializar o Buffer', () =
   });
 
   it('anexo acima do teto é descartado sem nenhum Buffer.from(_, "base64")', async () => {
-    globalThis.fetch = graphFetch([fileAttachment('grande.pdf', 'A'.repeat(OVER_CAP_B64_LENGTH))]);
+    const grande = 'A'.repeat(OVER_CAP_B64_LENGTH);
+    globalThis.fetch = graphFetch([fileAttachment('grande.pdf', grande)]);
 
     const { listImpcgPdfAttachments } = await import('@/lib/graph-mail-client');
     bufferFrom.mockClear();
     const pdfs = await listImpcgPdfAttachments('caixa@qlmed.com.br', 'msg-1');
 
     expect(pdfs).toEqual([]);
-    expect(base64Decodes(bufferFrom)).toHaveLength(0);
+    expect(base64DecodesOf(bufferFrom, grande)).toHaveLength(0);
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'grande.pdf', limit: MAX_PDF_BYTES }),
       'attachment_too_large',
@@ -95,7 +104,7 @@ describe('graph-mail-client: teto do anexo antes de materializar o Buffer', () =
 
     expect(pdfs).toHaveLength(1);
     expect(pdfs[0].content.toString('utf8')).toMatch(/^%PDF-1\.4/);
-    expect(base64Decodes(bufferFrom)).toHaveLength(1);
+    expect(base64DecodesOf(bufferFrom, SMALL_PDF_B64)).toHaveLength(1);
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -110,6 +119,6 @@ describe('graph-mail-client: teto do anexo antes de materializar o Buffer', () =
     const pdfs = await listImpcgPdfAttachments('caixa@qlmed.com.br', 'msg-3');
 
     expect(pdfs.map((p) => p.name)).toEqual(['pequeno.pdf']);
-    expect(base64Decodes(bufferFrom)).toHaveLength(1);
+    expect(base64DecodesOf(bufferFrom, SMALL_PDF_B64)).toHaveLength(1);
   });
 });
