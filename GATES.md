@@ -43,6 +43,6 @@ qualquer outro escopo não-admin leva 403; sessão continua igual.**
   EXPECT: /passed/
   EVIDENCE: typecheck exit 0; lint exit 0; `Tests 1339 passed | 9 skipped (1348)`; middleware-acl + reaudit-r4-route-negatives + upload-route-limits: 36 passed
 
-- [ ] G7: PR aberto com a ordem pós-deploy: gerar chave `invoices:write` em
+- [x] G7: PR aberto com a ordem pós-deploy: gerar chave `invoices:write` em
   `env/app.env`, recriar o container no próximo deploy, revogar a `admin`.
-  EVIDENCE: pending
+  EVIDENCE: https://github.com/marceloterra1983/QLMED/pull/269 aberto com a ordem pós-deploy (gerar invoices:write em env/app.env → deploy recria → confirmar AccessLog → revogar admin)
