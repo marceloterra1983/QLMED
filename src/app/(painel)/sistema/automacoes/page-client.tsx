@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/PageHeader';
 
@@ -185,16 +186,9 @@ export default function AutomacoesPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="font-semibold text-slate-900 dark:text-white text-sm min-w-0 truncate">{w.name}</h3>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
-                          w.active
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${w.active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      <Badge tone={w.active ? 'success' : 'neutral'} className="shrink-0">
                         {w.active ? 'Ativo' : 'Pausado'}
-                      </span>
+                      </Badge>
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">

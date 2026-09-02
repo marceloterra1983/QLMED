@@ -1,6 +1,8 @@
 'use client';
 
 import { formatDate, formatAmount } from '@/lib/utils';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatDueDate, getDuplicateStatus, formatInstallmentDisplay } from '@/lib/modal-helpers';
 import RowActions from '@/components/ui/RowActions';
 import { thCls, tdCls } from './contact-detail-utils';
@@ -67,11 +69,11 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
               const due = s?.firstDueDate ? s.firstDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
               return (
                 <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{inv.number}</td>
-                  <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
+                  <td className={`${tdCls} text-xs font-bold tabular-nums text-slate-800 dark:text-white`}>{inv.number}</td>
+                  <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
                   <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>{formatAmount(inv.totalValue)}</td>
-                  <td className={`${tdCls} text-center text-xs font-semibold text-slate-600 dark:text-slate-300`}>{total.toLocaleString('pt-BR')}</td>
-                  <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{due}</td>
+                  <td className={`${tdCls} text-center text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300`}>{total.toLocaleString('pt-BR')}</td>
+                  <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{due}</td>
                   <td className={`${tdCls} text-center`}><RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} /></td>
                 </tr>
               );
@@ -95,10 +97,7 @@ interface MovimentacoesTableProps {
 export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: MovimentacoesTableProps) {
   if (invoices.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 gap-2">
-        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">swap_horiz</span>
-        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhuma movimentação encontrada</span>
-      </div>
+      <EmptyState icon="swap_horiz" title="Nenhuma movimentação encontrada" />
     );
   }
 
@@ -132,8 +131,8 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {invoices.map((inv) => (
               <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{inv.number}</td>
-                <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
+                <td className={`${tdCls} text-xs font-bold tabular-nums text-slate-800 dark:text-white`}>{inv.number}</td>
+                <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
                 <td className={tdCls}><span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{inv.cfopTag}</span></td>
                 <td className={`${tdCls} text-right text-xs font-bold font-mono tabular-nums text-slate-900 dark:text-white`}>{formatAmount(inv.totalValue)}</td>
                 <td className={`${tdCls} text-center`}><RowActions invoiceId={inv.id} onView={onView} onDetails={onDetails} onDelete={onDelete} /></td>
@@ -155,10 +154,7 @@ interface DuplicatasTableProps {
 export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
   if (duplicates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 gap-2">
-        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">money_off</span>
-        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhuma duplicata encontrada</span>
-      </div>
+      <EmptyState icon="money_off" title="Nenhuma duplicata encontrada" />
     );
   }
 
@@ -174,7 +170,7 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{dup.invoiceNumber}</span>
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatInstallmentDisplay(dup.installmentNumber, dup.installmentTotal)}</span>
                 </div>
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold ${status.classes}`}>{status.label}</span>
+                <Badge tone={status.label === 'Vencido' ? 'danger' : 'success'}>{status.label}</Badge>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Venc: {formatDueDate(dup.dueDate)}</span>
@@ -197,11 +193,11 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
               const status = getDuplicateStatus(dup.dueDate);
               return (
                 <tr key={`${dup.invoiceId}-${dup.invoiceNumber}-${dup.installmentNumber}-${dup.dueDate || 'sem-data'}-${index}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className={`${tdCls} text-xs font-bold text-slate-800 dark:text-white`}>{dup.invoiceNumber}</td>
+                  <td className={`${tdCls} text-xs font-bold tabular-nums text-slate-800 dark:text-white`}>{dup.invoiceNumber}</td>
                   <td className={`${tdCls} text-xs font-mono text-slate-600 dark:text-slate-300`}>{formatInstallmentDisplay(dup.installmentNumber, dup.installmentTotal)}</td>
-                  <td className={`${tdCls} text-xs text-slate-600 dark:text-slate-300`}>{formatDueDate(dup.dueDate)}</td>
+                  <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{formatDueDate(dup.dueDate)}</td>
                   <td className={`${tdCls} text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white`}>{formatAmount(dup.installmentValue)}</td>
-                  <td className={`${tdCls} text-center`}><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${status.classes}`}>{status.label}</span></td>
+                  <td className={`${tdCls} text-center`}><Badge tone={status.label === 'Vencido' ? 'danger' : 'success'}>{status.label}</Badge></td>
                 </tr>
               );
             })}

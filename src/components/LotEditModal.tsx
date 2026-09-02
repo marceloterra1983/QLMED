@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -543,10 +544,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
               <span className="material-symbols-outlined text-[32px] text-primary dark:text-blue-400 animate-spin">progress_activity</span>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-500 dark:text-slate-400">
-              <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
-              <p className="mt-2 text-sm">Nenhum item encontrado</p>
-            </div>
+            <EmptyState icon="inventory_2" title="Nenhum item encontrado" />
           ) : (
             <>
               {/* Desktop Table */}
@@ -641,7 +639,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                 </td>
 
                                 {/* Lot Qty */}
-                                <td className={`px-1.5 py-1 text-right ${cellHighlight}`}>
+                                <td className={`px-1.5 py-1 text-right tabular-nums ${cellHighlight}`}>
                                   {item.quantity === 1 ? (
                                     <span className="text-xs text-slate-500 font-mono">1</span>
                                   ) : canWrite ? (

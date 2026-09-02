@@ -1,5 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -33,7 +35,7 @@ const colorMap = {
     statBg: 'bg-blue-50/80 dark:bg-blue-900/15', statRing: 'ring-1 ring-blue-200/60 dark:ring-blue-800/30',
     statIconBg: 'bg-blue-500/10 ring-blue-500/20', icon: 'text-blue-500',
     text: 'text-blue-700 dark:text-blue-300',
-    badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200/50 dark:ring-blue-800/30',
+    badgeTone: 'info' as const,
     btn: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20',
     groupHover: 'hover:bg-blue-50/50 dark:hover:bg-blue-900/10',
   },
@@ -42,7 +44,7 @@ const colorMap = {
     statBg: 'bg-amber-50/80 dark:bg-amber-900/15', statRing: 'ring-1 ring-amber-200/60 dark:ring-amber-800/30',
     statIconBg: 'bg-amber-500/10 ring-amber-500/20', icon: 'text-amber-500',
     text: 'text-amber-700 dark:text-amber-300',
-    badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30',
+    badgeTone: 'warning' as const,
     btn: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20',
     groupHover: 'hover:bg-amber-50/50 dark:hover:bg-amber-900/10',
   },
@@ -51,7 +53,7 @@ const colorMap = {
     statBg: 'bg-purple-50/80 dark:bg-purple-900/15', statRing: 'ring-1 ring-purple-200/60 dark:ring-purple-800/30',
     statIconBg: 'bg-purple-500/10 ring-purple-500/20', icon: 'text-purple-500',
     text: 'text-purple-700 dark:text-purple-300',
-    badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 ring-1 ring-purple-200/50 dark:ring-purple-800/30',
+    badgeTone: 'info' as const,
     btn: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20',
     groupHover: 'hover:bg-purple-50/50 dark:hover:bg-purple-900/10',
   },
@@ -151,7 +153,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${cm.icon}`}>chevron_right</span>
                   <span className="text-sm font-semibold text-slate-800 dark:text-white truncate">{name}</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${cm.badge}`}>{rows.length}</span>
+                  <Badge tone={cm.badgeTone} dot={false}>{rows.length}</Badge>
                 </div>
                 <span className={`text-xs font-bold tabular-nums ${cm.text}`}>{formatAmount(grpTotal)}</span>
               </button>
@@ -170,13 +172,13 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                       {visibleRows.map((h, i) => (
                         <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
-                          <td className="px-3 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
+                          <td className="px-3 py-2 tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
                           <td className="px-3 py-2"><button onClick={() => onOpenInvoice(h.invoiceId)} className="text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 hover:underline font-mono font-medium transition-colors">{h.invoiceNumber || '-'}</button></td>
                           <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatQuantity(h.quantity)}</td>
                           <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatAmount(h.unitPrice)}</td>
                           <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatAmount(h.totalValue)}</td>
                           <td className="px-3 py-2 text-slate-600 dark:text-slate-400 font-mono"><TruncatedCell text={h.batch || '-'} id={`${gk}-batch-${i}`} /></td>
-                          <td className="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap"><TruncatedCell text={h.expiry ? formatDate(h.expiry) : '-'} id={`${gk}-expiry-${i}`} /></td>
+                          <td className="px-3 py-2 tabular-nums text-slate-600 dark:text-slate-400 whitespace-nowrap"><TruncatedCell text={h.expiry ? formatDate(h.expiry) : '-'} id={`${gk}-expiry-${i}`} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -211,7 +213,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
           <div className="flex items-center gap-2.5">
             <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${cm.iconBg}`}><span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span></div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">{label}</h4>
-            {count > 0 && <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${cm.badge}`}>{count}</span>}
+            {count > 0 && <Badge tone={cm.badgeTone} dot={false}>{count}</Badge>}
           </div>
           <div className="flex items-center gap-3">
             {!sectionLoading && count > 0 && <span className={`text-sm font-bold tabular-nums ${cm.text}`}>{formatAmount(totalValue)}</span>}
@@ -226,10 +228,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando historico...</p>
               </div>
             ) : empty ? (
-              <div className="flex flex-col items-center py-8">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50 mb-2"><span className="material-symbols-outlined text-[24px] text-slate-300 dark:text-slate-600">inbox</span></div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{emptyMsg}</p>
-              </div>
+              <EmptyState icon="inbox" title={emptyMsg} />
             ) : <>{children}</>}
           </div>
         )}

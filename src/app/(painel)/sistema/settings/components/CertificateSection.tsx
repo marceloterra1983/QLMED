@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
@@ -179,10 +180,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
           {/* Certificate Status */}
           <div>
             {!certInfo ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
-                <span className="material-symbols-outlined text-[48px] mb-2 opacity-50">no_encryption</span>
-                <p className="text-sm">Nenhum certificado instalado</p>
-              </div>
+              <EmptyState icon="no_encryption" title="Nenhum certificado instalado" />
             ) : (
               <div className="space-y-3">
                 <div className={`p-3 rounded-xl border ${

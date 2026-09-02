@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
@@ -315,9 +316,8 @@ export default function NfseReceivedPage() {
             </div>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
-            <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
-            <p className="mt-2 text-sm font-medium">Nenhuma NFS-e encontrada</p>
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+            <EmptyState icon="receipt_long" title="Nenhuma NFS-e encontrada" />
           </div>
         ) : (
           (() => {
@@ -415,8 +415,8 @@ export default function NfseReceivedPage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Nenhuma NFS-e encontrada para os filtros informados.
+                  <td colSpan={7} className="px-3 py-10">
+                    <EmptyState compact icon="receipt_long" title="Nenhuma NFS-e encontrada para os filtros informados." />
                   </td>
                 </tr>
               ) : (
@@ -430,7 +430,7 @@ export default function NfseReceivedPage() {
                       <React.Fragment key={invoice.id}>
                         {showDivider && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={7} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <td colSpan={7} className="px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
@@ -440,25 +440,25 @@ export default function NfseReceivedPage() {
                         )}
                         {!collapsedGroups.has(group) && (
                         <tr className="hover:bg-slate-50/70 dark:hover:bg-slate-900/20">
-                          <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          <td className="px-2 py-3 text-xs tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             {formatDate(invoice.issueDate)}
                           </td>
-                          <td className="px-2 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                          <td className="px-2 py-3 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {invoice.number || '-'}
                           </td>
-                          <td className="px-2 py-1.5 text-xs text-right font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                          <td className="px-2 py-3 text-xs text-right font-semibold tabular-nums text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {val(invoice.totalValue)}
                           </td>
-                          <td className="px-2 py-1.5 text-xs text-slate-800 dark:text-slate-100">
+                          <td className="px-2 py-3 text-xs text-slate-800 dark:text-slate-100">
                             {invoice.senderName || '-'}
                           </td>
-                          <td className="px-2 py-1.5 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                          <td className="px-2 py-3 text-xs text-slate-600 dark:text-slate-400 font-mono tabular-nums">
                             {invoice.senderCnpj ? formatCnpj(invoice.senderCnpj.replace(/\D/g, '')) || invoice.senderCnpj : '-'}
                           </td>
-                          <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+                          <td className="px-2 py-3 text-xs text-slate-700 dark:text-slate-300">
                             {invoice.senderCity || '-'}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-3">
                             <div className="flex justify-center">
                               <RowActions
                                 invoiceId={invoice.id}

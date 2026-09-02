@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Badge from '@/components/ui/Badge';
 import Field from '@/components/ui/Field';
 import Button from '@/components/ui/Button';
 import Link from 'next/link';
@@ -444,18 +445,12 @@ export default function EmitirNfePage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            {emissionId ? 'Rascunho salvo' : 'Rascunho'}
-          </span>
+          <Badge>{emissionId ? 'Rascunho salvo' : 'Rascunho'}</Badge>
           {ambiente === 'production' && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/25 dark:text-amber-100">
-              Produção SEFAZ
-            </span>
+            <Badge tone="warning">Produção SEFAZ</Badge>
           )}
           {ambiente === 'homologation' && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-900 dark:bg-sky-500/25 dark:text-sky-100">
-              Homologação
-            </span>
+            <Badge tone="info">Homologação</Badge>
           )}
         </div>
       </div>

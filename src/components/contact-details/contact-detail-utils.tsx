@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import Badge from '@/components/ui/Badge';
 import type { AddressDivergence } from './contact-detail-types';
 
 // --- Shared utility functions ---
@@ -101,9 +102,7 @@ export function SectionCard({ title, subtitle, icon, iconColor = 'text-primary d
           <div className="flex items-center gap-2">
             <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
             {badge !== undefined && (
-              <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                {badge}
-              </span>
+              <Badge dot={false}>{badge}</Badge>
             )}
           </div>
           {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>}

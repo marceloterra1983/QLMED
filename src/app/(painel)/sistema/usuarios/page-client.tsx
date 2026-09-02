@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Badge, { type BadgeTone } from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -35,17 +37,17 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Rejeitado',
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  editor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  viewer: 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400',
+const ROLE_COLORS: Record<string, BadgeTone> = {
+  admin: 'info',
+  editor: 'info',
+  viewer: 'neutral',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-400',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+const STATUS_COLORS: Record<string, BadgeTone> = {
+  pending: 'warning',
+  active: 'success',
+  inactive: 'neutral',
+  rejected: 'danger',
 };
 
 export default function UsuariosPage() {
@@ -458,10 +460,7 @@ export default function UsuariosPage() {
             <p className="text-sm text-slate-500 mt-2">Carregando...</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center">
-            <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">group_off</span>
-            <p className="text-sm text-slate-500 mt-2">Nenhum usuário cadastrado</p>
-          </div>
+          <EmptyState icon="group_off" title="Nenhum usuário cadastrado" />
         ) : (
           <>
             {/* Desktop table */}
@@ -491,16 +490,12 @@ export default function UsuariosPage() {
                         <span className="text-sm text-slate-600 dark:text-slate-300">{user.phone || '—'}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
-                          {ROLE_LABELS[user.role] || user.role}
-                        </span>
+                        <Badge tone={ROLE_COLORS[user.role]}>{ROLE_LABELS[user.role] || user.role}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[user.status] || ''}`}>
-                          {STATUS_LABELS[user.status] || user.status}
-                        </span>
+                        <Badge tone={STATUS_COLORS[user.status]}>{STATUS_LABELS[user.status] || user.status}</Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 tabular-nums">
                         <span className="text-sm text-slate-500">
                           {new Date(user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                         </span>
@@ -544,12 +539,8 @@ export default function UsuariosPage() {
                   <div className="flex items-start justify-between gap-3 mb-1.5">
                     <p className="text-xs font-bold text-slate-900 dark:text-white leading-snug">{user.name}</p>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${ROLE_COLORS[user.role] || ''}`}>
-                        {ROLE_LABELS[user.role] || user.role}
-                      </span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[user.status] || ''}`}>
-                        {STATUS_LABELS[user.status] || user.status}
-                      </span>
+                      <Badge tone={ROLE_COLORS[user.role]}>{ROLE_LABELS[user.role] || user.role}</Badge>
+                      <Badge tone={STATUS_COLORS[user.status]}>{STATUS_LABELS[user.status] || user.status}</Badge>
                     </div>
                   </div>
 
@@ -896,7 +887,7 @@ export default function UsuariosPage() {
               <span className="material-symbols-outlined text-[24px] animate-spin text-slate-500 dark:text-slate-400">progress_activity</span>
             </div>
           ) : accessLogs.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Nenhum registro de acesso</p>
+            <EmptyState icon="inbox" title="Nenhum registro de acesso" compact />
           ) : (
             <>
               <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
@@ -904,15 +895,9 @@ export default function UsuariosPage() {
                   <div key={log.id} className="flex items-center justify-between py-2 px-1">
                     <div className="flex items-center gap-2 min-w-0">
                       {log.action === 'login' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                          <span className="material-symbols-outlined text-[12px]">login</span>
-                          Login
-                        </span>
+                        <Badge tone="success">Login</Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 truncate max-w-[200px]">
-                          <span className="material-symbols-outlined text-[12px]">open_in_new</span>
-                          {PAGE_LABELS[log.path || '']?.label || log.path}
-                        </span>
+                        <Badge tone="info">{PAGE_LABELS[log.path || '']?.label || log.path}</Badge>
                       )}
                     </div>
                     <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">

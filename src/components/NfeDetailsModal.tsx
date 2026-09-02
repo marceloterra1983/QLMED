@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Fragment } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
@@ -221,10 +222,7 @@ function TabProdutos({
 
   if (produtos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-2">
-        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">inventory_2</span>
-        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum produto encontrado</span>
-      </div>
+      <EmptyState icon="inventory_2" title="Nenhum produto encontrado" />
     );
   }
 
@@ -494,8 +492,8 @@ function TabCobranca({ data }: { data: NfeDetails }) {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {cobr.duplicatas.map((d: Duplicata, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{d.numero}</td>
-                    <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{d.vencimento}</td>
+                    <td className="px-3 py-2.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{d.numero}</td>
+                    <td className="px-3 py-2.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">{d.vencimento}</td>
                     <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(d.valor)}</td>
                   </tr>
                 ))}

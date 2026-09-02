@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
 
 import Modal from '@/components/ui/Modal';
 import Field from '@/components/ui/Field';
@@ -914,15 +915,15 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                     <div className="rounded-xl bg-teal-50/40 dark:bg-teal-900/10 border border-teal-200/40 dark:border-teal-800/30 px-3 py-2.5 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         {anvisaValidation.status && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                          <Badge tone={
                             anvisaValidation.status.toLowerCase().includes('valid') || anvisaValidation.status.toLowerCase().includes('ativ')
-                              ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              ? 'success'
                               : anvisaValidation.status.toLowerCase().includes('cancel') || anvisaValidation.status.toLowerCase().includes('caduc')
-                                ? 'bg-red-50 text-red-600 ring-1 ring-red-500/20 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-amber-50 text-amber-600 ring-1 ring-amber-500/20 dark:bg-amber-900/30 dark:text-amber-400'
-                          }`}>
+                                ? 'danger'
+                                : 'warning'
+                          }>
                             {anvisaValidation.status}
-                          </span>
+                          </Badge>
                         )}
                         {anvisaValidation.riskClass && <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Classe {anvisaValidation.riskClass}</span>}
                         {anvisaValidation.expiration && <span className="text-xs text-slate-500 dark:text-slate-400">Val. {anvisaValidation.expiration}</span>}

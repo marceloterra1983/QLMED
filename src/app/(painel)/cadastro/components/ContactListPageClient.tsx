@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -348,8 +350,8 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         title={cfg.title}
         subtitle={cfg.subtitle}
         titleExtra={cnpjChanges > 0 ? (
-          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
-            {cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ
+          <span title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
+            <Badge tone="warning">{cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ</Badge>
           </span>
         ) : null}
         actions={(
@@ -428,19 +430,17 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
               {loading ? (
                 Array.from({ length: limit }).map((_, index) => (
                   <tr key={index}>
-                    <td className="px-4 py-1"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-1"><Skeleton className="h-4 w-56" /></td>
-                    {cfg.showCity && <td className="px-4 py-1"><Skeleton className="h-4 w-28" /></td>}
-                    <td className="px-4 py-1"><Skeleton className="h-4 w-28 mx-auto" /></td>
-                    <td className="px-4 py-1"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-56" /></td>
+                    {cfg.showCity && <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>}
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-28 mx-auto" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-[48px] opacity-30">{cfg.icon}</span>
-                    <p className="mt-2 text-sm font-medium">{cfg.emptyTitle}</p>
-                    <p className="text-xs mt-1">{cfg.emptyHint}</p>
+                  <td colSpan={colSpan}>
+                    <EmptyState compact icon={cfg.icon} title={cfg.emptyTitle} hint={cfg.emptyHint} />
                   </td>
                 </tr>
               ) : (
@@ -462,12 +462,12 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                       <React.Fragment key={`${row.cnpj}-${row.name}`}>
                         {showDivider && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={colSpan} className="px-4 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <td colSpan={colSpan} className="px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
                                 {cityCountsForPage && (
-                                  <span className="text-xs font-bold bg-primary/10 text-primary dark:text-blue-400 px-1.5 py-0.5 rounded-full">{cityCountsForPage.get(group) || 0}</span>
+                                  <Badge tone="info" dot={false}>{cityCountsForPage.get(group) || 0}</Badge>
                                 )}
                               </div>
                             </td>
@@ -475,16 +475,16 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                         )}
                         {!collapsedGroups.has(group) && (
                           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
-                            <td className="px-4 py-1">
+                            <td className="px-4 py-3 tabular-nums">
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
                             </td>
-                            <td className="px-4 py-1">
+                            <td className="px-4 py-3">
                               <div className="text-sm font-bold leading-tight text-slate-900 dark:text-white hover:text-primary dark:hover:text-blue-400 transition-colors">{displayName(row)}</div>
                             </td>
                             {cfg.showCity && (
-                              <td className="px-4 py-1"><span className="text-xs text-slate-600 dark:text-slate-300">{row.city || '-'}</span></td>
+                              <td className="px-4 py-3"><span className="text-xs text-slate-600 dark:text-slate-300">{row.city || '-'}</span></td>
                             )}
-                            <td className="px-4 py-1" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-3 tabular-nums" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? row.priceItemCount.toLocaleString('pt-BR') : '-'}</span>
                                 <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço">
@@ -492,7 +492,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                                 </button>
                               </div>
                             </td>
-                            <td className="px-4 py-1" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => { setSelected(row); setIsDetailsOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title={cfg.detailsAria}>
                                   <span className="material-symbols-outlined text-[20px]">search</span>
@@ -560,12 +560,8 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             </div>
                             {st && st.toUpperCase() !== 'ATIVA' && (() => {
                               const upper = st.toUpperCase();
-                              const color = upper.includes('SUSPENS')
-                                ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                                : upper.includes('BAIXA') || upper.includes('INAPT')
-                                  ? 'text-red-600 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                                  : 'text-slate-500 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
-                              return <span className={`ml-2 flex-shrink-0 px-2 py-0.5 text-xs font-bold rounded-full border ${color}`}>{st}</span>;
+                              const tone = upper.includes('SUSPENS') ? 'warning' : upper.includes('BAIXA') || upper.includes('INAPT') ? 'danger' : 'neutral';
+                              return <Badge tone={tone} className="ml-2 shrink-0">{st}</Badge>;
                             })()}
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs mb-1.5">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount } from '@/lib/utils';
@@ -92,10 +93,10 @@ function periodRangeLabel(period: Period, year: number, month: number): string {
 
 function PeriodBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-      <span className="material-symbols-outlined text-[12px]">date_range</span>
+    <Badge tone="info" dot={false}>
+      <span aria-hidden="true" className="material-symbols-outlined text-[12px]">date_range</span>
       {label}
-    </span>
+    </Badge>
   );
 }
 
@@ -374,13 +375,13 @@ export default function FiscalDashboardPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {monthly.map((row) => (
                   <tr key={`${row.year}-${row.month}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">{MONTH_NAMES[row.month - 1]} {row.year}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.ipi)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.frete)}</td>
-                    <td className="px-4 py-2 text-right font-mono text-slate-500">{row.invoiceCount}</td>
+                    <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{MONTH_NAMES[row.month - 1]} {row.year}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.ipi)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.frete)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-500">{row.invoiceCount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -439,8 +440,8 @@ export default function FiscalDashboardPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {cfopData.map((row) => (
                   <tr key={row.cfop} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-2 font-mono font-bold text-slate-700 dark:text-slate-300">{row.cfop}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{row.cfop}</td>
+                    <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                         row.direction === 'entrada'
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
@@ -449,11 +450,11 @@ export default function FiscalDashboardPage() {
                         {row.direction === 'entrada' ? 'Entrada' : 'Saida'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-right font-mono text-slate-500">{row.itemCount}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.totalValue)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-500">{row.itemCount}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.totalValue)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.icms)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.pis)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(row.cofins)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -503,14 +504,14 @@ export default function FiscalDashboardPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {topSuppliers.map((s, i) => (
                   <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3">
                       <div className="font-medium text-slate-700 dark:text-slate-300 text-sm">{s.name || 'N/A'}</div>
                       <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{s.cnpj}</div>
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.icms)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.pisCofins)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.ipi)}</td>
-                    <td className="px-4 py-2 text-right font-mono text-slate-500">{s.invoiceCount}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.icms)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.pisCofins)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{formatAmount(s.ipi)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-500">{s.invoiceCount}</td>
                   </tr>
                 ))}
               </tbody>

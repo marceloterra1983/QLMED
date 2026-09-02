@@ -20,6 +20,14 @@
  *   field   — `<input|select|textarea>` usa a borda de campo
  *             `border-slate-200 dark:border-slate-700` (a de `FIELD_CONTROL_CLS`);
  *             `border-slate-300`/`dark:border-slate-600` nesses três é violação.
+ *   pill    — pill de situação à mão: literal com `rounded-full`, texto
+ *             xs/10px/11px, `font-bold|font-semibold` e fundo tonal
+ *             (`bg-<cor>-50|100`, `bg-<cor>-900/n`, `bg-<cor>/10|20`) fora da
+ *             className de um `<button>` e sem disco fixo (`w-7 h-7`).
+ *             `components/ui/Badge.tsx` é a fonte.
+ *   empty   — estado vazio à mão: `text-center` seguido, em 400 caracteres, de
+ *             texto JSX `>Nenhum`/`>Nenhuma`. `components/ui/EmptyState.tsx` é
+ *             a fonte; `<EmptyState title="Nenhum…">` não acusa (atributo).
  *
  * Uso: node scripts/verify-ui-tokens.mjs [--stats]
  */
@@ -56,6 +64,15 @@ const RAIO = new RegExp(
 );
 const RAIO_PARA = { sm: 'lg', md: 'lg', '2xl': 'xl', '3xl': 'xl' };
 const BORDA_CAMPO = /(?<![-\w])(?:border-slate-300|dark:border-slate-600)\b/g;
+const PILL_RAIO = /(?<![-\w:])rounded-full\b/;
+const PILL_TEXTO = /(?<![-\w:])text-(?:xs|\[1[01]px\])\b/;
+const PILL_PESO = /(?<![-\w:])font-(?:bold|semibold)\b/;
+const PILL_FUNDO = /(?<![-\w:])bg-[a-z]+-(?:50|100)\b|(?<![-\w])dark:bg-[a-z]+-900\/\d+|(?<![-\w:])bg-[a-z]+\/(?:10|20)\b/;
+// Disco de tamanho fixo (`w-7 h-7`: passo numerado, avatar) não é pill;
+// `min-w-[22px]` de contador não casa e continua a acusar.
+const DISCO = /(?<![-\w:])w-\d+(?:\.\d+)?\b[^"'`]*(?<![-\w:])h-\d+(?:\.\d+)?\b/;
+const VAZIO = /(?<![-\w:])text-center\b/g;
+const NENHUM = />\s*Nenhuma?\b/;
 
 const PX_FLOOR = 16; // até aqui é tamanho de texto; acima, só ícone usa px
 
@@ -64,10 +81,12 @@ const files = execFileSync(
   { encoding: 'utf8' }
 ).trim().split('\n').filter(Boolean).sort();
 
-const violations = { primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [] };
+const violations = {
+  primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [], pill: [], empty: [],
+};
 const stats = {
   arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0,
-  focus: 0, radius: 0, field: 0,
+  focus: 0, radius: 0, field: 0, pill: 0, empty: 0,
 };
 
 /**
@@ -253,6 +272,34 @@ for (const file of files) {
     violations.button.push(
       `${file}:${lineOf(src, m.index)}  <${tagName}> com superfície de botão fora de ui/Button`,
     );
+  }
+
+  // ── pill ───────────────────────────────────────────────────────────────
+  // Um botão redondo (`<button … rounded-full`) tem a mesma forma e não é
+  // pill: os literais dentro dos atributos de `<button` ficam de fora.
+  if (!file.endsWith('components/ui/Badge.tsx')) {
+    const botoes = [];
+    for (const m of src.matchAll(/<button\b/g)) {
+      const lido = atributosDe(src, m.index);
+      if (lido) botoes.push([m.index, lido.fim]);
+    }
+    for (const { lit, at } of literaisDe(src)) {
+      if (!PILL_RAIO.test(lit) || !PILL_TEXTO.test(lit) || !PILL_PESO.test(lit) || !PILL_FUNDO.test(lit)) continue;
+      stats.pill++;
+      if (DISCO.test(lit) || botoes.some(([ini, fim]) => at >= ini && at < fim)) continue;
+      violations.pill.push(`${file}:${lineOf(src, at)}  pill de situação à mão — use <Badge tone=…>`);
+    }
+  }
+
+  // ── empty ──────────────────────────────────────────────────────────────
+  // No código-fonte, não nos literais: o `text-center` e o texto JSX
+  // `>Nenhum` estão em nós diferentes. `title="Nenhum…"` é atributo e passa.
+  if (!file.endsWith('components/ui/EmptyState.tsx')) {
+    for (const m of src.matchAll(VAZIO)) {
+      if (!NENHUM.test(src.slice(m.index, m.index + 400))) continue;
+      stats.empty++;
+      violations.empty.push(`${file}:${lineOf(src, m.index)}  estado vazio à mão — use <EmptyState icon title>`);
+    }
   }
 
   // ── field ──────────────────────────────────────────────────────────────

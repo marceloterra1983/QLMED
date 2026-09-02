@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -242,7 +243,7 @@ export default function InvoicesPage() {
 
   const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={6} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+      <td colSpan={6} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
@@ -258,26 +259,26 @@ export default function InvoicesPage() {
     const highlightRow = !isNeutralTag(displayTag);
     return (
       <tr key={invoice.id} className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
-        <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+        <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
           <input className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} />
         </td>
-        <td className="px-2 py-1.5 whitespace-nowrap">
+        <td className="px-2 py-3 tabular-nums whitespace-nowrap">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">{formatTime(invoice.issueDate)}</div>
         </td>
-        <td className="px-2 py-1.5 whitespace-nowrap">
+        <td className="px-2 py-3 tabular-nums whitespace-nowrap">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
             {displayTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ${getTagClasses(displayTag, highlightRow)}`}>{displayTag}</span>}
           </div>
         </td>
-        <td className="px-2 py-1.5 text-right whitespace-nowrap">
+        <td className="px-2 py-3 text-right tabular-nums whitespace-nowrap">
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
         </td>
-        <td className="px-2 py-1.5">
+        <td className="px-2 py-3">
           {(() => { const n = getNick(invoice.senderCnpj, invoice.senderName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-xs text-slate-500 dark:text-slate-400">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
         </td>
-        <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+        <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
         </td>
       </tr>
@@ -397,9 +398,8 @@ export default function InvoicesPage() {
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
-              <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
-              <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
+            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+              <EmptyState icon="receipt_long" title="Nenhuma NF-e encontrada" />
             </div>
             <div className="flex items-center gap-1 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
@@ -507,12 +507,13 @@ export default function InvoicesPage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-[48px] opacity-30">receipt_long</span>
-                    <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
-                    <Button href="/sistema/upload" icon="cloud_upload" className="mt-4">
-                      Importar XML
-                    </Button>
+                  <td colSpan={6} className="px-6 py-12">
+                    <EmptyState
+                      compact
+                      icon="receipt_long"
+                      title="Nenhuma NF-e encontrada"
+                      action={<Button href="/sistema/upload" icon="cloud_upload" variant="secondary" size="sm">Importar XML</Button>}
+                    />
                   </td>
                 </tr>
               ) : selectedYear !== null ? (

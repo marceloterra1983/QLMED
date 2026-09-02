@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Badge, { type BadgeTone } from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -387,26 +389,14 @@ export default function CtePage() {
     }
   };
 
-  const getCteManifestBadge = (status: string) => {
+  const getCteManifestBadge = (status: string): { label: string; tone: BadgeTone } => {
     switch (status) {
       case 'confirmed':
-        return {
-          label: 'Desacordo cancelado',
-          classes:
-            'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-800',
-        };
+        return { label: 'Desacordo cancelado', tone: 'success' };
       case 'rejected':
-        return {
-          label: 'Desacordo',
-          classes:
-            'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800',
-        };
+        return { label: 'Desacordo', tone: 'danger' };
       default:
-        return {
-          label: 'Sem manifestação',
-          classes:
-            'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-800',
-        };
+        return { label: 'Sem manifestação', tone: 'warning' };
     }
   };
 
@@ -551,9 +541,8 @@ export default function CtePage() {
             </div>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
-            <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
-            <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
+          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+            <EmptyState icon="local_shipping" title="Nenhum CT-e encontrado" />
           </div>
         ) : (() => {
           let lastGroup = '';
@@ -656,12 +645,13 @@ export default function CtePage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-[48px] opacity-30">local_shipping</span>
-                    <p className="mt-2 text-sm font-medium">Nenhum CT-e encontrado</p>
-                    <Button href="/sistema/upload" icon="cloud_upload" className="mt-4">
-                      Importar XML
-                    </Button>
+                  <td colSpan={8} className="px-6 py-12">
+                    <EmptyState
+                      compact
+                      icon="local_shipping"
+                      title="Nenhum CT-e encontrado"
+                      action={<Button href="/sistema/upload" icon="cloud_upload" variant="secondary" size="sm">Importar XML</Button>}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -677,7 +667,7 @@ export default function CtePage() {
 	                      <React.Fragment key={invoice.id}>
                         {showDivider && (
                           <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={8} className="px-4 py-2 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                            <td colSpan={8} className="px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
@@ -687,7 +677,7 @@ export default function CtePage() {
                         )}
                         {!collapsedGroups.has(group) && (
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
-                          <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                             <input
                               className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer"
                               type="checkbox"
@@ -695,17 +685,17 @@ export default function CtePage() {
                               onChange={() => toggleSelect(invoice.id)}
                             />
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
+                          <td className="px-2 py-3 tabular-nums whitespace-nowrap">
                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">{formatTime(invoice.issueDate)}</div>
                           </td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">
+                          <td className="px-2 py-3 tabular-nums whitespace-nowrap">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                           </td>
-	                          <td className="px-2 py-1.5 text-right whitespace-nowrap">
+	                          <td className="px-2 py-3 text-right tabular-nums whitespace-nowrap">
 	                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
 	                          </td>
-	                          <td className="px-2 py-1.5">
+	                          <td className="px-2 py-3">
                               <div className="flex items-center gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
                                 <span className="truncate">{flow.remetente}</span>
                                 <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-400 shrink-0">local_shipping</span>
@@ -720,7 +710,7 @@ export default function CtePage() {
                                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{e.display}</span>
                               ); })()}
 	                          </td>
-	                          <td className="px-2 py-1.5">
+	                          <td className="px-2 py-3">
                               {(() => { const r = getNick(invoice.recipientCnpj, invoice.recipientName || '-'); return r.full ? (
                                 <>
                                   <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
@@ -730,12 +720,10 @@ export default function CtePage() {
                                 <span className="text-sm font-bold text-slate-900 dark:text-white">{r.display}</span>
                               ); })()}
 	                          </td>
-                          <td className="px-2 py-1.5">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${manifest.classes}`}>
-                              • {manifest.label}
-                            </span>
+                          <td className="px-2 py-3">
+                            <Badge tone={manifest.tone}>{manifest.label}</Badge>
                           </td>
-                          <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                             <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                           </td>
                         </tr>

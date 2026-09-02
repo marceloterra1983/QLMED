@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -481,7 +483,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <button key={sec.key} onClick={() => setActiveSection(sec.key)} className={`flex items-center gap-2.5 px-5 py-3 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-slate-50 dark:bg-slate-800/40 border-b-2 sm:border-b-0 sm:border-r-2 border-violet-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
                     <span className={`material-symbols-outlined text-[18px] ${isActive ? sec.color : 'text-slate-500 dark:text-slate-400'}`}>{sec.icon}</span>
                     <span className={`text-sm font-semibold ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{sec.label}</span>
-                    {!loadingSettings && <span className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[22px] text-center tabular-nums ${isActive ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{sectionCounts[sec.key]}</span>}
+                    {!loadingSettings && <Badge tone={isActive ? 'info' : 'neutral'} dot={false} className="ml-auto">{sectionCounts[sec.key]}</Badge>}
                   </button>
                 );
               })}
@@ -518,10 +520,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                 </div>
                 {filteredTypes.length === 0 && (
-                  <div className="flex flex-col items-center py-8">
-                    <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'}</p>
-                  </div>
+                  <EmptyState icon="inbox" title={linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'} />
                 )}
 
                 {filteredTypes.map((type) => {
@@ -541,7 +540,7 @@ function SettingsModal({ onClose, onUpdated }: {
                           <>
                             <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
                             <span className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>{type}</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-200/50 dark:ring-indigo-800/30 min-w-[28px] text-center">{count}</span>
+                            <Badge tone="info" dot={false}>{count}</Badge>
                             <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                             <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
@@ -566,7 +565,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                         </button>
                                         <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
                                         <span className="flex-1 text-sm text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)}>{sub}</span>
-                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 min-w-[24px] text-center">{subCount}</span>
+                                        <Badge tone="warning" dot={false}>{subCount}</Badge>
                                         <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
                                         <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                       </>
@@ -585,7 +584,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                                 <>
                                                   <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
                                                   <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">{sg}</span>
-                                                  <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 min-w-[20px] text-center">{sgCount}</span>
+                                                  <Badge tone="success" dot={false}>{sgCount}</Badge>
                                                   <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
                                                   <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
                                                 </>
@@ -695,10 +694,7 @@ function SettingsModal({ onClose, onUpdated }: {
 
                 <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
                   {filteredMfrs.length === 0 && (
-                    <div className="flex flex-col items-center py-8">
-                      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum fabricante encontrado.</p>
-                    </div>
+                    <EmptyState icon="inbox" title="Nenhum fabricante encontrado." />
                   )}
                   {filteredMfrs.map((mfr) => {
                     const isEditingName = editingMfr === mfr.name;
@@ -710,7 +706,7 @@ function SettingsModal({ onClose, onUpdated }: {
                           <>
                             <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
                             <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={mfr.name}>{mfr.name}</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 ring-1 ring-teal-200/50 dark:ring-teal-800/30 min-w-[28px] text-center shrink-0">{mfr.count}</span>
+                            <Badge tone="success" dot={false} className="shrink-0">{mfr.count}</Badge>
                             <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                             <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
@@ -738,7 +734,7 @@ function SettingsModal({ onClose, onUpdated }: {
                           className={`shrink-0 flex items-center gap-2 px-4 py-2.5 sm:py-2 text-left transition-colors whitespace-nowrap ${isActive ? 'bg-amber-50/80 dark:bg-amber-900/15 border-b-2 sm:border-b-0 sm:border-r-2 border-amber-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30 border-b-2 sm:border-b-0 sm:border-r-2 border-transparent'}`}>
                           <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-amber-500 dark:text-amber-400' : 'text-slate-500'}`}>{tab.icon}</span>
                           <span className={`text-xs font-semibold ${isActive ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>{tab.label}</span>
-                          <span className={`ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[18px] text-center ${isActive ? 'bg-amber-200/60 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{itemCount}</span>
+                          <Badge tone={isActive ? 'warning' : 'neutral'} dot={false} className="ml-auto">{itemCount}</Badge>
                         </button>
                       );
                     })}
@@ -770,7 +766,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               </div>
                               <div className="p-3 space-y-1">
                                 {items.length === 0 && (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 py-1 text-center">Nenhum valor</p>
+                                  <EmptyState compact icon="inbox" title="Nenhum valor" />
                                 )}
                                 {items.map(([value, count]) => {
                                   const isEditing = fiscalEditItem?.field === field && fiscalEditItem.oldValue === value;
@@ -785,7 +781,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                       ) : (
                                         <>
                                           <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200 flex-1">{value}%</span>
-                                          <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-xs font-bold min-w-[22px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                                          <Badge tone={count > 0 ? 'warning' : 'neutral'} dot={false} className="shrink-0">{count}</Badge>
                                           <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
                                           <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                         </>
@@ -818,10 +814,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   </div>
 
                   {currentFiscalItems.length === 0 && (
-                    <div className="flex flex-col items-center py-8">
-                      <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">inbox</span>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{fiscalSearch ? 'Nenhum resultado encontrado.' : 'Nenhum item cadastrado.'}</p>
-                    </div>
+                    <EmptyState icon="inbox" title={fiscalSearch ? 'Nenhum resultado encontrado.' : 'Nenhum item cadastrado.'} />
                   )}
 
                   {currentFiscalItems.map(([value, count]) => {
@@ -900,7 +893,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               }
                               return <span className={`flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 min-w-0 break-words ${useMonospace ? 'font-mono' : ''}`}>{value}</span>;
                             })()}
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-bold min-w-[28px] text-center tabular-nums ${count > 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-1 ring-amber-200/50 dark:ring-amber-800/30' : 'bg-transparent text-slate-300 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700'}`}>{count}</span>
+                            <Badge tone={count > 0 ? 'warning' : 'neutral'} dot={false} className="shrink-0">{count}</Badge>
                             {fiscalTab !== 'ncm' && (<>
                             <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                             <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
