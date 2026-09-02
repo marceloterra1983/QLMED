@@ -63,6 +63,11 @@ export default function Section({
   const [interno, setInterno] = useState(defaultOpen ?? false);
   const recolhivel = onToggle !== undefined || defaultOpen !== undefined;
   const aberto = recolhivel ? (open ?? interno) : true;
+  // Depois da primeira abertura o corpo fica montado e só se esconde: fechar
+  // e reabrir não pode apagar o que o utilizador escreveu ou ordenou lá dentro
+  // (a Tabela de Preço guarda busca e ordenação em estado local).
+  const [jaAbriu, setJaAbriu] = useState(aberto);
+  if (aberto && !jaAbriu) setJaAbriu(true);
   const alternar = onToggle ?? (() => setInterno((v) => !v));
   const perigo = variant === 'danger';
   const t = TONE[tone];
@@ -85,21 +90,25 @@ export default function Section({
   return (
     <Card padding="none" className={`${perigo ? 'border-red-200 dark:border-red-900/50' : ''} ${className ?? ''}`} {...(id ? { 'data-section-id': id } : {})}>
       {recolhivel ? (
-        <button
-          type="button"
-          onClick={alternar}
-          aria-expanded={aberto}
-          aria-controls={bodyId}
-          className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
-        >
-          {cabecalho}
-          <span aria-hidden="true" className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`}>expand_more</span>
-        </button>
+        // O botão dentro do <h3>: navegação por cabeçalhos continua a achar a
+        // seção, e o botão continua a ser o alvo de Enter/Espaço.
+        <h3 className="m-0">
+          <button
+            type="button"
+            onClick={alternar}
+            aria-expanded={aberto}
+            aria-controls={bodyId}
+            className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+          >
+            {cabecalho}
+            <span aria-hidden="true" className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`}>expand_more</span>
+          </button>
+        </h3>
       ) : (
         <h3 className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 m-0">{cabecalho}</h3>
       )}
-      {aberto ? (
-        <div id={bodyId} className={`p-4 ${recolhivel ? 'border-t border-slate-100 dark:border-slate-800/60' : ''}`}>{children}</div>
+      {jaAbriu ? (
+        <div id={bodyId} hidden={!aberto} className={`p-4 ${recolhivel ? 'border-t border-slate-100 dark:border-slate-800/60' : ''}`}>{children}</div>
       ) : null}
     </Card>
   );
