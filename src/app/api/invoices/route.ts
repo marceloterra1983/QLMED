@@ -124,8 +124,9 @@ export async function GET(req: Request) {
   try {
     let userId: string;
     try {
-      userId = await requireAuth();
-    } catch {
+      userId = await requireAuth({ apiKeyScope: 'invoices:read' });
+    } catch (e) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
     }
     const company = await getOrCreateSingleCompany(userId);
