@@ -59,4 +59,10 @@ describe('Badge', () => {
       expect(cls, tone).not.toMatch(/(?<![-\w:])text-slate-400\b/);
     }
   });
+
+  it('title passa para o span e não vira texto', () => {
+    const out = html(<Badge title="3 mudanças em 30 dias">3 CNPJ</Badge>);
+    expect(out).toContain('title="3 mudanças em 30 dias"');
+    expect(out).toContain('3 CNPJ');
+  });
 });

@@ -110,3 +110,6 @@ __pycache__/
 
 # galeria de UI gerada por scripts/render-ui-gallery.mjs
 .ui-gallery/
+
+# estado do Stop hook do unlazy — muda a cada sessão, não é fonte
+.unlazy-hook-state.json

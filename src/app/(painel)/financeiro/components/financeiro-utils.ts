@@ -85,30 +85,18 @@ export function getValorColor(direction: 'pagar' | 'receber'): string {
     : 'text-emerald-600 dark:text-emerald-400';
 }
 
-export const statusConfig: Record<string, { label: string; classes: string; icon: string; dotClass?: string }> = {
+export const statusConfig: Record<string, { label: string }> = {
   overdue: {
     label: 'Vencida',
-    classes: 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800',
-    icon: 'error',
-    dotClass: 'bg-red-500',
   },
   due_today: {
     label: 'Vence Hoje',
-    classes: 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-800',
-    icon: 'schedule',
-    dotClass: 'bg-amber-500',
   },
   due_soon: {
     label: 'Próxima',
-    classes: 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-900/30 dark:border-orange-800',
-    icon: 'upcoming',
-    dotClass: 'bg-orange-500',
   },
   upcoming: {
     label: 'A Vencer',
-    classes: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-800',
-    icon: 'check_circle',
-    dotClass: 'bg-emerald-500',
   },
 };
 
