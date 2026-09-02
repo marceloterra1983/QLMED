@@ -31,12 +31,14 @@ export default function SortableTh({ col, sortBy, sortOrder, onSort, align = 'le
     <th
       scope="col"
       aria-sort={ativa ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
-      className={`px-4 py-3 ${ALIGN[align]} ${className ?? ''}`}
+      className={`p-0 ${ALIGN[align]} ${className ?? ''}`}
     >
       <button
         type="button"
         onClick={() => onSort(col)}
-        className={`group inline-flex items-center gap-1 w-full ${JUSTIFY[align]} text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors`}
+        // O padding vive no botão, não na célula: assim o alvo de clique/toque é a
+        // célula inteira (44px), não uma linha de texto de 24px no meio dela.
+        className={`group flex items-center gap-1 w-full px-4 py-3 ${JUSTIFY[align]} text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors`}
       >
         {children}
         <span
