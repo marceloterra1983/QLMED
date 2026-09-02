@@ -1,89 +1,48 @@
-# Gates: Emissão de NF-e atômica (auditoria b177b07, backlog 1)
+# Gates: estreitar a chave do sync de CT-e (admin → invoices:write)
 
-Scope: fechar QLMED-FISCAL-001 (reentrada do rascunho), -002 (PATCH em paralelo
-com o send), -003 (sem unique de série+número), -004 (estado SEFAZ incerto
-apagado) e -005 (persistência pós-autorização não atômica).
+Scope: `/api/invoices/upload` exige `editor`; por chave de API, `requireRole`
+só mapeia `admin` → admin, o resto → viewer. O sync de CT-e ficou com uma
+chave `{admin}` por isso. Correção no guarda, uma vez, para todos os callers:
+`requireRole`/`requireEditor` aceitam `apiKeyScope`; a rota pede
+`invoices:write`.
 
-Invariante: **um rascunho produz no máximo um `enviNFe` autorizado**, e um
-estado incerto na SEFAZ nunca vira reemissão cega.
+Invariante: **uma chave com `invoices:write` passa no upload; uma chave com
+qualquer outro escopo não-admin leva 403; sessão continua igual.**
 
-Base: `origin/main` b177b07. Worktree `/home/marce/qlmed/.worktrees/nfe-emissao-atomica`.
-Rodar com o cwd no worktree.
+- [x] G1: `requireRole` aceita `{ apiKeyScope }` e trata a chave que o tem como
+  cumprindo `minRole`; sem a opção, comportamento antigo (só admin).
+  CHECK: grep -nE "apiKeyScope" src/lib/auth.ts | grep -c "requireRole\|effectiveRole\|options"
+  EXPECT: /[1-9]/
+  EVIDENCE: `grep -c` = 4 (options.apiKeyScope, scoped, effectiveRole, usedScope) em src/lib/auth.ts
 
-- [x] G1: CAS de estado — o send só acontece depois de um UPDATE condicional que
-  sai de `draft`/`rejected`.
-  CHECK: grep -q "status: { in: \['draft', 'rejected'\] }" src/lib/nfe-emission/authorize.ts && echo G1_CAS_OK
-  EXPECT: G1_CAS_OK
-  EVIDENCE: G1_CAS_OK
+- [x] G2: a rota de upload pede `invoices:write`.
+  CHECK: grep -nE "requireEditor\(\{ apiKeyScope: 'invoices:write' \}\)" src/app/api/invoices/upload/route.ts
+  EXPECT: /invoices:write/
+  EVIDENCE: linha `const auth = await requireEditor({ apiKeyScope: 'invoices:write' });` em upload/route.ts
 
-- [x] G2: Erro de transporte não apaga número nem chave no caminho de envio.
-  CHECK: test "$(sed -n '/} catch (error) {/,/^  }$/p' src/lib/nfe-emission/authorize.ts | grep -c 'number: null')" = 0 && echo G2_SEM_WIPE
-  EXPECT: G2_SEM_WIPE
-  EVIDENCE: G2_SEM_WIPE
+- [x] G3: teste de comportamento na rota real: chave `invoices:write` passa da
+  auth; chave `notifications:dispatch` → 403; chave `admin` passa; sem chave e
+  sem sessão → 401.
+  CHECK: npx vitest run src/lib/__tests__/cte-key-invoices-write.test.ts 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /passed/
+  EVIDENCE: `Tests 5 passed (5)` — invoices:write passa; notifications:dispatch 403; admin passa; sem chave 401; AccessLog com scope
 
-- [x] G3: Cliente de NFeConsultaProtocolo existe e é usado na reentrada.
-  CHECK: grep -q "export async function consultarNfeProtocolo" src/lib/nfe-emission/autorizacao-client.ts && grep -q "resolveSubmittedEmission" src/lib/nfe-emission/authorize.ts && echo G3_CONSULTA_OK
-  EXPECT: G3_CONSULTA_OK
-  EVIDENCE: G3_CONSULTA_OK
+- [x] G4: controlo positivo — revertendo o guarda (ignorar `apiKeyScope`), o
+  caso `invoices:write` fica vermelho com 403.
+  EVIDENCE: com `const scoped = false;` → `AssertionError: expected [ 401, 403 ] to not include 403`; restaurado por cp, `cmp` igual, 5/5 de volta
 
-- [x] G4: O desfecho vem do `infProt`, não do primeiro cStat da árvore, e isso
-  é provado por parse de resposta real da SEFAZ (não por grep).
-  CHECK: npx vitest run src/lib/__tests__/nfe-emission-autorizacao-response.test.ts 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
-  EXPECT: /5 passed/
-  EVIDENCE: Tests  5 passed (5)
+- [x] G5: o AccessLog regista o escopo usado (`scope=invoices:write`), como o
+  `requireAuth` já faz — não só `keyId`.
+  CHECK: npx vitest run src/lib/__tests__/cte-key-invoices-write.test.ts -t "AccessLog" 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /passed/
+  EVIDENCE: caso 'AccessLog regista o escopo usado' verde: path contém `keyId=ak1` e `scope=invoices:write`
 
-- [x] G4b: Controlo positivo do G4 — lendo o cStat do lote em vez do `infProt`,
-  os testes ficam vermelhos com o defeito exato da auditoria.
-  EVIDENCE: trocando `findNode(parsed, 'infProt')` por `findNode(parsed,
-  'retEnviNFe')`: "expected 'rejected' to be 'authorized'" (lote 104 lido como
-  rejeicao da nota), "expected '104' to be '539'", "expected 'rejected' to be
-  'pending'" / "Tests 3 failed | 2 passed (5)". Restaurado, volta a 5 passed.
+- [x] G6: suíte inteira, typecheck e lint verdes; `middleware-acl` e
+  `reaudit-r4-route-negatives` continuam verdes (nenhum negativo afrouxou).
+  CHECK: npm run typecheck >/dev/null 2>&1 && npm run lint >/dev/null 2>&1 && npm test 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
+  EXPECT: /passed/
+  EVIDENCE: typecheck exit 0; lint exit 0; `Tests 1339 passed | 9 skipped (1348)`; middleware-acl + reaudit-r4-route-negatives + upload-route-limits: 36 passed
 
-- [x] G5: Unique de (companyId, series, number) no schema e na migração.
-  CHECK: grep -q "@@unique(\[companyId, series, number\])" prisma/schema.prisma && grep -q "CREATE UNIQUE INDEX" prisma/migrations/20260901180000_nfe_emission_atomic/migration.sql && echo G5_UNIQUE_OK
-  EXPECT: G5_UNIQUE_OK
-  EVIDENCE: G5_UNIQUE_OK
-
-- [x] G6: PATCH recusa emissão `submitted` com 409.
-  CHECK: grep -q "existing.status === 'submitted'" "src/app/api/nfe-emissions/[id]/route.ts" && echo G6_PATCH_OK
-  EXPECT: G6_PATCH_OK
-  EVIDENCE: G6_PATCH_OK
-
-- [x] G7: Regressão — dois authorize concorrentes, exatamente 1 `send`.
-  CHECK: npx vitest run src/lib/__tests__/nfe-emission-authorize-atomic.test.ts 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
-  EXPECT: /8 passed/
-  EVIDENCE: Tests  8 passed (8)
-
-- [x] G8: Controlo positivo — sem o CAS, o teste de G7 fica vermelho.
-  EVIDENCE: trocando o `where` do updateMany por `{ id, companyId }` (sem o filtro
-  de status) e rodando o mesmo ficheiro: "× dois authorize concorrentes enviam à
-  SEFAZ exatamente uma vez" / "AssertionError: expected vi.fn() to be called 1
-  times, but got 2 times" / "Tests 1 failed | 7 passed (8)". Restaurado o CAS,
-  volta a "Tests 8 passed (8)". O teste falha pelo defeito, não por acaso.
-
-- [x] G9: Suíte inteira verde, sem regressão contra as 725 do TARGET.
-  CHECK: npm test 2>&1 | grep -E "^ +Tests +[0-9]+ passed"
-  EXPECT: /738 passed/
-  EVIDENCE: Tests  738 passed | 4 skipped (742)
-
-- [x] G10: typecheck e lint limpos.
-  CHECK: npm run typecheck >/dev/null 2>&1 && npm run lint >/dev/null 2>&1 && echo G10_TSC_LINT_OK
-  EXPECT: G10_TSC_LINT_OK
-  EVIDENCE: G10_TSC_LINT_OK
-
-- [x] G11: Dispensa do audit é nominal — só o GHSA-3f6p-5ww8-9rcr do mysql2,
-  com motivo e validade; qualquer outro high/critical continua reprovando.
-  CHECK: npm run audit:verify --silent
-  EXPECT: /GHSA-3f6p-5ww8-9rcr/
-  EVIDENCE: Dispensado até 2026-12-01: GHSA-3f6p-5ww8-9rcr (mysql2) | Dependency audit OK
-
-- [x] G12: Controlo positivo do portão de dependências — sem dispensa, com
-  dispensa vencida e com dispensa morta, ele reprova.
-  CHECK: bash scripts/test-dependency-audit.sh
-  EXPECT: /OK \(4 casos\)/
-  EVIDENCE: test-dependency-audit: OK (4 casos)
-
-- [x] G13: O guard de hardening do CI continua passando com o step trocado.
-  CHECK: bash scripts/verify-ci-hardening.sh && bash scripts/test-ci-hardening.sh >/dev/null && echo G13_HARDENING_OK
-  EXPECT: G13_HARDENING_OK
-  EVIDENCE: CI hardening policy OK | G13_HARDENING_OK
+- [x] G7: PR aberto com a ordem pós-deploy: gerar chave `invoices:write` em
+  `env/app.env`, recriar o container no próximo deploy, revogar a `admin`.
+  EVIDENCE: https://github.com/marceloterra1983/QLMED/pull/269 aberto com a ordem pós-deploy (gerar invoices:write em env/app.env → deploy recria → confirmar AccessLog → revogar admin)
