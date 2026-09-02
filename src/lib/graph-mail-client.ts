@@ -1,5 +1,8 @@
 import { createLogger } from '@/lib/logger';
 import { IMPCG_MAILBOX_TIMEOUT_MS, IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
+import { assertAllowedHost } from '@/lib/http-allowlist';
+import { GRAPH_ALLOWED_HOSTS } from '@/lib/onedrive-graph';
+import { MAX_PDF_BYTES } from '@/lib/pdf/ocr-limits';
 
 const log = createLogger('graph-mail');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
@@ -105,7 +108,11 @@ async function graphJson<T>(
   resourcePath: string,
   signal: AbortSignal,
 ): Promise<{ status: number; body: T }> {
-  const url = resourcePath.startsWith('http') ? resourcePath : `${GRAPH_BASE}${resourcePath}`;
+  // `resourcePath` absoluto é o `@odata.nextLink` devolvido pelo Graph. Fixar o
+  // host antes de anexar o Bearer: um nextLink forjado levaria o token embora.
+  const url = /^https?:\/\//i.test(resourcePath)
+    ? assertAllowedHost(resourcePath, GRAPH_ALLOWED_HOSTS).toString()
+    : `${GRAPH_BASE}${resourcePath}`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
     cache: 'no-store',
@@ -231,6 +238,16 @@ export async function listImpcgPdfAttachments(
     const name = attachment.name || 'anexo.pdf';
     const isPdf = (attachment.contentType || '').toLowerCase().includes('pdf') || name.toLowerCase().endsWith('.pdf');
     if (!isFile || !isPdf || !attachment.contentBytes) continue;
+
+    // O anexo vem de e-mail: teto ANTES de materializar o Buffer. Base64 ocupa
+    // 4 bytes por 3 de conteúdo, então dá para recusar pelo tamanho da string
+    // sem decodificar nada (auditoria FILE-003).
+    const approxBytes = Math.floor((attachment.contentBytes.length * 3) / 4);
+    if (approxBytes > MAX_PDF_BYTES) {
+      log.warn({ name, approxBytes, limit: MAX_PDF_BYTES }, 'attachment_too_large');
+      continue;
+    }
+
     pdfs.push({ name, content: Buffer.from(attachment.contentBytes, 'base64') });
   }
   return pdfs;

@@ -5,7 +5,7 @@ import path from 'path';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import type { OneDriveItemEntry } from './sync-types';
-import { resolveConfiguredDir, isXmlFile, isPdfFile, shouldIgnoreByPath, getDelayUntilNextHalfHourMs } from './sync-utils';
+import { resolveConfiguredDir, isXmlFile, isPdfFile, shouldIgnoreByPath, getDelayUntilNextHalfHourMs, safeJoinUnderDir } from './sync-utils';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import {
   listOneDriveChildrenAll,
@@ -173,7 +173,12 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
     const xmlFiles = children.filter((entry) => entry.file && isXmlFile(entry.name || ''));
 
     for (const oneDriveFile of xmlFiles) {
-      const targetFilePath = path.join(copyTargetDir, monthFolder.name, oneDriveFile.name);
+      // Nome vem do OneDrive: sem conter o join, `../` escreve fora do alvo.
+      const targetFilePath = safeJoinUnderDir(copyTargetDir, monthFolder.name, oneDriveFile.name);
+      if (!targetFilePath) {
+        log.warn({ folder: monthFolder.name, file: oneDriveFile.name }, 'Nome de item OneDrive recusado (path traversal)');
+        continue;
+      }
       const copied = await copyOneDriveXmlFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
       if (!copied) continue;
 
@@ -199,7 +204,11 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
         const pdfFiles = children.filter((entry) => entry.file && isPdfFile(entry.name || ''));
 
         for (const oneDriveFile of pdfFiles) {
-          const targetFilePath = path.join(pdfTargetDir, monthFolder.name, oneDriveFile.name);
+          const targetFilePath = safeJoinUnderDir(pdfTargetDir, monthFolder.name, oneDriveFile.name);
+          if (!targetFilePath) {
+            log.warn({ folder: monthFolder.name, file: oneDriveFile.name }, 'Nome de item OneDrive recusado (path traversal)');
+            continue;
+          }
           const copied = await copyOneDrivePdfFileIfNeeded(accessToken, connection.driveId, oneDriveFile, targetFilePath);
           if (copied) {
             copiedPdfCount += 1;
@@ -255,7 +264,13 @@ async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Pr
 
       for (const sourceFilePath of sourceFiles) {
         const relativePath = path.relative(sourceRoot, sourceFilePath);
-        const targetFilePath = path.join(copyTargetDir, relativePath);
+        // Confina também a cópia local: um symlink ou `..` na origem não pode
+        // fazer o destino sair de copyTargetDir (auditoria FILE-004).
+        const targetFilePath = safeJoinUnderDir(copyTargetDir, ...relativePath.split(path.sep));
+        if (!targetFilePath) {
+          log.warn({ relativePath }, 'Caminho de origem recusado (path traversal)');
+          continue;
+        }
         const copied = await copyXmlFileIfNeeded(sourceFilePath, targetFilePath);
         if (!copied) continue;
 
@@ -464,7 +479,11 @@ export function startLocalXmlSync(): void {
   if (started) return;
   started = true;
   const hasCopySource = COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED;
-  markBackgroundServiceStarted('local-xml-sync', { enabled: localXmlWatchEnabled || hasCopySource });
+  markBackgroundServiceStarted('local-xml-sync', {
+    enabled: localXmlWatchEnabled || hasCopySource,
+    // Batimento vem do timer mais rápido que este arranque liga.
+    heartbeatIntervalMs: localXmlWatchEnabled ? RESCAN_INTERVAL_MS : COPY_FROM_SOURCE_INTERVAL_MS,
+  });
 
   // OneDrive/source copy runs independently of local filesystem watching,
   // so emitted invoices sync even when LOCAL_XML_WATCH_ENABLED=false (production).

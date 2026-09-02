@@ -1,4 +1,5 @@
 import { createLogger } from '@/lib/logger';
+import { assertAllowedHost } from '@/lib/http-allowlist';
 
 const log = createLogger('whatsapp-evolution');
 
@@ -31,7 +32,32 @@ export function getEvolutionConfig(): EvolutionConfig | null {
   const instance = (process.env.EVO_INSTANCE ?? '').trim();
   const apiKey = (process.env.EVO_API_KEY ?? '').trim();
   if (!baseUrl || !instance || !apiKey) return null;
+
+  // Endereço inutilizável desliga o canal, como uma variável em falta — a
+  // alternativa seria lançar dentro do envio de uma nota e derrubar o fluxo
+  // fiscal por causa de configuração (SPEC-031 FR-006).
+  if (!evolutionHost(baseUrl)) {
+    log.warn('evolution_base_url_rejected');
+    return null;
+  }
   return { baseUrl: baseUrl.replace(/\/+$/, ''), instance, apiKey };
+}
+
+/**
+ * Host da instância Evolution, ou `null` se o endereço não puder receber a
+ * `apikey`.
+ *
+ * `EVO_API_URL` não tinha validação nenhuma: aceitava `http://` em claro e
+ * qualquer host. Como a instância é auto-hospedada não há lista fixa — a
+ * política é a mesma do n8n: o host que o operador configurou, e só ele.
+ */
+function evolutionHost(baseUrl: string): string | null {
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  try {
+    return assertAllowedHost(trimmed, [new URL(trimmed).hostname]).hostname;
+  } catch {
+    return null;
+  }
 }
 
 export type SendDocumentInput = {
@@ -49,8 +75,21 @@ export async function sendWhatsAppDocument(
   input: SendDocumentInput,
   config: EvolutionConfig,
 ): Promise<{ messageId: string | null }> {
-  const response = await fetch(`${config.baseUrl}/message/sendMedia/${encodeURIComponent(config.instance)}`, {
+  const host = evolutionHost(config.baseUrl);
+  if (!host) throw new WhatsAppSendError('EVO_API_URL recusado pela política de egresso', 0);
+
+  const url = assertAllowedHost(
+    `${config.baseUrl}/message/sendMedia/${encodeURIComponent(config.instance)}`,
+    [host],
+  );
+
+  const response = await fetch(url, {
     method: 'POST',
+    // `fetch` segue redirect por omissão, e cabeçalhos personalizados como
+    // `apikey` NÃO são removidos pelo spec num salto entre origens — só
+    // Authorization/Cookie o são. Um 302 levaria a chave E o PDF para outro
+    // host. Aqui um redirect vira erro, não um segundo pedido.
+    redirect: 'error',
     headers: {
       apikey: config.apiKey,
       'Content-Type': 'application/json',

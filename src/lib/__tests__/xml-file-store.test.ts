@@ -19,6 +19,7 @@ describe('buildXmlFileName', () => {
 describe('resolveInvoiceXmlContent', () => {
   it('faz fallback para xmlContent quando não há arquivo', async () => {
     const xml = await resolveInvoiceXmlContent({
+      companyId: 'company-1',
       accessKey: 'KEY_THAT_DOES_NOT_EXIST_ON_DISK_999',
       type: 'NFE',
       issueDate: new Date('2026-01-15'),

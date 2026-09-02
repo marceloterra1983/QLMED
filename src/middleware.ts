@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit, RATE_LIMITS, getRateLimitHeaders, RateLimitConfig } from '@/lib/rate-limit';
-import { canAccessApi, canAccessPage, PAGE_GROUPS } from '@/lib/navigation';
+import { canAccessApi, canAccessPage, resolvePanelPagePath } from '@/lib/navigation';
 import { API_KEY_REQUEST_METHOD_HEADER, API_KEY_REQUEST_PATH_HEADER } from '@/lib/api-key-scopes';
 
 /**
@@ -10,7 +10,7 @@ import { API_KEY_REQUEST_METHOD_HEADER, API_KEY_REQUEST_PATH_HEADER } from '@/li
  */
 const PUBLIC_API_ROUTES = [
   '/api/auth',           // NextAuth endpoints (login, callback, etc.) — except /api/auth/logout which requires auth
-  '/api/health',         // Public: status/db/build; memory/uptime/integrity need session (route)
+  '/api/health',         // Public: status/db up-or-down; build/latency/memory/uptime need session (route)
 ];
 
 /**
@@ -69,6 +69,16 @@ export function allowsRouteLevelApiKeyAuth(pathname: string): boolean {
   return false;
 }
 
+/** Nomes de cookie que indicam sessão de browser (não worker). */
+const SESSION_COOKIE_NAMES = [
+  'next-auth.session-token',
+  '__Secure-next-auth.session-token',
+];
+
+function hasSessionCookie(req: NextRequest): boolean {
+  return SESSION_COOKIE_NAMES.some((name) => Boolean(req.cookies.get(name)?.value));
+}
+
 const AUTH_COOKIE_NAMES = [
   'next-auth.session-token',
   '__Secure-next-auth.session-token',
@@ -101,34 +111,44 @@ function isValidHeaderIp(value: string) {
   return /^[0-9a-fA-F:.]+$/.test(trimmed);
 }
 
+/**
+ * AUTH-009. Todo header aqui é escrito pelo cliente até que um proxy de
+ * confiança o reescreva, então a ordem importa:
+ *
+ * 1. `CF-Connecting-IP` — a Cloudflare DESCARTA o valor enviado pelo cliente e
+ *    escreve o seu; é o único header que um atacante não consegue forjar quando
+ *    o tráfego passa mesmo pela borda.
+ * 2. `X-Forwarded-For` contando `TRUST_PROXY_HOPS` saltos A PARTIR DA DIREITA.
+ *    Cada proxy de confiança ACRESCENTA um endereço à direita; o cliente
+ *    controla tudo o que está à esquerda. Com N proxies, o endereço real é o
+ *    N-ésimo a contar do fim. O default 1 preserva o comportamento actual
+ *    (último elemento) para quem corre atrás de um único proxy.
+ * 3. `X-Real-IP`.
+ *
+ * `TRUST_PROXY_HEADERS=false` recusa os três: sem proxy declarado, nenhum
+ * header é prova de origem e a chave passa a ser um balde único.
+ */
 export function getClientIp(headers: Headers) {
   if (process.env.TRUST_PROXY_HEADERS === 'false') return 'untrusted-proxy';
+
+  const cfIp = headers.get('cf-connecting-ip');
+  if (cfIp && isValidHeaderIp(cfIp)) return cfIp.trim();
+
+  const parsedHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? '', 10);
+  const hops = Number.isInteger(parsedHops) && parsedHops > 0 ? parsedHops : 1;
 
   const forwardedFor = headers.get('x-forwarded-for');
   if (forwardedFor) {
     const ips = forwardedFor.split(',').map((part) => part.trim()).filter(isValidHeaderIp);
-    const last = ips.at(-1);
-    if (last) return last;
+    // Conta `hops` a partir da direita. Se a cadeia for mais curta do que o
+    // número de proxies declarados, o header não foi escrito por eles — cai
+    // fora em vez de aceitar um valor que o cliente inventou.
+    if (ips.length >= hops) return ips[ips.length - hops];
   }
 
   const realIp = headers.get('x-real-ip');
   if (realIp && isValidHeaderIp(realIp)) return realIp.trim();
   return 'unknown';
-}
-
-/**
- * Returns the canonical panel page path that matches the current request,
- * or null when the request isn't for a gated panel page (e.g. root, /login).
- */
-function resolvePanelPagePath(pathname: string): string | null {
-  for (const group of PAGE_GROUPS) {
-    for (const page of group.pages) {
-      if (pathname === page.path || pathname.startsWith(page.path + '/')) {
-        return page.path;
-      }
-    }
-  }
-  return null;
 }
 
 /**
@@ -184,7 +204,12 @@ export async function middleware(req: NextRequest) {
   // have route-level guards, and strips any spoofed validation marker.
   if (isApiRoute) {
     const apiKey = req.headers.get('x-api-key');
-    if (apiKey && allowsRouteLevelApiKeyAuth(req.nextUrl.pathname)) {
+    // A passagem é para WORKER, não para browser. Sem esta condição, uma sessão
+    // válida bastava acrescentar `x-api-key: qualquer-lixo` para saltar o
+    // `canAccessApi` inteiro: o `return` acontece antes do `getToken()`, e a
+    // rota cai no cookie pelo `requireAuth`. Um header escolhido pelo cliente
+    // desligava a ACL — anulava AUTH-005, -013 e -014 na prática.
+    if (apiKey && !hasSessionCookie(req) && allowsRouteLevelApiKeyAuth(req.nextUrl.pathname)) {
       const requestHeaders = new Headers(req.headers);
       requestHeaders.delete('x-api-key-validated');
       requestHeaders.delete(API_KEY_REQUEST_PATH_HEADER);
@@ -231,8 +256,11 @@ export async function middleware(req: NextRequest) {
         }
 
         // Panel page requests: check the matched page against allowedPages.
-        const pagePath = resolvePanelPagePath(req.nextUrl.pathname);
-        if (pagePath && !canAccessPage(role, allowedPages, pagePath)) {
+        // An unmapped panel path (no PAGE_GROUPS entry, no alias) falls back to
+        // its raw pathname, which is never present in allowedPages — so it is
+        // denied instead of skipping the check.
+        const pagePath = resolvePanelPagePath(req.nextUrl.pathname) ?? req.nextUrl.pathname;
+        if (!canAccessPage(role, allowedPages, pagePath)) {
           console.warn('[Auth] Page access denied by allowedPages', {
             userId: token.id,
             path: req.nextUrl.pathname,

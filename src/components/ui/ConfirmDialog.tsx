@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import Button from '@/components/ui/Button';
+import { useDialogKeydown } from '@/hooks/useDialogKeydown';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -33,20 +34,20 @@ export default function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
+  // Escape + trap de Tab, o mesmo do Modal. Antes daqui só havia Escape: o Tab
+  // saía do diálogo apesar do aria-modal (QLMED-UI-004).
+  useDialogKeydown(isOpen, dialogRef, onClose);
+
   useEffect(() => {
     if (!isOpen) return;
 
     const previousOverflow = document.body.style.overflow;
-    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-
     document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;

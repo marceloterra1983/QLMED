@@ -83,27 +83,34 @@ export async function GET() {
     if (integrity && !integrity.healthy) {
       const errorResponse: Record<string, unknown> = {
         status: 'error',
-        db: { status: 'connected', latencyMs: dbLatency },
+        db: { status: 'connected' },
         timestamp: new Date().toISOString(),
       };
       if (authenticated) {
         errorResponse.build = build;
+        // REAUD-B-14: a OBS-003 tirou a latência do 200 anónimo e ela tinha
+        // ficado neste ramo. É reconhecimento de infra — só com sessão.
+        errorResponse.db = { status: 'connected', latencyMs: dbLatency };
         errorResponse.integrity = integrity;
         errorResponse.error = 'Banco sem dados obrigatórios de produção';
       }
       return NextResponse.json(errorResponse, { status: 503 });
     }
 
-    // Public response: status, db connectivity, build metadata, timestamp
+    // Resposta pública: só o suficiente para um load balancer decidir se o
+    // processo está vivo. O SHA do build e a latência do banco são
+    // reconhecimento de versão/infra e passaram para o ramo autenticado
+    // (auditoria OBS-003).
     const publicResponse: Record<string, unknown> = {
       status: 'ok',
-      db: { status: 'connected', latencyMs: dbLatency },
-      build,
+      db: { status: 'connected' },
       timestamp: new Date().toISOString(),
     };
 
     if (authenticated) {
-      // Authenticated response: add uptime, memory, integrity
+      // Authenticated response: add build, db latency, uptime, memory, integrity
+      publicResponse.build = build;
+      publicResponse.db = { status: 'connected', latencyMs: dbLatency };
       const [outboxCounts, oldestPending] = await Promise.all([
         prisma.notificationDelivery.groupBy({
           by: ['status'],

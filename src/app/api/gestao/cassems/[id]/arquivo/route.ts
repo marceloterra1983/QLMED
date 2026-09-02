@@ -42,13 +42,12 @@ export async function GET(
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
     }
 
-    const connection =
-      (await prisma.oneDriveConnection.findFirst({
-        where: { companyId: access.companyId, accountEmail: CASSEMS_ONEDRIVE_ACCOUNT },
-      })) ??
-      (await prisma.oneDriveConnection.findFirst({
-        where: { companyId: access.companyId },
-      }));
+    // Só a conexão NOMEADA do CASSEMS. O fallback "qualquer conexão OneDrive da
+    // empresa" fazia o download de um documento clínico sair por uma caixa que
+    // não é a dele — e ninguém percebia, porque devolvia 200 (PRIV-002).
+    const connection = await prisma.oneDriveConnection.findFirst({
+      where: { companyId: access.companyId, accountEmail: CASSEMS_ONEDRIVE_ACCOUNT },
+    });
     if (!connection) {
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
     }
@@ -65,11 +64,24 @@ export async function GET(
       'PDF CASSEMS pronto para stream',
     );
 
+    // O ofício é documento clínico: quem abriu tem de ficar na trilha, não só
+    // o tamanho do arquivo (auditoria PRIV-002). Fire-and-forget para não
+    // segurar o stream, no padrão já usado em users/[id] e auth/logout.
+    prisma.accessLog
+      .create({
+        data: {
+          userId: access.userId,
+          action: 'navigation',
+          path: `download cassems-oficio id=${row.id} file=${row.fileName}`,
+        },
+      })
+      .catch((err) => log.warn({ err, authorizationId: row.id }, 'AccessLog cassems pdf write failed'));
+
     return new Response(content.body, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': inlineDisposition(row.fileName),
-        'Cache-Control': 'private, max-age=300',
+        'Cache-Control': 'private, no-store',
         ...(content.size !== null ? { 'Content-Length': String(content.size) } : {}),
       },
     });

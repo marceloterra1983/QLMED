@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { fetchAnvisaData } from '@/lib/anvisa-api';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 
@@ -20,8 +21,9 @@ const anvisaCodeSchema = z.object({
  * Checks product_registry cache first (if synced within 7 days), otherwise queries ANVISA API.
  */
 export async function GET(req: NextRequest) {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
   }
@@ -37,9 +39,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // O cache e a sincronização são por empresa: sem companyId esta rota lia e
+    // reescrevia o product_registry de qualquer empresa.
+    const company = await getOrCreateSingleCompany(userId);
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const cached = await prisma.productRegistry.findFirst({
       where: {
+        companyId: company.id,
         anvisaCode: code,
         anvisaSyncedAt: { gt: since },
         anvisaStatus: { not: null },
@@ -85,7 +91,7 @@ export async function GET(req: NextRequest) {
     }
 
     const matches = await prisma.productRegistry.findMany({
-      where: { anvisaCode: code },
+      where: { companyId: company.id, anvisaCode: code },
       select: {
         id: true,
         anvisaMatchedProductName: true,

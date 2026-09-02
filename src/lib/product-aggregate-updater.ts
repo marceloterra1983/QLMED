@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { extractProductsFromXml, buildProductKey, normalizeUnit, isResaleCustomer, computeSearchText, normalizeAnvisaRegistration, type ProductFromXml } from '@/lib/product-aggregation';
+import { buildResaleIndex, matchResaleProduct } from '@/lib/product-aggregation/resale-match';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
@@ -152,7 +153,11 @@ async function extractAndStoreTaxData(
     const { totals, items } = await extractAllTaxData(xmlContent);
 
     if (totals) {
-      await upsertTaxTotals({ invoiceId, companyId, ...totals });
+      // QLMED-DATA-007: quem grava totais grava a cobertura de itens junto. Sem
+      // isto a nota ingerida nasce com item_count NULL e volta ao backfill sem
+      // necessidade. Sem o `if (totals)`, CT-e e NFS-e ganhariam linha em
+      // invoice_tax_totals e inflariam a contagem de cobertura de NF-e.
+      await upsertTaxTotals({ invoiceId, companyId, ...totals, itemCount: items.length });
     }
 
     if (items.length > 0) {
@@ -324,22 +329,47 @@ async function upsertProductAggregates(
   }
 }
 
+/**
+ * Catálogo da empresa indexado pelas MESMAS chaves que o rebuild usa
+ * (FISCAL-009). Antes, incremental e rebuild casavam a linha de revenda por
+ * algoritmos diferentes — `buildProductKey` exato aqui, índice fuzzy lá — e o
+ * estoque mudava sozinho depois do rebuild da madrugada.
+ *
+ * ponytail: carrega o catálogo inteiro numa query por nota. Troca N findUnique
+ * (um por linha) por 1 SELECT, então já é menos ida ao banco do que antes; se
+ * o catálogo passar de dezenas de milhares de linhas, indexar por token no
+ * Postgres é o próximo passo.
+ */
+type RegistryMatchRow = {
+  id: string;
+  code: string | null;
+  unit: string | null;
+  ean: string | null;
+  description: string;
+};
+
+async function loadResaleIndex(
+  db: Prisma.TransactionClient,
+  companyId: string,
+): Promise<Map<string, RegistryMatchRow>> {
+  const rows = await db.productRegistry.findMany({
+    where: { companyId },
+    select: { id: true, code: true, unit: true, ean: true, description: true },
+  });
+  return buildResaleIndex(rows, (row) => row);
+}
+
 async function updateResaleDeductions(
   db: Prisma.TransactionClient,
   opts: { companyId: string },
   products: ProductFromXml[],
 ) {
   const now = new Date();
+  const index = await loadResaleIndex(db, opts.companyId);
   for (const product of products) {
-    const key = buildProductKey(product);
-    const existing = await db.productRegistry.findUnique({
-      where: {
-        companyId_productKey: {
-          companyId: opts.companyId,
-          productKey: key,
-        },
-      },
-    });
+    const match = matchResaleProduct(index, product);
+    if (!match) continue;
+    const existing = await db.productRegistry.findUnique({ where: { id: match.id } });
     if (!existing) continue;
 
     const newQty = Math.max((existing.aggTotalQuantity ?? 0) - product.quantity, 0);
@@ -369,16 +399,12 @@ async function updateSaleDate(
   if (!opts.issueDate) return;
   const now = new Date();
 
+  // Mesmo matcher da dedução de revenda: era o mesmo defeito no caller irmão.
+  const index = await loadResaleIndex(db, opts.companyId);
   for (const product of products) {
-    const key = buildProductKey(product);
-    const existing = await db.productRegistry.findUnique({
-      where: {
-        companyId_productKey: {
-          companyId: opts.companyId,
-          productKey: key,
-        },
-      },
-    });
+    const match = matchResaleProduct(index, product);
+    if (!match) continue;
+    const existing = await db.productRegistry.findUnique({ where: { id: match.id } });
     if (!existing) continue;
 
     const isNewer =

@@ -11,6 +11,7 @@
  * permissão esquecida.
  */
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 const WAIVERS = [
   {
@@ -29,6 +30,12 @@ const WAIVERS = [
 const BLOCKING = new Set(['high', 'critical']);
 
 function runAudit() {
+  // Deixa o teste alimentar um relatório sintético. Sem isto, exercitar
+  // "advisory novo e não dispensado reprova" exigiria instalar um pacote
+  // vulnerável de propósito — e essa propriedade nunca tinha sido testada.
+  const injected = process.env.QLMED_AUDIT_REPORT_FILE;
+  if (injected) return JSON.parse(readFileSync(injected, 'utf8'));
+
   // npm audit sai com código 1 quando encontra algo: o status é esperado e a
   // decisão é nossa. O que não pode acontecer é JSON ilegível passar por "ok".
   const proc = spawnSync(
@@ -47,7 +54,14 @@ function runAudit() {
   }
 }
 
-/** GHSA de um aviso, seguindo os `via` que apontam para outro pacote. */
+/**
+ * GHSA de um aviso, seguindo os `via` que apontam para outro pacote.
+ *
+ * A severidade que decide é a do ADVISORY, não a do nó. O `npm audit` reporta
+ * no nó uma severidade agregada que pode ser MENOR que a do aviso que ele
+ * carrega — um `critical` pendurado num nó `moderate` passava por baixo do
+ * filtro. Achado da re-auditoria adversarial sobre este próprio portão.
+ */
 function advisoriesFor(name, vulnerabilities, seen = new Set()) {
   if (seen.has(name)) return [];
   seen.add(name);
@@ -60,7 +74,11 @@ function advisoriesFor(name, vulnerabilities, seen = new Set()) {
       continue;
     }
     const match = /GHSA-[0-9a-z-]+/i.exec(via.url || '');
-    found.push({ id: match ? match[0] : `npm-${via.source}`, package: via.name || name });
+    found.push({
+      id: match ? match[0] : `npm-${via.source}`,
+      package: via.name || name,
+      severity: via.severity || vuln.severity,
+    });
   }
   return found;
 }
@@ -82,9 +100,14 @@ function main() {
   const blocking = [];
 
   for (const [name, vuln] of Object.entries(vulnerabilities)) {
-    if (!BLOCKING.has(vuln.severity)) continue;
     const advisories = advisoriesFor(name, vulnerabilities);
-    const unwaived = advisories.filter((a) => {
+    const severe = advisories.filter((a) => BLOCKING.has(a.severity));
+    // Bloqueia se o NÓ é high/critical OU se qualquer advisory que ele carrega
+    // é — as duas coisas, porque nenhuma implica a outra.
+    if (!BLOCKING.has(vuln.severity) && severe.length === 0) continue;
+
+    const considered = severe.length > 0 ? severe : advisories;
+    const unwaived = considered.filter((a) => {
       const waiver = WAIVERS.find((w) => w.advisory === a.id && w.package === a.package);
       if (waiver) {
         used.add(waiver.advisory);
@@ -92,7 +115,7 @@ function main() {
       }
       return true;
     });
-    if (advisories.length === 0 || unwaived.length > 0) {
+    if (considered.length === 0 || unwaived.length > 0) {
       blocking.push({ name, severity: vuln.severity, advisories: unwaived });
     }
   }

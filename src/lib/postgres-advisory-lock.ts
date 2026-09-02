@@ -15,6 +15,16 @@ export function syncLogLockKey(companyId: string): string {
   return `sync-log-start:${companyId}`;
 }
 
+/**
+ * Lock de EXECUÇÃO do sync (sessão, não transação): fica tomado enquanto a
+ * corrida está viva e é largado pelo próprio Postgres quando a conexão morre.
+ * É por isso que serve de prova de liveness — a linha `running` no SyncLog não
+ * serve, porque sobrevive ao processo que a criou.
+ */
+export function syncExecutionLockKey(companyId: string): string {
+  return `sync-execution:${companyId}`;
+}
+
 export function impcgMailIngestLockKey(companyId: string): string {
   return `impcg-mail-ingest:${companyId}`;
 }
@@ -52,6 +62,53 @@ export async function createSyncLogIfIdle(
       select: { id: true },
     });
   });
+}
+
+export interface SyncRunHandle {
+  syncLogId: string;
+  release(): Promise<void>;
+}
+
+/**
+ * Portão único de execução de sync: a linha `running` no SyncLog MAIS o lock de
+ * execução. A linha sozinha nunca bastou — sobrevive à morte do processo, e por
+ * isso a recuperação por tempo (30 min) tanto matava corrida viva quanto
+ * libertava o caminho para uma segunda corrida em paralelo. O lock morre com a
+ * conexão, portanto quem o tem está mesmo vivo.
+ *
+ * Quem chama tem de libertar em `finally`.
+ */
+export async function beginSyncRun(
+  companyId: string,
+  syncMethod: SyncMethod,
+  existingSyncLogId?: string,
+): Promise<SyncRunHandle> {
+  const syncLog = existingSyncLogId
+    ? { id: existingSyncLogId }
+    : await createSyncLogIfIdle(companyId, syncMethod);
+
+  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
+
+  const lock = await acquirePostgresAdvisoryLock(syncExecutionLockKey(companyId));
+  if (!lock) {
+    // Outro processo está mesmo a sincronizar esta empresa. Fecha o log que já
+    // foi criado para não ficar 'running' órfão a bloquear os próximos ciclos.
+    try {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: {
+          status: 'error',
+          errorMessage: 'SYNC_ALREADY_RUNNING: outro processo detém o lock de execução',
+          completedAt: new Date(),
+        },
+      });
+    } catch {
+      // O log fica para a recuperação por liveness; o importante é não correr.
+    }
+    throw new Error('SYNC_ALREADY_RUNNING');
+  }
+
+  return { syncLogId: syncLog.id, release: () => lock.release() };
 }
 
 export async function acquirePostgresAdvisoryLock(

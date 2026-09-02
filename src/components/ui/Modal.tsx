@@ -109,7 +109,7 @@ export default function Modal({
       document.body.style.overflow = anterior;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen]);
 
   // Guarda quem abriu, foca o primeiro elemento, devolve o foco ao fechar.
   useEffect(() => {

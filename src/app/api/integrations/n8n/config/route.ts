@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { apiError, apiValidationError } from '@/lib/api-error';
+import { resolveN8nHost } from '@/lib/n8n-client';
 
 /** Mesmo mascaramento usado em nsdocs/config: o token cru nunca sai daqui. */
 function maskToken(token: string): string {
@@ -14,7 +15,14 @@ function maskToken(token: string): string {
 
 const configSchema = z
   .object({
-    baseUrl: z.string().url(),
+    // `z.string().url()` aceitava http:// em claro, `http://169.254.169.254/` e
+    // credenciais na própria URL — e a chave do n8n seguia para lá. A regra de
+    // egresso é a mesma usada na hora de chamar (Princípio: uma política só).
+    baseUrl: z
+      .string()
+      .refine((value) => resolveN8nHost(value) !== null, {
+        message: 'baseUrl deve ser https, sem credenciais na URL e fora de faixas privadas',
+      }),
     apiToken: z.string().min(1).optional(),
   })
   .strict();

@@ -9,12 +9,26 @@ import {
 import { certificateEnvironmentSchema } from '@/lib/schemas/certificate';
 
 describe('ambiente de emissão', () => {
-  it('normaliza só homologation ou production', () => {
+  it('aceita só os dois valores do enum', () => {
     expect(resolveEmissionEnvironment('homologation')).toBe('homologation');
     expect(resolveEmissionEnvironment('production')).toBe('production');
-    expect(resolveEmissionEnvironment('prod')).toBe('production');
-    expect(resolveEmissionEnvironment(null)).toBe('production');
   });
+
+  it('mantém production quando o valor está ausente (default do schema)', () => {
+    expect(resolveEmissionEnvironment(null)).toBe('production');
+    expect(resolveEmissionEnvironment(undefined)).toBe('production');
+    expect(resolveEmissionEnvironment('')).toBe('production');
+  });
+
+  // FISCAL-010: a asserção anterior era `resolveEmissionEnvironment('prod')`
+  // === 'production'. Ela fixava o defeito: um valor fora do enum caía em
+  // PRODUÇÃO, que emite NF-e de verdade. Agora tem de recusar.
+  it.each(['prod', 'homologacao', 'hom', 'HOMOLOGATION', 'sandbox'])(
+    'recusa o valor fora do enum %s em vez de cair em produção',
+    (value) => {
+      expect(() => resolveEmissionEnvironment(value)).toThrow('Ambiente de emissão inválido');
+    },
+  );
 
   it('valida o payload do seletor', () => {
     expect(certificateEnvironmentSchema.parse({ environment: 'homologation' }).environment).toBe('homologation');

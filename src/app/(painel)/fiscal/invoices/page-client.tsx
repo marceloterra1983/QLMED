@@ -12,6 +12,7 @@ import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
 import { defaultNfeCollapsedKeys, resolveCollapsedGroupsAfterFetch } from '@/lib/list-collapse';
+import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
@@ -552,7 +553,7 @@ export default function InvoicesPage() {
             <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
-          <span className="text-xs text-slate-500">{total} nota(s)</span>
+          <ListCount shown={invoices.length} total={total} noun="nota(s)" />
         </div>
       </div>
 

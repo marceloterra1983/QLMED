@@ -4,8 +4,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
 import { isSefazTlsTrustError } from '@/lib/ssl-verify';
-import { decrypt } from '@/lib/crypto';
-import { CertificateManager } from '@/lib/certificate-manager';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { UF_TO_CODE } from '@/lib/constants';
 import { resolveEmissionEnvironment } from '@/lib/nfe-emission/environment';
 import { emitenteFromIssuedXml } from '@/lib/nfe-emission/emitente';
@@ -49,8 +48,7 @@ export async function POST() {
       select: { pfxData: true, pfxPassword: true, validTo: true, environment: true },
     });
     assertCertificateReadyForSefaz(cert);
-    const password = decrypt(cert.pfxPassword);
-    const pems = CertificateManager.extractPems(Buffer.from(cert.pfxData), password);
+    const pems = openCertificatePems(cert, company.cnpj);
     const environment = resolveEmissionEnvironment(cert.environment);
     const cUf = await resolveCuf(company.id, company.cnpj);
     const status = await consultarStatusServico({

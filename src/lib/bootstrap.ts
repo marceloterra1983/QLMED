@@ -19,6 +19,7 @@ const globalForBootstrap = globalThis as unknown as {
   __localXmlSyncStarted?: boolean;
   __impcgIngestStarted?: boolean;
   __cassemsIngestStarted?: boolean;
+  __outboxPurgeStarted?: boolean;
 };
 
 if (!globalForBootstrap.__autoSyncStarted) {
@@ -55,4 +56,13 @@ if (!globalForBootstrap.__cassemsIngestStarted) {
       .then((m) => m.startCassemsMailIngest())
       .catch((err) => log.error({ err }, 'CassemsMailIngest falha ao iniciar'));
   }, 16_000);
+}
+
+if (!globalForBootstrap.__outboxPurgeStarted) {
+  globalForBootstrap.__outboxPurgeStarted = true;
+  setTimeout(() => {
+    import('./notification-outbox')
+      .then((m) => m.startNotificationOutboxPurge())
+      .catch((err) => log.error({ err }, 'NotificationOutboxPurge falha ao iniciar'));
+  }, 18_000);
 }

@@ -49,4 +49,43 @@ sed "s/advisory: 'GHSA-[0-9a-zA-Z-]*'/advisory: 'GHSA-0000-0000-0000'/" "$gate" 
 expect_status "dispensa morta" "$tmp/morta.mjs" 1
 expect_output "sem aviso correspondente"
 
-echo "test-dependency-audit: OK (4 casos)"
+# 5. Advisory NOVO e não dispensado reprova. Esta é a propriedade que o portão
+#    existe para ter, e era a única que não estava testada — a re-auditoria
+#    furou o portão exactamente aqui.
+cat > "$tmp/novo.json" <<'JSON'
+{"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
+  "via":[{"source":1153173,"name":"mysql2","severity":"high",
+          "url":"https://github.com/advisories/GHSA-3f6p-5ww8-9rcr","title":"m"}]},"pacote-x":{"name":"pacote-x","severity":"critical",
+  "via":[{"source":9,"name":"pacote-x","severity":"critical",
+          "url":"https://github.com/advisories/GHSA-novo-novo-novo","title":"t"}]}}}
+JSON
+QLMED_AUDIT_REPORT_FILE="$tmp/novo.json" expect_status "advisory novo" "$gate" 1
+expect_output "GHSA-novo-novo-novo"
+
+# 6. Advisory CRITICAL pendurado num nó de severidade MENOR também reprova.
+#    O `npm audit` agrega no nó, e a agregação pode esconder o aviso. Ler só a
+#    severidade do nó deixava passar um critical — foi assim que o portão foi
+#    furado.
+cat > "$tmp/mascarado.json" <<'JSON'
+{"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
+  "via":[{"source":1153173,"name":"mysql2","severity":"high",
+          "url":"https://github.com/advisories/GHSA-3f6p-5ww8-9rcr","title":"m"}]},"pacote-y":{"name":"pacote-y","severity":"moderate",
+  "via":[{"source":10,"name":"pacote-y","severity":"critical",
+          "url":"https://github.com/advisories/GHSA-mask-mask-mask","title":"t"}]}}}
+JSON
+QLMED_AUDIT_REPORT_FILE="$tmp/mascarado.json" expect_status "critical mascarado por nó moderate" "$gate" 1
+expect_output "GHSA-mask-mask-mask"
+
+# 7. Contraprova: um relatório só com severidade baixa passa. Sem este caso, os
+#    dois acima ficariam satisfeitos por um portão que reprova tudo.
+cat > "$tmp/baixo.json" <<'JSON'
+{"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
+  "via":[{"source":1153173,"name":"mysql2","severity":"high",
+          "url":"https://github.com/advisories/GHSA-3f6p-5ww8-9rcr","title":"m"}]},"pacote-z":{"name":"pacote-z","severity":"low",
+  "via":[{"source":11,"name":"pacote-z","severity":"low",
+          "url":"https://github.com/advisories/GHSA-low0-low0-low0","title":"t"}]}}}
+JSON
+QLMED_AUDIT_REPORT_FILE="$tmp/baixo.json" expect_status "só severidade baixa" "$gate" 0
+expect_output "Dependency audit OK"
+
+echo "test-dependency-audit: OK (7 casos)"

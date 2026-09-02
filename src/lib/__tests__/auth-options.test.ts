@@ -131,7 +131,11 @@ describe('NextAuth regressions', () => {
     });
   });
 
-  it('does not refresh a recent token with complete claims', async () => {
+  // AUTH-012: este teste travava o comportamento inverso — "não revalida um
+  // token recente". Era exactamente a janela de 5 min que atrasava o
+  // logout-everywhere nas páginas do painel: o middleware do Edge não fala com
+  // o banco, só confere que a claim é numérica.
+  it('revalidates tokenVersion against the DB on EVERY pass, even for a fresh token', async () => {
     const jwtCallback = authOptions.callbacks?.jwt;
     const token: JWT = {
       id: 'user-1',
@@ -141,6 +145,12 @@ describe('NextAuth regressions', () => {
       tokenVersion: 2,
       dbRefreshedAt: Date.now(),
     };
+    mocks.userFindUnique.mockResolvedValue({
+      role: 'viewer',
+      status: 'active',
+      allowedPages: ['/fiscal/cte'],
+      tokenVersion: 2,
+    });
 
     const result = await jwtCallback!({
       token,
@@ -152,8 +162,38 @@ describe('NextAuth regressions', () => {
       session: undefined,
     } as never);
 
-    expect(result).toEqual(token);
-    expect(mocks.userFindUnique).not.toHaveBeenCalled();
+    expect(mocks.userFindUnique).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ id: 'user-1', role: 'viewer', tokenVersion: 2 });
+  });
+
+  it('expels a fresh token the instant tokenVersion is bumped in the DB', async () => {
+    const jwtCallback = authOptions.callbacks?.jwt;
+    const token: JWT = {
+      id: 'user-1',
+      role: 'viewer',
+      status: 'active',
+      allowedPages: ['/fiscal/cte'],
+      tokenVersion: 2,
+      dbRefreshedAt: Date.now(), // "acabou de ser revalidado" — não compra tempo
+    };
+    mocks.userFindUnique.mockResolvedValue({
+      role: 'viewer',
+      status: 'active',
+      allowedPages: ['/fiscal/cte'],
+      tokenVersion: 3, // revokeUserSessions correu agora
+    });
+
+    const result = await jwtCallback!({
+      token,
+      user: undefined,
+      account: null,
+      profile: undefined,
+      trigger: undefined,
+      isNewUser: false,
+      session: undefined,
+    } as never);
+
+    expect(result).toEqual({});
   });
 
   it('refuses session when tokenVersion diverges from DB (no rebind)', async () => {
@@ -185,6 +225,35 @@ describe('NextAuth regressions', () => {
     expect(mocks.userFindUnique).toHaveBeenCalled();
     expect(result).toEqual({});
     expect(result).not.toMatchObject({ tokenVersion: 9 });
+  });
+
+  // REAUD-B-17: com o banco em baixo, o catch só logava e devolvia o token
+  // INALTERADO — papel, estado e allowedPages velhos continuavam válidos nas
+  // páginas do painel, enquanto as rotas de API já fechavam (requireAuth
+  // propaga). Assimetria página/API; agora fecha dos dois lados.
+  it('fails closed when the DB lookup throws: the token comes back without role', async () => {
+    mocks.userFindUnique.mockRejectedValueOnce(new Error('connection refused'));
+
+    const jwtCallback = authOptions.callbacks?.jwt;
+    const result = await jwtCallback!({
+      token: {
+        id: 'user-1',
+        role: 'admin',
+        status: 'active',
+        allowedPages: ['/sistema/usuarios'],
+        tokenVersion: 2,
+      },
+      user: undefined,
+      account: null,
+      profile: undefined,
+      trigger: undefined,
+      isNewUser: false,
+      session: undefined,
+    } as never);
+
+    expect(mocks.userFindUnique).toHaveBeenCalledTimes(1);
+    expect(result).not.toHaveProperty('role');
+    expect(result).toEqual({});
   });
 });
 

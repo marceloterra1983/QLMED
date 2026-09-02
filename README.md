@@ -57,8 +57,8 @@ Sequencia real:
 - `npm run publish:server` **somente** faz `git push origin main` e imprime o SHA + o comando de dispatch; **nao** dispara deploy e **nao** aguarda health
 - apos o push: aguarde CI verde do SHA, faca o `workflow_dispatch` manual, acompanhe o workflow no GitHub (o workflow valida health e revisao)
 - depois que o workflow concluir com sucesso, execute `npm run check:deploy`
-- `npm run deploy:server` e apenas deploy manual/legado do compose; nao e o caminho normal da producao publica
-- `npm run rollback:server -- latest` faz rollback apenas da stack manual/legada
+- `npm run deploy:server` e `npm run rollback:server` foram REMOVIDOS na auditoria b177b07: pre-passavam `--legacy` e tinham a raiz de producao publica como padrao, entao publicavam `app.qlmed.com.br` sem nenhum dos gates acima
+- `scripts/deploy-server.sh` e `scripts/rollback-server.sh` sobrevivem so para a stack legada e agora recusam destino publico; exigem `DEPLOY_DIR` nao publico, `DEPLOY_HEALTHCHECK_URL` nao publico e `DEPLOY_CONFIRM=DEPLOY-LEGACY`
 - producao publica: rollback automatico de imagem na falha do workflow; `qlmed-app:previous` so no host (manual); codigo anterior via Actions exige revert/recovery em `main` (novo tip), CI desse SHA e dispatch do `origin/main` atual
 
 ## Regras

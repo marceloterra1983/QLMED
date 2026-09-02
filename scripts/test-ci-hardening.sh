@@ -134,4 +134,14 @@ setup_case "$tmp/deploy_drift"
 sed -i 's/qlmed-prod/self-hosted/' "$tmp/deploy_drift/.github/workflows/deploy-production.yml"
 expect_fail "$tmp/deploy_drift" "deploy-production.yml sem qlmed-prod reprova"
 
+# 11..15. Filtro de caminhos sem a superfície operacional reprova
+# (QLMED-OPS-001). Um por padrão: um portão que só sabe dizer sim, quando
+# alguém apaga uma linha do filtro, é pior do que portão nenhum.
+for filter_path in "ops/\*\*" "production/\*\*" "docker-compose.yml" ".github/dependabot.yml" ".github/workflows/\*\*"; do
+  case_name="filtro_$(printf '%s' "$filter_path" | tr -c 'a-zA-Z0-9' '_')"
+  setup_case "$tmp/$case_name"
+  sed -i "\@^ *- '${filter_path}'\$@d" "$tmp/$case_name/$workflow_rel"
+  expect_fail "$tmp/$case_name" "filtro app sem ${filter_path//\\/} reprova"
+done
+
 echo "CI hardening guard tests passed."

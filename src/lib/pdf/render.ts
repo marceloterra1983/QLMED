@@ -25,16 +25,48 @@ function resolveExecutablePath(): string {
 // O parâmetro de Buffer importa: `Buffer<ArrayBufferLike>` não é aceito como
 // BodyInit de uma Response (SharedArrayBuffer não vale), `Buffer<ArrayBuffer>`
 // é — e é justamente o que `Buffer.from` devolve.
+/** Teto de parede para carregar o HTML e para gerar o PDF (auditoria FILE-005). */
+export const PDF_RENDER_TIMEOUT_MS = 30_000;
+
 export async function renderHtmlToPdf(html: string, options: PDFOptions): Promise<Buffer<ArrayBuffer>> {
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: resolveExecutablePath(),
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+    // `--no-sandbox` continua porque o container Alpine roda sem user
+    // namespaces; o que o torna perigoso — script e rede na página — é
+    // desligado abaixo, por página.
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--disable-extensions',
+      '--disable-background-networking',
+    ],
+    timeout: PDF_RENDER_TIMEOUT_MS,
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load' });
-    return Buffer.from(await page.pdf(options));
+
+    // O HTML é autocontido (CSS inline, sem imagem ou script remoto): nada
+    // legítimo precisa de JS nem de rede. Com os dois desligados, um nome de
+    // fornecedor vindo do XML deixa de poder buscar URL interna (SSRF) ou
+    // exfiltrar o conteúdo da nota. `data:` também cai: nenhum gerador emite
+    // imagem nem fonte inline, e é justamente o `data:` que reabre os
+    // decodificadores de imagem num Chromium `--no-sandbox` (REAUD-B-13).
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.startsWith('about:')) {
+        void request.continue();
+        return;
+      }
+      void request.abort();
+    });
+
+    await page.setContent(html, { waitUntil: 'load', timeout: PDF_RENDER_TIMEOUT_MS });
+    return Buffer.from(await page.pdf({ timeout: PDF_RENDER_TIMEOUT_MS, ...options }));
   } finally {
     await browser.close();
   }
