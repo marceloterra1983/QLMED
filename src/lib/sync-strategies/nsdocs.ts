@@ -11,7 +11,7 @@ import { extractFirstCfop } from '../cfop';
 import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
-import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
+import { beginSyncRun } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('auto-sync');
 
@@ -22,11 +22,8 @@ export async function syncViaNsdocs(
   nsdocsConfig: { id: string; apiToken: string; lastSyncAt: Date | null },
   existingSyncLogId?: string,
 ) {
-  const syncLog = existingSyncLogId
-    ? { id: existingSyncLogId }
-    : await createSyncLogIfIdle(companyId, 'nsdocs');
-
-  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
+  const run = await beginSyncRun(companyId, 'nsdocs', existingSyncLogId);
+  const syncLog = { id: run.syncLogId };
 
   try {
     const client = new NsdocsClient(decrypt(nsdocsConfig.apiToken));
@@ -120,6 +117,7 @@ export async function syncViaNsdocs(
           },
         });
         await applyNfeCancellation({
+          companyId,
           xml: xmlContent,
           providerStatus: doc.situacao,
           documentType: parsed.type,
@@ -127,7 +125,7 @@ export async function syncViaNsdocs(
         });
         if (isNewInvoice) {
           totalNovos++;
-          saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
+          saveXmlToFile(companyId, parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err, accessKey: parsed.accessKey }, 'saveXmlToFile failed for NSDocs'); });
         } else {
           totalAtualizados++;
         }
@@ -202,5 +200,7 @@ export async function syncViaNsdocs(
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
+  } finally {
+    await run.release();
   }
 }

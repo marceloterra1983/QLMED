@@ -1,8 +1,23 @@
 import https from 'https';
 import zlib from 'zlib';
 import { createLogger } from '@/lib/logger';
+import { assertAllowedHost } from '@/lib/http-allowlist';
+import { noteTlsVerificationDisabled } from '@/lib/ssl-verify';
 
 const log = createLogger('receita-nfse-client');
+
+/**
+ * Hosts do ADN que podem receber o certificado de cliente do e-CNPJ.
+ *
+ * `baseUrl` é campo de formulário gravado pelo admin e chega aqui como string
+ * livre. Como o `https.request` abaixo apresenta cert+key no handshake, um host
+ * arbitrário significa entregar o certificado da empresa a quem escolher a URL
+ * — antes de qualquer resposta. Daí a lista fechada, verificada no construtor.
+ */
+export const RECEITA_NFSE_ALLOWED_HOSTS = [
+  'adn.nfse.gov.br',
+  'adn.producaorestrita.nfse.gov.br',
+] as const;
 
 type HeaderMap = Record<string, string | string[] | undefined>;
 
@@ -153,6 +168,8 @@ export interface ReceitaNfseClientOptions {
   certPem: string;
   keyPem: string;
   rejectUnauthorized?: boolean;
+  /** Bundle de CAs; sem ele o Node usa o store padrão. Ver `receitaRequestTls`. */
+  ca?: string[];
   timeoutMs?: number;
 }
 
@@ -174,14 +191,19 @@ export class ReceitaNfseClient {
   private readonly certPem: string;
   private readonly keyPem: string;
   private readonly rejectUnauthorized: boolean;
+  private readonly ca: string[] | undefined;
   private readonly timeoutMs: number;
 
   constructor(options: ReceitaNfseClientOptions) {
+    // Falha na construção, não na requisição: o certificado nunca chega a ser
+    // apresentado a um host que não seja o ADN.
+    assertAllowedHost(options.baseUrl, RECEITA_NFSE_ALLOWED_HOSTS);
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.apiToken = options.apiToken?.trim() ? options.apiToken.trim() : null;
     this.certPem = options.certPem;
     this.keyPem = options.keyPem;
     this.rejectUnauthorized = options.rejectUnauthorized ?? true;
+    this.ca = options.ca;
     this.timeoutMs = options.timeoutMs ?? 25000;
   }
 
@@ -197,6 +219,7 @@ export class ReceitaNfseClient {
 
   private async request(path: string, cnpjConsulta?: string | null): Promise<{ statusCode: number; headers: HeaderMap; body: string }> {
     const url = this.buildUrl(path, cnpjConsulta);
+    if (!this.rejectUnauthorized) noteTlsVerificationDisabled(url.host);
     const headers: Record<string, string> = {
       Accept: 'application/json, application/xml, text/xml;q=0.9, */*;q=0.8',
     };
@@ -210,6 +233,7 @@ export class ReceitaNfseClient {
       cert: this.certPem,
       key: this.keyPem,
       rejectUnauthorized: this.rejectUnauthorized,
+      ca: this.ca,
       timeout: this.timeoutMs,
       headers,
     };

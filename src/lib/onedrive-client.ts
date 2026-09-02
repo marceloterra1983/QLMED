@@ -373,3 +373,32 @@ export async function openOneDriveItemContent(
     size: Number.isFinite(declared) ? declared : null,
   };
 }
+
+/**
+ * Compensação do upload: remove o objeto que ficou sem linha correspondente no
+ * banco. Um PUT no Graph não participa da transação Postgres, então o que se
+ * pode garantir não é atomicidade, é recolher o órfão — e ofício carrega dado
+ * clínico, então deixá-lo para trás não é opção. 404 conta como sucesso: o
+ * objeto já não está lá.
+ */
+export async function deleteOneDriveItem(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+): Promise<void> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const encodedItemId = encodeURIComponent(itemId);
+  const response = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedItemId}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(graphTimeoutMs()),
+    },
+  );
+  if (!response.ok && response.status !== 404) {
+    const detail = await response.text().catch(() => `${response.status}`);
+    throw new Error(`Falha ao remover arquivo do OneDrive: ${detail.slice(0, 300)}`);
+  }
+}

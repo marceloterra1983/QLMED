@@ -1,6 +1,5 @@
 import { SefazClient } from '../sefaz-client';
-import { CertificateManager } from '../certificate-manager';
-import { decrypt } from '../crypto';
+import { openCertificatePems } from '../certificate-secret';
 import { parseInvoiceXml } from '../parse-invoice-xml';
 import { resolveInvoiceDirection } from '../invoice-direction';
 import { updateProductAggregatesForInvoice } from '../product-aggregate-updater';
@@ -10,8 +9,9 @@ import { prisma } from '../prisma';
 import { UF_TO_CODE } from '../constants';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
-import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
-import { applyNfeCancellation } from '@/lib/nfe-cancellation';
+import { beginSyncRun } from '@/lib/postgres-advisory-lock';
+import { applyNfeCancellationOutcome } from '@/lib/nfe-cancellation';
+import { isUniqueViolation } from '@/lib/prisma-errors';
 import { distDfeIsProduction } from '@/lib/nfe-emission/environment';
 
 const log = createLogger('auto-sync');
@@ -28,6 +28,29 @@ function getUfCode(subject?: string | null): string {
   return (uf && UF_TO_CODE[uf]) ? UF_TO_CODE[uf] : '50';
 }
 
+/**
+ * NSU como número; -1 para valor não numérico (nunca vira checkpoint).
+ * NSU tem 15 dígitos (máx. 999999999999999), bem dentro de MAX_SAFE_INTEGER.
+ */
+function nsuValue(nsu: string | null | undefined): number {
+  const digits = (nsu || '').replace(/\D/g, '');
+  if (!digits) return -1;
+  const value = Number(digits);
+  return Number.isSafeInteger(value) ? value : -1;
+}
+
+/** O NSU imediatamente anterior a `nsu`, no formato de 15 dígitos da SEFAZ. */
+function previousNsu(nsu: string): string {
+  const value = nsuValue(nsu);
+  if (value <= 0) return '0';
+  return String(value - 1).padStart(15, '0');
+}
+
+/** Devolve o maior dos dois NSUs; garante que o cursor nunca anda para trás. */
+function maxNsu(a: string, b: string): string {
+  return nsuValue(a) >= nsuValue(b) ? a : b;
+}
+
 export async function syncViaSefaz(
   companyId: string,
   cnpj: string,
@@ -42,23 +65,22 @@ export async function syncViaSefaz(
   },
   existingSyncLogId?: string,
 ) {
-  const syncLog = existingSyncLogId
-    ? { id: existingSyncLogId }
-    : await createSyncLogIfIdle(companyId, 'sefaz');
-
-  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
+  const run = await beginSyncRun(companyId, 'sefaz', existingSyncLogId);
+  const syncLog = { id: run.syncLogId };
 
   let ultNSU = cert.lastNsu || '0';
+  // Motivos de documento não gravado. Enquanto houver um, o cursor não passa
+  // por cima dele (mesma regra do NSDocs, que é a referência correta no repo).
+  const skippedReasons: string[] = [];
 
   try {
-    const pfxPassword = decrypt(cert.pfxPassword);
-    const { key, cert: certPem } = CertificateManager.extractPems(cert.pfxData, pfxPassword);
+    const { key, cert: certPem } = openCertificatePems(cert, cnpj);
 
     const sefaz = new SefazClient(
       certPem,
       key,
       cnpj,
-      distDfeIsProduction(),
+      distDfeIsProduction(cert.environment),
       getUfCode(cert.subject),
     );
 
@@ -77,10 +99,9 @@ export async function syncViaSefaz(
 
       const response = await sefaz.buscarNovosDocumentos(ultNSU);
 
-      // Always advance ultNSU even on error (SEFAZ returns valid ultNSU with 656)
-      if (response.ultNSU) ultNSU = response.ultNSU;
-
       if (response.status === 'error') {
+        // Resposta de erro não entrega documento nenhum. Avançar o cursor com o
+        // ultNSU devolvido aqui saltava NSUs que nunca foram lidos.
         if (response.cStat === '656') {
           throw new Error('Bloqueio SEFAZ (656): Excesso de consultas. Aguarde 1h.');
         }
@@ -88,22 +109,55 @@ export async function syncViaSefaz(
       }
 
       if (response.status === 'empty') break;
-      if (response.docs.length === 0 && ultNSU === nsuAntes) break;
+      if (response.docs.length === 0 && (!response.ultNSU || response.ultNSU === nsuAntes)) break;
+
+      // NSUs que este lote entregou e que NÃO foram gravados. O cursor final do
+      // run tem de parar antes do menor deles.
+      const failedNsus: string[] = [];
+      const skipDoc = (nsu: string, chave: string | undefined, reason: string, err?: unknown) => {
+        failedNsus.push(nsu);
+        const identifier = chave ? `chave=${chave.slice(0, 12)}…` : `nsu=${nsu || '?'}`;
+        const detail = err instanceof Error ? err.message.slice(0, 120) : '';
+        skippedReasons.push(detail ? `${identifier} ${reason}: ${detail}` : `${identifier} ${reason}`);
+        log.warn({ nsu, chave, reason, err }, 'SEFAZ doc skipped');
+      };
+
+      // Documentos que o client não conseguiu abrir (base64/gunzip/parse).
+      for (const nsu of response.failedNsus) {
+        skipDoc(nsu, undefined, 'docZip_ilegivel');
+      }
 
       for (const doc of response.docs) {
         try {
-          if (!doc.xml) continue;
-
-          if (doc.tipo === 'evento') {
-            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+          if (!doc.xml) {
+            skipDoc(doc.nsuseq, doc.chave, 'xml_ausente');
             continue;
           }
 
-          if (!doc.chave || doc.chave.length < 44) continue;
+          if (doc.tipo === 'evento') {
+            // Evento não é documento fiscal: a maioria (ciência, carta de
+            // correção) não gera escrita e não pode travar o cursor. Já um
+            // cancelamento aceite cuja nota não está nesta base é facto fiscal
+            // perdido — a SEFAZ não o reentrega, então o cursor tem de parar
+            // antes dele (REAUD-FISCAL-015).
+            const outcome = await applyNfeCancellationOutcome({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            if (outcome === 'lost') skipDoc(doc.nsuseq, doc.chave, 'cancelamento_sem_nota');
+            continue;
+          }
+
+          if (!doc.chave || doc.chave.length < 44) {
+            skipDoc(doc.nsuseq, doc.chave, 'chave_invalida');
+            continue;
+          }
 
           const parsed = await parseInvoiceXml(doc.xml);
           if (!parsed) {
-            await applyNfeCancellation({ xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            // Último recurso: pode ser um cancelamento reconhecível. Se nem isso
+            // gravou nada, o documento foi perdido — segura o cursor.
+            const outcome = await applyNfeCancellationOutcome({ companyId, xml: doc.xml, accessKey: doc.chave, documentType: 'NFE' });
+            if (outcome !== 'applied') {
+              skipDoc(doc.nsuseq, doc.chave, outcome === 'lost' ? 'cancelamento_sem_nota' : 'parse_falhou_schema_desconhecido');
+            }
             continue;
           }
 
@@ -147,7 +201,7 @@ export async function syncViaSefaz(
           });
           if (isNewInvoice) {
             totalNovos++;
-            saveXmlToFile(accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
+            saveXmlToFile(companyId, accessKey, parsed.type, doc.xml, parsed.issueDate).catch((err) => { log.error({ err, accessKey }, 'saveXmlToFile failed for SEFAZ'); });
           } else {
             totalAtualizados++;
           }
@@ -168,12 +222,51 @@ export async function syncViaSefaz(
             }).catch((err) => { log.error({ err, accessKey }, 'updateProductAggregatesForInvoice failed for SEFAZ'); });
           }
         } catch (docErr) {
+          if (isUniqueViolation(docErr)) {
+            // Outra linha já tem o unique que este documento precisa (série+
+            // número da NF-e emitida, ou a própria chave numa corrida). Reter o
+            // cursor aqui é falha DETERMINÍSTICA: a corrida seguinte tropeça no
+            // mesmo NSU e a ingestão da empresa para até intervenção manual
+            // (REAUD-DATA-015). Skip durável por chave, com o XML, e o cursor
+            // segue. Se ESTA escrita falhar, o erro sobe para o catch da
+            // corrida: o cursor não avança e nada se perde.
+            const target = (docErr as { meta?: { target?: unknown } }).meta?.target;
+            await prisma.syncSkippedDocument.upsert({
+              where: { companyId_accessKey: { companyId, accessKey: doc.chave } },
+              create: { companyId, accessKey: doc.chave, nsu: doc.nsuseq, reason: 'unique_violado', xmlContent: doc.xml },
+              update: { nsu: doc.nsuseq, xmlContent: doc.xml },
+            });
+            skippedReasons.push(`chave=${doc.chave.slice(0, 12)}… unique_violado${target ? ` (${String(target)})` : ''}: skip durável, cursor segue`);
+            log.warn({ nsu: doc.nsuseq, chave: doc.chave, target }, 'SEFAZ doc skipped durably (unique violation)');
+            continue;
+          }
           log.error({ err: docErr, chave: doc.chave }, 'Erro ao processar doc SEFAZ');
+          skipDoc(doc.nsuseq, doc.chave, 'gravacao_falhou', docErr);
         }
       }
 
-      const ultBig = BigInt(response.ultNSU || '0');
-      const maxBig = BigInt(response.maxNSU || '0');
+      if (failedNsus.length > 0) {
+        // O cursor para imediatamente ANTES do primeiro NSU não gravado. Os NSUs
+        // seguintes deste lote já foram gravados (upsert é idempotente), mas
+        // reentregá-los na próxima corrida é barato — perder o que falhou não é.
+        // ponytail: teto conhecido — falha DETERMINÍSTICA no mesmo NSU trava o
+        // cursor até alguém intervir (mesma propriedade do NSDocs). Fica visível
+        // como 'partial' com o motivo, em vez de silencioso. O piso anti-656
+        // (getSefazCooldown, 6h) limita a reconsulta. Se stall repetido virar
+        // problema, o passo é skip durável por chave em vez de afrouxar o cursor.
+        const primeiroFalho = failedNsus.reduce((min, nsu) => (nsuValue(nsu) < nsuValue(min) ? nsu : min));
+        ultNSU = maxNsu(ultNSU, previousNsu(primeiroFalho));
+        log.warn(
+          { company: razaoSocial, primeiroFalho, cursorFinal: ultNSU, skipped: failedNsus.length },
+          'SEFAZ sync parcial — cursor NSU retido antes do documento não gravado',
+        );
+        break;
+      }
+
+      if (response.ultNSU) ultNSU = maxNsu(ultNSU, response.ultNSU);
+
+      const ultBig = nsuValue(response.ultNSU || '0');
+      const maxBig = nsuValue(response.maxNSU || '0');
       if (ultBig >= maxBig) temMais = false;
     }
 
@@ -182,12 +275,28 @@ export async function syncViaSefaz(
       data: { lastNsu: ultNSU, lastSyncAt: new Date() },
     });
 
+    const skippedCount = skippedReasons.length;
+    const finalStatus: 'completed' | 'partial' = skippedCount === 0 ? 'completed' : 'partial';
+    const errorMessage = skippedCount > 0
+      ? `${skippedCount} docs skipped: ${skippedReasons.slice(0, 15).join('; ')}${skippedCount > 15 ? ` (+${skippedCount - 15} more)` : ''}`
+      : null;
+
     await prisma.syncLog.update({
       where: { id: syncLog.id },
-      data: { status: 'completed', newDocs: totalNovos, updatedDocs: totalAtualizados, completedAt: new Date() },
+      data: {
+        status: finalStatus,
+        newDocs: totalNovos,
+        updatedDocs: totalAtualizados,
+        skippedDocs: skippedCount,
+        errorMessage,
+        completedAt: new Date(),
+      },
     });
 
-    log.info({ company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados }, 'SEFAZ sync completed');
+    log.info(
+      { company: razaoSocial, newDocs: totalNovos, updatedDocs: totalAtualizados, skippedDocs: skippedCount, status: finalStatus, lastNsu: ultNSU },
+      `SEFAZ sync ${finalStatus}`,
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     log.error({ err, company: razaoSocial }, 'Erro SEFAZ');
@@ -204,5 +313,7 @@ export async function syncViaSefaz(
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
+  } finally {
+    await run.release();
   }
 }

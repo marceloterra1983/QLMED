@@ -13,7 +13,7 @@ concurrency:
   group: qlmed-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Binding selector: validation-linux-pool + self-hosted. Same-repo guard is
+# Binding selector: validation-linux-qlmed + self-hosted (3 GB per runner; same labels as validation-linux-pool). Same-repo guard is
 # defense in depth; fork approval is all_external_contributors.
 
 jobs:
@@ -75,8 +75,17 @@ jobs:
               - 'start.sh'
               - '.ci-loop/**'
               - 'n8n/**'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/deploy-production.yml'
+              # Superfície operacional. O filtro nasceu pensando em src/prisma e
+              # deixava passar sem CI toda mudança de compose, systemd, script de
+              # host e política de dependências — exatamente o material que
+              # derruba produção. Auditoria b177b07, QLMED-OPS-001.
+              - 'ops/**'
+              - 'production/**'
+              - 'docker-compose.yml'
+              - '.github/dependabot.yml'
+              # Glob, não a lista de dois ficheiros: um workflow novo (ou o
+              # ai-tooling-drift.yml, que já existia) escapava do job app.
+              - '.github/workflows/**'
 
   docs:
     name: docs
@@ -152,6 +161,7 @@ jobs:
         run: |
           bash ./scripts/verify-ci-hardening.sh
           bash ./scripts/test-ci-hardening.sh
+          bash ./scripts/test-deploy-guard.sh
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

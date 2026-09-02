@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyNfeCancellation, detectNfeCancellation } from '../nfe-cancellation';
+import { applyNfeCancellation, applyNfeCancellationOutcome, detectNfeCancellation } from '../nfe-cancellation';
 import { issuedCancelTagLabel } from '../nfe-cancellation-label';
 
 const CHAVE = '35241012345678000199550010000012341123456789';
 
-const { updateMany } = vi.hoisted(() => ({
+const { updateMany, count } = vi.hoisted(() => ({
   updateMany: vi.fn(),
+  count: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    invoice: { updateMany },
+    invoice: { updateMany, count },
   },
 }));
 
@@ -160,36 +161,94 @@ describe('applyNfeCancellation', () => {
   });
 
   it('marca cancelledAt na nota existente sem sobrescrever xmlContent', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', '135') });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', '135') });
     expect(applied).toBe(true);
     expect(updateMany).toHaveBeenCalledTimes(1);
     const arg = updateMany.mock.calls[0][0] as {
       where: { accessKey: string; cancelledAt: null };
       data: Record<string, unknown>;
     };
-    expect(arg.where).toEqual({ accessKey: CHAVE, cancelledAt: null });
+    expect(arg.where).toEqual({ companyId: 'company-1', accessKey: CHAVE, cancelledAt: null });
     expect(arg.data.cancelledAt).toBeInstanceOf(Date);
     expect(arg.data).not.toHaveProperty('xmlContent');
   });
 
   it('usa chNFe do XML quando accessKey de entrada falta', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', '155') });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', '155') });
     expect(applied).toBe(true);
     const arg = updateMany.mock.calls[0][0] as { where: { accessKey: string } };
     expect(arg.where.accessKey).toBe(CHAVE);
   });
 
   it('nao aplica procEventoNFe sem cStat 135/155', async () => {
-    const applied = await applyNfeCancellation({ xml: procEvento('110111', null) });
+    const applied = await applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', null) });
+    expect(applied).toBe(false);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  // AUTH-003: a chave de acesso vem de fonte externa. Sem o filtro de empresa
+  // um evento de cancelamento marcava a nota homónima de outra empresa.
+  it('nao aplica cancelamento sem companyId', async () => {
+    const applied = await applyNfeCancellation({ companyId: '', xml: procEvento('110111', '135') });
     expect(applied).toBe(false);
     expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('nao cria invoice quando o evento nao tem chave', async () => {
     const applied = await applyNfeCancellation({
+      companyId: 'company-1',
       xml: '<?xml version="1.0"?><procEventoNFe><evento><infEvento><tpEvento>110111</tpEvento></infEvento></evento><retEvento><infEvento><tpEvento>110111</tpEvento><cStat>135</cStat></infEvento></retEvento></procEventoNFe>',
     });
     expect(applied).toBe(false);
     expect(updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// REAUD-FISCAL-015: o booleano juntava "não era cancelamento" (ciência, CCe)
+// com "era cancelamento e a nota não está nesta base". O sync SEFAZ descartava
+// o segundo e avançava o cursor por cima dele. Três desfechos, e só `'lost'`
+// pode travar o cursor.
+describe('applyNfeCancellationOutcome', () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+    count.mockReset();
+  });
+
+  it("'applied' quando a nota é marcada agora", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('applied');
+    expect(count).not.toHaveBeenCalled();
+  });
+
+  it("'applied' quando a nota já estava cancelada (reentrega idempotente não trava o cursor)", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    count.mockResolvedValue(1);
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('applied');
+    expect(count).toHaveBeenCalledWith({ where: { companyId: 'company-1', accessKey: CHAVE } });
+  });
+
+  // Prova do auditor: procEventoNFe 110111/135 real e updateMany → {count:0}.
+  it("'lost' quando é cancelamento aceite e não existe nota nesta base", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    count.mockResolvedValue(0);
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('lost');
+  });
+
+  it("'not-a-cancellation' para ciência da operação (210210) — não toca no banco", async () => {
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('210210', '135') })).resolves.toBe('not-a-cancellation');
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
+  });
+
+  it("'not-a-cancellation' para cancelamento sem cStat aceite", async () => {
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', null) })).resolves.toBe('not-a-cancellation');
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('o booleano de compatibilidade colapsa lost e not-a-cancellation em false', async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    count.mockResolvedValue(0);
+    await expect(applyNfeCancellation({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe(false);
+    await expect(applyNfeCancellation({ companyId: 'company-1', xml: procEvento('210210', '135') })).resolves.toBe(false);
   });
 });

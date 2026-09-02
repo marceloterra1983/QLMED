@@ -1,14 +1,15 @@
-import { CertificateManager } from '@/lib/certificate-manager';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { decrypt } from '@/lib/crypto';
 import { resolveInvoiceDirection } from '@/lib/invoice-direction';
 import { parseInvoiceXml } from '@/lib/parse-invoice-xml';
 import { extractFirstCfop } from '@/lib/cfop';
 import { ReceitaNfseClient, incrementNsu, normalizeNsu } from '@/lib/receita-nfse-client';
+import { receitaRequestTls } from '@/lib/ssl-verify';
 import { saveXmlToFile } from '@/lib/xml-file-store';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { prisma } from '@/lib/prisma';
-import { createSyncLogIfIdle } from '@/lib/postgres-advisory-lock';
+import { beginSyncRun } from '@/lib/postgres-advisory-lock';
 
 const log = createLogger('receita-nfse-sync');
 
@@ -94,6 +95,9 @@ export interface ReceitaNfseSyncResult {
   scannedNsuCount: number;
   importedXmlCount: number;
   rateLimited?: boolean;
+  /** Documentos que o NSU entregou e que não foram gravados. */
+  skippedDocs: number;
+  skippedReasons: string[];
 }
 
 export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Promise<ReceitaNfseSyncResult> {
@@ -106,10 +110,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     maxEmptySteps = DEFAULT_EMPTY_LIMIT,
   } = options;
 
-  const { cert, key } = CertificateManager.extractPems(
-    certificate.pfxData,
-    decrypt(certificate.pfxPassword),
-  );
+  const { cert, key } = openCertificatePems(certificate, companyCnpj);
 
   const apiToken = config.apiToken ? decrypt(config.apiToken) : null;
   const baseUrl = getReceitaNfseBaseUrl(config.environment, config.baseUrl);
@@ -120,7 +121,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     apiToken,
     certPem: cert,
     keyPem: key,
-    rejectUnauthorized: process.env.RECEITA_NFSE_VERIFY_SSL !== 'false',
+    ...receitaRequestTls(),
   });
 
   let newDocs = 0;
@@ -130,6 +131,7 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
   let emptyHits = 0;
   let lastNsu = normalizeNsu(config.lastNsu);
   let rateLimited = false;
+  const skippedReasons: string[] = [];
 
   for (let i = 0; i < maxSteps; i++) {
     // Espaça consultas consecutivas (a partir da 2ª) — rajada disparava o 429.
@@ -182,15 +184,26 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     }
 
     emptyHits = 0;
-    // Avança checkpoint apenas quando houve retorno com conteúdo.
-    lastNsu = targetNsu;
+    // Checkpoint CANDIDATO: só é comprometido depois de gravar todo o conteúdo
+    // deste NSU. Antes, `lastNsu` avançava aqui e um documento que falhasse
+    // logo abaixo ficava para trás do cursor — perdido em silêncio.
+    let candidateNsu = targetNsu;
     for (const hinted of response.nsuHints) {
-      lastNsu = maxNsu(lastNsu, hinted);
+      candidateNsu = maxNsu(candidateNsu, hinted);
     }
 
+    let cursorBlocked = false;
     for (const xmlContent of response.documents) {
       const parsed = await parseInvoiceXml(xmlContent);
-      if (!parsed || parsed.type !== 'NFSE' || !parsed.accessKey) continue;
+      if (!parsed || parsed.type !== 'NFSE' || !parsed.accessKey) {
+        const reason = !parsed
+          ? 'parse_failed_unknown_schema'
+          : (parsed.type !== 'NFSE' ? `tipo_inesperado_${parsed.type}` : 'parse_missing_access_key');
+        skippedReasons.push(`nsu=${targetNsu} ${reason}`);
+        log.warn({ nsu: targetNsu, reason }, 'Receita NFS-e doc skipped');
+        cursorBlocked = true;
+        continue;
+      }
 
       const direction = resolveInvoiceDirection(companyCnpj, parsed.senderCnpj, parsed.accessKey);
       const cfop = extractFirstCfop(xmlContent);
@@ -233,12 +246,23 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
 
       if (isNewInvoice) {
         newDocs++;
-        saveXmlToFile(parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
+        saveXmlToFile(companyId, parsed.accessKey, parsed.type, xmlContent, parsed.issueDate).catch((err) => { log.error({ err }, 'saveXmlToFile failed'); });
       } else {
         updatedDocs++;
       }
       importedXmlCount++;
     }
+
+    if (cursorBlocked) {
+      // Cursor fica no NSU anterior: a próxima corrida volta a este NSU e o
+      // documento tem nova chance. Parar aqui evita varrer NSUs à frente que
+      // nunca poderiam ser comprometidos de qualquer forma.
+      // ponytail: teto conhecido — falha DETERMINÍSTICA neste NSU trava o cursor
+      // até alguém intervir; sai como 'partial' com o NSU e o motivo. Upgrade,
+      // se doer: skip durável por NSU em vez de afrouxar o cursor.
+      break;
+    }
+    lastNsu = candidateNsu;
   }
 
   return {
@@ -248,6 +272,8 @@ export async function syncReceitaNfseByNsu(options: ReceitaNfseSyncOptions): Pro
     scannedNsuCount,
     importedXmlCount,
     rateLimited,
+    skippedDocs: skippedReasons.length,
+    skippedReasons,
   };
 }
 
@@ -269,11 +295,8 @@ export async function syncViaReceitaNfse(
   },
   existingSyncLogId?: string,
 ) {
-  const syncLog = existingSyncLogId
-    ? { id: existingSyncLogId }
-    : await createSyncLogIfIdle(companyId, 'receita_nfse');
-
-  if (!syncLog) throw new Error('SYNC_ALREADY_RUNNING');
+  const run = await beginSyncRun(companyId, 'receita_nfse', existingSyncLogId);
+  const syncLog = { id: run.syncLogId };
 
   try {
     const result = await syncReceitaNfseByNsu({
@@ -298,7 +321,15 @@ export async function syncViaReceitaNfse(
       ? 'Receita NFS-e limitou a consulta (HTTP 429). Tente novamente em alguns minutos.'
       : null;
     const hasImportedDocs = result.importedXmlCount > 0;
-    const finalStatus = result.rateLimited && !hasImportedDocs ? 'error' : 'completed';
+    const skippedCount = result.skippedDocs;
+    const skipMessage = skippedCount > 0
+      ? `${skippedCount} docs skipped: ${result.skippedReasons.slice(0, 15).join('; ')}${skippedCount > 15 ? ` (+${skippedCount - 15} more)` : ''}`
+      : null;
+    // Corrida com documento não gravado NÃO é 'completed'. Reportar sucesso era
+    // metade da perda silenciosa: cursor à frente e painel verde.
+    const finalStatus = result.rateLimited && !hasImportedDocs
+      ? 'error'
+      : (skippedCount > 0 ? 'partial' : 'completed');
 
     await prisma.receitaNfseConfig.update({
       where: { id: receitaConfig.id },
@@ -314,12 +345,16 @@ export async function syncViaReceitaNfse(
         status: finalStatus,
         newDocs: result.newDocs,
         updatedDocs: result.updatedDocs,
-        errorMessage: rateLimitMessage,
+        skippedDocs: skippedCount,
+        errorMessage: [rateLimitMessage, skipMessage].filter(Boolean).join(' | ') || null,
         completedAt: new Date(),
       },
     });
 
-    log.info({ company: razaoSocial, newDocs: result.newDocs, updatedDocs: result.updatedDocs, scannedNsus: result.scannedNsuCount }, 'Receita NFS-e sync completed');
+    log.info(
+      { company: razaoSocial, newDocs: result.newDocs, updatedDocs: result.updatedDocs, scannedNsus: result.scannedNsuCount, skippedDocs: skippedCount, status: finalStatus, lastNsu: result.lastNsu },
+      `Receita NFS-e sync ${finalStatus}`,
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     log.error({ err, company: razaoSocial }, 'Erro Receita NFS-e');
@@ -331,5 +366,7 @@ export async function syncViaReceitaNfse(
     } catch (logErr) {
       log.error({ err: logErr, syncLogId: syncLog.id }, 'CRITICAL: Failed to update syncLog to error');
     }
+  } finally {
+    await run.release();
   }
 }

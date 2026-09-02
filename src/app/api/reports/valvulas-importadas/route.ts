@@ -6,6 +6,7 @@ import { isImportEntryCfop, getCfopTagByCode } from '@/lib/cfop';
 import { isResaleCustomer } from '@/lib/resale-customers';
 import { extractProductsFromXml, normalizeUnit } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
+import { toProductRow, type ImportProduct } from '@/lib/valvulas-importadas-row';
 
 const log = createLogger('reports/valvulas-importadas');
 
@@ -15,21 +16,6 @@ const CNPJ_MERGE_MAP: Record<string, string> = {
 };
 
 /* ── Types ── */
-
-interface ImportProduct {
-  key: string;        // internal cProd code (from issued import invoice)
-  code: string;
-  description: string;
-  shortName: string | null;
-  unit: string;
-  anvisa: string | null;
-  purchasedQty: number;
-  purchasedValue: number;
-  soldQty: number;
-  soldValue: number;
-  resaleQty: number;
-  resaleValue: number;
-}
 
 interface CustomerSale {
   customerName: string;
@@ -122,18 +108,22 @@ const VALVULAS_LABELS: Record<string, string> = {
   '005035': 'AORTICA 27',
 };
 
-/* Estoque físico real informado pelo cliente (fev/2026) */
-const REAL_STOCK: Record<string, number> = {
-  '005032': 17, // A-21
-  '005033': 20, // A-23
-  '005034': 9,  // A-25
-  '005035': 7,  // A-27
-  '005160': 10, // M7-25
-  '005029': 21, // M7-27
-  '005030': 16, // M7-29
-  '005031': 17, // M7-31
-  '005051': 7,  // M7-33
-};
+/*
+ * Não reintroduza um mapa de estoque cravado aqui.
+ *
+ * Auditoria b177b07 (QLMED-UI-003): existia um `REAL_STOCK` com a contagem
+ * física informada pelo cliente em fev/2026, e o `netQty` preferia esse número
+ * ao cálculo. A tela chama a coluna de "Saldo" e o card de "Saldo Estoque" —
+ * o leitor entende saldo do período, comprado menos vendido. Meses depois do
+ * snapshot, o relatório continuava a devolver os mesmos 17, 20, 9… para
+ * qualquer intervalo de datas escolhido, inclusive um que não contivesse
+ * nenhuma daquelas notas. Um número cravado que se apresenta como calculado é
+ * pior do que a ausência do número.
+ *
+ * Se o produto quiser de novo a contagem física, ela entra como um campo
+ * próprio, com a data do inventário ao lado, e a UI rotula "estoque informado
+ * em <data>" — nunca sobrescrevendo o saldo calculado.
+ */
 
 /* Supplier codes → internal codes (for received invoices from Livanova / Prime) */
 const SUPPLIER_CODE_MAP: Record<string, string> = {
@@ -471,26 +461,10 @@ export async function GET(req: Request) {
       if (prod.purchasedValue < 0) prod.purchasedValue = 0;
     }
 
-    // Build response
+    // Build response — `netQty` vive em `toProductRow`, testado com dados (UI-003).
     const products = Array.from(importProductMap.values())
       .filter(p => p.purchasedQty > 0 || p.soldQty > 0)
-      .map(p => ({
-        key: p.key,
-        code: p.code,
-        description: p.description,
-        shortName: p.shortName,
-        unit: p.unit,
-        anvisa: p.anvisa,
-        purchasedQty: Math.round(p.purchasedQty * 100) / 100,
-        purchasedValue: Math.round(p.purchasedValue * 100) / 100,
-        soldQty: Math.round(p.soldQty * 100) / 100,
-        soldValue: Math.round(p.soldValue * 100) / 100,
-        resaleQty: Math.round(p.resaleQty * 100) / 100,
-        resaleValue: Math.round(p.resaleValue * 100) / 100,
-        netQty: REAL_STOCK[p.code] ?? Math.round((p.purchasedQty - p.soldQty) * 100) / 100,
-        avgPurchasePrice: p.purchasedQty > 0 ? Math.round((p.purchasedValue / p.purchasedQty) * 100) / 100 : null,
-        avgSalePrice: p.soldQty > 0 ? Math.round((p.soldValue / p.soldQty) * 100) / 100 : null,
-      }))
+      .map(toProductRow)
       .sort((a, b) => b.purchasedValue - a.purchasedValue);
 
     const totalPurchasedQty = products.reduce((s, p) => s + p.purchasedQty, 0);

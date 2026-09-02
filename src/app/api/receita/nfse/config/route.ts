@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { CertificateManager } from '@/lib/certificate-manager';
+import { openCertificatePems } from '@/lib/certificate-secret';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { incrementNsu, ReceitaNfseClient } from '@/lib/receita-nfse-client';
+import { receitaRequestTls } from '@/lib/ssl-verify';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { receitaNfseConfigSchema, receitaNfseTestSchema } from '@/lib/schemas/receita';
@@ -189,17 +190,14 @@ export async function PUT(request: NextRequest) {
       ? apiTokenRaw
       : (existingConfig?.apiToken ? decrypt(existingConfig.apiToken) : null);
 
-    const { cert, key } = CertificateManager.extractPems(
-      certConfig.pfxData,
-      decrypt(certConfig.pfxPassword),
-    );
+    const { cert, key } = openCertificatePems(certConfig, company.cnpj);
 
     const client = new ReceitaNfseClient({
       baseUrl,
       apiToken,
       certPem: cert,
       keyPem: key,
-      rejectUnauthorized: process.env.RECEITA_NFSE_VERIFY_SSL !== 'false',
+      ...receitaRequestTls(),
     });
 
     const probeNsu = incrementNsu('000000000000000');

@@ -64,7 +64,7 @@ function sendHttps(url: string, envelope: string, certPem: string, keyPem: strin
       method: 'POST',
       cert: certPem,
       key: keyPem,
-      ...sefazRequestTls(),
+      ...sefazRequestTls(parsed.host),
       headers: {
         'Content-Type': 'application/soap+xml;charset=utf-8;action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4/nfeStatusServicoNF"',
         'Content-Length': Buffer.byteLength(envelope),

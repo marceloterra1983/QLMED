@@ -159,10 +159,20 @@ pelo host é `127.0.0.1:5432`, publicado pelo serviço `qlmed-db`.
 
 ### Deploy e migração de schema
 
-Deploy roda automaticamente no push para `main` e espera aprovação manual no
-environment `production`. Migrações seguem expand/contract — rollback de imagem
-**não** desfaz migração aplicada. Procedimento completo na skill `qlmed-deploy`
-(`.claude/skills/qlmed-deploy/SKILL.md`).
+Deploy **não** roda no push. Push para `main` roda o `QLMED CI` e para aí;
+publicar exige `workflow_dispatch` manual de `deploy-production.yml`, com
+`confirm_production=DEPLOY` e o SHA de 40 caracteres do tip de `origin/main`
+que já tem CI verde. Migrações seguem expand/contract — rollback de imagem
+**não** desfaz migração aplicada, por isso migração nova é expand-only
+(portão em `src/lib/__tests__/deploy-manifests.test.ts`). Procedimento completo
+na skill `qlmed-deploy` (`.claude/skills/qlmed-deploy/SKILL.md`) e em
+`docs/deployment/qlmed-app.md`.
+
+`npm run deploy:server` e `npm run rollback:server` **não existem mais**
+(auditoria b177b07): pré-passavam `--legacy` e tinham a raiz de produção
+pública como padrão, então publicavam `app.qlmed.com.br` sem nenhum dos portões
+acima. Os scripts em `scripts/` sobrevivem para a stack legada e recusam
+destino público.
 
 ### Endpoints públicos e portas
 

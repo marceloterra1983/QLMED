@@ -57,3 +57,30 @@ export function extractAccessKeyFromFilePath(filePath: string): string | null {
   const match = fileName.match(/(?:^|\D)(\d{50}|\d{44})(?=\D|$)/);
   return match?.[1] || null;
 }
+
+/**
+ * Junta segmentos vindos de fora (nomes de item do OneDrive) sob `baseDir`
+ * sem deixar nenhum deles escapar do diretório (auditoria FILE-004).
+ *
+ * `path.join(base, '../../etc/cron.d/x')` resolve para fora de `base`: o nome
+ * do arquivo/pasta vem do Graph, não do nosso código, então basta um item
+ * renomeado no OneDrive para escrever em qualquer lugar que o processo
+ * alcance. `basename` derruba tanto `..` quanto caminho absoluto; a checagem
+ * final é o cinto de segurança contra separador de outra plataforma.
+ */
+export function safeJoinUnderDir(baseDir: string, ...segments: string[]): string | null {
+  const base = path.resolve(baseDir);
+  const safeSegments: string[] = [];
+
+  for (const segment of segments) {
+    const name = path.basename(String(segment ?? '').replace(/\\/g, '/').trim());
+    if (!name || name === '.' || name === '..') return null;
+    safeSegments.push(name);
+  }
+
+  if (safeSegments.length === 0) return null;
+
+  const joined = path.resolve(base, ...safeSegments);
+  if (joined !== base && !joined.startsWith(base + path.sep)) return null;
+  return joined;
+}

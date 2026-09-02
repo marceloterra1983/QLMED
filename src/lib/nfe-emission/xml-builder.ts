@@ -13,12 +13,26 @@ import {
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 
+/**
+ * Escape de NÓ DE TEXTO na forma canônica C14N 1.0 (§2.3 Text Nodes): só `&`,
+ * `<`, `>` e `#xD` viram referência. Aspa dupla fica LITERAL.
+ *
+ * QLMED-FISCAL-006: escapar `"` como `&quot;` aqui produzia XML válido mas não
+ * canônico. O digest da assinatura é calculado sobre estes bytes; a SEFAZ
+ * recalcula sobre a forma canônica, onde a aspa é literal. Um `"` numa
+ * descrição de produto — `Cabo 5"` — bastava para os dois hashes divergirem e a
+ * nota ser rejeitada por "Digest Value da assinatura difere do calculado".
+ *
+ * Todos os call sites desta função são conteúdo de elemento. Se algum dia
+ * alguém precisar interpolar em ATRIBUTO, a regra é outra (`"` escapa, `>` não)
+ * e precisa de uma função própria — signNfeXml recusa o que não reconhecer.
+ */
 function esc(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/\r/g, '&#xD;');
 }
 
 function money(value: string | number): string {
@@ -70,16 +84,16 @@ function icmsXml(item: NfeEmissionItem, crt: string, vProd: string): string {
   const orig = item.orig || '0';
   if (crt === '1' || crt === '2') {
     const csosn = item.csosn || '102';
-    return `<ICMS><ICMSSN102><orig>${orig}</orig><CSOSN>${csosn}</CSOSN></ICMSSN102></ICMS>`;
+    return `<ICMS><ICMSSN102><orig>${esc(orig)}</orig><CSOSN>${esc(csosn)}</CSOSN></ICMSSN102></ICMS>`;
   }
   const rate = item.pIcms ? Number(item.pIcms) : 0;
   if (!rate) {
     const cst = item.cstIcms || DEFAULT_ICMS_CST_ISENTO;
-    return `<ICMS><ICMS40><orig>${orig}</orig><CST>${esc(cst)}</CST></ICMS40></ICMS>`;
+    return `<ICMS><ICMS40><orig>${esc(orig)}</orig><CST>${esc(cst)}</CST></ICMS40></ICMS>`;
   }
   const vBc = vProd;
   const vIcms = money(new Decimal(vBc).mul(rate).div(100).toNumber());
-  return `<ICMS><ICMS00><orig>${orig}</orig><CST>${item.cstIcms || '00'}</CST><modBC>3</modBC><vBC>${vBc}</vBC><pICMS>${money(rate)}</pICMS><vICMS>${vIcms}</vICMS></ICMS00></ICMS>`;
+  return `<ICMS><ICMS00><orig>${esc(orig)}</orig><CST>${esc(item.cstIcms || '00')}</CST><modBC>3</modBC><vBC>${vBc}</vBC><pICMS>${money(rate)}</pICMS><vICMS>${vIcms}</vICMS></ICMS00></ICMS>`;
 }
 
 function aliquot4(value: string): string {

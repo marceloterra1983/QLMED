@@ -1,3 +1,19 @@
+# ATENÇÃO — este ficheiro NÃO é o compose canônico.
+#
+# O canônico é `production/docker-compose.yml`: é ele que o
+# `.github/workflows/deploy-production.yml` usa (`-f
+# /home/marce/qlmed/production/docker-compose.yml`) e é ele que
+# `scripts/deploy-server.sh` sincroniza. Esta cópia em `ops/` é histórica,
+# mantida só como referência de operação do host.
+#
+# Auditoria b177b07 (QLMED-OPS-003): as duas divergiam, e a divergência não era
+# cosmética — esta cópia passava `QLMED_API_KEY` como `build.args`, o que grava
+# o segredo numa camada da imagem e no histórico do `docker history`. Um
+# build-arg não é um segredo. A chave chega ao runtime por `env_file`
+# (`./env/app.env`), como no compose canônico.
+#
+# Regra: mudança de topologia entra no canônico primeiro; esta cópia acompanha
+# ou é apagada. Nunca o contrário.
 services:
   qlmed-db:
     image: postgres:18-alpine
@@ -79,7 +95,8 @@ services:
       context: ./app
       network: host
       args:
-        QLMED_API_KEY: ${QLMED_API_KEY}
+        # QLMED_API_KEY saiu daqui: build-arg vira camada de imagem e aparece
+        # em `docker history`. A chave entra por env_file, no runtime.
         QLMED_BUILD_COMMIT_SHA: ${QLMED_BUILD_COMMIT_SHA:-unknown}
         QLMED_BUILD_DEPLOYED_AT: ${QLMED_BUILD_DEPLOYED_AT:-}
         QLMED_BUILD_SOURCE: ${QLMED_BUILD_SOURCE:-manual}

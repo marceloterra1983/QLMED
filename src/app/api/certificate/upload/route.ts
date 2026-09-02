@@ -3,10 +3,16 @@ import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/aut
 import prisma from '@/lib/prisma'; // Assumindo que existe
 import { CertificateManager } from '@/lib/certificate-manager';
 import { encrypt } from '@/lib/crypto';
+import { encryptPfx } from '@/lib/certificate-secret';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { certificateUploadFieldsSchema } from '@/lib/schemas/certificate';
+import { formDataWithLimit } from '@/lib/upload-limits';
+
+// O .pfx tem cap de 1MiB; o corpo multipart ganha folga para os outros campos.
+const MAX_CERT_SIZE = 1 * 1024 * 1024;
+const MAX_CERT_BODY_SIZE = MAX_CERT_SIZE + 64 * 1024;
 
 const log = createLogger('certificate/upload');
 
@@ -21,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
   try {
-    const formData = await request.formData();
+    const formData = await formDataWithLimit(request, MAX_CERT_BODY_SIZE);
     const file = formData.get('file') as File;
     const baseCompany = await getOrCreateSingleCompany(userId);
     const companyId = baseCompany.id;
@@ -32,9 +38,11 @@ export async function POST(request: NextRequest) {
 
     const fieldsParsed = certificateUploadFieldsSchema.safeParse({
       password: formData.get('password'),
+      environment: formData.get('environment') ?? undefined,
     });
     if (!fieldsParsed.success) return apiValidationError(fieldsParsed.error);
     const password = fieldsParsed.data.password;
+    const environment = fieldsParsed.data.environment || 'production';
 
     // Validate file type
     const fileName = file.name?.toLowerCase() || '';
@@ -43,7 +51,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file size (max 1MB)
-    const MAX_CERT_SIZE = 1 * 1024 * 1024;
     if (file.size > MAX_CERT_SIZE) {
       return NextResponse.json({ error: 'Arquivo muito grande. Limite: 1MB' }, { status: 400 });
     }
@@ -69,31 +76,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Certificado inválido ou senha incorreta' }, { status: 400 });
     }
 
-    // Salvar no banco
+    // Identidade: o certificado tem de ser DA empresa. Sem esta comparação o
+    // painel aceitava assinar em nome de qualquer CNPJ (FILE-007). Ausência de
+    // CNPJ no subject também recusa: um e-CNPJ A1 do ICP-Brasil sempre carrega
+    // o CNPJ no CN, então "não achei" significa "não é o certificado certo".
+    const certCnpj = certInfo.cnpj ? CertificateManager.cleanCnpj(certInfo.cnpj) : null;
+    const companyCnpj = CertificateManager.cleanCnpj(company.cnpj || '');
+    if (!certCnpj) {
+      return NextResponse.json(
+        { error: 'Não foi possível ler o CNPJ do certificado. Envie um e-CNPJ A1 (ICP-Brasil).' },
+        { status: 400 },
+      );
+    }
+    if (certCnpj !== companyCnpj) {
+      return NextResponse.json(
+        { error: 'O CNPJ do certificado não corresponde ao CNPJ da empresa.' },
+        { status: 400 },
+      );
+    }
+
+    if (certInfo.validTo.getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: 'Certificado digital vencido. Envie um certificado dentro da validade.' },
+        { status: 400 },
+      );
+    }
+
+    // Salvar no banco — PFX cifrado em repouso e amarrado ao CNPJ da empresa.
     const encryptedPassword = encrypt(password);
+    const encryptedPfx = encryptPfx(buffer, companyCnpj);
     await prisma.certificateConfig.upsert({
       where: { companyId },
       create: {
         companyId,
-        pfxData: buffer,
+        pfxData: encryptedPfx,
         pfxPassword: encryptedPassword,
         serialNumber: certInfo.serialNumber,
         issuer: certInfo.issuer,
         subject: certInfo.subject,
         validFrom: certInfo.validFrom,
         validTo: certInfo.validTo,
-        cnpjCertificate: certInfo.cnpj,
-        environment: 'production'
+        cnpjCertificate: certCnpj,
+        environment,
       },
       update: {
-        pfxData: buffer,
+        pfxData: encryptedPfx,
         pfxPassword: encryptedPassword,
         serialNumber: certInfo.serialNumber,
         issuer: certInfo.issuer,
         subject: certInfo.subject,
         validFrom: certInfo.validFrom,
         validTo: certInfo.validTo,
-        cnpjCertificate: certInfo.cnpj
+        cnpjCertificate: certCnpj,
+        environment,
       }
     });
 

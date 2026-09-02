@@ -201,7 +201,14 @@ export default function ImpcgPageClient() {
         toast.error('Não foi possível atualizar agora');
         return;
       }
-      toast.success('Coleta concluída');
+      // JOB-004: HTTP 200 não é coleta completa. Falha parcial (caixa, upload ou
+      // gravação) avisa, senão o operador dá o ofício por recebido sem ele estar.
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      if (payload?.ok === false) {
+        toast.warning('Coleta parcial: parte dos ofícios não foi importada');
+      } else {
+        toast.success('Coleta concluída');
+      }
       await loadList();
     } catch {
       toast.error('Erro de rede ao atualizar');

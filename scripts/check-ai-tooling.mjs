@@ -165,28 +165,35 @@ function issueBody(report) {
   ].join('\n');
 }
 
-function upsertIssue(report) {
+async function ghApi(path, init = {}) {
+  // Os runners self-hosted não têm `gh`; a REST API com o token do job basta.
+  const token = process.env.GITHUB_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY;
+  if (!token || !repo) throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required to open the drift issue');
+  const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
+    ...init,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': 'qlmed-ai-tooling-check',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+  });
+  if (!response.ok) throw new Error(`${init.method ?? 'GET'} ${path} HTTP ${response.status}`);
+  return response.json();
+}
+
+async function upsertIssue(report) {
   const title = `[ai-tooling-drift] Spec Kit ${report.spec_kit.pin}→${report.spec_kit.latest}; Graphify ${report.graphify.cli ?? 'missing'}→${report.graphify.latest}`;
-  const listed = spawnSync(
-    'gh',
-    ['issue', 'list', '--search', '[ai-tooling-drift] in:title', '--state', 'open', '--json', 'number,title'],
-    { encoding: 'utf8' },
-  );
-  if (listed.status !== 0) {
-    throw new Error(listed.stderr || 'gh issue list failed');
-  }
-  const open = JSON.parse(listed.stdout || '[]');
-  const existing = open[0];
-  if (existing?.number) {
-    const edited = spawnSync('gh', ['issue', 'edit', String(existing.number), '--title', title, '--body', issueBody(report)], {
-      encoding: 'utf8',
-    });
-    if (edited.status !== 0) throw new Error(edited.stderr || 'gh issue edit failed');
+  const body = issueBody(report);
+  const open = await ghApi('/issues?state=open&per_page=100');
+  const existing = open.find((issue) => !issue.pull_request && String(issue.title).startsWith('[ai-tooling-drift]'));
+  if (existing) {
+    await ghApi(`/issues/${existing.number}`, { method: 'PATCH', body: JSON.stringify({ title, body }) });
     return { action: 'updated', number: existing.number };
   }
-  const created = spawnSync('gh', ['issue', 'create', '--title', title, '--body', issueBody(report)], { encoding: 'utf8' });
-  if (created.status !== 0) throw new Error(created.stderr || 'gh issue create failed');
-  return { action: 'created', url: created.stdout.trim() };
+  const created = await ghApi('/issues', { method: 'POST', body: JSON.stringify({ title, body }) });
+  return { action: 'created', url: created.html_url };
 }
 
 const contract = {
@@ -231,7 +238,7 @@ drift.has_drift = Boolean(
 
 if (openIssue && drift.has_drift) {
   try {
-    drift.issue = upsertIssue(drift);
+    drift.issue = await upsertIssue(drift);
   } catch (error) {
     console.error(`failed to open drift issue: ${error.message}`);
     process.exit(1);

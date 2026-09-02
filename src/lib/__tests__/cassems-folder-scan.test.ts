@@ -155,7 +155,10 @@ describe('ingest CASSEMS — varredura da pasta OneDrive (modelo)', () => {
     expect(memory.authorizations).toHaveLength(1);
     expect(memory.authorizations[0]?.oficioNumber).toBe('2479325231');
     expect(ports.uploadPdf).not.toHaveBeenCalled();
-    expect(result.ok).toBe(true);
+    // QLMED-JOB-004: a pasta salva o que dá para salvar, mas o tick perdeu a
+    // caixa. Este teste afirmava `ok: true` — era a asserção que protegia o
+    // defeito. O que importa aqui é que a pasta entrou, não que o tick mentiu.
+    expect(result.ok).toBe(false);
     expect(result.processed).toBe(1);
   });
 });

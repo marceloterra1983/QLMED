@@ -17,12 +17,17 @@ Public production (https://app.qlmed.com.br) is NOT handled by this script:
     on that new tip SHA, then workflow_dispatch that current origin/main SHA
     (deploy accepts only the live origin/main tip, not an arbitrary historical SHA).
 
+Required (no defaults — the old defaults pointed at public production):
+  DEPLOY_DIR              raiz da stack legada; nunca /srv/qlmed nem
+                          /home/marce/qlmed/production
+  DEPLOY_CONFIRM          literal DEPLOY-LEGACY
+  DEPLOY_HEALTHCHECK_URL  saúde da stack legada; nunca app.qlmed.com.br
+                          nem a porta :13000 da stack pública
+
 Defaults:
   DEPLOY_HOST=server
-  DEPLOY_DIR=/home/marce/qlmed/production
-  DEPLOY_PROJECT_NAME=qlmed
+  DEPLOY_PROJECT_NAME=qlmed-legacy
   DEPLOY_SERVICES="qlmed-db qlmed-app qlmed-n8n"
-  DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:13000/api/health
 EOF
 }
 
@@ -64,11 +69,18 @@ if [[ "$ALLOW_LEGACY" -ne 1 ]]; then
   exit 1
 fi
 
+# QLMED-OPS-002: mesmo footgun do deploy-server.sh — `--legacy` já vinha
+# pré-passado pelo npm script e os defaults apontavam para a raiz pública.
+# shellcheck source=scripts/deploy-guard.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-guard.sh"
+qlmed_refuse_public_production \
+  "${DEPLOY_DIR:-}" \
+  "${DEPLOY_HEALTHCHECK_URL:-}" \
+  "scripts/rollback-server.sh"
+
 DEPLOY_HOST="${DEPLOY_HOST:-server}"
-DEPLOY_DIR="${DEPLOY_DIR:-/home/marce/qlmed/production}"
-DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed}"
+DEPLOY_PROJECT_NAME="${DEPLOY_PROJECT_NAME:-qlmed-legacy}"
 DEPLOY_SERVICES="${DEPLOY_SERVICES:-qlmed-db qlmed-app qlmed-n8n}"
-DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1:13000/api/health}"
 
 if [[ -z "$target" ]]; then
   usage

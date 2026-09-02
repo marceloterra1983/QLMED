@@ -78,6 +78,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         sefazMotivo: null,
         number: null,
         accessKey: null,
+        // Voltar para draft invalida o XML assinado da tentativa anterior: ele
+        // carrega número, chave de acesso e assinatura que acabaram de ser
+        // zerados. Mantê-lo no banco era guardar um documento assinado que já
+        // não corresponde ao rascunho (auditoria FISCAL-011).
+        signedXml: null,
+        protocolXml: null,
       },
     });
     const { signedXml: _s, protocolXml: _p, ...safe } = updated;

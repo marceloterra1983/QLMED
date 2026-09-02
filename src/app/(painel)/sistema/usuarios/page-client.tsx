@@ -222,13 +222,12 @@ export default function UsuariosPage() {
 
   const openPages = (user: User) => {
     setPagesUser(user);
-    if (user.allowedPages.length === 0) {
-      setAllPagesChecked(true);
-      setSelectedPages([]);
-    } else {
-      setAllPagesChecked(false);
-      setSelectedPages([...user.allowedPages]);
-    }
+    // "Todas as páginas" agora é a lista explícita, não a lista vazia: com o
+    // ACL em default-deny, `[]` significa NENHUMA página.
+    setSelectedPages([...user.allowedPages]);
+    setAllPagesChecked(
+      ALL_PAGES.length > 0 && ALL_PAGES.every((p) => user.allowedPages.includes(p.path)),
+    );
   };
 
   const openLogs = async (user: User, offset = 0) => {
@@ -252,10 +251,10 @@ export default function UsuariosPage() {
   const handleToggleAllPages = () => {
     if (allPagesChecked) {
       setAllPagesChecked(false);
-      setSelectedPages(ALL_PAGES.map((p) => p.path));
+      setSelectedPages([]);
     } else {
       setAllPagesChecked(true);
-      setSelectedPages([]);
+      setSelectedPages(ALL_PAGES.map((p) => p.path));
     }
   };
 
@@ -280,7 +279,7 @@ export default function UsuariosPage() {
 
   const handleSavePages = async () => {
     if (!pagesUser) return;
-    if (!allPagesChecked && selectedPages.length === 0) {
+    if (selectedPages.length === 0) {
       toast.error('Selecione pelo menos uma página ou marque "Todas as páginas"');
       return;
     }
@@ -290,7 +289,7 @@ export default function UsuariosPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          allowedPages: allPagesChecked ? [] : selectedPages,
+          allowedPages: selectedPages,
         }),
       });
       const data = await res.json();

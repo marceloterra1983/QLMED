@@ -27,7 +27,14 @@ const xml = `
 
 integrationDescribe('product aggregate keyset pagination', () => {
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { email: userEmail } });
+    // `Company.userId` é RESTRICT desde a correção do INFO-002: apagar o
+    // utilizador já não arrasta a empresa. A limpeza tem de descer a árvore
+    // explicitamente — que é exatamente a propriedade que a correção garante.
+    const owner = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true } });
+    if (owner) {
+      await prisma.company.deleteMany({ where: { userId: owner.id } });
+      await prisma.user.deleteMany({ where: { id: owner.id } });
+    }
     await prisma.$disconnect();
   });
 

@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'crypto';
 import { createLogger } from '@/lib/logger';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { consumeWebhookNonce, verifyWebhookSignature } from '@/lib/n8n-webhook-security';
+import { readBodyWithLimit, PayloadTooLargeError } from '@/lib/upload-limits';
 
 const log = createLogger('webhooks/n8n');
 
@@ -20,6 +21,34 @@ const DEFAULT_INTERNAL_BASE_URL = 'http://127.0.0.1:3000';
 // Base64 expands by ~4/3; cap at 7MB so the decoded buffer cannot exceed the
 // downstream 5MB per-file limit. Reject early before Buffer.from allocates.
 const MAX_BASE64_XML_LENGTH = 7 * 1024 * 1024;
+
+/** Espelha o MAX_XML_SIZE de /api/invoices/upload — o limite real por ficheiro. */
+const MAX_DECODED_XML_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Base64 canónico: só o alfabeto, comprimento múltiplo de 4, padding só no fim.
+ *
+ * `Buffer.from(s, 'base64')` descarta silenciosamente o que não reconhece, de
+ * modo que `<script>AAAA` decodifica sem erro. Validar ANTES é o que torna o
+ * "must be a base64 string" verdadeiro em vez de decorativo.
+ */
+function isStrictBase64(value: string): boolean {
+  return value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+}
+
+/**
+ * Teto do corpo do webhook. Tem de caber `MAX_BASE64_XML_LENGTH` mais o
+ * envelope JSON de `process-xml`, e nada além disso.
+ */
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+/** Orçamento do forward interno; sem ele a rota fica presa a um handler travado. */
+const FORWARD_TIMEOUT_MS = 30_000;
+
+/** Forward interno com timeout — a versão anterior podia esperar para sempre. */
+function forwardFetch(url: string, init: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(FORWARD_TIMEOUT_MS) });
+}
 
 function getApiKey(): string {
   const k = process.env.QLMED_API_KEY;
@@ -38,16 +67,24 @@ function validateApiKey(req: NextRequest): boolean {
   }
 }
 
-function validateWebhookSignature(req: NextRequest, body: string): boolean {
+/**
+ * Verifica a assinatura HMAC do corpo.
+ *
+ * Era fail-OPEN: sem `N8N_WEBHOOK_SECRET` no ambiente a função devolvia `true`
+ * e QUALQUER corpo com a API key passava assinado. Um deploy que esquecesse a
+ * variável perdia a proteção sem nenhum sinal — o pior modo de falha possível,
+ * porque o sistema parece funcionar. Agora a ausência do segredo RECUSA.
+ */
+async function validateWebhookSignature(req: NextRequest, body: string): Promise<boolean> {
   const secret = process.env.N8N_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
 
   const timestamp = req.headers.get('x-qlmed-timestamp') || '';
   const nonce = req.headers.get('x-qlmed-nonce') || '';
   const signature = req.headers.get('x-qlmed-signature') || '';
   if (!verifyWebhookSignature({ secret, timestamp, nonce, signature, body })) return false;
 
-  return consumeWebhookNonce(nonce);
+  return await consumeWebhookNonce(nonce);
 }
 
 function getInternalBaseUrl(): string {
@@ -71,14 +108,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // `req.text()` materializa o corpo INTEIRO na heap antes de qualquer
+  // validação. Sem teto, um POST autenticado de 2 GB derruba o processo.
+  const declaredLength = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   let rawBody: string;
   try {
-    rawBody = await req.text();
-  } catch {
+    rawBody = new TextDecoder().decode(await readBodyWithLimit(req, MAX_BODY_BYTES));
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (!validateWebhookSignature(req, rawBody)) {
+  if (!(await validateWebhookSignature(req, rawBody))) {
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
 
@@ -99,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'sync-nfe': {
-        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
@@ -108,7 +155,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-cte': {
-        const res = await fetch(`${baseUrl}/api/nsdocs/sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/nsdocs/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify({ ...(payload || {}), method: 'nsdocs' }),
@@ -127,10 +174,21 @@ export async function POST(req: NextRequest) {
         if (payload.xml.length > MAX_BASE64_XML_LENGTH) {
           return NextResponse.json({ error: 'payload.xml too large' }, { status: 413 });
         }
+        // `Buffer.from(x, 'base64')` é LENIENTE: ignora caracteres fora do
+        // alfabeto em vez de recusar, então lixo passa e vira XML truncado.
+        if (!isStrictBase64(payload.xml)) {
+          return NextResponse.json({ error: 'payload.xml must be a base64 string' }, { status: 400 });
+        }
         const formData = new FormData();
         const buffer = Buffer.from(payload.xml, 'base64');
+        // O teto acima é do CODIFICADO. 7 MiB em base64 decodificam para ~5,25
+        // MiB, acima do limite de 5 MiB por ficheiro do /api/invoices/upload —
+        // o teto do corpo não substitui o teto do decodificado.
+        if (buffer.length > MAX_DECODED_XML_BYTES) {
+          return NextResponse.json({ error: 'payload.xml too large' }, { status: 413 });
+        }
         formData.append('files', new Blob([buffer], { type: 'text/xml' }), 'invoice.xml');
-        const res = await fetch(`${baseUrl}/api/invoices/upload`, {
+        const res = await forwardFetch(`${baseUrl}/api/invoices/upload`, {
           method: 'POST',
           headers: { 'x-api-key': getApiKey() },
           body: formData,
@@ -139,7 +197,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-ncm-bulk': {
-        const res = await fetch(`${baseUrl}/api/ncm/bulk-sync`, {
+        const res = await forwardFetch(`${baseUrl}/api/ncm/bulk-sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
@@ -148,7 +206,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'backfill-tax-data': {
-        const res = await fetch(`${baseUrl}/api/invoices/backfill-tax`, {
+        const res = await forwardFetch(`${baseUrl}/api/invoices/backfill-tax`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
         });
@@ -156,7 +214,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'batch-cnpj-check': {
-        const res = await fetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
+        const res = await forwardFetch(`${baseUrl}/api/contacts/cnpj-monitor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey() },
           body: JSON.stringify(payload || {}),
@@ -165,8 +223,10 @@ export async function POST(req: NextRequest) {
       }
 
       case 'notify': {
-        // Log notification; extend with email/WhatsApp integration as needed
-        log.info({ payload }, '[n8n webhook] Notification');
+        // O payload é arbitrário e vem de fora: registá-lo inteiro era debug
+        // deixado em produção, e despejava no stdout o que quer que n8n
+        // enviasse. Só o formato do que chegou é registado — nunca o conteúdo.
+        log.info({ payloadKeys: Object.keys(payload || {}).length }, '[n8n webhook] Notification');
         return NextResponse.json({ ok: true, action, message: 'Notification received' });
       }
 
@@ -178,13 +238,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  if (!validateApiKey(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  return NextResponse.json({
-    ok: true,
-    actions: VALID_ACTIONS,
-    message: 'QLMED n8n webhook endpoint. POST with { action, payload }.',
-  });
-}
+// INT-014: o GET devolvia a lista de actions válidas mediante APENAS a API
+// key, sem HMAC — enumeração do que o webhook aceita para quem tenha a chave e
+// não o segredo. A rota não tinha uso: é POST-only. Sem handler exportado, o
+// Next responde 405.
