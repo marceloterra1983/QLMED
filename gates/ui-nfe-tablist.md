@@ -23,5 +23,5 @@ Hoje as 8 abas são `button[aria-pressed]` soltos: leitor de tela anuncia
       CHECK: npx tsc --noEmit >/dev/null && npx eslint src/components/NfeDetailsModal.tsx src/lib/tabs-keyboard.ts && npm run -s ui:check 2>&1 | tail -1
       EXPECT: APROVADO
       EVIDENCE: tsc ok · eslint ok · `APROVADO: 4 adulterações reprovadas, componente íntegro aprovado`
-- [ ] G5 PR aberto, CI verde, squash-merge no main.
-      EVIDENCE: pending
+- [x] G5 PR aberto, CI verde, squash-merge no main.
+      EVIDENCE: PR #280 — quality/app/changes success — squash-merge em origin/main 060f253
