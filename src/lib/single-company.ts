@@ -12,16 +12,15 @@ export async function getSingleCompany() {
 }
 
 export async function getOrCreateSingleCompany(userId: string) {
-  // Single-company mode: always look up by the fixed CNPJ first.
-  // This ensures all users share the same company record regardless of who created it.
-  const existing = await getSingleCompany();
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.company.create({
-    data: {
+  // Single-company mode: todos partilham o registo do CNPJ fixo, seja quem for
+  // que o tenha criado. O upsert é atómico no unique: dois pedidos concorrentes
+  // num banco vazio (a primeira carga do painel dispara vários em paralelo)
+  // já não colidem em `Company_cnpj_key` — o find-depois-create colidia.
+  // `update: {}` de propósito: o registo existente não muda de dono.
+  return prisma.company.upsert({
+    where: { cnpj: DEFAULT_COMPANY_CNPJ },
+    update: {},
+    create: {
       userId,
       cnpj: DEFAULT_COMPANY_CNPJ,
       razaoSocial: DEFAULT_COMPANY_RAZAO_SOCIAL,
