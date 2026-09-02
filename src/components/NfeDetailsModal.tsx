@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useRef, useId, Fragment } from 'react';
+import { alvoDaSeta } from '@/lib/tabs-keyboard';
 import Section from '@/components/ui/Section';
 import type { SectionTone } from '@/components/ui/Section';
 import EmptyState from '@/components/ui/EmptyState';
@@ -540,6 +541,19 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
   const [activeTab, setActiveTab] = useState('nfe');
   const [expandedProdutos, setExpandedProdutos] = useState<Set<string>>(new Set());
   const tabsRef = useRef<HTMLDivElement>(null);
+  const idBase = useId();
+  const idDaAba = (id: string) => `${idBase}-tab-${id}`;
+  const idDoPainel = `${idBase}-painel`;
+
+  // Activação automática: a seta muda a aba e leva o foco com ela.
+  const tecladoDasAbas = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const atual = TABS.findIndex((t) => t.id === activeTab);
+    const alvo = alvoDaSeta(atual, e.key, TABS.length);
+    if (alvo === null) return;
+    e.preventDefault();
+    setActiveTab(TABS[alvo].id);
+    tabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[alvo]?.focus();
+  };
 
   useEffect(() => {
     if (!isOpen || !invoiceId) return;
@@ -694,15 +708,22 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           </button>
           <div
             ref={tabsRef}
+            role="tablist"
+            aria-label="Secções da NF-e"
+            onKeyDown={tecladoDasAbas}
             className="flex-1 flex items-center overflow-x-auto gap-0.5 px-1"
             style={{ scrollbarWidth: 'none' }}
           >
             {TABS.map(tab => (
               <button
                 key={tab.id}
+                id={idDaAba(tab.id)}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={idDoPainel}
+                tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 aria-label={tab.label}
-                aria-pressed={activeTab === tab.id}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
                     ? 'text-primary dark:text-blue-400 border-primary bg-primary/5 dark:bg-primary/10'
@@ -724,7 +745,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div role="tabpanel" id={idDoPainel} aria-labelledby={idDaAba(activeTab)} className="flex-1 overflow-y-auto p-4 sm:p-6">
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-14 h-14 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
