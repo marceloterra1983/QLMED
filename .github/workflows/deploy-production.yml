@@ -150,7 +150,6 @@ jobs:
             app.env \
             n8n.env \
             n8n-legacy.env \
-            n8n-restored.env \
             n8n-automation.env \
             n8n-db.env
           do

@@ -48,7 +48,6 @@ services:
     env_file:
       - ./env/n8n-legacy.env
       - ./env/n8n.env
-      - ./env/n8n-restored.env
       - ./env/n8n-automation.env
     volumes:
       - n8n_data:/home/node/.n8n
