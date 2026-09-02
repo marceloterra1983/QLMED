@@ -40,6 +40,18 @@
  *   faint   — `text-slate-300` como cor de texto (1,9:1 sobre branco). Em
  *             literal de ícone (`material-symbols`) é decorativo e passa;
  *             `hover:text-slate-300` é afordância, não texto.
+ *   format  — `toLocaleString(`, `toFixed(`, `toLocaleDateString(`,
+ *             `toLocaleTimeString(`, `Intl.NumberFormat`, `Intl.DateTimeFormat`
+ *             no código-fonte fora de `src/lib/**`: a formatação vive nos
+ *             helpers de `lib/utils.ts` (formatInt, formatPercent, formatDate…).
+ *   card    — literal com `bg-white`, `dark:bg-card-dark`, `border` (nu) e
+ *             `rounded-xl` juntos é o cartão de superfície à mão;
+ *             `components/ui/Card.tsx` é a fonte. `sm:rounded-xl` (Modal) e
+ *             `rounded-lg` (Button) não casam.
+ *   spinner — literal com `animate-spin` fora de `ui/Spinner.tsx` e
+ *             `ui/Button.tsx` (`<Button loading>`).
+ *   shadow  — sombra de folha cravada `rgba(0,0,0,0.06|0.08)` em literal;
+ *             `shadow-sheet-top`/`shadow-sheet-bottom` do tailwind.config.
  *
  * Uso: node scripts/verify-ui-tokens.mjs [--stats]
  */
@@ -94,6 +106,10 @@ const ROTULO_ANTES = /<(?:\w*Field|label)\b/;
 const FAINT = /(?<![-\w:])text-slate-300\b/;
 const FAINT_HOVER = /hover:text-slate-300\b/;
 const NENHUM = />\s*Nenhuma?\b/;
+const FORMATO = /\.(?:toLocaleString|toFixed|toLocaleDateString|toLocaleTimeString)\(|Intl\.(?:NumberFormat|DateTimeFormat)/g;
+const CARTAO = [/(?<![-\w:])bg-white\b/, /(?<![-\w])dark:bg-card-dark\b/, /(?<![-\w:])border(?![-\w])/, /(?<![-\w:])rounded-xl\b/];
+const GIRO = /(?<![-\w:])animate-spin\b/;
+const SOMBRA_FOLHA = /rgba\(0,0,0,0\.0[68]\)/;
 
 const PX_FLOOR = 16; // até aqui é tamanho de texto; acima, só ícone usa px
 
@@ -104,12 +120,12 @@ const files = execFileSync(
 
 const violations = {
   primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [], pill: [], empty: [],
-  sortable: [], iconbtn: [], label: [], faint: [],
+  sortable: [], iconbtn: [], label: [], faint: [], format: [], card: [], spinner: [], shadow: [],
 };
 const stats = {
   arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0,
   focus: 0, radius: 0, field: 0, pill: 0, empty: 0,
-  sortable: 0, iconbtn: 0, label: 0, faint: 0,
+  sortable: 0, iconbtn: 0, label: 0, faint: 0, format: 0, card: 0, spinner: 0, shadow: 0,
 };
 
 /**
@@ -131,8 +147,32 @@ const semComentarios = (src) =>
   src.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
 
 for (const file of files) {
-  const src = semComentarios(readFileSync(file, 'utf8'));
+  const bruto = readFileSync(file, 'utf8');
+  // Opt-out por linha, com motivo obrigatório: `// ui-ok: <motivo>` na própria
+  // linha ou na de cima. `ui-ok` sem motivo não isenta — a exceção tem de dizer
+  // por quê, e `grep ui-ok` é a auditoria.
+  const okLinhas = new Set();
+  bruto.split('\n').forEach((l, i) => { if (/(?:\/\/|\/\*)\s*ui-ok:\s*\S/.test(l)) { okLinhas.add(i + 1); okLinhas.add(i + 2); } });
+  const isento = (linha) => okLinhas.has(linha);
+  const src = semComentarios(bruto);
   const lits = literaisDe(src);
+  // ── format ─────────────────────────────────────────────────────────────
+  // No código-fonte, não nos literais: a chamada é expressão. `src/lib/**`
+  // é onde os helpers vivem — é o único sítio que pode chamar o nativo.
+  if (!file.startsWith('src/lib/')) {
+    // Rota de API produz ficheiro/texto no servidor, não exibição do painel:
+    // a regra é de consistência de UI. E `.toDecimalPlaces(2).toFixed(2)` é a
+    // API do decimal.js, não `Number.prototype.toFixed`.
+    for (const m of src.matchAll(FORMATO)) {
+      if (file.includes('/app/api/')) break;
+      if (isento(lineOf(src, m.index))) continue;
+      if (/toDecimalPlaces\([^)]*\)$/.test(src.slice(Math.max(0, m.index - 60), m.index))) continue;
+      stats.format++;
+      violations.format.push(`${file}:${lineOf(src, m.index)}  formatação fora do helper — formatAmount/formatCurrency/formatInt/formatPercent/formatDate/formatDateTime/formatTime`);
+    }
+  }
+  const isCard = file.endsWith('components/ui/Card.tsx');
+  const isSpinner = file.endsWith('components/ui/Spinner.tsx') || file.endsWith('components/ui/Button.tsx');
   // Literal aninhado (`${ativa ? 'text-slate-300' : …}`) chega sozinho, sem o
   // `material-symbols` do template que o envolve: herda a isenção do pai.
   const icones = lits.filter((l) => /material-symbols/.test(l.lit)).map((l) => [l.at, l.at + l.raw.length]);
@@ -154,6 +194,7 @@ for (const file of files) {
   for (const m of lits) {
     const lit = m.lit;
     if (!lit) continue;
+    if (isento(lineOf(src, m.at))) continue;
     const at = m.at;
     const raw = m.raw;
     const line = () => `${file}:${lineOf(src, at)}`;
@@ -220,6 +261,24 @@ for (const file of files) {
     if (FAINT.test(lit) && !isIcon && !dentroDeIcone(at) && !FAINT_HOVER.test(lit)) {
       stats.faint++;
       violations.faint.push(`${line()}  text-slate-300 como texto — 1,9:1; use slate-500, ou é ícone decorativo (isento)`);
+    }
+
+    // ── card ─────────────────────────────────────────────────────────────
+    if (!isCard && CARTAO.every((re) => re.test(lit))) {
+      stats.card++;
+      violations.card.push(`${line()}  cartão de superfície à mão — use <Card padding=…>`);
+    }
+
+    // ── spinner ──────────────────────────────────────────────────────────
+    if (!isSpinner && GIRO.test(lit)) {
+      stats.spinner++;
+      violations.spinner.push(`${line()}  spinner à mão — use <Spinner size=…> ou <Button loading>`);
+    }
+
+    // ── shadow ───────────────────────────────────────────────────────────
+    if (SOMBRA_FOLHA.test(lit)) {
+      stats.shadow++;
+      violations.shadow.push(`${line()}  sombra de folha cravada — use shadow-sheet-top / shadow-sheet-bottom`);
     }
   }
 }

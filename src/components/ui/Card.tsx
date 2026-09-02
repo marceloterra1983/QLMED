@@ -1,4 +1,4 @@
-import type { ElementType, ReactNode } from 'react';
+import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 
 /**
  * Cartão de superfície. Havia 60 escritas de `bg-white dark:bg-card-dark
@@ -14,13 +14,13 @@ type CardProps = {
   as?: ElementType;
   className?: string;
   children: ReactNode;
-};
+} & Omit<HTMLAttributes<HTMLElement>, 'className' | 'children'>;
 
 const PADDING = { none: '', sm: 'p-3', md: 'p-4 sm:p-5', lg: 'p-6' } as const;
 
-export default function Card({ padding = 'md', as: Tag = 'div', className, children }: CardProps) {
+export default function Card({ padding = 'md', as: Tag = 'div', className, children, ...rest }: CardProps) {
   return (
-    <Tag className={`bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden ${PADDING[padding]} ${className ?? ''}`}>
+    <Tag {...rest} className={`bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden ${PADDING[padding]} ${className ?? ''}`}>
       {children}
     </Tag>
   );

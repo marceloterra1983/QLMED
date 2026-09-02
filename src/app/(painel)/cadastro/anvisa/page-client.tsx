@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import Field from '@/components/ui/Field';
 import PageHeader from '@/components/PageHeader';
 
@@ -93,7 +94,7 @@ export default function AnvisaPage() {
         )}
       />
 
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+      <Card>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           <Field label="Base de consulta" className="md:col-span-2">
             <select
@@ -112,9 +113,9 @@ export default function AnvisaPage() {
             {selectedOption.description}
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-none">
+      <Card padding="none">
         {checkingEmbed ? (
           <div className="p-8 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-500 dark:text-slate-400">hourglass_top</span>
@@ -163,7 +164,7 @@ export default function AnvisaPage() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </>
   );
 }

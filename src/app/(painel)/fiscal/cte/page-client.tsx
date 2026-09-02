@@ -19,6 +19,7 @@ import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-downl
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import SortableTh from '@/components/ui/SortableTh';
 
 export default function CtePage() {
@@ -526,16 +527,16 @@ export default function CtePage() {
       <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+            <Card padding="sm" key={i} className="space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-48" />
               <Skeleton className="h-3 w-24" />
-            </div>
+            </Card>
           ))
         ) : invoices.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+          <Card padding="none">
             <EmptyState icon="local_shipping" title="Nenhum CT-e encontrado" />
-          </div>
+          </Card>
         ) : (() => {
           let lastGroup = '';
           return invoices.map((invoice) => {
@@ -554,7 +555,7 @@ export default function CtePage() {
                   </div>
                 )}
                 {!collapsedGroups.has(group) && (
-                  <div onClick={() => openDetails(invoice.id)} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 cursor-pointer">
+                  <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number}</span>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
@@ -573,7 +574,7 @@ export default function CtePage() {
                       <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
                       <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openDetails} onDelete={canWrite ? confirmDelete : undefined} />
                     </div>
-                  </div>
+                  </Card>
                 )}
               </React.Fragment>
             );
@@ -588,7 +589,7 @@ export default function CtePage() {
       </div>
 
       {/* Table (desktop) */}
-      <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+      <Card padding="none" className="hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <caption className="sr-only">Lista de conhecimentos de transporte eletrônicos</caption>
@@ -729,7 +730,7 @@ export default function CtePage() {
           </div>
           <ListCount shown={invoices.length} total={total} noun="CT-e(s)" />
         </div>
-      </div>
+      </Card>
       <InvoiceDetailsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

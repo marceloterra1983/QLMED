@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import { formatDateTimeSeconds } from '@/lib/utils';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -197,7 +198,7 @@ export default function CertificateSection({ company, canManageSettings }: Certi
                     </span>
                   </div>
                   <p className="text-xs opacity-80 pl-8">
-                    Válido até: {new Date(certInfo.validTo).toLocaleString('pt-BR')}
+                    Válido até: {formatDateTimeSeconds(certInfo.validTo)}
                   </p>
                 </div>
 

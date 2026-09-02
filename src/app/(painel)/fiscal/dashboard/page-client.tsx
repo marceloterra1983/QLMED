@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatAmount } from '@/lib/utils';
+import { formatAmount, formatInt, formatPercent, formatCurrencyShort } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
 
 type Period = 'month' | 'quarter' | 'year';
@@ -55,11 +55,6 @@ interface CfopRow {
   ipi: number;
 }
 
-function formatCurrencyShort(value: number): string {
-  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(1)}k`;
-  return `R$ ${formatAmount(value)}`;
-}
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -109,7 +104,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
-          <p className="text-lg font-bold text-slate-800 dark:text-slate-100 tabular-nums">{formatCurrencyShort(value)}</p>
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100 tabular-nums">{formatCurrencyShort(value, 1)}</p>
         </div>
       </div>
     </div>
@@ -285,8 +280,8 @@ export default function FiscalDashboardPage() {
             <div>
               <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                 {withTaxData === 0
-                  ? `${totalNfe.toLocaleString('pt-BR')} NF-e sem dados fiscais extraidos`
-                  : `${(totalNfe - withTaxData).toLocaleString('pt-BR')} de ${totalNfe.toLocaleString('pt-BR')} NF-e ainda sem dados fiscais`
+                  ? `${formatInt(totalNfe)} NF-e sem dados fiscais extraidos`
+                  : `${formatInt(totalNfe - withTaxData)} de ${formatInt(totalNfe)} NF-e ainda sem dados fiscais`
                 }
               </p>
               {backfillProgress && (
@@ -294,7 +289,7 @@ export default function FiscalDashboardPage() {
               )}
               {!backfilling && withTaxData > 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                  {withTaxData.toLocaleString('pt-BR')} ja processadas ({Math.round(withTaxData / totalNfe * 100)}%)
+                  {formatInt(withTaxData)} ja processadas ({formatPercent(withTaxData / totalNfe * 100, 0)})
                 </p>
               )}
             </div>
@@ -349,11 +344,11 @@ export default function FiscalDashboardPage() {
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.invoiceCount} NF-e</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.ipi)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Frete</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.frete)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.ipi, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Frete</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.frete, 1)}</span></div>
                 </div>
               </div>
             ))}
@@ -415,10 +410,10 @@ export default function FiscalDashboardPage() {
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.itemCount} itens</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Total</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.totalValue)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Total</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.totalValue, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.icms, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">PIS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.pis, 1)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">COFINS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(row.cofins, 1)}</span></div>
                 </div>
               </div>
             ))}
@@ -482,9 +477,9 @@ export default function FiscalDashboardPage() {
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400 ml-2 shrink-0">{s.invoiceCount} NF-e</span>
                 </div>
                 <div className="grid grid-cols-3 gap-x-2 text-xs">
-                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms)}</span></div>
-                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins)}</span></div>
-                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">ICMS</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.icms, 1)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">PIS+COF</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.pisCofins, 1)}</span></div>
+                  <div><span className="text-slate-500 dark:text-slate-400 block text-xs">IPI</span><span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCurrencyShort(s.ipi, 1)}</span></div>
                 </div>
               </div>
             ))}

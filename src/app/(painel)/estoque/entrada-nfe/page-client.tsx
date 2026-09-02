@@ -4,12 +4,13 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
-import { formatDate, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
+import { formatDate, formatAmount, FILTER_INPUT_CLS, formatFileSize } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import SortableTh from '@/components/ui/SortableTh';
@@ -995,15 +996,15 @@ export default function EntradaNfePage() {
       <div className="sm:hidden space-y-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+            <Card padding="sm" key={i} className="space-y-2">
               <Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /><Skeleton className="h-3 w-24" />
-            </div>
+            </Card>
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+            <Card padding="none">
               <EmptyState icon="inventory" title="Nenhuma NF-e encontrada" />
-            </div>
+            </Card>
             <div className="flex items-center gap-1 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
               {yearNavButtons}
@@ -1037,7 +1038,7 @@ export default function EntradaNfePage() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+      <Card padding="none" className="hidden sm:block">
         {!loading && invoices.length > 0 && (() => {
           const allKeys: string[] = [];
           if (selectedYear !== null) {
@@ -1099,7 +1100,7 @@ export default function EntradaNfePage() {
           </div>
           <span className="text-xs text-slate-500">{total} nota(s)</span>
         </div>
-      </div>
+      </Card>
 
       {/* E509 Import Modal */}
       <Modal
@@ -1125,7 +1126,7 @@ export default function EntradaNfePage() {
         </div>
         {importFile && (
           <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-            Arquivo: <span className="font-medium">{importFile.name}</span> ({(importFile.size / 1024).toFixed(0)} KB)
+            Arquivo: <span className="font-medium">{importFile.name}</span> ({formatFileSize(importFile.size)})
           </p>
         )}
         <div className="flex justify-end gap-2">

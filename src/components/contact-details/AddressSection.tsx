@@ -4,6 +4,7 @@ import type { ContactDetails, ContactOverrideData } from './contact-detail-types
 import { EditableField } from './contact-detail-utils';
 import { compareAddressFields } from './contact-detail-utils';
 import type { CnpjResult } from '@/lib/cnpj-result';
+import Spinner from '@/components/ui/Spinner';
 
 interface AddressSectionProps {
   contact: ContactDetails;
@@ -140,7 +141,7 @@ export default function AddressSection({
             disabled={savingOverride}
             className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold ${colors.saveBtn} text-white rounded-lg transition-colors disabled:opacity-40 shadow-sm`}
           >
-            {savingOverride && <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>}
+            {savingOverride && <Spinner size="sm" label="Salvando" />}
             {savingOverride ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

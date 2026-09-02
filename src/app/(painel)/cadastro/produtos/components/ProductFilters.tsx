@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Field from '@/components/ui/Field';
+import { formatInt } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { SortField } from '../types';
 import type { HierOptions } from './product-utils';
@@ -170,7 +171,7 @@ export default function ProductFilters({
               </button>
             </span>
           )}
-          <span className="text-xs text-slate-500 dark:text-slate-400">{filteredCount.toLocaleString('pt-BR')} resultado{filteredCount !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{formatInt(filteredCount)} resultado{filteredCount !== 1 ? 's' : ''}</span>
         </div>
       )}
     </MobileFilterWrapper>

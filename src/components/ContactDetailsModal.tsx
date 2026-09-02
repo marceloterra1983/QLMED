@@ -7,7 +7,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
-import { formatDate, formatAmount } from '@/lib/utils';
+import { formatDate, formatAmount, formatInt, formatQuantity } from '@/lib/utils';
 import { formatDocument, normalizeDateOnly } from '@/lib/modal-helpers';
 import { parseCnpjResponse, type CnpjResult } from '@/lib/cnpj-result';
 import type {
@@ -22,6 +22,7 @@ import FiscalSection from '@/components/contact-details/FiscalSection';
 import PriceTableSection from '@/components/contact-details/PriceTableSection';
 import { InvoiceTable, MovimentacoesTable, DuplicatasTable } from '@/components/contact-details/InvoiceListSection';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 
 /**
  * A rota devolve o contato sob `customer` ou `supplier` conforme o tipo;
@@ -287,7 +288,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
               <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
               <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} aria-label={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
               <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
-                {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
+                {savingShortName && <Spinner size="sm" label="Salvando" />}
                 {savingShortName ? '...' : 'Salvar'}
               </button>
             </div>
@@ -305,7 +306,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             {cnpjLoading && (
               <div className="mt-3 rounded-lg ring-1 ring-blue-200/60 dark:ring-blue-800/40 p-2.5 bg-blue-50/30 dark:bg-blue-900/10">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[13px] text-blue-500 animate-spin">sync</span>
+                  <Spinner size="sm" label="Consultando Receita Federal" />
                   <p className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Consultando Receita Federal...</p>
                 </div>
               </div>
@@ -326,10 +327,10 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           <div className="order-first">
             <SectionCard title="Dados Gerais" subtitle={cfg.generalSubtitle} icon="analytics" iconColor="text-emerald-500" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                <StatCard label={cfg.statLabels[0]} value={details.purchases.totalInvoices.toLocaleString('pt-BR')} icon="receipt_long" color={cfg.firstStatColor} />
+                <StatCard label={cfg.statLabels[0]} value={formatInt(details.purchases.totalInvoices)} icon="receipt_long" color={cfg.firstStatColor} />
                 <StatCard label={cfg.statLabels[1]} value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
-                <StatCard label={cfg.statLabels[2]} value={details.purchases.totalPurchasedItems.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} icon="shopping_cart" color="indigo" />
-                <StatCard label={cfg.statLabels[3]} value={details.purchases.totalProductsPurchased.toLocaleString('pt-BR')} icon="inventory_2" color="amber" />
+                <StatCard label={cfg.statLabels[2]} value={formatQuantity(details.purchases.totalPurchasedItems)} icon="shopping_cart" color="indigo" />
+                <StatCard label={cfg.statLabels[3]} value={formatInt(details.purchases.totalProductsPurchased)} icon="inventory_2" color="amber" />
                 <StatCard label={cfg.statLabels[4]} value={details.purchases.lastIssueDate ? formatDate(details.purchases.lastIssueDate) : '-'} icon="event" color="teal" />
               </div>
             </SectionCard>
@@ -380,7 +381,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
       height="sm:h-auto sm:max-h-[90vh]"
       bodyClassName="p-4 sm:p-6"
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0 hidden sm:flex ${cfg.headerAvatarClass}`}>
@@ -402,7 +403,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             </div>
       }
       footer={
-<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+<div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">
               <div className="sm:hidden">
                 <Button onClick={onClose} icon="arrow_back" size="lg" block>Voltar</Button>
               </div>

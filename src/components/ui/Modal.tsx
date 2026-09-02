@@ -141,7 +141,7 @@ export default function Modal({
   const rodape =
     footer === null ? null : (
       footer ?? (
-        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        <div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom">
           <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
           </Button>
@@ -167,7 +167,7 @@ export default function Modal({
             {header}
           </>
         ) : (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shadow-sheet-top sm:shadow-none">
             <div className="min-w-0 flex-1 pr-2">
               <h2 id={titleId} className="text-lg font-bold text-slate-900 dark:text-white truncate">
                 {title}

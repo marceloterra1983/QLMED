@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
@@ -238,17 +239,17 @@ export default function CassemsPageClient() {
       />
 
       {loading && (
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-3">
+        <Card padding="lg" className="space-y-3">
           <Skeleton className="h-4 w-48" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
-        </div>
+        </Card>
       )}
 
       {!loading && items.length === 0 && (
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+        <Card padding="none">
           <EmptyState icon="clinical_notes" title="Nenhuma autorização CASSEMS." />
-        </div>
+        </Card>
       )}
 
       {!loading && items.length > 0 && (
@@ -259,6 +260,7 @@ export default function CassemsPageClient() {
                 key={item.id}
                 type="button"
                 onClick={() => setSelectedId(item.id)}
+                // ui-ok: cartão clicável como <button> nativo — tipo, foco e Enter de graça; Card não recebe `type`
                 className="w-full text-left bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-3"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -285,7 +287,7 @@ export default function CassemsPageClient() {
             ))}
           </div>
 
-          <div className="hidden sm:block bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+          <Card padding="none" className="hidden sm:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <caption className="sr-only">Autorizações CASSEMS</caption>
@@ -344,7 +346,7 @@ export default function CassemsPageClient() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </>
       )}
 

@@ -4,16 +4,13 @@ import { useState, useEffect } from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import { formatDateTimeSeconds, formatFileSize } from '@/lib/utils';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import CollapsibleCard from '@/components/ui/CollapsibleCard';
 
 function formatBytes(bytes: number): string {
-  if (!bytes) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / Math.pow(1024, index);
-  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  return formatFileSize(bytes);
 }
 
 interface Company {
@@ -488,7 +485,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
           {nsdocsConfig?.lastSyncAt && (
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="material-symbols-outlined text-[16px]">schedule</span>
-              Última sincronização: {new Date(nsdocsConfig.lastSyncAt).toLocaleString('pt-BR')}
+              Última sincronização: {formatDateTimeSeconds(nsdocsConfig.lastSyncAt)}
             </div>
           )}
 
@@ -634,7 +631,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
             <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
               <p>Último NSU: <span className="font-mono">{receitaConfig.lastNsu}</span></p>
               {receitaConfig.lastSyncAt && (
-                <p>Última sincronização: {new Date(receitaConfig.lastSyncAt).toLocaleString('pt-BR')}</p>
+                <p>Última sincronização: {formatDateTimeSeconds(receitaConfig.lastSyncAt)}</p>
               )}
             </div>
           )}
@@ -702,8 +699,8 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                   </div>
 
                   <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                    <p>Última validação: {connection.lastValidatedAt ? new Date(connection.lastValidatedAt).toLocaleString('pt-BR') : 'nunca'}</p>
-                    <p>Expira em: {new Date(connection.tokenExpiresAt).toLocaleString('pt-BR')}</p>
+                    <p>Última validação: {connection.lastValidatedAt ? formatDateTimeSeconds(connection.lastValidatedAt) : 'nunca'}</p>
+                    <p>Expira em: {formatDateTimeSeconds(connection.tokenExpiresAt)}</p>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">

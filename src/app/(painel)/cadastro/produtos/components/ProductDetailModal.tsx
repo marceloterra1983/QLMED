@@ -12,6 +12,7 @@ import { DetailSectionCard, DetailField } from './DetailSectionCard';
 import { DETAIL_INPUT_CLS, formatQuantity, formatDate } from './product-utils';
 import type { HierOptions } from './product-utils';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 
 interface ProductDetailModalProps {
   product: ProductRow | null;
@@ -396,7 +397,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
       height="sm:h-auto sm:max-h-[90vh]"
       bodyClassName=""
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           {detailProduct.outOfLine && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-400 via-red-500 to-red-400" />
           )}
@@ -447,7 +448,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
         </div>
       }
       footer={
-<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
+<div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">
           <div className="sm:hidden space-y-2">
             <div className="flex gap-2">
               <button onClick={() => onOpenHistory(detailProduct)} className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:bg-slate-50 dark:active:bg-slate-700 transition-colors">
@@ -892,7 +893,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                   )}
                   {canWrite && detailProduct.anvisa && (
                     <button onClick={handleSyncRegistry} disabled={syncingRegistry} className="flex items-center gap-1.5 px-3.5 py-2.5 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap" title="Consultar dados do registro na ANVISA">
-                      <span className={`material-symbols-outlined text-[15px] ${syncingRegistry ? 'animate-spin' : ''}`}>{syncingRegistry ? 'progress_activity' : 'verified'}</span>
+                      {syncingRegistry ? <Spinner size="sm" /> : <span className="material-symbols-outlined text-[15px]">verified</span>}
                       {syncingRegistry ? 'Consultando...' : 'Buscar'}
                     </button>
                   )}
@@ -903,7 +904,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 <div className="col-span-2">
                   {anvisaValidation.loading ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/30 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
-                      <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 animate-spin">progress_activity</span>
+                      <Spinner size="sm" />
                       <span className="text-xs text-slate-500 dark:text-slate-400">Validando na ANVISA...</span>
                     </div>
                   ) : anvisaValidation.notFound ? (

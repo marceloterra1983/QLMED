@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatDate, formatAmount, formatCnpj } from '@/lib/utils';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 
 interface LotEditModalProps {
   isOpen: boolean;
@@ -541,7 +542,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
         <div className="flex-1 overflow-auto min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <span className="material-symbols-outlined text-[32px] text-primary dark:text-blue-400 animate-spin">progress_activity</span>
+              <Spinner size="lg" label="Carregando itens" />
             </div>
           ) : items.length === 0 ? (
             <EmptyState icon="inventory_2" title="Nenhum item encontrado" />

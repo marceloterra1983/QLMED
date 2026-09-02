@@ -8,6 +8,8 @@ import { formatDateTime } from '@/lib/utils';
 import type { SyncLog } from '@/types';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
 
 export default function ErrorsPage() {
   const [logs, setLogs] = useState<SyncLog[]>([]);
@@ -47,16 +49,16 @@ export default function ErrorsPage() {
       {/* Loading State */}
       {loading && (
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+          <Spinner size="lg" />
           <p className="mt-2 text-sm">Carregando erros...</p>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && logs.length === 0 && (
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+        <Card padding="none">
           <EmptyState icon="check_circle" title="Nenhum erro encontrado" hint="Tudo funcionando!" />
-        </div>
+        </Card>
       )}
 
       {/* Error Cards */}
@@ -69,7 +71,8 @@ export default function ErrorsPage() {
           {logs.map(log => (
             <div
               key={log.id}
-              className="bg-white dark:bg-card-dark border border-red-200 dark:border-red-900/50 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              // ui-ok: painel de erro com borda vermelha, não cartão neutro
+              className="bg-white dark:bg-card-dark border border-red-200 dark:border-red-900/50 rounded-xl p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">

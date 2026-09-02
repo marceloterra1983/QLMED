@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import Card from '@/components/ui/Card';
 import CustomerDetailsClient from './customer-details-client';
 
 export const metadata: Metadata = { title: 'Detalhes do Cliente | QLMED' };
@@ -10,9 +11,9 @@ export default function CustomerDetailsPage() {
     <Suspense
       fallback={
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+          <Card padding="lg" className="text-center text-sm text-slate-500 dark:text-slate-400">
             Carregando detalhes do cliente...
-          </div>
+          </Card>
         </div>
       }
     >

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
 
 interface InvoiceDetailsModalProps {
   isOpen: boolean;
@@ -249,7 +250,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
       height="sm:h-[92vh]"
       bodyClassName=""
       header={
-<div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.08)] sm:shadow-none">
+<div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* Left: Icon + Title */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
@@ -290,9 +291,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[14px] sm:text-[15px] ${loadingXml ? 'animate-spin' : ''}`}>
-                    {loadingXml ? 'progress_activity' : 'code'}
-                  </span>
+                  {loadingXml ? <Spinner size="sm" label="Carregando XML" /> : <span className="material-symbols-outlined text-[14px] sm:text-[15px]">code</span>}
                   <span>XML</span>
                 </button>
               </div>
@@ -356,7 +355,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         </div>
       }
       footer={
-<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+<div className="sm:hidden px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom">
           <Button onClick={onClose} icon="arrow_back" size="lg" block>
             Voltar
           </Button>
@@ -378,7 +377,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               {loadingXml ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div className="w-14 h-14 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">
-                    <span className="material-symbols-outlined text-[28px] text-amber-500 animate-spin">progress_activity</span>
+                    <Spinner size="lg" label="Carregando XML" />
                   </div>
                   <p className="text-sm font-medium text-slate-500">Carregando XML...</p>
                 </div>

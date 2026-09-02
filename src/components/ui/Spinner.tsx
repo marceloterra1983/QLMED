@@ -13,12 +13,14 @@ type SpinnerProps = {
   className?: string;
 };
 
-const SIZE = { sm: 'text-[16px]', md: 'text-[24px]', lg: 'text-[32px]' } as const;
+// O nome do glifo vai junto com o tamanho: é tamanho de ícone, e a regra `scale`
+// só isenta px cru em literal que diga `material-symbols`.
+const SIZE = { sm: 'material-symbols-outlined text-[16px]', md: 'material-symbols-outlined text-[24px]', lg: 'material-symbols-outlined text-[32px]' } as const;
 
 export default function Spinner({ size = 'md', label = 'Carregando', className }: SpinnerProps) {
   return (
     <span role="status" aria-label={label} className={`inline-flex items-center justify-center ${className ?? ''}`}>
-      <span aria-hidden="true" className={`material-symbols-outlined animate-spin text-slate-500 dark:text-slate-400 ${SIZE[size]}`}>
+      <span aria-hidden="true" className={`animate-spin text-slate-500 dark:text-slate-400 ${SIZE[size]}`}>
         progress_activity
       </span>
     </span>

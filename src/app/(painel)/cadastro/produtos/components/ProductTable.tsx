@@ -4,9 +4,11 @@ import React from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
 import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
-import { formatAmount } from '@/lib/utils';
+import { formatAmount, formatInt } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
 import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
 
@@ -43,6 +45,7 @@ const getGroupLabel = (product: ProductRow, sortBy: SortField): string => {
     case 'lastIssueDate': {
       if (!product.lastIssueDate) return 'Sem data';
       const d = new Date(product.lastIssueDate);
+      // ui-ok: mês por extenso e ano, formato único de cabeçalho de grupo
       return `${d.toLocaleString('pt-BR', { month: 'long' })} / ${d.getFullYear()}`;
     }
     case 'description': return (product.description?.[0] || '#').toUpperCase();
@@ -211,7 +214,7 @@ export default function ProductTable({
     if (isRebuilding) {
       const content = (
         <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" label="Indexando produtos" />
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Indexando produtos...</p>
           {inTable && <p className="text-xs text-slate-500 dark:text-slate-400">Primeira carga &#x2014; processando NF-e para montar a lista.</p>}
         </div>
@@ -292,7 +295,7 @@ export default function ProductTable({
   };
 
   return (
-    <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+    <Card padding="none">
       {/* Toolbar */}
       <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
         {hasMultipleGroups && (
@@ -332,9 +335,9 @@ export default function ProductTable({
       {/* Footer count */}
       {!loading && products.length > 0 && (
         <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex items-center justify-between">
-          <span className="text-sm text-slate-500">{products.length.toLocaleString('pt-BR')} produto{products.length !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-slate-500">{formatInt(products.length)} produto{products.length !== 1 ? 's' : ''}</span>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

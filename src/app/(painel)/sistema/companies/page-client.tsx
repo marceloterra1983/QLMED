@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 
@@ -47,13 +49,13 @@ export default function CompaniesPage() {
 
       {loading && (
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+          <Spinner size="lg" />
           <p className="mt-2 text-sm">Carregando dados da empresa...</p>
         </div>
       )}
 
       {!loading && company && (
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+        <Card padding="lg">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">{company.razaoSocial}</h3>
@@ -66,7 +68,7 @@ export default function CompaniesPage() {
             </div>
             <Badge dot={false}>{company._count?.invoices || 0} notas</Badge>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -7,10 +7,11 @@ import Field from '@/components/ui/Field';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import { formatCnpj, formatDate, formatAmount, formatInt, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import SortableTh from '@/components/ui/SortableTh';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
@@ -246,7 +247,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const fmtCur = (v: number | null | undefined) =>
-        v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        v != null ? formatAmount(v) : '';
       const fmtAddr = (e: Record<string, string | null> | null | undefined) => {
         if (!e) return '';
         return [e.logradouro, e.numero, e.bairro, e.municipio, e.uf, e.cep].filter(Boolean).join(', ');
@@ -300,7 +301,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
       const a = document.createElement('a');
       a.href = url; a.download = `${cfg.csvName}-${new Date().toISOString().split('T')[0]}.csv`; a.click();
       URL.revokeObjectURL(url);
-      toast.success(cfg.exportDone(all.length.toLocaleString('pt-BR')), { id: toastId });
+      toast.success(cfg.exportDone(formatInt(all.length)), { id: toastId });
     } catch {
       toast.error('Erro ao exportar', { id: toastId });
     } finally {
@@ -385,7 +386,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         </div>
       </MobileFilterWrapper>
 
-      <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+      <Card padding="none">
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -464,7 +465,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             )}
                             <td className="px-4 py-3 tabular-nums" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
-                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? row.priceItemCount.toLocaleString('pt-BR') : '-'}</span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? formatInt(row.priceItemCount) : '-'}</span>
                                 <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço" aria-label="Visualizar tabela de preço">
                                   <span className="material-symbols-outlined text-[20px]">table_view</span>
                                 </button>
@@ -549,7 +550,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             </div>
                             <div>
                               <p className="text-slate-500 dark:text-slate-400">Tabela de Preço</p>
-                              <p className="font-medium text-slate-700 dark:text-slate-300">{row.priceItemCount != null ? `${row.priceItemCount.toLocaleString('pt-BR')} itens` : '-'}</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{row.priceItemCount != null ? `${formatInt(row.priceItemCount)} itens` : '-'}</p>
                             </div>
                           </div>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -633,7 +634,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
       <ContactDetailsModal
         kind={kind}

@@ -4,6 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
+import { formatInt, formatQuantity } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -47,10 +50,7 @@ function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
       {SUMMARY_CARDS.map(({ key, label, icon, iconClasses }) => (
-        <div
-          key={key}
-          className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 overflow-hidden"
-        >
+        <Card padding="none" key={key} className="p-2.5 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 ${iconClasses}`}>
               <span className="material-symbols-outlined text-[20px]">{icon}</span>
@@ -58,11 +58,11 @@ function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
             <div className="min-w-0">
               <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
               <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate">
-                {summary[key].toLocaleString('pt-BR')}
+                {formatQuantity(summary[key])}
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -427,9 +427,9 @@ export default function ProdutosPage() {
       />
 
       {pagination.pages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark px-4 py-3">
+        <Card padding="none" className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Pagina {pagination.page.toLocaleString('pt-BR')} de {pagination.pages.toLocaleString('pt-BR')} · {pagination.total.toLocaleString('pt-BR')} produtos
+            Pagina {formatInt(pagination.page)} de {formatInt(pagination.pages)} · {formatInt(pagination.total)} produtos
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -449,14 +449,14 @@ export default function ProdutosPage() {
               Proxima
             </button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Bulk action toolbar */}
       {selectedKeys.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl shadow-2xl border border-slate-700">
           <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400">checklist</span>
-          <span className="text-sm font-semibold">{selectedKeys.size.toLocaleString('pt-BR')} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</span>
+          <span className="text-sm font-semibold">{formatInt(selectedKeys.size)} produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}</span>
           <div className="w-px h-5 bg-slate-600" />
           {canWrite && (
             <Button onClick={() => setBulkEditOpen(true)} size="sm" icon="edit">
@@ -529,7 +529,7 @@ export default function ProdutosPage() {
                 <div className="flex items-center justify-between">
                   <button onClick={() => setAutoClassifyPreview(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
                   <button onClick={() => handleAutoClassify(false)} disabled={isAutoClassifying} className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60">
-                    {isAutoClassifying ? <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span>Aplicando...</> : <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteracao(oes)</>}
+                    {isAutoClassifying ? <><Spinner size="sm" />Aplicando...</> : <><span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Aplicar {autoClassifyPreview.updatesFound} alteracao(oes)</>}
                   </button>
                 </div>
               ) : (
