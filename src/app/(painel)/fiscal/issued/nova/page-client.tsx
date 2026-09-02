@@ -508,7 +508,7 @@ export default function EmitirNfePage() {
                   </div>
                 ) : (
                   <>
-                    <input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Nome ou CNPJ" className={FILTER_INPUT_CLS} />
+                    <input aria-label="Nome ou CNPJ" value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Nome ou CNPJ" className={FILTER_INPUT_CLS} />
                     {customers.length > 0 ? (
                       <ul
                         data-destinatario-list
@@ -592,7 +592,7 @@ export default function EmitirNfePage() {
                 <h3 className={`text-sm font-bold ${nfeStepHeadingClass('itens')}`}>Itens da nota</h3>
                 <span className="text-xs text-slate-500">{items.length} {items.length === 1 ? 'item' : 'itens'}</span>
               </div>
-              <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Buscar produto por código ou descrição" className={FILTER_INPUT_CLS} />
+              <input aria-label="Buscar produto por código ou descrição" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Buscar produto por código ou descrição" className={FILTER_INPUT_CLS} />
               {products.length > 0 && (
                 <ul className={`divide-y divide-emerald-200/70 dark:divide-emerald-800/60 max-h-40 overflow-auto ${nfeStepPanelClass('itens')}`}>
                   {products.map((p) => (
@@ -632,19 +632,19 @@ export default function EmitirNfePage() {
                             </div>
                           </td>
                           <td className="pr-2 pt-2">
-                            <input value={item.ncm} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ncm: e.target.value.replace(/\D/g, '').slice(0, 8) } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
+                            <input aria-label={`NCM do item `} value={item.ncm} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ncm: e.target.value.replace(/\D/g, '').slice(0, 8) } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
                           </td>
                           <td className="pr-2 pt-2">
-                            <input value={item.cfop} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, cfop: e.target.value.replace(/\D/g, '').slice(0, 4) } : r))} className={`${FILTER_INPUT_CLS} w-16`} />
+                            <input aria-label={`CFOP do item `} value={item.cfop} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, cfop: e.target.value.replace(/\D/g, '').slice(0, 4) } : r))} className={`${FILTER_INPUT_CLS} w-16`} />
                           </td>
                           <td className="pr-2 pt-2">
-                            <input value={item.qCom} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, qCom: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-20`} />
+                            <input aria-label={`Qtd do item `} value={item.qCom} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, qCom: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-20`} />
                           </td>
                           <td className="pr-2 pt-2">
-                            <input value={item.vUnCom} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, vUnCom: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
+                            <input aria-label={`Unitário do item `} value={item.vUnCom} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, vUnCom: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
                           </td>
                           <td className="pr-2 pt-2">
-                            <input value={item.vDesc} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, vDesc: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-20`} />
+                            <input aria-label={`Desconto do item `} value={item.vDesc} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, vDesc: e.target.value } : r))} className={`${FILTER_INPUT_CLS} w-20`} />
                           </td>
                           <td className="pr-2 pt-3 text-right font-bold tabular-nums">{formatAmount(lineNet(item))}</td>
                           <td className="pt-3 whitespace-nowrap">

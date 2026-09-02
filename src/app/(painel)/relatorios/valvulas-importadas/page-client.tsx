@@ -10,6 +10,7 @@ import { formatAmount, formatCurrencyShort } from '@/lib/utils';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import SortableTh from '@/components/ui/SortableTh';
 
 interface SystemUser {
   id: string;
@@ -141,20 +142,6 @@ export default function ValvulasImportadasPage() {
     }
   };
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field)
-      return (
-        <span className="material-symbols-outlined text-[14px] text-slate-300 opacity-0 group-hover:opacity-50 print:hidden">
-          unfold_more
-        </span>
-      );
-    return (
-      <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-400 print:hidden">
-        {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
-      </span>
-    );
-  };
-
   useModalBackButton(emailModalOpen, () => setEmailModalOpen(false));
 
   const openEmailModal = useCallback(async () => {
@@ -236,7 +223,7 @@ export default function ValvulasImportadasPage() {
       header={
 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Enviar Relatório por Email</h3>
-              <button onClick={() => setEmailModalOpen(false)} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button onClick={() => setEmailModalOpen(false)} aria-label="Fechar" className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
@@ -258,6 +245,7 @@ export default function ValvulasImportadasPage() {
                       key={u.id}
                       onClick={() => setSelectedUserId(u.id)}
                       aria-pressed={selectedUserId === u.id}
+                      aria-label={u.name}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
                         selectedUserId === u.id
                           ? 'bg-primary/10 border border-primary/30'
@@ -381,7 +369,7 @@ export default function ValvulasImportadasPage() {
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-slate-300 dark:text-slate-600">—</span>
+                                <span className="text-slate-500 dark:text-slate-400">—</span>
                               )}
                             </td>
                           );
@@ -485,7 +473,7 @@ export default function ValvulasImportadasPage() {
                                   </p>
                                 </>
                               ) : (
-                                <p className="text-xs text-slate-300 dark:text-slate-600">—</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">—</p>
                               )}
                             </div>
                           );
@@ -514,33 +502,15 @@ export default function ValvulasImportadasPage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                  <th className="px-2 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}>
-                    <div className="flex items-center gap-0.5">Cód {getSortIcon('code')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}>
-                    <div className="flex items-center gap-0.5">Descrição {getSortIcon('description')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('purchasedQty')}>
-                    <div className="flex items-center justify-end gap-0.5">Qt Compra {getSortIcon('purchasedQty')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('purchasedValue')}>
-                    <div className="flex items-center justify-end gap-0.5">Vl Compra {getSortIcon('purchasedValue')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('soldQty')}>
-                    <div className="flex items-center justify-end gap-0.5">Qt Venda {getSortIcon('soldQty')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('soldValue')}>
-                    <div className="flex items-center justify-end gap-0.5">Vl Venda {getSortIcon('soldValue')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('netQty')}>
-                    <div className="flex items-center justify-end gap-0.5">Saldo {getSortIcon('netQty')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('avgPurchasePrice')}>
-                    <div className="flex items-center justify-end gap-0.5">PM Compra {getSortIcon('avgPurchasePrice')}</div>
-                  </th>
-                  <th className="px-2 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('avgSalePrice')}>
-                    <div className="flex items-center justify-end gap-0.5">PM Venda {getSortIcon('avgSalePrice')}</div>
-                  </th>
+                  <SortableTh col="code" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Cód</SortableTh>
+                  <SortableTh col="description" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Descrição</SortableTh>
+                  <SortableTh col="purchasedQty" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">Qt Compra</SortableTh>
+                  <SortableTh col="purchasedValue" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">Vl Compra</SortableTh>
+                  <SortableTh col="soldQty" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">Qt Venda</SortableTh>
+                  <SortableTh col="soldValue" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">Vl Venda</SortableTh>
+                  <SortableTh col="netQty" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">Saldo</SortableTh>
+                  <SortableTh col="avgPurchasePrice" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">PM Compra</SortableTh>
+                  <SortableTh col="avgSalePrice" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">PM Venda</SortableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

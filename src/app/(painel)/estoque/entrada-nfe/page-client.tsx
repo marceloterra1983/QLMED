@@ -12,6 +12,7 @@ import Modal from '@/components/ui/Modal';
 import { formatDate, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
+import SortableTh from '@/components/ui/SortableTh';
 
 const LotEditModal = dynamic(() => import('@/components/LotEditModal'), { ssr: false });
 
@@ -172,7 +173,7 @@ export default function EntradaNfePage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [stats, setStats] = useState<Stats>({ pending: 0, partial: 0, registered: 0 });
   const [sortBy, setSortBy] = useState('emission');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [total, setTotal] = useState(0);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
 
@@ -454,11 +455,6 @@ export default function EntradaNfePage() {
     else { setSortBy(field); setSortOrder('desc'); }
   };
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
-  };
-
   const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
     const full = (name || '').trim() || '-';
     if (!cnpj) return full;
@@ -542,6 +538,7 @@ export default function EntradaNfePage() {
                 onClick={() => setLotModalInvoiceId(inv.id)}
                 className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors"
                 title={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
+                aria-label={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
               >
                 <span className="material-symbols-outlined text-[18px]">{isRegistered ? 'edit_note' : 'assignment'}</span>
               </button>
@@ -577,6 +574,7 @@ export default function EntradaNfePage() {
                 onClick={() => setLotModalInvoiceId(inv.id)}
                 className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors"
                 title={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
+                aria-label={isRegistered ? 'Editar Lotes' : 'Verificar Lotes e Registrar'}
               >
                 <span className="material-symbols-outlined text-[16px]">{isRegistered ? 'edit_note' : 'assignment'}</span>
               </button>
@@ -670,6 +668,7 @@ export default function EntradaNfePage() {
               value={lotDraft.lot}
               onChange={e => setLotDraft(d => ({ ...d, lot: e.target.value }))}
               placeholder="Lote"
+              aria-label={`Lote do item ${item.index}`}
               className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               onClick={e => e.stopPropagation()}
             />
@@ -680,6 +679,7 @@ export default function EntradaNfePage() {
               value={lotDraft.expiry}
               onChange={e => setLotDraft(d => ({ ...d, expiry: e.target.value }))}
               placeholder="YYYY-MM-DD"
+              aria-label={`Validade do item ${item.index}`}
               className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               onClick={e => e.stopPropagation()}
             />
@@ -693,6 +693,7 @@ export default function EntradaNfePage() {
                 value={lotDraft.quantity}
                 onChange={e => setLotDraft(d => ({ ...d, quantity: e.target.value }))}
                 placeholder="Qtd"
+                aria-label={`Quantidade do lote do item ${item.index}`}
                 max={item.quantity}
                 min={1}
                 className="w-20 px-1.5 py-1 text-xs text-right border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
@@ -707,6 +708,7 @@ export default function EntradaNfePage() {
                 disabled={savingLot}
                 className="p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-600 disabled:opacity-50"
                 title="Salvar"
+                aria-label="Salvar"
               >
                 <span className="material-symbols-outlined text-[16px]">{savingLot ? 'progress_activity' : 'check'}</span>
               </button>
@@ -714,6 +716,7 @@ export default function EntradaNfePage() {
                 onClick={e => { e.stopPropagation(); setEditingLotItem(null); }}
                 className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
                 title="Cancelar"
+                aria-label="Cancelar"
               >
                 <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
@@ -771,6 +774,7 @@ export default function EntradaNfePage() {
               onClick={e => { e.stopPropagation(); startEditLot(item); }}
               className={`p-0.5 rounded ${hasLot ? 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-600' : 'hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-500 hover:text-amber-700'}`}
               title={hasLot ? 'Editar lote' : 'Adicionar lote'}
+              aria-label={hasLot ? 'Editar lote' : 'Adicionar lote'}
             >
               <span className="material-symbols-outlined text-[14px]">{hasLot ? 'edit' : 'add_circle'}</span>
             </button>
@@ -950,6 +954,7 @@ export default function EntradaNfePage() {
         {canWrite && (
           <button
             onClick={() => setShowImportModal(true)}
+            aria-label="Importar E509"
             className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300"
           >
             <span className="material-symbols-outlined text-[14px]">upload_file</span>
@@ -1054,10 +1059,10 @@ export default function EntradaNfePage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <th className="px-2 py-2.5 w-[80px] text-center">Status</th>
-                <th className="px-2 py-2.5 w-[85px] cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}><div className="flex items-center gap-1">Data {getSortIcon('emission')}</div></th>
-                <th className="px-2 py-2.5 w-[70px] cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}><div className="flex items-center gap-1">Número {getSortIcon('number')}</div></th>
-                <th className="px-2 py-2.5 w-[100px] text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}><div className="flex items-center justify-end gap-1">Valor {getSortIcon('value')}</div></th>
-                <th className="px-3 py-2.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}><div className="flex items-center gap-1">Fornecedor {getSortIcon('sender')}</div></th>
+                <SortableTh col="emission" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-[85px]">Data</SortableTh>
+                <SortableTh col="number" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-[70px]">Número</SortableTh>
+                <SortableTh col="value" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" className="w-[100px]">Valor</SortableTh>
+                <SortableTh col="sender" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Fornecedor</SortableTh>
                 <th className="px-2 py-2.5 w-[60px] text-center">Itens</th>
                 <th className="px-2 py-2.5 w-[90px] text-center">Ações</th>
               </tr>

@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
 import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
@@ -77,17 +78,14 @@ export default function ProductTable({
 
   const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((k) => selectedKeys.has(k));
   const someVisibleSelected = visibleKeys.some((k) => selectedKeys.has(k));
+  const sortCol = (col: string) => handleSort(col as SortField);
+
   const toggleSelectAll = () => {
     if (allVisibleSelected) {
       setSelectedKeys((prev) => { const n = new Set(prev); visibleKeys.forEach((k) => n.delete(k)); return n; });
     } else {
       setSelectedKeys((prev) => { const n = new Set(prev); visibleKeys.forEach((k) => n.add(k)); return n; });
     }
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">{sortOrder === 'asc' ? 'expand_less' : 'expand_more'}</span>;
   };
 
   const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy))));
@@ -100,14 +98,14 @@ export default function ProductTable({
         <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
           {selectionEnabled && (
             <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
-              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" />
+              <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} aria-label={`Selecionar ${product.shortName || product.description}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" />
             </td>
           )}
           <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="flex items-center gap-1">
               {product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 shrink-0 not-italic" title="Fora de linha">block</span>}
               <span className={`text-xs font-mono font-semibold hover:text-primary dark:hover:text-blue-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
-                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-0.5">/</span></> : null}
                 {search ? highlightMatch(product.code || '-', search) : (product.code || '-')}
               </span>
             </div>
@@ -115,7 +113,7 @@ export default function ProductTable({
           <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="hover:text-primary dark:hover:text-blue-400 transition-colors">
               {product.shortName ? (
-                <><span className={`text-xs font-semibold block leading-tight ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-xs block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>
+                <><span className={`text-xs font-semibold block leading-tight ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className="text-xs block leading-tight text-slate-500 dark:text-slate-400">{search ? highlightMatch(product.description, search) : product.description}</span></>
               ) : (
                 <span className={`text-xs font-semibold ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.description, search) : product.description}</span>
               )}
@@ -130,8 +128,8 @@ export default function ProductTable({
           <td className="px-3 py-3 text-right tabular-nums"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
           <td className="px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-0.5">
-              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
-              <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
+              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes" aria-label="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
+              <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Historico" aria-label="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
             </div>
           </td>
         </tr>
@@ -141,11 +139,11 @@ export default function ProductTable({
     return (
       <div key={product.key} className={`py-2 px-3 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'opacity-60' : ''}`} onClick={() => openDetail(product)}>
         <div className="flex items-center gap-2.5">
-          {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar ${product.shortName || product.description}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-1.5 mb-0.5">
               <p className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
-                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span></> : null}
+                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-0.5">/</span></> : null}
                 {product.code || '-'}
               </p>
               {product.outOfLine && <span className="px-1.5 py-0 rounded text-xs font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
@@ -173,7 +171,7 @@ export default function ProductTable({
     if (showLine) {
       const lineContent = (
         <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-transparent dark:from-indigo-950/50 dark:via-indigo-950/30 dark:to-transparent border-y border-indigo-200/80 dark:border-indigo-800/40">
-          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getLineLabel(p) === lineKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getLineLabel(p) === lineKey); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar linha ${lineKey}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
           <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
@@ -186,7 +184,7 @@ export default function ProductTable({
     if (!lineCollapsed && showGrp) {
       const grpContent = (
         <div className="flex items-center gap-2 pl-8 pr-4 py-1.5 bg-gradient-to-r from-amber-50/90 to-transparent dark:from-amber-950/25 dark:to-transparent border-b border-amber-200/50 dark:border-amber-800/25">
-          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === grpKey); }} onClick={(e) => e.stopPropagation()} className="w-3.5 h-3.5 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === grpKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === grpKey); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar grupo ${grpKey}`} className="w-3.5 h-3.5 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
@@ -278,7 +276,7 @@ export default function ProductTable({
           {showDivider && group && (() => {
             const divContent = (
               <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
-                {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === group); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+                {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === group); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar grupo ${group}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
                 <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
@@ -312,13 +310,13 @@ export default function ProductTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-              {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" title="Selecionar todos visiveis" /></th>}
-              <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('code')}><div className="flex items-center gap-1">Referencia <SortIcon field="code" /></div></th>
-              <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('description')}><div className="flex items-center gap-1">Produto <SortIcon field="description" /></div></th>
-              <th className="px-3 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('anvisa')}><div className="flex items-center gap-1">ANVISA <SortIcon field="anvisa" /></div></th>
+              {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" title="Selecionar todos visiveis" aria-label="Selecionar todos visiveis" /></th>}
+              <SortableTh col="code" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Referencia</SortableTh>
+              <SortableTh col="description" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Produto</SortableTh>
+              <SortableTh col="anvisa" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>ANVISA</SortableTh>
               <th className="px-3 py-1.5"><div className="flex items-center gap-1">Fabricante</div></th>
-              <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastIssueDate')}><div className="flex items-center justify-end gap-1">Ult. Compra <SortIcon field="lastIssueDate" /></div></th>
-              <th className="px-3 py-1.5 text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastPrice')}><div className="flex items-center justify-end gap-1">Ult. Preco <SortIcon field="lastPrice" /></div></th>
+              <SortableTh col="lastIssueDate" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol} align="right">Ult. Compra</SortableTh>
+              <SortableTh col="lastPrice" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol} align="right">Ult. Preco</SortableTh>
               <th className="px-3 py-1.5 text-center">Acoes</th>
             </tr>
           </thead>

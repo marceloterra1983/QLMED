@@ -56,6 +56,7 @@ export function EditableField({ label, value, field, draft, onChange }: {
         type="text"
         value={draft[field] ?? value ?? ''}
         onChange={(e) => onChange(field, e.target.value)}
+        aria-label={label}
         className="w-full px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all"
       />
     </div>

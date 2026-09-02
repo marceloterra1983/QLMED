@@ -135,9 +135,9 @@ function SettingsModal({ onClose, onUpdated }: {
 
   const InlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
-      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+      <input autoFocus aria-label={placeholder ?? "Renomear"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
+      <button type="submit" aria-label="Confirmar" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" aria-label="Fechar" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
@@ -439,9 +439,9 @@ function SettingsModal({ onClose, onUpdated }: {
 
   const MfrInlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="flex items-center gap-1.5 flex-1">
-      <input autoFocus value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
-      <button type="submit" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-      <button type="button" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+      <input autoFocus aria-label={placeholder ?? "Renomear"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inlineInputCls} disabled={disabled} />
+      <button type="submit" aria-label="Confirmar" disabled={disabled} className={`${actionBtnCls} text-primary dark:text-blue-400 hover:bg-primary/10`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+      <button type="button" aria-label="Fechar" onClick={onCancel} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
     </form>
   );
 
@@ -498,7 +498,7 @@ function SettingsModal({ onClose, onUpdated }: {
             {/* Close button (top-right) */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0">
               <h3 id="settings-modal-section-title" className="text-sm font-bold text-slate-900 dark:text-white">{SETTINGS_SECTIONS.find((s) => s.key === activeSection)!.label}</h3>
-              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <button onClick={onClose} aria-label="Fechar" className="p-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -517,7 +517,7 @@ function SettingsModal({ onClose, onUpdated }: {
               <div className="px-5 py-4 space-y-2">
                 <div className="relative">
                   <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                  <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                  <input type="text" aria-label="Buscar linha, grupo ou subgrupo" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                 </div>
                 {filteredTypes.length === 0 && (
                   <EmptyState icon="inbox" title={linesSearch ? 'Nenhum resultado encontrado.' : 'Nenhuma linha cadastrada.'} />
@@ -531,7 +531,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   return (
                     <div key={type} className={`rounded-xl border overflow-hidden transition-colors ${isExpanded ? 'border-indigo-200/60 dark:border-indigo-800/30 shadow-sm' : 'border-slate-200 dark:border-slate-700'}`}>
                       <div className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors ${isExpanded ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-950/30 dark:to-transparent' : 'bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
-                        <button onClick={() => setExpandedType(isExpanded ? null : type)} className="text-indigo-400 dark:text-indigo-500">
+                        <button onClick={() => setExpandedType(isExpanded ? null : type)} aria-label={`${isExpanded ? "Recolher" : "Expandir"} ${type}`} className="text-indigo-400 dark:text-indigo-500">
                           <span className="material-symbols-outlined text-[18px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                         </button>
                         {isEditing ? (
@@ -541,8 +541,8 @@ function SettingsModal({ onClose, onUpdated }: {
                             <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
                             <span className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide cursor-pointer" onClick={() => setExpandedType(isExpanded ? null : type)}>{type}</span>
                             <Badge tone="info" dot={false}>{count}</Badge>
-                            <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <button onClick={() => startTypeEdit('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleTypeDelete('productType', type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`} title="Excluir" aria-label="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
                         )}
                       </div>
@@ -560,14 +560,14 @@ function SettingsModal({ onClose, onUpdated }: {
                                       <InlineForm value={editValue} onChange={setEditValue} onSubmit={handleTypeRename} onCancel={() => setEditingItem(null)} disabled={saving} />
                                     ) : (
                                       <>
-                                        <button onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)} className="text-amber-400 dark:text-amber-500">
+                                        <button onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)} aria-label={`${isSubExpanded ? "Recolher" : "Expandir"} ${sub}`} className="text-amber-400 dark:text-amber-500">
                                           <span className="material-symbols-outlined text-[16px] transition-transform duration-200" style={{ transform: isSubExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
                                         </button>
                                         <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
                                         <span className="flex-1 text-sm text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setExpandedSubtype(isSubExpanded ? null : `${type}|${sub}`)}>{sub}</span>
                                         <Badge tone="warning" dot={false}>{subCount}</Badge>
-                                        <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
-                                        <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                        <button onClick={() => startTypeEdit('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                        <button onClick={() => handleTypeDelete('productSubtype', sub, type)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity`} title="Excluir" aria-label="Excluir" disabled={saving}><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                       </>
                                     )}
                                   </div>
@@ -585,8 +585,8 @@ function SettingsModal({ onClose, onUpdated }: {
                                                   <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
                                                   <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">{sg}</span>
                                                   <Badge tone="success" dot={false}>{sgCount}</Badge>
-                                                  <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
-                                                  <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
+                                                  <button onClick={() => startTypeEdit('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[14px]">edit</span></button>
+                                                  <button onClick={() => handleTypeDelete('productSubgroup', sg, type, sub)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/sg:opacity-100 transition-opacity`} title="Excluir" aria-label="Excluir" disabled={saving}><span className="material-symbols-outlined text-[14px]">delete</span></button>
                                                 </>
                                               )}
                                             </div>
@@ -668,7 +668,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
                     setNewTypeName('');
                   }} className="flex items-center gap-2">
-                    <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                    <input aria-label="Nova linha" placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                     <Button type="submit" variant="soft" icon="add">Adicionar</Button>
                   </form>
                 </div>
@@ -681,12 +681,12 @@ function SettingsModal({ onClose, onUpdated }: {
                 <div className="px-5 pt-4 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-800/50">
                   <div className="relative">
                     <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                    <input type="text" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                    <input type="text" aria-label="Buscar fabricante" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                   </div>
                   <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
                     <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
                     <div className="flex gap-2">
-                      <input placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                      <input aria-label="Nome do fabricante" placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                       <button onClick={handleMfrAdd} disabled={addingNew || !newMfrName.trim()} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </div>
                   </div>
@@ -707,8 +707,8 @@ function SettingsModal({ onClose, onUpdated }: {
                             <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[16px] text-teal-500">factory</span></div>
                             <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={mfr.name}>{mfr.name}</span>
                             <Badge tone="success" dot={false} className="shrink-0">{mfr.count}</Badge>
-                            <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <button onClick={() => { setEditingMfr(mfr.name); setMfrEditValue(mfr.name); }} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleMfrDelete(mfr.name)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/mfr:opacity-100 transition-opacity shrink-0`} title="Excluir" aria-label="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                           </>
                         )}
                       </div>
@@ -774,24 +774,24 @@ function SettingsModal({ onClose, onUpdated }: {
                                     <div key={value} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 group/aliq transition-colors">
                                       {isEditing ? (
                                         <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
-                                          <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
-                                          <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[16px]">check</span></button>
-                                          <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
+                                          <input autoFocus aria-label="Renomear" value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
+                                          <button type="submit" aria-label="Confirmar" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[16px]">check</span></button>
+                                          <button type="button" aria-label="Fechar" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
                                         </form>
                                       ) : (
                                         <>
                                           <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200 flex-1">{value}%</span>
                                           <Badge tone={count > 0 ? 'warning' : 'neutral'} dot={false} className="shrink-0">{count}</Badge>
-                                          <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
-                                          <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
+                                          <button onClick={() => { setFiscalEditItem({ field, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[15px]">edit</span></button>
+                                          <button onClick={() => handleFiscalDelete(field, value)} disabled={saving} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/aliq:opacity-100 transition-opacity`} title="Excluir" aria-label="Excluir"><span className="material-symbols-outlined text-[15px]">delete</span></button>
                                         </>
                                       )}
                                     </div>
                                   );
                                 })}
                                 <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(field); }} className="flex items-center gap-1.5 pt-1">
-                                  <input placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow font-mono" disabled={saving} />
-                                  <button type="submit" disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
+                                  <input aria-label={`Nova alíquota de ${label}`} placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow font-mono" disabled={saving} />
+                                  <button type="submit" disabled={saving} aria-label="Adicionar" className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
                                 </form>
                               </div>
                             </div>
@@ -808,7 +808,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
                       <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                      <input type="text" placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                      <input type="text" aria-label={`Buscar ${activeTabMeta.label}`} placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                     </div>
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">{currentFiscalItems.length} {currentFiscalItems.length === 1 ? 'item' : 'itens'}</span>
                   </div>
@@ -824,9 +824,9 @@ function SettingsModal({ onClose, onUpdated }: {
                       <div key={value} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group/item">
                         {isEditing ? (
                           <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
-                            <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
-                            <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[18px]">check</span></button>
-                            <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
+                            <input autoFocus aria-label="Renomear" value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
+                            <button type="submit" aria-label="Confirmar" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[18px]">check</span></button>
+                            <button type="button" aria-label="Fechar" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
                           </form>
                         ) : (
                           <>
@@ -866,7 +866,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                       <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-sm shrink-0">{formatted}</span>
                                       {ncmInfo && <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{ncmInfo.descricao}</span>}
                                       {hierarchy.length > 1 && (
-                                        <button onClick={toggleExpand} className="shrink-0 ml-auto text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
+                                        <button onClick={toggleExpand} aria-label={isExpanded ? "Recolher hierarquia" : "Ver hierarquia"} className="shrink-0 ml-auto text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
                                           <span className={`material-symbols-outlined text-[16px] transition-transform ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
                                         </button>
                                       )}
@@ -895,8 +895,8 @@ function SettingsModal({ onClose, onUpdated }: {
                             })()}
                             <Badge tone={count > 0 ? 'warning' : 'neutral'} dot={false} className="shrink-0">{count}</Badge>
                             {fiscalTab !== 'ncm' && (<>
-                            <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
-                            <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                            <button onClick={() => { setFiscalEditItem({ field: fiscalTab, oldValue: value }); setFiscalEditValue(value); }} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Renomear" aria-label="Renomear"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button onClick={() => handleFiscalDelete(fiscalTab, value)} className={`${actionBtnCls} shrink-0 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity`} title="Excluir" aria-label="Excluir" disabled={saving}><span className="material-symbols-outlined text-[16px]">delete</span></button>
                             </>)}
                           </>
                         )}
@@ -935,7 +935,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   {fiscalTab !== 'ncm' && (
                   <div className="pt-2">
                     <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(); }} className="flex items-center gap-2">
-                      <input placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
+                      <input aria-label={`Novo ${activeTabMeta.label}`} placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                       <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </form>
                   </div>

@@ -214,7 +214,7 @@ export default function NfseReceivedPage() {
   }
 
   const val = (amount: number) => hideValues
-    ? <span className="tracking-widest text-slate-300 dark:text-slate-600 select-none">••••</span>
+    ? <span className="tracking-widest text-slate-500 dark:text-slate-400 select-none">••••</span>
     : <>{formatAmount(amount)}</>;
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (

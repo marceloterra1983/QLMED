@@ -11,6 +11,7 @@ import { formatCnpj, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/l
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import SortableTh from '@/components/ui/SortableTh';
 
 const ContactDetailsModal = dynamic(() => import('@/components/ContactDetailsModal'), { ssr: false });
 const ContactPriceTableModal = dynamic(() => import('@/components/ContactPriceTableModal'), { ssr: false });
@@ -125,7 +126,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState('lastIssue');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selected, setSelected] = useState<ContactRow | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<ContactRow | null>(null);
@@ -219,21 +220,6 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
     setSortBy(field);
     if (field === 'name' || field === 'city') setSortOrder('asc');
     else setSortOrder('desc');
-  };
-
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) {
-      return (
-        <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">
-          unfold_more
-        </span>
-      );
-    }
-    return (
-      <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">
-        {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
-      </span>
-    );
   };
 
   const clearFilters = () => {
@@ -404,16 +390,10 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                <th className="px-4 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('lastIssue')}>
-                  <div className="flex items-center gap-1">Última NF-e {getSortIcon('lastIssue')}</div>
-                </th>
-                <th className="px-4 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('name')}>
-                  <div className="flex items-center gap-1">{cfg.partyColumn} {getSortIcon('name')}</div>
-                </th>
+                <SortableTh col="lastIssue" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Última NF-e</SortableTh>
+                <SortableTh col="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>{cfg.partyColumn}</SortableTh>
                 {cfg.showCity && (
-                  <th className="px-4 py-1.5 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('city')}>
-                    <div className="flex items-center gap-1">Cidade {getSortIcon('city')}</div>
-                  </th>
+                  <SortableTh col="city" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Cidade</SortableTh>
                 )}
                 <th className="px-4 py-1.5 text-center">
                   <div className="flex flex-col items-center leading-tight">
@@ -485,17 +465,17 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             <td className="px-4 py-3 tabular-nums" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.priceItemCount != null ? row.priceItemCount.toLocaleString('pt-BR') : '-'}</span>
-                                <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço">
+                                <button onClick={() => { setSelectedPrice(row); setIsPriceTableOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar tabela de preço" aria-label="Visualizar tabela de preço">
                                   <span className="material-symbols-outlined text-[20px]">table_view</span>
                                 </button>
                               </div>
                             </td>
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
-                                <button onClick={() => { setSelected(row); setIsDetailsOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title={cfg.detailsAria}>
+                                <button onClick={() => { setSelected(row); setIsDetailsOpen(true); }} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title={cfg.detailsAria} aria-label={cfg.detailsAria}>
                                   <span className="material-symbols-outlined text-[20px]">search</span>
                                 </button>
-                                <button onClick={() => openInNewTab(row)} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Abrir detalhes em nova aba">
+                                <button onClick={() => openInNewTab(row)} className="p-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Abrir detalhes em nova aba" aria-label="Abrir detalhes em nova aba">
                                   <span className="material-symbols-outlined text-[20px]">open_in_new</span>
                                 </button>
                               </div>
@@ -608,6 +588,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              aria-label="Itens por página"
               className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300"
             >
               <option value={25}>25 / página</option>

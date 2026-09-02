@@ -347,6 +347,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 onClick={copyAccessKey}
                 className={`flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:${theme.text} transition-colors`}
                 title="Copiar chave de acesso"
+                aria-label="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
               </button>

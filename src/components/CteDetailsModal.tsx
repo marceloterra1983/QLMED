@@ -550,6 +550,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
                 onClick={copyAccessKey}
                 className="flex-shrink-0 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
                 title="Copiar chave de acesso"
+                aria-label="Copiar chave de acesso"
               >
                 <span className="material-symbols-outlined text-[15px]">content_copy</span>
               </button>
@@ -583,6 +584,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                aria-label={tab.label}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px rounded-t-lg ${
                   activeTab === tab.id
                     ? 'text-teal-600 dark:text-teal-400 border-teal-500 bg-teal-500/5 dark:bg-teal-500/10'

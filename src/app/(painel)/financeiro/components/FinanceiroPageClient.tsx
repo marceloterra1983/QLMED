@@ -433,6 +433,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-[20px]">search</span>
               <input
                 type="text"
+                aria-label={cfg.searchPlaceholder}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={cfg.searchPlaceholder}
@@ -440,7 +441,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
               />
             </div>
             <select
-              value={statusFilter}
+              aria-label="Status"              value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
             >
@@ -452,7 +453,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
             </select>
             {(search || statusFilter) && (
               <button
-                onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); setPage(1); }}
+                aria-label="Limpar filtros"                onClick={() => { setSearchInput(''); setSearch(''); setStatusFilter(''); setPage(1); }}
                 className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>

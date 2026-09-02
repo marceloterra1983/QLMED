@@ -375,6 +375,7 @@ export default function CassemsPageClient() {
               >
                 <input
                   type="date"
+                  aria-label="Data"
                   value={issuedAtDraft}
                   onChange={(event) => setIssuedAtDraft(event.target.value)}
                   className={readFieldInputClass}
@@ -391,7 +392,7 @@ export default function CassemsPageClient() {
                 }}
               >
                 <input
-                  value={patientDraft}
+                  aria-label="Paciente"                  value={patientDraft}
                   onChange={(event) => setPatientDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -405,7 +406,7 @@ export default function CassemsPageClient() {
                 onSave={() => void savePatch({ patientRegistry: registryDraft.trim() })}
               >
                 <input
-                  value={registryDraft}
+                  aria-label="Matrícula"                  value={registryDraft}
                   onChange={(event) => setRegistryDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -427,13 +428,13 @@ export default function CassemsPageClient() {
                 }}
               >
                 <input
-                  value={doctorDraft}
+                  aria-label="Nome do prestador"                  value={doctorDraft}
                   onChange={(event) => setDoctorDraft(event.target.value)}
                   className={readFieldInputClass}
                   placeholder="Nome"
                 />
                 <input
-                  value={crmDraft}
+                  aria-label="CRM"                  value={crmDraft}
                   onChange={(event) => setCrmDraft(event.target.value)}
                   className={`${readFieldInputClass} max-w-24`}
                   placeholder="CRM"
@@ -450,7 +451,7 @@ export default function CassemsPageClient() {
                 }}
               >
                 <input
-                  value={hospitalDraft}
+                  aria-label="Local de execução"                  value={hospitalDraft}
                   onChange={(event) => setHospitalDraft(event.target.value)}
                   className={readFieldInputClass}
                 />
@@ -467,7 +468,7 @@ export default function CassemsPageClient() {
                   }}
                 >
                   <input
-                    value={procedureDraft}
+                    aria-label="Procedimento"                    value={procedureDraft}
                     onChange={(event) => setProcedureDraft(event.target.value)}
                     className={readFieldInputClass}
                   />

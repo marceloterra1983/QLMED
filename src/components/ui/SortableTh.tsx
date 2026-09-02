@@ -41,7 +41,7 @@ export default function SortableTh({ col, sortBy, sortOrder, onSort, align = 'le
         {children}
         <span
           aria-hidden="true"
-          className={`material-symbols-outlined text-[16px] ${ativa ? 'text-primary dark:text-blue-400' : 'text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400'}`}
+          className={`material-symbols-outlined text-[16px] print:hidden ${ativa ? 'text-primary dark:text-blue-400' : 'text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400'}`}
         >
           {ativa ? (sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
         </span>

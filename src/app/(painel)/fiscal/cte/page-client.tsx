@@ -19,6 +19,7 @@ import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-downl
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
+import SortableTh from '@/components/ui/SortableTh';
 
 export default function CtePage() {
   const { canWrite } = useRole();
@@ -32,7 +33,7 @@ export default function CtePage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [total, setTotal] = useState(0);
   const [sortBy, setSortBy] = useState('emission');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -91,7 +92,7 @@ export default function CtePage() {
   };
 
   const val = (amount: number) => hideValues
-    ? <span className="tracking-widest text-slate-300 dark:text-slate-600 select-none">••••</span>
+    ? <span className="tracking-widest text-slate-500 dark:text-slate-400 select-none">••••</span>
     : <>{formatAmount(amount)}</>;
 
   const selectYear = (year: number | null) => {
@@ -365,15 +366,6 @@ export default function CtePage() {
     }
   };
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) return <span className="material-symbols-outlined text-[16px] text-slate-300 opacity-0 group-hover:opacity-50">unfold_more</span>;
-    return (
-      <span className="material-symbols-outlined text-[16px] text-primary dark:text-blue-400">
-        {sortOrder === 'asc' ? 'expand_less' : 'expand_more'}
-      </span>
-    );
-  };
-
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selected);
     if (newSelected.has(id)) newSelected.delete(id);
@@ -608,23 +600,14 @@ export default function CtePage() {
                     type="checkbox"
                     checked={selected.size === invoices.length && invoices.length > 0}
                     onChange={toggleSelectAll}
+                    aria-label="Selecionar todas"
                   />
                 </th>
-                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('emission')}>
-                  <div className="flex items-center gap-1">Emissão {getSortIcon('emission')}</div>
-                </th>
-                <th className="px-2 py-2 w-px whitespace-nowrap cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('number')}>
-                  <div className="flex items-center gap-1">Número {getSortIcon('number')}</div>
-                </th>
-                <th className="px-2 py-2 w-px whitespace-nowrap text-right cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('value')}>
-                  <div className="flex items-center justify-end gap-1">Valor {getSortIcon('value')}</div>
-                </th>
-                <th className="px-2 py-2 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('sender')}>
-                  <div className="flex items-center gap-1">Emitente {getSortIcon('sender')}</div>
-                </th>
-                <th className="px-2 py-2 cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => handleSort('recipient')}>
-                  <div className="flex items-center gap-1">Tomador {getSortIcon('recipient')}</div>
-                </th>
+                <SortableTh col="emission" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-px whitespace-nowrap">Emissão</SortableTh>
+                <SortableTh col="number" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-px whitespace-nowrap">Número</SortableTh>
+                <SortableTh col="value" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" className="w-px whitespace-nowrap">Valor</SortableTh>
+                <SortableTh col="sender" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Emitente</SortableTh>
+                <SortableTh col="recipient" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Tomador</SortableTh>
                 <th className="px-2 py-2">Manifestação</th>
                 <th className="px-2 py-2 text-center">Ações</th>
               </tr>
@@ -683,6 +666,7 @@ export default function CtePage() {
                               type="checkbox"
                               checked={selected.has(invoice.id)}
                               onChange={() => toggleSelect(invoice.id)}
+                              aria-label={`Selecionar CT-e ${invoice.number}`}
                             />
                           </td>
                           <td className="px-2 py-3 tabular-nums whitespace-nowrap">

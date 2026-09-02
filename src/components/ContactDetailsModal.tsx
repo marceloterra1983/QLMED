@@ -285,7 +285,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           <SectionCard title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" iconColor={cfg.shortNameIconClass} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
             <div className="flex items-center gap-2 mb-3">
               <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
-              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
+              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} aria-label={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
               <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
                 {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
                 {savingShortName ? '...' : 'Salvar'}

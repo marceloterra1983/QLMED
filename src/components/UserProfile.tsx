@@ -55,6 +55,7 @@ export default function UserProfile({ session, collapsed }: UserProfileProps) {
         <button
           onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login'; })}
           title="Trocar conta"
+          aria-label="Trocar conta"
           className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors ${
             collapsed ? 'p-2' : 'flex-1 px-3 py-2'
           }`}
@@ -65,6 +66,7 @@ export default function UserProfile({ session, collapsed }: UserProfileProps) {
         <button
           onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login'; })}
           title="Sair"
+          aria-label="Sair"
           className={`flex items-center gap-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
             collapsed ? 'p-2' : 'flex-1 px-3 py-2'
           }`}

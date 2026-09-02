@@ -28,6 +28,18 @@
  *   empty   — estado vazio à mão: `text-center` seguido, em 400 caracteres, de
  *             texto JSX `>Nenhum`/`>Nenhuma`. `components/ui/EmptyState.tsx` é
  *             a fonte; `<EmptyState title="Nenhum…">` não acusa (atributo).
+ *   sortable — `<th onClick>`: o teclado não chega (um `<th>` não recebe foco).
+ *             `components/ui/SortableTh.tsx` é a fonte e o único isento.
+ *   iconbtn — `<button>` só-ícone (`material-symbols-outlined`, sem texto
+ *             visível) sem `aria-label`/`aria-labelledby`. `title=` não conta:
+ *             não é lido em toque. Só a tag minúscula; `<Button icon>` é o
+ *             componente e cuida de si.
+ *   label   — `<input|select|textarea>` sem `aria-label`, `aria-labelledby`
+ *             nem `id` e sem `<Field`/`<label` nos 400 caracteres anteriores.
+ *             checkbox/radio/hidden/file ficam de fora.
+ *   faint   — `text-slate-300` como cor de texto (1,9:1 sobre branco). Em
+ *             literal de ícone (`material-symbols`) é decorativo e passa;
+ *             `hover:text-slate-300` é afordância, não texto.
  *
  * Uso: node scripts/verify-ui-tokens.mjs [--stats]
  */
@@ -72,6 +84,15 @@ const PILL_FUNDO = /(?<![-\w:])bg-[a-z]+-(?:50|100)\b|(?<![-\w])dark:bg-[a-z]+-9
 // `min-w-[22px]` de contador não casa e continua a acusar.
 const DISCO = /(?<![-\w:])w-\d+(?:\.\d+)?\b[^"'`]*(?<![-\w:])h-\d+(?:\.\d+)?\b/;
 const VAZIO = /(?<![-\w:])text-center\b/g;
+const TH_ABRE = /<th\b/g;
+const BOTAO_MIN = /<button\b/g;
+const ROTULO_ARIA = /\saria-label(?:ledby)?=/;
+const TIPO_SEM_ROTULO = /\stype="(?:checkbox|radio|hidden|file)"/;
+// Qualquer wrapper que termine em `Field` (`DetailField`) embrulha o `<Field>`
+// de rótulo implícito: o controle lá dentro está rotulado.
+const ROTULO_ANTES = /<(?:\w*Field|label)\b/;
+const FAINT = /(?<![-\w:])text-slate-300\b/;
+const FAINT_HOVER = /hover:text-slate-300\b/;
 const NENHUM = />\s*Nenhuma?\b/;
 
 const PX_FLOOR = 16; // até aqui é tamanho de texto; acima, só ícone usa px
@@ -83,10 +104,12 @@ const files = execFileSync(
 
 const violations = {
   primary: [], muted: [], scale: [], button: [], focus: [], radius: [], field: [], pill: [], empty: [],
+  sortable: [], iconbtn: [], label: [], faint: [],
 };
 const stats = {
   arquivos: files.length, literais: 0, primary: 0, muted: 0, icone: 0, escala: 0,
   focus: 0, radius: 0, field: 0, pill: 0, empty: 0,
+  sortable: 0, iconbtn: 0, label: 0, faint: 0,
 };
 
 /**
@@ -109,7 +132,26 @@ const semComentarios = (src) =>
 
 for (const file of files) {
   const src = semComentarios(readFileSync(file, 'utf8'));
-  for (const m of literaisDe(src)) {
+  const lits = literaisDe(src);
+  // Literal aninhado (`${ativa ? 'text-slate-300' : …}`) chega sozinho, sem o
+  // `material-symbols` do template que o envolve: herda a isenção do pai.
+  const icones = lits.filter((l) => /material-symbols/.test(l.lit)).map((l) => [l.at, l.at + l.raw.length]);
+  // Um `<button className="text-slate-300 …">` cujo único filho é um ícone
+  // pinta o ícone por herança: a cor é de ícone, não de texto.
+  const botoesIcone = [];
+  for (const m of src.matchAll(/<button\b/g)) {
+    const lido = atributosDe(src, m.index + m[0].length);
+    if (!lido) continue;
+    const fimCorpo = src.indexOf('</button>', lido.fim);
+    if (fimCorpo < 0) continue;
+    const corpo = src.slice(lido.fim, fimCorpo);
+    if (!/material-symbols-outlined/.test(corpo)) continue;
+    const semIcone = semTags(corpo.replace(/<span[^>]*material-symbols[^>]*>[\s\S]*?<\/span>/g, '')).replace(/\{[\s\S]*?\}/g, '');
+    if (!/\p{L}{2}/u.test(semIcone)) botoesIcone.push([m.index, lido.fim]);
+  }
+  const dentroDeIcone = (at) =>
+    icones.some(([ini, fim]) => at > ini && at < fim) || botoesIcone.some(([ini, fim]) => at > ini && at < fim);
+  for (const m of lits) {
     const lit = m.lit;
     if (!lit) continue;
     const at = m.at;
@@ -173,6 +215,12 @@ for (const file of files) {
       stats.radius++;
       violations.radius.push(`${line()}  ${r[0]} — use ${r[1]}${RAIO_PARA[r[2]]}`);
     }
+
+    // ── faint ────────────────────────────────────────────────────────────
+    if (FAINT.test(lit) && !isIcon && !dentroDeIcone(at) && !FAINT_HOVER.test(lit)) {
+      stats.faint++;
+      violations.faint.push(`${line()}  text-slate-300 como texto — 1,9:1; use slate-500, ou é ícone decorativo (isento)`);
+    }
   }
 }
 
@@ -199,6 +247,17 @@ function atributosDe(src, apos) {
     else if (c === '>' && chaves === 0) return { attrs: src.slice(apos, i), fim: i + 1 };
   }
   return null;
+}
+/** Corpo sem as tags, cada `<…>` retirada com `atributosDe` (um `=>` não a fecha). */
+function semTags(corpo) {
+  let out = '';
+  for (let i = 0; i < corpo.length; ) {
+    if (corpo[i] !== '<') { out += corpo[i++]; continue; }
+    const lido = atributosDe(corpo, i + 1);
+    if (!lido) break;
+    i = lido.fim;
+  }
+  return out;
 }
 // Superfície em REPOUSO, sem prefixo de variante: `hover:bg-primary/10` é
 // afordância de passagem do mouse, não fundo de botão — contá-la fazia a regra
@@ -313,6 +372,50 @@ for (const file of files) {
       violations.field.push(
         `${file}:${lineOf(src, m.index)}  <${m[1]}> com ${b[0]} — campo usa border-slate-200 dark:border-slate-700`,
       );
+    }
+
+    // ── label ──────────────────────────────────────────────────────────
+    const a = lido.attrs;
+    if (TIPO_SEM_ROTULO.test(a) || ROTULO_ARIA.test(a) || /\sid=/.test(a)) continue;
+    if (ROTULO_ANTES.test(src.slice(Math.max(0, m.index - 400), m.index))) continue;
+    stats.label++;
+    violations.label.push(`${file}:${lineOf(src, m.index)}  controle sem rótulo — <Field>, <label htmlFor> ou aria-label`);
+  }
+
+  // ── sortable ───────────────────────────────────────────────────────────
+  if (!file.endsWith('components/ui/SortableTh.tsx')) {
+    for (const m of src.matchAll(TH_ABRE)) {
+      const lido = atributosDe(src, m.index + m[0].length);
+      if (!lido || !/\sonClick=/.test(lido.attrs)) continue;
+      stats.sortable++;
+      violations.sortable.push(`${file}:${lineOf(src, m.index)}  <th onClick> — o teclado não chega; use <SortableTh>`);
+    }
+  }
+
+  // ── iconbtn ────────────────────────────────────────────────────────────
+  // Texto visível = ≥ 2 letras fora de `{…}` depois de tirar os spans de ícone.
+  // Dentro de `{…}` só as strings contam (`{a ? 'Salvando…' : 'Salvar'}` é
+  // rótulo; `{label}` é opaco e não compra a isenção).
+  if (!file.endsWith('components/ui/Button.tsx')) {
+    for (const m of src.matchAll(BOTAO_MIN)) {
+      const lido = atributosDe(src, m.index + m[0].length);
+      if (!lido || ROTULO_ARIA.test(lido.attrs)) continue;
+      const resto = src.slice(lido.fim);
+      const fim = resto.indexOf('</button>');
+      if (fim < 0) continue;
+      const corpo = resto.slice(0, fim);
+      if (!corpo.includes('material-symbols-outlined')) continue;
+      // `{tab.label}` / `{u.name}` é rótulo visível — um identificador dentro de
+      // `{…}` compra a isenção. Só `{' '}` e afins ficam opacos.
+      const texto = semTags(corpo.replace(/<span[^>]*material-symbols[^>]*>[\s\S]*?<\/span>/g, ''))
+        .replace(/\{[\s\S]*?\}/g, (m) => {
+          const strings = (m.match(/(['"])(?:(?!\1).)*\1/g) ?? []).join(' ');
+          const semStrings = m.replace(/(['"])(?:(?!\1).)*\1/g, '');
+          return /[A-Za-z_$][\w$.]*/.test(semStrings) ? strings + ' expr' : strings;
+        });
+      if (/\p{L}{2}/u.test(texto)) continue;
+      stats.iconbtn++;
+      violations.iconbtn.push(`${file}:${lineOf(src, m.index)}  botão só-ícone sem aria-label — o leitor de tela diz "botão"`);
     }
   }
 }

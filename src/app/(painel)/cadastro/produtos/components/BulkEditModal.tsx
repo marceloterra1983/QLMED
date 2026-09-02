@@ -102,7 +102,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
                 <span className="font-bold text-primary dark:text-blue-400">{selectedKeys.size.toLocaleString('pt-BR')}</span> produto{selectedKeys.size !== 1 ? 's' : ''} selecionado{selectedKeys.size !== 1 ? 's' : ''}
               </p>
             </div>
-            <button onClick={onClose} className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
@@ -139,11 +139,11 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           <BulkFieldRow checked={bulkFields.enableType} onChange={(v) => setBulkFields((f) => ({ ...f, enableType: v }))} icon="category" label="Linha">
             {bulkNewMode.type ? (
               <div className="flex gap-1.5">
-                <input autoFocus type="text" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Nome da nova linha" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, type: false })); setBulkFields((f) => ({ ...f, productType: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <input autoFocus type="text" aria-label="Nome da nova linha" value={bulkFields.productType} onChange={(e) => setBulkFields((f) => ({ ...f, productType: e.target.value }))} placeholder="Nome da nova linha" className={BULK_INPUT_CLS} />
+                <button type="button" aria-label="Fechar" onClick={() => { setBulkNewMode((m) => ({ ...m, type: false })); setBulkFields((f) => ({ ...f, productType: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
-              <select value={bulkFields.productType} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, type: true })); setBulkFields((f) => ({ ...f, productType: '' })); } else { setBulkFields((f) => ({ ...f, productType: e.target.value })); } }} className={BULK_INPUT_CLS}>
+              <select aria-label="Linha" value={bulkFields.productType} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, type: true })); setBulkFields((f) => ({ ...f, productType: '' })); } else { setBulkFields((f) => ({ ...f, productType: e.target.value })); } }} className={BULK_INPUT_CLS}>
                 <option value="">{'\u2014 Limpar \u2014'}</option>
                 {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
                 <option value="__new__">+ Criar nova linha...</option>
@@ -154,11 +154,11 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           <BulkFieldRow checked={bulkFields.enableSubtype} onChange={(v) => setBulkFields((f) => ({ ...f, enableSubtype: v }))} icon="folder" label="Grupo">
             {bulkNewMode.subtype ? (
               <div className="flex gap-1.5">
-                <input autoFocus type="text" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Nome do novo grupo" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subtype: false })); setBulkFields((f) => ({ ...f, productSubtype: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <input autoFocus type="text" aria-label="Nome do novo grupo" value={bulkFields.productSubtype} onChange={(e) => setBulkFields((f) => ({ ...f, productSubtype: e.target.value }))} placeholder="Nome do novo grupo" className={BULK_INPUT_CLS} />
+                <button type="button" aria-label="Fechar" onClick={() => { setBulkNewMode((m) => ({ ...m, subtype: false })); setBulkFields((f) => ({ ...f, productSubtype: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
-              <select value={bulkFields.productSubtype} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subtype: true })); setBulkFields((f) => ({ ...f, productSubtype: '' })); } else { setBulkFields((f) => ({ ...f, productSubtype: e.target.value })); } }} className={BULK_INPUT_CLS}>
+              <select aria-label="Grupo" value={bulkFields.productSubtype} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subtype: true })); setBulkFields((f) => ({ ...f, productSubtype: '' })); } else { setBulkFields((f) => ({ ...f, productSubtype: e.target.value })); } }} className={BULK_INPUT_CLS}>
                 <option value="">{'\u2014 Limpar \u2014'}</option>
                 {bulkFields.productType ? (
                   hierOptions.groupsFor(bulkFields.productType).map((s) => <option key={s} value={s}>{s}</option>)
@@ -184,11 +184,11 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           <BulkFieldRow checked={bulkFields.enableSubgroup} onChange={(v) => setBulkFields((f) => ({ ...f, enableSubgroup: v }))} icon="folder_open" label="Subgrupo">
             {bulkNewMode.subgroup ? (
               <div className="flex gap-1.5">
-                <input autoFocus type="text" value={bulkFields.productSubgroup} onChange={(e) => setBulkFields((f) => ({ ...f, productSubgroup: e.target.value }))} placeholder="Nome do novo subgrupo" className={BULK_INPUT_CLS} />
-                <button type="button" onClick={() => { setBulkNewMode((m) => ({ ...m, subgroup: false })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
+                <input autoFocus type="text" aria-label="Nome do novo subgrupo" value={bulkFields.productSubgroup} onChange={(e) => setBulkFields((f) => ({ ...f, productSubgroup: e.target.value }))} placeholder="Nome do novo subgrupo" className={BULK_INPUT_CLS} />
+                <button type="button" aria-label="Fechar" onClick={() => { setBulkNewMode((m) => ({ ...m, subgroup: false })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); }} className="px-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             ) : (
-              <select value={bulkFields.productSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subgroup: true })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); } else { setBulkFields((f) => ({ ...f, productSubgroup: e.target.value })); } }} className={BULK_INPUT_CLS}>
+              <select aria-label="Subgrupo" value={bulkFields.productSubgroup} onChange={(e) => { if (e.target.value === '__new__') { setBulkNewMode((m) => ({ ...m, subgroup: true })); setBulkFields((f) => ({ ...f, productSubgroup: '' })); } else { setBulkFields((f) => ({ ...f, productSubgroup: e.target.value })); } }} className={BULK_INPUT_CLS}>
                 <option value="">{'\u2014 Limpar \u2014'}</option>
                 {bulkFields.productType && bulkFields.productSubtype ? (
                   hierOptions.subgroupsFor(bulkFields.productType, bulkFields.productSubtype).map((s) => <option key={s} value={s}>{s}</option>)
@@ -214,11 +214,11 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableNcm} onChange={(v) => setBulkFields((f) => ({ ...f, enableNcm: v }))} icon="tag" label="NCM">
-            <input type="text" value={bulkFields.ncm} onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))} placeholder="Ex: 90189099" maxLength={8} className={`${BULK_INPUT_CLS} font-mono`} />
+            <input type="text" aria-label="NCM" value={bulkFields.ncm} onChange={(e) => setBulkFields((f) => ({ ...f, ncm: e.target.value }))} placeholder="Ex: 90189099" maxLength={8} className={`${BULK_INPUT_CLS} font-mono`} />
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableAnvisa} onChange={(v) => setBulkFields((f) => ({ ...f, enableAnvisa: v }))} icon="verified" label="ANVISA">
-            <input type="text" value={bulkFields.anvisa} onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))} placeholder="11 digitos \u2014 deixe em branco para limpar" maxLength={13} className={`${BULK_INPUT_CLS} font-mono`} />
+            <input type="text" aria-label="ANVISA" value={bulkFields.anvisa} onChange={(e) => setBulkFields((f) => ({ ...f, anvisa: e.target.value }))} placeholder="11 digitos \u2014 deixe em branco para limpar" maxLength={13} className={`${BULK_INPUT_CLS} font-mono`} />
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableOutOfLine} onChange={(v) => setBulkFields((f) => ({ ...f, enableOutOfLine: v }))} icon="toggle_on" label="Status">
@@ -235,7 +235,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableCstIpi} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstIpi: v }))} icon="receipt_long" label="CST IPI">
-            <select value={bulkFields.cstIpi} onChange={(e) => setBulkFields((f) => ({ ...f, cstIpi: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+            <select aria-label="CST IPI" value={bulkFields.cstIpi} onChange={(e) => setBulkFields((f) => ({ ...f, cstIpi: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
               <option value="">{'\u2014 Limpar \u2014'}</option>
               <option value="00">00 {'\u2013'} Entrada/Saida trib.</option>
               <option value="01">01 {'\u2013'} Trib. aliq. zero</option>
@@ -247,7 +247,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableCstPis} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstPis: v }))} icon="receipt_long" label="CST PIS">
-            <select value={bulkFields.cstPis} onChange={(e) => setBulkFields((f) => ({ ...f, cstPis: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+            <select aria-label="CST PIS" value={bulkFields.cstPis} onChange={(e) => setBulkFields((f) => ({ ...f, cstPis: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
               <option value="">{'\u2014 Limpar \u2014'}</option>
               <option value="01">01 {'\u2013'} Op. trib. (BC = valor op.)</option>
               <option value="04">04 {'\u2013'} Op. trib. (monoFasica)</option>
@@ -261,7 +261,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
           </BulkFieldRow>
 
           <BulkFieldRow checked={bulkFields.enableCstCofins} onChange={(v) => setBulkFields((f) => ({ ...f, enableCstCofins: v }))} icon="receipt_long" label="CST COFINS">
-            <select value={bulkFields.cstCofins} onChange={(e) => setBulkFields((f) => ({ ...f, cstCofins: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
+            <select aria-label="CST COFINS" value={bulkFields.cstCofins} onChange={(e) => setBulkFields((f) => ({ ...f, cstCofins: e.target.value }))} className={`${BULK_INPUT_CLS} font-mono`}>
               <option value="">{'\u2014 Limpar \u2014'}</option>
               <option value="01">01 {'\u2013'} Op. trib. (BC = valor op.)</option>
               <option value="04">04 {'\u2013'} Op. trib. (monoFasica)</option>

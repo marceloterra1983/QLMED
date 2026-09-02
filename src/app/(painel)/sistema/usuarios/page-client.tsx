@@ -506,6 +506,7 @@ export default function UsuariosPage() {
                             onClick={() => openEdit(user)}
                             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Editar"
+                            aria-label="Editar"
                           >
                             <span className="material-symbols-outlined text-[20px]">edit</span>
                           </button>
@@ -513,6 +514,7 @@ export default function UsuariosPage() {
                             onClick={() => openPages(user)}
                             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Controle de páginas"
+                            aria-label="Controle de páginas"
                           >
                             <span className="material-symbols-outlined text-[20px]">tune</span>
                           </button>
@@ -520,6 +522,7 @@ export default function UsuariosPage() {
                             onClick={() => openLogs(user)}
                             className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Histórico de acesso"
+                            aria-label="Histórico de acesso"
                           >
                             <span className="material-symbols-outlined text-[20px]">history</span>
                           </button>
@@ -853,7 +856,7 @@ export default function UsuariosPage() {
               >
                 Selecionar todas
               </button>
-              <span className="text-slate-300">|</span>
+              <span className="text-slate-500 dark:text-slate-400">|</span>
               <button
                 type="button"
                 onClick={() => setSelectedPages([])}

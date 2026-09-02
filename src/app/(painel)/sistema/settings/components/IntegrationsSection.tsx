@@ -665,6 +665,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
             <input
               type="email"
+              aria-label="email da conta Microsoft"
               value={oneDriveLoginHint}
               onChange={(e) => setOneDriveLoginHint(e.target.value)}
               placeholder="email da conta Microsoft"

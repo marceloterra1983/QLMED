@@ -489,7 +489,7 @@ export default function ProdutosPage() {
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{autoClassifyPreview.updatesFound} alteracao(oes) encontrada(s) de {autoClassifyPreview.totalProducts} produtos</p>
               </div>
-              <button onClick={() => setAutoClassifyPreview(null)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+              <button onClick={() => setAutoClassifyPreview(null)} aria-label="Fechar" className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
             </div>
       }
       footer={null}

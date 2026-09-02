@@ -100,6 +100,21 @@ caso contador-a-mao fail \
 caso vazio-a-mao fail \
   'export const A = () => <div className="p-8 text-center text-slate-500"><span className="material-symbols-outlined">inbox</span><p>Nenhum item</p></div>;'
 
+caso th-onclick fail \
+  'export const A = () => <table><thead><tr><th onClick={() => ordenar("a")} className="px-4">A</th></tr></thead></table>;'
+
+caso botao-so-icone fail \
+  'export const A = () => <button onClick={x}><span className="material-symbols-outlined">close</span></button>;'
+
+caso botao-so-icone-com-title fail \
+  'export const A = () => <button onClick={x} title="Fechar"><span className="material-symbols-outlined">close</span></button>;'
+
+caso controle-sem-rotulo fail \
+  'export const A = () => <input value={v} onChange={f} />;'
+
+caso texto-slate-300 fail \
+  'export const A = () => <p className="text-slate-300">—</p>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -121,12 +136,20 @@ export const A = () => (
     <EmptyState icon="inbox" title="Nenhum item" />
     <Badge tone="success">Ativa</Badge>
     <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-bold">1</span>
+    <button aria-label="Fechar"><span className="material-symbols-outlined">close</span></button>
+    <button><span className="material-symbols-outlined">save</span>Salvar</button>
+    <input aria-label="Quantidade" />
+    <span className="material-symbols-outlined text-slate-300">inbox</span>
+    <SortableTh col="a" sortBy="a" sortOrder="asc" onSort={f}>A</SortableTh>
   </>
-);'
+);
+    <button onClick={f}><span className="material-symbols-outlined">save</span><span>{tab.label}</span></button>
+    <button aria-label="Recolher" className="p-1 rounded text-slate-300 hover:text-slate-500"><span className="material-symbols-outlined">chevron_left</span></button>
+    <DetailField label="Referência"><input value={r} onChange={f} /></DetailField>'
 
 echo
 if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 21 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 26 violações reprovadas, fixture limpo aprovado"

@@ -235,7 +235,7 @@ export default function UploadPage() {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => removeFile(idx)} className="p-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-red-700 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onClick={() => removeFile(idx)} aria-label={`Remover ${file.name}`} className="p-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-red-700 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
