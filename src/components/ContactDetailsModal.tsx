@@ -271,12 +271,12 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
     <>
       {loading && (
         <div className="space-y-4">
-          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-14 w-full rounded-xl" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Skeleton className="h-20 w-full rounded-xl" /><Skeleton className="h-20 w-full rounded-xl" />
             <Skeleton className="h-20 w-full rounded-xl" /><Skeleton className="h-20 w-full rounded-xl" />
           </div>
-          <Skeleton className="h-48 w-full rounded-2xl" /><Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-48 w-full rounded-xl" /><Skeleton className="h-48 w-full rounded-xl" />
         </div>
       )}
 
@@ -285,7 +285,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           <SectionCard title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" iconColor={cfg.shortNameIconClass} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
             <div className="flex items-center gap-2 mb-3">
               <span className={`material-symbols-outlined text-[14px] ${cfg.shortNameIconClass}`}>edit_note</span>
-              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className={`flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${cfg.shortNameInputClass}`} />
+              <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
               <button onClick={handleSaveShortName} disabled={savingShortName || shortNameDraft === shortName} className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-40 shrink-0 ${cfg.shortNameButtonClass}`}>
                 {savingShortName && <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>}
                 {savingShortName ? '...' : 'Salvar'}
@@ -355,7 +355,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
 
       {!loading && !contactData && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+          <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center ring-1 ring-slate-200/50 dark:ring-slate-700/50">
             <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">{cfg.emptyIcon}</span>
           </div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Sem dados para este {cfg.noun}</p>

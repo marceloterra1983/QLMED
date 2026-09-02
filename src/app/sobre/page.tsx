@@ -24,7 +24,7 @@ export default function SobrePage() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-xl shadow-slate-200/50 space-y-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-xl shadow-slate-200/50 space-y-6">
           <section>
             <h1 className="text-2xl font-bold text-slate-900 mb-3">QL MED Produtos Hospitalares</h1>
             <p className="text-slate-600 leading-relaxed">

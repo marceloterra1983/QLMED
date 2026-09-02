@@ -8,7 +8,7 @@ export function DetailSectionCard({ id, icon, iconColor, title, badge, isOpen, o
   // iconColor carrega o par claro/escuro; a chave do mapa é só o primeiro token.
   const ibg = iconBgMap[iconColor.split(' ')[0]] || iconBgMap['text-primary'];
   return (
-    <div data-section-id={id} className="bg-white dark:bg-card-dark rounded-2xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+    <div data-section-id={id} className="bg-white dark:bg-card-dark rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
       <button
         onClick={() => onToggle(id)}
         className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
@@ -40,11 +40,11 @@ export function DetailField({ label, children, colSpan2 }: { label: string; chil
 export function BulkFieldRow({ checked, onChange, icon, label, children }: { checked: boolean; onChange: (v: boolean) => void; icon: string; label: string; children?: React.ReactNode }) {
   const fm = bulkFieldIconMap[icon] || { bg: 'bg-primary/10 dark:bg-primary/20 ring-primary/20 dark:ring-primary/30', color: 'text-primary dark:text-blue-400' };
   return (
-    <div className={`bg-white dark:bg-card-dark rounded-2xl ring-1 overflow-hidden transition-all ${checked ? 'ring-primary/30 dark:ring-primary/40 shadow-sm shadow-primary/5' : 'ring-slate-200/60 dark:ring-slate-800/50'}`}>
+    <div className={`bg-white dark:bg-card-dark rounded-xl ring-1 overflow-hidden transition-all ${checked ? 'ring-primary/30 dark:ring-primary/40 shadow-sm shadow-primary/5' : 'ring-slate-200/60 dark:ring-slate-800/50'}`}>
       <label className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
         <div className="relative flex items-center">
           <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
-          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary scale-105' : 'border-slate-300 dark:border-slate-600'}`}>
+          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary scale-105' : 'border-slate-300 dark:border-slate-600'}`}>
             {checked && <span className="material-symbols-outlined text-[14px] text-white">check</span>}
           </div>
         </div>

@@ -728,7 +728,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+              <div className="w-14 h-14 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
                 <span className="material-symbols-outlined text-[28px] text-primary dark:text-blue-400 animate-spin">progress_activity</span>
               </div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
@@ -736,7 +736,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           )}
           {error && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
+              <div className="w-14 h-14 rounded-xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center ring-1 ring-red-500/20 dark:ring-red-500/30">
                 <span className="material-symbols-outlined text-[28px] text-red-500">error</span>
               </div>
               <p className="text-sm font-medium text-red-400">{error}</p>

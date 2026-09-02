@@ -64,7 +64,7 @@ export function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="mt-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-none">
+    <div className="mt-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-none">
       <div className="flex items-start gap-3">
         <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[24px] mt-0.5">install_mobile</span>
         <div className="flex-1">

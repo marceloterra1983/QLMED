@@ -376,7 +376,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
             <div className="w-full h-full bg-[#1e1e2e] overflow-auto relative">
               {loadingXml ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">
+                  <div className="w-14 h-14 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">
                     <span className="material-symbols-outlined text-[28px] text-amber-500 animate-spin">progress_activity</span>
                   </div>
                   <p className="text-sm font-medium text-slate-500">Carregando XML...</p>
@@ -418,7 +418,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center ring-1 ring-slate-600/50">
+                  <div className="w-14 h-14 rounded-xl bg-slate-700/50 flex items-center justify-center ring-1 ring-slate-600/50">
                     <span className="material-symbols-outlined text-[28px] text-slate-500">code_off</span>
                   </div>
                   <p className="text-sm font-medium text-slate-500">XML não disponível</p>

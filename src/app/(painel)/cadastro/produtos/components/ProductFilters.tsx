@@ -42,7 +42,7 @@ export default function ProductFilters({
               placeholder="ex: 7891234567890 ou dipirona"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="block w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm transition-all"
+              className="block w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 text-sm transition-all"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-600">
@@ -56,7 +56,7 @@ export default function ProductFilters({
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setSubtypeFilter(''); setSubgroupFilter(''); }}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200"
             >
               <option value="">Todos</option>
               {hierOptions.lines.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -67,7 +67,7 @@ export default function ProductFilters({
               <select
                 value={subtypeFilter}
                 onChange={(e) => { setSubtypeFilter(e.target.value); setSubgroupFilter(''); }}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200"
               >
                 <option value="">Todos</option>
                 {hierOptions.groupsFor(typeFilter).map((s) => <option key={s} value={s}>{s}</option>)}
@@ -81,7 +81,7 @@ export default function ProductFilters({
                 <select
                   value={subgroupFilter}
                   onChange={(e) => setSubgroupFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200"
                 >
                   <option value="">Todos</option>
                   {subgroups.map((s) => <option key={s!} value={s!}>{s}</option>)}
@@ -99,7 +99,7 @@ export default function ProductFilters({
                   setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
                   setCollapsedGroups(new Set());
                 }}
-                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200"
               >
                 <option value="productType">Linha</option>
                 <option value="lastIssueDate">Ult. Compra</option>

@@ -631,7 +631,7 @@ export default function UsuariosPage() {
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
               required
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -641,7 +641,7 @@ export default function UsuariosPage() {
               value={createEmail}
               onChange={(e) => setCreateEmail(e.target.value)}
               required
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -653,7 +653,7 @@ export default function UsuariosPage() {
               value={createPhone}
               onChange={(e) => setCreatePhone(e.target.value)}
               placeholder="(00) 00000-0000"
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -664,7 +664,7 @@ export default function UsuariosPage() {
               onChange={(e) => setCreatePassword(e.target.value)}
               required
               minLength={6}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -672,7 +672,7 @@ export default function UsuariosPage() {
             <select
               value={createRole}
               onChange={(e) => setCreateRole(e.target.value)}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             >
               <option value="viewer">Visualizador</option>
               <option value="editor">Editor</option>
@@ -700,7 +700,7 @@ export default function UsuariosPage() {
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               required
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -710,7 +710,7 @@ export default function UsuariosPage() {
               value={editEmail}
               onChange={(e) => setEditEmail(e.target.value)}
               required
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -722,7 +722,7 @@ export default function UsuariosPage() {
               value={editPhone}
               onChange={(e) => setEditPhone(e.target.value)}
               placeholder="(00) 00000-0000"
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
@@ -731,7 +731,7 @@ export default function UsuariosPage() {
               value={editRole}
               onChange={(e) => setEditRole(e.target.value)}
               disabled={editingUser?.id === session?.user?.id}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm disabled:opacity-50"
             >
               <option value="viewer">Visualizador</option>
               <option value="editor">Editor</option>
@@ -747,7 +747,7 @@ export default function UsuariosPage() {
               value={editStatus}
               onChange={(e) => setEditStatus(e.target.value)}
               disabled={editingUser?.id === session?.user?.id}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm disabled:opacity-50"
             >
               <option value="pending">Pendente</option>
               <option value="active">Ativo</option>
@@ -765,7 +765,7 @@ export default function UsuariosPage() {
               onChange={(e) => setEditPassword(e.target.value)}
               placeholder="Deixe vazio para manter a atual"
               minLength={6}
-              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -796,7 +796,7 @@ export default function UsuariosPage() {
               type="checkbox"
               checked={allPagesChecked}
               onChange={handleToggleAllPages}
-              className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
+              className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400"
             />
             <span className="text-sm font-bold text-slate-900 dark:text-white">Todas as páginas</span>
             <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">Acesso completo</span>
@@ -823,7 +823,7 @@ export default function UsuariosPage() {
                       ref={(el) => { if (el) el.indeterminate = !allPagesChecked && someGroupSelected && !allGroupSelected; }}
                       onChange={() => handleToggleGroup(groupPaths)}
                       disabled={allPagesChecked}
-                      className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
+                      className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400"
                     />
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{group.section}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
@@ -842,7 +842,7 @@ export default function UsuariosPage() {
                           checked={allPagesChecked || selectedPages.includes(page.path)}
                           onChange={() => handleTogglePage(page.path)}
                           disabled={allPagesChecked}
-                          className="w-4 h-4 rounded border-slate-300 text-primary dark:text-blue-400 focus:ring-primary/50"
+                          className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400"
                         />
                         <span className="text-sm text-slate-700 dark:text-slate-200">{page.label}</span>
                       </label>

@@ -614,7 +614,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300"
             >
               <option value={25}>25 / página</option>
               <option value={50}>50 / página</option>

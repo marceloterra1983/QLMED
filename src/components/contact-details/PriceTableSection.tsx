@@ -94,7 +94,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Filtrar por nome ou código"
-            className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
+            className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 transition-all"
           />
         </div>
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">

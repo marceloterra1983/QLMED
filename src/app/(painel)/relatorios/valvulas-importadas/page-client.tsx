@@ -323,7 +323,7 @@ export default function ValvulasImportadasPage() {
               : 'text-slate-900 dark:text-white';
             return (
               <div key={i} className="bg-white dark:bg-card-dark px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center gap-2">
-                <span className={`flex items-center justify-center w-7 h-7 rounded-md bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 shrink-0`}>
+                <span className={`flex items-center justify-center w-7 h-7 rounded-lg bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 shrink-0`}>
                   <span className="material-symbols-outlined text-[16px]">{card.icon}</span>
                 </span>
                 <div className="min-w-0">
@@ -471,7 +471,7 @@ export default function ValvulasImportadasPage() {
                         {data.customerYearlySales.years.map((y) => {
                           const entry = c.byYear[String(y)];
                           return (
-                            <div key={y} className="bg-slate-50 dark:bg-slate-800/40 rounded-md px-2 py-1.5">
+                            <div key={y} className="bg-slate-50 dark:bg-slate-800/40 rounded-lg px-2 py-1.5">
                               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{y}</p>
                               {entry && entry.qty > 0 ? (
                                 <>

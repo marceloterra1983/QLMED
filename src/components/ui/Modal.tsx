@@ -46,7 +46,7 @@ interface ModalProps {
 const SUPERFICIE = {
   card: 'bg-white dark:bg-card-dark sm:rounded-xl',
   sunken:
-    'bg-slate-50 dark:bg-surface-sunken sm:rounded-2xl sm:ring-1 ring-black/5 dark:ring-white/5',
+    'bg-slate-50 dark:bg-surface-sunken sm:rounded-xl sm:ring-1 ring-black/5 dark:ring-white/5',
 } as const;
 
 export default function Modal({
@@ -69,13 +69,17 @@ export default function Modal({
 
   useModalBackButton(isOpen, onClose);
 
-  const focaveis = useCallback(
-    () =>
-      Array.from(modalRef.current?.querySelectorAll<HTMLElement>(SELETOR_FOCAVEL) ?? []).filter(
-        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
-      ),
-    [],
-  );
+  const focaveis = useCallback(() => {
+    const todos = Array.from(modalRef.current?.querySelectorAll<HTMLElement>(SELETOR_FOCAVEL) ?? []).filter(
+      (el) => !el.hasAttribute('disabled'),
+    );
+    // O X do desktop e o "Voltar" do celular são `display: none` conforme a
+    // largura — focar um deles falha em silêncio e quebra a volta do Tab. Por
+    // isso o filtro geométrico. Mas jsdom não tem layout (`offsetParent` é
+    // sempre null): se a geometria não vê ninguém, a lista crua vale.
+    const visiveis = todos.filter((el) => el.offsetParent !== null || el.getClientRects().length > 0);
+    return visiveis.length > 0 ? visiveis : todos;
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -109,7 +113,9 @@ export default function Modal({
       document.body.style.overflow = anterior;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+    // `handleKeyDown` fica nas dependências de propósito: ele fecha sobre
+    // `onClose`, e um `onClose` novo depois de aberto tem de ser o que o Esc chama.
+  }, [isOpen, handleKeyDown]);
 
   // Guarda quem abriu, foca o primeiro elemento, devolve o foco ao fechar.
   useEffect(() => {

@@ -616,7 +616,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'lot', e.target.value)}
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="Lote"
-                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                     />
                                   ) : (
                                     <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{bd.lot || '--'}</span>
@@ -633,7 +633,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onChange={e => updateBatchDraft(item.index, bd.batchId, 'expiry', e.target.value)}
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="YYYY-MM-DD"
-                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                     />
                                   ) : (
                                     <span className="text-xs text-slate-600 dark:text-slate-400">{formatBatchDate(bd.expiry) || '--'}</span>
@@ -653,7 +653,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                       onKeyDown={e => handleFieldKeyDown(e, item.index, bd.batchId)}
                                       placeholder="Qtd"
                                       min={1}
-                                      className="w-full px-1.5 py-1 text-xs text-right border rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                                      className="w-full px-1.5 py-1 text-xs text-right border rounded bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                     />
                                   ) : (
                                     <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{bd.quantity || '--'}</span>
@@ -782,7 +782,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                     value={bd.lot}
                                     onChange={e => updateBatchDraft(item.index, bd.batchId, 'lot', e.target.value)}
                                     placeholder="Lote"
-                                    className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary outline-none"
+                                    className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                   />
                                 </div>
                                 <div>
@@ -792,7 +792,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                     value={bd.expiry}
                                     onChange={e => updateBatchDraft(item.index, bd.batchId, 'expiry', e.target.value)}
                                     placeholder="YYYY-MM-DD"
-                                    className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary outline-none"
+                                    className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                   />
                                 </div>
                                 <div className="flex items-end gap-1">
@@ -807,7 +807,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
                                         onChange={e => updateBatchDraft(item.index, bd.batchId, 'quantity', e.target.value)}
                                         placeholder="Qtd"
                                         min={1}
-                                        className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-primary outline-none"
+                                        className="w-full px-2 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 outline-none"
                                       />
                                     )}
                                   </div>

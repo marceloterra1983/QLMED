@@ -68,7 +68,9 @@ describe('Modal', () => {
   it('surface troca fundo escuro e raio do shell', () => {
     const sunken = shell(html(aberto({ surface: 'sunken' })));
     expect(sunken).toContain('dark:bg-surface-sunken');
-    expect(sunken).toContain('sm:rounded-2xl');
+    // Superfície é 12px, sempre — três raios, não cinco (achado 03).
+    expect(sunken).toContain('sm:rounded-xl');
+    expect(sunken).not.toContain('rounded-2xl');
     expect(sunken).not.toContain('dark:bg-card-dark');
 
     const card = shell(html(aberto()));

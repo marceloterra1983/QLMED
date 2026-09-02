@@ -112,7 +112,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
 <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none">
           <div className="flex flex-col gap-2 sm:hidden">
             <Button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} loading={isBulkSaving} icon="save" block>
-              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
+              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-lg bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
             </Button>
             <Button onClick={onClose} variant="soft" icon="arrow_back" block>Voltar</Button>
           </div>
@@ -121,7 +121,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
               Cancelar
             </Button>
             <Button onClick={handleBulkSave} disabled={isBulkSaving || enabledCount === 0} loading={isBulkSaving} icon="save">
-              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
+              {isBulkSaving ? 'Salvando...' : <>Salvar {enabledCount > 0 && <span className="px-1.5 py-0.5 rounded-lg bg-white/20 text-xs font-bold">{enabledCount}</span>}</>}
             </Button>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function BulkEditModal({ selectedKeys, products, onClose, onSaved
 {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
           <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-900/10 ring-1 ring-blue-200/50 dark:ring-blue-800/30">
-            <div className="w-6 h-6 rounded-md bg-blue-500/10 ring-1 ring-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-6 h-6 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
               <span className="material-symbols-outlined text-[13px] text-blue-500">info</span>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">Marque os campos que deseja alterar. Campos nao marcados permanecerao inalterados.</p>

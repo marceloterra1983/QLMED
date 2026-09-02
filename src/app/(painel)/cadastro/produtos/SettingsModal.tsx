@@ -128,7 +128,7 @@ function SettingsModal({ onClose, onUpdated }: {
   }, [expandedSubtype]);
 
   // --- shared UI ---
-  const inlineInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow";
+  const inlineInputCls = "flex-1 px-3 py-1.5 text-sm border border-primary/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow";
   const actionBtnCls = "p-1.5 rounded-lg transition-colors";
 
   const InlineForm = ({ value, onChange, onSubmit, onCancel, placeholder, disabled }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder?: string; disabled?: boolean }) => (
@@ -515,7 +515,7 @@ function SettingsModal({ onClose, onUpdated }: {
               <div className="px-5 py-4 space-y-2">
                 <div className="relative">
                   <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                  <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                  <input type="text" placeholder="Buscar linha, grupo ou subgrupo..." value={linesSearch} onChange={(e) => setLinesSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                 </div>
                 {filteredTypes.length === 0 && (
                   <div className="flex flex-col items-center py-8">
@@ -669,7 +669,7 @@ function SettingsModal({ onClose, onUpdated }: {
                     } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro'); } finally { setSaving(false); }
                     setNewTypeName('');
                   }} className="flex items-center gap-2">
-                    <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                    <input placeholder="Nova linha..." value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                     <Button type="submit" variant="soft" icon="add">Adicionar</Button>
                   </form>
                 </div>
@@ -682,12 +682,12 @@ function SettingsModal({ onClose, onUpdated }: {
                 <div className="px-5 pt-4 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-800/50">
                   <div className="relative">
                     <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                    <input type="text" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow" />
+                    <input type="text" placeholder="Buscar fabricante..." value={mfrSearch} onChange={(e) => setMfrSearch(e.target.value)} className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                   </div>
                   <div className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800/50 bg-teal-50/30 dark:bg-teal-900/10 px-4 py-3">
                     <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">Adicionar fabricante</p>
                     <div className="flex gap-2">
-                      <input placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow" />
+                      <input placeholder="Nome do fabricante" value={newMfrName} onChange={(e) => setNewMfrName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleMfrAdd(); }} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                       <button onClick={handleMfrAdd} disabled={addingNew || !newMfrName.trim()} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </div>
                   </div>
@@ -778,7 +778,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                     <div key={value} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 group/aliq transition-colors">
                                       {isEditing ? (
                                         <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
-                                          <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
+                                          <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-2 py-1 text-sm border border-amber-400/50 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
                                           <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[16px]">check</span></button>
                                           <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[16px]">close</span></button>
                                         </form>
@@ -794,7 +794,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                   );
                                 })}
                                 <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(field); }} className="flex items-center gap-1.5 pt-1">
-                                  <input placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow font-mono" disabled={saving} />
+                                  <input placeholder="Ex: 12" value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow font-mono" disabled={saving} />
                                   <button type="submit" disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">add</span></button>
                                 </form>
                               </div>
@@ -812,7 +812,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
                       <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
-                      <input type="text" placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
+                      <input type="text" placeholder={`Buscar ${activeTabMeta.label}...`} value={fiscalSearch} onChange={(e) => setFiscalSearch(e.target.value)} className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                     </div>
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">{currentFiscalItems.length} {currentFiscalItems.length === 1 ? 'item' : 'itens'}</span>
                   </div>
@@ -831,7 +831,7 @@ function SettingsModal({ onClose, onUpdated }: {
                       <div key={value} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group/item">
                         {isEditing ? (
                           <form onSubmit={(e) => { e.preventDefault(); handleFiscalRename(); }} className="flex items-center gap-1.5 flex-1">
-                            <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition-shadow" disabled={saving} />
+                            <input autoFocus value={fiscalEditValue} onChange={(e) => setFiscalEditValue(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border border-amber-400/50 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-shadow" disabled={saving} />
                             <button type="submit" disabled={saving} className={`${actionBtnCls} text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20`}><span className="material-symbols-outlined text-[18px]">check</span></button>
                             <button type="button" onClick={() => setFiscalEditItem(null)} className={`${actionBtnCls} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}><span className="material-symbols-outlined text-[18px]">close</span></button>
                           </form>
@@ -845,7 +845,7 @@ function SettingsModal({ onClose, onUpdated }: {
                               if (isCfop && dashIdx < 0 && cfopDescCache[value]) {
                                 return (
                                   <span className="flex-1 text-sm min-w-0 break-words">
-                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{value}</span>
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg ring-1 ring-amber-200/40 dark:ring-amber-800/30">{value}</span>
                                     <span className="ml-1.5 text-slate-500 dark:text-slate-400">{cfopDescCache[value]}</span>
                                   </span>
                                 );
@@ -855,7 +855,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                 const desc = value.slice(dashIdx + 3);
                                 return (
                                   <span className="flex-1 text-sm min-w-0 break-words">
-                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30">{code}</span>
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg ring-1 ring-amber-200/40 dark:ring-amber-800/30">{code}</span>
                                     <span className="ml-1.5 text-slate-500 dark:text-slate-400">{desc}</span>
                                   </span>
                                 );
@@ -870,7 +870,7 @@ function SettingsModal({ onClose, onUpdated }: {
                                 return (
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-sm shrink-0">{formatted}</span>
+                                      <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-100/60 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg ring-1 ring-amber-200/40 dark:ring-amber-800/30 text-sm shrink-0">{formatted}</span>
                                       {ncmInfo && <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{ncmInfo.descricao}</span>}
                                       {hierarchy.length > 1 && (
                                         <button onClick={toggleExpand} className="shrink-0 ml-auto text-slate-500 dark:text-slate-400 hover:text-amber-500 transition-colors" title={isExpanded ? 'Recolher hierarquia' : 'Ver hierarquia'}>
@@ -942,7 +942,7 @@ function SettingsModal({ onClose, onUpdated }: {
                   {fiscalTab !== 'ncm' && (
                   <div className="pt-2">
                     <form onSubmit={(e) => { e.preventDefault(); handleFiscalAdd(); }} className="flex items-center gap-2">
-                      <input placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-shadow" />
+                      <input placeholder={`Novo ${activeTabMeta.label}...`} value={newFiscalName} onChange={(e) => setNewFiscalName(e.target.value)} className="flex-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-shadow" />
                       <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-700/50 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span>Adicionar</button>
                     </form>
                   </div>
