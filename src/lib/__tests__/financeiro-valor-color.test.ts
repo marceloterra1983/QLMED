@@ -25,7 +25,8 @@ describe('getValorColor', () => {
 
   it('mantém a cor de STATUS independente da cor de valor', () => {
     // Vencida é vermelha nos dois sentidos: o prazo não depende do fluxo.
-    expect(statusConfig.overdue.classes).toContain('text-red-600');
-    expect(statusConfig.upcoming.classes).toContain('text-emerald-600');
+    // O tom é o que o <Badge> pinta; as classes já não vivem aqui.
+    expect(statusConfig.overdue.tone).toBe('danger');
+    expect(statusConfig.upcoming.tone).toBe('success');
   });
 });

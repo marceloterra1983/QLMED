@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/utils';
+import type { BadgeTone } from '@/components/ui/Badge';
 import { roundMoney } from '@/lib/money';
 
 export interface Duplicata {
@@ -85,18 +86,22 @@ export function getValorColor(direction: 'pagar' | 'receber'): string {
     : 'text-emerald-600 dark:text-emerald-400';
 }
 
-export const statusConfig: Record<string, { label: string }> = {
+export const statusConfig: Record<string, { label: string; tone: BadgeTone }> = {
   overdue: {
     label: 'Vencida',
+    tone: 'danger',
   },
   due_today: {
     label: 'Vence Hoje',
+    tone: 'warning',
   },
   due_soon: {
     label: 'Próxima',
+    tone: 'warning',
   },
   upcoming: {
     label: 'A Vencer',
+    tone: 'success',
   },
 };
 

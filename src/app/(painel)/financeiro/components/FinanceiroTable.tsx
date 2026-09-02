@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Badge, { type BadgeTone } from '@/components/ui/Badge';
+import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
@@ -31,13 +31,6 @@ interface FinanceiroTableProps {
   onOpenDetails: (dup: Duplicata) => void;
 }
 
-// `statusConfig` (financeiro-utils.ts) ainda carrega `classes`; o tom vive aqui.
-const STATUS_TONE: Record<string, BadgeTone> = {
-  overdue: 'danger',
-  due_today: 'warning',
-  due_soon: 'warning',
-  upcoming: 'success',
-};
 
 function SortIcon({ col, sortBy, sortOrder }: { col: string; sortBy: string; sortOrder: string }) {
   return (
@@ -159,7 +152,7 @@ export default function FinanceiroTable({
                               <span className="text-sm font-medium text-slate-900 dark:text-white truncate block max-w-[200px]" title={n.display}>{n.display}</span>
                             </td>
                             <td className="px-3 py-3">
-                              <Badge tone={STATUS_TONE[dup.status] ?? 'neutral'}>{cfg.label}</Badge>
+                              <Badge tone={cfg.tone}>{cfg.label}</Badge>
                             </td>
                             <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => onOpenDetails(dup)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors" title="Visualizar e editar">
