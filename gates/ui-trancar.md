@@ -107,3 +107,19 @@ integro, varro o que sobrar e fecho o ledger.
   `prisma generate`; o client ausente derrubou 8 testes de emissão atómica e a
   coleta de páginas do build com mensagens que não apontavam para isso.
   `npm run db:generate` resolve; fica na memória.
+
+## Depois do merge com o `main` (#252, #257, #259)
+
+- `#252` tinha posto no `ConfirmDialog` um hook `useDialogKeydown` (Esc + trap,
+  QLMED-UI-004). Superado: o `ConfirmDialog` daqui herda tudo do `Modal`. Hook
+  removido — ficaria órfão e duplicaria `focus-trap.ts`.
+- O teste de render do `#252` (`ConfirmDialog.render.test.tsx`, jsdom) reprovava
+  a volta do Tab: `focaveis()` filtrava por `offsetParent !== null`, e **jsdom
+  não tem layout** — a lista ficava vazia. O filtro geométrico é necessário no
+  navegador (X do desktop e "Voltar" do celular são `display:none` conforme a
+  largura); agora: geometria quando vê alguém, lista crua quando não. 33/33.
+- `#252` tirou `handleKeyDown` das dependências do `useEffect` do `Modal`
+  (`[isOpen]`): um `onClose` novo depois de aberto deixava o handler velho
+  ligado ao Esc. Restaurado `[isOpen, handleKeyDown]`; ESLint limpo.
+- `npm ci` falhou uma vez (transitório, sem linha de erro no log) e passou na
+  segunda; `prisma generate` a seguir, como a memória manda.
