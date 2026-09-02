@@ -64,7 +64,6 @@ export default function Modal({
   direction = 'col',
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
   useModalBackButton(isOpen, onClose);
@@ -118,22 +117,24 @@ export default function Modal({
   }, [isOpen, handleKeyDown]);
 
   // Guarda quem abriu, foca o primeiro elemento, devolve o foco ao fechar.
+  // A devolução fica no cleanup: a maioria dos chamadores desmonta o Modal
+  // em vez de passar `isOpen=false`, e um ramo `if (!isOpen)` nunca corria.
   useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement | null;
-      const t = setTimeout(() => {
-        const lista = focaveis();
-        const i = focoInicial(lista);
-        if (i !== null) lista[i].focus();
-        else {
-          modalRef.current?.setAttribute('tabindex', '-1');
-          modalRef.current?.focus();
-        }
-      }, 0);
-      return () => clearTimeout(t);
-    }
-    previousFocusRef.current?.focus?.();
-    previousFocusRef.current = null;
+    if (!isOpen) return;
+    const anterior = document.activeElement as HTMLElement | null;
+    const t = setTimeout(() => {
+      const lista = focaveis();
+      const i = focoInicial(lista);
+      if (i !== null) lista[i].focus();
+      else {
+        modalRef.current?.setAttribute('tabindex', '-1');
+        modalRef.current?.focus();
+      }
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      anterior?.focus?.();
+    };
   }, [isOpen, focaveis]);
 
   if (!isOpen) return null;
