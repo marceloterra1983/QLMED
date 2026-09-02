@@ -13,7 +13,7 @@ concurrency:
   group: qlmed-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Binding selector: validation-linux-pool + self-hosted. Same-repo guard is
+# Binding selector: validation-linux-qlmed + self-hosted (3 GB per runner; same labels as validation-linux-pool). Same-repo guard is
 # defense in depth; fork approval is all_external_contributors.
 
 jobs:
