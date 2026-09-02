@@ -402,3 +402,24 @@ de ser uma saída limpa.
 3. `NOTIFICATION_OUTBOX_RETENTION_DAYS` — a purga está ligada e reporta
    `disabled` no health até haver um número.
 4. Planilhas E509 acima de 5 MiB passam a ser recusadas — confirmar com as reais.
+
+# 13. Pós-deploy: o quinto leitor de `pfxData`
+
+O primeiro run horário do sync de CT-e no código novo (13:17Z) falhou com
+`Unparsed DER bytes remain… byteCount: 9258, remaining: 9180` — 9205 de PFX +
+53 de envelope `QLMEDPFX1`. `ops/scripts/qlmed-cte-dist-sync.js` corre
+**dentro** do container mas é um JS fora de `src/`, lê `pfxData` cru do banco
+e entrega-o ao node-forge. A folha L4 (escopo `src/`) e a leitura cruzada da
+R3 (call sites de `decrypt()` em `src/`) não o viram. Foi o único leitor
+externo: `git grep` no repo e `grep -r` em `ops/`, `production/`, `/srv` só
+encontram este. Ingestão de CT-e parada desde 12:17Z (primeira porta) até este
+fix.
+
+Correção: port byte a byte do `decryptPfx` (mesmo layout, mesmo scrypt, AAD =
+CNPJ da empresa via JOIN em `Company`), DER cru continua aceite. Teste
+`scripts/test-cte-sync-pfx.cjs` cifra como o app e prova o round-trip, o AAD e
+o fallback; controlo positivo com o decrypt desligado → vermelho.
+
+O timer corre a cópia em `/home/marce/qlmed/ops/scripts/`, um checkout noutra
+branch e com árvore suja: actualizar é escrever o ficheiro a partir de
+`origin/main`, não trocar branch.
