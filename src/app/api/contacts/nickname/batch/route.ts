@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 
 export async function GET(req: Request) {
   try {
     let userId: string;
-    try { userId = await requireAuth(); } catch { return unauthorizedResponse(); }
+    try {
+      userId = await requireAuth({ apiKeyScope: 'contacts:read' });
+    } catch (e) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();
+      return unauthorizedResponse();
+    }
 
     const company = await getOrCreateSingleCompany(userId);
     const { searchParams } = new URL(req.url);
