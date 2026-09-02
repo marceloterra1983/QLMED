@@ -331,3 +331,30 @@ o teste ganha o caso das 7 e o controlo positivo de que uma intrusa reprova
 com 78. A migração de fevereiro `20260220120000` tem uma linha falhada E uma
 bem-sucedida 30 s depois: o Prisma e o verificador leem a segunda — não
 bloqueia (`prisma migrate status`: exactamente as 7 pendentes).
+
+# 11. Deploy — segunda tentativa: as migrações entraram, o app voltou atrás
+
+Dispatch e aprovação no mesmo script (12:37:18Z → 12:37:22Z). O workflow passou
+todos os portões, construiu, parou o app, **aplicou as 7 migrações**
+(`SyncSkippedDocument` e `N8nWebhookNonce` existem; índice parcial com
+`COALESCE`; `verify after` com contagens iguais), subiu o app novo saudável —
+e falhou em "Verify deployed revision": o passo fazia `curl` **anónimo** ao
+`/api/health` e procurava `commitSha`, que o OBS-003 (L4) deixou de expor sem
+sessão. `got missing` em 30 tentativas → rollback automático para a imagem
+antiga. **Causa: a remediação colidiu com o próprio workflow de deploy**, e
+nenhuma folha nem a re-auditoria leu `deploy-production.yml` contra
+`health/route.ts`.
+
+Estado depois: imagem antiga + schema novo + segredos cifrados. As migrações
+são expand-only e a imagem antiga corre sobre elas sem um erro de schema
+(medido: 0). Os segredos, não — porta fechada pela segunda vez com o script
+de reversão; PFX de volta a 9.205 bytes DER.
+
+Correção: o passo passa a verificar pela **imagem em execução**, localmente
+(id e tag), sem depender do health público. O env `QLMED_BUILD_COMMIT_SHA` não
+serve para isso: o container restaurado pelo rollback tinha o SHA novo no env
+e a imagem antiga a correr.
+
+Achado lateral: o container lê `env/app.env` (via `env_file`), não
+`production/.env`. A chave do sync de CT-e tinha ido para o ficheiro errado;
+movida, hash conferido, `production/.env` restaurado do backup.
