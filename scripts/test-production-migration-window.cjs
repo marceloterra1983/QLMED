@@ -6,15 +6,30 @@ const fs = require('node:fs');
 const gate = require('./verify-production-migration-window.cjs');
 
 assert.equal(gate.TABLES.length, 11);
-assert.match(gate.EXPECTED_MIGRATION, /^20260831230000_/);
-assert.match(gate.EXPECTED_SQL_SHA256, /^[0-9a-f]{64}$/);
-assert.deepEqual(
-  gate.localMigrations().filter((name) => name === gate.EXPECTED_MIGRATION),
-  [gate.EXPECTED_MIGRATION],
-);
+assert.ok(gate.EXPECTED_MIGRATIONS.length >= 8, 'o conjunto pinado tem a âncora + as 7 da remediação');
+for (const { name, sha256 } of gate.EXPECTED_MIGRATIONS) {
+  assert.match(name, /^2026\d{10}_/);
+  assert.match(sha256, /^[0-9a-f]{64}$/);
+  assert.ok(gate.localMigrations().includes(name), `pinada mas ausente localmente: ${name}`);
+}
+assert.match(gate.EXPECTED_SET_DIGEST, /^[0-9a-f]{64}$/);
 gate.verifyExpectedSql();
 assert.equal(gate.migrationState([]), 'already-applied');
 assert.equal(gate.migrationState([gate.EXPECTED_MIGRATION]), 'pending');
+// Os 7 pendentes de uma vez — o caso que o pin único recusava.
+const sete = gate.EXPECTED_MIGRATIONS.map((m) => m.name).filter((n) => n.startsWith('202609'));
+assert.equal(sete.length, 7);
+assert.equal(gate.migrationState(sete), 'pending');
+// Controlo positivo: um nome fora da lista continua a reprovar (exit 78).
+{
+  const { spawnSync } = require('node:child_process');
+  const r = spawnSync(process.execPath, ['-e', `
+    const g = require('./scripts/verify-production-migration-window.cjs');
+    g.migrationState(['20991231000000_intrusa']);
+  `]);
+  assert.equal(r.status, 78, 'pendente desconhecida tem de reprovar com 78');
+  assert.match(r.stderr.toString(), /unexpected pending migrations: 20991231000000_intrusa/);
+}
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 assert.match(
   dockerfile,
