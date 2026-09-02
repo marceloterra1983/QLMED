@@ -358,3 +358,47 @@ e a imagem antiga a correr.
 Achado lateral: o container lê `env/app.env` (via `env_file`), não
 `production/.env`. A chave do sync de CT-e tinha ido para o ficheiro errado;
 movida, hash conferido, `production/.env` restaurado do backup.
+
+# 12. Deploy — terceira tentativa: **implantado**
+
+Run `33632646108`, 22 passos, nenhum falhou. Produção em
+`qlmed-app:4de2be85`, saudável desde 12:58:19Z. Porta dos segredos aberta
+das 12:55:07Z às 12:58:19Z (~3 min): cifra → dispatch (2 s) → aprovação (8 s)
+→ build → parar → migrar (0 pendentes: as 7 já tinham entrado na segunda
+tentativa) → subir → revisão verificada **pela imagem** → público → worker.
+
+Verificação pós-deploy, medida: imagem com o SHA esperado; health 200 local e
+público, **sem `commitSha` sem sessão** (OBS-003 em produção); 7 migrações no
+banco, `SyncSkippedDocument` e `N8nWebhookNonce` existem, índice parcial com
+`COALESCE`; o app novo lê o PFX cifrado (0 erros desde o arranque); chaves do
+outbox `200` com chave e `401` sem; a chave do CT-e no container é a nomeada
+`cte-dist-sync`; chave `Legacy env {admin}` **revogada**.
+
+## Baixas, contadas
+
+| Quando | O quê | Porta |
+|---|---|---|
+| 12:17Z | `qlmed-cte-dist-sync.timer` falhou (`Unparsed DER`) — imagem antiga a ler o PFX cifrado | 1.ª |
+| 12:22Z | um tick da Receita NFS-e (`Unparsed DER`) | 1.ª |
+| 12:55–12:58Z | sem evidência de custo nos logs que sobreviveram (o container antigo foi recriado) | 3.ª |
+
+Os ticks do outbox durante a janela viram `Broken pipe`/`Connection reset`
+(app parado) — transitório; o primeiro smoke depois do deploy deu `200` nas
+duas chaves.
+
+## Propriedade nova, permanente
+
+**Rollback por imagem agora quebra os segredos.** A imagem antiga não lê
+`pfxData` cifrado. Reverter exige `undo-secrets.sh` (decifra os 2 segredos
+com verificação de round-trip) ou fix-forward. O `qlmed-app:previous` deixou
+de ser uma saída limpa.
+
+## O que fica para o dono
+
+1. `N8N_WEBHOOK_SECRET` nos dois lados — o n8n está parado (0 chamadas em
+   48 h), nada quebrou; o webhook devolve 401 até lá.
+2. Estreitar a chave do CT-e: `/api/invoices/upload` exige `editor`, que por
+   chave só `admin` alcança. Aceitar um escopo (`invoices:write`) é um PR.
+3. `NOTIFICATION_OUTBOX_RETENTION_DAYS` — a purga está ligada e reporta
+   `disabled` no health até haver um número.
+4. Planilhas E509 acima de 5 MiB passam a ser recusadas — confirmar com as reais.
