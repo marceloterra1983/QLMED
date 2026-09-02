@@ -139,3 +139,18 @@ export function toNumber(value: unknown): number {
 // `placeholder-slate-500` no claro: slate-400 dá 2,56:1 sobre branco.
 export const FILTER_INPUT_CLS =
   'block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 text-sm transition-colors';
+
+/**
+ * Contagem inteira em pt-BR ("3.850"). Havia ~59 `toLocaleString('pt-BR')`
+ * espalhados; com o helper, a regra `format` do verificador pode proibir a
+ * chamada nua e a quantia sair sempre igual.
+ */
+export function formatInt(n: number): string {
+  return Math.round(n).toLocaleString('pt-BR');
+}
+
+/** Percentual com casas fixas e sinal opcional ("+12,5%", "3,00%"). */
+export function formatPercent(v: number, digits = 2, sign = false): string {
+  const txt = v.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${sign && v > 0 ? '+' : ''}${txt}%`;
+}

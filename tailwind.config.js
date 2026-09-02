@@ -27,6 +27,12 @@ module.exports = {
         'card-dark': '#1e293b',
         'surface-sunken': '#1a1e2e',
       },
+      // Sombras das folhas de cabeçalho/rodapé no celular — antes eram 16 cópias
+      // de `shadow-[0_2px_8px_rgba(0,0,0,0.08)]` nos modais migrados.
+      boxShadow: {
+        'sheet-top': '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'sheet-bottom': '0 -4px 12px rgba(0, 0, 0, 0.06)',
+      },
       fontFamily: {
         display: ['var(--font-manrope)', 'sans-serif'],
         sans: ['var(--font-manrope)', 'sans-serif'],
