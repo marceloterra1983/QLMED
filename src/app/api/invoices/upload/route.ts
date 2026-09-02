@@ -36,7 +36,9 @@ export async function POST(req: Request) {
   try {
     let userId: string;
     try {
-      const auth = await requireEditor();
+      // Por chave de API, `invoices:write` basta — antes só `admin` chegava aqui,
+      // e o sync de CT-e andava com uma chave admin por causa disto.
+      const auth = await requireEditor({ apiKeyScope: 'invoices:write' });
       userId = auth.userId;
     } catch (e: unknown) {
       if (e instanceof Error && e.message === 'FORBIDDEN') return forbiddenResponse();

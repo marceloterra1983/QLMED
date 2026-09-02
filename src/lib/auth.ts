@@ -128,18 +128,27 @@ export async function requireAuth(options: { apiKeyScope?: string } = {}): Promi
   return userId;
 }
 
-export async function requireRole(minRole: 'viewer' | 'editor' | 'admin'): Promise<{ userId: string; role: string }> {
-  // API key auth — scopes decide; for now only 'admin' scope grants admin role.
+export async function requireRole(
+  minRole: 'viewer' | 'editor' | 'admin',
+  options: { apiKeyScope?: string } = {},
+): Promise<{ userId: string; role: string }> {
+  // API key auth — scopes decide. `admin` cobre tudo. Uma rota pode nomear o
+  // escopo que a satisfaz (`apiKeyScope`): a chave que o tem cumpre `minRole`
+  // sem precisar de `admin`. Sem a opção, só `admin` passa de viewer — foi
+  // por isso que o sync de CT-e ficou com uma chave admin para chegar a um
+  // `requireEditor` (auditoria b177b07, pós-deploy).
   const apiCtx = await getApiKeyContext();
   if (apiCtx) {
-    const effectiveRole = apiCtx.scopes.includes('admin') ? 'admin' : 'viewer';
+    const scoped = Boolean(options.apiKeyScope && apiCtx.scopes.includes(options.apiKeyScope));
+    const effectiveRole = apiCtx.scopes.includes('admin') ? 'admin' : scoped ? minRole : 'viewer';
     const actualLevel = ROLE_HIERARCHY[effectiveRole] ?? 0;
     const requiredLevel = ROLE_HIERARCHY[minRole] ?? 0;
     if (actualLevel < requiredLevel) {
       throw new Error('FORBIDDEN');
     }
+    const usedScope = scoped ? options.apiKeyScope : 'admin';
     prisma.accessLog
-      .create({ data: { userId: apiCtx.userId, action: 'api_key_used', path: `keyId=${apiCtx.keyId}` } })
+      .create({ data: { userId: apiCtx.userId, action: 'api_key_used', path: `keyId=${apiCtx.keyId};scope=${usedScope}` } })
       .catch((err) => log.warn({ err }, 'AccessLog api_key_used write failed'));
     return { userId: apiCtx.userId, role: effectiveRole };
   }
@@ -213,12 +222,12 @@ export async function requireSessionRole(
   return { userId, role: user.role };
 }
 
-export async function requireEditor(): Promise<{ userId: string; role: string }> {
-  return requireRole('editor');
+export async function requireEditor(options: { apiKeyScope?: string } = {}): Promise<{ userId: string; role: string }> {
+  return requireRole('editor', options);
 }
 
-export async function requireAdmin(): Promise<{ userId: string; role: string }> {
-  return requireRole('admin');
+export async function requireAdmin(options: { apiKeyScope?: string } = {}): Promise<{ userId: string; role: string }> {
+  return requireRole('admin', options);
 }
 
 export async function requireSessionAdmin(): Promise<{ userId: string; role: string }> {
