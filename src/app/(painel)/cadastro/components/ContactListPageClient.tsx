@@ -350,9 +350,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
         title={cfg.title}
         subtitle={cfg.subtitle}
         titleExtra={cnpjChanges > 0 ? (
-          <span title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>
-            <Badge tone="warning">{cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ</Badge>
-          </span>
+          <Badge tone="warning" title={`${cnpjChanges} mudança(s) de status CNPJ nos últimos 30 dias`}>{cnpjChanges} mudança{cnpjChanges > 1 ? 's' : ''} CNPJ</Badge>
         ) : null}
         actions={(
           <Button

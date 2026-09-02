@@ -21,14 +21,17 @@ type BadgeProps = {
   tone?: BadgeTone;
   /** Sem ponto: contador ou rótulo sem estado (ex.: "3 itens"). */
   dot?: boolean;
+  /** Dica ao passar o mouse — o texto continua a ser o rótulo. */
+  title?: string;
   className?: string;
   children: ReactNode;
 };
 
-export default function Badge({ tone = 'neutral', dot = true, className, children }: BadgeProps) {
+export default function Badge({ tone = 'neutral', dot = true, title, className, children }: BadgeProps) {
   const t = TONE[tone];
   return (
     <span
+      title={title}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${t.pill} ${className ?? ''}`}
     >
       {dot ? <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.dot}`} /> : null}
