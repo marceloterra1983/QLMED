@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, type ReactNode } from 'react';
+import Badge, { type BadgeTone } from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 
@@ -295,37 +297,21 @@ export default function SyncPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      running: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    };
-    const icons: Record<string, string> = {
-      running: 'sync',
-      completed: 'check_circle',
-      error: 'error',
+    const tones: Record<string, BadgeTone> = {
+      running: 'info',
+      completed: 'success',
+      error: 'danger',
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${styles[status] || styles.error}`}>
-        <span className={`material-symbols-outlined text-[13px] ${status === 'running' ? 'animate-spin' : ''}`}>
-          {icons[status] || 'help'}
-        </span>
+      <Badge tone={tones[status] || 'danger'}>
         {status === 'running' ? 'Em andamento' : status === 'completed' ? 'Concluído' : 'Erro'}
-      </span>
+      </Badge>
     );
   };
 
   const formatFailedCell = (status: string) => {
     const failed = status === 'error';
-    return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-        failed
-          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-      }`}>
-        {failed ? 'Sim' : 'Não'}
-      </span>
-    );
+    return <Badge tone={failed ? 'danger' : 'success'}>{failed ? 'Sim' : 'Não'}</Badge>;
   };
 
   const nsdocsLogs = logs.filter((log) => log.syncMethod === 'nsdocs');
@@ -388,10 +374,10 @@ export default function SyncPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {methodLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      <td className="px-3 py-3 text-xs tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">
                         {formatDate(log.startedAt)}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-3">
                         <div className="flex flex-col gap-1">
                           <div>{getStatusBadge(log.status)}</div>
                           {log.errorMessage && (
@@ -401,13 +387,13 @@ export default function SyncPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
                         {log.newDocs}
                       </td>
-                      <td className="px-3 py-2 text-right text-xs font-semibold text-blue-700 dark:text-blue-400">
+                      <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums text-blue-700 dark:text-blue-400">
                         {log.updatedDocs}
                       </td>
-                      <td className="px-3 py-2 text-center">
+                      <td className="px-3 py-3 text-center">
                         {formatFailedCell(log.status)}
                       </td>
                     </tr>
@@ -619,32 +605,11 @@ export default function SyncPage() {
 
         {/* Badges */}
         <div className="flex items-center gap-2 mt-3">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-            hasCertificate
-              ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
-              : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-          }`}>
-            <span className="material-symbols-outlined text-[14px]">verified_user</span>
-            SEFAZ: {hasCertificate ? 'Ativa' : 'Inativa'}
-          </div>
+          <Badge tone={hasCertificate ? 'success' : 'neutral'}>SEFAZ: {hasCertificate ? 'Ativa' : 'Inativa'}</Badge>
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-            hasNsdocsConfig
-              ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
-              : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-          }`}>
-            <span className="material-symbols-outlined text-[14px]">hub</span>
-            NSDocs: {hasNsdocsConfig ? 'Ativa' : 'Inativa'}
-          </div>
+          <Badge tone={hasNsdocsConfig ? 'info' : 'neutral'}>NSDocs: {hasNsdocsConfig ? 'Ativa' : 'Inativa'}</Badge>
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-            hasReceitaConfig
-              ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800'
-              : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-          }`}>
-            <span className="material-symbols-outlined text-[14px]">account_balance</span>
-            Receita NFS-e: {hasReceitaConfig ? 'Ativa' : 'Inativa'}
-          </div>
+          <Badge tone={hasReceitaConfig ? 'warning' : 'neutral'}>Receita NFS-e: {hasReceitaConfig ? 'Ativa' : 'Inativa'}</Badge>
         </div>
       </div>
 
@@ -789,12 +754,8 @@ export default function SyncPage() {
         </div>
 
         {logs.length === 0 ? (
-          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-center">
-            <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[36px]">cloud_off</span>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Nenhuma sincronização realizada</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Use os botões acima para sincronizar documentos fiscais
-            </p>
+          <div className="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-800">
+            <EmptyState icon="cloud_off" title="Nenhuma sincronização realizada" hint="Use os botões acima para sincronizar documentos fiscais" />
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">

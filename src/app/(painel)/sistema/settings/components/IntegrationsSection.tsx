@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
@@ -693,13 +695,9 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{connection.accountEmail}</p>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      connection.isExpired
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    }`}>
+                    <Badge tone={connection.isExpired ? 'danger' : 'success'}>
                       {connection.isExpired ? 'Token expirado' : 'Conectado'}
-                    </span>
+                    </Badge>
                   </div>
 
                   <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-1">
@@ -755,7 +753,7 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
               </div>
 
               {!oneDriveFilesLoading && oneDriveItems.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum item encontrado.</p>
+                <EmptyState icon="inbox" title="Nenhum item encontrado." compact />
               ) : (
                 <div className="space-y-2">
                   {oneDriveItems.map((item) => (

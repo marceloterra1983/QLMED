@@ -91,6 +91,15 @@ caso campo-borda-300 fail \
 caso classe-em-template-aninhado fail \
   'export const A = ({ on }: { on: boolean }) => <a className={`px-3 ${on ? `bg-primary/10 text-primary` : "text-slate-600 dark:text-slate-300"}`}>x</a>;'
 
+caso pill-a-mao fail \
+  'export const A = () => <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Ativa</span>;'
+
+caso contador-a-mao fail \
+  'export const A = () => <span className="min-w-[22px] rounded-full bg-slate-100 text-xs font-bold">3</span>;'
+
+caso vazio-a-mao fail \
+  'export const A = () => <div className="p-8 text-center text-slate-500"><span className="material-symbols-outlined">inbox</span><p>Nenhum item</p></div>;'
+
 caso limpo pass \
   'const bgMap: Record<string, string> = { "text-primary": "bg-primary/10" };
 export const A = () => (
@@ -107,6 +116,11 @@ export const A = () => (
     <div className="border-slate-300 rounded-lg">e</div>
     <div className="focus-within:ring-2">f</div>
     <span className="rounded-full">g</span>
+    <button aria-current="page" className="w-9 h-9 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary-dark">1</button>
+    <button onClick={() => ir(1)} className="w-9 h-9 rounded-full bg-slate-100 text-xs font-semibold">1</button>
+    <EmptyState icon="inbox" title="Nenhum item" />
+    <Badge tone="success">Ativa</Badge>
+    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary dark:text-blue-400 text-xs font-bold">1</span>
   </>
 );'
 
@@ -115,4 +129,4 @@ if [ "$falhas" -ne 0 ]; then
   echo "REPROVADO: $falhas controle(s) inverteram"
   exit 1
 fi
-echo "APROVADO: 18 violações reprovadas, fixture limpo aprovado"
+echo "APROVADO: 21 violações reprovadas, fixture limpo aprovado"

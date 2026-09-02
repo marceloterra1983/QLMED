@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
@@ -347,9 +348,7 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                   </div>
 
                   {filteredAndSortedRows.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-                      Nenhum produto encontrado para o filtro informado.
-                    </div>
+                    <EmptyState compact icon="inbox" title="Nenhum produto encontrado para o filtro informado." />
                   ) : (
                     <>
                       {/* Mobile Cards */}
@@ -405,10 +404,10 @@ export default function ContactPriceTableModal({ kind, isOpen, onClose, contact 
                                   <div className="text-xs font-semibold text-slate-900 dark:text-white">{row.shortName || row.description}</div>
                                   <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{row.code}</div>
                                 </td>
-                                <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                <td className="px-3 py-1.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">
                                   {formatPrice(row.lastPrice)}
                                 </td>
-                                <td className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                <td className="px-3 py-1.5 text-xs tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">
                                   {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}
                                 </td>
                                 <td className="px-3 py-1.5 text-center">

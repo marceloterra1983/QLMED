@@ -1,6 +1,7 @@
 'use client';
 
 import type { CnpjResult } from '@/lib/cnpj-result';
+import Badge from '@/components/ui/Badge';
 
 interface FiscalSectionProps {
   cnpjData: CnpjResult;
@@ -18,15 +19,15 @@ export default function FiscalSection({ cnpjData, cnpjLoading, onSync, cnaeMisma
           <span className="material-symbols-outlined text-[13px] text-blue-500">account_balance</span>
           <p className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">Receita Federal</p>
           {cnpjData.situacaoCadastral && (
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold ${
+            <Badge tone={
               cnpjData.situacaoCadastral.toUpperCase().includes('ATIVA')
-                ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-400'
+                ? 'success'
                 : cnpjData.situacaoCadastral.toUpperCase().includes('SUSPENS')
-                  ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-500/20 dark:bg-amber-900/30 dark:text-amber-400'
-                  : 'bg-red-50 text-red-600 ring-1 ring-red-500/20 dark:bg-red-900/30 dark:text-red-400'
-            }`}>
+                  ? 'warning'
+                  : 'danger'
+            }>
               {cnpjData.situacaoCadastral}
-            </span>
+            </Badge>
           )}
         </div>
         <button

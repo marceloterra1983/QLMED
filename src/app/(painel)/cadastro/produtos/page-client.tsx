@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
@@ -495,10 +496,7 @@ export default function ProdutosPage() {
     >
 <div className="overflow-y-auto flex-1">
               {autoClassifyPreview.updatesFound === 0 ? (
-                <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                  <span className="material-symbols-outlined text-[48px] opacity-30">check_circle</span>
-                  <p className="mt-2 text-sm font-medium">Nenhum preenchimento automatico encontrado</p>
-                </div>
+                <EmptyState icon="check_circle" title="Nenhum preenchimento automatico encontrado" />
               ) : (
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0">

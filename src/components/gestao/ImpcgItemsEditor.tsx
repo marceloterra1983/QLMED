@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import { readFieldInputClass } from '@/components/gestao/ReadFieldEditor';
 
 export type ImpcgItemDraft = {
@@ -126,9 +127,7 @@ export default function ImpcgItemsEditor({
             {open && canEdit ? (
               drafts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
-                    Nenhum item. Adicione uma linha.
-                  </td>
+                  <td colSpan={7}><EmptyState compact icon="inbox" title="Nenhum item. Adicione uma linha." /></td>
                 </tr>
               ) : (
                 drafts.map((item, index) => (
@@ -196,9 +195,7 @@ export default function ImpcgItemsEditor({
               )
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
-                  Nenhum item extraído.
-                </td>
+                <td colSpan={6}><EmptyState compact icon="inbox" title="Nenhum item extraído." /></td>
               </tr>
             ) : (
               items.map((item, index) => (

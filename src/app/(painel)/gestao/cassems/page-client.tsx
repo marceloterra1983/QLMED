@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
@@ -63,15 +65,9 @@ function ParseBadge({ status }: { status: ParseStatus }) {
   if (status === 'ok') return null;
   const isFail = status === 'falha';
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0 ${
-        isFail
-          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-      }`}
-    >
+    <Badge tone={isFail ? 'danger' : 'warning'} className="shrink-0">
       {isFail ? 'Falha' : 'Parcial'}
-    </span>
+    </Badge>
   );
 }
 
@@ -250,11 +246,8 @@ export default function CassemsPageClient() {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
-          <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[48px]">clinical_notes</span>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-4">
-            Nenhuma autorização CASSEMS.
-          </p>
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+          <EmptyState icon="clinical_notes" title="Nenhuma autorização CASSEMS." />
         </div>
       )}
 
@@ -313,10 +306,10 @@ export default function CassemsPageClient() {
                       onClick={() => setSelectedId(item.id)}
                       className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
                     >
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      <td className="px-4 py-3 text-sm tabular-nums whitespace-nowrap">
                         {formatIssuedAt(item.issuedAt)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold">
+                      <td className="px-4 py-3 text-sm font-semibold tabular-nums">
                         <span className="inline-flex items-center gap-2">
                           {item.oficioNumber}
                           <ParseBadge status={item.parseStatus} />
@@ -329,7 +322,7 @@ export default function CassemsPageClient() {
                         />
                       </td>
                       <td className="px-4 py-3 text-sm">{item.doctorName || '—'}</td>
-                      <td className="px-4 py-3 text-sm font-mono font-bold text-right">
+                      <td className="px-4 py-3 text-sm font-mono font-bold tabular-nums text-right">
                         {formatBrl(item.totalAmount)}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -523,8 +516,8 @@ export default function CassemsPageClient() {
                 <tbody>
                   {detail.items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
-                        Nenhum item extraído.
+                      <td colSpan={6} className="px-3">
+                        <EmptyState compact icon="inbox" title="Nenhum item extraído." />
                       </td>
                     </tr>
                   ) : (
@@ -533,9 +526,9 @@ export default function CassemsPageClient() {
                         <td className="px-3 py-2">{item.description}</td>
                         <td className="px-3 py-2">{item.brand || '—'}</td>
                         <td className="px-3 py-2">{item.reference || '—'}</td>
-                        <td className="px-3 py-2 text-right font-mono">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right font-mono">{formatBrl(item.unitAmount)}</td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold">{formatBrl(item.lineTotal)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums">{item.quantity}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums">{formatBrl(item.unitAmount)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums font-semibold">{formatBrl(item.lineTotal)}</td>
                       </tr>
                     ))
                   )}

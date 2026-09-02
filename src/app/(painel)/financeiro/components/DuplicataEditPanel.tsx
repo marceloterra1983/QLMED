@@ -298,7 +298,7 @@ export default function DuplicataEditPanel({
                     <tbody>
                       {editingDuplicatas.map((row, idx) => (
                         <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-                          <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
+                          <td className="px-3 py-2 font-mono tabular-nums text-slate-700 dark:text-slate-200">
                             {getParcelaLabel(row.dupNumero, idx, editingDuplicatas.length)}
                           </td>
                           <td className="px-3 py-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { Field, SectionBlock } from '@/components/ui/InvoiceDetailHelpers';
@@ -245,10 +246,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
 
   if (!hasContent) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-2">
-        <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600">description</span>
-        <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum documento referenciado</span>
-      </div>
+      <EmptyState icon="description" title="Nenhum documento referenciado" />
     );
   }
 
@@ -321,8 +319,8 @@ function TabDocumentos({ data }: { data: CteDetails }) {
                 {docs.nfRefs.map((n: CteNfRef, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{n.serie || '-'}</td>
-                    <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{n.numero || '-'}</td>
-                    <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{n.dataEmissao || '-'}</td>
+                    <td className="px-3 py-2.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{n.numero || '-'}</td>
+                    <td className="px-3 py-2.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">{n.dataEmissao || '-'}</td>
                     <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(n.valorTotal)}</td>
                   </tr>
                 ))}
@@ -365,7 +363,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{o.tipo || '-'}</td>
                     <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{o.descricao || '-'}</td>
-                    <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{o.numero || '-'}</td>
+                    <td className="px-3 py-2.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">{o.numero || '-'}</td>
                     <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(o.valor)}</td>
                   </tr>
                 ))}

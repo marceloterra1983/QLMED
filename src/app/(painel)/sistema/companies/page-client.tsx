@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Badge from '@/components/ui/Badge';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 
@@ -63,9 +64,7 @@ export default function CompaniesPage() {
                 CNPJ: {formatCnpj(company.cnpj)}
               </p>
             </div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {company._count?.invoices || 0} notas
-            </span>
+            <Badge dot={false}>{company._count?.invoices || 0} notas</Badge>
           </div>
         </div>
       )}

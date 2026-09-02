@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
 import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
@@ -482,7 +483,7 @@ export default function EntradaNfePage() {
 
   const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={7} className="px-4 py-2 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+      <td colSpan={7} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
@@ -510,32 +511,32 @@ export default function EntradaNfePage() {
     return (
       <React.Fragment key={inv.id}>
         <tr className={`group transition-colors cursor-pointer ${pending ? 'bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-900/10 dark:hover:bg-amber-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => toggleExpand(inv.id)}>
-          <td className="px-2 py-2.5 text-center">
+          <td className="px-2 py-3 text-center">
             <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
           </td>
-          <td className="px-2 py-2.5">
+          <td className="px-2 py-3 tabular-nums">
             <span className="text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{inv.issueDate ? formatDate(inv.issueDate) : '-'}</span>
           </td>
-          <td className="px-2 py-2.5">
+          <td className="px-2 py-3 tabular-nums">
             <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">{inv.number || '-'}</span>
           </td>
-          <td className="px-2 py-2.5 text-right">
+          <td className="px-2 py-3 text-right tabular-nums">
             <span className="text-sm font-bold font-mono text-slate-900 dark:text-white whitespace-nowrap">{inv.totalValue != null ? formatAmount(inv.totalValue) : '-'}</span>
           </td>
-          <td className="px-3 py-2.5">
+          <td className="px-3 py-3">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{getNick(inv.supplierCnpj, inv.supplierName)}</span>
               <PendencyBadges inv={inv} />
             </div>
           </td>
-          <td className="px-2 py-2.5 text-center">
+          <td className="px-2 py-3 text-center tabular-nums">
             {inv.totalItems != null ? (
               <span className="text-xs text-slate-500">{inv.matchedItems}/{inv.totalItems}</span>
             ) : (
               <span className="text-xs text-slate-500 dark:text-slate-400">-</span>
             )}
           </td>
-          <td className="px-2 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+          <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-1">
               <button
                 onClick={() => setLotModalInvoiceId(inv.id)}
@@ -879,11 +880,11 @@ export default function EntradaNfePage() {
                       : 'bg-red-50/40 dark:bg-red-900/10'
                     }
                   >
-                    <td className="px-2 py-1.5 text-slate-500 dark:text-slate-400">{item.index}</td>
+                    <td className="px-2 py-1.5 tabular-nums text-slate-500 dark:text-slate-400">{item.index}</td>
                     <td className="px-2 py-1.5 font-mono text-slate-600 dark:text-slate-400">{item.code || '-'}</td>
                     <td className="px-2 py-1.5 text-slate-800 dark:text-slate-200 max-w-[300px] truncate">{item.description}</td>
                     <td className="px-2 py-1.5 text-slate-500">{item.unit}</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-slate-700 dark:text-slate-300">{item.quantity}</td>
+                    <td className="px-2 py-1.5 text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">{item.quantity}</td>
                     {renderLotCells(item, inv)}
                     <td className="px-2 py-1.5">
                       {item.matchStatus === 'matched' ? (
@@ -995,9 +996,8 @@ export default function EntradaNfePage() {
           ))
         ) : invoices.length === 0 ? (
           <>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
-              <span className="material-symbols-outlined text-[48px] opacity-30">inventory</span>
-              <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
+            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl">
+              <EmptyState icon="inventory" title="Nenhuma NF-e encontrada" />
             </div>
             <div className="flex items-center gap-1 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
@@ -1077,10 +1077,8 @@ export default function EntradaNfePage() {
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-[48px] opacity-30">inventory</span>
-                    <p className="mt-2 text-sm font-medium">Nenhuma NF-e encontrada</p>
-                    <p className="text-xs mt-1">Ajuste os filtros ou sincronize novas NF-e</p>
+                  <td colSpan={7} className="px-6 py-12">
+                    <EmptyState compact icon="inventory" title="Nenhuma NF-e encontrada" hint="Ajuste os filtros ou sincronize novas NF-e" />
                   </td>
                 </tr>
               ) : renderGroupedDesktopRows()}

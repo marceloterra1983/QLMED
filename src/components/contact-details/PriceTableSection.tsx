@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatDate } from '@/lib/utils';
 import { formatQuantity, formatPrice } from '@/lib/modal-helpers';
 import { thCls, tdCls } from './contact-detail-utils';
@@ -103,10 +104,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
       </div>
 
       {filteredAndSorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 gap-2">
-          <span className="material-symbols-outlined text-[32px] text-slate-300 dark:text-slate-600">search_off</span>
-          <span className="text-sm text-slate-500 dark:text-slate-400">Nenhum produto encontrado</span>
-        </div>
+        <EmptyState icon="search_off" title="Nenhum produto encontrado" />
       ) : (
         <>
           <div className="sm:hidden space-y-1.5">
@@ -150,7 +148,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
                     <td className={`${tdCls} text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white`}>
                       {formatPrice(row.lastPrice)}
                     </td>
-                    <td className={tdCls}>
+                    <td className={`${tdCls} tabular-nums`}>
                       <div className="text-xs text-slate-600 dark:text-slate-300">
                         {row.lastInvoiceNumber || '-'}
                       </div>

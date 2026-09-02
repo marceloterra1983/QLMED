@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Badge from '@/components/ui/Badge';
 import Image from 'next/image';
 import type { Session } from 'next-auth';
 
@@ -233,9 +234,7 @@ export default function SidebarNav({
                     </span>
                   )}
                   {!collapsed && item.badge && (
-                    <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
-                      {item.badge}
-                    </span>
+                    <Badge tone="danger" dot={false}>{item.badge}</Badge>
                   )}
                 </Link>
               );

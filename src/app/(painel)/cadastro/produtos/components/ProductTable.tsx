@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatAmount } from '@/lib/utils';
@@ -97,11 +99,11 @@ export default function ProductTable({
       return (
         <tr key={product.key} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-100 dark:border-slate-800/50 ${selectionEnabled && selectedKeys.has(product.key) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${product.outOfLine ? 'italic' : ''}`}>
           {selectionEnabled && (
-            <td className="px-3 py-1 w-8" onClick={(e) => e.stopPropagation()}>
+            <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
               <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={() => toggleSelect(product.key)} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" />
             </td>
           )}
-          <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}>
+          <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="flex items-center gap-1">
               {product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 shrink-0 not-italic" title="Fora de linha">block</span>}
               <span className={`text-xs font-mono font-semibold hover:text-primary dark:hover:text-blue-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
@@ -110,7 +112,7 @@ export default function ProductTable({
               </span>
             </div>
           </td>
-          <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product)}>
+          <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="hover:text-primary dark:hover:text-blue-400 transition-colors">
               {product.shortName ? (
                 <><span className={`text-xs font-semibold block leading-tight ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{search ? highlightMatch(product.shortName, search) : product.shortName}</span><span className={`text-xs block leading-tight ${product.outOfLine ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'}`}>{search ? highlightMatch(product.description, search) : product.description}</span></>
@@ -119,14 +121,14 @@ export default function ProductTable({
               )}
             </div>
           </td>
-          <td className="px-3 py-1 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}>
+          <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product, ['anvisa'])}>
             <span className={`text-xs font-mono hover:text-teal-600 dark:hover:text-teal-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : product.anvisa ? 'text-slate-700 dark:text-slate-300' : 'text-red-400 dark:text-red-500'}`}>{search ? highlightMatch(product.anvisa || '\u2014', search) : (product.anvisa || '\u2014')}</span>
             {(() => { const badge = getAnvisaExpirationBadge(product.anvisaExpiration); return badge ? <span className={`ml-1.5 inline-block px-1.5 py-0.5 rounded text-xs font-bold border ${badge.className}`}>{badge.label}</span> : null; })()}
           </td>
-          <td className="px-3 py-1"><span className={`text-xs ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
-          <td className="px-3 py-1 text-right"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
-          <td className="px-3 py-1 text-right"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
-          <td className="px-3 py-1 text-center">
+          <td className="px-3 py-3"><span className={`text-xs ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-600 dark:text-slate-400'}`} title={product.anvisaManufacturer || ''}>{search ? highlightMatch(product.manufacturerShortName || product.anvisaManufacturer || '-', search) : (product.manufacturerShortName || product.anvisaManufacturer || '-')}</span></td>
+          <td className="px-3 py-3 text-right tabular-nums"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatDate(product.lastIssueDate)}</span></td>
+          <td className="px-3 py-3 text-right tabular-nums"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
+          <td className="px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-0.5">
               <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
               <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
@@ -175,7 +177,7 @@ export default function ProductTable({
           <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
           <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
-          <span className="text-xs font-bold text-indigo-500/80 dark:text-indigo-400/80 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full min-w-[28px] text-center">{lineCountMap.get(lineKey)}</span>
+          <Badge tone="info" dot={false}>{lineCountMap.get(lineKey)}</Badge>
         </div>
       );
       elements.push(inTable ? <tr key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}><td colSpan={9} className="px-0 py-0">{lineContent}</td></tr> : <div key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>{lineContent}</div>);
@@ -188,7 +190,7 @@ export default function ProductTable({
           <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
-          <span className="text-xs font-bold text-amber-500/80 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(grpKey)}</span>
+          <Badge tone="warning" dot={false}>{groupCountMap.get(grpKey)}</Badge>
         </div>
       );
       elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={9} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
@@ -220,17 +222,18 @@ export default function ProductTable({
     }
     if (loading) {
       if (inTable) return Array.from({ length: 20 }).map((_, i) => (
-        <tr key={i}>{Array.from({ length: 8 }).map((_, j) => <td key={j} className="px-3 py-2"><Skeleton className="h-4 w-16" /></td>)}</tr>
+        <tr key={i}>{Array.from({ length: 8 }).map((_, j) => <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>)}</tr>
       ));
       return <div className="divide-y divide-slate-100 dark:divide-slate-800">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="p-4 space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-64" /><Skeleton className="h-3 w-32" /></div>)}</div>;
     }
     if (visible.length === 0) {
       const content = (
-        <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-          <span className="material-symbols-outlined text-[48px] opacity-30">inventory_2</span>
-          <p className="mt-2 text-sm font-medium">Nenhum produto encontrado</p>
-          <p className="text-xs mt-1">{summary.totalProducts > 0 ? 'Tente ajustar os filtros de busca.' : 'A lista e montada automaticamente a partir das NF-e de entrada.'}</p>
-        </div>
+        <EmptyState
+          compact={inTable}
+          icon="inventory_2"
+          title="Nenhum produto encontrado"
+          hint={summary.totalProducts > 0 ? 'Tente ajustar os filtros de busca.' : 'A lista e montada automaticamente a partir das NF-e de entrada.'}
+        />
       );
       return inTable ? <tr><td colSpan={9}>{content}</td></tr> : content;
     }
@@ -279,7 +282,7 @@ export default function ProductTable({
                 <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full min-w-[24px] text-center">{groupCountMap.get(group)}</span>
+                <Badge dot={false}>{groupCountMap.get(group)}</Badge>
               </div>
             );
             return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={9} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;

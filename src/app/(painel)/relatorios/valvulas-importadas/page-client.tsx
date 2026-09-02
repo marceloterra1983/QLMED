@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
@@ -248,7 +250,7 @@ export default function ValvulasImportadasPage() {
                   <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400 animate-spin">progress_activity</span>
                 </div>
               ) : users.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">Nenhum usuário ativo encontrado</p>
+                <EmptyState icon="inbox" title="Nenhum usuário ativo encontrado" compact />
               ) : (
                 <div className="flex flex-col gap-1 max-h-[240px] overflow-y-auto">
                   {users.map(u => (
@@ -362,13 +364,13 @@ export default function ValvulasImportadasPage() {
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {data.customerYearlySales.customers.map((c, idx) => (
                       <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-2 py-1.5 text-xs text-slate-900 dark:text-white truncate max-w-[180px]" title={c.customerName}>
+                        <td className="px-2 py-3 text-xs text-slate-900 dark:text-white truncate max-w-[180px]" title={c.customerName}>
                           {c.shortName}
                         </td>
                         {data.customerYearlySales.years.map((y) => {
                           const entry = c.byYear[String(y)];
                           return (
-                            <td key={y} className="px-2 py-1.5 text-right">
+                            <td key={y} className="px-2 py-3 text-right tabular-nums">
                               {entry && entry.qty > 0 ? (
                                 <div>
                                   <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
@@ -384,7 +386,7 @@ export default function ValvulasImportadasPage() {
                             </td>
                           );
                         })}
-                        <td className="px-2 py-1.5 text-right">
+                        <td className="px-2 py-3 text-right tabular-nums">
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
                             {c.totalQty.toLocaleString('pt-BR')}
                           </div>
@@ -392,20 +394,20 @@ export default function ValvulasImportadasPage() {
                             {formatAmount(c.totalValue)}
                           </div>
                         </td>
-                        <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-right tabular-nums text-xs font-mono text-slate-700 dark:text-slate-300">
                           {c.lastUnitPrice != null ? formatAmount(c.lastUnitPrice) : '—'}
                         </td>
                       </tr>
                     ))}
                     {data.customerYearlySales.customers.length > 0 && (
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-300 dark:border-slate-700 font-bold">
-                        <td className="px-2 py-2 text-xs text-slate-900 dark:text-white">TOTAL</td>
+                        <td className="px-2 py-3 text-xs text-slate-900 dark:text-white">TOTAL</td>
                         {data.customerYearlySales.years.map((y) => {
                           const yk = String(y);
                           const yearQty = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.qty || 0), 0);
                           const yearVal = data.customerYearlySales.customers.reduce((s, c) => s + (c.byYear[yk]?.value || 0), 0);
                           return (
-                            <td key={y} className="px-2 py-2 text-right">
+                            <td key={y} className="px-2 py-3 text-right tabular-nums">
                               <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                                 {yearQty.toLocaleString('pt-BR')}
                               </div>
@@ -415,7 +417,7 @@ export default function ValvulasImportadasPage() {
                             </td>
                           );
                         })}
-                        <td className="px-2 py-2 text-right">
+                        <td className="px-2 py-3 text-right tabular-nums">
                           <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">
                             {data.customerYearlySales.customers.reduce((s, c) => s + c.totalQty, 0).toLocaleString('pt-BR')}
                           </div>
@@ -423,7 +425,7 @@ export default function ValvulasImportadasPage() {
                             {formatAmount(data.customerYearlySales.customers.reduce((s, c) => s + c.totalValue, 0))}
                           </div>
                         </td>
-                        <td className="px-2 py-2" />
+                        <td className="px-2 py-3" />
                       </tr>
                     )}
                   </tbody>
@@ -504,9 +506,7 @@ export default function ValvulasImportadasPage() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Detalhamento por Produto
               </h3>
-              <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
-                {data?.products.length || 0}
-              </span>
+              <Badge dot={false}>{data?.products.length || 0}</Badge>
             </div>
           </div>
 
@@ -554,70 +554,69 @@ export default function ValvulasImportadasPage() {
                   ))
                 ) : sortedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-                      <span className="material-symbols-outlined text-[36px] opacity-30">search_off</span>
-                      <p className="mt-1 text-xs font-medium">Nenhum produto encontrado</p>
+                    <td colSpan={9} className="px-4">
+                      <EmptyState icon="search_off" title="Nenhum produto encontrado" compact />
                     </td>
                   </tr>
                 ) : (
                   <>
                     {sortedProducts.map((p) => (
                       <tr key={p.key} className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300">{p.code}</td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-3 text-xs font-mono tabular-nums text-slate-700 dark:text-slate-300">{p.code}</td>
+                        <td className="px-2 py-3">
                           <div className="text-xs font-medium text-slate-900 dark:text-white truncate max-w-[160px]" title={p.description}>
                             {p.shortName || p.description}
                           </div>
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {p.purchasedQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {formatAmount(p.purchasedValue)}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {p.soldQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {formatAmount(p.soldValue)}
                         </td>
-                        <td className={`px-2 py-1.5 text-xs text-right font-mono font-bold ${
+                        <td className={`px-2 py-3 text-xs text-right font-mono tabular-nums font-bold ${
                           p.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : p.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                         }`}>
                           {p.netQty > 0 ? '+' : ''}{p.netQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {p.avgPurchasePrice != null ? formatAmount(p.avgPurchasePrice) : '—'}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
                           {p.avgSalePrice != null ? formatAmount(p.avgSalePrice) : '—'}
                         </td>
                       </tr>
                     ))}
                     {totals && (
                       <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-300 dark:border-slate-700 font-bold">
-                        <td className="px-2 py-2 text-xs text-slate-900 dark:text-white" colSpan={2}>TOTAL</td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-slate-900 dark:text-white" colSpan={2}>TOTAL</td>
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {totals.purchasedQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {formatAmount(totals.purchasedValue)}
                         </td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {totals.soldQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {formatAmount(totals.soldValue)}
                         </td>
-                        <td className={`px-2 py-2 text-xs text-right font-mono font-bold ${
+                        <td className={`px-2 py-3 text-xs text-right font-mono tabular-nums font-bold ${
                           totals.netQty > 0 ? 'text-emerald-600 dark:text-emerald-400' : totals.netQty < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'
                         }`}>
                           {totals.netQty > 0 ? '+' : ''}{totals.netQty.toLocaleString('pt-BR')}
                         </td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {totals.purchasedQty > 0 ? formatAmount(totals.purchasedValue / totals.purchasedQty) : '—'}
                         </td>
-                        <td className="px-2 py-2 text-xs text-right font-mono text-slate-900 dark:text-white">
+                        <td className="px-2 py-3 text-xs text-right font-mono tabular-nums text-slate-900 dark:text-white">
                           {totals.soldQty > 0 ? formatAmount(totals.soldValue / totals.soldQty) : '—'}
                         </td>
                       </tr>
@@ -635,9 +634,7 @@ export default function ValvulasImportadasPage() {
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Detalhamento por Produto
             </h3>
-            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
-              {data?.products.length || 0}
-            </span>
+            <Badge dot={false}>{data?.products.length || 0}</Badge>
           </div>
           {loading ? (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -655,10 +652,7 @@ export default function ValvulasImportadasPage() {
               ))}
             </div>
           ) : sortedProducts.length === 0 ? (
-            <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-              <span className="material-symbols-outlined text-[36px] opacity-30">search_off</span>
-              <p className="mt-1 text-xs font-medium">Nenhum produto encontrado</p>
-            </div>
+            <EmptyState icon="search_off" title="Nenhum produto encontrado" compact />
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {sortedProducts.map((p) => (
