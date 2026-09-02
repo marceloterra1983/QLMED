@@ -263,23 +263,31 @@ jobs:
 
       - name: Verify deployed revision
         run: |
+          # Verifica pela IMAGEM em execução, localmente, e não pelo `commitSha`
+          # do /api/health público. Esse campo deixou de sair sem sessão
+          # (auditoria b177b07, OBS-003) e a versão anterior deste passo fazia
+          # `curl` anónimo → "got missing" → rollback de um deploy que tinha
+          # aplicado as migrações e subido saudável (run 33630947385).
+          #
+          # Duas provas, as duas locais: o id da imagem do container tem de ser
+          # o id da imagem construída para este SHA, E a tag tem de ser a do
+          # SHA. O env QLMED_BUILD_COMMIT_SHA NÃO serve: o stamp é gravado antes
+          # do `up`, e um container restaurado pelo rollback carrega o SHA novo
+          # no env enquanto corre a imagem antiga.
           expected_sha="${EXPECTED_SHA}"
-          for url in \
-            http://127.0.0.1:13000/api/health \
-            https://app.qlmed.com.br/api/health
-          do
-            for attempt in $(seq 1 30); do
-              body="$(curl -fsS "$url" || true)"
-              actual_sha="$(printf '%s' "$body" | sed -n 's/.*"commitSha":"\([^"]*\)".*/\1/p')"
-              if [ -n "$actual_sha" ] && [[ "$actual_sha" = "$expected_sha"* || "$expected_sha" = "$actual_sha"* ]]; then
-                break
-              fi
-              if [ "$attempt" -eq 30 ]; then
-                echo "Revision check failed for $url: expected $expected_sha, got ${actual_sha:-missing}" >&2
-                exit 1
-              fi
-              sleep 2
-            done
+          expected_id="$(docker image inspect "qlmed-app:${expected_sha}" --format '{{.Id}}')"
+          for attempt in $(seq 1 30); do
+            running_id="$(docker inspect qlmed-app --format '{{.Image}}' 2>/dev/null || true)"
+            running_tag="$(docker inspect qlmed-app --format '{{.Config.Image}}' 2>/dev/null || true)"
+            if [ "$running_id" = "$expected_id" ] && [ "$running_tag" = "qlmed-app:${expected_sha}" ]; then
+              echo "Deployed revision verified: ${running_tag} (${running_id})"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "Revision check failed: expected qlmed-app:${expected_sha} (${expected_id}), running ${running_tag:-none} (${running_id:-none})" >&2
+              exit 1
+            fi
+            sleep 2
           done
 
       - name: Verify public endpoints
