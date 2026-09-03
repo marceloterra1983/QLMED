@@ -14,7 +14,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getHeapStatistics } from 'node:v8';
 import ExcelJS from 'exceljs';
-import { MAX_XLSX_BYTES, MAX_XLSX_INMEMORY_BYTES, streamXlsxRows } from '@/lib/xlsx-limits';
+import JSZip from 'jszip';
+import { MAX_XLSX_BYTES, XlsxTooLargeError, streamXlsxRows } from '@/lib/xlsx-limits';
 
 const COLS = 84;
 
@@ -111,9 +112,19 @@ describe('leitura de XLSX em streaming', () => {
     expect((pico - antes) / 1048576).toBeLessThan(150);
   }, 60_000);
 
-  it('os tetos declaram o que cada caminho aguenta', () => {
+  it('o zip-bomb é recusado antes de sair uma linha', async () => {
+    // 50 MiB de zeros em ~50 KiB: o guarda continua no caminho, agora antes do
+    // leitor. Sem ele, a leitura seguiria e só o cap de linhas travaria.
+    const zip = new JSZip();
+    zip.file('bomb.bin', Buffer.alloc(50 * 1024 * 1024, 0));
+    const bomb = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+
+    let linhas = 0;
+    await expect(streamXlsxRows(new Blob([new Uint8Array(bomb)]), () => { linhas++; })).rejects.toBeInstanceOf(XlsxTooLargeError);
+    expect(linhas).toBe(0);
+  }, 30_000);
+
+  it('o teto declara o que o caminho aguenta', () => {
     expect(MAX_XLSX_BYTES).toBe(10 * 1024 * 1024);
-    expect(MAX_XLSX_INMEMORY_BYTES).toBe(2 * 1024 * 1024);
-    expect(MAX_XLSX_INMEMORY_BYTES).toBeLessThan(MAX_XLSX_BYTES);
   });
 });

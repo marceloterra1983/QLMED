@@ -17,13 +17,6 @@ import JSZip from 'jszip';
  * 5 MiB — acima do `--max-old-space-size=512` com que o app corre.
  */
 export const MAX_XLSX_BYTES = 10 * 1024 * 1024;
-/**
- * Teto para rotas que ainda fazem `workbook.xlsx.load()` do ficheiro todo. O
- * custo é ~130 MiB de heap por MiB de .xlsx, então 2 MiB (~8,4 mil linhas,
- * 281 MiB de pico) é o que cabe com folga no heap de produção. Recusar com 413
- * é melhor do que aceitar e matar o processo.
- */
-export const MAX_XLSX_INMEMORY_BYTES = 2 * 1024 * 1024;
 /** Soma máxima do conteúdo descomprimido declarado no zip. */
 export const MAX_XLSX_UNCOMPRESSED_BYTES = 120 * 1024 * 1024;
 /** Razão máxima descomprimido/comprimido do arquivo inteiro. */
@@ -159,19 +152,22 @@ export interface XlsxStreamRow {
 /**
  * Lê a primeira planilha linha a linha, sem montar o livro em memória.
  *
- * Também substitui o `assertSafeXlsx` neste caminho: um zip-bomb não é
- * descomprimido de uma vez, e `assertRowCount` corta a leitura assim que passa
- * de `MAX_XLSX_ROWS` — o trabalho fica limitado pela linha, não pelo que o zip
- * declara. Devolve o número de linhas vistas (0 = planilha vazia).
+ * O `assertSafeXlsx` continua a correr antes: ele nunca foi o problema de
+ * memória — infla cada entrada por um stream com orçamento, com pico de um
+ * chunk. Quem estourava o heap era o `workbook.xlsx.load()`. Aqui o ficheiro
+ * comprimido (no máximo `MAX_XLSX_BYTES`) fica em memória para as duas coisas.
+ * `assertRowCount` corta a leitura assim que passa de `MAX_XLSX_ROWS`.
+ * Devolve o número de linhas vistas (0 = planilha vazia).
  */
 export async function streamXlsxRows(
   file: Blob,
   onRow: (row: XlsxStreamRow) => void,
 ): Promise<number> {
+  const buf = Buffer.from(await file.arrayBuffer());
+  await assertSafeXlsx(buf);
   const { Readable } = await import('node:stream');
   const ExcelJS = (await import('exceljs')).default;
-  const input = Readable.fromWeb(file.stream() as Parameters<typeof Readable.fromWeb>[0]);
-  const reader = new ExcelJS.stream.xlsx.WorkbookReader(input, {
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(buf), {
     worksheets: 'emit',
     sharedStrings: 'cache',
     styles: 'ignore',

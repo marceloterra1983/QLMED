@@ -640,10 +640,18 @@ cada vez. Medido no mesmo heap de 512 MiB: 95 MiB de pico para o ficheiro de
 5 MiB **e** para o de 10 MiB — o custo passa a ser o da linha, não o do
 ficheiro. Com isso `MAX_XLSX_BYTES` sobe para 10 MiB.
 
-A rota `products/import-types` continua a carregar o livro inteiro, e por isso
-ganhou teto próprio, `MAX_XLSX_INMEMORY_BYTES` = 2 MiB — recusar com 413 é
-melhor do que aceitar e derrubar o processo. Convertê-la também é trabalho de
-outro dia.
+A rota `products/import-types` foi convertida no mesmo PR: o formato dela é
+lido em sequência (cabeçalho `Código` nas dez primeiras linhas, depois linhas
+de grupo e de produto), então o streaming só precisou de guardar essas dez
+primeiras — um ficheiro sem cabeçalho continua a ser lido desde a primeira
+linha, como antes. As duas rotas partilham o teto de 10 MiB.
+
+Uma correcção sobre o próprio §20: o `assertSafeXlsx` **não** era o problema de
+memória, e tirá-lo do caminho foi erro meu. Ele infla cada entrada por um
+stream com orçamento — o pico é um chunk, não a entrada. Quem estourava o heap
+era o `workbook.xlsx.load()`. O guarda voltou, agora antes do leitor, e o
+ficheiro comprimido (no máximo 10 MiB) fica em memória para servir os dois.
+Sem ele, um zip-bomb passaria a depender só do cap de linhas.
 
 O teste guarda as duas metades: o endereçamento das células (0-based, como o
 `getCell(r+1, c+1)` de antes) e o custo de memória. Controlo positivo com o
