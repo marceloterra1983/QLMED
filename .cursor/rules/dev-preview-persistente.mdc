@@ -1,0 +1,40 @@
+---
+description: Preview DEV canônico QLMED (.worktrees/preview :3002) — obrigatório antes de merge/deploy de UI
+alwaysApply: true
+---
+
+# Preview DEV canônico (manter)
+
+Worktree permanente: `/home/marce/qlmed/.worktrees/preview`  
+URL: `http://100.83.11.58:3002`  
+Unit: `qlmed-dev-preview.service` (user)  
+Starter: `/home/marce/qlmed/app/ops/scripts/qlmed-dev-preview-starter.mjs`
+
+Toda sessão de IA **deve** usar este preview para validar UI **antes** de merge/deploy.
+Não pergunte se quer preview; use-o. Não suba outro Next.
+
+## Regras
+
+1. **Única porta de preview = 3002.** Proibido 3003/3004. `:3000` = canônico
+   `app/` (evitar `npm run dev` em worktree — mata `:3000`). `:3001` = Uptime Kuma.
+   Produção `:13000` só `127.0.0.1`.
+2. **Persistir:** unit `qlmed-dev-preview` via systemd user + linger.
+   Se morta: `systemctl --user start qlmed-dev-preview` (ou
+   `systemd-run --user --unit=qlmed-dev-preview` com o starter).
+   Nunca deixar Next só no bash do chat.
+3. **Env (nunca printar):** herdar `/srv/qlmed/env/app.env`. Se `qlmed-db`
+   não resolver, `DATABASE_URL` com host `127.0.0.1:5432`.
+4. **Login HTTP:** `NEXTAUTH_URL=http://100.83.11.58:3002` (ver `src/lib/env.ts`).
+   Herdar `https://app.qlmed.com.br` → cookie Secure → “Erro ao fazer login”.
+5. **Feature com UI:** rebase/merge/checkout do tip da feature **nesta**
+   worktree (ou apontar o `cwd` do starter para a worktree da feature e
+   reiniciar a unit). Não criar segunda instância Next.
+6. **Antes de merge/deploy** (mudança visível na UI ou fluxo web): smoke no
+   preview (`curl` local e/ou browser em `http://100.83.11.58:3002`).
+   Só então PR/merge e deploy de produção.
+7. **Editar:** caminho absoluto na worktree; não `move_agent_to_root`.
+
+## Diagnóstico
+
+- `ss` sem listen em `:3002` → unit morta; restart.
+- Curl 200/307 local + Windows refused → Tailscale/browser.

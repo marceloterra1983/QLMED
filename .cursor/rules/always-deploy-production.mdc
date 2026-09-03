@@ -1,0 +1,41 @@
+---
+description: Preview canônico antes do deploy; sempre subir produção ao terminar
+alwaysApply: true
+---
+
+# Produção ao terminar
+
+Quando a tarefa do QLMED fechou (PR mergeado no `main`, ou mudança operacional
+já autorizada), **suba produção**. Não pergunte “quer deploy?”.
+
+## Gate de preview (UI / fluxo web)
+
+Se a mudança afeta UI, login, rotas Next ou comportamento no browser:
+
+1. Use o preview canônico `/home/marce/qlmed/.worktrees/preview` na porta
+   **3002** (`http://100.83.11.58:3002`, unit `qlmed-dev-preview`).
+2. Garanta que o preview está servindo o código da mudança (checkout/rebase
+   do tip na worktree preview, ou `cwd` do starter na worktree da feature).
+3. Smoke rápido (HTTP no preview + checagem visual/login se couber).
+4. Só então merge e deploy.
+
+Não invente outra porta nem outro Next. Detalhes: rule
+`dev-preview-persistente`.
+
+## Deploy produção
+
+1. Espere o CI `ci.yml` **push/main** verde no SHA de 40 caracteres de `origin/main`.
+2. Garanta env necessário sem imprimir `.env` (ex.: VAPID para Web Push).
+3. `gh workflow run deploy-production.yml --ref main -f confirm_production=DEPLOY -f revision=<SHA>`.
+4. Se o environment `production` pedir aprovação, aprove (`gh` / `current_user_can_approve`).
+5. Espere o workflow terminar verde. Health: `http://127.0.0.1:13000/api/health` com o SHA novo.
+6. Informe a URL do deploy e o SHA. Não cole segredo.
+
+Se a tarefa criou migration Prisma, o **mesmo PR** tem de atualizar
+`scripts/verify-production-migration-window.cjs` (`EXPECTED_MIGRATION` + SHA do
+`migration.sql`) e o assert em `scripts/test-production-migration-window.cjs`.
+Sem isso o deploy recusa a janela e a migration não aplica.
+
+Proibido: terminar só no GitHub; menu “quer que eu suba?”; deploy com CI vermelho;
+force-push em `main`; imprimir `production/env/app.env`; pular o preview canônico
+em mudança de UI.
