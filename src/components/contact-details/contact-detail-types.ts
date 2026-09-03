@@ -27,6 +27,7 @@ export interface ContactDetails {
 
 export interface ContactPurchases {
   totalInvoices: number;
+  totalSaleInvoices?: number;
   totalValue: number;
   totalPurchasedItems: number;
   totalProductsPurchased: number;

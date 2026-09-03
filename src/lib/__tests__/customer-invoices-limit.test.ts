@@ -86,6 +86,7 @@ describe('G1 — Customer and supplier details without 500 invoices limit', () =
 
     // Verify purchases stats reflect ALL 1250 invoices, not capped at 500
     expect(data.purchases.totalInvoices).toBe(1250);
+    expect(data.purchases.totalSaleInvoices).toBe(625);
 
     // Sales (5102) were 625 invoices of 100.00 = 62500
     expect(data.purchases.totalValue).toBe(62500);
@@ -93,9 +94,9 @@ describe('G1 — Customer and supplier details without 500 invoices limit', () =
     // Full invoice list is returned
     expect(data.invoices).toHaveLength(1250);
 
-    // First and last issue dates cover full range
+    // First and last sale issue dates reflect sales invoices
     expect(data.purchases.lastIssueDate).toBe(mockInvoices[0].issueDate.toISOString());
-    expect(data.purchases.firstIssueDate).toBe(mockInvoices[totalMockCount - 1].issueDate.toISOString());
+    expect(data.purchases.firstIssueDate).toBe(mockInvoices[1248].issueDate.toISOString());
   });
 
   it('reads duplicates directly from invoice_duplicata table when available', async () => {
