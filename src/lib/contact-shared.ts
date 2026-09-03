@@ -11,6 +11,7 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('contact-shared');
 import { getCityByCnpjs, backfillContactFiscalCity } from '@/lib/contact-fiscal-store';
+import { getCfopCodesByTag } from '@/lib/cfop';
 
 // ---------------------------------------------------------------------------
 // Types & Config
@@ -128,7 +129,10 @@ export async function handleContactList(
   const startCurrentYear = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
   const startNextYear = new Date(Date.UTC(currentYear + 1, 0, 1, 0, 0, 0));
 
-  const [groupedInvoices, groupedPrevYear, groupedCurrentYear] = await Promise.all([
+  const isCustomer = contactType === 'customer';
+  const saleCfopCodes = isCustomer ? getCfopCodesByTag('Venda') : [];
+
+  const [groupedInvoices, groupedPrevYear, groupedCurrentYear, groupedSales] = await Promise.all([
     prisma.invoice.groupBy({
       by: [cnpjField, nameField],
       where,
@@ -147,17 +151,38 @@ export async function handleContactList(
       where: { ...where, issueDate: { gte: startCurrentYear, lt: startNextYear } },
       _count: { _all: true },
     }),
+    isCustomer && saleCfopCodes.length > 0
+      ? prisma.invoice.groupBy({
+          by: [cnpjField, nameField],
+          where: { ...where, cfop: { in: saleCfopCodes } },
+          _sum: { totalValue: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const yearCountMapPrev = buildYearCountMap(groupedPrevYear, cnpjField, nameField);
   const yearCountMapCurrent = buildYearCountMap(groupedCurrentYear, cnpjField, nameField);
+
+  const salesMap = new Map<string, number>();
+  if (isCustomer) {
+    for (const s of groupedSales as Array<{
+      [key: string]: unknown;
+      _sum: { totalValue: unknown };
+    }>) {
+      const key = buildContactKey(s[cnpjField] as string | null, s[nameField] as string | null);
+      const val = Number(s._sum?.totalValue) || 0;
+      salesMap.set(key, (salesMap.get(key) || 0) + val);
+    }
+  }
 
   const contactMap = new Map<string, AggregatedContact>();
 
   for (const grouped of groupedInvoices) {
     const key = buildContactKey(grouped[cnpjField] as string | null, grouped[nameField] as string | null);
     const invoiceCount = grouped._count._all || 0;
-    const totalValue = Number(grouped._sum.totalValue) || 0;
+    const totalValue = isCustomer
+      ? (salesMap.get(key) || 0)
+      : (Number(grouped._sum.totalValue) || 0);
     const firstIssueDate = grouped._min.issueDate;
     const lastIssueDate = grouped._max.issueDate;
 
@@ -178,7 +203,9 @@ export async function handleContactList(
     }
 
     existing.invoiceCount += invoiceCount;
-    existing.totalValue += totalValue;
+    if (!isCustomer) {
+      existing.totalValue += totalValue;
+    }
 
     if (!existing.firstIssueDate || (firstIssueDate && firstIssueDate < existing.firstIssueDate)) {
       existing.firstIssueDate = firstIssueDate;

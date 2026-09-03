@@ -68,7 +68,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     addressAccent: 'indigo',
 
     generalSubtitle: 'Resumo consolidado das vendas',
-    statLabels: ['NF-e emitidas', 'Total vendido', 'Itens vendidos', 'Produtos vendidos', 'Última venda'],
+    statLabels: ['NF-e de venda', 'Total vendido', 'Itens vendidos', 'Produtos vendidos', 'Última venda'],
     firstStatColor: 'primary',
 
     priceTableSubtitle: 'Histórico por item com base nas NF-e emitidas',

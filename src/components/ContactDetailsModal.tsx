@@ -347,7 +347,12 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
               viewMode={cardViewMode}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                <StatCard label={cfg.statLabels[0]} value={formatInt(details.purchases.totalInvoices)} icon="receipt_long" color={cfg.firstStatColor} />
+                <StatCard
+                  label={cfg.statLabels[0]}
+                  value={formatInt((kind === 'customer' && details.purchases.totalSaleInvoices != null) ? details.purchases.totalSaleInvoices : details.purchases.totalInvoices)}
+                  icon="receipt_long"
+                  color={cfg.firstStatColor}
+                />
                 <StatCard label={cfg.statLabels[1]} value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
                 <StatCard label={cfg.statLabels[2]} value={formatQuantity(details.purchases.totalPurchasedItems)} icon="shopping_cart" color="indigo" />
                 <StatCard label={cfg.statLabels[3]} value={formatInt(details.purchases.totalProductsPurchased)} icon="inventory_2" color="amber" />

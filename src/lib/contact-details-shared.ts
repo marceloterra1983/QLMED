@@ -254,7 +254,9 @@ export async function handleContactDetails(
 
   const invoiceCfopTagMap = new Map<string, string>();
   let totalValue = 0;
-  let totalSaleOrBonificationInvoices = 0;
+  let totalSaleInvoices = 0;
+  let lastSaleDate: Date | null = null;
+  let firstSaleDate: Date | null = null;
 
   for (const invoice of filteredInvoices) {
     const primaryCfop = (invoice.cfop as string | null) || null;
@@ -262,9 +264,15 @@ export async function handleContactDetails(
     invoiceCfopTagMap.set(invoice.id, tag);
 
     if (cfg.hasSaleFilter) {
-      if (tag === 'Venda' || tag === 'Bonificação') {
+      if (tag === 'Venda') {
         totalValue += Number(invoice.totalValue) || 0;
-        totalSaleOrBonificationInvoices += 1;
+        totalSaleInvoices += 1;
+        if (!lastSaleDate && invoice.issueDate) {
+          lastSaleDate = invoice.issueDate;
+        }
+        if (invoice.issueDate) {
+          firstSaleDate = invoice.issueDate;
+        }
       }
     } else {
       totalValue += Number(invoice.totalValue) || 0;
@@ -511,7 +519,7 @@ export async function handleContactDetails(
   const totalPurchasedItems = priceTable.reduce((acc, item) => acc + item.totalQuantity, 0);
   const totalProductsPurchased = priceTable.length;
   const averageTicket = cfg.hasSaleFilter
-    ? (totalSaleOrBonificationInvoices > 0 ? totalValue / totalSaleOrBonificationInvoices : 0)
+    ? (totalSaleInvoices > 0 ? totalValue / totalSaleInvoices : 0)
     : (totalInvoices > 0 ? totalValue / totalInvoices : 0);
 
   const invoicesList = filteredInvoices.map((invoice) => ({
@@ -582,12 +590,13 @@ export async function handleContactDetails(
     } : null,
     purchases: {
       totalInvoices,
+      totalSaleInvoices,
       totalValue,
       totalPurchasedItems,
       totalProductsPurchased,
       averageTicket,
-      firstIssueDate,
-      lastIssueDate,
+      firstIssueDate: cfg.hasSaleFilter ? (firstSaleDate || firstIssueDate) : firstIssueDate,
+      lastIssueDate: cfg.hasSaleFilter ? (lastSaleDate || lastIssueDate) : lastIssueDate,
       confirmedInvoices,
       pendingInvoices,
       rejectedInvoices,
