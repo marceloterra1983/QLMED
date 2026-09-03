@@ -1,7 +1,8 @@
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { createLogger } from '@/lib/logger';
 import {
   MAX_OCR_PAGES,
@@ -14,19 +15,35 @@ import {
 
 const log = createLogger('cassems/extract-pdf');
 
-function run(
+const execFileAsync = promisify(execFile);
+
+/**
+ * Assíncrono de propósito: com `spawnSync` cada OCR parava o event loop do Next
+ * por todos os spawns (pdftoppm + tesseract por página), e o servidor inteiro
+ * respondia 502 durante uma importação.
+ */
+async function run(
   command: string,
   args: string[],
   deadline: OcrDeadline,
-): { stdout: string; status: number | null } {
+): Promise<{ stdout: string; status: number | null }> {
   const timeout = deadline.remainingMs();
   if (timeout <= 0) return { stdout: '', status: null };
-  const result = spawnSync(command, args, { encoding: 'utf8', timeout });
-  return { stdout: result.stdout || '', status: result.status };
+  try {
+    const { stdout } = await execFileAsync(command, args, {
+      encoding: 'utf8',
+      timeout,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return { stdout: stdout || '', status: 0 };
+  } catch (err) {
+    const e = err as { stdout?: string; code?: number | string };
+    return { stdout: e.stdout || '', status: typeof e.code === 'number' ? e.code : null };
+  }
 }
 
-function commandExists(command: string): boolean {
-  const result = spawnSync('which', [command], { encoding: 'utf8' });
+async function commandExists(command: string, deadline: OcrDeadline): Promise<boolean> {
+  const result = await run('which', [command], deadline);
   return result.status === 0;
 }
 
@@ -56,19 +73,19 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
   writeFileSync(pdfPath, pdf);
 
   try {
-    if (commandExists('pdftotext')) {
-      const text = run('pdftotext', ['-layout', '-enc', 'UTF-8', pdfPath, '-'], deadline);
+    if (await commandExists('pdftotext', deadline)) {
+      const text = await run('pdftotext', ['-layout', '-enc', 'UTF-8', pdfPath, '-'], deadline);
       if (text.stdout.trim()) return text.stdout;
     }
 
-    if (!commandExists('pdftoppm') || !commandExists('tesseract')) {
+    if (!(await commandExists('pdftoppm', deadline)) || !(await commandExists('tesseract', deadline))) {
       log.warn('ocr_binaries_missing');
       return '';
     }
 
     // Documento gigante: rasterizar/OCRar é o ataque. Abandona o OCR.
-    if (commandExists('pdfinfo')) {
-      const info = run('pdfinfo', [pdfPath], deadline);
+    if (await commandExists('pdfinfo', deadline)) {
+      const info = await run('pdfinfo', [pdfPath], deadline);
       const pageCount = parsePdfInfoPages(info.stdout);
       if (pageCount !== null && pageCount > MAX_OCR_PAGES) {
         log.warn({ pages: pageCount, limit: MAX_OCR_PAGES }, 'pdf_too_many_pages_ocr_skipped');
@@ -78,7 +95,7 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
 
     const prefix = join(dir, 'page');
     // `-l N` corta na origem: sem isto um PDF de 500 páginas vira 500 PNGs.
-    run('pdftoppm', ['-png', '-r', '200', '-f', '1', '-l', String(MAX_OCR_PAGES), pdfPath, prefix], deadline);
+    await run('pdftoppm', ['-png', '-r', '200', '-f', '1', '-l', String(MAX_OCR_PAGES), pdfPath, prefix], deadline);
     const pages = readdirSync(dir)
       .filter((name) => name.startsWith('page') && name.endsWith('.png'))
       .sort()
@@ -91,7 +108,7 @@ export async function extractPdfText(pdf: Buffer): Promise<string> {
         break;
       }
       readFileSync(join(dir, page));
-      const result = run('tesseract', [join(dir, page), 'stdout', '-l', 'por', '--oem', '1'], deadline);
+      const result = await run('tesseract', [join(dir, page), 'stdout', '-l', 'por', '--oem', '1'], deadline);
       ocr += `\n${result.stdout}`;
     }
     return ocr.trim();
