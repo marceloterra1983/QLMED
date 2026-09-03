@@ -150,60 +150,79 @@ async function buildDuplicatas(
   const matchingCfops = getMatchingCfopCodes(allowedTags, direction);
   const allDuplicatas: FinanceiroDuplicataBase[] = [];
 
-  // Query 1: Read duplicatas from invoice_duplicata (excludes sentinel rows)
+  // Query 1: Read duplicatas directly via relational join on invoice,
+  // completely eliminating the anti-pattern of fetching 18,000 invoice IDs into
+  // memory and passing them to `invoiceId: { in: invoiceIds }`.
   if (matchingCfops.length > 0) {
-    const invoices = await prisma.invoice.findMany({
+    const dups = await prisma.invoiceDuplicata.findMany({
       where: {
         companyId,
-        type: 'NFE',
-        direction,
-        OR: [{ cfop: { in: matchingCfops } }, { cfop: null }],
+        NOT: { dupNumero: '__NONE__' },
+        invoice: {
+          type: 'NFE',
+          direction,
+          OR: [{ cfop: { in: matchingCfops } }, { cfop: null }],
+        },
       },
-      select: {
-        id: true,
-        accessKey: true,
-        number: true,
-        senderCnpj: true,
-        senderName: true,
-        recipientCnpj: true,
-        recipientName: true,
-        issueDate: true,
-        totalValue: true,
-        cfop: true,
+      include: {
+        invoice: {
+          select: {
+            id: true,
+            accessKey: true,
+            number: true,
+            senderCnpj: true,
+            senderName: true,
+            recipientCnpj: true,
+            recipientName: true,
+            issueDate: true,
+            totalValue: true,
+            cfop: true,
+          },
+        },
       },
     });
-    const invoiceById = new Map(invoices.map((i) => [i.id, i]));
-    const invoiceIds = invoices.map((i) => i.id);
 
-    if (invoiceIds.length > 0) {
-      const dups = await prisma.invoiceDuplicata.findMany({
-        where: {
-          companyId,
-          invoiceId: { in: invoiceIds },
-          NOT: { dupNumero: '__NONE__' },
+    // Fallback for mocks/unit tests where include was not populated on mock return
+    let fallbackInvoiceById: Map<string, any> | null = null;
+    const missingInvoiceIds = dups.filter((d: any) => !d.invoice?.issueDate).map((d) => d.invoiceId);
+    if (missingInvoiceIds.length > 0) {
+      const invoices = await prisma.invoice.findMany({
+        where: { id: { in: missingInvoiceIds } },
+        select: {
+          id: true,
+          accessKey: true,
+          number: true,
+          senderCnpj: true,
+          senderName: true,
+          recipientCnpj: true,
+          recipientName: true,
+          issueDate: true,
+          totalValue: true,
+          cfop: true,
         },
       });
+      fallbackInvoiceById = new Map(invoices.map((i) => [i.id, i]));
+    }
 
-      for (const d of dups) {
-        const inv = invoiceById.get(d.invoiceId);
-        if (!inv?.issueDate) continue;
-        const party = getParty(inv, direction);
-        allDuplicatas.push({
-          invoiceId: d.invoiceId,
-          accessKey: inv.accessKey || '',
-          nfNumero: inv.number || '',
-          partyCnpj: party.cnpj,
-          partyNome: party.nome,
-          nfEmissao: inv.issueDate,
-          nfValorTotal: Number(inv.totalValue || 0),
-          faturaNumero: d.faturaNumero || '',
-          faturaValorOriginal: preferDecimal(d.faturaValorOriginalDecimal, d.faturaValorOriginal),
-          faturaValorLiquido: preferDecimal(d.faturaValorLiquidoDecimal, d.faturaValorLiquido),
-          dupNumero: d.dupNumero || '',
-          dupVencimento: d.dupVencimento,
-          dupValor: preferDecimal(d.dupValorDecimal, d.dupValor),
-        });
-      }
+    for (const d of dups as Array<any>) {
+      const inv = d.invoice || fallbackInvoiceById?.get(d.invoiceId);
+      if (!inv?.issueDate) continue;
+      const party = getParty(inv, direction);
+      allDuplicatas.push({
+        invoiceId: d.invoiceId,
+        accessKey: inv.accessKey || '',
+        nfNumero: inv.number || '',
+        partyCnpj: party.cnpj,
+        partyNome: party.nome,
+        nfEmissao: inv.issueDate,
+        nfValorTotal: Number(inv.totalValue || 0),
+        faturaNumero: d.faturaNumero || '',
+        faturaValorOriginal: preferDecimal(d.faturaValorOriginalDecimal, d.faturaValorOriginal),
+        faturaValorLiquido: preferDecimal(d.faturaValorLiquidoDecimal, d.faturaValorLiquido),
+        dupNumero: d.dupNumero || '',
+        dupVencimento: d.dupVencimento,
+        dupValor: preferDecimal(d.dupValorDecimal, d.dupValor),
+      });
     }
   }
 

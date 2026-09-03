@@ -177,6 +177,57 @@ export async function upsertDuplicatas(
   });
 }
 
+/**
+ * Ingestão enriquecida: extrai duplicatas do XML e persiste imediatamente
+ * (ou grava linha sentinela __NONE__ se o XML não tiver duplicatas).
+ */
+export async function extractAndStoreDuplicatas(
+  invoiceId: string,
+  companyId: string,
+  xmlContent: string,
+): Promise<void> {
+  try {
+    const duplicatas = await extractDuplicatasFromXml(xmlContent);
+
+    if (duplicatas.length === 0) {
+      await prisma.invoiceDuplicata.createMany({
+        data: [
+          {
+            id: randomUUID(),
+            invoiceId,
+            companyId,
+            dupNumero: '__NONE__',
+            dupVencimento: '__NONE__',
+            dupValor: 0,
+            dupValorDecimal: toMoneyDecimal(0),
+            faturaNumero: '',
+            faturaValorOriginal: 0,
+            faturaValorOriginalDecimal: toMoneyDecimal(0),
+            faturaValorLiquido: 0,
+            faturaValorLiquidoDecimal: toMoneyDecimal(0),
+          },
+        ],
+        skipDuplicates: true,
+      });
+    } else {
+      await upsertDuplicatas(
+        invoiceId,
+        companyId,
+        duplicatas.map((d) => ({
+          dupNumero: d.dupNumero,
+          dupVencimento: d.dupVencimento,
+          dupValor: d.dupValor,
+          faturaNumero: d.faturaNumero,
+          faturaValorOriginal: d.faturaValorOriginal,
+          faturaValorLiquido: d.faturaValorLiquido,
+        })),
+      );
+    }
+  } catch {
+    // Falha não-fatal no processamento de duplicatas
+  }
+}
+
 // ── Backfill ──
 
 const BACKFILL_BATCH_SIZE = 500;
