@@ -10,10 +10,18 @@ import {
 describe('getCfopTagByCode', () => {
   it('returns correct tag for known CFOP codes', () => {
     expect(getCfopTagByCode('5102')).toBe('Venda');
+    expect(getCfopTagByCode('6106')).toBe('Venda');
     expect(getCfopTagByCode('1102')).toBe('Compra');
     expect(getCfopTagByCode('5910')).toBe('Bonificação');
+    expect(getCfopTagByCode('6910')).toBe('Bonificação');
     expect(getCfopTagByCode('6202')).toBe('Dev. Compra');
     expect(getCfopTagByCode('3102')).toBe('Compra Importação');
+  });
+
+  it('uses prefix fallback for valid unlisted sales and purchase CFOPs', () => {
+    expect(getCfopTagByCode('5118')).toBe('Venda');
+    expect(getCfopTagByCode('6118')).toBe('Venda');
+    expect(getCfopTagByCode('1108')).toBe('Compra');
   });
 
   it('returns null for unknown CFOP codes', () => {
@@ -35,12 +43,17 @@ describe('getCfopCodesByTag', () => {
     expect(codes).toContain('5405');
     expect(codes).toContain('6101');
     expect(codes).toContain('6102');
-    expect(codes.length).toBe(6);
+    expect(codes).toContain('6106');
+    expect(codes).toContain('6108');
+    expect(codes.length).toBeGreaterThanOrEqual(20);
   });
 
   it('returns all codes for Compra tag', () => {
     const codes = getCfopCodesByTag('Compra');
-    expect(codes).toEqual(['1102', '1403', '2102', '2403']);
+    expect(codes).toContain('1102');
+    expect(codes).toContain('1403');
+    expect(codes).toContain('2102');
+    expect(codes).toContain('2403');
   });
 
   it('returns empty array for unknown tag', () => {

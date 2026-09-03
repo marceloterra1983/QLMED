@@ -196,6 +196,7 @@ export async function handleContactDetails(
     [cfg.nameField]: true,
     totalValue: true,
     status: true,
+    cfop: true,
   };
 
   let contactWhere: Prisma.InvoiceWhereInput = baseWhere;
@@ -319,9 +320,8 @@ export async function handleContactDetails(
       const result = settled.status === 'fulfilled' ? settled.value : null;
       if (!result) continue;
       const { invoice, products, duplicates, cfops } = result;
-      const primaryCfopTag = cfops.length > 0
-        ? (getCfopTagByCode(cfops[0]) || 'Outros')
-        : 'Outros';
+      const primaryCfop = cfops.length > 0 ? cfops[0] : (invoice.cfop as string | null);
+      const primaryCfopTag = primaryCfop ? (getCfopTagByCode(primaryCfop) || 'Outros') : 'Outros';
       invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
 
       const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
@@ -475,7 +475,7 @@ export async function handleContactDetails(
     totalValue: Number(invoice.totalValue),
     status: invoice.status,
     accessKey: invoice.accessKey,
-    cfopTag: invoiceCfopTagMap.get(invoice.id) || 'Outros',
+    cfopTag: invoiceCfopTagMap.get(invoice.id) || (invoice.cfop ? getCfopTagByCode(invoice.cfop as string) : null) || 'Outros',
   }));
 
   const duplicates = [...duplicatesList].sort((a, b) => {
