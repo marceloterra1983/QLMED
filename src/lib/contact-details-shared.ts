@@ -28,7 +28,8 @@ interface InvoiceMetaRow {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_INVOICES = 500;
+const MAX_INVOICES = 10000;
+const MAX_XML_PRICE_INVOICES = 500;
 const MAX_PRICE_ROWS = 300;
 const XML_BATCH_SIZE = 50;
 
@@ -148,13 +149,6 @@ async function extractInvoiceDataFromXml(xmlContent: string) {
   }
 }
 
-function isSaleOrBonificationInvoice(cfops: string[]): boolean {
-  return cfops.some((cfop) => {
-    const tag = getCfopTagByCode(cfop);
-    return tag === 'Venda' || tag === 'Bonificação';
-  });
-}
-
 const CRT_LABELS: Record<string, string> = {
   '1': 'Simples Nacional',
   '2': 'Simples Nacional - Excesso',
@@ -258,18 +252,80 @@ export async function handleContactDetails(
   const rejectedInvoices = filteredInvoices.filter((invoice) => invoice.status === 'rejected').length;
   const pendingInvoices = filteredInvoices.filter((invoice) => invoice.status === 'received').length;
 
-  // For suppliers, totalValue is computed from metadata directly
-  // For customers, totalValue is computed from XML (only sale/bonification invoices)
+  const invoiceCfopTagMap = new Map<string, string>();
   let totalValue = 0;
   let totalSaleOrBonificationInvoices = 0;
-  if (!cfg.hasSaleFilter) {
-    totalValue = filteredInvoices.reduce((acc, invoice) => acc + (Number(invoice.totalValue) || 0), 0);
+
+  for (const invoice of filteredInvoices) {
+    const primaryCfop = (invoice.cfop as string | null) || null;
+    const tag = primaryCfop ? (getCfopTagByCode(primaryCfop) || 'Outros') : 'Outros';
+    invoiceCfopTagMap.set(invoice.id, tag);
+
+    if (cfg.hasSaleFilter) {
+      if (tag === 'Venda' || tag === 'Bonificação') {
+        totalValue += Number(invoice.totalValue) || 0;
+        totalSaleOrBonificationInvoices += 1;
+      }
+    } else {
+      totalValue += Number(invoice.totalValue) || 0;
+    }
   }
 
   const now = new Date();
   const startOf2026 = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
 
-  // Step 4: Process XML in parallel batches for price table and duplicates
+  // Step 4: Duplicates & Price Table
+  const duplicatesList: Array<{
+    invoiceId: string;
+    invoiceNumber: string;
+    installmentNumber: string;
+    dueDate: string | null;
+    installmentValue: number;
+    installmentTotal: number;
+  }> = [];
+
+  // 4a. Fetch duplicates directly from database (instantaneous query across all invoices)
+  try {
+    const invoiceById = new Map(filteredInvoices.map((inv) => [inv.id, inv]));
+    const allInvoiceIds = filteredInvoices.map((inv) => inv.id);
+
+    const dbDuplicates = await prisma.invoiceDuplicata.findMany({
+      where: {
+        companyId: company.id,
+        invoiceId: { in: allInvoiceIds },
+        NOT: { dupNumero: '__NONE__' },
+      },
+      select: {
+        invoiceId: true,
+        dupNumero: true,
+        dupVencimento: true,
+        dupValor: true,
+        dupValorDecimal: true,
+      },
+    });
+
+    if (dbDuplicates.length > 0) {
+      const dupCountMap = new Map<string, number>();
+      for (const d of dbDuplicates) {
+        dupCountMap.set(d.invoiceId, (dupCountMap.get(d.invoiceId) || 0) + 1);
+      }
+      for (const d of dbDuplicates) {
+        const inv = invoiceById.get(d.invoiceId);
+        duplicatesList.push({
+          invoiceId: d.invoiceId,
+          invoiceNumber: inv?.number || '',
+          installmentNumber: d.dupNumero || '-',
+          dueDate: d.dupVencimento,
+          installmentValue: d.dupValorDecimal != null ? Number(d.dupValorDecimal) : (d.dupValor || 0),
+          installmentTotal: dupCountMap.get(d.invoiceId) || 1,
+        });
+      }
+    }
+  } catch {
+    // Non-critical fallback
+  }
+
+  // 4b. Process XML of recent invoices for price table (and fallback duplicates if DB had none)
   const priceMap = new Map<string, {
     code: string;
     description: string;
@@ -287,18 +343,11 @@ export async function handleContactDetails(
   }>();
   const priceKeySet = new Set<string>();
   let totalQuantityMeta = 0;
-  const duplicatesList: Array<{
-    invoiceId: string;
-    invoiceNumber: string;
-    installmentNumber: string;
-    dueDate: string | null;
-    installmentValue: number;
-    installmentTotal: number;
-  }> = [];
-  const invoiceCfopTagMap = new Map<string, string>();
 
-  for (let i = 0; i < filteredInvoices.length; i += XML_BATCH_SIZE) {
-    const batchMeta = filteredInvoices.slice(i, i + XML_BATCH_SIZE);
+  const xmlCandidates = filteredInvoices.slice(0, MAX_XML_PRICE_INVOICES);
+
+  for (let i = 0; i < xmlCandidates.length; i += XML_BATCH_SIZE) {
+    const batchMeta = xmlCandidates.slice(i, i + XML_BATCH_SIZE);
     const batchIds = batchMeta.map((inv) => inv.id);
 
     const batchWithXml = await prisma.invoice.findMany({
@@ -320,20 +369,17 @@ export async function handleContactDetails(
       const result = settled.status === 'fulfilled' ? settled.value : null;
       if (!result) continue;
       const { invoice, products, duplicates, cfops } = result;
-      const primaryCfop = cfops.length > 0 ? cfops[0] : (invoice.cfop as string | null);
-      const primaryCfopTag = primaryCfop ? (getCfopTagByCode(primaryCfop) || 'Outros') : 'Outros';
-      invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
+
+      // Refine cfopTag from XML items if available
+      if (cfops.length > 0) {
+        const primaryCfopTag = getCfopTagByCode(cfops[0]) || 'Outros';
+        invoiceCfopTagMap.set(invoice.id, primaryCfopTag);
+      }
 
       const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null;
       const issueTime = issueDate?.getTime() || 0;
       const isFrom2025 = issueDate ? issueDate.getUTCFullYear() === 2025 : false;
       const isFrom2026ToToday = issueDate ? issueTime >= startOf2026.getTime() && issueTime <= now.getTime() : false;
-
-      // Customer-specific: only count sale/bonification invoices for totalValue
-      if (cfg.hasSaleFilter && isSaleOrBonificationInvoice(cfops)) {
-        totalValue += Number(invoice.totalValue) || 0;
-        totalSaleOrBonificationInvoices += 1;
-      }
 
       for (const product of products) {
         const key = `${(product.code || '').toUpperCase()}::${normalizeUnit(product.unit)}`;
@@ -380,18 +426,19 @@ export async function handleContactDetails(
         }
       }
 
-      const installmentTotal = duplicates.length;
-      if (metaOnly) continue;
-
-      for (const duplicate of duplicates) {
-        duplicatesList.push({
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.number,
-          installmentNumber: duplicate.installmentNumber,
-          dueDate: duplicate.dueDate,
-          installmentValue: duplicate.installmentValue,
-          installmentTotal,
-        });
+      // If database had no duplicates for this contact, populate from XML extraction
+      if (duplicatesList.length === 0 && !metaOnly && duplicates.length > 0) {
+        const installmentTotal = duplicates.length;
+        for (const duplicate of duplicates) {
+          duplicatesList.push({
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.number,
+            installmentNumber: duplicate.installmentNumber,
+            dueDate: duplicate.dueDate,
+            installmentValue: duplicate.installmentValue,
+            installmentTotal,
+          });
+        }
       }
     }
   }

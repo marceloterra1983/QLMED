@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { formatDate, formatAmount, formatInt } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDueDate, getDuplicateStatus, formatInstallmentDisplay } from '@/lib/modal-helpers';
 import RowActions from '@/components/ui/RowActions';
@@ -20,6 +22,8 @@ interface InvoiceTableProps {
 }
 
 export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, onDetails, onDelete }: InvoiceTableProps) {
+  const [displayCount, setDisplayCount] = useState(100);
+
   if (invoices.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
@@ -29,10 +33,12 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
     );
   }
 
+  const visibleInvoices = invoices.slice(0, displayCount);
+
   return (
     <>
       <div className="sm:hidden space-y-1.5">
-        {invoices.map((inv) => {
+        {visibleInvoices.map((inv) => {
           const s = installmentsMap.get(inv.id);
           const total = s?.totalInstallments || 0;
           const due = s?.firstDueDate ? formatDate(s.firstDueDate.toISOString()) : '-';
@@ -63,7 +69,7 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {invoices.map((inv) => {
+            {visibleInvoices.map((inv) => {
               const s = installmentsMap.get(inv.id);
               const total = s?.totalInstallments || 0;
               const due = s?.firstDueDate ? formatDate(s.firstDueDate.toISOString()) : '-';
@@ -81,6 +87,27 @@ export function InvoiceTable({ invoices, installmentsMap, emptyLabel, onView, on
           </tbody>
         </table>
       </div>
+      {invoices.length > displayCount && (
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30 rounded-b-xl">
+          <span>Exibindo {visibleInvoices.length} de {invoices.length} notas fiscais</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount((prev) => Math.min(prev + 100, invoices.length))}
+            >
+              Mostrar mais (+100)
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount(invoices.length)}
+            >
+              Mostrar todas ({invoices.length})
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -95,16 +122,20 @@ interface MovimentacoesTableProps {
 }
 
 export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: MovimentacoesTableProps) {
+  const [displayCount, setDisplayCount] = useState(100);
+
   if (invoices.length === 0) {
     return (
       <EmptyState icon="swap_horiz" title="Nenhuma movimentação encontrada" />
     );
   }
 
+  const visibleInvoices = invoices.slice(0, displayCount);
+
   return (
     <>
       <div className="sm:hidden space-y-1.5">
-        {invoices.map((inv) => (
+        {visibleInvoices.map((inv) => (
           <div key={inv.id} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
@@ -129,7 +160,7 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {invoices.map((inv) => (
+            {visibleInvoices.map((inv) => (
               <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
                 <td className={`${tdCls} text-xs font-bold tabular-nums text-slate-800 dark:text-white`}>{inv.number}</td>
                 <td className={`${tdCls} text-xs tabular-nums text-slate-600 dark:text-slate-300`}>{formatDate(inv.issueDate)}</td>
@@ -141,6 +172,27 @@ export function MovimentacoesTable({ invoices, onView, onDetails, onDelete }: Mo
           </tbody>
         </table>
       </div>
+      {invoices.length > displayCount && (
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30 rounded-b-xl">
+          <span>Exibindo {visibleInvoices.length} de {invoices.length} movimentações</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount((prev) => Math.min(prev + 100, invoices.length))}
+            >
+              Mostrar mais (+100)
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount(invoices.length)}
+            >
+              Mostrar todas ({invoices.length})
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -152,16 +204,20 @@ interface DuplicatasTableProps {
 }
 
 export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
+  const [displayCount, setDisplayCount] = useState(100);
+
   if (duplicates.length === 0) {
     return (
       <EmptyState icon="money_off" title="Nenhuma duplicata encontrada" />
     );
   }
 
+  const visibleDuplicates = duplicates.slice(0, displayCount);
+
   return (
     <>
       <div className="sm:hidden space-y-1.5">
-        {duplicates.map((dup, index) => {
+        {visibleDuplicates.map((dup, index) => {
           const status = getDuplicateStatus(dup.dueDate);
           return (
             <div key={`m-${dup.invoiceId}-${dup.invoiceNumber}-${dup.installmentNumber}-${dup.dueDate || 'sem-data'}-${index}`} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
@@ -189,7 +245,7 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {duplicates.map((dup, index) => {
+            {visibleDuplicates.map((dup, index) => {
               const status = getDuplicateStatus(dup.dueDate);
               return (
                 <tr key={`${dup.invoiceId}-${dup.invoiceNumber}-${dup.installmentNumber}-${dup.dueDate || 'sem-data'}-${index}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
@@ -204,6 +260,27 @@ export function DuplicatasTable({ duplicates }: DuplicatasTableProps) {
           </tbody>
         </table>
       </div>
+      {duplicates.length > displayCount && (
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30 rounded-b-xl">
+          <span>Exibindo {visibleDuplicates.length} de {duplicates.length} duplicatas</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount((prev) => Math.min(prev + 100, duplicates.length))}
+            >
+              Mostrar mais (+100)
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setDisplayCount(duplicates.length)}
+            >
+              Mostrar todas ({duplicates.length})
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
