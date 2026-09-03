@@ -109,7 +109,7 @@ export const CONTACT_KINDS: Record<ContactKind, ContactKindConfig> = {
     priceTableSubtitle: 'Histórico por item com base nas NF-e recebidas',
     sortAccentColor: 'text-orange-500',
 
-    primaryInvoiceTags: ['Compra', 'Compra Importação', 'Bonificação'],
+    primaryInvoiceTags: ['Compra', 'Compra Importação', 'Bonificação', 'Venda'],
     invoicesSubtitle: 'Compras e bonificações',
     invoicesEmptyLabel: 'Nenhuma nota fiscal de compra encontrada',
 
