@@ -240,10 +240,10 @@ export default function SidebarNav({
                     )
                   }
                   aria-expanded={!sectionCollapsed}
-                  className="w-full flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  className="w-full flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                 >
                   <span
-                    className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200"
+                    className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200"
                     style={{
                       transform: sectionCollapsed
                         ? 'rotate(-90deg)'
