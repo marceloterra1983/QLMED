@@ -248,7 +248,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
       surface="sunken"
       width="sm:max-w-5xl"
       height="sm:h-[92vh]"
-      bodyClassName=""
+      bodyClassName="flex flex-col flex-1 h-full min-h-0 overflow-hidden"
       header={
 <div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
@@ -362,18 +362,18 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
         </div>
       }
     >
-{/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {view === 'danfe' ? (
-            <div className="w-full h-full bg-slate-200 dark:bg-slate-900">
-              <iframe
-                src={iframeSrc}
-                className="w-full h-full border-0"
-                title="Preview do documento"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full bg-[#1e1e2e] overflow-auto relative">
+      {/* Content */}
+      <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
+        {view === 'danfe' ? (
+          <div className="w-full h-full flex-1 min-h-0 bg-slate-200 dark:bg-slate-900">
+            <iframe
+              src={iframeSrc}
+              className="w-full h-full min-h-0 border-0 block"
+              title="Preview do documento"
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full flex-1 min-h-0 bg-[#1e1e2e] overflow-auto relative">
               {loadingXml ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div className="w-14 h-14 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 dark:ring-amber-500/30">

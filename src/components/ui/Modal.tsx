@@ -208,7 +208,7 @@ export default function Modal({
           </div>
         )}
 
-        <div className={`flex-1 overflow-y-auto custom-scrollbar ${bodyClassName}`}>{children}</div>
+        <div className={`flex-1 ${bodyClassName.includes('overflow-') ? '' : 'overflow-y-auto custom-scrollbar'} ${bodyClassName}`}>{children}</div>
 
         {rodape}
       </div>
