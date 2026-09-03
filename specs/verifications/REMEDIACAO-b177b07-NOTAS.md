@@ -396,12 +396,15 @@ de ser uma saída limpa.
 ## O que fica para o dono
 
 1. `N8N_WEBHOOK_SECRET` nos dois lados — o n8n está parado (0 chamadas em
-   48 h), nada quebrou; o webhook devolve 401 até lá.
+   48 h), nada quebrou; o webhook devolve 401 até lá. **Continua aberto**, e
+   §18 mostra por que não urge: nenhum workflow chama a rota.
 2. Estreitar a chave do CT-e: `/api/invoices/upload` exige `editor`, que por
    chave só `admin` alcança. Aceitar um escopo (`invoices:write`) é um PR.
+   **Feito em §14.**
 3. `NOTIFICATION_OUTBOX_RETENTION_DAYS` — a purga está ligada e reporta
-   `disabled` no health até haver um número.
-4. Planilhas E509 acima de 5 MiB passam a ser recusadas — confirmar com as reais.
+   `disabled` no health até haver um número. **Feito em §17: 90 dias.**
+4. Planilhas E509 acima de 5 MiB passam a ser recusadas — confirmar com as
+   reais. **Continua aberto**: é medir os ficheiros, não mudar código.
 
 # 13. Pós-deploy: o quinto leitor de `pfxData`
 
@@ -423,3 +426,174 @@ o fallback; controlo positivo com o decrypt desligado → vermelho.
 O timer corre a cópia em `/home/marce/qlmed/ops/scripts/`, um checkout noutra
 branch e com árvore suja: actualizar é escrever o ficheiro a partir de
 `origin/main`, não trocar branch.
+
+# 14. Chave do CT-e: de `admin` a `invoices:write` (PR #269)
+
+Item 2 do §12, fechado. `/api/invoices/upload` exigia `editor`, papel que por
+chave de API só `admin` alcança — o sync de CT-e andava com uma chave que
+podia tudo, incluindo emitir. `requireRole` (e por herança `requireEditor` e
+`requireAdmin`) passou a aceitar `apiKeyScope`: a chave cumpre o papel da rota
+quando traz o escopo nomeado; a sessão continua a valer pelo papel.
+
+Trocar uma chave viva **não** é um `compose up` à mão. É um segundo dispatch
+do mesmo SHA, e a ordem importa:
+
+| Passo | O quê | Evidência |
+|---|---|---|
+| deploy 1 | `eb99705f` (contém o #269), env intacto | run `33654558844` |
+| chave | gerar `cte-dist-sync (invoices:write)` e provar no app **já a correr**; aborta e auto-revoga se der 401/403 | upload sem 401/403 |
+| env | escrever em `env/app.env` — o ficheiro que o container lê | hash da chave no container |
+| deploy 2 | mesmo SHA, recria o container | run `33654908907` |
+| prova | run manual do sync + `AccessLog` com `scope=invoices:write` | `cert_loaded`, `done` |
+| revogar | só então a `admin` | 16:28:17Z |
+
+Regra que sai daqui: **prova antes de revogar, e a prova é o consumidor real
+a autenticar**, não um `curl` meu com a chave nova.
+
+# 15. Chave do n8n: de `admin` a `{invoices:read, contacts:read}` (PR #272)
+
+Ao revogar a `Legacy env {admin}` no §12 enumerei consumidores por crons,
+timers e scripts — **não por todos os `env_file` do compose**. O container do
+n8n carregava-a em `env/n8n.env`. Reactivei-a às 16:44Z ao descobrir; não
+houve dano porque o único workflow que a usa corre uma vez por dia e a janela
+não o apanhou. Sorte, não método.
+
+A sequência do §14 aplicada de novo, com uma diferença: as duas rotas que o
+n8n lê (`GET /api/invoices`, `GET /api/contacts/nickname/batch`) usavam
+`requireAuth()` sem escopo, o que por chave significa `admin`. Passaram a
+pedir `invoices:read` e `contacts:read`. Os dois `catch` colapsavam qualquer
+erro de auth em 401; agora `FORBIDDEN` devolve 403, como em
+`invoices/upload`. Mesclado em `36734f59`, deploy run `33664957768`.
+
+**O portão do audit bloqueou o PR e a causa era o próprio `overrides`.** Quatro
+GHSA `high` em `fast-uri` via `ajv`, com `npm audit fix` inerte: o
+`package.json` pinava `"fast-uri": "3.1.5"`, exactamente a versão vulnerável.
+3.1.7 é a maior 3.x corrigida (4.x é major). Um override que pina versão exacta
+é uma dispensa silenciosa que ninguém revalida — ao contrário da dispensa
+nominal do `mysql2`, que tem motivo e data de validade no verificador.
+
+# 16. Os quatro ficheiros de ambiente do n8n viraram dois (PR #274, #276)
+
+`env/` acumulava seis ficheiros do n8n, três com cara de backup. Dois deles
+eram configuração viva, carregada pelo `env_file` do `qlmed-n8n`:
+
+| Ficheiro | O que só ele tinha | Destino |
+|---|---|---|
+| `n8n-restored.env` | `DB_POSTGRESDB_*`, `DB_TYPE`, `N8N_ENCRYPTION_KEY` | consolidado, PR #274, `2992711c` |
+| `n8n-legacy.env` | 14 de 23 vars, entre elas `N8N_INTERNAL_API_KEY` | consolidado, PR #276, `97670ed2` |
+
+O nome mentia sobre o conteúdo: apagar o `n8n-restored.env` teria tirado ao
+n8n a ligação ao banco e a chave que decifra as suas nove credenciais. As
+outras nove variáveis do `n8n-legacy.env` já eram sobrepostas pelos ficheiros
+seguintes — ordem do `env_file`, o último ganha —, portanto mortas em vida.
+
+O `n8n-legacy.env` tinha um segundo leitor fora do compose: o script e a unit
+do `qlmed-daily-summary-catchup`, que lê `N8N_INTERNAL_API_KEY` dele. Ambos
+passaram a apontar para `n8n.env`. A unit viva é symlink para o checkout `app`,
+que está noutra branch: um drop-in em `/etc/systemd/system/…/.d/` cobre até
+essa sessão rebasear.
+
+Depois, poda: das 37 variáveis do `n8n.env` consolidado, 11 não existem no
+código do n8n 2.29, não aparecem em nenhum workflow ou credencial, e ninguém
+no repo as lê — `N8N_BASIC_AUTH_*` (removido no n8n 1.0), `N8N_TRUST_PROXY`,
+`N8N_TRUSTED_HOSTS`, `N8N_WEBHOOK_URL`, `N8N_ALLOW_EXEC`, `EVOLUTION_API_KEY`,
+e três de outros projectos (`CHARLIE_ROOT`, `HA_TOKEN`,
+`HERMES_API_SERVER_KEY`). Ficaram 26. Container recriado, `/healthz` 200, dois
+workflows activos e nove credenciais legíveis.
+
+Também destruídos, depois de provar que a chave viva era outra: seis backups
+`*.bak*`/`*.pre-*` de `app.env` e dos env do n8n — três deles duplicavam em
+claro os segredos do app. `env/` tem hoje quatro ficheiros:
+`app.env`, `n8n.env`, `n8n-automation.env`, `n8n-db.env`.
+
+# 17. Retenção do outbox: 90 dias (item 3 do §12)
+
+Decisão do dono, tomada: `NOTIFICATION_OUTBOX_RETENTION_DAYS=90` em
+`env/app.env`, aplicado por dispatch do mesmo SHA (`e6eba6ff`, run
+`33680732451`). O container confirma o valor; a purga arranca 20 s depois do
+boot e corre de 24 em 24 h. O `/api/health` anónimo não expõe
+`backgroundServices` — para ver `enabled` é preciso sessão.
+
+# 18. A prova que faltava: o n8n não lê a chave do `n8n.env`
+
+Depois de trocar o env, recriar o container e conferir o hash da chave lá
+dentro, o run diário falhou. Três medidas erradas de uma vez:
+
+1. **O fuso.** `GENERIC_TIMEZONE` é `America/Sao_Paulo`, mas o workflow tem
+   fuso próprio nas suas `settings`: `America/Campo_Grande`. O cron `0 18`
+   dispara às **22:00Z**, não às 21:00Z. Esperei a prova na hora errada.
+2. **A chave.** Os nós HTTP autenticam com a credencial `QLMED API Key`
+   (`Wcv8Zu5yGMpyzEBN`, `httpHeaderAuth`), guardada **cifrada no banco do
+   n8n**. O `QLMED_API_KEY` do `n8n.env` é decorativo para esse workflow. A
+   credencial continuava com a `Legacy env`, revogada às 18:08:39Z → 401.
+   A minha própria tabela de uso dizia `QLMED_API_KEY  wf=0` e eu não a li.
+3. **O `AccessLog` só regista sucessos.** "Zero linhas da chave nova" era
+   compatível com "correu e foi recusado", e eu li como "não correu".
+
+Rodar chave de um consumidor n8n é: `n8n export:credentials --id=… --decrypted`
+dentro do container, trocar só `data.value`, `n8n import:credentials` (mesmo id
+sobrescreve), reexportar e comparar hashes. Feito às 22:22Z.
+
+Prova, enfim: execução `46169` **success** às 22:26:32Z, disparada pelo
+catchup, com `scope=invoices:read` e `scope=contacts:read` no `AccessLog` pela
+chave `n8n-resumo-diario`. Custo do erro: dois runs falhados (22:00Z e 22:11Z)
+e os alertas que o workflow de erro mandou por WhatsApp.
+
+Aproveitando a leitura dos workflows: **nenhum chama
+`POST /api/webhooks/n8n`**. O `N8N_WEBHOOK_SECRET` do §12 fica aberto sem
+custo — a rota está fail-closed e não há produtor a recusar. Quando houver,
+o segredo entra nos dois lados e o produtor manda `x-qlmed-timestamp`,
+`x-qlmed-nonce` e `x-qlmed-signature` (HMAC-SHA256 de
+`timestamp.nonce.corpo`), como descreve `docs/architecture/integrations.md`.
+
+Estado final das chaves — quatro activas, uma por consumidor, **nenhuma
+`admin`**:
+
+| Chave | Escopos |
+|---|---|
+| `outbox-worker-nfe` | `notifications:dispatch`, `notifications:assets` |
+| `outbox-worker-cte` | `notifications:dispatch`, `notifications:assets` |
+| `cte-dist-sync` | `invoices:write` |
+| `n8n-resumo-diario` | `invoices:read`, `contacts:read` |
+
+Revogadas hoje: `cte-dist-sync (admin)` 16:28:17Z, `notification-outbox-worker`
+(parada desde 28/07, superada pelas chaves por tipo) 17:31:55Z, `Legacy env`
+18:08:39Z.
+
+# 19. Armadilhas desta sessão
+
+**Um verificador que revoga não é um verificador.** O
+`verify-post-deploy.sh` nasceu no §12 com "revogar a chave legacy" no último
+passo. Reutilizei-o em quatro deploys sem reler o fim, e ele revogou a
+`Legacy env` 90 s antes de o n8n receber a chave nova — desfez sozinho a ordem
+"revogar só depois da prova". Verificação é leitura; revogação é script
+próprio, com prova. Antes de reutilizar um script de sessão:
+`grep -n "update\|delete\|shred\|rm "`.
+
+**Um filtro no meio do pipe engole o erro.** O script de dispatch passava a
+saída do migrate por `| grep -E "cifrad|…"` sob `pipefail`: o erro real não
+casava, o `grep` saía 1, o `set -e` matava tudo **sem imprimir nada**. Dois
+"dispatch falhou" mudos. Capturar em ficheiro, testar o código de saída,
+mascarar só depois.
+
+**`npm ci` num worktree novo não gera o cliente do Prisma.** `MODULE_NOT_FOUND`
+em `@prisma/client/default.js` na primeira linha de qualquer script `tsx`.
+`npx prisma generate` faz parte de preparar o worktree.
+
+**`docker compose` corrido do symlink inventa outro projecto.**
+`production/` aponta para `/srv/qlmed`; a partir de lá o compose resolve o
+projecto como `production` e tenta **criar** `qlmed-db` e `qlmed-n8n-db` — falha
+por conflito de nome, felizmente sem tocar em nada. Recriar um serviço é sempre
+a invocação do workflow: `--project-name qlmed --env-file production/.env -f
+production/docker-compose.yml`, com `.deploy-meta.env` carregado.
+
+**Sonda sem controlo positivo mata variáveis vivas.** A primeira varredura do
+`n8n.env` contra o código do n8n deu 0 para tudo, inclusive `N8N_PORT` — o
+`find` não seguia os symlinks dos pacotes. Sem o controlo positivo eu teria
+concluído "37 variáveis mortas". Toda sonda que responde "não existe" precisa
+de um caso que **tem** de responder "existe".
+
+**Merge no `main` cancela o CI do commit anterior.** `concurrency` com
+`cancel-in-progress`: o run do meu merge apareceu `cancelled` porque outro PR
+entrou 9 s depois. Esperar CI é esperar pelo `origin/main` do momento, não pelo
+commit de merge do meu PR.
