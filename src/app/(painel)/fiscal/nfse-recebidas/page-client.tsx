@@ -9,11 +9,12 @@ import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel } from '@/lib/utils';
+import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import Badge from '@/components/ui/Badge';
 
 const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 const NfseDetailsModal = dynamic(() => import('@/components/NfseDetailsModal'), { ssr: false });
@@ -27,6 +28,7 @@ export default function NfseReceivedPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
+  const [directionFilter, setDirectionFilter] = useState<'all' | 'received' | 'issued'>('received');
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateFrom, setDateFrom] = useState(() => `${new Date().getFullYear()}-01-01`);
@@ -69,17 +71,20 @@ export default function NfseReceivedPage() {
   useEffect(() => {
     void loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [search, directionFilter, sortBy, sortOrder, dateFrom, dateTo]);
 
   useEffect(() => {
     const cy = new Date().getFullYear();
-    Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
-      fetch(`/api/invoices?limit=1&page=1&type=NFSE&direction=received&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
-        .catch(() => null)
-    )).then(res => setAvailableYears(res.filter((y): y is number => y !== null)));
-  }, []);
+    const dirParam = directionFilter === 'all' ? '' : `&direction=${directionFilter}`;
+    fetch(`/api/invoices/years?type=NFSE&direction=received${directionFilter !== 'received' ? dirParam : ''}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (Array.isArray(d?.years)) {
+          setAvailableYears(d.years.filter((y: number) => y !== cy));
+        }
+      })
+      .catch(() => {});
+  }, [directionFilter]);
 
   useEffect(() => {
     return () => {
@@ -96,10 +101,14 @@ export default function NfseReceivedPage() {
         page: '1',
         limit: '5000',
         type: 'NFSE',
-        direction: 'received',
         sort: sortBy,
         order: sortOrder,
       });
+      if (directionFilter === 'received') {
+        params.set('direction', 'received');
+      } else if (directionFilter === 'issued') {
+        params.set('direction', 'issued');
+      }
       if (search) params.set('search', search);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
@@ -274,16 +283,29 @@ export default function NfseReceivedPage() {
         </div>
       ) : null}
 
-      <MobileFilterWrapper activeFilterCount={[search, dateFrom, dateTo].filter(Boolean).length}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+      <MobileFilterWrapper activeFilterCount={[search, directionFilter !== 'all' ? directionFilter : '', dateFrom, dateTo].filter(Boolean).length}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
           <div className="sm:col-span-2 md:col-span-2">
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Busca</label>
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Número, prestador, CNPJ ou chave"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
+              placeholder="Número, prestador, tomador ou CNPJ"
+              className={FILTER_INPUT_CLS}
             />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Tipo</label>
+            <select
+              aria-label="Tipo de NFS-e"
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'received' | 'issued')}
+              className={FILTER_INPUT_CLS}
+            >
+              <option value="all">Todas as NFS-e</option>
+              <option value="received">Recebidas (Tomadas)</option>
+              <option value="issued">Emitidas (Prestadas)</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">De</label>
@@ -291,7 +313,7 @@ export default function NfseReceivedPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
+              className={FILTER_INPUT_CLS}
             />
           </div>
           <div>
@@ -300,7 +322,7 @@ export default function NfseReceivedPage() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm"
+              className={FILTER_INPUT_CLS}
             />
           </div>
         </div>
@@ -388,10 +410,10 @@ export default function NfseReceivedPage() {
                   </button>
                 </th>
                 <th className="px-2 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  Prestador
+                  Prestador / Tomador
                 </th>
                 <th className="px-2 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  CNPJ Prestador
+                  CNPJ
                 </th>
                 <th className="px-2 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
                   Cidade
@@ -427,6 +449,9 @@ export default function NfseReceivedPage() {
                     const group = getDateGroupLabel(invoice.issueDate);
                     const showDivider = group !== lastGroup;
                     lastGroup = group;
+                    const isIssued = invoice.direction === 'issued';
+                    const partyName = isIssued ? (invoice.recipientName || 'Tomador não informado') : (invoice.senderName || '-');
+                    const partyCnpj = isIssued ? invoice.recipientCnpj : invoice.senderCnpj;
                     return (
                       <React.Fragment key={invoice.id}>
                         {showDivider && (
@@ -451,10 +476,15 @@ export default function NfseReceivedPage() {
                             {val(invoice.totalValue)}
                           </td>
                           <td className="px-2 py-3 text-xs text-slate-800 dark:text-slate-100">
-                            {invoice.senderName || '-'}
+                            <div className="flex items-center gap-1.5">
+                              <Badge tone={isIssued ? 'info' : 'neutral'} dot={false}>
+                                {isIssued ? 'Emitida' : 'Recebida'}
+                              </Badge>
+                              <span className="truncate">{partyName}</span>
+                            </div>
                           </td>
                           <td className="px-2 py-3 text-xs text-slate-600 dark:text-slate-400 font-mono tabular-nums">
-                            {invoice.senderCnpj ? formatCnpj(invoice.senderCnpj.replace(/\D/g, '')) || invoice.senderCnpj : '-'}
+                            {partyCnpj ? formatCnpj(partyCnpj.replace(/\D/g, '')) || partyCnpj : '-'}
                           </td>
                           <td className="px-2 py-3 text-xs text-slate-700 dark:text-slate-300">
                             {invoice.senderCity || '-'}

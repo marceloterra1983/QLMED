@@ -65,10 +65,6 @@ export async function GET(req: Request) {
       companyId: company.id,
     };
 
-    if (hasAggregates) {
-      where.aggComputedAt = { not: null };
-    }
-
     if (lineStatus === 'active') {
       where.OR = [{ outOfLine: null }, { outOfLine: false }];
     } else if (lineStatus === 'outOfLine') {
@@ -88,14 +84,17 @@ export async function GET(req: Request) {
 
     if (search) {
       const normalizedSearch = normalizeForSearch(search);
-      const searchFilter: Prisma.ProductRegistryWhereInput = hasAggregates
-        ? { aggSearchText: { contains: normalizedSearch } }
-        : {
-            OR: [
-              { description: { contains: normalizedSearch, mode: 'insensitive' } },
-              { code: { contains: normalizedSearch, mode: 'insensitive' } },
-            ],
-          };
+      const searchConditions: Prisma.ProductRegistryWhereInput[] = [
+        { description: { contains: normalizedSearch, mode: 'insensitive' } },
+        { code: { contains: normalizedSearch, mode: 'insensitive' } },
+        { codigo: { contains: normalizedSearch, mode: 'insensitive' } },
+      ];
+      if (hasAggregates) {
+        searchConditions.unshift({ aggSearchText: { contains: normalizedSearch } });
+      }
+      const searchFilter: Prisma.ProductRegistryWhereInput = {
+        OR: searchConditions,
+      };
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
         searchFilter,

@@ -14,6 +14,7 @@ import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
 import { extractPartyFiscalData } from '@/lib/parse-invoice-xml';
 import { upsertContactFiscal } from '@/lib/contact-fiscal-store';
+import { extractAndStoreDuplicatas } from '@/lib/invoice-duplicata-store';
 import { acquirePostgresAdvisoryLock, type PostgresAdvisoryLock } from '@/lib/postgres-advisory-lock';
 import { productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 import type { Prisma } from '@prisma/client';
@@ -78,6 +79,7 @@ export async function updateProductAggregatesForInvoice(opts: {
 
     await extractAndStoreTaxData(opts.invoiceId, opts.companyId, opts.xmlContent);
     await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
+    await extractAndStoreDuplicatas(opts.invoiceId, opts.companyId, opts.xmlContent);
   } finally {
     await aggregateLock?.release();
   }

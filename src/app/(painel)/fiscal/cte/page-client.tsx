@@ -126,12 +126,14 @@ export default function CtePage() {
 
   useEffect(() => {
     const cy = new Date().getFullYear();
-    Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
-      fetch(`/api/invoices?limit=1&page=1&type=CTE&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
-        .catch(() => null)
-    )).then(res => setAvailableYears(res.filter((y): y is number => y !== null)));
+    fetch('/api/invoices/years?type=CTE')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (Array.isArray(d?.years)) {
+          setAvailableYears(d.years.filter((y: number) => y !== cy));
+        }
+      })
+      .catch(() => {});
   }, []);
 
 	  const handleExport = () => {

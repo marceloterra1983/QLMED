@@ -218,12 +218,14 @@ export default function EntradaNfePage() {
   // Detect available years
   useEffect(() => {
     const cy = new Date().getFullYear();
-    Promise.all([cy - 1, cy - 2, cy - 3, cy - 4].map(y =>
-      fetch(`/api/estoque/entrada-nfe?limit=1&page=1&dateFrom=${y}-01-01&dateTo=${y}-12-31`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => (d?.pagination?.total ?? 0) > 0 ? y : null)
-        .catch(() => null)
-    )).then(res => setAvailableYears(res.filter((y): y is number => y !== null)));
+    fetch('/api/invoices/years?type=NFE&direction=received')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (Array.isArray(d?.years)) {
+          setAvailableYears(d.years.filter((y: number) => y !== cy));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Load invoices on filter change
