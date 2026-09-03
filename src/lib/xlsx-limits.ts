@@ -9,8 +9,14 @@ import JSZip from 'jszip';
  * de pagá-lo.
  */
 
-/** Bytes do .xlsx comprimido aceitos no corpo do upload. */
-export const MAX_XLSX_BYTES = 5 * 1024 * 1024;
+/**
+ * Bytes do .xlsx comprimido aceitos no corpo do upload, no caminho que lê a
+ * planilha **em streaming** (`streamXlsxRows`). Medido em 2026-09-02: um E509
+ * de 10 MiB (42 mil linhas, 84 colunas) custa 95 MiB de pico de heap por esse
+ * caminho, contra os ~690 MiB que o livro inteiro em memória exige já aos
+ * 5 MiB — acima do `--max-old-space-size=512` com que o app corre.
+ */
+export const MAX_XLSX_BYTES = 10 * 1024 * 1024;
 /** Soma máxima do conteúdo descomprimido declarado no zip. */
 export const MAX_XLSX_UNCOMPRESSED_BYTES = 120 * 1024 * 1024;
 /** Razão máxima descomprimido/comprimido do arquivo inteiro. */
@@ -22,6 +28,19 @@ export class XlsxTooLargeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'XlsxTooLargeError';
+  }
+}
+
+/**
+ * Planilha que passa nos limites mas o leitor não consegue abrir: zip válido
+ * com XML truncado, planilha de outro programa, ficheiro meio enviado. É erro
+ * de quem envia (400), não do servidor — sem isto o parser rebentava para
+ * dentro do `apiError` e virava 500 com log de falha nossa.
+ */
+export class XlsxInvalidError extends Error {
+  constructor(message = 'Planilha inválida ou corrompida') {
+    super(message);
+    this.name = 'XlsxInvalidError';
   }
 }
 
@@ -134,4 +153,66 @@ export function assertRowCount(rowCount: number): void {
   if (rowCount > MAX_XLSX_ROWS) {
     throw new XlsxTooLargeError(`Planilha excede ${MAX_XLSX_ROWS} linhas`);
   }
+}
+
+/** Uma linha da planilha, com o mesmo endereçamento 0-based do caminho antigo. */
+export interface XlsxStreamRow {
+  index0: number;
+  str(col0: number): string;
+  num(col0: number): number | null;
+}
+
+/**
+ * Lê a primeira planilha linha a linha, sem montar o livro em memória.
+ *
+ * O `assertSafeXlsx` continua a correr antes: ele nunca foi o problema de
+ * memória — infla cada entrada por um stream com orçamento, com pico de um
+ * chunk. Quem estourava o heap era o `workbook.xlsx.load()`. Aqui o ficheiro
+ * comprimido (no máximo `MAX_XLSX_BYTES`) fica em memória para as duas coisas.
+ * `assertRowCount` corta a leitura assim que passa de `MAX_XLSX_ROWS`.
+ * Devolve o número de linhas vistas (0 = planilha vazia).
+ */
+export async function streamXlsxRows(
+  file: Blob,
+  onRow: (row: XlsxStreamRow) => void,
+): Promise<number> {
+  const buf = Buffer.from(await file.arrayBuffer());
+  await assertSafeXlsx(buf);
+  const { Readable } = await import('node:stream');
+  const ExcelJS = (await import('exceljs')).default;
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(buf), {
+    worksheets: 'emit',
+    sharedStrings: 'cache',
+    styles: 'ignore',
+    hyperlinks: 'ignore',
+    entries: 'ignore',
+  });
+  let seen = 0;
+  try {
+    for await (const worksheet of reader) {
+      for await (const row of worksheet) {
+        seen = row.number;
+        assertRowCount(seen);
+        const values = row.values as (string | number | Date | null | undefined)[];
+        onRow({
+          index0: row.number - 1,
+          str: (c) => {
+            const v = values[c + 1];
+            return v != null ? String(v).trim() : '';
+          },
+          num: (c) => {
+            const v = values[c + 1];
+            if (v == null) return null;
+            const n = Number(v);
+            return Number.isNaN(n) ? null : n;
+          },
+        });
+      }
+      break; // só a primeira planilha, como o `worksheets[0]` do caminho antigo
+    }
+  } catch (e) {
+    if (e instanceof XlsxTooLargeError) throw e; // cap de linhas: 413, não 400
+    throw new XlsxInvalidError();
+  }
+  return seen;
 }

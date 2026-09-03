@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { z } from 'zod';
 import { formDataWithLimit } from '@/lib/upload-limits';
-import { assertSafeXlsx, assertRowCount, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
+import { streamXlsxRows, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
 
 export async function POST(req: Request) {
   try {
@@ -25,63 +25,65 @@ export async function POST(req: Request) {
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
-    const buf = await fileParsed.data.file.arrayBuffer();
-    // Zip-bomb: medir o custo do unzip antes de o exceljs pagá-lo.
-    await assertSafeXlsx(buf);
-    const ExcelJS = (await import('exceljs')).default;
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buf);
-    const worksheet = workbook.worksheets[0];
-    assertRowCount(worksheet?.rowCount ?? 0);
-
-    const allRows: string[][] = [];
-    worksheet.eachRow({ includeEmpty: true }, (row) => {
-      const values = row.values as (string | number | null | undefined)[];
-      allRows.push(values.slice(1).map((v) => (v != null ? String(v) : '')));
-    });
-
-    let dataStart = 0;
-    for (let i = 0; i < Math.min(10, allRows.length); i++) {
-      const first = String(allRows[i][0] || '').trim();
-      if (first === 'Código' || first === 'Codigo') {
-        dataStart = i + 1;
-        break;
-      }
-    }
-
     type ProductEntry = { code: string; tipo: string; subtipo: string };
     const entries: ProductEntry[] = [];
 
     let currentTipo = '';
     let currentSubtipo = '';
 
-    const isGroupRow = (row: string[]) =>
-      String(row[0] || '').trim() !== '' &&
-      String(row[1] || '').trim() === '' &&
-      String(row[2] || '').trim() === '' &&
-      String(row[3] || '').trim() === '';
-
+    const isGroupRow = (c: string[]) => c[0] !== '' && c[1] === '' && c[2] === '' && c[3] === '';
     const isTipoRow = (val: string) => /^\d+\s*[-–]\s*/.test(val);
+    const isHeader = (val: string) => val === 'Código' || val === 'Codigo';
 
-    for (let i = dataStart; i < allRows.length; i++) {
-      const row = allRows[i].map((c) => String(c || '').trim());
-      if (isGroupRow(row)) {
-        const label = row[0];
+    const parseRow = (c: string[]) => {
+      if (isGroupRow(c)) {
+        const label = c[0];
         if (isTipoRow(label)) {
           currentTipo = label.replace(/^\d+\s*[-–]\s*/, '').trim();
           currentSubtipo = '';
         } else {
           currentSubtipo = label;
         }
-        continue;
+        return;
       }
 
-      const code = row[0];
-      if (!code || !currentTipo) continue;
-      if (code === 'Código' || code === 'Codigo') continue;
+      const code = c[0];
+      if (!code || !currentTipo) return;
+      if (isHeader(code)) return;
 
       entries.push({ code, tipo: currentTipo, subtipo: currentSubtipo });
-    }
+    };
+
+    // Streaming, uma linha de cada vez (ver `streamXlsxRows`). O cabeçalho
+    // `Código` só é procurado nas dez primeiras linhas, como antes; enquanto
+    // isso elas ficam guardadas, porque um ficheiro sem cabeçalho é lido desde
+    // a primeira. Só as quatro primeiras colunas importam ao formato.
+    const primeiras: string[][] = [];
+    let cabecalhoDecidido = false;
+
+    await streamXlsxRows(fileParsed.data.file, (row) => {
+      const c = [row.str(0), row.str(1), row.str(2), row.str(3)];
+
+      if (!cabecalhoDecidido) {
+        if (row.index0 < 10) {
+          if (isHeader(c[0])) {
+            cabecalhoDecidido = true; // o que veio antes do cabeçalho não conta
+            primeiras.length = 0;
+          } else {
+            primeiras.push(c);
+          }
+          return;
+        }
+        cabecalhoDecidido = true; // passou das dez sem cabeçalho: tudo é dado
+        for (const anterior of primeiras) parseRow(anterior);
+        primeiras.length = 0;
+      }
+
+      parseRow(c);
+    });
+
+    // Ficheiro com menos de dez linhas e sem cabeçalho.
+    if (!cabecalhoDecidido) for (const anterior of primeiras) parseRow(anterior);
 
     if (entries.length === 0) {
       return NextResponse.json({ error: 'Nenhum produto encontrado no arquivo' }, { status: 400 });

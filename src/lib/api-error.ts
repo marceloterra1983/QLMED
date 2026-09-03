@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { PayloadTooLargeError } from '@/lib/upload-limits';
-import { XlsxTooLargeError } from '@/lib/xlsx-limits';
+import { XlsxInvalidError, XlsxTooLargeError } from '@/lib/xlsx-limits';
 
 const log = createLogger('api-error');
 
@@ -23,6 +23,11 @@ export function apiError(e: unknown, context?: string): NextResponse {
   // Limites de upload aplicados no stream/antes do unzip (auditoria L5).
   if (e instanceof PayloadTooLargeError || e instanceof XlsxTooLargeError) {
     return NextResponse.json({ error: e.message }, { status: 413 });
+  }
+
+  // Ficheiro que o leitor não abre é erro de quem envia, não nosso.
+  if (e instanceof XlsxInvalidError) {
+    return NextResponse.json({ error: e.message }, { status: 400 });
   }
 
   const meta: Record<string, unknown> = {};

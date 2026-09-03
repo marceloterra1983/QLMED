@@ -4,12 +4,11 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { updateNfeEntryItemLot, cloneNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
-import ExcelJS from 'exceljs';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
 import { formDataWithLimit } from '@/lib/upload-limits';
-import { assertSafeXlsx, assertRowCount, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
+import { streamXlsxRows, MAX_XLSX_BYTES } from '@/lib/xlsx-limits';
 
 const log = createLogger('estoque/import-e509');
 
@@ -33,18 +32,6 @@ interface E509Row {
   qtdeLote: number | null;
 }
 
-function cellStr(ws: ExcelJS.Worksheet, r: number, c: number): string {
-  const cell = ws.getCell(r + 1, c + 1);
-  return cell.value != null ? String(cell.value).trim() : '';
-}
-
-function cellNum(ws: ExcelJS.Worksheet, r: number, c: number): number | null {
-  const cell = ws.getCell(r + 1, c + 1);
-  if (cell.value == null) return null;
-  const n = Number(cell.value);
-  return isNaN(n) ? null : n;
-}
-
 export async function POST(req: Request) {
   try {
     let userId: string;
@@ -63,46 +50,44 @@ export async function POST(req: Request) {
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
-    const arrayBuf = await fileParsed.data.file.arrayBuffer();
-    // Zip-bomb: medir o custo do unzip antes de o exceljs pagá-lo.
-    await assertSafeXlsx(arrayBuf);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(arrayBuf);
-    const ws = workbook.worksheets[0];
-    if (!ws || ws.rowCount === 0) {
-      return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
-    }
-    assertRowCount(ws.rowCount);
-
-    const lastRow = ws.rowCount - 1; // Convert to 0-based for existing loop
-
-    // Validate headers
-    const headerNF = cellStr(ws, HEADER_ROW, COL_NF_NUMBER);
-    const headerLote = cellStr(ws, HEADER_ROW, COL_LOTE);
-    if (!headerNF.includes('NF') || !headerLote.includes('Lote')) {
-      return NextResponse.json({
-        error: `Formato E509 não reconhecido. Cabeçalho col 0: "${headerNF}", col 82: "${headerLote}"`,
-      }, { status: 400 });
-    }
-
-    // Parse data rows
+    // Streaming: `workbook.xlsx.load()` monta o livro inteiro e mata o processo
+    // bem antes do teto do upload (medições em `streamXlsxRows`). Aqui o custo
+    // é o da linha, e o cabeçalho é conferido depois de a leitura terminar.
+    let headerNF = '';
+    let headerLote = '';
     const rows: E509Row[] = [];
-    for (let r = DATA_START_ROW; r <= lastRow; r++) {
-      const lote = cellStr(ws, r, COL_LOTE);
-      if (!lote) continue;
+    const totalRows = await streamXlsxRows(fileParsed.data.file, (row) => {
+      if (row.index0 === HEADER_ROW) {
+        headerNF = row.str(COL_NF_NUMBER);
+        headerLote = row.str(COL_LOTE);
+        return;
+      }
+      if (row.index0 < DATA_START_ROW) return;
 
-      const nfNumber = cellStr(ws, r, COL_NF_NUMBER).replace(/^0+/, '');
-      const accessKey = cellStr(ws, r, COL_ACCESS_KEY);
-      if (!nfNumber && !accessKey) continue;
+      const lote = row.str(COL_LOTE);
+      if (!lote) return;
+
+      const nfNumber = row.str(COL_NF_NUMBER).replace(/^0+/, '');
+      const accessKey = row.str(COL_ACCESS_KEY);
+      if (!nfNumber && !accessKey) return;
 
       rows.push({
         nfNumber,
         accessKey,
-        codigoInterno: cellStr(ws, r, COL_CODIGO_INTERNO),
-        referencia: cellStr(ws, r, COL_REFERENCIA),
+        codigoInterno: row.str(COL_CODIGO_INTERNO),
+        referencia: row.str(COL_REFERENCIA),
         lote,
-        qtdeLote: cellNum(ws, r, COL_QTDE_LOTE),
+        qtdeLote: row.num(COL_QTDE_LOTE),
       });
+    });
+
+    if (totalRows === 0) {
+      return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
+    }
+    if (!headerNF.includes('NF') || !headerLote.includes('Lote')) {
+      return NextResponse.json({
+        error: `Formato E509 não reconhecido. Cabeçalho col 0: "${headerNF}", col 82: "${headerLote}"`,
+      }, { status: 400 });
     }
 
     if (rows.length === 0) {

@@ -404,7 +404,8 @@ de ser uma saída limpa.
 3. `NOTIFICATION_OUTBOX_RETENTION_DAYS` — a purga está ligada e reporta
    `disabled` no health até haver um número. **Feito em §17: 90 dias.**
 4. Planilhas E509 acima de 5 MiB passam a ser recusadas — confirmar com as
-   reais. **Continua aberto**: é medir os ficheiros, não mudar código.
+   reais. **Medido em §20**: o teto sobe para 10 MiB, e a leitura passa a ser
+   em streaming porque o caminho antigo já morria aos 5.
 
 # 13. Pós-deploy: o quinto leitor de `pfxData`
 
@@ -597,3 +598,70 @@ de um caso que **tem** de responder "existe".
 `cancel-in-progress`: o run do meu merge apareceu `cancelled` porque outro PR
 entrou 9 s depois. Esperar CI é esperar pelo `origin/main` do momento, não pelo
 commit de merge do meu PR.
+
+# 20. Planilhas E509: o teto era o menor dos problemas
+
+Item 4 do §12. Não há planilha E509 real nesta máquina nem no banco — a tabela
+`stock_entry` está vazia, nunca houve importação —, então medi por construção,
+com a biblioteca da rota e o formato que ela exige: 84 colunas, cabeçalho na
+linha 3, dados da 5, campos com o comprimento real (chave de 44, descrição de
+produto, lote, decimais).
+
+| Linhas (lotes) | Ficheiro | Bytes/linha | Descomprimido | Razão |
+|---|---|---|---|---|
+| 700 (um mês) | 0,17 MiB | 253 | 1,8 MiB | 10,7 |
+| 8 400 (um ano) | 1,97 MiB | 246 | 21,7 MiB | 11,0 |
+| 21 000 | 5,08 MiB | 249 | 55 MiB | 11,1 |
+| 42 000 | 10,19 MiB | 249 | 110 MiB | 11,1 |
+
+Ancorado no volume real: 21 216 notas, 3,5 itens por nota, ~200 notas/mês. Uma
+exportação mensal dá ~700 linhas; a anual, ~8 400. O teto de 5 MiB equivalia a
+21 000 lotes, folga de 30× para o mês.
+
+**Mas o teto não era o portão que mordia primeiro.** O app corre com
+`--max-old-space-size=512`. Medido com esse heap, `workbook.xlsx.load()`:
+
+| Linhas | Ficheiro | Heap usado | Desfecho |
+|---|---|---|---|
+| 5 000 | 1,20 MiB | 209 MiB | passa |
+| 8 400 | 2,01 MiB | 281 MiB | passa |
+| 12 000 | 2,89 MiB | 378 MiB | passa |
+| 16 000 | 3,86 MiB | 440 MiB | passa |
+| 21 000 | 5,08 MiB | ~690 MiB | **OOM, processo morto** |
+
+São ~130 MiB de heap por MiB de .xlsx. Ou seja: a rota **aceitava um ficheiro
+que o runtime não conseguia abrir** — o guarda de 5 MiB deixava passar a
+planilha que matava o processo, e não com um 413, com um `FATAL ERROR` do V8.
+Subir o teto para 10 MiB sem mais nada teria tornado a queda mais fácil de
+alcançar, não mais difícil.
+
+Correção: a rota E509 lê por `ExcelJS.stream.xlsx.WorkbookReader`, uma linha de
+cada vez. Medido no mesmo heap de 512 MiB: 95 MiB de pico para o ficheiro de
+5 MiB **e** para o de 10 MiB — o custo passa a ser o da linha, não o do
+ficheiro. Com isso `MAX_XLSX_BYTES` sobe para 10 MiB.
+
+A rota `products/import-types` foi convertida no mesmo PR: o formato dela é
+lido em sequência (cabeçalho `Código` nas dez primeiras linhas, depois linhas
+de grupo e de produto), então o streaming só precisou de guardar essas dez
+primeiras — um ficheiro sem cabeçalho continua a ser lido desde a primeira
+linha, como antes. As duas rotas partilham o teto de 10 MiB.
+
+Uma correcção sobre o próprio §20: o `assertSafeXlsx` **não** era o problema de
+memória, e tirá-lo do caminho foi erro meu. Ele infla cada entrada por um
+stream com orçamento — o pico é um chunk, não a entrada. Quem estourava o heap
+era o `workbook.xlsx.load()`. O guarda voltou, agora antes do leitor, e o
+ficheiro comprimido (no máximo 10 MiB) fica em memória para servir os dois.
+Sem ele, um zip-bomb passaria a depender só do cap de linhas.
+
+O teste guarda as duas metades: o endereçamento das células (0-based, como o
+`getCell(r+1, c+1)` de antes) e o custo de memória. Controlo positivo com o
+caminho antigo por baixo do mesmo teste: 332 MiB para 8 mil linhas, vermelho.
+
+O revisor automático apanhou ainda um terceiro caso: ficheiro que passa nos
+limites mas o leitor não abre — zip válido com XML corrompido — rebentava para
+dentro do `apiError` e virava **500 com log de falha nossa**. Ganhou tipo
+próprio, `XlsxInvalidError` → 400. Nota medida ao escrever o teste: se a folha
+em si estiver corrompida, o erro nem sempre emerge, porque a leitura corta na
+primeira planilha; nesse caso a rota devolve "planilha vazia" (400), que
+também é resposta de cliente. O teste corrompe o `xl/workbook.xml`, que é lido
+antes de qualquer linha e falha sempre.
