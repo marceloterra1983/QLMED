@@ -13,19 +13,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const WAIVERS = [
-  {
-    advisory: 'GHSA-3f6p-5ww8-9rcr',
-    package: 'mysql2',
-    expires: '2026-12-01',
-    reason:
-      'mysql2 chega só como dependência transitiva do CLI prisma@7.10.0. O '
-      + 'datasource do QLMED é postgresql e não há uma linha de mysql no código, '
-      + 'então o driver nunca é carregado. A correção proposta pelo npm '
-      + '(prisma@6.19.3) é um downgrade major. Revisar quando o prisma 7.x '
-      + 'passar a exigir mysql2 >= 3.22.0.',
-  },
-];
+const WAIVERS = [];
 
 const BLOCKING = new Set(['high', 'critical']);
 

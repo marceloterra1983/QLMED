@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 # Controlo positivo do portão de dependências.
-#
-# O modo de falha que interessa não é "reprova demais", é "aprova tudo em
-# silêncio": uma dispensa larga, vencida ou morta transforma o portão em
-# decoração e ninguém percebe, porque o CI fica verde. Cada caso abaixo
-# quebra o script de propósito e exige que ele reprove.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,29 +24,75 @@ expect_output() {
   grep -q "$1" "$tmp/out" || { cat "$tmp/out" >&2; fail "esperava a mensagem: $1"; }
 }
 
-# 1. Estado real do repositório: passa, e diz o que dispensou.
+# Script com uma dispensa conhecida (só para casos 3–5).
+cat > "$tmp/com-dispensa.mjs" <<'JS'
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+const src = readFileSync(process.argv[1].replace(/com-dispensa\.mjs$/, '') + 'verify-dependency-audit.mjs', 'utf8');
+JS
+# Mais simples: copiar o gate e injetar WAIVERS no arquivo.
+cp "$gate" "$tmp/gate-base.mjs"
+python3 - "$tmp/gate-base.mjs" "$tmp/com-dispensa.mjs" <<'PY'
+from pathlib import Path
+import sys
+src = Path(sys.argv[1]).read_text()
+waiver = """const WAIVERS = [
+  {
+    advisory: 'GHSA-3f6p-5ww8-9rcr',
+    package: 'mysql2',
+    expires: '2099-01-01',
+    reason: 'dispensa de teste',
+  },
+];
+"""
+import re
+src2 = re.sub(r'const WAIVERS = \[\];', waiver, src, count=1)
+if src2 == src:
+    raise SystemExit('failed to inject WAIVERS')
+Path(sys.argv[2]).write_text(src2)
+PY
+
+python3 - "$tmp/com-dispensa.mjs" "$tmp/vencida.mjs" <<'PY'
+from pathlib import Path
+import sys
+t = Path(sys.argv[1]).read_text().replace("expires: '2099-01-01'", "expires: '2020-01-01'")
+Path(sys.argv[2]).write_text(t)
+PY
+
+python3 - "$tmp/com-dispensa.mjs" "$tmp/morta.mjs" <<'PY'
+from pathlib import Path
+import sys
+t = Path(sys.argv[1]).read_text().replace("advisory: 'GHSA-3f6p-5ww8-9rcr'", "advisory: 'GHSA-0000-0000-0000'")
+Path(sys.argv[2]).write_text(t)
+PY
+
+# 1. Estado real do repositório: limpo (sem high/critical sem dispensa).
 expect_status "estado atual" "$gate" 0
 expect_output "Dependency audit OK"
-expect_output "Dispensado até"
 
-# 2. Sem dispensa nenhuma, o aviso conhecido reprova.
-sed 's/^const WAIVERS = \[$/const WAIVERS = []; const _IGNORED = [/' "$gate" > "$tmp/sem-dispensa.mjs"
-expect_status "sem dispensa" "$tmp/sem-dispensa.mjs" 1
+# 2. Aviso high sem dispensa reprova (relatório injetado).
+cat > "$tmp/sem.json" <<'JSON'
+{"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
+  "via":[{"source":1153173,"name":"mysql2","severity":"high",
+          "url":"https://github.com/advisories/GHSA-3f6p-5ww8-9rcr","title":"m"}]}}}
+JSON
+QLMED_AUDIT_REPORT_FILE="$tmp/sem.json" expect_status "sem dispensa" "$gate" 1
 expect_output "sem dispensa"
 
-# 3. Dispensa vencida reprova em vez de continuar valendo.
-sed "s/expires: '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'/expires: '2020-01-01'/" "$gate" > "$tmp/vencida.mjs"
-expect_status "dispensa vencida" "$tmp/vencida.mjs" 1
+# 3. Dispensa válida cobre o aviso.
+QLMED_AUDIT_REPORT_FILE="$tmp/sem.json" expect_status "com dispensa" "$tmp/com-dispensa.mjs" 0
+expect_output "Dispensado até"
+expect_output "Dependency audit OK"
+
+# 4. Dispensa vencida reprova.
+QLMED_AUDIT_REPORT_FILE="$tmp/sem.json" expect_status "dispensa vencida" "$tmp/vencida.mjs" 1
 expect_output "Dispensa vencida"
 
-# 4. Dispensa que não casa com nada reprova: lista morta é permissão esquecida.
-sed "s/advisory: 'GHSA-[0-9a-zA-Z-]*'/advisory: 'GHSA-0000-0000-0000'/" "$gate" > "$tmp/morta.mjs"
-expect_status "dispensa morta" "$tmp/morta.mjs" 1
+# 5. Dispensa que não casa reprova.
+QLMED_AUDIT_REPORT_FILE="$tmp/sem.json" expect_status "dispensa morta" "$tmp/morta.mjs" 1
 expect_output "sem aviso correspondente"
 
-# 5. Advisory NOVO e não dispensado reprova. Esta é a propriedade que o portão
-#    existe para ter, e era a única que não estava testada — a re-auditoria
-#    furou o portão exactamente aqui.
+# 6. Advisory novo não dispensado.
 cat > "$tmp/novo.json" <<'JSON'
 {"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
   "via":[{"source":1153173,"name":"mysql2","severity":"high",
@@ -59,13 +100,10 @@ cat > "$tmp/novo.json" <<'JSON'
   "via":[{"source":9,"name":"pacote-x","severity":"critical",
           "url":"https://github.com/advisories/GHSA-novo-novo-novo","title":"t"}]}}}
 JSON
-QLMED_AUDIT_REPORT_FILE="$tmp/novo.json" expect_status "advisory novo" "$gate" 1
+QLMED_AUDIT_REPORT_FILE="$tmp/novo.json" expect_status "advisory novo" "$tmp/com-dispensa.mjs" 1
 expect_output "GHSA-novo-novo-novo"
 
-# 6. Advisory CRITICAL pendurado num nó de severidade MENOR também reprova.
-#    O `npm audit` agrega no nó, e a agregação pode esconder o aviso. Ler só a
-#    severidade do nó deixava passar um critical — foi assim que o portão foi
-#    furado.
+# 7. Critical mascarado por nó moderate.
 cat > "$tmp/mascarado.json" <<'JSON'
 {"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
   "via":[{"source":1153173,"name":"mysql2","severity":"high",
@@ -73,11 +111,10 @@ cat > "$tmp/mascarado.json" <<'JSON'
   "via":[{"source":10,"name":"pacote-y","severity":"critical",
           "url":"https://github.com/advisories/GHSA-mask-mask-mask","title":"t"}]}}}
 JSON
-QLMED_AUDIT_REPORT_FILE="$tmp/mascarado.json" expect_status "critical mascarado por nó moderate" "$gate" 1
+QLMED_AUDIT_REPORT_FILE="$tmp/mascarado.json" expect_status "critical mascarado por nó moderate" "$tmp/com-dispensa.mjs" 1
 expect_output "GHSA-mask-mask-mask"
 
-# 7. Contraprova: um relatório só com severidade baixa passa. Sem este caso, os
-#    dois acima ficariam satisfeitos por um portão que reprova tudo.
+# 8. Só severidade baixa passa (com dispensa cobrindo o high conhecido).
 cat > "$tmp/baixo.json" <<'JSON'
 {"vulnerabilities":{"mysql2":{"name":"mysql2","severity":"high",
   "via":[{"source":1153173,"name":"mysql2","severity":"high",
@@ -85,7 +122,7 @@ cat > "$tmp/baixo.json" <<'JSON'
   "via":[{"source":11,"name":"pacote-z","severity":"low",
           "url":"https://github.com/advisories/GHSA-low0-low0-low0","title":"t"}]}}}
 JSON
-QLMED_AUDIT_REPORT_FILE="$tmp/baixo.json" expect_status "só severidade baixa" "$gate" 0
+QLMED_AUDIT_REPORT_FILE="$tmp/baixo.json" expect_status "só severidade baixa" "$tmp/com-dispensa.mjs" 0
 expect_output "Dependency audit OK"
 
-echo "test-dependency-audit: OK (7 casos)"
+echo "test-dependency-audit: OK (8 casos)"

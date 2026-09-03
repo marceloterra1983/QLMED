@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "if ss -ltn | grep -q ':3000 '; then echo 'porta 3000 ocupada — pare o outro processo antes (ss -ltnp | grep :3000)' >&2; exit 1; fi; QLMED_DISABLE_BACKGROUND_SERVICES=${QLMED_DISABLE_BACKGROUND_SERVICES:-true} next dev -H 0.0.0.0 -p 3000",
+    "dev": "if ss -ltn | grep -q ':3000 '; then echo 'porta 3000 ocupada \u2014 pare o outro processo antes (ss -ltnp | grep :3000)' >&2; exit 1; fi; QLMED_DISABLE_BACKGROUND_SERVICES=${QLMED_DISABLE_BACKGROUND_SERVICES:-true} next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -98,6 +98,7 @@
       "@hono/node-server": "2.0.11",
       "valibot": "1.4.2"
     },
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "mysql2": "3.24.3"
   }
 }
