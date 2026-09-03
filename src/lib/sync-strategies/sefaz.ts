@@ -103,7 +103,18 @@ export async function syncViaSefaz(
         // Resposta de erro não entrega documento nenhum. Avançar o cursor com o
         // ultNSU devolvido aqui saltava NSUs que nunca foram lidos.
         if (response.cStat === '656') {
-          throw new Error('Bloqueio SEFAZ (656): Excesso de consultas. Aguarde 1h.');
+          // O `xMotivo` é a ÚNICA fonte do motivo e do tempo de bloqueio que a
+          // SEFAZ informa. Descartá-lo por um texto fixo deixou 24 dias de
+          // bloqueio sem diagnóstico: o log dizia "Aguarde 1h" — palpite nosso —
+          // enquanto a tentativa diária continuava a ser recusada.
+          // O prefixo com "656" é contrato: sync-scheduler detecta o bloqueio
+          // por `errorMessage.includes('656')` para armar o cooldown.
+          const motivo = response.xMotivo?.trim();
+          throw new Error(
+            motivo
+              ? `Bloqueio SEFAZ (656): ${motivo}`
+              : 'Bloqueio SEFAZ (656): excesso de consultas, sem xMotivo na resposta.',
+          );
         }
         throw new Error(`Erro SEFAZ: ${response.xMotivo} (cStat: ${response.cStat})`);
       }

@@ -272,6 +272,31 @@ describe('FISCAL-007 — SEFAZ DistDFe: cursor NSU não passa por documento falh
     expect(mocks.release).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * O 656 é o único cStat cujo `xMotivo` era descartado por um texto fixo, e é
+   * justamente o bloqueio que precisa ser diagnosticado. A mensagem tem de
+   * carregar o motivo da SEFAZ E manter o "656" — `sync-scheduler` arma o
+   * cooldown por `errorMessage.includes('656')`.
+   */
+  it('preserva o xMotivo da SEFAZ no bloqueio 656, sem perder o gatilho do cooldown', async () => {
+    mocks.buscarNovosDocumentos.mockResolvedValue({
+      status: 'error',
+      cStat: '656',
+      xMotivo: 'Consumo Indevido. Tempo de bloqueio: 42 minutos',
+      ultNSU: '000000000000099',
+      maxNSU: '000000000000099',
+      failedNsus: [],
+      docs: [],
+    });
+
+    await runSefaz();
+
+    const { errorMessage } = syncLogPayload() as { errorMessage: string };
+    expect(errorMessage).toContain('Tempo de bloqueio: 42 minutos');
+    expect(errorMessage).toContain('656');
+    expect(errorMessage).not.toContain('Aguarde 1h');
+  });
+
   // REAUD-FISCAL-015 / REAUD-TEST-002: o teste antigo mockava o cancelamento a
   // `false` e cobria, sem distinguir, a ciência (deve passar) e o cancelamento
   // perdido (não deve). Com o tri-estado são dois casos — e a prova do auditor.
