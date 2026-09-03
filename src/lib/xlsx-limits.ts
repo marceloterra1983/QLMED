@@ -31,6 +31,19 @@ export class XlsxTooLargeError extends Error {
   }
 }
 
+/**
+ * Planilha que passa nos limites mas o leitor não consegue abrir: zip válido
+ * com XML truncado, planilha de outro programa, ficheiro meio enviado. É erro
+ * de quem envia (400), não do servidor — sem isto o parser rebentava para
+ * dentro do `apiError` e virava 500 com log de falha nossa.
+ */
+export class XlsxInvalidError extends Error {
+  constructor(message = 'Planilha inválida ou corrompida') {
+    super(message);
+    this.name = 'XlsxInvalidError';
+  }
+}
+
 type JsZipInternalEntry = {
   _data?: { uncompressedSize?: number; compressedSize?: number };
 };
@@ -175,26 +188,31 @@ export async function streamXlsxRows(
     entries: 'ignore',
   });
   let seen = 0;
-  for await (const worksheet of reader) {
-    for await (const row of worksheet) {
-      seen = row.number;
-      assertRowCount(seen);
-      const values = row.values as (string | number | Date | null | undefined)[];
-      onRow({
-        index0: row.number - 1,
-        str: (c) => {
-          const v = values[c + 1];
-          return v != null ? String(v).trim() : '';
-        },
-        num: (c) => {
-          const v = values[c + 1];
-          if (v == null) return null;
-          const n = Number(v);
-          return Number.isNaN(n) ? null : n;
-        },
-      });
+  try {
+    for await (const worksheet of reader) {
+      for await (const row of worksheet) {
+        seen = row.number;
+        assertRowCount(seen);
+        const values = row.values as (string | number | Date | null | undefined)[];
+        onRow({
+          index0: row.number - 1,
+          str: (c) => {
+            const v = values[c + 1];
+            return v != null ? String(v).trim() : '';
+          },
+          num: (c) => {
+            const v = values[c + 1];
+            if (v == null) return null;
+            const n = Number(v);
+            return Number.isNaN(n) ? null : n;
+          },
+        });
+      }
+      break; // só a primeira planilha, como o `worksheets[0]` do caminho antigo
     }
-    break; // só a primeira planilha, como o `worksheets[0]` do caminho antigo
+  } catch (e) {
+    if (e instanceof XlsxTooLargeError) throw e; // cap de linhas: 413, não 400
+    throw new XlsxInvalidError();
   }
   return seen;
 }

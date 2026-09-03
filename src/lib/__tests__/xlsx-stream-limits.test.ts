@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { getHeapStatistics } from 'node:v8';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
-import { MAX_XLSX_BYTES, XlsxTooLargeError, streamXlsxRows } from '@/lib/xlsx-limits';
+import { MAX_XLSX_BYTES, XlsxInvalidError, XlsxTooLargeError, streamXlsxRows } from '@/lib/xlsx-limits';
 
 const COLS = 84;
 
@@ -123,6 +123,25 @@ describe('leitura de XLSX em streaming', () => {
     await expect(streamXlsxRows(new Blob([new Uint8Array(bomb)]), () => { linhas++; })).rejects.toBeInstanceOf(XlsxTooLargeError);
     expect(linhas).toBe(0);
   }, 30_000);
+
+  it('zip válido com XML corrompido dá erro de cliente, não 500', async () => {
+    // O guarda de zip-bomb só olha o zip; quem não abre é o leitor. Sem o erro
+    // tipado isto caía no `apiError` como falha do servidor.
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Tipos');
+    ws.addRow(['Código', 'Descrição']);
+    ws.addRow(['PROD-001', 'Produto teste']);
+    const zip = await JSZip.loadAsync(Buffer.from(await wb.xlsx.writeBuffer()));
+    // `workbook.xml` é lido antes de qualquer linha, por isso o erro é sempre o
+    // mesmo. Corromper a folha em si é menos previsível: com o corte após a
+    // primeira planilha, o erro pode não chegar a emergir e a leitura devolve
+    // zero linhas — o que a rota também trata, como "planilha vazia" (400).
+    zip.file('xl/workbook.xml', 'isto não é xml <<>>');
+    const corrompido = await zip.generateAsync({ type: 'uint8array' });
+
+    await expect(streamXlsxRows(new Blob([new Uint8Array(corrompido)]), () => {}))
+      .rejects.toBeInstanceOf(XlsxInvalidError);
+  });
 
   it('o teto declara o que o caminho aguenta', () => {
     expect(MAX_XLSX_BYTES).toBe(10 * 1024 * 1024);

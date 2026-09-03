@@ -656,3 +656,12 @@ Sem ele, um zip-bomb passaria a depender só do cap de linhas.
 O teste guarda as duas metades: o endereçamento das células (0-based, como o
 `getCell(r+1, c+1)` de antes) e o custo de memória. Controlo positivo com o
 caminho antigo por baixo do mesmo teste: 332 MiB para 8 mil linhas, vermelho.
+
+O revisor automático apanhou ainda um terceiro caso: ficheiro que passa nos
+limites mas o leitor não abre — zip válido com XML corrompido — rebentava para
+dentro do `apiError` e virava **500 com log de falha nossa**. Ganhou tipo
+próprio, `XlsxInvalidError` → 400. Nota medida ao escrever o teste: se a folha
+em si estiver corrompida, o erro nem sempre emerge, porque a leitura corta na
+primeira planilha; nesse caso a rota devolve "planilha vazia" (400), que
+também é resposta de cliente. O teste corrompe o `xl/workbook.xml`, que é lido
+antes de qualquer linha e falha sempre.
