@@ -1,9 +1,17 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Badge from '@/components/ui/Badge';
 import Image from 'next/image';
 import type { Session } from 'next-auth';
+import {
+  ensureActiveSectionExpanded,
+  loadSidebarCollapsedGroups,
+  saveSidebarCollapsedGroups,
+  sectionForPath,
+  toggleSidebarCollapsedGroup,
+} from '@/lib/sidebar-group-collapse';
 
 export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
@@ -138,7 +146,30 @@ export default function SidebarNav({
   onToggleCollapse,
   pendingCount,
 }: SidebarNavProps) {
-  const navItems = buildNavItems(session, pendingCount);
+  const navItems = useMemo(
+    () => buildNavItems(session, pendingCount),
+    [session, pendingCount],
+  );
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setCollapsedSections(loadSidebarCollapsedGroups());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const active = sectionForPath(navItems, pathname);
+    setCollapsedSections((prev) => ensureActiveSectionExpanded(prev, active));
+  }, [pathname, navItems, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveSidebarCollapsedGroups(collapsedSections);
+  }, [collapsedSections, hydrated]);
 
   return (
     <div className={`flex flex-col gap-6 ${collapsed ? 'p-3' : 'p-5'}`}>
@@ -193,19 +224,44 @@ export default function SidebarNav({
 
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
-        {navItems.map((group, groupIdx) => (
-          <div key={groupIdx}>
-            {group.section && !collapsed && (
-              <div className="px-3 pt-4 pb-2">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {group.section}
-                </p>
+        {navItems.map((group, groupIdx) => {
+          const section = group.section;
+          const sectionCollapsed =
+            Boolean(section) && !collapsed && collapsedSections.has(section!);
+          return (
+          <div key={section ?? `g-${groupIdx}`}>
+            {section && !collapsed && (
+              <div className="px-1 pt-3 pb-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCollapsedSections((prev) =>
+                      toggleSidebarCollapsedGroup(prev, section),
+                    )
+                  }
+                  aria-expanded={!sectionCollapsed}
+                  className="w-full flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:bg-slate-50 dark:hover:bg-slate-700/40 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                >
+                  <span
+                    className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500 transition-transform duration-200"
+                    style={{
+                      transform: sectionCollapsed
+                        ? 'rotate(-90deg)'
+                        : 'rotate(0deg)',
+                    }}
+                    aria-hidden
+                  >
+                    expand_more
+                  </span>
+                  <span className="flex-1 text-left truncate">{section}</span>
+                </button>
               </div>
             )}
-            {group.section && collapsed && (
+            {section && collapsed && (
               <div className="my-2 mx-2 h-px bg-slate-200 dark:bg-slate-700" />
             )}
-            {group.items.map((item) => {
+            {!sectionCollapsed &&
+              group.items.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -242,7 +298,8 @@ export default function SidebarNav({
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
     </div>
   );
