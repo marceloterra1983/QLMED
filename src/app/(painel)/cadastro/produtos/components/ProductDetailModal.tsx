@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Section from '@/components/ui/Section';
 import Badge from '@/components/ui/Badge';
+import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
 
 import Modal from '@/components/ui/Modal';
 import Field from '@/components/ui/Field';
@@ -71,6 +72,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
   const [detailObsPisCofins, setDetailObsPisCofins] = useState('');
   const [detailOpenSections, setDetailOpenSections] = useState<Set<string>>(new Set());
   const [detailScrollTo, setDetailScrollTo] = useState<string | null>(null);
+  const [cardViewMode, setCardViewMode] = useState<CardViewMode>('popup');
   const toggleDetailSection = (s: string) => setDetailOpenSections((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
   const [savingDetail, setSavingDetail] = useState(false);
@@ -117,7 +119,6 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
     setDetailObsIcms(product.fiscalObsIcms || '');
     setDetailObsPisCofins(product.fiscalObsPisCofins || '');
     const nextOpenSections = new Set(initialSections || []);
-    nextOpenSections.add('geral');
     setDetailOpenSections(nextOpenSections);
     setDetailScrollTo(initialSections?.length ? initialSections[0] : null);
 
@@ -442,9 +443,12 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
                 )}
               </div>
             </div>
-            <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">close</span>
-            </button>
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0">
+              <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
+              <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
           </div>
         </div>
       }
@@ -489,7 +493,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
 {/* Body */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3">
           {/* Card: Dados Gerais */}
-          <Section id="geral" icon="analytics" tone="emerald" title="Dados Gerais" open={detailOpenSections.has('geral')} onToggle={() => toggleDetailSection('geral')}>
+          <Section id="geral" icon="analytics" tone="emerald" title="Dados Gerais" open={detailOpenSections.has('geral')} onToggle={() => toggleDetailSection('geral')} viewMode={cardViewMode}>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
               {[
                 { label: 'Ultimo Preco', value: formatAmount(detailProduct.lastPrice), icon: 'trending_up', color: 'text-emerald-500 bg-emerald-500/10 ring-emerald-500/20' },
@@ -511,7 +515,28 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           </Section>
 
           {/* Card: Dados do Cadastro */}
-          <Section id="cadastro" icon="edit_note" title="Dados do Cadastro" open={detailOpenSections.has('cadastro')} onToggle={() => toggleDetailSection('cadastro')}>
+          <Section
+            id="cadastro"
+            icon="edit_note"
+            title="Dados do Cadastro"
+            open={detailOpenSections.has('cadastro')}
+            onToggle={() => toggleDetailSection('cadastro')}
+            viewMode={cardViewMode}
+            footerActions={
+              canWrite ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveDetail}
+                  disabled={savingDetail || !detailDirty}
+                  loading={savingDetail}
+                  icon="save"
+                >
+                  {savingDetail ? 'Salvando...' : 'Salvar'}
+                </Button>
+              ) : null
+            }
+          >
             <div className="space-y-2 mt-1">
               {/* Referencias */}
               <div>
@@ -675,7 +700,29 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           </Section>
 
           {/* Card: Dados Fiscais */}
-          <Section id="fiscal" icon="receipt_long" tone="amber" title="Dados Fiscais" open={detailOpenSections.has('fiscal')} onToggle={() => toggleDetailSection('fiscal')}>
+          <Section
+            id="fiscal"
+            icon="receipt_long"
+            tone="amber"
+            title="Dados Fiscais"
+            open={detailOpenSections.has('fiscal')}
+            onToggle={() => toggleDetailSection('fiscal')}
+            viewMode={cardViewMode}
+            footerActions={
+              canWrite ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveDetail}
+                  disabled={savingDetail || !detailDirty}
+                  loading={savingDetail}
+                  icon="save"
+                >
+                  {savingDetail ? 'Salvando...' : 'Salvar'}
+                </Button>
+              ) : null
+            }
+          >
             <div className="space-y-2 mt-1">
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
@@ -878,10 +925,31 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           </Section>
 
           {/* Card: Dados da ANVISA */}
-          <Section id="anvisa" icon="verified_user" tone="teal" title="Dados da ANVISA" open={detailOpenSections.has('anvisa')} onToggle={() => toggleDetailSection('anvisa')}
+          <Section
+            id="anvisa"
+            icon="verified_user"
+            tone="teal"
+            title="Dados da ANVISA"
+            open={detailOpenSections.has('anvisa')}
+            onToggle={() => toggleDetailSection('anvisa')}
             badge={detailProduct.anvisaStatus ? (
               <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${anvisaStatusColor}`}>{detailProduct.anvisaStatus}</span>
             ) : undefined}
+            viewMode={cardViewMode}
+            footerActions={
+              canWrite ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveDetail}
+                  disabled={savingDetail || !detailDirty}
+                  loading={savingDetail}
+                  icon="save"
+                >
+                  {savingDetail ? 'Salvando...' : 'Salvar'}
+                </Button>
+              ) : null
+            }
           >
             <div className="grid grid-cols-2 gap-3 mt-2">
               <DetailField label="Codigo ANVISA" colSpan2>

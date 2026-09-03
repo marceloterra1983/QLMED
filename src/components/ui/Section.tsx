@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import Card from '@/components/ui/Card';
+import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
 
 /**
  * Cartão de seção: chip de ícone, título, corpo — e, quando pedido, recolhível.
@@ -49,6 +50,14 @@ type SectionProps = {
   onToggle?: () => void;
   /** Recolhível não controlado. */
   defaultOpen?: boolean;
+  /** Modo de visualização: 'popup' (abre em popup ao clicar) ou 'expand' (sanfona inline). */
+  viewMode?: 'popup' | 'expand';
+  /** Callback acionado ao clicar quando em modo popup. Se omitido, o próprio Section gere o popup. */
+  onOpenPopup?: () => void;
+  /** Ações no rodapé do popup (ex: botão Salvar). */
+  footerActions?: ReactNode;
+  /** Largura do modal em modo popup (por omissão sm:max-w-4xl). */
+  popupWidth?: string;
   /** Vai para `data-section-id` — ancoragem/rolagem por seção. */
   id?: string;
   className?: string;
@@ -57,12 +66,15 @@ type SectionProps = {
 
 export default function Section({
   icon, title, subtitle, tone = 'primary', badge, variant = 'normal',
-  open, onToggle, defaultOpen, id, className, children,
+  open, onToggle, defaultOpen, viewMode = 'expand', onOpenPopup,
+  footerActions, popupWidth = 'sm:max-w-4xl', id, className, children,
 }: SectionProps) {
   const bodyId = useId();
   const [interno, setInterno] = useState(defaultOpen ?? false);
-  const recolhivel = onToggle !== undefined || defaultOpen !== undefined;
-  const aberto = recolhivel ? (open ?? interno) : true;
+  const [popupInterno, setPopupInterno] = useState(false);
+  const isPopupMode = viewMode === 'popup';
+  const recolhivel = onToggle !== undefined || defaultOpen !== undefined || isPopupMode;
+  const aberto = isPopupMode ? false : recolhivel ? (open ?? interno) : true;
   // Depois da primeira abertura o corpo fica montado e só se esconde: fechar
   // e reabrir não pode apagar o que o utilizador escreveu ou ordenou lá dentro
   // (a Tabela de Preço guarda busca e ordenação em estado local).
@@ -71,6 +83,18 @@ export default function Section({
   const alternar = onToggle ?? (() => setInterno((v) => !v));
   const perigo = variant === 'danger';
   const t = TONE[tone];
+
+  const handleClick = () => {
+    if (isPopupMode) {
+      if (onOpenPopup) {
+        onOpenPopup();
+      } else {
+        setPopupInterno(true);
+      }
+      return;
+    }
+    alternar();
+  };
 
   const cabecalho = (
     <>
@@ -88,28 +112,49 @@ export default function Section({
   );
 
   return (
-    <Card padding="none" className={`${perigo ? 'border-red-200 dark:border-red-900/50' : ''} ${className ?? ''}`} {...(id ? { 'data-section-id': id } : {})}>
-      {recolhivel ? (
-        // O botão dentro do <h3>: navegação por cabeçalhos continua a achar a
-        // seção, e o botão continua a ser o alvo de Enter/Espaço.
-        <h3 className="m-0">
-          <button
-            type="button"
-            onClick={alternar}
-            aria-expanded={aberto}
-            aria-controls={bodyId}
-            className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
-          >
-            {cabecalho}
-            <span aria-hidden="true" className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`}>expand_more</span>
-          </button>
-        </h3>
-      ) : (
-        <h3 className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 m-0">{cabecalho}</h3>
-      )}
-      {jaAbriu ? (
-        <div id={bodyId} hidden={!aberto} className={`p-4 ${recolhivel ? 'border-t border-slate-100 dark:border-slate-800/60' : ''}`}>{children}</div>
+    <>
+      <Card padding="none" className={`${perigo ? 'border-red-200 dark:border-red-900/50' : ''} ${className ?? ''}`} {...(id ? { 'data-section-id': id } : {})}>
+        {recolhivel ? (
+          // O botão dentro do <h3>: navegação por cabeçalhos continua a achar a
+          // seção, e o botão continua a ser o alvo de Enter/Espaço.
+          <h3 className="m-0">
+            <button
+              type="button"
+              onClick={handleClick}
+              {...(isPopupMode ? {} : { 'aria-expanded': aberto, 'aria-controls': bodyId })}
+              className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+            >
+              {cabecalho}
+              {isPopupMode ? (
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400" title="Abrir em popup">open_in_new</span>
+              ) : (
+                <span aria-hidden="true" className={`material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${aberto ? 'rotate-180' : ''}`}>expand_more</span>
+              )}
+            </button>
+          </h3>
+        ) : (
+          <h3 className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 m-0">{cabecalho}</h3>
+        )}
+        {jaAbriu && !isPopupMode ? (
+          <div id={bodyId} hidden={!aberto} className={`p-4 ${recolhivel ? 'border-t border-slate-100 dark:border-slate-800/60' : ''}`}>{children}</div>
+        ) : null}
+      </Card>
+
+      {isPopupMode && !onOpenPopup ? (
+        <CardDetailPopupModal
+          isOpen={popupInterno}
+          onClose={() => setPopupInterno(false)}
+          title={title}
+          subtitle={subtitle}
+          icon={icon}
+          iconColor={perigo ? 'text-red-600 dark:text-red-400' : t.icon}
+          badge={badge}
+          footerActions={footerActions}
+          width={popupWidth}
+        >
+          {children}
+        </CardDetailPopupModal>
       ) : null}
-    </Card>
+    </>
   );
 }

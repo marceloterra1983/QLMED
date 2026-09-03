@@ -41,7 +41,11 @@ interface ModalProps {
    * diálogo de ajustes, com barra lateral de secções em vez de título.
    */
   direction?: 'col' | 'row';
+  /** Nível de empilhamento z-index (por omissão z-50). */
+  zIndex?: string;
 }
+
+const modalStack: string[] = [];
 
 const SUPERFICIE = {
   card: 'bg-white dark:bg-card-dark sm:rounded-xl',
@@ -62,11 +66,21 @@ export default function Modal({
   bodyClassName = 'p-6',
   footer,
   direction = 'col',
+  zIndex = 'z-50',
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
   useModalBackButton(isOpen, onClose);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    modalStack.push(titleId);
+    return () => {
+      const idx = modalStack.lastIndexOf(titleId);
+      if (idx !== -1) modalStack.splice(idx, 1);
+    };
+  }, [isOpen, titleId]);
 
   const focaveis = useCallback(() => {
     const todos = Array.from(modalRef.current?.querySelectorAll<HTMLElement>(SELETOR_FOCAVEL) ?? []).filter(
@@ -83,6 +97,9 @@ export default function Modal({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (modalStack.length > 0 && modalStack[modalStack.length - 1] !== titleId) {
+          return;
+        }
         onClose();
         return;
       }
@@ -99,7 +116,7 @@ export default function Modal({
       e.preventDefault();
       lista[alvo].focus();
     },
-    [onClose, focaveis],
+    [onClose, focaveis, titleId],
   );
 
   // Trava a rolagem do fundo e escuta o teclado enquanto aberto.
@@ -151,7 +168,7 @@ export default function Modal({
     );
 
   return (
-    <div className="fixed inset-0 z-50 !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-slate-900/50 sm:backdrop-blur-sm">
+    <div className={`fixed inset-0 ${zIndex} !mt-0 sm:flex sm:items-center sm:justify-center sm:p-4 sm:bg-slate-900/50 sm:backdrop-blur-sm`}>
       <div className="absolute inset-0 hidden sm:block" onClick={onClose} aria-hidden="true" />
       <div
         ref={modalRef}

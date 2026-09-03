@@ -24,6 +24,8 @@ import PriceTableSection from '@/components/contact-details/PriceTableSection';
 import { InvoiceTable, MovimentacoesTable, DuplicatasTable } from '@/components/contact-details/InvoiceListSection';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import Badge from '@/components/ui/Badge';
+import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
 
 /**
  * A rota devolve o contato sob `customer` ou `supplier` conforme o tipo;
@@ -75,6 +77,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
   const [editDraft, setEditDraft] = useState<Record<string, string>>({});
   const [savingOverride, setSavingOverride] = useState(false);
   const [contactOverride, setContactOverride] = useState<ContactOverrideData | null>(null);
+  const [cardViewMode, setCardViewMode] = useState<CardViewMode>('popup');
 
   const fetchDetails = useCallback(async (target: ContactRef): Promise<ContactDetailsResponse> => {
     const params = new URLSearchParams();
@@ -91,7 +94,7 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
     if (isOpen) {
       setShortName(''); setShortNameDraft(''); setSavingShortName(false);
       setCnpjData(null); setCnpjLoading(false);
-      setIsRegistrationOpen(false); setIsGeneralOpen(true);
+      setIsRegistrationOpen(false); setIsGeneralOpen(false);
       setIsPriceTableOpen(false); setIsInvoicesOpen(false);
       setIsDuplicatesOpen(false); setIsMovimentacoesOpen(false);
       setIsInvoiceModalOpen(false); setIsNfeDetailsOpen(false);
@@ -284,7 +287,15 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
 
       {!loading && details && contactData && (
         <div className="flex flex-col gap-3">
-          <Section title="Dados de Cadastro" subtitle={cfg.registrationSubtitle} icon="badge" tone={cfg.shortNameTone} open={isRegistrationOpen} onToggle={() => setIsRegistrationOpen((prev) => !prev)}>
+          <Section
+            title="Dados de Cadastro"
+            subtitle={cfg.registrationSubtitle}
+            icon="badge"
+            tone={cfg.shortNameTone}
+            open={isRegistrationOpen}
+            onToggle={() => setIsRegistrationOpen((prev) => !prev)}
+            viewMode={cardViewMode}
+          >
             <div className="flex items-center gap-2 mb-3">
               <span className={`material-symbols-outlined text-[14px] ${SECTION_ICON_CLASS[cfg.shortNameTone]}`}>edit_note</span>
               <input type="text" value={shortNameDraft} onChange={(e) => setShortNameDraft(e.target.value)} placeholder={cfg.shortNamePlaceholder} aria-label={cfg.shortNamePlaceholder} maxLength={60} className="flex-1 px-2 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 transition-all" />
@@ -326,7 +337,15 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
           </Section>
 
           <div className="order-first">
-            <Section title="Dados Gerais" subtitle={cfg.generalSubtitle} icon="analytics" tone="emerald" open={isGeneralOpen} onToggle={() => setIsGeneralOpen((prev) => !prev)}>
+            <Section
+              title="Dados Gerais"
+              subtitle={cfg.generalSubtitle}
+              icon="analytics"
+              tone="emerald"
+              open={isGeneralOpen}
+              onToggle={() => setIsGeneralOpen((prev) => !prev)}
+              viewMode={cardViewMode}
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 <StatCard label={cfg.statLabels[0]} value={formatInt(details.purchases.totalInvoices)} icon="receipt_long" color={cfg.firstStatColor} />
                 <StatCard label={cfg.statLabels[1]} value={formatAmount(details.purchases.totalValue)} icon="payments" color="emerald" />
@@ -337,19 +356,58 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
             </Section>
           </div>
 
-          <Section title="Tabela de Preço" subtitle={cfg.priceTableSubtitle} icon="table_chart" tone="teal" open={isPriceTableOpen} onToggle={() => setIsPriceTableOpen((prev) => !prev)} badge={details.priceTable.length || undefined}>
+          <Section
+            title="Tabela de Preço"
+            subtitle={cfg.priceTableSubtitle}
+            icon="table_chart"
+            tone="teal"
+            open={isPriceTableOpen}
+            onToggle={() => setIsPriceTableOpen((prev) => !prev)}
+            badge={details.priceTable.length ? <Badge tone="neutral">{details.priceTable.length}</Badge> : undefined}
+            viewMode={cardViewMode}
+            popupWidth="sm:max-w-5xl"
+          >
             <PriceTableSection priceTable={details.priceTable} meta={details.meta} sortAccentColor={cfg.sortAccentColor} />
           </Section>
 
-          <Section title="Notas Fiscais" subtitle={cfg.invoicesSubtitle} icon="receipt_long" open={isInvoicesOpen} onToggle={() => setIsInvoicesOpen((prev) => !prev)} badge={primaryInvoices.length || undefined}>
+          <Section
+            title="Notas Fiscais"
+            subtitle={cfg.invoicesSubtitle}
+            icon="receipt_long"
+            open={isInvoicesOpen}
+            onToggle={() => setIsInvoicesOpen((prev) => !prev)}
+            badge={primaryInvoices.length ? <Badge tone="neutral">{primaryInvoices.length}</Badge> : undefined}
+            viewMode={cardViewMode}
+            popupWidth="sm:max-w-5xl"
+          >
             <InvoiceTable invoices={primaryInvoices} installmentsMap={invoiceInstallmentsMap} emptyLabel={cfg.invoicesEmptyLabel} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
           </Section>
 
-          <Section title="Movimentações" subtitle="Consignação, demonstração, remessa e outros" icon="swap_horiz" tone="amber" open={isMovimentacoesOpen} onToggle={() => setIsMovimentacoesOpen((prev) => !prev)} badge={movimentacaoInvoices.length || undefined}>
+          <Section
+            title="Movimentações"
+            subtitle="Consignação, demonstração, remessa e outros"
+            icon="swap_horiz"
+            tone="amber"
+            open={isMovimentacoesOpen}
+            onToggle={() => setIsMovimentacoesOpen((prev) => !prev)}
+            badge={movimentacaoInvoices.length ? <Badge tone="neutral">{movimentacaoInvoices.length}</Badge> : undefined}
+            viewMode={cardViewMode}
+            popupWidth="sm:max-w-5xl"
+          >
             <MovimentacoesTable invoices={movimentacaoInvoices} onView={openInvoiceViewer} onDetails={openInvoiceDetails} onDelete={confirmDelete} />
           </Section>
 
-          <Section title="Duplicatas" subtitle="Parcelas encontradas nas notas fiscais" icon="account_balance" tone="rose" open={isDuplicatesOpen} onToggle={() => setIsDuplicatesOpen((prev) => !prev)} badge={details.duplicates.length || undefined}>
+          <Section
+            title="Duplicatas"
+            subtitle="Parcelas encontradas nas notas fiscais"
+            icon="account_balance"
+            tone="rose"
+            open={isDuplicatesOpen}
+            onToggle={() => setIsDuplicatesOpen((prev) => !prev)}
+            badge={details.duplicates.length ? <Badge tone="neutral">{details.duplicates.length}</Badge> : undefined}
+            viewMode={cardViewMode}
+            popupWidth="sm:max-w-5xl"
+          >
             <DuplicatasTable duplicates={details.duplicates} />
           </Section>
         </div>
@@ -371,7 +429,12 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
   return (
     <>
       {inline ? (
-        <div className="space-y-3">{content}</div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-end">
+            <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
+          </div>
+          {content}
+        </div>
       ) : (
         <Modal
       isOpen
@@ -382,26 +445,29 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
       height="sm:h-auto sm:max-h-[90vh]"
       bodyClassName="p-4 sm:p-6"
       header={
-<div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0 hidden sm:flex ${cfg.headerAvatarClass}`}>
-                    <span className={`material-symbols-outlined text-[22px] ${cfg.headerIconClass}`}>{cfg.headerIcon}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                      {contactData?.name || contact?.name || cfg.titleFallback}
-                    </h3>
-                    {contactData?.cnpj && (
-                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatDocument(contactData.cnpj)}</span>
-                    )}
-                  </div>
-                </div>
-                <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0" title="Fechar">
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
+        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0 hidden sm:flex ${cfg.headerAvatarClass}`}>
+                <span className={`material-symbols-outlined text-[22px] ${cfg.headerIconClass}`}>{cfg.headerIcon}</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  {contactData?.name || contact?.name || cfg.titleFallback}
+                </h3>
+                {contactData?.cnpj && (
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatDocument(contactData.cnpj)}</span>
+                )}
               </div>
             </div>
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+              <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
+              <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex p-2 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0" title="Fechar">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
       }
       footer={
 <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-card-dark shrink-0 shadow-sheet-bottom sm:shadow-none">

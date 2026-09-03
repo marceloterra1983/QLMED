@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
+import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
 
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -70,6 +72,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedBatch, setExpandedBatch] = useState<Set<string>>(new Set());
+  const [cardViewMode, setCardViewMode] = useState<CardViewMode>('popup');
   useEffect(() => {
     if (!product.code) return;
     const params = new URLSearchParams({ code: product.code });
@@ -198,42 +201,84 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
     );
   };
 
-  const isSectionOpen = (key: string, defaultOpen: boolean) => defaultOpen ? !expandedGroups.has(`__${key}_closed__`) : expandedGroups.has(`__${key}_open__`);
-  const toggleSection = (key: string, defaultOpen: boolean) => {
-    setExpandedGroups(prev => { const n = new Set(prev); if (defaultOpen) { const k = `__${key}_closed__`; n.has(k) ? n.delete(k) : n.add(k); } else { const k = `__${key}_open__`; n.has(k) ? n.delete(k) : n.add(k); } return n; });
+  const isSectionOpen = (key: string) => expandedGroups.has(`__${key}_open__`);
+  const toggleSection = (key: string) => {
+    setExpandedGroups(prev => {
+      const n = new Set(prev);
+      const k = `__${key}_open__`;
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
   };
 
-  const HistSectionCard = ({ sectionKey, defaultOpen, icon, iconColor, label, count, totalValue, sectionLoading, empty, emptyMsg, color, children }: {
-    sectionKey: string; defaultOpen: boolean; icon: string; iconColor: string; label: string; count: number; totalValue: number; sectionLoading: boolean; empty: boolean; emptyMsg: string; color: 'blue' | 'amber' | 'purple'; children: React.ReactNode;
+  const HistSectionCard = ({ sectionKey, icon, iconColor, label, count, totalValue, sectionLoading, empty, emptyMsg, color, children }: {
+    sectionKey: string; icon: string; iconColor: string; label: string; count: number; totalValue: number; sectionLoading: boolean; empty: boolean; emptyMsg: string; color: 'blue' | 'amber' | 'purple'; children: React.ReactNode;
   }) => {
-    const isOpen = isSectionOpen(sectionKey, defaultOpen);
+    const [popupAberto, setPopupAberto] = useState(false);
+    const isOpen = isSectionOpen(sectionKey);
     const cm = colorMap[color];
+    const isPopupMode = cardViewMode === 'popup';
+
+    const handleClick = () => {
+      if (isPopupMode) {
+        setPopupAberto(true);
+        return;
+      }
+      toggleSection(sectionKey);
+    };
+
+    const cardBody = (
+      <>
+        {sectionLoading ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-8">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${cm.iconBg}`}><Spinner size="md" label="Carregando histórico" /></div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando historico...</p>
+          </div>
+        ) : empty ? (
+          <EmptyState icon="inbox" title={emptyMsg} />
+        ) : children}
+      </>
+    );
+
     return (
-      <div className="bg-white dark:bg-card-dark rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
-        <button onClick={() => toggleSection(sectionKey, defaultOpen)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${cm.iconBg}`}><span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span></div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{label}</h4>
-            {count > 0 && <Badge tone={cm.badgeTone} dot={false}>{count}</Badge>}
-          </div>
-          <div className="flex items-center gap-3">
-            {!sectionLoading && count > 0 && <span className={`text-sm font-bold tabular-nums ${cm.text}`}>{formatAmount(totalValue)}</span>}
-            <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>expand_more</span>
-          </div>
-        </button>
-        {isOpen && (
-          <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-800/60">
-            {sectionLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-8">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${cm.iconBg}`}><Spinner size="md" label="Carregando histórico" /></div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Carregando historico...</p>
-              </div>
-            ) : empty ? (
-              <EmptyState icon="inbox" title={emptyMsg} />
-            ) : <>{children}</>}
-          </div>
+      <>
+        <div className="bg-white dark:bg-card-dark rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800/50 overflow-hidden">
+          <button onClick={handleClick} className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ring-1 shrink-0 ${cm.iconBg}`}><span className={`material-symbols-outlined text-[15px] ${iconColor}`}>{icon}</span></div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">{label}</h4>
+              {count > 0 && <Badge tone={cm.badgeTone} dot={false}>{count}</Badge>}
+            </div>
+            <div className="flex items-center gap-3">
+              {!sectionLoading && count > 0 && <span className={`text-sm font-bold tabular-nums ${cm.text}`}>{formatAmount(totalValue)}</span>}
+              {isPopupMode ? (
+                <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400" title="Abrir em popup">open_in_new</span>
+              ) : (
+                <span className={`material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              )}
+            </div>
+          </button>
+          {isOpen && !isPopupMode && (
+            <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-800/60">
+              {cardBody}
+            </div>
+          )}
+        </div>
+
+        {isPopupMode && (
+          <CardDetailPopupModal
+            isOpen={popupAberto}
+            onClose={() => setPopupAberto(false)}
+            title={label}
+            icon={icon}
+            iconColor={iconColor}
+            width="sm:max-w-5xl"
+            badge={count > 0 ? <Badge tone={cm.badgeTone} dot={false}>{count}</Badge> : undefined}
+          >
+            {cardBody}
+          </CardDetailPopupModal>
         )}
-      </div>
+      </>
     );
   };
 
@@ -264,7 +309,10 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                 {product.outOfLine && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400"><span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha</span>}
               </div>
             </div>
-            <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+            <div className="flex items-center gap-2.5 flex-shrink-0">
+              <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
+              <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
           </div>
         </div>
       }
@@ -277,15 +325,15 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
     >
 {/* Content */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4">
-          <HistSectionCard sectionKey="compras" defaultOpen={true} icon="shopping_cart" iconColor="text-blue-500" label="Historico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado." color="blue">
+          <HistSectionCard sectionKey="compras" icon="shopping_cart" iconColor="text-blue-500" label="Historico de Compras" count={purchaseHistory.length} totalValue={purchaseHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingHistory} empty={purchaseHistory.length === 0} emptyMsg="Nenhum registro de compra encontrado." color="blue">
             <SummaryCards stats={calcStats(purchaseHistory)} color="blue" />
             <HistoryTable items={purchaseHistory} nameKey="supplierName" groupKey="purchase" color="blue" />
           </HistSectionCard>
-          <HistSectionCard sectionKey="vendas" defaultOpen={true} icon="storefront" iconColor="text-amber-500" label="Historico de Vendas" count={salesHistory.length} totalValue={salesHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingSalesHistory} empty={salesHistory.length === 0} emptyMsg="Nenhum registro de venda encontrado." color="amber">
+          <HistSectionCard sectionKey="vendas" icon="storefront" iconColor="text-amber-500" label="Historico de Vendas" count={salesHistory.length} totalValue={salesHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingSalesHistory} empty={salesHistory.length === 0} emptyMsg="Nenhum registro de venda encontrado." color="amber">
             <SummaryCards stats={calcStats(salesHistory)} color="amber" />
             <HistoryTable items={salesHistory} nameKey="customerName" groupKey="sales" color="amber" />
           </HistSectionCard>
-          <HistSectionCard sectionKey="consig" defaultOpen={false} icon="swap_horiz" iconColor="text-purple-500" label="Movimentacoes (Consignacao)" count={consignmentHistory.length} totalValue={consignmentHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingConsignment} empty={consignmentHistory.length === 0} emptyMsg="Nenhuma movimentacao de consignacao encontrada." color="purple">
+          <HistSectionCard sectionKey="consig" icon="swap_horiz" iconColor="text-purple-500" label="Movimentacoes (Consignacao)" count={consignmentHistory.length} totalValue={consignmentHistory.reduce((s, h) => s + h.totalValue, 0)} sectionLoading={loadingConsignment} empty={consignmentHistory.length === 0} emptyMsg="Nenhuma movimentacao de consignacao encontrada." color="purple">
             <SummaryCards stats={calcStats(consignmentHistory)} color="purple" />
             <HistoryTable items={consignmentHistory} nameKey="customerName" groupKey="consignment" color="purple" />
           </HistSectionCard>
