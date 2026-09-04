@@ -27,15 +27,20 @@ export const CERTIDAO_KINDS_ORDER = [
   'crf_fgts',
   'cndt',
   'cnd_estadual_ms',
+  'cnd_estadual_mt',
   'cnd_municipal_mobiliario',
   'cnd_municipal_gerais',
 ] as const;
+
+/** Pasta existente em DOCUMENTOS_ONEDRIVE_ROOT — não criar; fail-closed se faltar. */
+export const CERTIDAO_ARCHIVE_FOLDER = 'Vencidas';
 
 export const CERTIDAO_LABEL: Record<Kind, string> = {
   cnd_federal: 'CND Receita Federal',
   crf_fgts: 'CRF FGTS',
   cndt: 'CNDT (Débitos Trabalhistas)',
   cnd_estadual_ms: 'CND Estadual (MS)',
+  cnd_estadual_mt: 'CND Estadual (MT)',
   cnd_municipal_mobiliario: 'CND Municipal — mobiliário',
   cnd_municipal_gerais: 'CND Municipal — débitos gerais',
   outro: 'Outro',
@@ -46,6 +51,7 @@ export const CERTIDAO_FOLDER: Record<Exclude<Kind, 'outro'>, string> = {
   crf_fgts: 'FGTS',
   cndt: 'Débitos Trabalhistas',
   cnd_estadual_ms: 'Estaduais',
+  cnd_estadual_mt: 'Estaduais',
   cnd_municipal_mobiliario: 'Municipais',
   cnd_municipal_gerais: 'Municipais',
 };
@@ -55,6 +61,7 @@ export const CERTIDAO_UPLOAD_NAME: Record<Exclude<Kind, 'outro'>, (ddMMyy: strin
   crf_fgts: (d) => `CERTIDÃO FGTS ${d} QL MED.pdf`,
   cndt: (d) => `CERTIDÃO DEBITOS TRABALHISTA ${d}.pdf`,
   cnd_estadual_ms: (d) => `CERTIDAO ESTADUAL ${d} QL MED.pdf`,
+  cnd_estadual_mt: (d) => `CERTIDÃO ESTADUAL DO MATO GROSSO ${d}.pdf`,
   cnd_municipal_mobiliario: (d) => `CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO ${d}.pdf`,
   cnd_municipal_gerais: (d) => `certidão débitos gerais val. ${d}.pdf`,
 };

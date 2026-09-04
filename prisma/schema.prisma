@@ -1060,6 +1060,7 @@ enum CompanyDocumentKind {
   crf_fgts
   cndt
   cnd_estadual_ms
+  cnd_estadual_mt
   cnd_municipal_mobiliario
   cnd_municipal_gerais
   outro

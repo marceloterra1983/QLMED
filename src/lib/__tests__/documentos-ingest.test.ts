@@ -51,10 +51,10 @@ const FIXTURE: FixtureRow[] = [
   { folder: 'Estaduais', file: 'CERTIDAO ESTADUAL 26.06.26 QL MED.pdf', kind: 'cnd_estadual_ms', validUntil: '2026-06-26' },
   { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL 18.05.26 QL MED.pdf', kind: 'cnd_estadual_ms', validUntil: '2026-05-18' },
   { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL 12.04.26 QL MED.pdf', kind: 'cnd_estadual_ms', validUntil: '2026-04-12' },
-  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf', kind: 'outro', validUntil: '2026-08-13' },
-  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 06.07.26.pdf', kind: 'outro', validUntil: '2026-07-06' },
-  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 04.06.26.pdf', kind: 'outro', validUntil: '2026-06-04' },
-  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 08.02.26.pdf', kind: 'outro', validUntil: '2026-02-08' },
+  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf', kind: 'cnd_estadual_mt', validUntil: '2026-08-13' },
+  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 06.07.26.pdf', kind: 'cnd_estadual_mt', validUntil: '2026-07-06' },
+  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 04.06.26.pdf', kind: 'cnd_estadual_mt', validUntil: '2026-06-04' },
+  { folder: 'Estaduais', file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 08.02.26.pdf', kind: 'cnd_estadual_mt', validUntil: '2026-02-08' },
   { folder: 'Municipais', file: 'certidão débitos gerais val. 01-10-2026.pdf'.normalize('NFD'), kind: 'cnd_municipal_gerais', validUntil: '2026-10-01' },
   { folder: 'Municipais', file: 'CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO 30.09.26.pdf', kind: 'cnd_municipal_mobiliario', validUntil: '2026-09-30' },
   { folder: 'Municipais', file: 'CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO 02.09.26.pdf', kind: 'cnd_municipal_mobiliario', validUntil: '2026-09-02' },
@@ -211,6 +211,7 @@ function fakePort(entries: { folder: string; file: DocumentosFolderFile }[]): Do
     async downloadPdf() {
       return Buffer.from('%PDF-1.4 fixture-nao-logar');
     },
+    async moveToArchive() {},
   };
 }
 
@@ -369,5 +370,46 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.creates).toBe(0);
     expect(lock.release).not.toHaveBeenCalled();
     expect(memory.ingest).toHaveLength(0);
+  });
+
+  it('linha existente kind outro com nome de MT é reclassificada para cnd_estadual_mt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    memory.docs.push({
+      id: 'doc-mt-legado',
+      companyId: COMPANY,
+      kind: 'outro',
+      fileName: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf',
+      oneDriveItemId: 'od-mt-legado',
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      folderName: 'Estaduais',
+      fileSize: 1024,
+      lastModifiedAt: new Date('2026-08-13T00:00:00.000Z'),
+      validUntil: new Date('2026-08-13T00:00:00.000Z'),
+      validUntilSource: 'filename',
+      removedAt: null,
+      renewalNotifiedAt: null,
+    });
+
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: 'Estaduais',
+          file: {
+            itemId: 'od-mt-legado',
+            name: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf',
+            size: 1024,
+            lastModifiedAt: new Date('2026-09-04T12:00:00.000Z'),
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(result.upserted).toBe(1);
+    expect(memory.creates).toBe(0);
+    expect(memory.docs).toHaveLength(1);
+    expect(memory.docs[0]?.id).toBe('doc-mt-legado');
+    expect(memory.docs[0]?.kind).toBe('cnd_estadual_mt');
   });
 });

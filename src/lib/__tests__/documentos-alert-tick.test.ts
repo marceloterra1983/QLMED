@@ -118,6 +118,7 @@ function fakePort(calls: string[] = []): DocumentosFolderPort {
       calls.push(itemId);
       return PDF;
     },
+    async moveToArchive() {},
   };
 }
 

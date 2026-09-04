@@ -134,7 +134,7 @@ afterEach(() => {
 });
 
 describe('Cadastro › Documentos (SPEC-042 L6)', () => {
-  it('renderiza as 6 certidões na ordem da API, sem ações nas linhas vazias', async () => {
+  it('renderiza as 7 certidões na ordem da API, sem ações nas linhas vazias', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
 
@@ -144,7 +144,7 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     }
 
     const bodyRows = within(table).getAllByRole('row').slice(1);
-    expect(bodyRows).toHaveLength(6);
+    expect(bodyRows).toHaveLength(7);
 
     const verLinks = screen.getAllByRole('link', { name: 'Ver' });
     expect(verLinks).toHaveLength(2);

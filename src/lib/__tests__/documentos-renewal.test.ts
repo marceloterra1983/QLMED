@@ -187,6 +187,7 @@ function fakePort(files: DocumentosFolderFile[]): DocumentosFolderPort {
     async downloadPdf() {
       return PDF;
     },
+    async moveToArchive() {},
   };
 }
 

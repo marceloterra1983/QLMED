@@ -65,10 +65,10 @@ falhar de forma visível, não chutar.
 - **FR-001**: Existe a página `/cadastro/documentos`, no grupo **Cadastros** da
   navegação (`PAGE_GROUPS`, `PAGE_LABELS`), com a seção **Certidões**.
 - **FR-002**: A seção mostra uma tabela com **uma linha por tipo**, nesta ordem
-  fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Municipal —
-  mobiliário; CND Municipal — débitos gerais. Colunas: Certidão, Arquivo,
-  Válida até, Dias restantes, Ações. Tipo sem documento mostra "Não encontrada"
-  e nenhuma ação.
+  fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Estadual
+  (MT); CND Municipal — mobiliário; CND Municipal — débitos gerais. Colunas:
+  Certidão, Arquivo, Válida até, Dias restantes, Ações. Tipo sem documento
+  mostra "Não encontrada" e nenhuma ação.
 - **FR-003**: "Dias restantes" é calculado **no servidor**, em
   `America/Sao_Paulo`, por diferença de datas civis (não de instantes). Faixas
   e rótulos: `> 30` → "ok"; `8–30` → "atenção"; `1–7` → "urgente"; `0` → "vence
@@ -87,7 +87,8 @@ falhar de forma visível, não chutar.
   sob demanda pelo botão "Atualizar do OneDrive" (editor+). Cada PDF vira/atualiza
   um `CompanyDocument` com upsert por `oneDriveItemId`. Classificação por pasta
   e, dentro de `Estaduais`/`Municipais`, por nome (`MATO GROSSO` sem `SUL` →
-  `outro`; `MOBILIARIO` → mobiliário; `gerais` → débitos gerais). Validade lida
+  `cnd_estadual_mt`; `MATO GROSSO DO SUL` → `cnd_estadual_ms`; `MOBILIARIO` →
+  mobiliário; `gerais` → débitos gerais). Validade lida
   do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match →
   `validUntil = null`, `validUntilSource = null`, linha marcada "Sem data".
 - **FR-005b**: Item que sumiu da pasta recebe `removedAt` (não é apagado do
@@ -136,11 +137,27 @@ falhar de forma visível, não chutar.
   registra em `background-service-health` como `documentos-ingest` e
   `documentos-alert`, e respeita `QLMED_DISABLE_BACKGROUND_SERVICES`.
 - **FR-014**: Nenhum runtime DDL: schema por migração Prisma versionada.
+- **FR-015**: A CND Estadual de Mato Grosso é um tipo próprio
+  (`cnd_estadual_mt`) e aparece na tabela de certidões junto das demais, na
+  ordem de FR-002, imediatamente a seguir da CND Estadual (MS). Linhas já
+  gravadas como `outro` com nome de MT são reclassificadas na ingestão
+  (upsert por `oneDriveItemId` recalcula `kind`); não há UPDATE SQL na
+  migração.
+- **FR-016**: Certidão vencida (`validUntil` anterior à data civil de hoje em
+  `America/Sao_Paulo`) que tenha substituto do mesmo `kind` (não removido, com
+  `validUntil` posterior) é **movida** para a pasta `Vencidas` já existente em
+  `2 - CERTIDÕES` no OneDrive. Sem substituto, permanece na pasta de origem.
+  Nada é apagado. Documento com `validUntil` nulo não é arquivado; documento
+  com `validUntilSource = 'manual'` sem substituto também não. O item movido
+  some da pasta de origem na varredura seguinte e recebe `removedAt` pelo
+  caminho já existente, deixando de ser vigente. Se a pasta `Vencidas` não
+  existir, o ciclo de arquivo é fail-closed (não arquiva nada; não cria a
+  pasta).
 
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009): usuário com `/cadastro/documentos` em
-  `allowedPages` vê a página no menu e a tabela com 6 linhas na ordem fixa;
+  `allowedPages` vê a página no menu e a tabela com 7 linhas na ordem fixa;
   usuário sem a página recebe 403 na página e em `/api/documentos`.
 - **AC-002** (FR-003): `daysRemaining('2026-09-04', '2026-09-29') === 25`;
   `('2026-09-04','2026-09-04') === 0`; `('2026-09-04','2026-08-13') === -22`;
@@ -165,6 +182,25 @@ falhar de forma visível, não chutar.
 - **AC-010** (FR-013/014): `npm run db:migrate:verify` e `db:reconcile:verify`
   passam; nenhum `log.*` recebe `content`, `caption` ou token (teste de
   grep/spy como em `whatsapp-evolution-egress.test.ts`).
+- **AC-011** (FR-015): `classifyDocument('Estaduais', 'CERTIDÃO ESTADUAL DO
+  MATO GROSSO 13.08.26.pdf') === 'cnd_estadual_mt'`; o mesmo nome com
+  `MATO GROSSO DO SUL` continua `cnd_estadual_ms`. A fixture de 24 nomes
+  classifica as 4 linhas de MT como `cnd_estadual_mt`. Uma linha já gravada
+  com `kind = 'outro'` e nome de MT passa a `cnd_estadual_mt` na varredura
+  seguinte (mesmo `oneDriveItemId`).
+- **AC-012** (FR-016):
+  (a) só arquiva quando `validUntil` é anterior a hoje (data civil em
+  `America/Sao_Paulo`); vence hoje permanece;
+  (b) só arquiva se existir outro documento do mesmo `kind`, não removido,
+  com `validUntil` posterior — sem substituto, a vencida fica;
+  (c) nunca arquiva `validUntilSource = 'manual'` sem substituto; nunca
+  arquiva `validUntil` nulo;
+  (d) o movimento é `moveOneDriveItem` para `Vencidas`; nada é apagado;
+  (e) cada movimento é registado em log com `kind` e nome do ficheiro; a
+  ingestão devolve a contagem em `arquivados`;
+  (f) na varredura seguinte o item já não está na pasta de origem, recebe
+  `removedAt` e não é vigente. Pasta `Vencidas` ausente → `arquivados = 0`
+  e a ingestão não falha.
 
 ## Non-functional
 
@@ -181,8 +217,6 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias (alvará, CRT CREA, falência, protestos): o modelo tem
   `category`, a UI só mostra `certidao`.
-- Certidão estadual de MT: dono decidiu que a exigida é MS; MT cai em `outro`
-  e só aparece em "Outros arquivos na pasta" (colapsado).
 - E-mail e push para estes avisos.
 
 ## Applicable ADRs

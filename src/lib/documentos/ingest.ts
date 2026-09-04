@@ -8,9 +8,9 @@ import {
   markBackgroundServiceStarted,
 } from '@/lib/background-service-health';
 import { getSingleCompany } from '@/lib/single-company';
-import { CERTIDAO_FOLDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
+import { CERTIDAO_FOLDER, CERTIDAO_KINDS_ORDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
 import { classifyDocument } from './classify';
-import { extractValidUntil, selectVigente, toYmd } from './validity';
+import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
 
@@ -33,6 +33,8 @@ export type DocumentosFolderPort = {
   /** Lista os PDFs diretos de uma subpasta de DOCUMENTOS_ONEDRIVE_ROOT. */
   listPdfs(folderName: string): Promise<DocumentosFolderFile[]>;
   downloadPdf(itemId: string): Promise<Buffer>;
+  /** Move o item para a pasta Vencidas. Não apaga. */
+  moveToArchive(itemId: string): Promise<void>;
 };
 
 /** Documento novo cuja validade supera a do vigente anterior do mesmo tipo. */
@@ -49,6 +51,7 @@ export type DocumentosIngestResult = {
   upserted: number;
   removed: number;
   renewals: RenewalEvent[];
+  arquivados: number;
 };
 
 /** Outra ingestão já detém o advisory lock desta empresa. Rotas respondem 409. */
@@ -230,6 +233,8 @@ async function ingestCompany(
     }
   }
 
+  const arquivados = await archiveExpiredDocuments(companyId, port, now);
+
   const removed = await prisma.companyDocument.updateMany({
     where: {
       companyId,
@@ -245,14 +250,105 @@ async function ingestCompany(
     upserted,
     removed: removed.count,
     renewals,
+    arquivados,
   };
 
   await saveIngestSuccess(companyId, now);
   log.info(
-    { scanned: result.scanned, upserted: result.upserted, removed: result.removed, renewals: result.renewals.length },
+    {
+      scanned: result.scanned,
+      upserted: result.upserted,
+      removed: result.removed,
+      renewals: result.renewals.length,
+      arquivados: result.arquivados,
+    },
     'documentos_ingest_ok',
   );
   return result;
+}
+
+type ArchiveCandidate = {
+  id: string;
+  kind: CompanyDocumentKind;
+  fileName: string;
+  validUntil: Date | null;
+  validUntilSource: string | null;
+  oneDriveItemId: string;
+};
+
+const CERTIDAO_KIND_SET = new Set<string>(CERTIDAO_KINDS_ORDER);
+
+function hasLaterSubstitute(row: ArchiveCandidate, siblings: ArchiveCandidate[]): boolean {
+  const ymd = toYmd(row.validUntil);
+  if (!ymd) return false;
+  return siblings.some((other) => {
+    if (other.id === row.id) return false;
+    const otherYmd = toYmd(other.validUntil);
+    return otherYmd != null && otherYmd > ymd;
+  });
+}
+
+/**
+ * Move para Vencidas só o que já tem substituto. Falha da pasta aborta o
+ * ciclo de arquivo (fail-closed) e não derruba a ingestão.
+ */
+async function archiveExpiredDocuments(
+  companyId: string,
+  port: DocumentosFolderPort,
+  now: Date,
+): Promise<number> {
+  const today = todayInSaoPaulo(now);
+  const live = (await prisma.companyDocument.findMany({
+    where: {
+      companyId,
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      removedAt: null,
+    },
+    select: {
+      id: true,
+      kind: true,
+      fileName: true,
+      validUntil: true,
+      validUntilSource: true,
+      oneDriveItemId: true,
+    },
+  })) as ArchiveCandidate[];
+
+  const byKind = new Map<CompanyDocumentKind, ArchiveCandidate[]>();
+  for (const row of live) {
+    if (!CERTIDAO_KIND_SET.has(row.kind)) continue;
+    const list = byKind.get(row.kind);
+    if (list) list.push(row);
+    else byKind.set(row.kind, [row]);
+  }
+
+  const candidates: ArchiveCandidate[] = [];
+  for (const rows of byKind.values()) {
+    for (const row of rows) {
+      const ymd = toYmd(row.validUntil);
+      if (!ymd) continue;
+      if (daysRemaining(today, ymd) >= 0) continue;
+      if (!hasLaterSubstitute(row, rows)) continue;
+      candidates.push(row);
+    }
+  }
+
+  if (candidates.length === 0) return 0;
+
+  let arquivados = 0;
+  try {
+    for (const row of candidates) {
+      await port.moveToArchive(row.oneDriveItemId);
+      arquivados += 1;
+      log.info({ kind: row.kind, fileName: row.fileName }, 'documentos_archived');
+    }
+  } catch (error) {
+    log.warn(
+      { err: sanitizeError(error instanceof Error ? error.message : 'archive') },
+      'documentos_archive_failed',
+    );
+  }
+  return arquivados;
 }
 
 export async function runDocumentosIngest(

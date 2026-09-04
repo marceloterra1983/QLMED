@@ -40,10 +40,12 @@ import { GET } from '@/app/api/documentos/route';
 const NOW = new Date('2026-09-04T18:00:00.000Z');
 
 describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
-  it('devolve exatamente 6 linhas na ordem CERTIDAO_KINDS_ORDER', () => {
+  it('devolve exatamente 7 linhas na ordem CERTIDAO_KINDS_ORDER', () => {
     const listing = buildDocumentosListing([], null, NOW);
-    expect(listing.certidoes).toHaveLength(6);
+    expect(listing.certidoes).toHaveLength(7);
     expect(listing.certidoes.map((row) => row.kind)).toEqual([...CERTIDAO_KINDS_ORDER]);
+    expect(listing.certidoes[3]?.kind).toBe('cnd_estadual_ms');
+    expect(listing.certidoes[4]?.kind).toBe('cnd_estadual_mt');
   });
 
   it('tipo ausente: fileName null e status Não encontrada', () => {
@@ -177,7 +179,7 @@ describe('GET /api/documentos', () => {
     expect(mocks.documentFindMany).not.toHaveBeenCalled();
   });
 
-  it('200 com 6 certidões na ordem fixa, daysRemaining/status do servidor, sem companyId', async () => {
+  it('200 com 7 certidões na ordem fixa, daysRemaining/status do servidor, sem companyId', async () => {
     mocks.documentFindMany.mockResolvedValue([
       {
         id: 'vigente',
@@ -204,7 +206,7 @@ describe('GET /api/documentos', () => {
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.certidoes).toHaveLength(6);
+    expect(body.certidoes).toHaveLength(7);
     expect(body.certidoes.map((row: { kind: string }) => row.kind)).toEqual([...CERTIDAO_KINDS_ORDER]);
     expect(body.certidoes[0].id).toBe('vigente');
     expect(body.certidoes[0].history).toHaveLength(1);

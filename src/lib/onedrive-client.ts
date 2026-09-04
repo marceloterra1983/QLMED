@@ -381,6 +381,26 @@ export async function openOneDriveItemContent(
  * clínico, então deixá-lo para trás não é opção. 404 conta como sucesso: o
  * objeto já não está lá.
  */
+export async function moveOneDriveItem(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+  novoParentId: string,
+): Promise<{ id: string; parentId: string | null }> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const encodedItemId = encodeURIComponent(itemId);
+  const payload = await graphWrite<OneDriveItem & { parentReference?: { id?: string } }>(
+    accessToken,
+    `/drives/${encodedDriveId}/items/${encodedItemId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentReference: { id: novoParentId } }),
+    },
+  );
+  return { id: payload.id, parentId: payload.parentReference?.id ?? null };
+}
+
 export async function deleteOneDriveItem(
   accessToken: string,
   driveId: string,

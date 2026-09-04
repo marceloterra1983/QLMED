@@ -31,7 +31,7 @@ export function classifyDocument(folderName: string, fileName: string): CompanyD
   if (folder === FOLDER_FGTS) return 'crf_fgts';
   if (folder === FOLDER_CNDT) return 'cndt';
   if (folder === FOLDER_ESTADUAIS) {
-    if (file.includes(TOKEN_MATO_GROSSO) && !file.includes(TOKEN_SUL)) return 'outro';
+    if (file.includes(TOKEN_MATO_GROSSO) && !file.includes(TOKEN_SUL)) return 'cnd_estadual_mt';
     return 'cnd_estadual_ms';
   }
   if (folder === FOLDER_MUNICIPAIS) {
