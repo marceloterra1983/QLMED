@@ -39,3 +39,8 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run > /dev/null 2>&1 && echo SUITE_OK
   EXPECT: SUITE_OK
   EVIDENCE: pending
+
+- [ ] G9: `renewalNotifiedAt` gravado ANTES do envio da renovação (FR-011); teste prova que a reexecução não reenvia
+  CHECK: grep -n "renewalNotifiedAt" src/lib/documentos/alerts.ts | head -8; npx vitest run src/lib/__tests__/documentos-renewal.test.ts 2>&1 | tail -3
+  EXPECT: /passed/
+  EVIDENCE: pending

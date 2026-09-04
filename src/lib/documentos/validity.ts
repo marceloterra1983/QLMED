@@ -55,7 +55,7 @@ export function statusFor(days: number | null): { key: DocumentStatusKey; label:
   return { key: 'vencida', label: `vencida há ${-days} dias` };
 }
 
-function toYmd(value: Date | string | null): string | null {
+export function toYmd(value: Date | string | null | undefined): string | null {
   if (value == null) return null;
   if (typeof value === 'string') {
     const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());

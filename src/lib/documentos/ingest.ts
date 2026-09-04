@@ -10,7 +10,7 @@ import {
 import { getSingleCompany } from '@/lib/single-company';
 import { CERTIDAO_FOLDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
 import { classifyDocument } from './classify';
-import { extractValidUntil, selectVigente } from './validity';
+import { extractValidUntil, selectVigente, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 
 /**
@@ -68,16 +68,6 @@ function sanitizeError(message: string): string {
     .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
     .replace(/eyJ[a-zA-Z0-9_-]{10,}/g, '[token]')
     .slice(0, 500);
-}
-
-function ymd(value: Date | string | null | undefined): string | null {
-  if (value == null) return null;
-  if (typeof value === 'string') {
-    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
-    return match?.[1] ?? null;
-  }
-  if (Number.isNaN(value.getTime())) return null;
-  return value.toISOString().slice(0, 10);
 }
 
 function dateFromYmd(value: string): Date {
@@ -171,7 +161,7 @@ async function ingestCompany(
       const existing = byItemId.get(file.itemId);
 
       const previous = vigenteByKind.get(kind);
-      const previousYmd = previous ? ymd(previous.validUntil) : null;
+      const previousYmd = previous ? toYmd(previous.validUntil) : null;
 
       let row: {
         id: string;
@@ -218,19 +208,21 @@ async function ingestCompany(
 
       if (
         isRenewal({
-          persistedYmd: ymd(row.validUntil),
+          persistedYmd: toYmd(row.validUntil),
           renewalNotifiedAt: row.renewalNotifiedAt,
           previousYmd,
           hadPreviousVigente: Boolean(previous),
           kindExisted: kindsSeenBefore.has(kind),
         })
       ) {
+        // Consumidor (L7): gravar renewalNotifiedAt ANTES do envio.
+        // Reinício entre envio e escrita duplica o aviso (FR-011).
         renewals.push({
           companyId,
           kind,
           documentId: row.id,
           previousValidUntil: previousYmd,
-          validUntil: ymd(row.validUntil) as string,
+          validUntil: toYmd(row.validUntil) as string,
         });
       }
     }
@@ -282,7 +274,10 @@ export async function runDocumentosIngest(
       // o estado não o substitui.
     }
     log.warn(
-      { err: sanitizeError(error instanceof Error ? error.message : 'ingest') },
+      {
+        err: sanitizeError(error instanceof Error ? error.message : 'ingest'),
+        stack: sanitizeError(String(error && (error as { stack?: string }).stack ? (error as { stack?: string }).stack : '')),
+      },
       'documentos_ingest_failed',
     );
     throw error;
@@ -309,7 +304,10 @@ export function startDocumentosIngest(): void {
     } catch (error) {
       markBackgroundServiceError('documentos-ingest', error);
       log.error(
-        { err: sanitizeError(error instanceof Error ? error.message : 'ingest') },
+        {
+          err: sanitizeError(error instanceof Error ? error.message : 'ingest'),
+          stack: sanitizeError(String(error && (error as { stack?: string }).stack ? (error as { stack?: string }).stack : '')),
+        },
         'documentos_ingest_tick_failed',
       );
     }

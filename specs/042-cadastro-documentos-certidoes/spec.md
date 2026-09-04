@@ -18,6 +18,8 @@ affected_modules:
 
 **Status**: Approved (dono mandou executar L1 em 2026-09-04; perguntas 1–3 do PLAN adiadas para L7)
 
+A entrega L1–L6 cobre FR-001 a FR-009, FR-013 e FR-014. FR-010, FR-011 e FR-012 ficam para a folha L7, ainda não executada.
+
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
 forma de tabela, permitindo visualizar e baixar os arquivos, assim como data de
@@ -107,18 +109,18 @@ falhar de forma visível, não chutar.
 
 ### Alerta por WhatsApp
 
-- **FR-010**: Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s com
+- **FR-010**: (L7, pendente) Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s com
   chave de slot, como `sync-scheduler`) percorre o documento vigente de cada
   tipo e envia **o PDF como documento** com legenda quando `diasRestantes` está
   em `{30, 15, 7, 3, 1, 0}` ou, vencido, a cada 7 dias (`-7, -14, ...`).
   Idempotência por `(documento, limiar)` em `alertedThresholds Int[]`; o
   limiar entra no array **antes** do envio (sem duplicar em reinício).
   Tipo **sem documento** gera uma linha de texto no mesmo aviso diário.
-- **FR-011**: Quando a ingestão encontra um documento cujo `validUntil` supera
+- **FR-011**: (L7, pendente) Quando a ingestão encontra um documento cujo `validUntil` supera
   o vigente anterior do mesmo tipo, envia o PDF com legenda "renovada — válida
   até dd/MM/yyyy" uma única vez (`renewalNotifiedAt`). Sem vigente anterior
   (primeira carga) não avisa: backfill não é evento.
-- **FR-012**: Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
+- **FR-012**: (L7, pendente) Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
   `DOCUMENTOS_WHATSAPP_GROUP_JID` (`@g.us`) e config Evolution presente.
   Faltando qualquer peça: silencioso, sem erro, sem fallback para o grupo
   fiscal (mesma decisão do IMPCG). Envio via `sendWhatsAppDocument` existente.

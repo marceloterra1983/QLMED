@@ -161,7 +161,9 @@ const FIXTURE: FixtureRow[] = [
 describe('SPEC-042 L3 — classifyDocument / extractValidUntil', () => {
   it('a fixture tem 24 nomes; sem data só o Tribunal (sem padrão) e o 05.04 (sem ano)', () => {
     expect(FIXTURE).toHaveLength(24);
-    const withoutDate = FIXTURE.filter((row) => row.validUntil === null).map((row) => row.file);
+    const withDate = FIXTURE.filter((row) => extractValidUntil(row.file) != null).map((row) => row.file);
+    const withoutDate = FIXTURE.filter((row) => extractValidUntil(row.file) == null).map((row) => row.file);
+    expect(withDate).toHaveLength(22);
     expect(withoutDate).toHaveLength(2);
     expect(withoutDate.some((name) => name.includes('Tribunal'))).toBe(true);
     expect(withoutDate.some((name) => name.endsWith('05.04.pdf'))).toBe(true);

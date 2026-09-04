@@ -1,7 +1,7 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { CERTIDAO_KINDS_ORDER, CERTIDAO_LABEL } from './constants';
-import { daysRemaining, selectVigente, statusFor, todayInSaoPaulo } from './validity';
+import { daysRemaining, selectVigente, statusFor, todayInSaoPaulo, toYmd } from './validity';
 
 export type DocumentosHistoryItem = {
   id: string;
@@ -35,16 +35,6 @@ export type DocumentosListSource = {
   validUntilSource: string | null;
   removedAt: Date | string | null;
 };
-
-function toYmd(value: Date | string | null): string | null {
-  if (value == null) return null;
-  if (typeof value === 'string') {
-    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
-    return match?.[1] ?? null;
-  }
-  if (Number.isNaN(value.getTime())) return null;
-  return value.toISOString().slice(0, 10);
-}
 
 function compareYmdDesc(a: string | null, b: string | null): number {
   if (a === b) return 0;
