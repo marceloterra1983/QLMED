@@ -13,6 +13,9 @@ export const DOCUMENTOS_INGEST_INTERVAL_MS = 60 * 60 * 1000;
 /** Hora local do job diário de alerta (America/Sao_Paulo). */
 export const DOCUMENTOS_ALERT_HOUR_LOCAL = 8;
 
+/** Tick do scheduler de alerta: só age na hora local acima. */
+export const DOCUMENTOS_ALERT_TICK_MS = 60 * 1000;
+
 export const DOCUMENTOS_ALERT_THRESHOLDS = [30, 15, 7, 3, 1, 0] as const;
 
 export const DOCUMENTOS_EXPIRED_REPEAT_DAYS = 7;
@@ -65,10 +68,6 @@ export function isDocumentosWhatsAppEnabled(): boolean {
  * ir a um grupo de teste sem atingir o grupo de produção.
  */
 export function getDocumentosWhatsAppGroupRaw(): string | null {
-  return (
-    // Sem fallback para os grupos partilhados, de propósito. Os dois que
-    // estavam aqui — NOTIFICATION_WHATSAPP_GROUP e QLMED_WHATSAPP_GROUP_JID —
-    // são o grupo FISCAL. Sem destino próprio, o canal fica desligado.
-    process.env.DOCUMENTOS_WHATSAPP_GROUP_JID ?? null
-  );
+  // Sem fallback para o grupo fiscal. Sem destino próprio, o canal fica desligado.
+  return process.env.DOCUMENTOS_WHATSAPP_GROUP_JID ?? null;
 }

@@ -4,7 +4,7 @@ export type BackgroundServiceName =
   | 'impcg-mail-ingest'
   | 'cassems-mail-ingest'
   | 'documentos-ingest'
-  // L7 reintroduz 'documentos-alert' junto com o job.
+  | 'documentos-alert'
   | 'notification-outbox-purge';
 
 export interface BackgroundServiceStatus {

@@ -18,7 +18,7 @@ Scope: src/lib/documentos/ingest.ts, lock key, BackgroundServiceName, wiring no 
   EVIDENCE: rc=1
 
 - [x] G4: lock advisory e health registrados
-  CHECK: grep -n "documentosIngestLockKey" src/lib/postgres-advisory-lock.ts src/lib/documentos/ingest.ts | wc -l; grep -c "'documentos-ingest'\|'documentos-alert'" src/lib/background-service-health.ts
+  CHECK: grep -n "documentosIngestLockKey" src/lib/postgres-advisory-lock.ts src/lib/documentos/ingest.ts | wc -l; grep -cE "^[[:space:]]*\|[[:space:]]*'documentos-(ingest|alert)'$" src/lib/background-service-health.ts
   EXPECT: /[2-9]\n2/
   EVIDENCE: 3 | 2
 

@@ -20,6 +20,7 @@ const globalForBootstrap = globalThis as unknown as {
   __impcgIngestStarted?: boolean;
   __cassemsIngestStarted?: boolean;
   __documentosIngestStarted?: boolean;
+  __documentosAlertStarted?: boolean;
   __outboxPurgeStarted?: boolean;
 };
 
@@ -66,6 +67,15 @@ if (!globalForBootstrap.__documentosIngestStarted) {
       .then((m) => m.startDocumentosIngest())
       .catch((err) => log.error({ err }, 'DocumentosIngest falha ao iniciar'));
   }, 20_000);
+}
+
+if (!globalForBootstrap.__documentosAlertStarted) {
+  globalForBootstrap.__documentosAlertStarted = true;
+  setTimeout(() => {
+    import('./documentos/alerts')
+      .then((m) => m.startDocumentosAlert())
+      .catch((err) => log.error({ err }, 'DocumentosAlert falha ao iniciar'));
+  }, 22_000);
 }
 
 if (!globalForBootstrap.__outboxPurgeStarted) {

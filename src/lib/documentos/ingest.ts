@@ -12,6 +12,7 @@ import { CERTIDAO_FOLDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACC
 import { classifyDocument } from './classify';
 import { extractValidUntil, selectVigente, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
+import type { DocumentosAlertDeps } from './alerts';
 
 /**
  * SPEC-042 — contrato da ingestão de certidões (OneDrive → CompanyDocument).
@@ -62,11 +63,12 @@ const log = createLogger('documentos/ingest');
 
 const CERTIDAO_FOLDERS = [...new Set(Object.values(CERTIDAO_FOLDER))];
 
-function sanitizeError(message: string): string {
+export function sanitizeError(message: string): string {
   return message
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
     .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
     .replace(/eyJ[a-zA-Z0-9_-]{10,}/g, '[token]')
+    .replace(/\b(accessToken|refreshToken|apiKey|apikey)\b/gi, '[token]')
     .slice(0, 500);
 }
 
@@ -257,6 +259,7 @@ export async function runDocumentosIngest(
   companyId: string,
   port?: DocumentosFolderPort,
   now: Date = new Date(),
+  alertDeps?: DocumentosAlertDeps,
 ): Promise<DocumentosIngestResult> {
   const lock = await acquirePostgresAdvisoryLock(documentosIngestLockKey(companyId));
   if (!lock) {
@@ -265,7 +268,22 @@ export async function runDocumentosIngest(
 
   try {
     const folderPort = port ?? (await createDocumentosFolderPort(companyId));
-    return await ingestCompany(companyId, folderPort, now);
+    const result = await ingestCompany(companyId, folderPort, now);
+    if (result.renewals.length > 0) {
+      try {
+        const { notifyRenewals } = await import('./alerts');
+        await notifyRenewals(result.renewals, {
+          ...alertDeps,
+          port: alertDeps?.port ?? folderPort,
+        });
+      } catch (error) {
+        log.warn(
+          { err: sanitizeError(error instanceof Error ? error.message : 'renewal') },
+          'documentos_renewal_notify_failed',
+        );
+      }
+    }
+    return result;
   } catch (error) {
     try {
       await saveIngestError(companyId, now, error);
