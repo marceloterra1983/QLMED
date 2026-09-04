@@ -2,40 +2,42 @@
 
 Scope: src/lib/documentos/ingest.ts, lock key, BackgroundServiceName, wiring no bootstrap. Porta de OneDrive injetável; teste com porta falsa.
 
-- [ ] G1: runDocumentosIngest com porta falsa: 24 itens → 24 linhas; segunda passada → 0 upserts novos; item ausente → removedAt; renomeado → mesma linha, nome novo
+- [x] G1: runDocumentosIngest com porta falsa: 24 itens → 24 linhas; segunda passada → 0 upserts novos; item ausente → removedAt; renomeado → mesma linha, nome novo
   CHECK: npx vitest run src/lib/__tests__/documentos-ingest.test.ts 2>&1 | tail -4
   EXPECT: /Tests\s+\d+ passed/
-  EVIDENCE: pending
+  EVIDENCE: Start at  18:30:05 | Duration  210ms (transform 82ms, setup 16ms, import 35ms, tests 79ms, environment 0ms)
 
-- [ ] G2: validUntilSource='manual' nunca é sobrescrito pela ingestão (caso no mesmo teste)
+- [x] G2: validUntilSource='manual' nunca é sobrescrito pela ingestão (caso no mesmo teste)
   CHECK: grep -n "manual" src/lib/__tests__/documentos-ingest.test.ts
   EXPECT: manual
-  EVIDENCE: pending
+  EVIDENCE: 328:    expect(row!.validUntilSource).toBe('manual'); | 329:    expect(row!.validUntil).toEqual(manualDate);
 
-- [ ] G3: conexão resolvida SÓ por accountEmail nomeado — sem fallback "qualquer conexão"
+- [x] G3: conexão resolvida SÓ por accountEmail nomeado — sem fallback "qualquer conexão"
   CHECK: grep -n "orderBy: { updatedAt: 'desc' }" src/lib/documentos/ingest.ts; echo "rc=$?"
   EXPECT: rc=1
-  EVIDENCE: pending
+  EVIDENCE: rc=1
 
-- [ ] G4: lock advisory e health registrados
+- [x] G4: lock advisory e health registrados
   CHECK: grep -n "documentosIngestLockKey" src/lib/postgres-advisory-lock.ts src/lib/documentos/ingest.ts | wc -l; grep -c "'documentos-ingest'\|'documentos-alert'" src/lib/background-service-health.ts
   EXPECT: /[2-9]\n2/
-  EVIDENCE: pending
+  EVIDENCE: 3 | 2
 
-- [ ] G5: bootstrap inicia o serviço e respeita QLMED_DISABLE_BACKGROUND_SERVICES
+- [x] G5: bootstrap inicia o serviço e respeita QLMED_DISABLE_BACKGROUND_SERVICES
   CHECK: grep -n "startDocumentosIngest" src/lib/bootstrap.ts src/lib/documentos/ingest.ts | wc -l
   EXPECT: /[2-9]/
-  EVIDENCE: pending
+  EVIDENCE: 2
 
-- [ ] G6: nenhum log recebe buffer/nome de token (spy em logger como whatsapp-evolution-egress.test.ts)
-  CHECK: npx vitest run src/lib/__tests__/documentos-ingest-logs.test.ts 2>&1 | tail -3
+- [x] G6: nenhum log recebe buffer/nome de token (spy em logger como whatsapp-evolution-egress.test.ts)
+  CHECK: npx vitest run src/lib/__tests__/documentos-ingest-logs.test.ts 2>&1 | tail -4
   EXPECT: /passed/
-  EVIDENCE: pending
+  EVIDENCE: Start at  18:30:47 | Duration  181ms (transform 73ms, setup 16ms, import 17ms, tests 67ms, environment 0ms)
 
 - [ ] G7: smoke real no preview :3002 com a conexão de faturamento@ — POST /api/documentos/sync responde 200 e a tabela CompanyDocument tem ≥ 20 linhas
   EVIDENCE: pending
 
-- [ ] G8: typecheck e lint limpos
+ABANDON: G7 smoke real fica com o driver após o merge
+
+- [x] G8: typecheck e lint limpos
   CHECK: npx tsc --noEmit && npm run lint --silent && echo TL_OK
   EXPECT: TL_OK
-  EVIDENCE: pending
+  EVIDENCE: (node:3721791) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set. | (Use `node --trace-warnings ...` to show where the warning was created)

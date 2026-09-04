@@ -3,6 +3,8 @@ export type BackgroundServiceName =
   | 'local-xml-sync'
   | 'impcg-mail-ingest'
   | 'cassems-mail-ingest'
+  | 'documentos-ingest'
+  | 'documentos-alert'
   | 'notification-outbox-purge';
 
 export interface BackgroundServiceStatus {
