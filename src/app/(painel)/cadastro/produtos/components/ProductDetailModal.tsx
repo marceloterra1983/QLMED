@@ -403,47 +403,54 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
           {detailProduct.outOfLine && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-400 via-red-500 to-red-400" />
           )}
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
-              <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">inventory_2</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                {detailProduct.codigo && <><span className="font-mono text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
-                {detailProduct.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{detailProduct.code}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
-                {detailProduct.description}
-              </h3>
-              {detailProduct.shortName && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
-              )}
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                {detailProduct.outOfLine && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
-                    <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
-                  </span>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">inventory_2</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                {(detailProduct.codigo || detailProduct.code) && (
+                  <p className="text-sm font-mono leading-snug">
+                    {detailProduct.codigo && <span className="text-emerald-600 dark:text-emerald-400">{detailProduct.codigo}</span>}
+                    {detailProduct.codigo && detailProduct.code && <span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span>}
+                    {detailProduct.code && <span className="text-blue-600 dark:text-blue-400">{detailProduct.code}</span>}
+                  </p>
                 )}
-                {detailProduct.productType && (
-                  <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                  {detailProduct.description}
+                </h3>
+                {detailProduct.shortName && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailProduct.shortName}</p>
                 )}
-                {detailProduct.productSubtype && (
-                  <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
-                )}
-                {detailProduct.productSubgroup && (
-                  <span className="px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
-                )}
-                {detailProduct.ean && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
-                    EAN {detailProduct.ean}
-                  </span>
-                )}
-                {detailProduct.anvisa && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
-                    <span className="material-symbols-outlined text-[11px]">verified</span>{detailProduct.anvisa}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {detailProduct.outOfLine && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
+                      <span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha
+                    </span>
+                  )}
+                  {detailProduct.productType && (
+                    <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{detailProduct.productType}</span>
+                  )}
+                  {detailProduct.productSubtype && (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{detailProduct.productSubtype}</span>
+                  )}
+                  {detailProduct.productSubgroup && (
+                    <span className="px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-bold text-teal-600 dark:text-teal-400">{detailProduct.productSubgroup}</span>
+                  )}
+                  {detailProduct.ean && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
+                      EAN {detailProduct.ean}
+                    </span>
+                  )}
+                  {detailProduct.anvisa && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40 text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
+                      <span className="material-symbols-outlined text-[11px]">verified</span>{detailProduct.anvisa}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0">
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0 w-full sm:w-auto">
               <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
               <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>

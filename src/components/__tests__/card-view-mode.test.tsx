@@ -166,6 +166,24 @@ describe('ProductDetailModal: recolhimento e alternador de modo', () => {
     expect(out).toContain('open_in_new');
   });
 
+  it('empilha cabeçalho no mobile sem esmagar o título ao lado do toggle', () => {
+    const out = renderToStaticMarkup(
+      <ProductDetailModal
+        product={dummyProduct}
+        onClose={() => {}}
+        onUpdated={() => {}}
+        onOpenHistory={() => {}}
+        hierOptions={dummyHier}
+        settingsOptions={dummySettings}
+      />
+    );
+    expect(out).toContain('flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3');
+    expect(out).toContain('w-full sm:w-auto');
+    expect(out).toContain('INT-01');
+    expect(out).toContain('COD-123');
+    expect(out).toContain('Produto Teste');
+  });
+
   it('não força abertura de geral por padrão no código', () => {
     const fs = require('fs');
     const src = fs.readFileSync('src/app/(painel)/cadastro/produtos/components/ProductDetailModal.tsx', 'utf8');
@@ -201,5 +219,6 @@ describe('HistoryModal: recolhimento e alternador de modo', () => {
     expect(out).toContain('Abrir em popup');
     expect(out).toContain('Expandir no modal');
     expect(out).toContain('open_in_new');
+    expect(out).toContain('flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3');
   });
 });
