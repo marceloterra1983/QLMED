@@ -36,6 +36,6 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   EVIDENCE: pending
 
 - [ ] G8: typecheck, lint e suíte verdes
-  CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run 2>&1 | tail -3
-  EXPECT: /passed/
+  CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run > /dev/null 2>&1 && echo SUITE_OK
+  EXPECT: SUITE_OK
   EVIDENCE: pending

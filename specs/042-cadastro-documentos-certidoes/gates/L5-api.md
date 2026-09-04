@@ -33,6 +33,6 @@ Scope: src/app/api/documentos/{route.ts,sync/route.ts,upload/route.ts,[id]/route
   EVIDENCE: rc=1
 
 - [x] G7: typecheck, lint e suíte inteira verdes
-  CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run 2>&1 | tail -6
-  EXPECT: /passed/
+  CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run > /dev/null 2>&1 && echo SUITE_OK
+  EXPECT: SUITE_OK
   EVIDENCE: tsc+lint ok; Tests 1508 passed / 1 failed (oficio-ok-honesto IMPCG, pré-existente em 5b00fd6, não é ingest.ts); PATCH mutation where só {id} → FAIL, revertido

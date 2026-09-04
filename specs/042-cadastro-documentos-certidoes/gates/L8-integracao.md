@@ -8,8 +8,8 @@ Scope: tudo junto, CI do GitHub verde, PR aberto e mesclado, deploy em produçã
   EVIDENCE: pending
 
 - [ ] G2: validação completa do AGENTS.md rodada de fato
-  CHECK: npm run docs:validate --silent && npx tsc --noEmit && npm run lint --silent && npx vitest run 2>&1 | tail -2 && npm run build 2>&1 | tail -2
-  EXPECT: /passed/
+  CHECK: npm run docs:validate --silent && npx tsc --noEmit && npm run lint --silent && npx vitest run > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && echo FULL_OK
+  EXPECT: FULL_OK
   EVIDENCE: pending
 
 - [ ] G3: graph atualizado
