@@ -173,6 +173,8 @@ model Company {
   cassemsAuthorizations CassemsAuthorization[]
   cassemsSourceMessages CassemsSourceMessage[]
   cassemsIngestState    CassemsIngestState?
+  documents             CompanyDocument[]
+  documentIngestState   CompanyDocumentIngestState?
   invoiceEmissions      InvoiceEmission[]
   invoiceTaxTotals      InvoiceTaxTotals[]
   invoiceItemTaxes      InvoiceItemTax[]
@@ -1051,6 +1053,50 @@ model CassemsIngestState {
   backfillCompletedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+enum CompanyDocumentKind {
+  cnd_federal
+  crf_fgts
+  cndt
+  cnd_estadual_ms
+  cnd_municipal_mobiliario
+  cnd_municipal_gerais
+  outro
+}
+
+model CompanyDocument {
+  id                String              @id @default(cuid())
+  companyId         String
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category          String              @default("certidao")
+  kind              CompanyDocumentKind
+  fileName          String
+  oneDriveItemId    String              @unique
+  oneDriveAccount   String
+  folderName        String
+  fileSize          Int?
+  lastModifiedAt    DateTime?
+  validUntil        DateTime?           @db.Date
+  validUntilSource  String?             // 'filename' | 'manual' | null
+  removedAt         DateTime?
+  alertedThresholds Int[]               @default([])
+  renewalNotifiedAt DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([companyId, kind, validUntil])
+  @@index([companyId, removedAt])
+}
+
+model CompanyDocumentIngestState {
+  companyId     String   @id
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lastSuccessAt DateTime?
+  lastError     String?
+  lastErrorAt   DateTime?
+  lastAlertDay  String?   // 'YYYY-MM-DD' em America/Sao_Paulo — idempotência do job diário
+  updatedAt     DateTime @updatedAt
 }
 
 /// Nonce já consumido de webhook do n8n. Existe para o anti-replay do HMAC

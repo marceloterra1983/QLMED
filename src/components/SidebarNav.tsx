@@ -18,6 +18,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
   '/cadastro/anvisa': { label: 'ANVISA', icon: 'medication' },
+  '/cadastro/documentos': { label: 'Documentos', icon: 'verified' },
   '/estoque/entrada-nfe': { label: 'Entrada NF-e', icon: 'inventory' },
   '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
   '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },
@@ -59,7 +60,14 @@ interface SidebarNavProps {
   pendingCount: number;
 }
 
-function buildNavItems(session: Session | null, pendingCount: number): NavGroup[] {
+/**
+ * Exportada só para o teste `sidebar-nav-paths`: esta lista é uma TERCEIRA
+ * fonte de verdade, ao lado de PAGE_GROUPS (navigation.ts) e PAGE_LABELS.
+ * A SPEC-042 acrescentou /cadastro/documentos às duas primeiras e esqueceu
+ * esta — a página existia, era autorizada, e não aparecia no menu. O teste
+ * iguala os conjuntos de caminhos para o próximo esquecimento reprovar.
+ */
+export function buildNavItems(session: Session | null, pendingCount: number): NavGroup[] {
   const role = session?.user?.role || 'viewer';
   const isAdmin = role === 'admin';
   const allowedPages: string[] = session?.user?.allowedPages ?? [];
@@ -73,6 +81,7 @@ function buildNavItems(session: Session | null, pendingCount: number): NavGroup[
         { label: 'Produtos', icon: 'inventory_2', href: '/cadastro/produtos' },
         { label: 'Clientes', icon: 'group', href: '/cadastro/clientes' },
         { label: 'Fornecedores', icon: 'storefront', href: '/cadastro/fornecedores' },
+        { label: 'Documentos', icon: 'verified', href: '/cadastro/documentos' },
       ],
     },
     {

@@ -22,6 +22,7 @@ const EXPECTED_MIGRATIONS = [
   { name: '20260902130000_n8n_webhook_nonce', sha256: '9caf878f6c97f6fec190c279b70cb37446e5e656e38a71cf9fb37db4e74d4632' },
   { name: '20260903140000_issued_nfe_series_coalesce', sha256: 'b645400645b306944dc0f910233a97956d410966330174c2888f6a7c3b6028f7' },
   { name: '20260903140100_sync_skipped_document', sha256: '12fb3012e5e01dfef07ec694a38b8b3f07a72cc823467ccd9d3783f98edf1751' },
+  { name: '20260904204949_company_document', sha256: 'b9ec57e96ce10fd107f710e36bb53d5aa18a46989d513061075831a20dd07abb' },
 ];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;

@@ -89,6 +89,7 @@ describe('navigation ACL helpers', () => {
         '/cadastro/produtos',
         '/cadastro/clientes',
         '/cadastro/fornecedores',
+        '/cadastro/documentos',
       ]);
       expect(requiredPagesForApi('/api/anvisa')).toEqual(['/cadastro/produtos']);
       expect(requiredPagesForApi('/api/anvisa/validate')).toEqual(['/cadastro/produtos']);

@@ -16,10 +16,29 @@ assert.match(gate.EXPECTED_SET_DIGEST, /^[0-9a-f]{64}$/);
 gate.verifyExpectedSql();
 assert.equal(gate.migrationState([]), 'already-applied');
 assert.equal(gate.migrationState([gate.EXPECTED_MIGRATION]), 'pending');
-// Os 7 pendentes de uma vez — o caso que o pin único recusava.
-const sete = gate.EXPECTED_MIGRATIONS.map((m) => m.name).filter((n) => n.startsWith('202609'));
-assert.equal(sete.length, 7);
-assert.equal(gate.migrationState(sete), 'pending');
+// Os 7 pendentes de uma vez — o caso que o pin único recusava. Nomeados em vez
+// de contados por prefixo: o filtro `startsWith('202609')` era um atalho que
+// quebrava a cada migração nova de setembro, e um teste que quebra por uma
+// migração legítima ensina a afrouxá-lo. Nomear prova a mesma propriedade sem
+// esse falso positivo.
+const seteDaRemediacao = [
+  '20260901180000_nfe_emission_atomic',
+  '20260902100000_satellite_foreign_keys',
+  '20260902110000_company_user_restrict',
+  '20260902120000_invoice_tax_totals_item_count',
+  '20260902130000_n8n_webhook_nonce',
+  '20260903140000_issued_nfe_series_coalesce',
+  '20260903140100_sync_skipped_document',
+];
+assert.equal(seteDaRemediacao.length, 7);
+const pinadas = new Set(gate.EXPECTED_MIGRATIONS.map((m) => m.name));
+for (const nome of seteDaRemediacao) {
+  assert.ok(pinadas.has(nome), `a remediação b177b07 saiu do conjunto pinado: ${nome}`);
+}
+assert.equal(gate.migrationState(seteDaRemediacao), 'pending');
+// E o conjunto pinado INTEIRO tem de ser aceite de uma vez: é exatamente o que
+// o deploy encontra quando a produção está atrás de várias migrações.
+assert.equal(gate.migrationState([...pinadas]), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).
 {
   const { spawnSync } = require('node:child_process');

@@ -15,6 +15,7 @@ export const PAGE_GROUPS: PageGroup[] = [
       { label: 'Produtos', path: '/cadastro/produtos' },
       { label: 'Clientes', path: '/cadastro/clientes' },
       { label: 'Fornecedores', path: '/cadastro/fornecedores' },
+      { label: 'Documentos', path: '/cadastro/documentos' },
     ],
   },
   {
@@ -97,6 +98,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   { prefix: '/api/customers', pages: ['/cadastro/clientes'] },
   { prefix: '/api/contacts',  pages: ['/cadastro/fornecedores', '/cadastro/clientes'] },
   { prefix: '/api/cnpj',      pages: ['/cadastro/fornecedores', '/cadastro/clientes', '/cadastro/produtos'] },
+  { prefix: '/api/documentos', pages: ['/cadastro/documentos'] },
   { prefix: '/api/companies', pages: ['/sistema/settings'] },
   // Estoque
   { prefix: '/api/estoque',   pages: ['/estoque/entrada-nfe'] },
