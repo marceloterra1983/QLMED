@@ -19,6 +19,7 @@ const globalForBootstrap = globalThis as unknown as {
   __localXmlSyncStarted?: boolean;
   __impcgIngestStarted?: boolean;
   __cassemsIngestStarted?: boolean;
+  __documentosIngestStarted?: boolean;
   __outboxPurgeStarted?: boolean;
 };
 
@@ -56,6 +57,15 @@ if (!globalForBootstrap.__cassemsIngestStarted) {
       .then((m) => m.startCassemsMailIngest())
       .catch((err) => log.error({ err }, 'CassemsMailIngest falha ao iniciar'));
   }, 16_000);
+}
+
+if (!globalForBootstrap.__documentosIngestStarted) {
+  globalForBootstrap.__documentosIngestStarted = true;
+  setTimeout(() => {
+    import('./documentos/ingest')
+      .then((m) => m.startDocumentosIngest())
+      .catch((err) => log.error({ err }, 'DocumentosIngest falha ao iniciar'));
+  }, 20_000);
 }
 
 if (!globalForBootstrap.__outboxPurgeStarted) {

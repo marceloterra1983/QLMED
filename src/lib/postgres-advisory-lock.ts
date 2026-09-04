@@ -33,6 +33,10 @@ export function cassemsMailIngestLockKey(companyId: string): string {
   return `cassems-mail-ingest:${companyId}`;
 }
 
+export function documentosIngestLockKey(companyId: string): string {
+  return `documentos-ingest:${companyId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,
