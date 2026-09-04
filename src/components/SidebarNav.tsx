@@ -18,6 +18,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
   '/cadastro/anvisa': { label: 'ANVISA', icon: 'medication' },
+  '/cadastro/documentos': { label: 'Documentos', icon: 'verified' },
   '/estoque/entrada-nfe': { label: 'Entrada NF-e', icon: 'inventory' },
   '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
   '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },

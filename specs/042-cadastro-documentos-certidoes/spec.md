@@ -1,6 +1,6 @@
 ---
 id: SPEC-042
-status: draft
+status: approved
 owner: QLMED
 affected_modules:
   - navigation
@@ -16,7 +16,7 @@ affected_modules:
 
 **Created**: 2026-09-04
 
-**Status**: Draft (aguarda aprovação do dono antes de `plan`/`tasks`)
+**Status**: Approved (dono mandou executar L1 em 2026-09-04; perguntas 1–3 do PLAN adiadas para L7)
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
