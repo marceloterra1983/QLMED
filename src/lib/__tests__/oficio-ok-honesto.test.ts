@@ -86,7 +86,7 @@ function impcgMessage(mailbox: string) {
     graphMessageId: `graph-${mailbox}`,
     internetMessageId: `<${mailbox}@compras>`,
     subject: 'OF 17673 PLINIO ANTONIO ARANHA JUNIOR',
-    receivedAt: new Date('2026-08-28T16:31:00.000Z'),
+    receivedAt: new Date(Date.now() - 60 * 60 * 1000), // dentro da janela de aviso
     hasAttachments: true,
   };
 }
@@ -118,7 +118,7 @@ function cassemsDeps(overrides: Partial<CassemsIngestDeps> = {}): CassemsIngestD
           graphMessageId: 'graph-cassems',
           internetMessageId: '<msg@cassems>',
           subject: 'CASSEMS 2479325231 DOUGLAS BARBOSA FELIPE',
-          receivedAt: new Date('2026-08-28T16:31:00.000Z'),
+          receivedAt: new Date(Date.now() - 60 * 60 * 1000), // dentro da janela de aviso
           hasAttachments: true,
         }];
       },
