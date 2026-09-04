@@ -293,25 +293,31 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
       bodyClassName=""
       header={
 <div className="px-4 sm:px-6 py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
-              <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                {product.code && <><span className="font-mono text-blue-600 dark:text-blue-400">{product.code}</span><span className="text-slate-500 dark:text-slate-400 mx-1.5">/</span></>}
-                {product.description}
-              </h3>
-              {product.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{product.shortName}</p>}
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                {product.productType && <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>}
-                {product.productSubtype && <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>}
-                {product.outOfLine && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400"><span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha</span>}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 dark:from-blue-500/30 dark:to-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20 dark:ring-blue-500/30">
+                <span className="material-symbols-outlined text-[22px] text-blue-500">history</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                {product.code && (
+                  <p className="text-sm font-mono leading-snug">
+                    <span className="text-blue-600 dark:text-blue-400">{product.code}</span>
+                  </p>
+                )}
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                  {product.description}
+                </h3>
+                {product.shortName && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{product.shortName}</p>}
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {product.productType && <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40 text-xs font-bold text-indigo-600 dark:text-indigo-400">{product.productType}</span>}
+                  {product.productSubtype && <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40 text-xs font-bold text-amber-600 dark:text-amber-400">{product.productSubtype}</span>}
+                  {product.outOfLine && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400"><span className="material-symbols-outlined text-[11px]">block</span>Fora de Linha</span>}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0 w-full sm:w-auto">
               <CardViewModeToggle mode={cardViewMode} onChange={setCardViewMode} />
-              <button onClick={onClose} aria-label="Fechar" className="flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
+              <button onClick={onClose} aria-label="Fechar" className="hidden sm:flex flex-shrink-0 p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><span className="material-symbols-outlined text-[20px]">close</span></button>
             </div>
           </div>
         </div>
