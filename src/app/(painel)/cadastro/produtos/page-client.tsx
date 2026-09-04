@@ -6,7 +6,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
-import { formatInt, formatQuantity } from '@/lib/utils';
+import { formatInt } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
@@ -22,51 +22,6 @@ import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
 import PageHeader from '@/components/PageHeader';
-
-/**
- * Cards de resumo do cadastro. Estes três números já vinham prontos da API
- * (`ProductsSummary`) e ficavam apenas no estado, sem nunca chegar à tela.
- *
- * Eram QUATRO. `invoicesProcessed` foi removido daqui e da API: valia 0 fixo em
- * products/list/route.ts e nunca foi calculado. Exibi-lo teria transformado um
- * campo morto e inofensivo numa métrica operacional errada — o defeito que esta
- * própria mudança existe para corrigir em outras telas.
- *
- * Classes de cor literais por card — classe montada por template string não é
- * enxergada pelo Tailwind no build e sai sem cor.
- */
-const SUMMARY_CARDS: Array<{
-  key: keyof ProductsSummary;
-  label: string;
-  icon: string;
-  iconClasses: string;
-}> = [
-  { key: 'totalProducts', label: 'Total de Produtos', icon: 'inventory_2', iconClasses: 'bg-primary/10 text-primary dark:text-blue-400' },
-  { key: 'productsWithAnvisa', label: 'Com ANVISA', icon: 'medication', iconClasses: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' },
-  { key: 'totalQuantity', label: 'Quantidade Total', icon: 'inventory', iconClasses: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
-];
-
-function ProductsSummaryCards({ summary }: { summary: ProductsSummary }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-      {SUMMARY_CARDS.map(({ key, label, icon, iconClasses }) => (
-        <Card padding="none" key={key} className="p-2.5 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 ${iconClasses}`}>
-              <span className="material-symbols-outlined text-[20px]">{icon}</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">{label}</p>
-              <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate">
-                {formatQuantity(summary[key])}
-              </p>
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
 
 export default function ProdutosPage() {
   const { canWrite } = useRole();
@@ -377,9 +332,6 @@ export default function ProdutosPage() {
           </>
         )}
       />
-
-      {/* Resumo do cadastro — escondido durante o load para nao piscar zeros */}
-      {!loading && <ProductsSummaryCards summary={summary} />}
 
       {/* Search + filters */}
       <ProductFilters
