@@ -218,3 +218,28 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     });
   });
 });
+
+describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
+  it('mostra 12/12/2026, e não o dia anterior, para validUntil 2026-12-12', async () => {
+    // `validUntil` é `@db.Date`: chega como meia-noite UTC. `formatDate` resolve
+    // no fuso local (America/Sao_Paulo, UTC-3) e devolvia 11/12/2026 — um dia a
+    // menos numa página cujo assunto é exatamente a data de validade. O par
+    // correto é `formatDocumentDate`, que fixa timeZone UTC.
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+
+    const linha = await screen.findByText('CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf');
+    const celulas = linha.closest('tr')!;
+    expect(within(celulas).getByText('12/12/2026')).toBeTruthy();
+    expect(within(celulas).queryByText('11/12/2026')).toBeNull();
+  });
+
+  it('a data vencida da FGTS também não desliza', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+
+    const linha = (await screen.findByText('CERTIDAO FGTS 01.09.26 QL MED.pdf')).closest('tr')!;
+    expect(within(linha).getByText('01/09/2026')).toBeTruthy();
+    expect(within(linha).queryByText('31/08/2026')).toBeNull();
+  });
+});

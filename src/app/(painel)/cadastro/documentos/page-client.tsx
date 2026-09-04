@@ -17,7 +17,7 @@ import {
   DOCUMENTOS_UPLOAD_MAX_BYTES,
 } from '@/lib/documentos/constants';
 import type { DocumentosHistoryItem, DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
-import { formatDate, formatDateTime, formatInt } from '@/lib/utils';
+import { formatDateTime, formatDocumentDate, formatInt } from '@/lib/utils';
 
 type CertidaoKind = (typeof CERTIDAO_KINDS_ORDER)[number];
 
@@ -69,7 +69,10 @@ function ValidityText({ value }: { value: string | null }) {
   if (!value) {
     return <span className="text-slate-500 dark:text-slate-400">Sem data</span>;
   }
-  return <span className="tabular-nums">{formatDate(value)}</span>;
+  // formatDocumentDate, não formatDate: validUntil é `@db.Date` (meia-noite UTC) e
+  // formatDate resolve no fuso local (America/Sao_Paulo, UTC-3), mostrando o dia
+  // anterior — 2026-12-12 saía como 11/12.
+  return <span className="tabular-nums">{formatDocumentDate(value)}</span>;
 }
 
 function FileNameCell({ fileName }: { fileName: string | null }) {
