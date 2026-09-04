@@ -251,9 +251,9 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
       bodyClassName="flex flex-col flex-1 h-full min-h-0 overflow-hidden"
       header={
 <div className="px-3 sm:px-6 py-2.5 sm:py-4 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sheet-top sm:shadow-none">
-          <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             {/* Left: Icon + Title */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center ring-1 ${theme.ring} shrink-0 hidden sm:flex`}>
                 <span className={`material-symbols-outlined text-[22px] ${theme.text}`}>{theme.icon}</span>
               </div>
@@ -268,7 +268,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
             </div>
 
             {/* Right: Controls */}
-            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
               {/* DANFE / XML toggle */}
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
                 <button

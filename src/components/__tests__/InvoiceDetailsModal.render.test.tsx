@@ -18,6 +18,14 @@ describe('InvoiceDetailsModal: render layout e altura', () => {
     expect(out).toContain('flex flex-col flex-1 h-full min-h-0 overflow-hidden');
   });
 
+  it('empilha título e controles no mobile (irmão do fix produtos)', () => {
+    const out = renderToStaticMarkup(
+      <InvoiceDetailsModal isOpen onClose={() => {}} invoiceId="inv-123" />
+    );
+    expect(out).toContain('flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3');
+    expect(out).not.toContain('flex items-center gap-2 sm:gap-3 min-w-0 shrink-0');
+  });
+
   it('renderiza o iframe com h-full e w-full dentro de um container flex-1 min-h-0', () => {
     const out = renderToStaticMarkup(
       <InvoiceDetailsModal isOpen onClose={() => {}} invoiceId="inv-123" />
