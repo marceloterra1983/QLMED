@@ -195,6 +195,10 @@ function fakePort(
       if (opts.archiveError) throw opts.archiveError;
       opts.archived?.push(itemId);
     },
+    // Declarada mesmo vazia: a ingestão exige a capacidade em vez de a inferir.
+    async listChildren() {
+      return [];
+    },
   };
 }
 

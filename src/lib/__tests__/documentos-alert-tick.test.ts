@@ -140,6 +140,10 @@ function fakePort(calls: string[] = []): DocumentosFolderPort {
       return PDF;
     },
     async moveToArchive() {},
+    // Declarada mesmo vazia: a ingestão exige a capacidade em vez de a inferir.
+    async listChildren() {
+      return [];
+    },
   };
 }
 

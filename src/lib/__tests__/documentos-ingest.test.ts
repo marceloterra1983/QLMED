@@ -241,6 +241,15 @@ function fakePort(entries: { folder: string; file: DocumentosFolderFile }[]): Do
       return Buffer.from('%PDF-1.4 fixture-nao-logar');
     },
     async moveToArchive() {},
+    /**
+     * Declarada de propósito, mesmo devolvendo vazio: a ingestão passou a
+     * exigir a capacidade em vez de a inferir, porque "não consigo enumerar"
+     * e "a pasta está vazia" produzem o mesmo `[]` e levam a consequências
+     * opostas — a segunda apaga linhas por `removedAt`.
+     */
+    async listChildren() {
+      return [];
+    },
   };
 }
 
@@ -792,5 +801,41 @@ describe('SPEC-042 — upload toma o lock da ingestão', () => {
     expect(lock.acquire).toHaveBeenCalledWith('documentos-ingest:co1');
     expect(lock.release).toHaveBeenCalledTimes(1);
     expect(uploadOd.uploadOneDriveFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SPEC-042 — porta sem capacidade de enumerar não pode parecer pasta vazia', () => {
+  /**
+   * A fiação enhancePort/mergeWebUrl/listChildren não tinha cobertura: todos os
+   * testes de ingestão injetam um `port` já completo, portanto saltavam o código
+   * que produção usa. Um mutante que apagasse o corpo de `enhancePort` mantinha
+   * a suíte verde.
+   *
+   * A propriedade que importa é de segurança de dados, não de cobertura: um
+   * `[]` devolvido por falta de capacidade faria o `updateMany` a seguir marcar
+   * `removedAt` em TODAS as linhas de balanço já gravadas, esvaziando o card.
+   * Não conseguir olhar nunca pode significar "não há nada lá".
+   */
+  it('aborta a ingestão em vez de tratar "não consegui listar" como "vazio"', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const portaCega = {
+      listPdfs: async () => [],
+      downloadPdf: async () => Buffer.alloc(0),
+      moveToArchive: async () => {},
+      // listChildren AUSENTE de propósito
+    } as unknown as DocumentosFolderPort;
+
+    await expect(runDocumentosIngest(COMPANY, portaCega, NOW)).rejects.toThrow(/listChildren/);
+  });
+
+  it('o erro nomeia a família, para ser acionável em produção', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const portaCega = {
+      listPdfs: async () => [],
+      downloadPdf: async () => Buffer.alloc(0),
+      moveToArchive: async () => {},
+    } as unknown as DocumentosFolderPort;
+
+    await expect(runDocumentosIngest(COMPANY, portaCega, NOW)).rejects.toThrow(/balanco/);
   });
 });

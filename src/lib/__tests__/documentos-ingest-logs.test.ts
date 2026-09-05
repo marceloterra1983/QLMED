@@ -54,6 +54,10 @@ function fakePort(): DocumentosFolderPort {
       return Buffer.from('accessToken=nao-pode-vazar-refreshToken');
     },
     async moveToArchive() {},
+    // Declarada mesmo vazia: a ingestão exige a capacidade em vez de a inferir.
+    async listChildren() {
+      return [];
+    },
   };
 }
 

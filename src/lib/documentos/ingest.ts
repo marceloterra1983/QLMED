@@ -260,7 +260,19 @@ async function ingestCompany(
 
   for (const family of DOCUMENTOS_FAMILIES) {
     if (family.scan === 'yearFolders') {
-      const children = port.listChildren ? await port.listChildren(family.root) : [];
+      /**
+       * Não conseguir enumerar NUNCA pode virar "pasta vazia": o `updateMany`
+       * mais abaixo marca `removedAt` em tudo que não entrou em `seenIds`, de
+       * modo que um `[]` por falta de capacidade apagaria da tela todas as
+       * linhas já gravadas desta família. Falhar alto é o comportamento certo
+       * — a ingestão inteira aborta e o ciclo seguinte tenta de novo.
+       */
+      if (!port.listChildren) {
+        throw new Error(
+          `família '${family.category}' exige listChildren e a porta não o expõe`,
+        );
+      }
+      const children = await port.listChildren(family.root);
       const selected = selectYearFolderItems(children);
       const folderName = lastPathSegment(family.root);
       for (const item of selected) {
