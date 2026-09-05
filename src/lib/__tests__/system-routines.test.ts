@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -143,6 +143,46 @@ describe('System Routines Catalog', () => {
     expect(outboxCron).toMatch(/\*\/10 \* \* \* \* \/usr\/bin\/python3 \/srv\/qlmed\/services\/notification-outbox\/worker\.py/);
     expect(byId['notification-outbox-worker'].frequency).toMatch(/10 minutos/i);
     expect(byId['notification-outbox-worker'].frequency).not.toMatch(/1 minuto/);
+  });
+
+  it('locks, módulo ANVISA e heartbeat auto-sync batem com o código (FR-006)', () => {
+    const byId = Object.fromEntries(SYSTEM_ROUTINES.map((r) => [r.id, r]));
+    const lockSrc = readFileSync(resolve(process.cwd(), 'src/lib/postgres-advisory-lock.ts'), 'utf8');
+
+    expect(lockSrc).toMatch(/export function impcgMailIngestLockKey/);
+    expect(lockSrc).not.toMatch(/export function impcgIngestLockKey/);
+    expect(byId['impcg-mail-ingest'].concurrencyLock).toMatch(/impcgMailIngestLockKey/);
+    expect(byId['impcg-mail-ingest'].concurrencyLock).not.toMatch(/impcgIngestLockKey/);
+
+    expect(lockSrc).toMatch(/export function cassemsMailIngestLockKey/);
+    expect(lockSrc).not.toMatch(/export function cassemsIngestLockKey/);
+    expect(byId['cassems-mail-ingest'].concurrencyLock).toMatch(/cassemsMailIngestLockKey/);
+    expect(byId['cassems-mail-ingest'].concurrencyLock).not.toMatch(/cassemsIngestLockKey/);
+
+    expect(existsSync(resolve(process.cwd(), 'src/lib/anvisa'))).toBe(false);
+    expect(byId['anvisa-registry-sync'].sourceModule).toMatch(/anvisa-api\.ts/);
+    expect(byId['anvisa-registry-sync'].sourceModule).not.toMatch(/src\/lib\/anvisa\//);
+    expect(byId['anvisa-registry-sync'].scheduleDetails).not.toMatch(/importação de XMLs/i);
+    expect(byId['anvisa-registry-sync'].description).not.toMatch(/enriquecimento de produtos importados/i);
+
+    const sharedAutoSync = ['sefaz-auto-sync', 'nsdocs-auto-sync', 'receita-nfse-sync', 'stuck-sync-recovery'];
+    for (const id of sharedAutoSync) {
+      expect(byId[id].backgroundServiceName).toBe('auto-sync');
+      expect(byId[id].scheduleDetails).toMatch(/heartbeat compartilhado|telemetria compartilhada/i);
+    }
+  });
+
+  it('cada sourceModule aponta para ficheiro que existe no repo', () => {
+    for (const routine of SYSTEM_ROUTINES) {
+      const parts = routine.sourceModule
+        .split(/\s+\/\s+/)
+        .map((part) => part.replace(/\s*\([^)]*\)\s*$/, '').trim())
+        .filter(Boolean);
+      expect(parts.length, routine.id).toBeGreaterThan(0);
+      for (const part of parts) {
+        expect(existsSync(resolve(process.cwd(), part)), `${routine.id}: ${part}`).toBe(true);
+      }
+    }
   });
 
   it('/api/sistema/rotinas só abre com a página Rotinas', () => {
