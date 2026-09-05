@@ -6,7 +6,8 @@ export type BackgroundServiceName =
   | 'unimed-cg-mail-ingest'
   | 'documentos-ingest'
   | 'documentos-alert'
-  | 'notification-outbox-purge';
+  | 'notification-outbox-purge'
+  | 'daily-issued-summary';
 
 export interface BackgroundServiceStatus {
   status: 'running' | 'stale' | 'disabled' | 'error';

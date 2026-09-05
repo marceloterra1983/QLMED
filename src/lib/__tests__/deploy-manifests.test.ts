@@ -243,8 +243,8 @@ describe('QLMED-OPS-005 — migrações novas são expand-only', () => {
 // função com dados.
 
 /**
- * REAUD-B-12: os dois Postgres corriam sem `no-new-privileges` nem `cap_drop`,
- * enquanto o app e o n8n já tinham. O conjunto mínimo de capabilities foi
+ * REAUD-B-12: o Postgres canónico corria sem `no-new-privileges` nem `cap_drop`,
+ * enquanto o app já tinha. O conjunto mínimo de capabilities foi
  * medido num container descartável: o entrypoint corre como root, faz
  * `chown`/`chmod` no PGDATA e desce para `postgres` com `su-exec`.
  */
@@ -253,7 +253,7 @@ describe('REAUD-B-12 — bancos de produção com no-new-privileges e cap_drop',
   const services = (yaml.load(read('production/docker-compose.yml')) as { services: Record<string, Service> })
     .services;
 
-  it.each(['qlmed-db', 'n8n-db'])('%s não ganha privilégio e larga todas as capabilities', (name) => {
+  it.each(['qlmed-db'])('%s não ganha privilégio e larga todas as capabilities', (name) => {
     const service = services[name];
     expect(service, `${name} não existe no compose`).toBeTruthy();
     expect(service.security_opt).toContain('no-new-privileges:true');

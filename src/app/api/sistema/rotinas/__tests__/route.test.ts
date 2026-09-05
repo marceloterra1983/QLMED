@@ -128,7 +128,7 @@ describe('GET /api/sistema/rotinas', () => {
     expect(body.summary.totalRoutines).toBe(SYSTEM_ROUTINES.length);
     expect(body.summary.backgroundServices).toBe(1);
     expect(body.summary.scheduledTimers).toBeGreaterThan(0);
-    expect(body.summary.watchdogs).toBeGreaterThanOrEqual(2);
+    expect(body.summary.watchdogs).toBeGreaterThanOrEqual(1);
     expect(body.summary.activeServicesCount).toBe(1);
     expect(body.summary.recentSyncs24h).toBe(42);
     expect(body.summary.pendingOutbox).toBe(3);

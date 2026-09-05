@@ -22,6 +22,7 @@ const globalForBootstrap = globalThis as unknown as {
   __unimedCgIngestStarted?: boolean;
   __documentosIngestStarted?: boolean;
   __documentosAlertStarted?: boolean;
+  __dailyIssuedSummaryStarted?: boolean;
   __outboxPurgeStarted?: boolean;
 };
 
@@ -87,6 +88,16 @@ if (!globalForBootstrap.__documentosAlertStarted) {
       .then((m) => m.startDocumentosAlert())
       .catch((err) => log.error({ err }, 'DocumentosAlert falha ao iniciar'));
   }, 22_000);
+}
+
+
+if (!globalForBootstrap.__dailyIssuedSummaryStarted) {
+  globalForBootstrap.__dailyIssuedSummaryStarted = true;
+  setTimeout(() => {
+    import('./daily-issued-summary-job')
+      .then((m) => m.startDailyIssuedSummary())
+      .catch((err) => log.error({ err }, 'DailyIssuedSummary falha ao iniciar'));
+  }, 24_000);
 }
 
 if (!globalForBootstrap.__outboxPurgeStarted) {

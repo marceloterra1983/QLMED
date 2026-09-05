@@ -41,6 +41,7 @@ const API_KEY_PASSTHROUGH_PREFIXES = [
   '/api/reports',
   '/api/suppliers',
   '/api/webhooks',
+  '/api/system',
 ];
 
 function isPublicApiRoute(pathname: string): boolean {
