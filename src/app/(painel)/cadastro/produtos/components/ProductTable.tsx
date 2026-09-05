@@ -181,7 +181,7 @@ export default function ProductTable({
           <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
           <Badge tone="info" dot={false}>{lineCountMap.get(lineKey)}</Badge>
           {lineCollapsed && (
-            <span className="ml-auto text-[11px] font-medium text-indigo-500/90 dark:text-indigo-400/90">
+            <span className="ml-auto text-xs font-medium text-indigo-500/90 dark:text-indigo-400/90">
               Clique para expandir
             </span>
           )}
@@ -199,7 +199,7 @@ export default function ProductTable({
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
           <Badge tone="warning" dot={false}>{groupCountMap.get(grpKey)}</Badge>
           {grpCollapsed && (
-            <span className="ml-auto text-[11px] font-medium text-amber-600/90 dark:text-amber-400/90">
+            <span className="ml-auto text-xs font-medium text-amber-600/90 dark:text-amber-400/90">
               Clique para expandir
             </span>
           )}
@@ -296,7 +296,7 @@ export default function ProductTable({
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                 <Badge dot={false}>{groupCountMap.get(group)}</Badge>
                 {collapsedGroups.has(group) && (
-                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  <span className="ml-auto text-xs font-medium text-slate-500 dark:text-slate-400">
                     Clique para expandir
                   </span>
                 )}
