@@ -29,7 +29,9 @@ de atualização (leitura da validade no PDF), ícones no padrão `RowActionsBas
 compartilhar no app e tags de automação. A L13 recolhe todos os cards ao
 entrar, compacta as linhas da tabela e troca o alvo do clique da linha para um
 popup de gestão (resumo de datas, descrição, órgão emissor); o modal de
-atualização passa a abrir por um botão dentro desse popup.
+atualização passa a abrir por um botão dentro desse popup. A L14 acrescenta
+uma varredura em lote para preencher `emitidoEm` que a ingestão não leu
+(ficheiros cuja data já vinha no nome).
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -331,6 +333,21 @@ falhar de forma visível, não chutar.
   descartada. A ingestão grava quando lê o PDF; documentos já persistidos
   ficam `null` até a próxima leitura.
 
+### Backfill de emissão (L14)
+
+- **FR-041**: Editor+ dispara `POST /api/documentos/backfill-emissao` em lotes
+  explícitos (omissão 25, teto 100) para preencher `emitidoEm` nulo a partir
+  de `readValidityFromPdf`. Não inventa emissão a partir de `lastModifiedAt`.
+  Não toca em `validUntil`, `validUntilSource`, `removedAt`,
+  `alertedThresholds` nem `renewalNotifiedAt`. Não cria nem apaga linhas. Não
+  processa a família `balanco`. Ficheiro acima de `DOCUMENTOS_UPLOAD_MAX_BYTES`
+  (pelo `fileSize` gravado ou pelo `Content-Length`) é ignorado sem
+  materializar o corpo. Downloads são sequenciais. Lock advisory próprio
+  (`documentos-backfill-emissao:<companyId>`), distinto da ingestão; lock
+  ocupado devolve resultado vazio com `ocupado: true`. A tela tem o botão
+  **Preencher emissões** visível só quando falta emissão; cada clique corre
+  um lote e mostra o resumo — não há laço automático nem timer.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -449,12 +466,18 @@ falhar de forma visível, não chutar.
   emissão 31/08 e validade 29/09; devolver o fim nas duas faz o teste da
   emissão falhar. O bloco "quem emite" aparece com `expira: false`; escondê-lo
   nesse caso faz o teste falhar.
+- **AC-031** (FR-041): um lote preenche só `emitidoEm` lido do PDF; PDF sem
+  emissão deixa o campo nulo mesmo com `lastModifiedAt` presente; ficheiro
+  grande não é materializado; downloads não correm em paralelo. Controlo
+  negativo: remover o teto, gravar `lastModifiedAt`, gravar `validUntil` ou
+  trocar o laço por `Promise.all` faz o teste respectivo falhar.
 
 ## Non-functional
 
 - Página lista do banco, nunca do OneDrive em tempo de requisição (p95 < 500 ms).
 - Ingestão completa das 5 pastas < 30 s; abortada por lock advisory se já
-  houver uma em curso (`documentosIngestLockKey`).
+  houver uma em curso (`documentosIngestLockKey`). O backfill de emissão usa
+  chave distinta e nunca corre downloads em paralelo.
 - UI passa `npm run ui:check` (tokens, dialogs, empty state via `EmptyState`).
 
 ## Out of scope (explícito)

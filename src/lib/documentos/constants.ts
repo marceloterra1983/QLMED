@@ -43,6 +43,11 @@ export const DOCUMENTOS_EXPIRED_REPEAT_DAYS = 7;
 
 export const DOCUMENTOS_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
+/** Candidatas tentadas por pedido de backfill de emissão. */
+export const DOCUMENTOS_BACKFILL_EMISSAO_LIMITE_DEFAULT = 25;
+/** Teto rígido — o cliente não pode pedir mais do que isto. */
+export const DOCUMENTOS_BACKFILL_EMISSAO_LIMITE_MAX = 100;
+
 export const CERTIDAO_KINDS_ORDER = [
   'cnd_federal',
   'crf_fgts',

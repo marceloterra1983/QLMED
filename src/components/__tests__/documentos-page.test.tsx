@@ -282,6 +282,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     await certidoesTable();
     expect(screen.queryByRole('button', { name: /Editar validade/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preencher emissões' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
   });
 
@@ -351,6 +352,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await certidoesTable();
     expect(screen.getByRole('button', { name: 'Atualizar do OneDrive' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Preencher emissões' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Enviar arquivo' })).toBeTruthy();
 
     cleanup();
@@ -358,6 +360,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await certidoesTable();
     expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preencher emissões' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
   });
 
@@ -704,5 +707,65 @@ describe('SPEC-042 L13 — cards recolhidos, tabela compacta, gestão', () => {
     expect(td.className).toMatch(/py-1\.5/);
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     expect(within(federal).getByRole('link', { name: /Emitir CND Receita Federal/ })).toBeTruthy();
+  });
+});
+
+describe('SPEC-042 L14 — preencher emissões', () => {
+  it('o botão só aparece quando há linha com emissão em falta', async () => {
+    stubFetch(() => jsonResponse(listing({
+      certidoes: listing().certidoes.map((item) => ({ ...item, emitidoEm: item.id ? '2026-01-10' : null })),
+      balancos: [
+        {
+          id: 'doc-bal-2026',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          label: '2026',
+          fileName: 'BALANÇO 2026',
+          validUntil: null,
+          emitidoEm: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: 'https://onedrive.example/balanco-2026',
+          automacao: null,
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+    await certidoesTable();
+    expect(screen.queryByRole('button', { name: 'Preencher emissões' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Atualizar do OneDrive' })).toBeTruthy();
+  });
+
+  it('um lote, toast com resumo, botão fica se restam, sem laço automático', async () => {
+    let posts = 0;
+    stubFetch((url, init) => {
+      if (url === '/api/documentos/backfill-emissao' && init?.method === 'POST') {
+        posts += 1;
+        return jsonResponse({
+          processados: 15,
+          preenchidos: 12,
+          semEmissao: 3,
+          ignorados: 0,
+          falhas: 0,
+          restantes: 40,
+          ocupado: false,
+        });
+      }
+      return jsonResponse(listing());
+    });
+    render(<DocumentosPageClient />);
+    await certidoesTable();
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher emissões' }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('12 preenchidos, 3 sem emissão no PDF, 40 restantes');
+    });
+    expect(posts).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(posts).toBe(1);
+    expect(screen.getByRole('button', { name: 'Preencher emissões' })).toBeTruthy();
   });
 });
