@@ -222,7 +222,8 @@ async function main() {
         description: nome,
         productRefs: mergedRefs,
         productType: tipo.invalid ? null : tipo.productType,
-        productSubtype: tipo.invalid ? null : (r.subtipo?.trim() || null),
+        productSubtype: tipo.invalid ? null : tipo.productType,
+        productSubgroup: tipo.invalid ? null : (r.subtipo?.trim() || null),
         outOfLine: tipo.outOfLine,
         instrumental,
         manufacturerShortName: fab,
@@ -254,7 +255,8 @@ async function main() {
         codigo,
         productRefs: ref ? [ref] : [],
         productType: tipo.invalid ? null : tipo.productType,
-        productSubtype: tipo.invalid ? null : (r.subtipo?.trim() || null),
+        productSubtype: tipo.invalid ? null : tipo.productType,
+        productSubgroup: tipo.invalid ? null : (r.subtipo?.trim() || null),
         outOfLine: tipo.outOfLine,
         instrumental,
         manufacturerShortName: fab,
@@ -292,24 +294,25 @@ async function main() {
             product_refs = $3,
             product_type = $4,
             product_subtype = $5,
-            out_of_line = $6,
-            instrumental = $7,
-            manufacturer_short_name = $8,
-            default_supplier = $9,
-            fiscal_sit_tributaria = $10,
-            fiscal_origem = $11,
-            fiscal_nome_tributacao = $12,
-            fiscal_icms = $13,
-            fiscal_pis = $14,
-            fiscal_cofins = $15,
-            fiscal_ipi = $16,
-            fiscal_obs = $17,
-            anvisa_code = COALESCE(anvisa_code, $18),
-            anvisa_source = CASE WHEN anvisa_code IS NULL AND $18 IS NOT NULL THEN 'spica' ELSE anvisa_source END,
+            product_subgroup = $6,
+            out_of_line = $7,
+            instrumental = $8,
+            manufacturer_short_name = $9,
+            default_supplier = $10,
+            fiscal_sit_tributaria = $11,
+            fiscal_origem = $12,
+            fiscal_nome_tributacao = $13,
+            fiscal_icms = $14,
+            fiscal_pis = $15,
+            fiscal_cofins = $16,
+            fiscal_ipi = $17,
+            fiscal_obs = $18,
+            anvisa_code = COALESCE(anvisa_code, $19),
+            anvisa_source = CASE WHEN anvisa_code IS NULL AND $19 IS NOT NULL THEN 'spica' ELSE anvisa_source END,
             updated_at = NOW()
-          WHERE id = $19
+          WHERE id = $20
         `, [
-          u.codigo, u.description, u.productRefs, u.productType, u.productSubtype, u.outOfLine, u.instrumental,
+          u.codigo, u.description, u.productRefs, u.productType, u.productSubtype, u.productSubgroup, u.outOfLine, u.instrumental,
           u.manufacturerShortName, u.defaultSupplier, u.fiscalSitTributaria, u.fiscalOrigem,
           u.fiscalNomeTributacao, u.fiscalIcms, u.fiscalPis, u.fiscalCofins, u.fiscalIpi,
           u.fiscalObs, u.anvisaCode, u.id
@@ -326,17 +329,17 @@ async function main() {
             INSERT INTO product_registry (
               id, company_id, product_key, code, description, ncm, unit,
               anvisa_code, anvisa_source, codigo, product_refs, product_type,
-              product_subtype, out_of_line, instrumental, manufacturer_short_name,
+              product_subtype, product_subgroup, out_of_line, instrumental, manufacturer_short_name,
               default_supplier, fiscal_sit_tributaria, fiscal_origem, fiscal_nome_tributacao,
               fiscal_icms, fiscal_pis, fiscal_cofins, fiscal_ipi, fiscal_obs,
               created_at, updated_at
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW()
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW()
             )
           `, [
             item.id, item.companyId, item.productKey, item.code, item.description, item.ncm, item.unit,
             item.anvisaCode, item.anvisaSource, item.codigo, item.productRefs, item.productType,
-            item.productSubtype, item.outOfLine, item.instrumental, item.manufacturerShortName,
+            item.productSubtype, item.productSubgroup, item.outOfLine, item.instrumental, item.manufacturerShortName,
             item.defaultSupplier, item.fiscalSitTributaria, item.fiscalOrigem, item.fiscalNomeTributacao,
             item.fiscalIcms, item.fiscalPis, item.fiscalCofins, item.fiscalIpi, item.fiscalObs
           ]);

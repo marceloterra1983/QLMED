@@ -142,8 +142,12 @@ export interface SpicaNormalizedRow {
   referencia: string;
   refInvalid: boolean;
   nome: string;
+  /** Linha QLMED — mesma taxonomia do Tipo Spica (ex.: ORTOPEDIA). */
   productType: string | null;
+  /** Grupo QLMED — Tipo Spica (instrução: Tipo = Grupo). */
   productSubtype: string | null;
+  /** Subgrupo QLMED — Sub/SubTipo Spica (instrução: Subtipo = Subgrupo). */
+  productSubgroup: string | null;
   outOfLine: boolean;
   tipoInvalid: boolean;
   manufacturerShortName: string | null;
@@ -185,8 +189,10 @@ export function normalizeSpicaRelRow(row: SpicaRelRowInput): SpicaNormalizedRow 
     referencia,
     refInvalid: isInvalidSpicaRef(referencia),
     nome: String(row.nome ?? '').trim(),
+    // Spica Tipo → Linha + Grupo; Spica Sub/SubTipo → Subgrupo
     productType: tipo.invalid ? null : tipo.productType,
-    productSubtype: tipo.invalid ? null : String(row.subtipo ?? '').trim() || null,
+    productSubtype: tipo.invalid ? null : tipo.productType,
+    productSubgroup: tipo.invalid ? null : String(row.subtipo ?? '').trim() || null,
     outOfLine: tipo.outOfLine,
     tipoInvalid: tipo.invalid,
     manufacturerShortName: String(row.fabricante ?? '').trim() || null,

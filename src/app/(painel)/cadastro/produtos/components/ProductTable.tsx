@@ -286,15 +286,19 @@ export default function ProductTable({
         const lineKey = getLineLabel(product);
         const grpKey = getGroupLabel(product, sortBy);
         const subgroupKey = `${grpKey}|${product.productSubgroup || ''}`;
+        // Quando Grupo == Linha (Tipo Spica nos dois), não duplica cabeçalho âmbar.
+        const sameLineGroup =
+          !!(product.productType && product.productSubtype) &&
+          product.productType === product.productSubtype;
         const showLine = lineKey !== lastLine;
-        const showGrp = grpKey !== lastGrp;
+        const showGrp = !sameLineGroup && grpKey !== lastGrp;
         const showSubgroup = !!(product.productSubgroup && subgroupKey !== lastSubgroup);
         if (showLine) { lastGrp = ''; lastSubgroup = ''; }
         if (showGrp) lastSubgroup = '';
         lastLine = lineKey; lastGrp = grpKey;
         if (product.productSubgroup) lastSubgroup = subgroupKey;
         const lineCollapsed = renderCollapsed.has(lineKey);
-        const grpCollapsed = renderCollapsed.has(grpKey);
+        const grpCollapsed = !sameLineGroup && renderCollapsed.has(grpKey);
         return (
           <React.Fragment key={inTable ? product.key : `m-${product.key}`}>
             {renderGroupHeaders(product, showLine, showGrp, showSubgroup, lineKey, grpKey, lineCollapsed, grpCollapsed, lineCountMap, groupCountMap, inTable)}
