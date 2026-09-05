@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { familyByCategory, kindExpires } from '@/lib/documentos/constants';
 import {
   daysRemaining,
   selectVigente,
@@ -63,5 +64,22 @@ describe('SPEC-042 L3 — thresholdDue', () => {
     expect(thresholdDue(-3, [])).toBe(-7);
     expect(thresholdDue(-8, [])).toBe(-14);
     expect(thresholdDue(-7, [-7])).toBeNull();
+  });
+
+  it('sanitária usa limiares 90 e 60 (não os da certidão)', () => {
+    const sanitaria = familyByCategory('sanitaria').thresholds;
+    expect([...sanitaria]).toEqual([90, 60, 30, 15, 7, 0]);
+    expect(thresholdDue(90, [], sanitaria)).toBe(90);
+    expect(thresholdDue(60, [90], sanitaria)).toBe(60);
+    expect(thresholdDue(90, [], [30, 15, 7, 3, 1, 0])).toBeNull();
+    expect(kindExpires('afe_anvisa')).toBe(false);
+    expect(kindExpires('licenca_sanitaria')).toBe(true);
+  });
+
+  it('carta usa 60/30/15/7 e não alerta sem data', () => {
+    const carta = familyByCategory('carta').thresholds;
+    expect([...carta]).toEqual([60, 30, 15, 7]);
+    expect(thresholdDue(30, [], carta)).toBe(30);
+    expect(thresholdDue(90, [], carta)).toBeNull();
   });
 });

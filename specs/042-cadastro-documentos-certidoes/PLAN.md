@@ -197,10 +197,11 @@ L0  SPEC-042 entregue em produção
 ├── L6  Página UI + preview :3002                  gates/L6-ui.md
 ├── L7  Alertas WhatsApp (diário + renovação)      gates/L7-whatsapp.md
 ├── L8  Integração: CI, PR, deploy autorizado      gates/L8-integracao.md
+├── L10 Famílias (sanitária + carta)               gates/L10-familias.md
 └── S1  Spike emissão automática (sem código)      gates/S1-spike-emissao.md (paralelo, independente)
 ```
 
-Ordem: L1 → (L2 ‖ L3) → L4 → L5 → L6 → L7 → L8. S1 a qualquer momento.
+Ordem: L1 → (L2 ‖ L3) → L4 → L5 → L6 → L7 → L8. L10 sobre `origin/main` com L1–L9 em produção. S1 a qualquer momento.
 
 ## Decisões locais (reversíveis; não viram ADR)
 
@@ -230,3 +231,4 @@ Ordem: L1 → (L2 ‖ L3) → L4 → L5 → L6 → L7 → L8. S1 a qualquer mome
 - 2026-09-04 — fan-out L4/L5: contrato src/lib/documentos/ingest.ts commitado (só tipos e assinaturas); L4 (ingestão OneDrive) em feat/042-L4-ingest, L5 (rotas de API) em feat/042-L5-api, em worktrees separados — a L4 preenche os corpos, a L5 só importa.
 - 2026-09-04 — L4 (b56ea00) e L5 (b03e2ee) mescladas + origin/main (traz 26c6c7e, que conserta o teste-bomba de receivedAt). tsc, lint e suíte: 1517 passed / 9 skipped / 0 failed. Gates L5-G7, L7-G8 e L8-G2 corrigidos: o pipe engolia o exit code do vitest e EXPECT /passed/ casava com "1 failed | 1508 passed" — trocado por sentinela guardada por &&.
 - 2026-09-04 — revisão cruzada L7/L8/L9: contrato da listagem alinhado ao que a L9 entregou (7 tipos, sem histórico, sem Outros, Ver em popup). Paginação de `listOneDriveChildren`, lock no upload, substituto só depois de `removedAt` do ciclo.
+- 2026-09-04 — L10: famílias sanitária (fechada, AFE `expira: false`) e carta (aberta) sobre `DOCUMENTOS_FAMILIES`; `category` lida; limiares por família.

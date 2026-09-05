@@ -21,7 +21,8 @@ affected_modules:
 A entrega L1–L6 cobriu FR-001 a FR-009, FR-014 e a parcela de ingestão do
 FR-013 (Graph, health `documentos-ingest`). A L7 cobre FR-010, FR-011, FR-012
 e a parcela de alerta do FR-013 (timeout e log saneado nas chamadas à
-Evolution, health `documentos-alert`).
+Evolution, health `documentos-alert`). A L10 generaliza o motor para três
+famílias (certidão, sanitária, carta) sobre a coluna `category`.
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -162,7 +163,51 @@ falhar de forma visível, não chutar.
   some da pasta de origem na varredura seguinte e recebe `removedAt` pelo
   caminho já existente, deixando de ser vigente. Se a pasta `Vencidas` não
   existir, o ciclo de arquivo é fail-closed (não arquiva nada; não cria a
-  pasta).
+  pasta). Famílias fechadas (certidão, sanitária) arquivam por `kind`; a
+  família aberta (carta) arquiva por fabricante extraído do nome, na pasta
+  `Vencidas` já existente em `7 - CARTA COMERCIALIZAÇÃO`. Tipo com
+  `expira: false` (AFE) nunca é arquivado por vencimento.
+
+### Famílias (L10)
+
+- **FR-018**: A página `/cadastro/documentos` tem três cards `Section` na
+  mesma rota: **Certidões** (aberto), **Autorizações sanitárias** (aberto) e
+  **Cartas de comercialização** (recolhido). A coluna `CompanyDocument.category`
+  (`certidao` | `sanitaria` | `carta`) é o eixo: escrita na ingestão/upload e
+  lida na listagem, no alerta e no arquivo. O motor
+  (`ingest`/`list`/`alerts`/`upload`/`onedrive-port`) itera
+  `DOCUMENTOS_FAMILIES`; acrescentar uma quarta família custa uma entrada
+  nessa tabela, não um ficheiro novo.
+- **FR-019**: A família `sanitaria` é lista fechada, uma linha por tipo, pasta
+  `1 - DOCUMENTOS/1 - QL MED/1 - AUTORIZAÇÃO RELACIONADO A SAUDE`:
+  alvará de funcionamento (Prefeitura); alvará/licença sanitária; licença
+  sanitária de veículo; CRF (conselho); controle de pragas; AFE (ANVISA).
+  **A AFE não vence.** O tipo declara `expira: false`: a linha aparece (Ver /
+  Baixar), a coluna de dias restantes diz "não vence", e **nunca gera alerta**
+  nem arquivamento por validade. A data no nome de
+  `AFE - EMITIDO EM 06.01.2026.pdf` é a da consulta impressa, não validade —
+  a ingestão não a grava. Um contador falso neste documento (interdição da
+  empresa) é pior do que não ter contador.
+- **FR-020**: A família `carta` é conjunto aberto: uma linha por ficheiro
+  (fabricante extraído do nome), pasta
+  `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Ordenação por dias
+  restantes, sem data no fim. Nome sem data → "Sem data" na validade e
+  **não alerta**. Validade entra só pelo lápis (`validUntilSource='manual'`).
+  Não se inventa data. A pasta `Vencidas` já existente serve para arquivo.
+- **FR-021**: Limiares de alerta são por família, não globais:
+  certidão `[30, 15, 7, 3, 1, 0]` (inalterado); sanitária
+  `[90, 60, 30, 15, 7, 0]` — o 60 vem da observação II da Licença Sanitária
+  nº 87858 ("A renovação deverá ser requerida até 60 (sessenta) dias antes
+  do término de sua validade"); carta `[60, 30, 15, 7]`.
+- **FR-022**: Classificação sanitária pelo nome (sem acento, sem caixa), nesta
+  ordem: `PROTOCOLO` ou `PUBLICACAO DIARIO` → `outro` (trâmite, não vigente);
+  `AFE` → `afe_anvisa`; `PRAGAS` → `controle_pragas`; `VEICULO` e `SANITARIA`
+  → `licenca_sanitaria_veiculo`; `LICENCA SANITARIA` ou `ALVARA LICENCA` →
+  `licenca_sanitaria`; `ALVARA` e `PREFEITURA` → `alvara_funcionamento`;
+  `CRF` → `crf_conselho`. A ingestão só lê PDF (`.docx` não entra).
+- **FR-023**: Os três cards reutilizam a mesma tabela (colunas, popup Ver,
+  Baixar, lápis, link de emissão quando existir). A certidão não muda de
+  comportamento. Sem parser de conteúdo de PDF e sem dependência nova.
 
 ## Acceptance Criteria
 
@@ -214,6 +259,24 @@ falhar de forma visível, não chutar.
   (f) na varredura seguinte o item já não está na pasta de origem, recebe
   `removedAt` e não é vigente. Pasta `Vencidas` ausente → `arquivados = 0`
   e a ingestão não falha.
+- **AC-013** (FR-018/023): a listagem devolve `certidoes` (7), `sanitaria`
+  (6 tipos fechados) e `cartas` (N ficheiros). A página tem três `Section`
+  com esses títulos; cartas nasce recolhida.
+- **AC-014** (FR-019): `kindExpires('afe_anvisa') === false`; ingestão de
+  `AFE - EMITIDO EM 06.01.2026.pdf` grava `validUntil = null`; o tick de
+  alerta com AFE a 30 dias da data do nome envia 0. Controlo negativo: pôr
+  `expira: true` na AFE faz o teste "AFE nunca alerta" falhar.
+- **AC-015** (FR-021): `thresholdDue(90, [], sanitaria) === 90`;
+  `thresholdDue(60, [90], sanitaria) === 60`; os limiares da certidão não
+  disparam em 90 dias. Controlo negativo: copiar os limiares da certidão
+  para a sanitária faz o teste 90/60 falhar.
+- **AC-016** (FR-020): carta `Carta Comercialização TECHIMPORT.pdf` fica
+  sem `validUntil` e o tick não envia. Controlo negativo: gravar validade
+  inventada faz o teste "carta sem data não alerta" falhar.
+- **AC-017** (FR-022): a fixture dos nomes reais da pasta sanitária
+  classifica AFE, pragas, veículo, licença, alvará de prefeitura, CRF e
+  protocolo/publicação (outro); `PUBLICAÇÃO DIARIO OFICIAL AFE` é `outro`,
+  não `afe_anvisa`.
 
 ## Non-functional
 
@@ -228,8 +291,9 @@ falhar de forma visível, não chutar.
   fica para spike `S1` em `PLAN.md`; captcha e login gov.br tornam a
   viabilidade incerta por órgão. Este spec entrega "atualização automática" no
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
-- Outras categorias (alvará, CRT CREA, falência, protestos): o modelo tem
-  `category`, a UI só mostra `certidao`.
+- Outras categorias ainda não modeladas (CRT CREA, falência, protestos):
+  entram como nova entrada em `DOCUMENTOS_FAMILIES`, não nesta folha.
+- Parser de validade no conteúdo do PDF.
 - E-mail e push para estes avisos.
 
 ## Applicable ADRs

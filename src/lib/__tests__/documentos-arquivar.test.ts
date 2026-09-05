@@ -184,8 +184,9 @@ function fakePort(
   opts: { archived?: string[]; archiveError?: Error } = {},
 ): DocumentosFolderPort {
   return {
-    async listPdfs(folderName: string) {
-      return folderName === 'Federais' ? files : [];
+    async listPdfs(folderPath: string) {
+      const key = folderPath.split('/').filter(Boolean).pop() ?? folderPath;
+      return key === 'Federais' ? files : [];
     },
     async downloadPdf() {
       return Buffer.from('%PDF-1.4 fixture-nao-logar');

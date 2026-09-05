@@ -14,14 +14,18 @@ import {
 } from '@/lib/background-service-health';
 import { acquirePostgresAdvisoryLock, documentosAlertLockKey } from '@/lib/postgres-advisory-lock';
 import { getSingleCompany } from '@/lib/single-company';
+import { cartaLabelFromFileName } from './classify';
 import {
-  CERTIDAO_KINDS_ORDER,
-  CERTIDAO_LABEL,
   DOCUMENTOS_ALERT_HOUR_LOCAL,
   DOCUMENTOS_ALERT_TICK_MS,
+  DOCUMENTOS_FAMILIES,
+  familyForKind,
   getDocumentosWhatsAppGroupRaw,
   isDocumentosWhatsAppEnabled,
+  kindExpires,
+  labelForKind,
 } from './constants';
+import type { DocumentosFamily } from './families';
 import {
   daysRemaining,
   selectVigente,
@@ -56,6 +60,7 @@ export type DocumentosWhatsAppTarget = {
 type AlertDoc = {
   id: string;
   kind: CompanyDocumentKind;
+  category?: string | null;
   fileName: string;
   oneDriveItemId: string;
   validUntil: Date | string | null;
@@ -128,9 +133,9 @@ export function buildExpiryCaption(
   days: number,
   missingKindLabels: readonly string[] = [],
 ): string {
-  const lines = [CERTIDAO_LABEL[row.kind], row.fileName, prazoPhrase(days)];
+  const lines = [captionLabel(row), row.fileName, prazoPhrase(days)];
   for (const label of missingKindLabels) {
-    lines.push(`Sem certidão no OneDrive: ${label}`);
+    lines.push(label);
   }
   return lines.join('\n');
 }
@@ -140,10 +145,21 @@ export function buildRenewalCaption(
   validUntilYmd: string,
 ): string {
   return [
-    CERTIDAO_LABEL[row.kind],
+    captionLabel(row),
     row.fileName,
     `renovada — válida até ${formatBrDate(validUntilYmd)}`,
   ].join('\n');
+}
+
+function captionLabel(row: { kind: CompanyDocumentKind; fileName: string }): string {
+  const family = familyForKind(row.kind);
+  if (family?.mode === 'open') return cartaLabelFromFileName(row.fileName);
+  return labelForKind(row.kind);
+}
+
+function missingPhrase(family: DocumentosFamily, label: string): string {
+  if (family.category === 'certidao') return `Sem certidão no OneDrive: ${label}`;
+  return `Sem documento no OneDrive: ${label}`;
 }
 
 function hourInSaoPaulo(now: Date): number {
@@ -226,6 +242,7 @@ async function runDocumentosAlertTickLocked(
     select: {
       id: true,
       kind: true,
+      category: true,
       fileName: true,
       oneDriveItemId: true,
       validUntil: true,
@@ -238,17 +255,35 @@ async function runDocumentosAlertTickLocked(
   const missingKindLabels: string[] = [];
   const due: { row: AlertDoc; days: number; threshold: number }[] = [];
 
-  for (const kind of CERTIDAO_KINDS_ORDER) {
-    const row = vigente.get(kind);
-    if (!row) {
-      missingKindLabels.push(CERTIDAO_LABEL[kind]);
+  for (const family of DOCUMENTOS_FAMILIES) {
+    if (family.mode === 'closed') {
+      for (const kindDef of family.kinds) {
+        const row = vigente.get(kindDef.kind);
+        if (!row) {
+          if (family.category === 'certidao') {
+            missingKindLabels.push(missingPhrase(family, kindDef.label));
+          }
+          continue;
+        }
+        if (!kindDef.expira) continue;
+        const ymd = toYmd(row.validUntil);
+        if (!ymd) continue;
+        const days = daysRemaining(today, ymd);
+        const threshold = thresholdDue(days, row.alertedThresholds ?? [], family.thresholds);
+        if (threshold != null) due.push({ row, days, threshold });
+      }
       continue;
     }
-    const ymd = toYmd(row.validUntil);
-    if (!ymd) continue;
-    const days = daysRemaining(today, ymd);
-    const threshold = thresholdDue(days, row.alertedThresholds ?? []);
-    if (threshold != null) due.push({ row, days, threshold });
+
+    const ofFamily = rows.filter((row) => family.kinds.some((kind) => kind.kind === row.kind));
+    for (const row of ofFamily) {
+      if (!kindExpires(row.kind)) continue;
+      const ymd = toYmd(row.validUntil);
+      if (!ymd) continue;
+      const days = daysRemaining(today, ymd);
+      const threshold = thresholdDue(days, row.alertedThresholds ?? [], family.thresholds);
+      if (threshold != null) due.push({ row, days, threshold });
+    }
   }
 
   // Grave lastAlertDay ANTES de enviar. O dia é a mesma classe de estado que

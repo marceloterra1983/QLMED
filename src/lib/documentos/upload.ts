@@ -5,11 +5,11 @@ import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import { DatabaseConfigurationError } from '@/lib/database-config';
 import { acquirePostgresAdvisoryLock, documentosIngestLockKey } from '@/lib/postgres-advisory-lock';
 import {
-  CERTIDAO_FOLDER,
-  CERTIDAO_UPLOAD_NAME,
   DOCUMENTOS_ONEDRIVE_ACCOUNT,
-  DOCUMENTOS_ONEDRIVE_ROOT,
   DOCUMENTOS_UPLOAD_MAX_BYTES,
+  familyForKind,
+  kindConfig,
+  uploadFolderPath,
   type Kind,
 } from './constants';
 
@@ -93,12 +93,17 @@ export async function uploadDocumentosPdf(input: {
     }
 
     const accessToken = await ensureValidOneDriveAccessToken(connection);
-    const fileName = CERTIDAO_UPLOAD_NAME[input.kind](formatDdMmYy(input.validUntil));
-    const folderPath = `${DOCUMENTOS_ONEDRIVE_ROOT}/${CERTIDAO_FOLDER[input.kind]}`;
+    const config = kindConfig(input.kind);
+    const target = uploadFolderPath(input.kind);
+    const family = familyForKind(input.kind);
+    if (!config?.uploadName || !target || !family) {
+      throw new Error(`tipo ${input.kind} não aceita upload`);
+    }
+    const fileName = config.uploadName(formatDdMmYy(input.validUntil));
     const uploaded = await uploadOneDriveFile(
       accessToken,
       connection.driveId,
-      folderPath,
+      target.path,
       fileName,
       input.content,
     );
@@ -106,11 +111,12 @@ export async function uploadDocumentosPdf(input: {
     const row = await prisma.companyDocument.create({
       data: {
         companyId: input.companyId,
+        category: family.category,
         kind: input.kind,
         fileName,
         oneDriveItemId: uploaded.id,
         oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
-        folderName: CERTIDAO_FOLDER[input.kind],
+        folderName: target.folderName,
         fileSize: input.content.length,
         lastModifiedAt: new Date(),
         validUntil: new Date(`${input.validUntil}T00:00:00.000Z`),

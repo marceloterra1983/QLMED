@@ -399,4 +399,70 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(resolveDocumentosWhatsAppTarget()).toBeNull();
     expect(evo.getEvolutionConfig).not.toHaveBeenCalled();
   });
+
+  it('AFE nunca alerta', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    seedKind('afe_anvisa', '2026-10-12');
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+
+    const result = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target: fakeTarget(sent) },
+      at8sp('2026-09-12'),
+    );
+
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+  });
+
+  it('sanitária alerta no limiar 90 e 60', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    seedKind('licenca_sanitaria', '2026-12-11');
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+
+    const at90 = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target: fakeTarget(sent) },
+      at8sp('2026-09-12'),
+    );
+    expect(at90.sent).toBe(1);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([90]);
+    expect(sent[0]?.caption).toContain('vence em 90 dias');
+
+    memory.state!.lastAlertDay = null;
+    const at60 = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target: fakeTarget(sent) },
+      at8sp('2026-10-12'),
+    );
+    expect(at60.sent).toBe(1);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([90, 60]);
+  });
+
+  it('carta sem data não alerta', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    memory.docs.push({
+      id: 'doc-carta',
+      companyId: COMPANY,
+      kind: 'carta_comercializacao',
+      fileName: 'Carta Comercialização TECHIMPORT.pdf',
+      oneDriveItemId: 'od-carta',
+      validUntil: null,
+      removedAt: null,
+      alertedThresholds: [],
+      renewalNotifiedAt: null,
+    });
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+
+    const result = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target: fakeTarget(sent) },
+      at8sp('2026-09-12'),
+    );
+
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+  });
 });

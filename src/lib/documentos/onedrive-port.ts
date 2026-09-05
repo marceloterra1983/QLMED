@@ -7,7 +7,7 @@ import {
   moveOneDriveItem,
   type OneDriveItem,
 } from '@/lib/onedrive-client';
-import { CERTIDAO_ARCHIVE_FOLDER, DOCUMENTOS_ONEDRIVE_ACCOUNT, DOCUMENTOS_ONEDRIVE_ROOT } from './constants';
+import { CERTIDAO_ARCHIVE_FOLDER, DOCUMENTOS_ONEDRIVE_ACCOUNT, familyByCategory } from './constants';
 import type { DocumentosFolderFile, DocumentosFolderPort } from './ingest';
 
 const log = createLogger('documentos/onedrive-port');
@@ -53,39 +53,39 @@ export async function createDocumentosFolderPort(companyId: string): Promise<Doc
   const { driveId } = connection;
   const folderIdByPath = new Map<string, string>();
 
-  async function folderId(folderName: string): Promise<string> {
-    const path = `${DOCUMENTOS_ONEDRIVE_ROOT}/${folderName}`;
-    const cached = folderIdByPath.get(path);
+  async function folderId(folderPath: string): Promise<string> {
+    const cached = folderIdByPath.get(folderPath);
     if (cached) return cached;
-    const id = await resolveExistingFolderId(accessToken, driveId, path);
-    folderIdByPath.set(path, id);
+    const id = await resolveExistingFolderId(accessToken, driveId, folderPath);
+    folderIdByPath.set(folderPath, id);
     return id;
   }
 
-  let vencidasId: string | null | undefined;
+  const vencidasIdByRoot = new Map<string, string | null>();
 
-  async function resolveVencidasId(): Promise<string> {
-    if (typeof vencidasId === 'string') return vencidasId;
-    if (vencidasId === null) {
+  async function resolveVencidasId(familyRoot: string): Promise<string> {
+    if (vencidasIdByRoot.has(familyRoot)) {
+      const cached = vencidasIdByRoot.get(familyRoot);
+      if (typeof cached === 'string') return cached;
       throw new Error('pasta Vencidas não encontrada');
     }
-    const rootId = await resolveExistingFolderId(accessToken, driveId, DOCUMENTOS_ONEDRIVE_ROOT);
+    const rootId = await resolveExistingFolderId(accessToken, driveId, familyRoot);
     const children = await listOneDriveChildren(accessToken, driveId, rootId);
     const match = children.find(
       (item) => item.folder && sameFolderName(item.name || '', CERTIDAO_ARCHIVE_FOLDER),
     );
     if (!match) {
-      vencidasId = null;
-      log.error({ folder: CERTIDAO_ARCHIVE_FOLDER }, 'documentos_archive_folder_missing');
+      vencidasIdByRoot.set(familyRoot, null);
+      log.error({ folder: CERTIDAO_ARCHIVE_FOLDER, root: familyRoot }, 'documentos_archive_folder_missing');
       throw new Error('pasta Vencidas não encontrada');
     }
-    vencidasId = match.id;
+    vencidasIdByRoot.set(familyRoot, match.id);
     return match.id;
   }
 
   return {
-    async listPdfs(folderName: string): Promise<DocumentosFolderFile[]> {
-      const id = await folderId(folderName);
+    async listPdfs(folderPath: string): Promise<DocumentosFolderFile[]> {
+      const id = await folderId(folderPath);
       const children = await listOneDriveChildren(accessToken, driveId, id);
       return children.filter(isPdfItem).map((item) => ({
         itemId: item.id,
@@ -97,8 +97,8 @@ export async function createDocumentosFolderPort(companyId: string): Promise<Doc
     async downloadPdf(itemId: string): Promise<Buffer> {
       return downloadOneDriveItemContent(accessToken, driveId, itemId);
     },
-    async moveToArchive(itemId: string): Promise<void> {
-      const parentId = await resolveVencidasId();
+    async moveToArchive(itemId: string, familyRoot: string = familyByCategory('certidao').root): Promise<void> {
+      const parentId = await resolveVencidasId(familyRoot);
       await moveOneDriveItem(accessToken, driveId, itemId, parentId);
     },
   };

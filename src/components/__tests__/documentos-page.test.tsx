@@ -39,12 +39,16 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
   return {
     id: null,
     kind,
+    category: 'certidao',
     label: CERTIDAO_LABEL[kind],
     fileName: null,
     validUntil: null,
     daysRemaining: null,
     status: { key: 'sem_data', label: 'Não encontrada' },
     validUntilSource: null,
+    expira: true,
+    emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
+    emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
   };
 }
 
@@ -55,12 +59,16 @@ function row(
   return {
     id: `doc-${kind}`,
     kind,
+    category: 'certidao',
     label: CERTIDAO_LABEL[kind],
     fileName: `${kind}.pdf`,
     validUntil: '2026-12-12',
     daysRemaining: 99,
     status: { key: 'ok', label: 'ok' },
     validUntilSource: 'filename',
+    expira: true,
+    emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
+    emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
     ...overrides,
   };
 }
@@ -102,6 +110,8 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
 
   return {
     certidoes,
+    sanitaria: [],
+    cartas: [],
     ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null },
     ...overrides,
   };
@@ -361,5 +371,39 @@ describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
     const linha = (await screen.findByText('CRF FGTS')).closest('tr')!;
     expect(within(linha).getByText('01/09/2026')).toBeTruthy();
     expect(within(linha).queryByText('31/08/2026')).toBeNull();
+  });
+});
+
+describe('SPEC-042 L10 — três famílias na mesma página', () => {
+  it('três cards: certidões e sanitária abertos, cartas recolhidas', async () => {
+    stubFetch(() => jsonResponse(listing({
+      sanitaria: [
+        {
+          id: 'doc-afe',
+          kind: 'afe_anvisa',
+          category: 'sanitaria',
+          label: 'AFE — Autorização de Funcionamento ANVISA',
+          fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+
+    expect((await screen.findByRole('button', { name: /Certidões/ })).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /Autorizações sanitárias/ }).getAttribute('aria-expanded')).toBe('true');
+    const cartas = screen.getByRole('button', { name: /Cartas de comercialização/ });
+    expect(cartas.getAttribute('aria-expanded')).toBe('false');
+
+    const sanitaria = screen.getByRole('table', { name: 'Autorizações sanitárias' });
+    expect(within(sanitaria).getByText('AFE — Autorização de Funcionamento ANVISA')).toBeTruthy();
+    expect(within(sanitaria).getByText('não vence')).toBeTruthy();
+    expect(within(sanitaria).queryByRole('button', { name: /Editar validade/ })).toBeNull();
   });
 });
