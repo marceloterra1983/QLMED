@@ -242,7 +242,8 @@ export function startDailyIssuedSummary(): void {
     try {
       const now = new Date();
       const { dateISO, hour } = getCampoGrandeDateParts(now);
-      if (hour !== 18) return;
+      // Após 18h CG: envia se ainda não mandou (cobre deploy/reboot depois do horário).
+      if (hour < 18) return;
       if (wasAlreadySent(dateISO)) return;
       await runDailyIssuedSummary({ now });
     } catch (err) {

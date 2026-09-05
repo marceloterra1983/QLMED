@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { requireEditor, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { apiError } from '@/lib/api-error';
 import { runDailyIssuedSummary } from '@/lib/daily-issued-summary-job';
 
+/**
+ * Catch-up / trigger do Resumo Diário (SPEC-046).
+ * Aceita sessão editor+ ou API key com `invoices:write` (QLMED_API_KEY de ops)
+ * ou `admin`.
+ */
 export async function POST(request: NextRequest) {
   try {
     try {
-      await requireAdmin({ apiKeyScope: 'admin' });
+      await requireEditor({ apiKeyScope: 'invoices:write' });
     } catch (error) {
       if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
       return unauthorizedResponse();
