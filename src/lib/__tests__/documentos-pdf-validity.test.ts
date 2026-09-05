@@ -277,3 +277,21 @@ describe('emissão tem janela própria, olhando para trás', () => {
     expect(r.validUntil).toBeNull();
   });
 });
+
+describe('concordância do rótulo: o cartão municipal diz VÁLIDO, não VÁLIDA', () => {
+  const HOJE = '2026-09-05';
+
+  it('"ESTE CARTÃO É VÁLIDO ATÉ 18/02/2027" — texto real do Cartão de Inscrição Municipal', () => {
+    const texto = 'AVISO: ESTE CARTÃO É VÁLIDO ATÉ 18/02/2027, SOMENTE PARA A(S) ATIVIDADE(S) ACIMA DISCRIMINADA(S).';
+    expect(matchValidityFromText(texto, HOJE).validUntil).toBe('2027-02-18');
+  });
+
+  it('a forma feminina continua a funcionar', () => {
+    expect(matchValidityFromText('Certidao valida ate 12/10/2026', HOJE).validUntil).toBe('2026-10-12');
+  });
+
+  it('a fronteira de palavra continua a barrar o sentido oposto', () => {
+    expect(matchValidityFromText('Certidao invalido ate 12/10/2026', HOJE).validUntil).toBeNull();
+    expect(matchValidityFromText('Certidao invalida ate 12/10/2026', HOJE).validUntil).toBeNull();
+  });
+});

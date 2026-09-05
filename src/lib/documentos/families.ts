@@ -261,7 +261,7 @@ const BASICOS_KINDS: readonly DocumentosKindConfig[] = [
   {
     kind: 'inscricao_municipal',
     label: 'Inscrição Municipal',
-    expira: false,
+    expira: true,
     descricao:
       'Comprovante de inscrição municipal (ISS) em Campo Grande. É o cadastro da empresa na Prefeitura.',
     orgao: 'Prefeitura de Campo Grande',
@@ -381,7 +381,14 @@ export const DOCUMENTOS_FAMILIES: readonly DocumentosFamily[] = [
     scan: 'root',
     defaultOpen: false,
     columnLabel: 'Documento',
-    thresholds: [],
+    thresholds: [60, 30, 15, 7, 0],
+    /*
+     * A família quase toda não vence, mas o Cartão de Inscrição Municipal sim
+     * — o papel diz "ESTE CARTÃO É VÁLIDO ATÉ 18/02/2027". Sem limiar, o
+     * contador apareceria na tela e NENHUM alerta dispararia: silêncio falso,
+     * que é pior que não mostrar nada. Só quem tem `expira: true` alerta, logo
+     * os outros tipos continuam mudos.
+     */
     kinds: BASICOS_KINDS,
   },
   {
