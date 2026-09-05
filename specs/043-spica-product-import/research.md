@@ -61,8 +61,9 @@ Mesmo universo; `ANVISA` ≡ `RVS` do Rel; traz `CST-ICMS` Cadastro, Obs ICMS, P
 | Código (Cód. Int.) | ProductRegistry.codigo | **Chave canônica Spica**; único; sobrescrever sequência atual no match |
 | Referência | ProductRegistry.productRefs (+ match em ProductRegistry.code) | Match primário com cProd da NF; não apagar code da NF |
 | Nome do Produto | ProductRegistry.description / ProductRegistry.shortName | Só preencher description se vazia ou flag “forçar Spica” |
-| Tipo (strip `N - `) | ProductRegistry.productType **e** productSubtype | Linha + Grupo (convenção: Tipo Spica = Grupo). Se contém `FORA DE LINHA` → outOfLine=true |
-| SubTipo / Sub | ProductRegistry.productSubgroup | Subgrupo (convenção: Subtipo Spica = Subgrupo) |
+| Tipo (strip `N - `) | ProductRegistry.productType | **Linha** (convenção final: Tipo Spica = Linha). Se contém `FORA DE LINHA - X` → outOfLine=true e Linha = X |
+| SubTipo / Sub | ProductRegistry.productSubtype | **Grupo** (convenção final: SubTipo Spica = Grupo). Ex.: `1 - CARDIACA` / `ALEXIS` → Linha CARDIACA, Grupo ALEXIS |
+| — | ProductRegistry.productSubgroup | **null**. As duas ODS (`Rel_Produtos`, `List_Produtos_Cad`) só têm dois níveis taxonômicos (Tipo, SubTipo); nenhuma coluna de 3º nível. Não duplicar valores |
 | Fabricante | ProductRegistry.manufacturerShortName | Catálogo via rename-manufacturer |
 | Fornecedor | ProductRegistry.defaultSupplier | Sparse |
 | Instrumental Sim/Não | ProductRegistry.instrumental | |
@@ -74,6 +75,13 @@ Mesmo universo; `ANVISA` ≡ `RVS` do Rel; traz `CST-ICMS` Cadastro, Obs ICMS, P
 | Obs. Fiscal / Obs ICMS | ProductRegistry.fiscalObs / ProductRegistry.fiscalObsIcms | |
 | CST-ICMS (List) | (avaliar) | Hoje não há coluna CST dedicada além de sit tributária |
 | Custo última/médio | — | **Não** mapear para agregados NF (`agg*`); são custos Spica |
+
+### Taxonomia medida nas ODS (content.xml, 2026-09-05)
+
+- `Rel_Produtos`: 20 colunas, 7965 linhas; `List_Produtos_Cad`: 24 colunas (5 vazias), 7965 linhas + 1 rodapé vazio. Nenhuma coluna além de `Tipo`/`SubTipo` com semântica de grupo/subgrupo/linha.
+- Tipo: 11 valores distintos — 8 válidos com prefixo `N - ` (ORTOPEDIA 3671 → 58 SubTipos; FORA DE LINHA - HEMOD. 2431 → 8; HEMODINAMICA 568 → 11; FORA DE LINHA - CARDIACA 480 → 4; CARDIACA 346 → 30; OUTROS 234 → 13; EQUIPAMENTOS 107 → 12; FORA DE LINHA - CRM 97 → 1) e 3 inválidos sem prefixo (MEDTRONIC 15, PANAMEDICA 9, Generico 7 = **31**, fabricante no campo Tipo). Zero Tipo vazio.
+- SubTipo: 136 valores distintos, zero vazios. 47 linhas com SubTipo == Tipo (40 `4 - OUTROS`/`OUTROS`, 7 `Generico`/`Generico`).
+- Histórico: o PR #338 gravou Tipo em Linha **e** Grupo e SubTipo em Subgrupo; revertido para a convenção acima (backfill SQL `product_subtype := product_subgroup; product_subgroup := NULL` nos 7965 registros).
 
 ProductRegistry.productKey: **não** trocar em linhas já agregadas de NF. Novos produtos Spica-only: `SPICA:{codigo}` ou `CODE:{ref}::UNIT:UN` alinhado ao agregador.
 

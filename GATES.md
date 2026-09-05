@@ -1,36 +1,56 @@
-# Gates: Subgrupos (e grupos) colapsáveis na ProductTable
+# Gates: Spica Tipo → Linha, SubTipo → Grupo (Subgrupo = null)
 
-Scope: Linha, Grupo e Subgrupo colapsáveis com chevron/badge; Recolher/Expandir e load inicial incluem subgrupos; preview + PR/merge/deploy.
+Scope: reverter o mapeamento do #338 (Tipo → Linha+Grupo, Sub → Subgrupo) para a
+convenção final Tipo = Linha (`productType`), SubTipo = Grupo (`productSubtype`),
+`productSubgroup = null` (a origem não tem terceiro nível). Código + testes + spec +
+backfill `product_registry` + preview + PR/merge/deploy.
 
-- [x] G1: `productSubgroupKey` + `allCollapseKeys`/`isProductRowVisible` incluem subgrupos
-  CHECK: rg -n "productSubgroupKey|sub:" "src/app/(painel)/cadastro/produtos/components/product-group-visibility.ts" 2>&1 | head -30
-  EXPECT: /productSubgroupKey|sub:/
-  EVIDENCE: 53:    const sub = productSubgroupKey(product); | 81:      const sub = productSubgroupKey(p);
+- [x] G1: ODS analisadas direto (content.xml): só Tipo e SubTipo, nenhuma coluna de 3º nível
+  CHECK: python3 /tmp/spica-ods-analyze.py /home/marce/qlmed/app/tmp/spica-import/Rel_Produtos_2026_180228.ods 2>&1 | grep -E "outras colunas taxonômicas|Produtos com Tipo vazio|linhas de dados"
+  EXPECT: /outras colunas taxonômicas: \[\]/
+  EVIDENCE: coluna Tipo idx=3; coluna SubTipo idx=4; outras colunas taxonômicas: [] | Produtos com Tipo vazio: 0 ex: []
 
-- [x] G2: Cabeçalho de subgrupo com chevron, badge, toggle e "Clique para expandir"
-  CHECK: rg -n "toggleGroup\(sub|subgroupCollapsed|Clique para expandir|expand_more" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -40
-  EXPECT: /subgroupCollapsed|toggleGroup\(sub/
-  EVIDENCE: 369:                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: renderCollapsed.has(group) ? 'rotat
+- [x] G2: parse.ts mapeia Tipo → productType, Sub → productSubtype, productSubgroup null
+  CHECK: cd /home/marce/qlmed/.worktrees/043-spica-tipo-grupo && ./node_modules/.bin/vitest run src/lib/__tests__/spica-parse.test.ts src/lib/__tests__/spica-import-service.test.ts src/lib/__tests__/spica-file-parse.test.ts --reporter=dot 2>&1 | tail -6
+  EXPECT: /Test Files\s+3 passed/
+  EVIDENCE: Start at  18:30:41 | Duration  190ms (transform 130ms, setup 41ms, import 179ms, tests 10ms, environment 0ms)
 
-- [x] G3: Produto só renderiza se linha+grupo+subgrupo não estiverem recolhidos
-  CHECK: rg -n "!lineCollapsed && !grpCollapsed && !subgroupCollapsed" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -10
-  EXPECT: /!lineCollapsed && !grpCollapsed && !subgroupCollapsed/
-  EVIDENCE: 349:            {!lineCollapsed && !grpCollapsed && !subgroupCollapsed && renderProductRow(product, inTable)}
+- [x] G3: import-spica-direct.mjs sem `productSubtype: ... tipo.productType` duplicado
+  CHECK: cd /home/marce/qlmed/.worktrees/043-spica-tipo-grupo && bash -c 'grep -c "productSubtype: tipo.invalid ? null : tipo.productType" scripts/import-spica-direct.mjs; grep -c "productSubgroup: null" scripts/import-spica-direct.mjs'
+  EXPECT: /^0\n2$/m
+  EVIDENCE: 0 | 2
 
-- [x] G4: Recolher/Expandir e load usam chaves de subgrupo (safeCollapseKeys/allCollapseKeys)
-  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx vitest run "src/app/(painel)/cadastro/produtos/components/__tests__/product-group-visibility.test.ts" "src/app/(painel)/cadastro/produtos/components/__tests__/ProductTable-expand-guard.test.tsx" --reporter=dot 2>&1 | tail -20
-  EXPECT: /Test Files\s+\d+ passed/
-  EVIDENCE: Start at  17:46:50 | Duration  568ms (transform 102ms, setup 26ms, import 148ms, tests 93ms, environment 257ms)
+- [x] G4: Spec Kit atualizado (research + data-model) com a convenção final
+  CHECK: cd /home/marce/qlmed/.worktrees/043-spica-tipo-grupo && bash -c 'grep -c "Tipo Spica = Linha" specs/043-spica-product-import/research.md; grep -c "productSubgroup" specs/043-spica-product-import/data-model.md'
+  EXPECT: /^[1-9]\n[1-9]$/m
+  EVIDENCE: 1 | 1
 
-- [x] G5: Typecheck limpo
-  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx tsc --noEmit 2>&1 | tail -5; echo EXIT:$?
-  EXPECT: /EXIT:0/
-  EVIDENCE: EXIT:0
+- [x] G5: Backfill qlmed-db: total 7965, Linha==Grupo só nas 40 OUTROS/OUTROS da origem, product_subgroup null em todas
+  CHECK: docker exec qlmed-db psql -U postgres -d postgres -Atc "SELECT count(*) || '|' || coalesce(sum((product_type = product_subtype)::int),0) || '|' || count(product_subgroup) || '|' || count(product_subtype) FROM product_registry;"
+  EXPECT: /^7965\|40\|0\|7934$/m
+  EVIDENCE: 7965|40|0|7934
 
-- [x] G6: Preview :3002 /cadastro/produtos responde
-  CHECK: curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/cadastro/produtos
-  EXPECT: /200|307|302|401/
-  EVIDENCE: 307
+- [x] G6: Exemplos 003884 → CARDIACA/ALEXIS/null e 005999 → ORTOPEDIA/CAIXAS DE ORTOPEDIA/null
+  CHECK: docker exec qlmed-db psql -U postgres -d postgres -Atc "SELECT codigo||'|'||product_type||'|'||product_subtype||'|'||coalesce(product_subgroup,'NULL') FROM product_registry WHERE codigo IN ('003884','005999') ORDER BY codigo;"
+  EXPECT: /003884\|CARDIACA\|ALEXIS\|NULL\n005999\|ORTOPEDIA\|CAIXAS DE ORTOPEDIA\|NULL/
+  EVIDENCE: 003884|CARDIACA|ALEXIS|NULL | 005999|ORTOPEDIA|CAIXAS DE ORTOPEDIA|NULL
 
-- [ ] G7: PR mergeado + deploy produção health com SHA novo
+- [x] G7: typecheck + lint limpos
+  CHECK: cd /home/marce/qlmed/.worktrees/043-spica-tipo-grupo && npm run -s typecheck >/tmp/g7-tsc.log 2>&1; echo TSC:$?; npm run -s lint >/tmp/g7-lint.log 2>&1; echo LINT:$?
+  EXPECT: /TSC:0\nLINT:0/
+  EVIDENCE: TSC:0 | LINT:0
+
+- [x] G8: docs:validate verde
+  CHECK: cd /home/marce/qlmed/.worktrees/043-spica-tipo-grupo && npm run -s docs:validate >/tmp/g8-docs.log 2>&1; echo DOCS:$?
+  EXPECT: /DOCS:0/
+  EVIDENCE: DOCS:0
+
+- [x] G9: Preview :3002 serve a mudança; UI CARDIACA mostra ALEXIS como Grupo (âmbar) sem Subgrupo (manual: browser)
+  CHECK: curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3002/cadastro/produtos
+  EXPECT: /^(200|307)$/m
+  EVIDENCE: curl 307 (login) em :3002 no commit 19973f0; Playwright a11y snapshot: row "expand_more CARDIACA 826" → row "expand_more ALEXIS 3" → rows 003884 / 005887 "ALEXIS RETRATOR…"; row "ANEL CARBOMEDICS 15"; zero rows "Selecionar subgrupo"/sub-*. Screenshot /tmp/preview-cardiaca-alexis.png
+
+- [ ] G10: PR mergeado em main, CI verde, deploy produção com health no SHA
+  CHECK: bash -c 'gh run list --workflow=deploy-production.yml --branch main --limit 1 --json conclusion,headSha --jq ".[0] | .conclusion + \" \" + .headSha"; curl -s http://127.0.0.1:13000/api/health'
+  EXPECT: /success [0-9a-f]{40}[\s\S]*"status":"ok"/
   EVIDENCE: pending

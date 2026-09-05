@@ -92,10 +92,34 @@ describe('spica/parse', () => {
     expect(row.anvisaCode).toBe('80071910005');
     expect(row.ipiSaidaNaoZero).toBe(false);
     expect(row.tipoInvalid).toBe(false);
-    // Tipo Spica → Linha + Grupo; SubTipo → Subgrupo
+    // Tipo Spica → Linha; SubTipo → Grupo; Subgrupo sempre null (sem 3º nível na origem)
     expect(row.productType).toBe('ORTOPEDIA');
-    expect(row.productSubtype).toBe('ORTOPEDIA');
-    expect(row.productSubgroup).toBe('CAIXAS DE ORTOPEDIA');
+    expect(row.productSubtype).toBe('CAIXAS DE ORTOPEDIA');
+    expect(row.productSubgroup).toBeNull();
+  });
+
+  it('FORA DE LINHA - CARDIACA vira Linha CARDIACA fora de linha; SubTipo vira Grupo', () => {
+    const row = normalizeSpicaRelRow({
+      codigo: '3884',
+      referencia: 'ALX-256',
+      nome: 'ALEXIS RETRATOR',
+      tipo: '7 - FORA DE LINHA - CARDIACA',
+      subtipo: 'CARDIACA - ST JUDE',
+      fabricante: 'ST JUDE',
+      instrumental: 'Não',
+      rvs: '',
+      ncm: '',
+      sitTributaria: '000',
+      nomeTributacao: '',
+      icms: '17,00',
+      pis: '0,65',
+      cofins: '3,00',
+      ipiEntrada: '0,00',
+    });
+    expect(row.productType).toBe('CARDIACA');
+    expect(row.outOfLine).toBe(true);
+    expect(row.productSubtype).toBe('CARDIACA - ST JUDE');
+    expect(row.productSubgroup).toBeNull();
   });
 
   it('ref _ e tipo invalido + inconsistencia CST/ICMS', () => {
@@ -119,6 +143,8 @@ describe('spica/parse', () => {
     expect(row.refInvalid).toBe(true);
     expect(row.tipoInvalid).toBe(true);
     expect(row.productType).toBeNull();
+    expect(row.productSubtype).toBeNull();
+    expect(row.productSubgroup).toBeNull();
     expect(row.instrumental).toBe(true);
     expect(row.fiscalInconsistente).toBe(true);
   });
