@@ -58,8 +58,33 @@ const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*${DATE}`;
  * antes de `emissao`, senão a palavra solta casa o sufixo e a data fica
  * atrás de `data de`.
  */
-const EMISSAO_LABEL = String.raw`\b(emitida\s+em|emitido\s+em|data\s+de\s+emissao|emissao)`;
-const EMISSAO_SOURCE = `${EMISSAO_LABEL}\\s*:?\\s*${DATE}`;
+/**
+ * Rótulos de emissão colhidos dos PDF REAIS da empresa, lidos em produção em
+ * 05/09/2026 — não inventados. As quatro formas encontradas, verbatim:
+ *
+ *   Receita Federal  "emitida as 16:15:51 do dia 15/06/2026"
+ *   CRF FGTS         "informacao obtida em 31/08/2026 09:52:53"
+ *   CNDT             "expedicao: 06/04/2026, as 11:00:14"
+ *   CND Estadual MS  "certidao emitida as 16:34:20 horas do dia 13/08/2026"
+ *
+ * A versão anterior só aceitava `emitida em|emitido em|data de emissao|emissao`
+ * e por isso extraiu ZERO emissões de 54 documentos reais. Os testes passavam
+ * porque as fixtures usavam os rótulos que eu tinha escolhido.
+ */
+const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao|expedicao|expedida|expedido|emitida|emitido|emissao)`;
+
+/**
+ * Entre o rótulo e a data cabe hora e ligação ("as 16:15:51 do dia"), mas NÃO
+ * texto livre: a mesma certidão traz "emitida gratuitamente com base na
+ * portaria ... de 2/10/2014", e um preenchimento largo colheria 2014 como
+ * emissão. O recheio é fechado de propósito.
+ */
+const EMISSAO_LIGACAO = String.raw`(?:\s*:)?\s*(?:em\s+)?(?:as\s+)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:horas\s+)?(?:do\s+dia\s+)?`;
+
+/** Emissão aceita dia de 1 dígito: a Receita imprime "2/10/2014". */
+const EMISSAO_DATE = String.raw`((?<!\d)(?:\d{1,2}/\d{2}/(?:\d{4}|\d{2})(?!\d)|\d{1,2}\s+de\s+[a-z]{3,9}\s+de\s+\d{4}(?!\d)))`;
+
+const EMISSAO_SOURCE = `${EMISSAO_LABEL}${EMISSAO_LIGACAO}${EMISSAO_DATE}`;
 
 type ValidityRule = {
   source: string;

@@ -295,3 +295,44 @@ describe('concordância do rótulo: o cartão municipal diz VÁLIDO, não VÁLID
     expect(matchValidityFromText('Certidao invalida ate 12/10/2026', HOJE).validUntil).toBeNull();
   });
 });
+
+describe('emissão: rótulos colhidos dos PDF REAIS da empresa', () => {
+  /**
+   * Estes trechos foram lidos em produção em 05/09/2026, extraindo o texto dos
+   * próprios documentos com o pdf.js do app. Não são fixtures inventadas — a
+   * versão anterior tinha fixtures com os rótulos que EU escolhi, passava
+   * verde, e extraiu ZERO emissões de 54 documentos reais.
+   */
+  const HOJE = '2026-09-05';
+
+  it('Receita Federal: "emitida as 16:15:51 do dia 15/06/2026"', () => {
+    const t = 'certidao emitida gratuitamente com base na portaria conjunta rfb/pgfn n o 1.751, de 2/10/2014. emitida as 16:15:51 do dia 15/06/2026 <hora e data de brasilia>. valida ate 12/12/2026';
+    const r = matchValidityFromText(t, HOJE);
+    expect(r.emitidoEm).toBe('2026-06-15');
+    expect(r.validUntil).toBe('2026-12-12');
+  });
+
+  it('CRF FGTS: "informacao obtida em 31/08/2026"', () => {
+    const t = 'certificacao numero: 2026083109521417889009 informacao obtida em 31/08/2026 09:52:53';
+    expect(matchValidityFromText(t, HOJE).emitidoEm).toBe('2026-08-31');
+  });
+
+  it('CNDT: "expedicao: 06/04/2026, as 11:00:14"', () => {
+    const t = 'certidao nº: 36842409/2026 expedicao: 06/04/2026, as 11:00:14 validade: 03/10/2026 - 180 (cento e oitenta) dias';
+    const r = matchValidityFromText(t, HOJE);
+    expect(r.emitidoEm).toBe('2026-04-06');
+    expect(r.validUntil).toBe('2026-10-03');
+  });
+
+  it('CND Estadual MS: "emitida as 16:34:20 horas do dia 13/08/2026"', () => {
+    const t = 'certidao expedida com base no art. 294 da lei n. 1.810, 22 de dezembro de 1997. certidao emitida as 16:34:20 horas do dia 13/08/2026 (hora e data - ms)';
+    expect(matchValidityFromText(t, HOJE).emitidoEm).toBe('2026-08-13');
+  });
+
+  it('não colhe a data da LEI que aparece perto do rótulo', () => {
+    // "emitida gratuitamente com base na portaria ... de 2/10/2014" — texto
+    // livre entre rótulo e data. Um recheio largo colheria 2014.
+    const t = 'certidao emitida gratuitamente com base na portaria conjunta rfb/pgfn n o 1.751, de 2/10/2014.';
+    expect(matchValidityFromText(t, HOJE).emitidoEm).toBeNull();
+  });
+});
