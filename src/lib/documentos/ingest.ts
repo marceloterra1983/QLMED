@@ -28,6 +28,7 @@ import {
   type DocumentosFamily,
 } from './families';
 import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
+import { readValidityFromPdf } from './pdf-validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
 import { listOneDriveChildren, type OneDriveItem } from '@/lib/onedrive-client';
@@ -160,6 +161,34 @@ async function saveIngestSuccess(companyId: string, now: Date, lastError: string
 
 function isMissingFolderError(error: unknown): boolean {
   return error instanceof Error && /pasta não encontrada/i.test(error.message);
+}
+
+async function resolveIngestValidity(opts: {
+  kind: CompanyDocumentKind;
+  fileName: string;
+  itemId: string;
+  port: DocumentosFolderPort;
+  now: Date;
+}): Promise<{ validUntil: Date | null; validUntilSource: string | null }> {
+  if (!kindStoresFilenameDate(opts.kind)) {
+    return { validUntil: null, validUntilSource: null };
+  }
+  const fromName = extractValidUntil(opts.fileName);
+  if (fromName) {
+    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename' };
+  }
+  try {
+    const pdf = await readValidityFromPdf(
+      await opts.port.downloadPdf(opts.itemId),
+      todayInSaoPaulo(opts.now),
+    );
+    if (pdf.validUntil) {
+      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf' };
+    }
+  } catch {
+    // PDF ilegível ou download falhou: linha fica Sem data; o ciclo segue.
+  }
+  return { validUntil: null, validUntilSource: null };
 }
 
 async function saveIngestError(companyId: string, now: Date, error: unknown): Promise<void> {
@@ -323,9 +352,13 @@ async function ingestCompany(
           seenIds.add(file.itemId);
 
           const kind = classifyDocument(target.folderName, file.name, family.category);
-          const extracted = kindStoresFilenameDate(kind) ? extractValidUntil(file.name) : null;
-          const validUntil = extracted ? dateFromYmd(extracted.date) : null;
-          const validUntilSource = extracted ? 'filename' : null;
+          const { validUntil, validUntilSource } = await resolveIngestValidity({
+            kind,
+            fileName: file.name,
+            itemId: file.itemId,
+            port,
+            now,
+          });
           const existing = byItemId.get(file.itemId);
 
           const previous = vigenteByKind.get(kind);

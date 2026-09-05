@@ -102,8 +102,8 @@ falhar de forma visível, não chutar.
   e, dentro de `Estaduais`/`Municipais`, por nome (`MATO GROSSO` sem `SUL` →
   `cnd_estadual_mt`; `MATO GROSSO DO SUL` → `cnd_estadual_ms`; `MOBILIARIO` →
   mobiliário; `gerais` → débitos gerais). Validade lida
-  do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match →
-  `validUntil = null`, `validUntilSource = null`, linha marcada "Sem data".
+  do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match
+  → fallback FR-030 no conteúdo do PDF; se ainda assim nulo, linha "Sem data".
 - **FR-005b**: Item que sumiu da pasta recebe `removedAt` (não é apagado do
   banco). Item renomeado mantém a linha (mesmo `oneDriveItemId`) e atualiza
   nome e validade extraída, exceto quando `validUntilSource = 'manual'`.
@@ -255,6 +255,13 @@ falhar de forma visível, não chutar.
   abortando — isso não pode parecer pasta vazia. O estado grava
   `lastSuccessAt` e um `lastError` âmbar com as famílias saltadas.
 
+- **FR-030**: Se o nome do ficheiro não tem data extraível e o tipo
+  `kindStoresFilenameDate`, a ingestão baixa o PDF e aplica
+  `readValidityFromPdf`. Acerto grava `validUntilSource='pdf'`. Data no
+  nome continua a ganhar (`filename`) e **não** dispara download. Falha
+  de leitura deixa `validUntil` nulo e **não** aborta o ciclo. Tipos com
+  `filenameDate: false` (AFE) não leem o PDF.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -343,6 +350,10 @@ falhar de forma visível, não chutar.
   `skippedFamilies=['societario']`, mantém `removedAt` nulo no contrato e
   nas certidões, e atualiza `lastSuccessAt`. Controlo negativo: porta sem
   `listChildren` continua a abortar.
+- **AC-023** (FR-030): fixture `…MOBILIARIO 05.04.pdf` sem ano no nome,
+  com `readValidityFromPdf` devolvendo `2026-12-01`, persiste essa data
+  com `validUntilSource='pdf'` e **não** chama `downloadPdf` nos ficheiros
+  cuja data já saiu do nome.
 
 ## Non-functional
 
@@ -359,7 +370,6 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias ainda não modeladas (CRT CREA, falência, protestos):
   entram como nova entrada em `DOCUMENTOS_FAMILIES`, não nesta folha.
-- Parser de validade no conteúdo do PDF.
 - E-mail e push para estes avisos.
 
 ## Applicable ADRs
