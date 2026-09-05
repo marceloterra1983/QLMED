@@ -268,29 +268,13 @@ export default function ProdutosPage() {
     };
   }, [products, settingsHierarchy]);
 
-  // Collapse behavior on sort/search change.
-  // Com busca ativa: expandir todos os grupos que contêm resultados (lista já filtrada).
-  const filteredLen = filtered.length;
+  // Com busca ativa: expandir todos os grupos para exibir resultados imediatamente.
   const isSearching = debouncedSearch.trim() !== '';
   useEffect(() => {
     if (isSearching) {
       setCollapsedGroups(new Set());
-      return;
     }
-    if (filteredLen > 0) {
-      const groups = new Set<string>();
-      for (const p of filtered) {
-        switch (sortBy) {
-          case 'supplier': groups.add(p.lastSupplierName || 'Sem fabricante'); break;
-          case 'productType': { groups.add(`line:${p.productType || 'Sem linha'}`); groups.add(`group:${p.productType || 'Sem linha'}|${p.productSubtype || 'Sem grupo'}`); break; }
-          case 'ncm': groups.add(p.ncm ? p.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM'); break;
-          case 'anvisa': groups.add(p.anvisa ? 'Com ANVISA' : 'Sem ANVISA'); break;
-          default: break;
-        }
-      }
-      setCollapsedGroups(groups);
-    }
-  }, [sortBy, filteredLen, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isSearching]);
 
   // ---- handlers ----
   const handleSort = (field: SortField) => {

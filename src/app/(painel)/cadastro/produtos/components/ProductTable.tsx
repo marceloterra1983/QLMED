@@ -56,6 +56,8 @@ const getGroupLabel = (product: ProductRow, sortBy: SortField): string => {
 
 const getLineLabel = (product: ProductRow): string => `line:${product.productType || 'Sem linha'}`;
 
+const TABLE_DATA_COLS = 8; // Cod. Spica, Referencia, Produto, ANVISA, Fabricante, Ult. Compra, Ult. Preco, Acoes
+
 export default function ProductTable({
   products, loading, isRebuilding, summary, sortBy, sortOrder, search,
   collapsedGroups, toggleGroup, selectionEnabled, setSelectionEnabled,
@@ -95,6 +97,7 @@ export default function ProductTable({
   const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
   const hasGroups = allGroups.length > 0;
   const hasCollapsedGroups = collapsedGroups.size > 0;
+  const tableColSpan = TABLE_DATA_COLS + (selectionEnabled ? 1 : 0);
 
   const renderProductRow = (product: ProductRow, inTable: boolean) => {
     if (inTable) {
@@ -106,10 +109,14 @@ export default function ProductTable({
             </td>
           )}
           <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
+            <span className={`text-xs font-mono font-bold ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-800 dark:text-emerald-300'}`}>
+              {product.codigo ? (search ? highlightMatch(product.codigo, search) : product.codigo) : '\u2014'}
+            </span>
+          </td>
+          <td className="px-3 py-3 cursor-pointer" onClick={() => openDetail(product)}>
             <div className="flex items-center gap-1">
               {product.outOfLine && <span className="material-symbols-outlined text-[14px] text-slate-500 dark:text-slate-400 shrink-0 not-italic" title="Fora de linha">block</span>}
               <span className={`text-xs font-mono font-semibold hover:text-primary dark:hover:text-blue-400 transition-colors ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
-                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{search ? highlightMatch(product.codigo, search) : product.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-0.5">/</span></> : null}
                 {search ? highlightMatch(product.code || '-', search) : (product.code || '-')}
               </span>
             </div>
@@ -132,8 +139,8 @@ export default function ProductTable({
           <td className="px-3 py-3 text-right tabular-nums"><span className={`text-xs font-medium ${product.outOfLine ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatAmount(product.lastPrice)}</span></td>
           <td className="px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-0.5">
-              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors not-italic" title="Ver detalhes" aria-label="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
-              <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors not-italic" title="Historico" aria-label="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
+              <button onClick={() => openDetail(product)} className="p-1 rounded-lg text-slate-700 dark:text-slate-200 hover:text-primary dark:hover:text-blue-400 transition-colors not-italic" title="Ver detalhes" aria-label="Ver detalhes"><span className="material-symbols-outlined text-[18px]">search</span></button>
+              <button onClick={() => openHistory(product)} className="p-1 rounded-lg text-slate-700 dark:text-slate-200 hover:text-primary dark:hover:text-blue-400 transition-colors not-italic" title="Historico" aria-label="Historico"><span className="material-symbols-outlined text-[18px]">history</span></button>
             </div>
           </td>
         </tr>
@@ -146,10 +153,14 @@ export default function ProductTable({
           {selectionEnabled && <input type="checkbox" checked={selectedKeys.has(product.key)} onChange={(e) => { e.stopPropagation(); toggleSelect(product.key); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar ${product.shortName || product.description}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-1.5 mb-0.5">
-              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
-                {product.codigo ? <><span className="text-emerald-600 dark:text-emerald-400">{product.codigo}</span><span className="text-slate-500 dark:text-slate-400 mx-0.5">/</span></> : null}
+              {product.codigo && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
+                  {product.codigo}
+                </span>
+              )}
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-400 shrink-0">
                 {product.code || '-'}
-              </p>
+              </span>
               {product.outOfLine && <span className="px-1.5 py-0 rounded text-xs font-bold bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400 shrink-0">Fora de Linha</span>}
             </div>
             <p className="font-bold text-sm text-slate-900 dark:text-white truncate leading-tight">{product.shortName || product.description}</p>
@@ -187,7 +198,7 @@ export default function ProductTable({
           )}
         </div>
       );
-      elements.push(inTable ? <tr key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}><td colSpan={9} className="px-0 py-0">{lineContent}</td></tr> : <div key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>{lineContent}</div>);
+      elements.push(inTable ? <tr key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}><td colSpan={tableColSpan} className="px-0 py-0">{lineContent}</td></tr> : <div key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>{lineContent}</div>);
     }
 
     if (!lineCollapsed && showGrp) {
@@ -205,7 +216,7 @@ export default function ProductTable({
           )}
         </div>
       );
-      elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={9} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
+      elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={tableColSpan} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
     }
 
     if (!lineCollapsed && !grpCollapsed && showSubgroup && subgroupName) {
@@ -215,7 +226,7 @@ export default function ProductTable({
           <span className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
         </div>
       );
-      elements.push(inTable ? <tr key={`sub-${grpKey}-${subgroupName}`}><td colSpan={9} className="px-0 py-0">{subContent}</td></tr> : <div key={`sub-${grpKey}-${subgroupName}`}>{subContent}</div>);
+      elements.push(inTable ? <tr key={`sub-${grpKey}-${subgroupName}`}><td colSpan={tableColSpan} className="px-0 py-0">{subContent}</td></tr> : <div key={`sub-${grpKey}-${subgroupName}`}>{subContent}</div>);
     }
 
     return elements;
@@ -230,11 +241,11 @@ export default function ProductTable({
           {inTable && <p className="text-xs text-slate-500 dark:text-slate-400">Primeira carga &#x2014; processando NF-e para montar a lista.</p>}
         </div>
       );
-      return inTable ? <tr><td colSpan={9}>{content}</td></tr> : content;
+      return inTable ? <tr><td colSpan={tableColSpan}>{content}</td></tr> : content;
     }
     if (loading) {
       if (inTable) return Array.from({ length: 20 }).map((_, i) => (
-        <tr key={i}>{Array.from({ length: 8 }).map((_, j) => <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>)}</tr>
+        <tr key={i}>{Array.from({ length: 9 }).map((_, j) => <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>)}</tr>
       ));
       return <div className="divide-y divide-slate-100 dark:divide-slate-800">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="p-4 space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-64" /><Skeleton className="h-3 w-32" /></div>)}</div>;
     }
@@ -247,7 +258,7 @@ export default function ProductTable({
           hint={summary.totalProducts > 0 ? 'Tente ajustar os filtros de busca.' : 'A lista e montada automaticamente a partir das NF-e de entrada.'}
         />
       );
-      return inTable ? <tr><td colSpan={9}>{content}</td></tr> : content;
+      return inTable ? <tr><td colSpan={tableColSpan}>{content}</td></tr> : content;
     }
 
     if (sortBy === 'productType') {
@@ -302,7 +313,7 @@ export default function ProductTable({
                 )}
               </div>
             );
-            return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={9} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;
+            return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={tableColSpan} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;
           })()}
           {!collapsedGroups.has(group) && renderProductRow(product, inTable)}
         </React.Fragment>
@@ -355,6 +366,7 @@ export default function ProductTable({
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
               {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" title="Selecionar todos visiveis" aria-label="Selecionar todos visiveis" /></th>}
+              <th className="px-3 py-1.5 w-[4.5rem]"><div className="flex items-center gap-1">Cod. Spica</div></th>
               <SortableTh col="code" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Referencia</SortableTh>
               <SortableTh col="description" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Produto</SortableTh>
               <SortableTh col="anvisa" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>ANVISA</SortableTh>
