@@ -182,8 +182,9 @@ const NEW: DocumentosFolderFile = {
 
 function fakePort(files: DocumentosFolderFile[]): DocumentosFolderPort {
   return {
-    async listPdfs(folderName: string) {
-      return folderName === 'Estaduais' ? files : [];
+    async listPdfs(folderPath: string) {
+      const key = folderPath.split('/').filter(Boolean).pop() ?? folderPath;
+      return key === 'Estaduais' ? files : [];
     },
     async downloadPdf() {
       return PDF;

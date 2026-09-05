@@ -6,6 +6,7 @@ import { DOCUMENTOS_ONEDRIVE_ACCOUNT } from '@/lib/documentos/constants';
 type DocRow = {
   id: string;
   companyId: string;
+  category?: string;
   kind: CompanyDocumentKind;
   fileName: string;
   oneDriveItemId: string;
@@ -224,10 +225,15 @@ function filesFromFixture(rows: FixtureRow[] = FIXTURE): { folder: string; file:
   }));
 }
 
+function pathKey(folderPath: string): string {
+  return folderPath.split('/').filter(Boolean).pop() ?? folderPath;
+}
+
 function fakePort(entries: { folder: string; file: DocumentosFolderFile }[]): DocumentosFolderPort {
   return {
-    async listPdfs(folderName: string) {
-      return entries.filter((entry) => entry.folder === folderName).map((entry) => entry.file);
+    async listPdfs(folderPath: string) {
+      const key = pathKey(folderPath);
+      return entries.filter((entry) => entry.folder === key).map((entry) => entry.file);
     },
     async downloadPdf() {
       return Buffer.from('%PDF-1.4 fixture-nao-logar');
@@ -576,6 +582,55 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(archived).toEqual([]);
     expect(memory.docs.find((row) => row.id === 'doc-expired')?.removedAt).toBeNull();
     expect(memory.docs.find((row) => row.id === 'doc-sub')?.removedAt).toEqual(NOW);
+  });
+
+  it('AFE com data de consulta no nome não grava validade', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: '1 - AUTORIZAÇÃO RELACIONADO A SAUDE',
+          file: {
+            itemId: 'od-afe',
+            name: 'AFE - EMITIDO EM 06.01.2026.pdf',
+            size: 2048,
+            lastModifiedAt: NOW,
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(result.upserted).toBe(1);
+    expect(memory.docs[0]?.kind).toBe('afe_anvisa');
+    expect(memory.docs[0]?.category).toBe('sanitaria');
+    expect(memory.docs[0]?.validUntil).toBeNull();
+    expect(memory.docs[0]?.validUntilSource).toBeNull();
+  });
+
+  it('carta sem data no nome fica sem validade', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: '7 - CARTA COMERCIALIZAÇÃO',
+          file: {
+            itemId: 'od-carta',
+            name: 'Carta Comercialização TECHIMPORT.pdf',
+            size: 1024,
+            lastModifiedAt: NOW,
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(memory.docs[0]?.kind).toBe('carta_comercializacao');
+    expect(memory.docs[0]?.category).toBe('carta');
+    expect(memory.docs[0]?.validUntil).toBeNull();
+    expect(memory.docs[0]?.validUntilSource).toBeNull();
   });
 });
 

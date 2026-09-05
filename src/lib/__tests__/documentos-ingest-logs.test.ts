@@ -38,8 +38,9 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
 
 function fakePort(): DocumentosFolderPort {
   return {
-    async listPdfs(folderName: string) {
-      if (folderName !== 'Federais') return [];
+    async listPdfs(folderPath: string) {
+      const key = folderPath.split('/').filter(Boolean).pop() ?? folderPath;
+      if (key !== 'Federais') return [];
       return [
         {
           itemId: 'od-log',

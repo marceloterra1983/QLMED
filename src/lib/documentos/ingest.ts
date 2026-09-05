@@ -9,8 +9,16 @@ import {
   sanitizeError,
 } from '@/lib/background-service-health';
 import { getSingleCompany } from '@/lib/single-company';
-import { CERTIDAO_FOLDER, CERTIDAO_KINDS_ORDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
-import { classifyDocument } from './classify';
+import {
+  DOCUMENTOS_FAMILIES,
+  DOCUMENTOS_INGEST_INTERVAL_MS,
+  DOCUMENTOS_ONEDRIVE_ACCOUNT,
+  familyForKind,
+  familyScanTargets,
+  kindExpires,
+} from './constants';
+import { cartaManufacturerKey, classifyDocument } from './classify';
+import type { DocumentosFamily } from './families';
 import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
@@ -33,11 +41,11 @@ export type DocumentosFolderFile = {
 };
 
 export type DocumentosFolderPort = {
-  /** Lista os PDFs diretos de uma subpasta de DOCUMENTOS_ONEDRIVE_ROOT. */
-  listPdfs(folderName: string): Promise<DocumentosFolderFile[]>;
+  /** Lista os PDFs diretos de `folderPath` (caminho completo a partir da raiz do drive). */
+  listPdfs(folderPath: string): Promise<DocumentosFolderFile[]>;
   downloadPdf(itemId: string): Promise<Buffer>;
-  /** Move o item para a pasta Vencidas. Não apaga. */
-  moveToArchive(itemId: string): Promise<void>;
+  /** Move o item para a pasta Vencidas da família. Não apaga. */
+  moveToArchive(itemId: string, familyRoot: string): Promise<void>;
 };
 
 /** Documento novo cuja validade supera a do vigente anterior do mesmo tipo. */
@@ -67,8 +75,6 @@ export class DocumentosIngestBusyError extends Error {
 
 const log = createLogger('documentos/ingest');
 
-const CERTIDAO_FOLDERS = [...new Set(Object.values(CERTIDAO_FOLDER))];
-
 function dateFromYmd(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -81,6 +87,7 @@ function fileSizeOf(size: number | null): number | null {
 type ExistingRow = {
   id: string;
   kind: CompanyDocumentKind;
+  category: string | null;
   validUntil: Date | null;
   removedAt: Date | null;
   oneDriveItemId: string;
@@ -130,6 +137,7 @@ async function ingestCompany(
     select: {
       id: true,
       kind: true,
+      category: true,
       validUntil: true,
       removedAt: true,
       oneDriveItemId: true,
@@ -147,68 +155,73 @@ async function ingestCompany(
   let scanned = 0;
   let upserted = 0;
 
-  for (const folderName of CERTIDAO_FOLDERS) {
-    const files = await port.listPdfs(folderName);
-    for (const file of files) {
-      scanned += 1;
-      seenIds.add(file.itemId);
+  for (const family of DOCUMENTOS_FAMILIES) {
+    for (const target of familyScanTargets(family)) {
+      const files = await port.listPdfs(target.path);
+      for (const file of files) {
+        scanned += 1;
+        seenIds.add(file.itemId);
 
-      const kind = classifyDocument(folderName, file.name);
-      const extracted = extractValidUntil(file.name);
-      const validUntil = extracted ? dateFromYmd(extracted.date) : null;
-      const validUntilSource = extracted ? 'filename' : null;
-      const existing = byItemId.get(file.itemId);
+        const kind = classifyDocument(target.folderName, file.name, family.category);
+        const extracted = kindExpires(kind) ? extractValidUntil(file.name) : null;
+        const validUntil = extracted ? dateFromYmd(extracted.date) : null;
+        const validUntilSource = extracted ? 'filename' : null;
+        const existing = byItemId.get(file.itemId);
 
-      const previous = vigenteByKind.get(kind);
-      const previousYmd = previous ? toYmd(previous.validUntil) : null;
+        const previous = vigenteByKind.get(kind);
+        const previousYmd = previous ? toYmd(previous.validUntil) : null;
 
-      let row: {
-        id: string;
-        validUntil: Date | null;
-        renewalNotifiedAt: Date | null;
-      };
+        let row: {
+          id: string;
+          validUntil: Date | null;
+          renewalNotifiedAt: Date | null;
+        };
 
-      if (!existing) {
-        row = await prisma.companyDocument.create({
-          data: {
-            companyId,
-            kind,
-            fileName: file.name,
-            oneDriveItemId: file.itemId,
-            oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
-            folderName,
-            fileSize: fileSizeOf(file.size),
-            lastModifiedAt: file.lastModifiedAt,
-            validUntil,
-            validUntilSource,
-            removedAt: null,
-          },
-          select: { id: true, validUntil: true, renewalNotifiedAt: true },
-        });
-      } else {
-        const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : validUntil;
-        const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
-        row = await prisma.companyDocument.update({
-          where: { id: existing.id },
-          data: {
-            fileName: file.name,
-            fileSize: fileSizeOf(file.size),
-            lastModifiedAt: file.lastModifiedAt,
-            folderName,
-            kind,
-            removedAt: null,
-            ...(existing.validUntilSource === 'manual'
-              ? {}
-              : { validUntil, validUntilSource }),
-            ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
-          },
-          select: { id: true, validUntil: true, renewalNotifiedAt: true },
-        });
-      }
+        if (!existing) {
+          row = await prisma.companyDocument.create({
+            data: {
+              companyId,
+              category: family.category,
+              kind,
+              fileName: file.name,
+              oneDriveItemId: file.itemId,
+              oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+              folderName: target.folderName,
+              fileSize: fileSizeOf(file.size),
+              lastModifiedAt: file.lastModifiedAt,
+              validUntil,
+              validUntilSource,
+              removedAt: null,
+            },
+            select: { id: true, validUntil: true, renewalNotifiedAt: true },
+          });
+        } else {
+          const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : validUntil;
+          const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
+          row = await prisma.companyDocument.update({
+            where: { id: existing.id },
+            data: {
+              fileName: file.name,
+              fileSize: fileSizeOf(file.size),
+              lastModifiedAt: file.lastModifiedAt,
+              folderName: target.folderName,
+              category: family.category,
+              kind,
+              removedAt: null,
+              ...(existing.validUntilSource === 'manual'
+                ? {}
+                : { validUntil, validUntilSource }),
+              ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
+            },
+            select: { id: true, validUntil: true, renewalNotifiedAt: true },
+          });
+        }
 
       upserted += 1;
 
       if (
+        family.mode === 'closed' &&
+        kindExpires(kind) &&
         isRenewal({
           persistedYmd: toYmd(row.validUntil),
           renewalNotifiedAt: row.renewalNotifiedAt,
@@ -226,6 +239,7 @@ async function ingestCompany(
           previousValidUntil: previousYmd,
           validUntil: toYmd(row.validUntil) as string,
         });
+      }
       }
     }
   }
@@ -275,7 +289,10 @@ type ArchiveCandidate = {
   oneDriveItemId: string;
 };
 
-const CERTIDAO_KIND_SET = new Set<string>(CERTIDAO_KINDS_ORDER);
+function archiveGroupKey(row: ArchiveCandidate, family: DocumentosFamily): string {
+  if (family.mode === 'open') return `open:${cartaManufacturerKey(row.fileName)}`;
+  return `kind:${row.kind}`;
+}
 
 function hasLaterSubstitute(row: ArchiveCandidate, siblings: ArchiveCandidate[]): boolean {
   const ymd = toYmd(row.validUntil);
@@ -313,22 +330,25 @@ async function archiveExpiredDocuments(
     },
   })) as ArchiveCandidate[];
 
-  const byKind = new Map<CompanyDocumentKind, ArchiveCandidate[]>();
+  const byGroup = new Map<string, { family: DocumentosFamily; rows: ArchiveCandidate[] }>();
   for (const row of live) {
-    if (!CERTIDAO_KIND_SET.has(row.kind)) continue;
-    const list = byKind.get(row.kind);
-    if (list) list.push(row);
-    else byKind.set(row.kind, [row]);
+    const family = familyForKind(row.kind);
+    if (!family) continue;
+    if (!kindExpires(row.kind)) continue;
+    const key = `${family.category}:${archiveGroupKey(row, family)}`;
+    const group = byGroup.get(key);
+    if (group) group.rows.push(row);
+    else byGroup.set(key, { family, rows: [row] });
   }
 
-  const candidates: ArchiveCandidate[] = [];
-  for (const rows of byKind.values()) {
-    for (const row of rows) {
+  const candidates: { row: ArchiveCandidate; family: DocumentosFamily }[] = [];
+  for (const group of byGroup.values()) {
+    for (const row of group.rows) {
       const ymd = toYmd(row.validUntil);
       if (!ymd) continue;
       if (daysRemaining(today, ymd) >= 0) continue;
-      if (!hasLaterSubstitute(row, rows)) continue;
-      candidates.push(row);
+      if (!hasLaterSubstitute(row, group.rows)) continue;
+      candidates.push({ row, family: group.family });
     }
   }
 
@@ -336,8 +356,8 @@ async function archiveExpiredDocuments(
 
   let arquivados = 0;
   try {
-    for (const row of candidates) {
-      await port.moveToArchive(row.oneDriveItemId);
+    for (const { row, family } of candidates) {
+      await port.moveToArchive(row.oneDriveItemId, family.root);
       arquivados += 1;
       log.info({ kind: row.kind, fileName: row.fileName }, 'documentos_archived');
     }

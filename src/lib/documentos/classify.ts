@@ -1,8 +1,9 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import { CERTIDAO_FOLDER } from './constants';
+import type { DocumentosCategory } from './families';
 
 /** NFC + sem acento + minúsculas — nomes do Graph chegam em NFD. */
-function fold(value: string): string {
+export function fold(value: string): string {
   return value
     .normalize('NFC')
     .normalize('NFD')
@@ -21,7 +22,7 @@ const TOKEN_SUL = fold('SUL');
 const TOKEN_MOBILIARIO = fold('MOBILIARIO');
 const TOKEN_GERAIS = fold('gerais');
 
-export function classifyDocument(folderName: string, fileName: string): CompanyDocumentKind {
+function classifyCertidao(folderName: string, fileName: string): CompanyDocumentKind {
   const folder = fold(folderName);
   const file = fold(fileName);
 
@@ -40,4 +41,66 @@ export function classifyDocument(folderName: string, fileName: string): CompanyD
     return 'outro';
   }
   return 'outro';
+}
+
+/**
+ * Regras a partir dos nomes reais da pasta sanitária, sem acento e sem caixa.
+ * PROTOCOLO / PUBLICACAO DIARIO vêm primeiro: "PUBLICAÇÃO DIARIO OFICIAL AFE"
+ * contém AFE mas é comprovativo de trâmite, não o documento vigente.
+ */
+function classifySanitaria(fileName: string): CompanyDocumentKind {
+  const file = fold(fileName);
+  if (file.includes('protocolo') || file.includes('publicacao diario')) return 'outro';
+  if (file.includes('afe')) return 'afe_anvisa';
+  if (file.includes('pragas')) return 'controle_pragas';
+  if (file.includes('veiculo') && file.includes('sanitaria')) return 'licenca_sanitaria_veiculo';
+  if (file.includes('licenca sanitaria') || file.includes('alvara licenca')) return 'licenca_sanitaria';
+  if (file.includes('alvara') && file.includes('prefeitura')) return 'alvara_funcionamento';
+  if (file.includes('crf')) return 'crf_conselho';
+  return 'outro';
+}
+
+const CARTA_PREFIXES = [
+  /^carta\s+de\s+autorizacao\s+comercializacao\s+/i,
+  /^carta\s+de\s+comercializacao\s+/i,
+  /^carta\s+comercializacao\s+/i,
+];
+
+/** dd.MM.yy / dd.MM.yyyy / dd-MM-yyyy / 26fev26 — só para limpar o rótulo. */
+const DATE_TOKEN =
+  /(?<!\d)(\d{2})[.\-](\d{2})[.\-](\d{4}|\d{2})(?!\d)|\b\d{1,2}[a-z]{3}\d{2,4}\b/gi;
+
+/**
+ * Fabricante a partir do nome da carta. Não inventa data; só corta prefixo,
+ * datas e sufixos da empresa ("QL MED", "Assin", "QL" solto no fim).
+ */
+export function cartaLabelFromFileName(fileName: string): string {
+  const base = fileName.normalize('NFC').replace(/\.[^.]+$/u, '');
+  let cut = fold(base).replace(/[_-]+/g, ' ').replace(DATE_TOKEN, ' ');
+  for (const prefix of CARTA_PREFIXES) {
+    cut = cut.replace(prefix, '');
+  }
+  cut = cut
+    .replace(/\bql\s*med\b/g, ' ')
+    .replace(/\bassin\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\bql$/g, '')
+    .trim();
+  if (!cut) return base.trim() || fileName;
+  return cut.toUpperCase();
+}
+
+export function cartaManufacturerKey(fileName: string): string {
+  return fold(cartaLabelFromFileName(fileName));
+}
+
+export function classifyDocument(
+  folderName: string,
+  fileName: string,
+  category: DocumentosCategory = 'certidao',
+): CompanyDocumentKind {
+  if (category === 'sanitaria') return classifySanitaria(fileName);
+  if (category === 'carta') return 'carta_comercializacao';
+  return classifyCertidao(folderName, fileName);
 }

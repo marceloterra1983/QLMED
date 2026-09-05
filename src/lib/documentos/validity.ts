@@ -44,7 +44,7 @@ export function daysRemaining(todayLocal: string, validUntil: string): number {
   return Math.round((utcMidnight(validUntil) - utcMidnight(todayLocal)) / MS_PER_DAY);
 }
 
-export type DocumentStatusKey = 'ok' | 'atencao' | 'urgente' | 'hoje' | 'vencida' | 'sem_data';
+export type DocumentStatusKey = 'ok' | 'atencao' | 'urgente' | 'hoje' | 'vencida' | 'sem_data' | 'nao_vence';
 
 export function statusFor(days: number | null): { key: DocumentStatusKey; label: string } {
   if (days === null) return { key: 'sem_data', label: 'sem data' };
@@ -93,23 +93,28 @@ export function selectVigente<T extends SelectVigenteRow>(rows: T[]): Map<Compan
 /**
  * Limiar de alerta ainda não marcado para `days` dias civis até a validade.
  *
- * Para `days >= 0`: candidato = o menor `t` em `DOCUMENTOS_ALERT_THRESHOLDS`
- * com `t >= days`. O aviso do limiar 30 sai no dia em que faltam 30 (ou
- * menos, se o job não rodou) e nunca se repete. Sem `t >= days` (ex.: 31) →
- * null. Se o candidato já está em `alerted` → null.
+ * Para `days >= 0`: candidato = o menor `t` em `thresholds` (default:
+ * `DOCUMENTOS_ALERT_THRESHOLDS` da família certidão) com `t >= days`.
+ * O aviso do limiar 30 sai no dia em que faltam 30 (ou menos, se o job
+ * não rodou) e nunca se repete. Sem `t >= days` (ex.: 31) → null. Se o
+ * candidato já está em `alerted` → null.
  *
  * Para `days < 0` (vencida): candidato = `-7 * ceil(-days / 7)`
  * (`-7`, `-14`, …; days -1..-7 → -7). Devolve-o se ainda não está em `alerted`.
  */
-export function thresholdDue(days: number, alerted: readonly number[]): number | null {
-  const candidate = days >= 0 ? upcomingThreshold(days) : expiredThreshold(days);
+export function thresholdDue(
+  days: number,
+  alerted: readonly number[],
+  thresholds: readonly number[] = DOCUMENTOS_ALERT_THRESHOLDS,
+): number | null {
+  const candidate = days >= 0 ? upcomingThreshold(days, thresholds) : expiredThreshold(days);
   if (candidate === null) return null;
   return alerted.includes(candidate) ? null : candidate;
 }
 
-function upcomingThreshold(days: number): number | null {
+function upcomingThreshold(days: number, thresholds: readonly number[]): number | null {
   let smallest: number | null = null;
-  for (const t of DOCUMENTOS_ALERT_THRESHOLDS) {
+  for (const t of thresholds) {
     if (t >= days && (smallest === null || t < smallest)) smallest = t;
   }
   return smallest;

@@ -1063,6 +1063,13 @@ enum CompanyDocumentKind {
   cnd_estadual_mt
   cnd_municipal_mobiliario
   cnd_municipal_gerais
+  alvara_funcionamento
+  licenca_sanitaria
+  licenca_sanitaria_veiculo
+  crf_conselho
+  controle_pragas
+  afe_anvisa
+  carta_comercializacao
   outro
 }
 
@@ -1088,6 +1095,7 @@ model CompanyDocument {
 
   @@index([companyId, kind, validUntil])
   @@index([companyId, removedAt])
+  @@index([companyId, category, removedAt])
 }
 
 model CompanyDocumentIngestState {

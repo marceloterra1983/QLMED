@@ -1,6 +1,6 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { classifyDocument } from '@/lib/documentos/classify';
+import { cartaLabelFromFileName, classifyDocument } from '@/lib/documentos/classify';
 import { extractValidUntil } from '@/lib/documentos/validity';
 
 type FixtureRow = {
@@ -200,5 +200,54 @@ describe('SPEC-042 L3 — classifyDocument / extractValidUntil', () => {
     expect(classifyDocument('Estaduais', 'CERTIDÃO ESTADUAL DO MATO GROSSO DO SUL 12.10.26.pdf')).toBe(
       'cnd_estadual_ms',
     );
+  });
+});
+
+const SANITARIA_FIXTURE: { file: string; kind: CompanyDocumentKind }[] = [
+  { file: 'AFE - EMITIDO EM 06.01.2026.pdf', kind: 'afe_anvisa' },
+  { file: 'AFE - AUTORIZAÇÃO DE FUNCIONAMENTO ANVISA.pdf', kind: 'afe_anvisa' },
+  { file: 'ALVARÁ LICENÇA SANITÁRIA 20.10.2026 QL MED.pdf', kind: 'licenca_sanitaria' },
+  { file: 'CRF 28.11.2026.pdf', kind: 'crf_conselho' },
+  { file: 'CRF 03.06.26.pdf', kind: 'crf_conselho' },
+  { file: 'CRF 02.09.2026.pdf', kind: 'crf_conselho' },
+  { file: 'ALVARA DE FUNCIONAMENTO PREFEITURA 04.10.26.pdf', kind: 'alvara_funcionamento' },
+  { file: 'ALVARA DE FUNCIONAMENTO PREFEITURA 15.02.2026.pdf', kind: 'alvara_funcionamento' },
+  { file: 'ALVARA DE FUNCIONAMENTO PREFEITURA 23.09.26.pdf', kind: 'alvara_funcionamento' },
+  { file: 'Licença Sanitária Veiculo 17.10.2025.pdf', kind: 'licenca_sanitaria_veiculo' },
+  { file: 'CONTROLE DE PRAGAS - QL MED 05.08.2026.pdf', kind: 'controle_pragas' },
+  { file: 'CONTROLE DE PRAGAS - QL MED.pdf', kind: 'controle_pragas' },
+  { file: 'PROTOCOLO RENOVAÇAO VIGILANCIA 2025.pdf', kind: 'outro' },
+  { file: 'protocolo renovação Vigilancia 2024.pdf', kind: 'outro' },
+  { file: 'PUBLICAÇÃO DIARIO OFICIAL AFE.pdf', kind: 'outro' },
+  { file: 'PUBLICAÇÃO DIARIO OFICIAL COMPLEMENTO AFE.pdf', kind: 'outro' },
+  { file: 'CERTIFICADO CRF.pdf', kind: 'crf_conselho' },
+  { file: 'DispensaCVCBM (2) bombeiro protocolo 04.02.2023.pdf', kind: 'outro' },
+];
+
+describe('SPEC-042 L10 — classify sanitária / carta', () => {
+  it.each(SANITARIA_FIXTURE)('$file → $kind', ({ file, kind }) => {
+    expect(classifyDocument('1 - AUTORIZAÇÃO RELACIONADO A SAUDE', file, 'sanitaria')).toBe(kind);
+  });
+
+  it('PUBLICAÇÃO DIARIO OFICIAL AFE não vira afe_anvisa (é trâmite)', () => {
+    expect(classifyDocument('', 'PUBLICAÇÃO DIARIO OFICIAL AFE.pdf', 'sanitaria')).toBe('outro');
+  });
+
+  it('carta na pasta aberta é sempre carta_comercializacao', () => {
+    expect(classifyDocument('', 'Carta Comercialização TECHIMPORT.pdf', 'carta')).toBe(
+      'carta_comercializacao',
+    );
+  });
+
+  it('fabricante sai do nome da carta, sem inventar data', () => {
+    expect(cartaLabelFromFileName('Carta Comercialização TECHIMPORT.pdf')).toBe('TECHIMPORT');
+    expect(cartaLabelFromFileName('Carta Comercialização LIVA NOVA.pdf')).toBe('LIVA NOVA');
+    expect(cartaLabelFromFileName('Carta de Autorização Comercialização OSTEOMED QL 15.08.24.pdf')).toBe(
+      'OSTEOMED',
+    );
+    expect(
+      cartaLabelFromFileName('Carta de  Comercialização QL Med_26fev26_Assin - CARDIOVENT.pdf'),
+    ).toBe('CARDIOVENT');
+    expect(extractValidUntil('Carta Comercialização TECHIMPORT.pdf')).toBeNull();
   });
 });

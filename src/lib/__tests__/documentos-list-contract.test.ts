@@ -46,6 +46,16 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.certidoes.map((row) => row.kind)).toEqual([...CERTIDAO_KINDS_ORDER]);
     expect(listing.certidoes[3]?.kind).toBe('cnd_estadual_ms');
     expect(listing.certidoes[4]?.kind).toBe('cnd_estadual_mt');
+    expect(listing.sanitaria).toHaveLength(6);
+    expect(listing.cartas).toEqual([]);
+    expect(listing.sanitaria.map((row) => row.kind)).toEqual([
+      'alvara_funcionamento',
+      'licenca_sanitaria',
+      'licenca_sanitaria_veiculo',
+      'crf_conselho',
+      'controle_pragas',
+      'afe_anvisa',
+    ]);
   });
 
   it('tipo ausente: fileName null e status Não encontrada; sem history', () => {
@@ -141,6 +151,61 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.certidoes.map((row) => row.id)).not.toContain('trf');
     expect(listing.certidoes.every((row) => row.kind !== 'outro')).toBe(true);
   });
+
+  it('AFE vigente mostra não vence e ignora data no nome', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'afe',
+          kind: 'afe_anvisa',
+          category: 'sanitaria',
+          fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+          validUntil: '2026-01-06',
+          validUntilSource: 'filename',
+          removedAt: null,
+        },
+      ],
+      null,
+      NOW,
+    );
+    const afe = listing.sanitaria.find((row) => row.kind === 'afe_anvisa');
+    expect(afe?.id).toBe('afe');
+    expect(afe?.expira).toBe(false);
+    expect(afe?.daysRemaining).toBeNull();
+    expect(afe?.validUntil).toBeNull();
+    expect(afe?.status).toEqual({ key: 'nao_vence', label: 'não vence' });
+  });
+
+  it('cartas: uma linha por ficheiro, sem data no fim, fabricante no rótulo', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'sem-data',
+          kind: 'carta_comercializacao',
+          category: 'carta',
+          fileName: 'Carta Comercialização TECHIMPORT.pdf',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+        },
+        {
+          id: 'com-data',
+          kind: 'carta_comercializacao',
+          category: 'carta',
+          fileName: 'Carta de Autorização Comercialização OSTEOMED QL 15.08.24.pdf',
+          validUntil: '2024-08-15',
+          validUntilSource: 'filename',
+          removedAt: null,
+        },
+      ],
+      null,
+      NOW,
+    );
+    expect(listing.cartas.map((row) => row.id)).toEqual(['com-data', 'sem-data']);
+    expect(listing.cartas[0]?.label).toBe('OSTEOMED');
+    expect(listing.cartas[1]?.label).toBe('TECHIMPORT');
+    expect(listing.cartas[1]?.daysRemaining).toBeNull();
+  });
 });
 
 describe('GET /api/documentos', () => {
@@ -208,6 +273,16 @@ describe('GET /api/documentos', () => {
     );
     expect(body.certidoes[1].fileName).toBeNull();
     expect(body.certidoes[1].status.label).toBe('Não encontrada');
+    expect(body.sanitaria).toHaveLength(6);
+    expect(body.sanitaria.map((row: { kind: string }) => row.kind)).toEqual([
+      'alvara_funcionamento',
+      'licenca_sanitaria',
+      'licenca_sanitaria_veiculo',
+      'crf_conselho',
+      'controle_pragas',
+      'afe_anvisa',
+    ]);
+    expect(body.cartas).toEqual([]);
     expect(body.ingest.lastSuccessAt).toBe('2026-09-04T13:00:00.000Z');
     expect(body).not.toHaveProperty('companyId');
     expect(JSON.stringify(body)).not.toContain('companyId');

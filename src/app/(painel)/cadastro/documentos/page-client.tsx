@@ -12,93 +12,23 @@ import Section from '@/components/ui/Section';
 import Skeleton from '@/components/ui/Skeleton';
 import { useRole } from '@/hooks/useRole';
 import {
-  CERTIDAO_EMISSAO_URL,
   CERTIDAO_KINDS_ORDER,
   CERTIDAO_LABEL,
   DOCUMENTOS_UPLOAD_MAX_BYTES,
+  familyByCategory,
 } from '@/lib/documentos/constants';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
-import { formatDateTime, formatDocumentDate, formatInt } from '@/lib/utils';
+import { formatDateTime, formatInt } from '@/lib/utils';
 import CertidaoPdfModal from './components/CertidaoPdfModal';
+import DocumentosFamilyTable from './components/DocumentosFamilyTable';
+
+export { formatDaysRemaining, CERTIDAO_DIAS_DESTAQUE, isDaysDestaque } from './components/DocumentosFamilyTable';
 
 type CertidaoKind = (typeof CERTIDAO_KINDS_ORDER)[number];
-
-/** Destaque de dias restantes: uma semana ou menos (inclui vence hoje e vencida). */
-export const CERTIDAO_DIAS_DESTAQUE = 7;
-
-export function formatDaysRemaining(days: number | null): string {
-  if (days == null) return '—';
-  if (days === 0) return 'vence hoje';
-  if (days === 1) return '1 dia';
-  if (days > 0) return `${formatInt(days)} dias`;
-  const n = -days;
-  if (n === 1) return 'vencida há 1 dia';
-  return `vencida há ${formatInt(n)} dias`;
-}
-
-export function isDaysDestaque(days: number | null): boolean {
-  return days != null && days <= CERTIDAO_DIAS_DESTAQUE;
-}
-
-const EMISSAO_ARIA: Record<CertidaoKind, string> = {
-  cnd_federal: 'Emitir CND Receita Federal no site da Receita',
-  crf_fgts: 'Emitir CRF FGTS no site da Caixa',
-  cndt: 'Emitir CNDT no site do TST',
-  cnd_estadual_ms: 'Emitir CND Estadual (MS) no site da SEFAZ-MS',
-  cnd_estadual_mt: 'Emitir CND Estadual (MT) no site da SEFAZ-MT',
-  cnd_municipal_mobiliario: 'Emitir CND Municipal — mobiliário no site da Prefeitura',
-  cnd_municipal_gerais: 'Emitir CND Municipal — débitos gerais no site da Prefeitura',
-};
-
-const ICON_BTN =
-  'inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
 
 function apiErrorMessage(payload: unknown, fallback: string): string {
   const error = (payload as { error?: unknown } | null)?.error;
   return typeof error === 'string' && error.trim() ? error : fallback;
-}
-
-function arquivoUrl(id: string, download = false): string {
-  return download ? `/api/documentos/${id}/arquivo?download=1` : `/api/documentos/${id}/arquivo`;
-}
-
-function ValidityText({ value }: { value: string | null }) {
-  if (!value) {
-    return <span className="text-slate-500 dark:text-slate-400">Sem data</span>;
-  }
-  // formatDocumentDate, não formatDate: validUntil é `@db.Date` (meia-noite UTC) e
-  // formatDate resolve no fuso local (America/Sao_Paulo, UTC-3), mostrando o dia
-  // anterior — 2026-12-12 saía como 11/12.
-  return <span className="tabular-nums">{formatDocumentDate(value)}</span>;
-}
-
-function TableHead() {
-  return (
-    <thead>
-      <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-        <th className="px-4 py-3">Certidão</th>
-        <th className="px-4 py-3">Válida até</th>
-        <th className="px-4 py-3">Dias restantes</th>
-        <th className="px-4 py-3">Ações</th>
-      </tr>
-    </thead>
-  );
-}
-
-function DaysCell({ days }: { days: number | null }) {
-  const destaque = isDaysDestaque(days);
-  return (
-    <span
-      className={`tabular-nums text-sm ${
-        destaque
-          ? 'font-medium text-amber-700 dark:text-amber-400'
-          : 'text-slate-700 dark:text-slate-300'
-      }`}
-      data-destaque={destaque ? 'true' : undefined}
-    >
-      {formatDaysRemaining(days)}
-    </span>
-  );
 }
 
 export default function DocumentosPageClient() {
@@ -245,120 +175,42 @@ export default function DocumentosPageClient() {
     }
   }
 
-  function isEditingRow(row: DocumentosRow): boolean {
-    return canWrite && row.id !== null && editingId === row.id;
-  }
-
-  function rowActions(row: DocumentosRow) {
-    const kind = row.kind as CertidaoKind;
-    return (
-      <div className="flex flex-wrap items-center gap-1">
-        {row.id && row.fileName ? (
-          <>
-            <Button
-              size="xs"
-              variant="ghost"
-              icon="picture_as_pdf"
-              onClick={() => setViewer({ id: row.id as string, title: row.label })}
-            >
-              Ver
-            </Button>
-            <Button
-              href={arquivoUrl(row.id, true)}
-              external
-              download={row.fileName}
-              size="xs"
-              variant="ghost"
-              icon="download"
-            >
-              Baixar
-            </Button>
-          </>
-        ) : null}
-        {isEditingRow(row) ? (
-          <>
-            <Button size="xs" onClick={() => void saveEdit()} loading={saving} disabled={!editDraft}>
-              Salvar
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => {
-                setEditingId(null);
-                setEditDraft('');
-              }}
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
-          </>
-        ) : null}
-        <a
-          href={CERTIDAO_EMISSAO_URL[kind]}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={EMISSAO_ARIA[kind]}
-          className={ICON_BTN}
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
-        </a>
-      </div>
-    );
-  }
-
-  function renderCertidaoRow(row: DocumentosRow) {
-    return (
-      <tr
-        key={row.kind}
-        className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-      >
-        <td className="px-4 py-3">
-          <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
-        </td>
-        <td className="px-4 py-3 text-sm whitespace-nowrap">
-          {isEditingRow(row) ? (
-            <input
-              type="date"
-              value={editDraft}
-              onChange={(event) => setEditDraft(event.target.value)}
-              aria-label="Validade"
-              className={`${FIELD_CONTROL_CLS} max-w-40`}
-            />
-          ) : (
-            <span className="inline-flex items-center">
-              <ValidityText value={row.validUntil} />
-              {canWrite && row.id ? (
-                <button
-                  type="button"
-                  className={ICON_BTN}
-                  aria-label={`Editar validade de ${row.label}`}
-                  onClick={() => {
-                    setEditingId(row.id);
-                    setEditDraft(row.validUntil ?? '');
-                  }}
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">edit</span>
-                </button>
-              ) : null}
-            </span>
-          )}
-        </td>
-        <td className="px-4 py-3">
-          <DaysCell days={row.daysRemaining} />
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">{rowActions(row)}</td>
-      </tr>
-    );
-  }
+  const tableProps = {
+    canWrite,
+    editingId,
+    editDraft,
+    saving,
+    onEditDraft: setEditDraft,
+    onStartEdit: (row: DocumentosRow) => {
+      setEditingId(row.id);
+      setEditDraft(row.validUntil ?? '');
+    },
+    onSaveEdit: () => {
+      void saveEdit();
+    },
+    onCancelEdit: () => {
+      setEditingId(null);
+      setEditDraft('');
+    },
+    onView: (row: DocumentosRow) => {
+      if (!row.id) return;
+      setViewer({ id: row.id, title: row.label });
+    },
+  };
 
   const certidoes = data?.certidoes ?? [];
+  const sanitaria = data?.sanitaria ?? [];
+  const cartas = data?.cartas ?? [];
+  const certidaoFamily = familyByCategory('certidao');
+  const sanitariaFamily = familyByCategory('sanitaria');
+  const cartaFamily = familyByCategory('carta');
 
   return (
     <>
       <PageHeader
         icon="verified"
         title="Documentos"
-        subtitle="Certidões de regularidade da empresa"
+        subtitle="Certidões, autorizações sanitárias e cartas de comercialização"
         actions={
           canWrite ? (
             <Button type="button" onClick={() => void handleSync()} loading={syncing} icon="sync">
@@ -375,7 +227,14 @@ export default function DocumentosPageClient() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left border-collapse">
-              <TableHead />
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                  <th className="px-4 py-3">Certidão</th>
+                  <th className="px-4 py-3">Válida até</th>
+                  <th className="px-4 py-3">Dias restantes</th>
+                  <th className="px-4 py-3">Ações</th>
+                </tr>
+              </thead>
               <tbody>
                 {Array.from({ length: 7 }, (_, index) => (
                   <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
@@ -408,7 +267,11 @@ export default function DocumentosPageClient() {
 
       {data ? (
         <div className="space-y-4">
-          <Section icon="verified" title="Certidões" defaultOpen>
+          <Section
+            icon={certidaoFamily.icon}
+            title={certidaoFamily.label}
+            defaultOpen={certidaoFamily.defaultOpen}
+          >
             {canWrite ? (
               <div className="mb-3 flex justify-end">
                 <Button size="sm" variant="secondary" icon="upload_file" onClick={() => setUploadOpen(true)}>
@@ -416,13 +279,38 @@ export default function DocumentosPageClient() {
                 </Button>
               </div>
             ) : null}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[40rem] text-left border-collapse">
-                <caption className="sr-only">Certidões</caption>
-                <TableHead />
-                <tbody>{certidoes.map(renderCertidaoRow)}</tbody>
-              </table>
-            </div>
+            <DocumentosFamilyTable
+              caption={certidaoFamily.label}
+              columnLabel={certidaoFamily.columnLabel}
+              rows={certidoes}
+              {...tableProps}
+            />
+          </Section>
+
+          <Section
+            icon={sanitariaFamily.icon}
+            title={sanitariaFamily.label}
+            defaultOpen={sanitariaFamily.defaultOpen}
+          >
+            <DocumentosFamilyTable
+              caption={sanitariaFamily.label}
+              columnLabel={sanitariaFamily.columnLabel}
+              rows={sanitaria}
+              {...tableProps}
+            />
+          </Section>
+
+          <Section
+            icon={cartaFamily.icon}
+            title={cartaFamily.label}
+            defaultOpen={cartaFamily.defaultOpen}
+          >
+            <DocumentosFamilyTable
+              caption={cartaFamily.label}
+              columnLabel={cartaFamily.columnLabel}
+              rows={cartas}
+              {...tableProps}
+            />
           </Section>
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -439,7 +327,7 @@ export default function DocumentosPageClient() {
         isOpen={viewer != null}
         onClose={() => setViewer(null)}
         documentId={viewer?.id ?? null}
-        title={viewer?.title ?? 'Certidão'}
+        title={viewer?.title ?? 'Documento'}
       />
 
       <Modal
