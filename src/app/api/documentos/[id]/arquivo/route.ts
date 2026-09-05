@@ -12,7 +12,20 @@ import { documentosIdSchema } from '@/lib/schemas/documentos';
 const log = createLogger('documentos/:id/arquivo');
 
 function pdfDisposition(fileName: string, download: boolean): string {
-  const fallback = fileName.replace(/[\\/\r\n"]/g, '_') || 'certidao.pdf';
+  /**
+   * O `filename="..."` é cabeçalho HTTP e só aceita ASCII. Com acento no nome
+   * — `certidão débitos gerais val. 01-10-2026.pdf`, que existe na pasta — o
+   * Node recusa o valor e a rota devolve 500: "Ver" e "Baixar" ficavam
+   * quebrados para esse documento, sem nada indicar porquê.
+   *
+   * O nome verdadeiro continua a viajar em `filename*=UTF-8''`, que é o que os
+   * navegadores usam; o `filename=` é só o recuo para clientes antigos.
+   */
+  const fallback =
+    fileName
+      .normalize('NFC')
+      .replace(/[^\x20-\x7E]/g, '_')
+      .replace(/[\\/\r\n"]/g, '_') || 'certidao.pdf';
   const type = download ? 'attachment' : 'inline';
   return `${type}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }

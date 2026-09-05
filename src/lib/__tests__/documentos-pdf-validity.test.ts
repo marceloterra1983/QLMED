@@ -361,3 +361,29 @@ describe('o import do pdf.js precisa da diretiva do webpack', () => {
     expect(linha).toContain('webpackIgnore: true');
   });
 });
+
+describe('CND Municipal: a emissão vem depois do município, sem rótulo', () => {
+  /**
+   * Texto verbatim do documento da empresa, extraído em produção em 05/09/2026:
+   *
+   *   "...sua eficacia ate a data de validade. campo grande(ms), 31 de agosto
+   *    de 2026 ... certidao emitida em conformidade com a lei n°6.539 de 08 de
+   *    janeiro de 2021"
+   *
+   * A CNDG de Campo Grande NÃO usa rótulo de emissão: escreve o município e a
+   * data. E traz um chamariz — "emitida em conformidade com a lei ... de 08 de
+   * janeiro de 2021" — que um recheio largo colheria como emissão.
+   */
+  const HOJE = '2026-09-05';
+  const REAL =
+    'a presente certidao ... nao perde sua eficacia ate a data de validade. campo grande(ms), 31 de agosto de 2026 ' +
+    'certidao emitida em conformidade com a lei n°6.539 de 08 de janeiro de 2021';
+
+  it('colhe 31/08/2026 do município, não a data da lei', () => {
+    expect(matchValidityFromText(REAL, HOJE).emitidoEm).toBe('2026-08-31');
+  });
+
+  it('funciona sem o "(ms)"', () => {
+    expect(matchValidityFromText('campo grande, 1 de novembro de 2024', HOJE).emitidoEm).toBe('2024-11-01');
+  });
+});

@@ -152,4 +152,33 @@ describe('GET /api/documentos/[id]/arquivo (SPEC-042 FR-004, AC-004)', () => {
     });
     expect(mocks.openOneDriveItemContent).not.toHaveBeenCalled();
   });
+
+  /**
+   * Em produção, em 05/09/2026, `certidão débitos gerais val. 01-10-2026.pdf`
+   * devolvia HTTP 500: "Ver" e "Baixar" quebrados para esse documento, sem
+   * nada indicar porquê. Causa: o `filename="..."` é cabeçalho HTTP e só
+   * aceita ASCII; com acento no nome o runtime recusa o valor.
+   *
+   * O nome verdadeiro continua a viajar em `filename*=UTF-8''`, que é o que os
+   * navegadores usam.
+   */
+  it('nome com acento não derruba a rota: cabeçalho fica ASCII e o nome real vai em filename*', async () => {
+    const REAL = 'certidão débitos gerais val. 01-10-2026.pdf';
+    mocks.documentFindFirst.mockResolvedValue({
+      id: DOC_ID,
+      oneDriveItemId: 'item-1',
+      fileName: REAL,
+    });
+
+    const res = await GET(new Request('http://localhost/api/documentos/x/arquivo'), {
+      params: Promise.resolve({ id: DOC_ID }),
+    });
+
+    expect(res.status).toBe(200);
+    const cd = res.headers.get('Content-Disposition') ?? '';
+    // Se algum byte fora de ASCII sobreviver, o runtime rejeita o header.
+    expect(/^[\x20-\x7E]*$/.test(cd), `cabeçalho não-ASCII: ${cd}`).toBe(true);
+    expect(cd).toContain("filename*=UTF-8''");
+    expect(decodeURIComponent(cd.split("filename*=UTF-8''")[1])).toBe(REAL);
+  });
 });
