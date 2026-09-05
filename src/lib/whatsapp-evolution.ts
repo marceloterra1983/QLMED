@@ -118,3 +118,52 @@ export async function sendWhatsAppDocument(
 
   return { messageId: payload?.key?.id ?? payload?.messageId ?? null };
 }
+
+export type SendTextInput = {
+  jid: string;
+  text: string;
+};
+
+/**
+ * Envia texto puro via Evolution sendText. Mesma política de egresso e
+ * redirect:error que sendWhatsAppDocument (SPEC-045).
+ */
+export async function sendWhatsAppText(
+  input: SendTextInput,
+  config: EvolutionConfig,
+): Promise<{ messageId: string | null }> {
+  const host = evolutionHost(config.baseUrl);
+  if (!host) throw new WhatsAppSendError('EVO_API_URL recusado pela política de egresso', 0);
+
+  const url = assertAllowedHost(
+    `${config.baseUrl}/message/sendText/${encodeURIComponent(config.instance)}`,
+    [host],
+  );
+
+  const response = await fetch(url, {
+    method: 'POST',
+    redirect: 'error',
+    headers: {
+      apikey: config.apiKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      number: input.jid,
+      text: input.text,
+    }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    log.warn({ status: response.status }, 'whatsapp_send_text_failed');
+    throw new WhatsAppSendError(`Evolution respondeu ${response.status}`, response.status);
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { key?: { id?: string }; messageId?: string }
+    | null;
+
+  return { messageId: payload?.key?.id ?? payload?.messageId ?? null };
+}

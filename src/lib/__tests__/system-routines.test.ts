@@ -18,7 +18,7 @@ import { canAccessApi, PAGE_GROUPS } from '@/lib/navigation';
 
 describe('System Routines Catalog', () => {
   it('contém exatamente 19 rotinas catalogadas', () => {
-    expect(SYSTEM_ROUTINES).toHaveLength(20);
+    expect(SYSTEM_ROUTINES).toHaveLength(19);
   });
 
   it('toda rotina possui identificador único e campos obrigatórios preenchidos', () => {
@@ -54,16 +54,14 @@ describe('System Routines Catalog', () => {
     expect(sefaz?.liveStatus).toBe('running');
     expect(sefaz?.lastHeartbeatAt).toBe('2026-09-04T10:05:00.000Z');
 
-    const worker = enriched.find((r) => r.id === 'n8n-stuck-watchdog');
-    expect(worker?.liveStatus).toBe('worker');
   });
 
   it('buildRoutineSummary expõe contadores total, backgroundServices, scheduledTimers e watchdogs', () => {
     const summary = buildRoutineSummary(SYSTEM_ROUTINES, { 'auto-sync': { status: 'running' } as any });
-    expect(summary.total).toBe(20);
+    expect(summary.total).toBe(SYSTEM_ROUTINES.length);
     expect(summary.backgroundServices).toBe(1);
     expect(summary.scheduledTimers).toBeGreaterThan(0);
-    expect(summary.watchdogs).toBeGreaterThanOrEqual(2);
+    expect(summary.watchdogs).toBeGreaterThanOrEqual(1);
   });
 
   it('cobre todos os BackgroundServiceName declarados no background-service-health', () => {
@@ -72,9 +70,11 @@ describe('System Routines Catalog', () => {
       'local-xml-sync',
       'impcg-mail-ingest',
       'cassems-mail-ingest',
+      'unimed-cg-mail-ingest',
       'documentos-ingest',
       'documentos-alert',
       'notification-outbox-purge',
+      'daily-issued-summary',
     ];
 
     const mappedServices = new Set(
@@ -121,15 +121,13 @@ describe('System Routines Catalog', () => {
     expect(byId['cte-dist-sync'].frequency).toMatch(/hora|:17/i);
     expect(byId['cte-dist-sync'].frequency).not.toMatch(/2 horas/i);
 
-    const n8nTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-n8n-stuck-watchdog.timer'), 'utf8');
-    expect(n8nTimer).toMatch(/OnUnitActiveSec=2min/);
-    expect(byId['n8n-stuck-watchdog'].frequency).toMatch(/2 minutos/i);
-    expect(byId['n8n-stuck-watchdog'].frequency).not.toMatch(/10 minutos/i);
 
     const summaryTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-daily-summary-catchup.timer'), 'utf8');
     expect(summaryTimer).toMatch(/OnUnitActiveSec=15min/);
     expect(byId['daily-summary-catchup'].frequency).toMatch(/15 min/i);
     expect(byId['daily-summary-catchup'].scheduleDetails).toMatch(/18h|Campo_Grande/i);
+    expect(byId['daily-summary-catchup'].sourceModule).toMatch(/daily-issued-summary-job/);
+    expect(byId['n8n-stuck-watchdog']).toBeUndefined();
     expect(byId['daily-summary-catchup'].frequency).not.toMatch(/19:30/);
 
     expect(byId['postgres-backup'].frequency).not.toMatch(/02:00/);

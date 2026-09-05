@@ -101,35 +101,6 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
   const [oneDriveFilesLoading, setOneDriveFilesLoading] = useState(false);
   const [selectedOneDriveConnectionId, setSelectedOneDriveConnectionId] = useState<string | null>(null);
   const [oneDriveItems, setOneDriveItems] = useState<OneDriveItem[]>([]);
-
-  // n8n (status em /sistema/automacoes)
-  const [n8nBaseUrl, setN8nBaseUrl] = useState('');
-  const [n8nApiToken, setN8nApiToken] = useState('');
-  const [n8nHasToken, setN8nHasToken] = useState(false);
-  const [n8nMaskedToken, setN8nMaskedToken] = useState<string | null>(null);
-  const [n8nLoading, setN8nLoading] = useState(false);
-  const [n8nConfigured, setN8nConfigured] = useState(false);
-
-  // ── n8n ──
-  useEffect(() => {
-    fetch('/api/integrations/n8n/config')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.config) {
-          setN8nBaseUrl(data.config.baseUrl || '');
-          setN8nHasToken(Boolean(data.config.hasToken));
-          setN8nMaskedToken(typeof data.config.apiToken === 'string' ? data.config.apiToken : null);
-          setN8nConfigured(true);
-          setN8nApiToken('');
-        } else {
-          setN8nConfigured(false);
-          setN8nHasToken(false);
-          setN8nMaskedToken(null);
-        }
-      })
-      .catch(() => toast.error('Erro ao carregar configuração n8n'));
-  }, []);
-
   // ── NSDocs ──
   useEffect(() => {
     fetch('/api/nsdocs/config')
@@ -403,50 +374,6 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
     }
   };
 
-  const handleN8nSave = async () => {
-    if (!canManageSettings) return;
-    const baseUrl = n8nBaseUrl.trim();
-    if (!baseUrl) {
-      toast.error('Informe o endereço HTTPS do n8n');
-      return;
-    }
-    if (!n8nHasToken && !n8nApiToken.trim()) {
-      toast.error('Informe a chave de API do n8n');
-      return;
-    }
-    setN8nLoading(true);
-    try {
-      const body: { baseUrl: string; apiToken?: string } = { baseUrl };
-      if (n8nApiToken.trim()) body.apiToken = n8nApiToken.trim();
-      const res = await fetch('/api/integrations/n8n/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Falha ao salvar');
-      }
-      toast.success('Configuração n8n salva');
-      setN8nApiToken('');
-      setN8nConfigured(true);
-      const refreshed = await fetch('/api/integrations/n8n/config').then((r) => r.json());
-      if (refreshed.config) {
-        setN8nBaseUrl(refreshed.config.baseUrl || '');
-        setN8nHasToken(Boolean(refreshed.config.hasToken));
-        setN8nMaskedToken(typeof refreshed.config.apiToken === 'string' ? refreshed.config.apiToken : null);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao salvar n8n');
-    } finally {
-      setN8nLoading(false);
-    }
-  };
-
-  const n8nBadge = n8nConfigured && n8nHasToken
-    ? { label: 'Conectado', color: 'green' as const }
-    : { label: 'Não configurado', color: 'yellow' as const };
-
   const nsdocsBadge = nsdocsConfig
     ? { label: 'Conectado', color: 'green' as const }
     : { label: 'Não configurado', color: 'yellow' as const };
@@ -463,71 +390,6 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
 
   return (
     <>
-      {/* Integração n8n — alimenta /sistema/automacoes */}
-      <Section icon="account_tree" title="Integração n8n" defaultOpen badge={badgeDe(n8nBadge)}>
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[20px] mt-0.5">info</span>
-              <div>
-                <h4 className="font-bold text-blue-900 dark:text-blue-300 text-xs">Como obter a chave de API</h4>
-                <ol className="text-xs text-blue-800 dark:text-blue-400 mt-1 space-y-0.5 list-decimal list-inside">
-                  <li>Abra o n8n (ex.: n8n.qlmed.com.br)</li>
-                  <li>Vá em <strong>Settings → API</strong> e crie uma API key</li>
-                  <li>Informe o endereço HTTPS e cole a chave abaixo</li>
-                  <li>Depois, em <strong>Sistema → Automações</strong>, o status dos workflows aparece</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Endereço do n8n (HTTPS)
-            </label>
-            <input
-              type="url"
-              autoComplete="off"
-              value={n8nBaseUrl}
-              onChange={(e) => setN8nBaseUrl(e.target.value)}
-              disabled={!canManageSettings}
-              placeholder="https://n8n.qlmed.com.br"
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Chave de API
-            </label>
-            <input
-              type="password"
-              autoComplete="off"
-              value={n8nApiToken}
-              onChange={(e) => setN8nApiToken(e.target.value)}
-              disabled={!canManageSettings}
-              placeholder={n8nHasToken ? 'Deixe em branco para manter a chave atual' : 'Cole a API key do n8n'}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 transition-all font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {n8nHasToken && n8nMaskedToken && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
-                Chave gravada: {n8nMaskedToken}
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button
-              onClick={handleN8nSave}
-              disabled={n8nLoading || !canManageSettings}
-              icon="save"
-            >
-              Salvar Configuração
-            </Button>
-          </div>
-        </div>
-      </Section>
-
       {/* Integração NSDocs */}
       <Section icon="hub" title="Integração NSDocs" defaultOpen badge={badgeDe(nsdocsBadge)}>
         <div className="space-y-4">

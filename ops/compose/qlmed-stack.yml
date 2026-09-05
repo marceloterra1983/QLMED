@@ -34,59 +34,6 @@ services:
       timeout: 5s
       retries: 30
 
-  qlmed-n8n:
-    image: n8nio/n8n:2.29.10@sha256:9cb60554716a0ab11a966e79ed65171e1bbf00b6d262ba12aa119bba22eb6000
-    container_name: qlmed-n8n
-    restart: unless-stopped
-    mem_limit: 1g
-    security_opt:
-      - no-new-privileges:true
-    ports:
-      - "127.0.0.1:5678:5678"
-      - "100.83.11.58:5678:5678"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - ./env/n8n.env
-      - ./env/n8n-automation.env
-    volumes:
-      - n8n_data:/home/node/.n8n
-    # Rede explícita: após queda de link/reboot o endpoint Docker às vezes
-    # some (Networks={}); o watchdog reconecta, mas o alias canônico ajuda.
-    networks:
-      default:
-        aliases: [qlmed-n8n]
-    depends_on:
-      n8n-db:
-        condition: service_healthy
-      qlmed-app:
-        condition: service_started
-        required: false
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5678/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 8
-      start_period: 60s
-
-  n8n-db:
-    image: postgres:18-alpine
-    container_name: qlmed-n8n-db
-    restart: unless-stopped
-    env_file:
-      - ./env/n8n-db.env
-    volumes:
-      - n8n_pgdata:/var/lib/postgresql
-    networks:
-      default:
-        # n8n-db: legado nos env; qlmed-n8n-db: container_name (mais estável)
-        aliases: [n8n-db, qlmed-n8n-db]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-
   qlmed-app:
     image: qlmed-app:${QLMED_BUILD_COMMIT_SHA:-local}
     build:
@@ -117,14 +64,8 @@ services:
 volumes:
   pgdata:
     name: qlmed_pgdata
-  n8n_data:
-    external: true
-    name: qlmed_n8n_data
   app_storage:
     name: qlmed_app_storage
-  n8n_pgdata:
-    name: qlmed_n8n_pgdata
-
 networks:
   default:
     name: qlmed_network

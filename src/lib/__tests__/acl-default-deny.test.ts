@@ -90,8 +90,8 @@ describe('prefixo de API não mapeado nega', () => {
     expect(canAccessApi('editor', ALL_PAGES.map((p) => p.path), apiPath)).toBe(false);
   });
 
-  it('/api/integrations passou a ser gated por /sistema/automacoes', () => {
-    expect(canAccessApi('viewer', ['/sistema/automacoes'], '/api/integrations/n8n/status')).toBe(true);
+  it('/api/integrations passou a ser gated por /sistema/settings', () => {
+    expect(canAccessApi('viewer', ['/sistema/settings'], '/api/integrations/n8n/status')).toBe(true);
     expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/integrations/n8n/status')).toBe(false);
   });
 

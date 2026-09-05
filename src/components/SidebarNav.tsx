@@ -35,7 +35,6 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/sistema/errors': { label: 'Erros', icon: 'warning' },
   '/sistema/upload': { label: 'Upload XML', icon: 'cloud_upload' },
   '/sistema/settings': { label: 'Configurações', icon: 'settings' },
-  '/sistema/automacoes': { label: 'Automações', icon: 'account_tree' },
   '/sistema/rotinas': { label: 'Rotinas', icon: 'schedule' },
   '/sistema/usuarios': { label: 'Usuários', icon: 'manage_accounts' },
 };
@@ -130,7 +129,6 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
         { label: 'Erros', icon: 'warning', href: '/sistema/errors' },
         { label: 'Upload XML', icon: 'cloud_upload', href: '/sistema/upload' },
         { label: 'Configurações', icon: 'settings', href: '/sistema/settings' },
-        { label: 'Automações', icon: 'account_tree', href: '/sistema/automacoes' },
         { label: 'Rotinas', icon: 'schedule', href: '/sistema/rotinas' },
         ...(isAdmin ? [{
           label: 'Usuários',
