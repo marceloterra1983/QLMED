@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SYSTEM_ROUTINES, ROUTINE_CATEGORIES } from '@/lib/system-routines';
 import type { BackgroundServiceName } from '@/lib/background-service-health';
+import { DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ALERT_THRESHOLDS } from '@/lib/documentos/constants';
+import { IMPCG_INGEST_INTERVAL_MS } from '@/lib/impcg/constants';
+import { CASSEMS_INGEST_INTERVAL_MS } from '@/lib/cassems/constants';
+import { canAccessApi } from '@/lib/navigation';
 
 const mocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
@@ -83,8 +89,64 @@ describe('System Routines Catalog', () => {
   it('possui rotinas de todas as categorias do sistema', () => {
     const categoriesInUse = new Set(SYSTEM_ROUTINES.map((r) => r.category));
     for (const cat of Object.keys(ROUTINE_CATEGORIES)) {
-      expect(categoriesInUse.has(cat as any), `Categoria ${cat} sem nenhuma rotina mapeada`).toBe(true);
+      expect(categoriesInUse.has(cat as keyof typeof ROUTINE_CATEGORIES), `Categoria ${cat} sem nenhuma rotina mapeada`).toBe(true);
     }
+  });
+
+  it('a frequência publicada bate com as constantes e timers do código', () => {
+    const byId = Object.fromEntries(SYSTEM_ROUTINES.map((r) => [r.id, r]));
+
+    expect(DOCUMENTOS_INGEST_INTERVAL_MS).toBe(60 * 60 * 1000);
+    expect(byId['documentos-ingest'].frequency).toMatch(/1 hora/i);
+    expect(byId['documentos-ingest'].frequency).not.toMatch(/10 minutos/i);
+    expect(byId['documentos-ingest'].scheduleDetails).toMatch(/3600|1 hora/i);
+
+    expect(IMPCG_INGEST_INTERVAL_MS).toBe(15 * 60 * 1000);
+    expect(CASSEMS_INGEST_INTERVAL_MS).toBe(15 * 60 * 1000);
+    expect(byId['impcg-mail-ingest'].frequency).toMatch(/15 minutos/i);
+    expect(byId['cassems-mail-ingest'].frequency).toMatch(/15 minutos/i);
+
+    expect(DOCUMENTOS_ALERT_THRESHOLDS).toEqual([30, 15, 7, 3, 1, 0]);
+    expect(byId['documentos-alert'].description).toMatch(/30, 15, 7, 3, 1, 0/);
+
+    expect(byId['sefaz-auto-sync'].frequency).toMatch(/6 horas|360 min/i);
+    expect(byId['sefaz-auto-sync'].frequency).not.toMatch(/A cada 1 hora$/);
+
+    expect(byId['onedrive-xml-sync'].frequency).toMatch(/1 min/i);
+    expect(byId['onedrive-xml-sync'].frequency).not.toMatch(/5 min/i);
+
+    const cteTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-cte-dist-sync.timer'), 'utf8');
+    expect(cteTimer).toMatch(/\*:17:00/);
+    expect(byId['cte-dist-sync'].frequency).toMatch(/hora|:17/i);
+    expect(byId['cte-dist-sync'].frequency).not.toMatch(/2 horas/i);
+
+    const n8nTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-n8n-stuck-watchdog.timer'), 'utf8');
+    expect(n8nTimer).toMatch(/OnUnitActiveSec=2min/);
+    expect(byId['n8n-stuck-watchdog'].frequency).toMatch(/2 minutos/i);
+    expect(byId['n8n-stuck-watchdog'].frequency).not.toMatch(/10 minutos/i);
+
+    const summaryTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-daily-summary-catchup.timer'), 'utf8');
+    expect(summaryTimer).toMatch(/OnUnitActiveSec=15min/);
+    expect(byId['daily-summary-catchup'].frequency).toMatch(/15 min/i);
+    expect(byId['daily-summary-catchup'].scheduleDetails).toMatch(/18h|Campo_Grande/i);
+    expect(byId['daily-summary-catchup'].frequency).not.toMatch(/19:30/);
+
+    expect(byId['postgres-backup'].frequency).not.toMatch(/02:00/);
+    expect(byId['postgres-backup'].frequency).toMatch(/fallback|sob demanda/i);
+
+    const rebuildSrc = readFileSync(resolve(process.cwd(), 'src/lib/product-aggregate-updater.ts'), 'utf8');
+    expect(rebuildSrc).toMatch(/setHours\(3, 0, 0, 0\)/);
+    expect(byId['product-aggregate-rebuild'].frequency).toMatch(/03:00/);
+
+    const evoTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-evolution-session-monitor.timer'), 'utf8');
+    expect(evoTimer).toMatch(/OnUnitActiveSec=5min/);
+    expect(byId['evolution-session-watchdog'].frequency).toMatch(/5 minutos/i);
+  });
+
+  it('/api/sistema/rotinas só abre com a página Rotinas', () => {
+    expect(canAccessApi('viewer', ['/sistema/rotinas'], '/api/sistema/rotinas')).toBe(true);
+    expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/sistema/rotinas')).toBe(false);
+    expect(canAccessApi('viewer', ['/sistema/automacoes'], '/api/sistema/rotinas')).toBe(false);
   });
 });
 
