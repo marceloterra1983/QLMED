@@ -4,11 +4,9 @@
  * Also provides the daily full rebuild schedule.
  */
 
-import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
-import { nextCodigo } from '@/lib/product-codigo';
 import { createLogger } from '@/lib/logger';
-import { extractProductsFromXml, buildProductKey, normalizeUnit, isResaleCustomer, computeSearchText, normalizeAnvisaRegistration, type ProductFromXml } from '@/lib/product-aggregation';
+import { extractProductsFromXml, buildProductKey, isResaleCustomer, computeSearchText, type ProductFromXml } from '@/lib/product-aggregation';
 import { buildResaleIndex, matchResaleProduct } from '@/lib/product-aggregation/resale-match';
 import { isImportEntryCfop, extractFirstCfop } from '@/lib/cfop';
 import { extractAllTaxData } from '@/lib/parse-invoice-tax';
@@ -274,43 +272,12 @@ async function upsertProductAggregates(
       continue;
     }
 
-    const avgPrice = product.quantity > 0 ? product.totalValue / product.quantity : 0;
-    const codigo = await nextCodigo(db, opts.companyId);
-
-    try {
-      await db.productRegistry.create({
-        data: {
-          id: randomUUID(),
-          companyId: opts.companyId,
-          productKey: key,
-          code: product.code,
-          description: product.description || '',
-          ncm: product.ncm,
-          unit: normalizeUnit(product.unit),
-          ean: product.ean,
-          anvisaCode: normalizeAnvisaRegistration(product.anvisa),
-          productType: mode === 'import' ? 'LINHA CARDIACA' : null,
-          productSubtype: mode === 'import' ? 'VALVULAS IMPORTADAS' : null,
-          aggTotalQuantity: product.quantity,
-          aggTotalValue: product.totalValue,
-          aggInvoiceCount: 1,
-          aggLastPrice: product.unitPrice,
-          aggAveragePrice: avgPrice,
-          aggLastIssueDate: opts.issueDate,
-          aggLastSupplierName: supplierName,
-          aggLastSupplierCnpj: supplierCnpj,
-          aggLastInvoiceNumber: opts.invoiceNumber,
-          aggComputedAt: now,
-          aggSearchText: searchText,
-          codigo,
-          createdAt: now,
-          updatedAt: now,
-        },
-      });
-    } catch (err) {
-      // Concurrent create on same key — safe to ignore under advisory lock races
-      log.warn({ err, key }, 'product_registry create race ignored');
-    }
+    // Catálogo oficial = Spica. Não criar produto novo só porque a NF trouxe
+    // um código/descrição desconhecido — isso reintroduzia ~785 órfãos/teste.
+    log.info(
+      { key, code: product.code, mode, companyId: opts.companyId },
+      'product_registry skip create — not in catalog',
+    );
   }
 }
 
