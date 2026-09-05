@@ -122,9 +122,30 @@ let pdfJsModule: Promise<PdfJsModule> | null = null;
 
 async function loadPdfJs(): Promise<PdfJsModule> {
   if (!pdfJsModule) {
-    // Import dinâmico do asset em public/ — estático no topo entra no bundle do cliente.
+    /**
+     * Import dinâmico do asset em `public/` — estático no topo entraria no
+     * bundle do cliente.
+     *
+     * `webpackIgnore` é OBRIGATÓRIO e não é redundante com `@vite-ignore`:
+     * `@vite-ignore` só fala com o Vite, que é o empacotador do vitest. A
+     * produção é Next/webpack, que ignorava esse comentário, tentava empacotar
+     * o caminho `file://` e falhava — e o `catch` de `readValidityFromPdf`
+     * transformava a falha em "0 caracteres extraídos", indistinguível de um
+     * PDF digitalizado.
+     *
+     * Consequência real, medida em 05/09/2026: a leitura de PDF nunca funcionou
+     * em produção. 54 documentos com camada de texto perfeita devolveram
+     * `textChars: 0`, e a suíte ficava verde porque corre sob Vite.
+     */
     const href = pathToFileURL(join(process.cwd(), 'public/pdfjs/build/pdf.mjs')).href;
-    pdfJsModule = import(/* @vite-ignore */ href) as Promise<PdfJsModule>;
+    pdfJsModule = import(/* webpackIgnore: true */ /* @vite-ignore */ href).then(
+      (mod) => mod as PdfJsModule,
+      (err) => {
+        // Uma falha de CARREGAMENTO não pode passar por "PDF sem texto".
+        pdfJsModule = null;
+        throw new Error(`pdf.js indisponível: ${err instanceof Error ? err.message : 'erro'}`);
+      },
+    );
   }
   const mod = await pdfJsModule;
   const workerHref = pathToFileURL(join(process.cwd(), 'public/pdfjs/build/pdf.worker.mjs')).href;
