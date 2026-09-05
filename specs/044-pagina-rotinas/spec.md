@@ -71,3 +71,14 @@ A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar
 - **FR-003**: O sistema MUST expor a rota de API `/api/sistema/rotinas` (autorizada para usuários da sessão com acesso à página ou perfil admin) fornecendo o catálogo estático enriquecido com a telemetria ao vivo de `getBackgroundServiceHealth()`.
 - **FR-004**: O menu de navegação lateral (`SidebarNav`) MUST incluir o item "Rotinas" com ícone representativo (`schedule`), sincronizado entre `PAGE_GROUPS`, `PAGE_LABELS` e `buildNavItems`.
 - **FR-005**: A tabela MUST disponibilizar contadores de resumo (total de rotinas, serviços em background ativos, rotinas agendadas/cron e rotinas de proteção/watchdog).
+- **FR-006**: Símbolos e caminhos do catálogo MUST existir no código.
+  Locks IMPCG/CASSEMS usam `impcgMailIngestLockKey` / `cassemsMailIngestLockKey`.
+  ANVISA aponta para `src/lib/anvisa-api.ts` e a rota de sync; **não** há
+  `src/lib/anvisa/` nem sync automático no ingest de XML. As quatro rotinas
+  fiscais do processo `auto-sync` declaram telemetria compartilhada.
+
+## Acceptance Criteria
+
+- **AC-006** (FR-006): o teste do catálogo falha se o lock IMPCG voltar a
+  `impcgIngestLockKey`, se o módulo ANVISA voltar a `src/lib/anvisa/`, ou se
+  algum `sourceModule` apontar para ficheiro inexistente.
