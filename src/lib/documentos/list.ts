@@ -38,7 +38,7 @@ export type DocumentosListing = {
   societario: DocumentosRow[];
   basicos: DocumentosRow[];
   balancos: DocumentosRow[];
-  ingest: { lastSuccessAt: string | null; lastError: string | null };
+  ingest: { lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null };
   shareRecipients: DocumentosShareRecipientOption[];
 };
 
@@ -53,6 +53,15 @@ export type DocumentosListSource = {
   removedAt: Date | string | null;
   webUrl?: string | null;
 };
+
+function erroAindaAtual(
+  ingest: { lastSuccessAt: Date | string | null; lastError: string | null; lastErrorAt: Date | string | null } | null,
+): boolean {
+  if (!ingest?.lastError) return false;
+  if (!ingest.lastErrorAt) return true; // sem carimbo, não dá para desqualificar
+  if (!ingest.lastSuccessAt) return true;
+  return new Date(ingest.lastErrorAt).getTime() > new Date(ingest.lastSuccessAt).getTime();
+}
 
 function toIso(value: Date | string | null | undefined): string | null {
   if (value == null) return null;
@@ -218,7 +227,11 @@ function buildOpenFamily(
 
 export function buildDocumentosListing(
   rows: DocumentosListSource[],
-  ingest: { lastSuccessAt: Date | string | null; lastError: string | null } | null,
+  ingest: {
+    lastSuccessAt: Date | string | null;
+    lastError: string | null;
+    lastErrorAt: Date | string | null;
+  } | null,
   now: Date = new Date(),
 ): DocumentosListing {
   const active = rows.filter((row) => row.removedAt == null);
@@ -259,7 +272,16 @@ export function buildDocumentosListing(
     balancos: listingRows.balanco,
     ingest: {
       lastSuccessAt: toIso(ingest?.lastSuccessAt),
-      lastError: ingest?.lastError ?? null,
+      /**
+       * O erro só é atual se for MAIS RECENTE que o último sucesso. Sem esta
+       * comparação, uma falha antiga — um tick de fundo que apanhou a janela de
+       * um deploy, por exemplo — ficava na tela indefinidamente, colada ao
+       * horário da última varredura BEM-SUCEDIDA. Lia-se como "a varredura das
+       * 12:43 falhou" quando a das 12:53 tinha passado. Fez-me quase declarar
+       * produção quebrada com produção sã.
+       */
+      lastError: erroAindaAtual(ingest) ? (ingest?.lastError ?? null) : null,
+      lastErrorAt: erroAindaAtual(ingest) ? toIso(ingest?.lastErrorAt) : null,
     },
     shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
   };
@@ -286,7 +308,7 @@ export async function loadDocumentosListing(
     }),
     prisma.companyDocumentIngestState.findUnique({
       where: { companyId },
-      select: { lastSuccessAt: true, lastError: true },
+      select: { lastSuccessAt: true, lastError: true, lastErrorAt: true },
     }),
   ]);
   return buildDocumentosListing(rows, ingest, now);

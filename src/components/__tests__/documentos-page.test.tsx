@@ -128,7 +128,7 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     societario: [],
     basicos: [],
     balancos: [],
-    ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null },
+    ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null, lastErrorAt: null },
     shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
     ...overrides,
   };

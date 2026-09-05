@@ -111,7 +111,7 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
           removedAt: null,
         },
       ],
-      { lastSuccessAt: new Date('2026-09-04T13:00:00.000Z'), lastError: null },
+      { lastSuccessAt: new Date('2026-09-04T13:00:00.000Z'), lastError: null, lastErrorAt: null },
       NOW,
     );
 
@@ -409,7 +409,7 @@ describe('GET /api/documentos', () => {
     ]);
     mocks.ingestFindUnique.mockResolvedValue({
       lastSuccessAt: new Date('2026-09-04T13:00:00.000Z'),
-      lastError: null,
+      lastError: null, lastErrorAt: null,
     });
 
     const res = await GET();
@@ -442,5 +442,50 @@ describe('GET /api/documentos', () => {
     expect(mocks.documentFindMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { companyId: 'company-1', removedAt: null } }),
     );
+  });
+});
+
+describe('erro de varredura só aparece se for mais recente que o último sucesso', () => {
+  /**
+   * Um tick de fundo que apanhe a janela de um deploy guarda um `lastError`.
+   * Sem comparar com `lastSuccessAt`, esse erro ficava na tela indefinidamente,
+   * colado ao horário da última varredura BEM-SUCEDIDA — lia-se como "a
+   * varredura falhou" quando a seguinte tinha passado. Aconteceu em produção
+   * em 05/09/2026 e quase me fez declarar produção quebrada estando sã.
+   */
+  const SUCESSO = new Date('2026-09-05T15:53:00.000Z');
+
+  it('erro ANTERIOR ao último sucesso é omitido', () => {
+    const listing = buildDocumentosListing(
+      [],
+      {
+        lastSuccessAt: SUCESSO,
+        lastError: 'Invalid `prisma.companyDocument.findMany()` invocation',
+        lastErrorAt: new Date('2026-09-05T15:43:00.000Z'),
+      },
+      NOW,
+    );
+    expect(listing.ingest.lastError).toBeNull();
+    expect(listing.ingest.lastErrorAt).toBeNull();
+  });
+
+  it('erro POSTERIOR ao último sucesso continua visível, com o carimbo', () => {
+    const quando = new Date('2026-09-05T16:10:00.000Z');
+    const listing = buildDocumentosListing(
+      [],
+      { lastSuccessAt: SUCESSO, lastError: 'pasta Vencidas não encontrada', lastErrorAt: quando },
+      NOW,
+    );
+    expect(listing.ingest.lastError).toBe('pasta Vencidas não encontrada');
+    expect(listing.ingest.lastErrorAt).toBe(quando.toISOString());
+  });
+
+  it('erro sem carimbo não é desqualificado — na dúvida, mostra', () => {
+    const listing = buildDocumentosListing(
+      [],
+      { lastSuccessAt: SUCESSO, lastError: 'falha antiga sem data', lastErrorAt: null },
+      NOW,
+    );
+    expect(listing.ingest.lastError).toBe('falha antiga sem data');
   });
 });
