@@ -93,7 +93,8 @@ export default function ProductTable({
 
   const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy))));
   const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
-  const hasMultipleGroups = allGroups.length > 1;
+  const hasGroups = allGroups.length > 0;
+  const hasCollapsedGroups = collapsedGroups.size > 0;
 
   const renderProductRow = (product: ProductRow, inTable: boolean) => {
     if (inTable) {
@@ -179,6 +180,11 @@ export default function ProductTable({
           <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
           <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
           <Badge tone="info" dot={false}>{lineCountMap.get(lineKey)}</Badge>
+          {lineCollapsed && (
+            <span className="ml-auto text-xs font-medium text-indigo-500/90 dark:text-indigo-400/90">
+              Clique para expandir
+            </span>
+          )}
         </div>
       );
       elements.push(inTable ? <tr key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}><td colSpan={9} className="px-0 py-0">{lineContent}</td></tr> : <div key={`line-${lineKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(lineKey)}>{lineContent}</div>);
@@ -192,6 +198,11 @@ export default function ProductTable({
           <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
           <Badge tone="warning" dot={false}>{groupCountMap.get(grpKey)}</Badge>
+          {grpCollapsed && (
+            <span className="ml-auto text-xs font-medium text-amber-600/90 dark:text-amber-400/90">
+              Clique para expandir
+            </span>
+          )}
         </div>
       );
       elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={9} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
@@ -284,6 +295,11 @@ export default function ProductTable({
                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                 <Badge dot={false}>{groupCountMap.get(group)}</Badge>
+                {collapsedGroups.has(group) && (
+                  <span className="ml-auto text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Clique para expandir
+                  </span>
+                )}
               </div>
             );
             return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={9} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;
@@ -298,15 +314,40 @@ export default function ProductTable({
     <Card padding="none">
       {/* Toolbar */}
       <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-        {hasMultipleGroups && (
+        {hasGroups && (
           <>
-            <button onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? allLines : allGroups))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
-            <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
+            <button
+              type="button"
+              onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? [...allLines, ...allGroups] : allGroups))}
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+              aria-label="Recolher todos os grupos"
+            >
+              <span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollapsedGroups(new Set())}
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+              aria-label="Expandir todos os grupos"
+            >
+              <span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir
+            </button>
+            {hasCollapsedGroups && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 px-2.5 py-1.5 rounded-lg">
+                <span className="material-symbols-outlined text-[14px]">info</span>
+                Grupos recolhidos — clique no grupo ou em Expandir
+              </span>
+            )}
           </>
         )}
         <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} aria-pressed={selectionEnabled} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary dark:text-blue-400 border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
         {canWrite && <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Linhas, fabricantes, dados fiscais"><span className="material-symbols-outlined text-[14px]">settings</span>Parametros</button>}
       </div>
+      {hasGroups && hasCollapsedGroups && (
+        <div className="sm:hidden px-3 py-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-800/40">
+          Grupos recolhidos — toque no grupo ou em Expandir para ver os itens.
+        </div>
+      )}
 
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
