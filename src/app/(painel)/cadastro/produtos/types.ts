@@ -58,10 +58,17 @@ export interface ProductsSummary {
   totalQuantity: number;
 }
 
+/** Totais do filtro atual (catálogo inteiro), não só da página. */
+export interface ProductsHierarchyCounts {
+  byLine: Record<string, number>;
+  byGroup: Record<string, number>;
+}
+
 export interface ProductsResponse {
   products: ProductRow[];
   summary: ProductsSummary;
   pagination: { page: number; limit: number; total: number; pages: number };
+  hierarchyCounts?: ProductsHierarchyCounts;
   exportLimited?: boolean;
   needsRebuild?: boolean;
   meta?: {

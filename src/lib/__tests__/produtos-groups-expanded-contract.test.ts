@@ -53,4 +53,22 @@ describe('produtos groups collapsed-by-default contract', () => {
     expect(pageClient).toMatch(/useState<SortField>\('productType'\)/);
     expect(productTable).toContain('FLAT_SORTS');
   });
+
+  it('lista usa hierarchyCounts da API e total do cadastro (nao so a pagina)', () => {
+    expect(pageClient).toContain('setHierarchyCounts');
+    expect(pageClient).toContain('hierarchyCounts={hierarchyCounts}');
+    expect(pageClient).toContain('catalogTotal={pagination.total}');
+    expect(pageClient).toMatch(/produtos no cadastro/);
+    const listRoute = readFileSync(
+      join(process.cwd(), 'src/app/api/products/list/route.ts'),
+      'utf8',
+    );
+    expect(listRoute).toContain('hierarchyCounts');
+    expect(listRoute).toContain("by: ['productType']");
+    const schema = readFileSync(
+      join(process.cwd(), 'src/lib/schemas/product.ts'),
+      'utf8',
+    );
+    expect(schema).toMatch(/lineStatus: z\.enum\(\['active', 'outOfLine', 'all'\]\)\.optional\(\)\.default\('all'\)/);
+  });
 });

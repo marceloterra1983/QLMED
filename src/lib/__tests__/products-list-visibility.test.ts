@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   findMany: vi.fn(),
   aggregate: vi.fn(),
+  groupBy: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', async () => {
@@ -28,6 +29,7 @@ vi.mock('@/lib/prisma', () => ({
       count: mocks.count,
       findMany: mocks.findMany,
       aggregate: mocks.aggregate,
+      groupBy: mocks.groupBy,
     },
   },
 }));
@@ -40,6 +42,7 @@ describe('GET /api/products/list — Product visibility without aggregate barrie
     mocks.requireAuth.mockResolvedValue('user-1');
     mocks.getOrCreateSingleCompany.mockResolvedValue({ id: 'comp-1', cnpj: '07832309000197' });
     mocks.aggregate.mockResolvedValue({ _sum: { aggTotalQuantity: 10 } });
+    mocks.groupBy.mockResolvedValue([]);
   });
 
   it('does NOT filter out products with aggComputedAt null even if other products have aggregates', async () => {
@@ -88,6 +91,8 @@ describe('GET /api/products/list — Product visibility without aggregate barrie
     expect(data.products[0].code).toBe('VALV-01');
     expect(data.products[1].code).toBe('CAT-02');
     expect(data.products[1].lastPrice).toBe(0);
+    expect(data.hierarchyCounts).toEqual({ byLine: {}, byGroup: {} });
+    expect(mocks.groupBy).toHaveBeenCalled();
   });
 
   it('allows searching newly created products by description or code without aggSearchText', async () => {

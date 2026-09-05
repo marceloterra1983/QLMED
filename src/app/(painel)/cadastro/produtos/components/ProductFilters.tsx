@@ -24,13 +24,16 @@ interface ProductFiltersProps {
   setLineStatusFilter: (v: 'active' | 'outOfLine' | 'all') => void;
   setCollapsedGroups: (v: Set<string>) => void;
   hierOptions: HierOptions;
-  filteredCount: number;
+  /** Total do filtro atual no servidor (não o tamanho da página). */
+  catalogTotal: number;
+  /** Quantos itens vieram nesta página. */
+  pageSize: number;
 }
 
 export default function ProductFilters({
   search, setSearch, typeFilter, setTypeFilter, subtypeFilter, setSubtypeFilter,
   subgroupFilter, setSubgroupFilter, sortBy, setSortBy, sortOrder, setSortOrder,
-  lineStatusFilter, setLineStatusFilter, setCollapsedGroups, hierOptions, filteredCount,
+  lineStatusFilter, setLineStatusFilter, setCollapsedGroups, hierOptions, catalogTotal, pageSize,
 }: ProductFiltersProps) {
   return (
     <MobileFilterWrapper activeFilterCount={[search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter !== 'all' ? lineStatusFilter : ''].filter(Boolean).length} title="Filtros" icon="inventory_2">
@@ -172,8 +175,14 @@ export default function ProductFilters({
               </button>
             </span>
           )}
-          <span className="text-xs text-slate-500 dark:text-slate-400">{formatInt(filteredCount)} resultado{filteredCount !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{formatInt(catalogTotal)} no cadastro{catalogTotal !== pageSize && pageSize > 0 ? ` · ${formatInt(pageSize)} nesta página` : ''}</span>
         </div>
+      )}
+      {!(search || typeFilter || subtypeFilter || subgroupFilter) && catalogTotal > 0 && (
+        <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {formatInt(catalogTotal)} produtos no cadastro
+          {catalogTotal !== pageSize && pageSize > 0 ? ` · mostrando ${formatInt(pageSize)} nesta página` : ''}
+        </p>
       )}
     </MobileFilterWrapper>
   );

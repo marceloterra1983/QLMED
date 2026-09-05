@@ -46,7 +46,7 @@ export const productsListQuerySchema = z.object({
   search: stringQuery('', 200),
   sort: productListSortSchema.optional().default('productType'),
   order: z.enum(['asc', 'desc']).optional().default('asc'),
-  lineStatus: z.enum(['active', 'outOfLine', 'all']).optional().default('active'),
+  lineStatus: z.enum(['active', 'outOfLine', 'all']).optional().default('all'),
   productType: stringQuery('', 120),
   productSubtype: stringQuery('', 120),
   productSubgroup: stringQuery('', 120),
