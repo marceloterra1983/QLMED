@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildUnimedCgDeliveryWhatsAppCaption,
   buildUnimedCgWhatsAppCaption,
   isWithinUnimedCgNotifyWindow,
   resolveUnimedCgWhatsAppTarget,
@@ -38,5 +39,18 @@ describe('unimed-cg whatsapp', () => {
     vi.stubEnv('UNIMED_CG_WHATSAPP_GROUP_JID', '120363111111111111@g.us');
     const target = resolveUnimedCgWhatsAppTarget({ baseUrl: 'http://x', apiKey: 'k', instance: 'i' });
     expect(target?.jid).toBe('120363111111111111@g.us');
+  });
+
+  it('monta caption de entrega', () => {
+    const caption = buildUnimedCgDeliveryWhatsAppCaption({
+      processId: '81234',
+      principalAuthorization: '260312345',
+      status: 'Autorizado',
+      supplier: 'QL MED',
+    });
+    expect(caption).toContain('Autorização Unimed CG (entrega) — Processo 81234');
+    expect(caption).toContain('Autorização principal: 260312345');
+    expect(caption).toContain('Situação: Autorizado');
+    expect(caption).toContain('Fornecedor: QL MED');
   });
 });

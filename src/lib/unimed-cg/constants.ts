@@ -27,6 +27,14 @@ export const UNIMED_CG_OPME_HOSTS = ['unimedcg.opmes.com.br'] as const;
 export const UNIMED_CG_SUBJECT_RE =
   /\[ID\s+(\d+)\]\s*\[OPME\]\s*autoriza[cç][aã]o\s+de\s+faturamento\s+do\s+processo/i;
 
+
+/**
+ * Assunto entrega: `[ID N] [OPME] etapa de autorização concluída`
+ * (acentos opcionais; N = processId).
+ */
+export const UNIMED_CG_ENTREGA_SUBJECT_RE =
+  /\[ID\s+(\d+)\]\s*\[OPME\]\s*etapa\s+de\s+autoriza[cç][aã]o\s+conclu[ií]da/i;
+
 export function isUnimedCgWhatsAppEnabled(): boolean {
   return (process.env.UNIMED_CG_WHATSAPP_ENABLED ?? '').toLowerCase() === 'true';
 }

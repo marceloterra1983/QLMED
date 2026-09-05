@@ -58,6 +58,13 @@ describe('unimed-cg parse-page', () => {
     ).toBeNull();
   });
 
+  it('extrai CLIQUE AQUI case-insensitive', () => {
+    const html = `
+      <a href="https://unimedcg.opmes.com.br/gestao/www/visualiza-email-processo.php?id=75576">CLIQUE AQUI</a>
+    `;
+    expect(extractCliqueAquiUrl(html)).toContain('visualiza-email-processo.php');
+  });
+
   it('buildFileName e shouldUpgrade', () => {
     expect(buildFileName('75576')).toBe('UNIMED-CG 75576.pdf');
     expect(shouldUpgrade('parcial', 'ok')).toBe(true);

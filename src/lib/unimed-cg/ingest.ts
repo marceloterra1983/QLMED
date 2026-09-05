@@ -29,17 +29,22 @@ import {
 } from './constants';
 import { resolveUnimedCgOneDrive } from './onedrive';
 import {
+  buildDeliveryFileName,
   buildFileName,
   extractCliqueAquiUrl,
   extractProcessIdFromSubject,
+  isUnimedCgEntregaSubject,
   isUnimedCgFaturamentoSubject,
   parseAuthorizationPageHtml,
+  parseDeliveryPageHtml,
   shouldUpgrade,
 } from './parse-page';
+import { prismaUnimedCgDeliveryStore } from './delivery-store';
 import { prismaUnimedCgStore } from './store';
 import {
   isWithinUnimedCgNotifyWindow,
   notifyUnimedCgAuthorization,
+  notifyUnimedCgDelivery,
   resolveUnimedCgWhatsAppTarget,
   type UnimedCgWhatsAppTarget,
 } from './whatsapp-notify';
@@ -89,6 +94,23 @@ export type PersistArgs = {
   graphMessageId?: string;
 };
 
+export type PersistDeliveryArgs = {
+  companyId: string;
+  processId: string;
+  principalAuthorization: string | null;
+  status: string | null;
+  authorizedAt: Date | null;
+  supplier: string | null;
+  parseStatus: 'ok' | 'parcial' | 'falha';
+  fileName: string;
+  oneDriveItemId: string;
+  sourceUrl: string | null;
+  receivedAt: Date;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
+};
+
 export type UnimedCgStorePort = {
   findSourceByInternetMessageId(
     companyId: string,
@@ -121,6 +143,29 @@ export type UnimedCgStorePort = {
   ): Promise<void>;
 };
 
+export type UnimedCgDeliveryStorePort = {
+  findSourceByInternetMessageId(
+    companyId: string,
+    internetMessageId: string,
+  ): Promise<{ id: string; authorizationId: string | null; whatsappSentAt?: Date | null } | null>;
+  findByProcessId(companyId: string, processId: string): Promise<UnimedCgAuthorizationRow | null>;
+  persistConfirmed(input: PersistDeliveryArgs): Promise<{ id: string }>;
+  persistUpgrade(input: PersistDeliveryArgs & { authorizationId: string }): Promise<void>;
+  persistSourceOnly(input: {
+    companyId: string;
+    authorizationId: string;
+    mailbox: string;
+    graphMessageId: string;
+    internetMessageId: string;
+    receivedAt: Date;
+  }): Promise<void>;
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
+};
+
 export type UnimedCgIngestResult = {
   ok: boolean;
   busy?: boolean;
@@ -137,6 +182,7 @@ export type UnimedCgIngestDeps = {
   drive: UnimedCgDrivePort;
   fetch: UnimedCgFetchPort;
   store: UnimedCgStorePort;
+  deliveryStore: UnimedCgDeliveryStorePort;
   whatsapp?: UnimedCgWhatsAppTarget | null;
 };
 
@@ -213,6 +259,7 @@ export async function createDefaultUnimedCgDeps(companyId: string): Promise<Unim
     drive: await defaultDrivePort(companyId),
     fetch: defaultFetchPort(),
     store: prismaUnimedCgStore,
+    deliveryStore: prismaUnimedCgDeliveryStore,
   };
 }
 
@@ -248,6 +295,7 @@ export async function runUnimedCgIngest(
     drive: options.drive ?? await defaultDrivePort(companyId),
     fetch: options.fetch ?? defaultFetchPort(),
     store: options.store ?? prismaUnimedCgStore,
+    deliveryStore: options.deliveryStore ?? prismaUnimedCgDeliveryStore,
     whatsapp: options.whatsapp !== undefined ? options.whatsapp : resolveUnimedCgWhatsAppTarget(),
   };
 
@@ -292,7 +340,9 @@ export async function runUnimedCgIngest(
       }
 
       for (const message of messages) {
-        if (!isUnimedCgFaturamentoSubject(message.subject)) {
+        const isFaturamento = isUnimedCgFaturamentoSubject(message.subject);
+        const isEntrega = isUnimedCgEntregaSubject(message.subject);
+        if (!isFaturamento && !isEntrega) {
           skipped += 1;
           continue;
         }
@@ -300,6 +350,164 @@ export async function runUnimedCgIngest(
         const processIdFromSubject = extractProcessIdFromSubject(message.subject);
         if (!processIdFromSubject) {
           skipped += 1;
+          continue;
+        }
+
+        if (isEntrega) {
+          const existingSource = await resolved.deliveryStore.findSourceByInternetMessageId(
+            companyId,
+            message.internetMessageId,
+          );
+
+          const retryNotification = Boolean(
+            existingSource
+              && !existingSource.whatsappSentAt
+              && resolved.whatsapp
+              && resolved.deliveryStore.markWhatsAppSent
+              && !notifyAttempted.has(message.internetMessageId)
+              && isWithinUnimedCgNotifyWindow(message.receivedAt),
+          );
+          if (existingSource && !retryNotification) {
+            skipped += 1;
+            continue;
+          }
+
+          let sourceUrl: string | null = null;
+          let pdf: Buffer | null = null;
+          let parsed = parseDeliveryPageHtml('', processIdFromSubject);
+
+          try {
+            const body = await resolved.mail.getBodyHtml(mailbox, message.graphMessageId);
+            sourceUrl = extractCliqueAquiUrl(body.content);
+            if (!sourceUrl) {
+              skipped += 1;
+              continue;
+            }
+            const pageHtml = await resolved.fetch.fetchHtml(sourceUrl);
+            parsed = parseDeliveryPageHtml(pageHtml, processIdFromSubject);
+            if (!parsed.processId) {
+              skipped += 1;
+              continue;
+            }
+            pdf = await resolved.fetch.renderPdf(sourceUrl);
+          } catch (error) {
+            errors.push(sanitizeError(error instanceof Error ? error.message : 'link/pdf'));
+            log.warn({ mailbox: mailboxLabel(mailbox) }, 'unimed_cg_delivery_link_failed');
+            continue;
+          }
+
+          const fileName = buildDeliveryFileName(parsed.processId);
+
+          const notifyWhatsApp = async (content: Buffer) => {
+            if (!resolved.whatsapp) return;
+            if (!isWithinUnimedCgNotifyWindow(message.receivedAt)) return;
+            if (notifyAttempted.has(message.internetMessageId)) return;
+            notifyAttempted.add(message.internetMessageId);
+
+            const result = await notifyUnimedCgDelivery({
+              target: resolved.whatsapp,
+              fields: {
+                processId: parsed.processId,
+                principalAuthorization: parsed.principalAuthorization,
+                status: parsed.status,
+                supplier: parsed.supplier,
+              },
+              fileName,
+              content,
+            });
+            if (!result.sent) {
+              errors.push('aviso WhatsApp falhou');
+              return;
+            }
+            await resolved.deliveryStore.markWhatsAppSent?.(
+              companyId,
+              message.internetMessageId,
+              result.messageId,
+            );
+          };
+
+          if (existingSource) {
+            if (pdf) await notifyWhatsApp(pdf);
+            skipped += 1;
+            continue;
+          }
+
+          const existingAuth = await resolved.deliveryStore.findByProcessId(companyId, parsed.processId);
+          const upgrades = existingAuth
+            ? shouldUpgrade(existingAuth.parseStatus, parsed.parseStatus)
+            : false;
+
+          if (existingAuth && !upgrades) {
+            try {
+              await resolved.deliveryStore.persistSourceOnly({
+                companyId,
+                authorizationId: existingAuth.id,
+                mailbox,
+                graphMessageId: message.graphMessageId,
+                internetMessageId: message.internetMessageId,
+                receivedAt: message.receivedAt,
+              });
+            } catch (error) {
+              failedPersists += 1;
+              errors.push(sanitizeError(error instanceof Error ? error.message : 'origem'));
+              continue;
+            }
+            skipped += 1;
+            continue;
+          }
+
+          if (!pdf) {
+            skipped += 1;
+            continue;
+          }
+
+          let itemId: string;
+          try {
+            const uploaded = await resolved.drive.uploadPdf({ fileName, content: pdf });
+            itemId = uploaded.itemId;
+          } catch (error) {
+            failedUploads += 1;
+            errors.push(sanitizeError(error instanceof Error ? error.message : 'upload'));
+            log.warn({ mailbox: mailboxLabel(mailbox) }, 'unimed_cg_delivery_upload_failed');
+            continue;
+          }
+
+          const persistBase: PersistDeliveryArgs = {
+            companyId,
+            processId: parsed.processId,
+            principalAuthorization: parsed.principalAuthorization,
+            status: parsed.status,
+            authorizedAt: parsed.authorizedAt,
+            supplier: parsed.supplier,
+            parseStatus: parsed.parseStatus,
+            fileName,
+            oneDriveItemId: itemId,
+            sourceUrl,
+            receivedAt: message.receivedAt,
+            internetMessageId: message.internetMessageId,
+            mailbox,
+            graphMessageId: message.graphMessageId,
+          };
+
+          try {
+            if (existingAuth) {
+              await resolved.deliveryStore.persistUpgrade({
+                ...persistBase,
+                authorizationId: existingAuth.id,
+              });
+            } else {
+              await resolved.deliveryStore.persistConfirmed(persistBase);
+            }
+          } catch (error) {
+            failedPersists += 1;
+            errors.push(sanitizeError(error instanceof Error ? error.message : 'persistência'));
+            log.warn({ mailbox: mailboxLabel(mailbox) }, 'unimed_cg_delivery_persist_failed');
+            await collectOrphanUpload(itemId, existingAuth?.oneDriveItemId ?? null);
+            continue;
+          }
+
+          processed += 1;
+          await notifyWhatsApp(pdf);
           continue;
         }
 
@@ -321,21 +529,18 @@ export async function runUnimedCgIngest(
           continue;
         }
 
-        let bodyHtml = '';
         let sourceUrl: string | null = null;
-        let pageHtml = '';
         let pdf: Buffer | null = null;
         let parsed = parseAuthorizationPageHtml('', processIdFromSubject);
 
         try {
           const body = await resolved.mail.getBodyHtml(mailbox, message.graphMessageId);
-          bodyHtml = body.content;
-          sourceUrl = extractCliqueAquiUrl(bodyHtml);
+          sourceUrl = extractCliqueAquiUrl(body.content);
           if (!sourceUrl) {
             skipped += 1;
             continue;
           }
-          pageHtml = await resolved.fetch.fetchHtml(sourceUrl);
+          const pageHtml = await resolved.fetch.fetchHtml(sourceUrl);
           parsed = parseAuthorizationPageHtml(pageHtml, processIdFromSubject);
           if (!parsed.processId) {
             skipped += 1;

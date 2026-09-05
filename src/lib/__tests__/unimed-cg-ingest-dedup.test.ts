@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UnimedCgIngestDeps, UnimedCgStorePort, PersistArgs } from '@/lib/unimed-cg/ingest';
+import type {
+  UnimedCgIngestDeps,
+  UnimedCgStorePort,
+  UnimedCgDeliveryStorePort,
+  PersistArgs,
+  PersistDeliveryArgs,
+} from '@/lib/unimed-cg/ingest';
 
 const UNIMED_CG_PAGE_FIXTURE = `
 <html><body>
@@ -33,6 +39,8 @@ type SourceRow = {
 const memory = vi.hoisted(() => ({
   authorizations: [] as AuthRow[],
   sources: [] as SourceRow[],
+  deliveryAuthorizations: [] as AuthRow[],
+  deliverySources: [] as SourceRow[],
   ingestState: null as {
     lastSuccessAt: Date | null;
     backfillCompletedAt: Date | null;
@@ -50,6 +58,8 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
 function resetMemory() {
   memory.authorizations.length = 0;
   memory.sources.length = 0;
+  memory.deliveryAuthorizations.length = 0;
+  memory.deliverySources.length = 0;
   memory.ingestState = null;
   memory.seq = 1;
   memory.uploads = 0;
@@ -118,6 +128,60 @@ function memoryStore(): UnimedCgStorePort {
   };
 }
 
+
+function memoryDeliveryStore(): UnimedCgDeliveryStorePort {
+  return {
+    async findSourceByInternetMessageId(_companyId, internetMessageId) {
+      const row = memory.deliverySources.find((item) => item.internetMessageId === internetMessageId);
+      return row ? { id: row.id, authorizationId: row.authorizationId, whatsappSentAt: null } : null;
+    },
+    async findByProcessId(_companyId, processId) {
+      return memory.deliveryAuthorizations.find((row) => row.processId === processId) ?? null;
+    },
+    async persistConfirmed(input: PersistDeliveryArgs) {
+      const id = `dauth-${memory.seq++}`;
+      memory.deliveryAuthorizations.push({
+        id,
+        processId: input.processId,
+        parseStatus: input.parseStatus,
+        oneDriveItemId: input.oneDriveItemId,
+      });
+      if (input.internetMessageId) {
+        memory.deliverySources.push({
+          id: `dsrc-${memory.seq++}`,
+          internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '',
+          authorizationId: id,
+        });
+      }
+      return { id };
+    },
+    async persistUpgrade(input: PersistDeliveryArgs & { authorizationId: string }) {
+      const row = memory.deliveryAuthorizations.find((item) => item.id === input.authorizationId);
+      if (!row) throw new Error('delivery authorization missing');
+      row.parseStatus = input.parseStatus;
+      row.oneDriveItemId = input.oneDriveItemId;
+      if (input.internetMessageId) {
+        memory.deliverySources.push({
+          id: `dsrc-${memory.seq++}`,
+          internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '',
+          authorizationId: input.authorizationId,
+        });
+      }
+    },
+    async persistSourceOnly(input) {
+      if (memory.deliverySources.some((row) => row.internetMessageId === input.internetMessageId)) return;
+      memory.deliverySources.push({
+        id: `dsrc-${memory.seq++}`,
+        internetMessageId: input.internetMessageId,
+        mailbox: input.mailbox,
+        authorizationId: input.authorizationId,
+      });
+    },
+  };
+}
+
 function deps(overrides: Partial<UnimedCgIngestDeps> = {}): UnimedCgIngestDeps {
   return {
     mail: {
@@ -154,10 +218,24 @@ function deps(overrides: Partial<UnimedCgIngestDeps> = {}): UnimedCgIngestDeps {
       },
     },
     store: memoryStore(),
+    deliveryStore: memoryDeliveryStore(),
     whatsapp: null,
     ...overrides,
   };
 }
+
+const ENTREGA_SUBJECT = '[ID 81234] [OPME] etapa de autorização concluída';
+const ENTREGA_LINK = 'https://unimedcg.opmes.com.br/gestao/www/visualiza-email-processo.php?id=81234';
+const ENTREGA_PAGE_FIXTURE = `
+<html><body>
+<p>Solicitação: 81234</p>
+<p>Autorização Principal: 260312345</p>
+<p>Situação: Autorizado</p>
+<p>Data de Autorização: 12/08/2026</p>
+<p>Fornecedores: QL MED COMERCIO DE PRODUTOS HOSPITALARES LTDA</p>
+</body></html>
+`;
+
 
 describe('unimed-cg ingest dedup', () => {
   beforeEach(() => {
@@ -218,5 +296,82 @@ describe('unimed-cg ingest dedup', () => {
     expect(memory.sources).toHaveLength(2);
     expect(memory.uploads).toBe(1);
     expect(second.processed).toBe(0);
+  });
+
+  it('persiste mensagem de entrega uma vez', async () => {
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps({
+      mail: {
+        async listMessages(mailbox: string) {
+          if (!mailbox.startsWith('marcelo@')) return [];
+          return [
+            {
+              graphMessageId: 'graph-e1',
+              internetMessageId: '<msg-e1@unimedcg>',
+              subject: ENTREGA_SUBJECT,
+              receivedAt: new Date(),
+              hasAttachments: false,
+            },
+          ];
+        },
+        async getBodyHtml() {
+          return {
+            contentType: 'html',
+            content: `<a href="${ENTREGA_LINK}">CLIQUE AQUI</a>`,
+          };
+        },
+      },
+      fetch: {
+        async fetchHtml() {
+          return ENTREGA_PAGE_FIXTURE;
+        },
+        async renderPdf() {
+          return Buffer.from('%PDF-1.4 unimed-cg-entrega');
+        },
+      },
+    });
+    const result = await runUnimedCgIngest('co1', d);
+    expect(result.processed).toBe(1);
+    expect(memory.deliveryAuthorizations).toHaveLength(1);
+    expect(memory.deliveryAuthorizations[0]?.processId).toBe('81234');
+    expect(memory.authorizations).toHaveLength(0);
+    expect(memory.uploads).toBe(1);
+  });
+
+  it('não mistura entrega com filtro de faturamento', async () => {
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps({
+      mail: {
+        async listMessages(mailbox: string) {
+          if (!mailbox.startsWith('marcelo@')) return [];
+          return [
+            {
+              graphMessageId: 'graph-mix',
+              internetMessageId: '<msg-mix@unimedcg>',
+              subject: ENTREGA_SUBJECT,
+              receivedAt: new Date(),
+              hasAttachments: false,
+            },
+          ];
+        },
+        async getBodyHtml() {
+          return {
+            contentType: 'html',
+            content: `<a href="${ENTREGA_LINK}">CLIQUE AQUI</a>`,
+          };
+        },
+      },
+      fetch: {
+        async fetchHtml() {
+          return ENTREGA_PAGE_FIXTURE;
+        },
+        async renderPdf() {
+          return Buffer.from('%PDF-1.4 unimed-cg-entrega');
+        },
+      },
+    });
+    await runUnimedCgIngest('co1', d);
+    expect(memory.deliveryAuthorizations).toHaveLength(1);
+    expect(memory.authorizations).toHaveLength(0);
   });
 });

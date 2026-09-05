@@ -9,7 +9,11 @@ assert.equal(gate.TABLES.length, 11);
 assert.ok(gate.EXPECTED_MIGRATIONS.length >= 8, 'o conjunto pinado tem a âncora + as 7 da remediação');
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905210000_unimed_cg_autorizacoes'),
-  'SPEC-047 unimed_cg_autorizacoes deve estar pinada',
+  'SPEC-045 unimed_cg_autorizacoes deve estar pinada',
+);
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905230000_unimed_cg_entrega'),
+  'SPEC-048 unimed_cg_entrega deve estar pinada',
 );
 for (const { name, sha256 } of gate.EXPECTED_MIGRATIONS) {
   assert.match(name, /^2026\d{10}_/);
@@ -45,8 +49,12 @@ assert.equal(gate.migrationState(seteDaRemediacao), 'pending');
 assert.equal(gate.migrationState([...pinadas]), 'pending');
 // SPEC-047: a tabela de vínculo item NF-e → produto Spica entra pinada e é a
 // última do conjunto (EXPECTED_MIGRATION aponta para ela).
-assert.equal(gate.EXPECTED_MIGRATION, '20260905220000_nfe_item_product_link');
-assert.equal(gate.migrationState(['20260905220000_nfe_item_product_link']), 'pending');
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905220000_nfe_item_product_link'),
+  'SPEC-047 nfe_item_product_link deve estar pinada',
+);
+assert.equal(gate.EXPECTED_MIGRATION, '20260905230000_unimed_cg_entrega');
+assert.equal(gate.migrationState(['20260905230000_unimed_cg_entrega']), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).
 {
   const { spawnSync } = require('node:child_process');

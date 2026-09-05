@@ -176,6 +176,8 @@ model Company {
   unimedCgAuthorizations UnimedCgAuthorization[]
   unimedCgSourceMessages UnimedCgSourceMessage[]
   unimedCgIngestState    UnimedCgIngestState?
+  unimedCgDeliveryAuthorizations UnimedCgDeliveryAuthorization[]
+  unimedCgDeliverySourceMessages UnimedCgDeliverySourceMessage[]
   documents             CompanyDocument[]
   documentIngestState   CompanyDocumentIngestState?
   invoiceEmissions      InvoiceEmission[]
@@ -1156,6 +1158,49 @@ model UnimedCgIngestState {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
+
+
+model UnimedCgDeliveryAuthorization {
+  id                      String                         @id @default(cuid())
+  companyId               String
+  company                 Company                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  processId               String
+  principalAuthorization  String?
+  status                  String?
+  authorizedAt            DateTime?
+  supplier                String?
+  oneDriveItemId          String
+  fileName                String
+  sourceUrl               String?
+  parseStatus             UnimedCgParseStatus
+  receivedAt              DateTime
+  sourceMessages          UnimedCgDeliverySourceMessage[]
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+
+  @@unique([companyId, processId])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgDeliverySourceMessage {
+  id                String                        @id @default(cuid())
+  companyId         String
+  company           Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  authorizationId   String?
+  authorization     UnimedCgDeliveryAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  whatsappSentAt    DateTime?
+  whatsappMessageId String?
+  createdAt         DateTime                      @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([authorizationId])
+}
+
 
 enum CompanyDocumentKind {
   cnd_federal

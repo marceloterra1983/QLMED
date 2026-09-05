@@ -1,5 +1,6 @@
 import { createLogger } from '@/lib/logger';
 import {
+  UNIMED_CG_ENTREGA_SUBJECT_RE,
   UNIMED_CG_OPME_HOSTS,
   UNIMED_CG_PARSE_RANK,
   UNIMED_CG_SUBJECT_RE,
@@ -17,13 +18,30 @@ export type ParsedUnimedCgPage = {
   parseStatus: UnimedCgParseStatus;
 };
 
+export type ParsedUnimedCgDeliveryPage = {
+  processId: string;
+  principalAuthorization: string | null;
+  status: string | null;
+  authorizedAt: Date | null;
+  supplier: string | null;
+  parseStatus: UnimedCgParseStatus;
+};
+
 export function extractProcessIdFromSubject(subject: string): string | null {
-  const match = UNIMED_CG_SUBJECT_RE.exec(subject);
-  return match?.[1] ?? null;
+  const faturamento = UNIMED_CG_SUBJECT_RE.exec(subject);
+  if (faturamento?.[1]) return faturamento[1];
+  const entrega = UNIMED_CG_ENTREGA_SUBJECT_RE.exec(subject);
+  if (entrega?.[1]) return entrega[1];
+  const generic = /\[ID\s+(\d+)\]/i.exec(subject);
+  return generic?.[1] ?? null;
 }
 
 export function isUnimedCgFaturamentoSubject(subject: string): boolean {
   return UNIMED_CG_SUBJECT_RE.test(subject);
+}
+
+export function isUnimedCgEntregaSubject(subject: string): boolean {
+  return UNIMED_CG_ENTREGA_SUBJECT_RE.test(subject);
 }
 
 /**
@@ -32,7 +50,7 @@ export function isUnimedCgFaturamentoSubject(subject: string): boolean {
  */
 export function extractCliqueAquiUrl(html: string): string | null {
   const patterns = [
-    /<a[^>]+href=["']([^"']+)["'][^>]*>\s*Clique\s+aqui\s*<\/a>/i,
+    /<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]*?clique\s+aqui[\s\S]*?<\/a>/i,
     /href=["']([^"']*visualiza-email-processo\.php[^"']*)["']/i,
   ];
   for (const re of patterns) {
@@ -165,4 +183,68 @@ export function shouldUpgrade(
 export function buildFileName(processId: string): string {
   const safe = processId.replace(/[^\d]/g, '') || '0';
   return `UNIMED-CG ${safe}.pdf`;
+}
+
+export function buildDeliveryFileName(processId: string): string {
+  const safe = processId.replace(/[^\d]/g, '') || '0';
+  return `UNIMED-CG-ENTREGA ${safe}.pdf`;
+}
+
+export function computeUnimedCgDeliveryParseStatus(input: {
+  processId: string | null;
+  principalAuthorization: string | null;
+  status: string | null;
+  supplier: string | null;
+}): UnimedCgParseStatus {
+  if (!input.processId) return 'falha';
+  const ok =
+    Boolean(input.principalAuthorization?.trim())
+    && Boolean(input.status?.trim())
+    && Boolean(input.supplier?.trim());
+  if (ok) return 'ok';
+  return 'parcial';
+}
+
+export function parseDeliveryPageHtml(
+  html: string,
+  subjectProcessId: string | null,
+): ParsedUnimedCgDeliveryPage {
+  const text = stripHtml(html);
+  const htmlProcess =
+    labeledValue(text, /Solicita[cç][aã]o\s*:\s*(\d+)/i)
+    || labeledValue(text, /Processo\s*:\s*(\d+)/i);
+  let processId = subjectProcessId || htmlProcess || '';
+  if (subjectProcessId && htmlProcess && subjectProcessId !== htmlProcess) {
+    log.warn(
+      { subjectProcessId, htmlProcess },
+      'unimed_cg_delivery_process_id_mismatch_prefer_subject',
+    );
+    processId = subjectProcessId;
+  }
+
+  const principalAuthorization = labeledValue(
+    text,
+    /Autoriza[cç][aã]o\s+[Pp]rincipal\s*:\s*([0-9.\-\/]+)/i,
+  );
+  const status = labeledValue(text, /Situa[cç][aã]o\s*:\s*([^\n]+)/i);
+  const authorizedAt = parseBrDate(
+    labeledValue(text, /Data\s+de\s+[Aa]utoriza[cç][aã]o\s*:\s*(\d{2}\/\d{2}\/\d{4})/i),
+  );
+  const supplier = labeledValue(
+    text,
+    /Fornecedores?\s*:\s*([^\n]+)/i,
+  );
+
+  const parsed = {
+    processId,
+    principalAuthorization: principalAuthorization?.trim() || null,
+    status: status?.trim() || null,
+    authorizedAt,
+    supplier: supplier?.trim() || null,
+  };
+
+  return {
+    ...parsed,
+    parseStatus: computeUnimedCgDeliveryParseStatus(parsed),
+  };
 }

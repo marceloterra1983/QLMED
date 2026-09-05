@@ -101,3 +101,46 @@ export async function notifyUnimedCgAuthorization(input: {
     return { sent: false, messageId: null };
   }
 }
+
+export type UnimedCgDeliveryNotifyFields = {
+  processId: string;
+  principalAuthorization: string | null;
+  status: string | null;
+  supplier: string | null;
+};
+
+export function buildUnimedCgDeliveryWhatsAppCaption(fields: UnimedCgDeliveryNotifyFields): string {
+  return [
+    `Autorização Unimed CG (entrega) — Processo ${fields.processId}`,
+    `Autorização principal: ${fields.principalAuthorization?.trim() || 'não identificada'}`,
+    `Situação: ${fields.status?.trim() || 'não identificada'}`,
+    `Fornecedor: ${fields.supplier?.trim() || 'não identificado'}`,
+  ].join('\n');
+}
+
+export async function notifyUnimedCgDelivery(input: {
+  target: UnimedCgWhatsAppTarget;
+  fields: UnimedCgDeliveryNotifyFields;
+  fileName: string;
+  content: Buffer;
+}): Promise<NotifyResult> {
+  try {
+    const { messageId } = await input.target.port.sendDocument({
+      jid: input.target.jid,
+      fileName: input.fileName,
+      content: input.content,
+      caption: buildUnimedCgDeliveryWhatsAppCaption(input.fields),
+    });
+    log.info({ processId: input.fields.processId }, 'unimed_cg_delivery_whatsapp_sent');
+    return { sent: true, messageId };
+  } catch (error) {
+    log.warn(
+      {
+        processId: input.fields.processId,
+        err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
+      },
+      'unimed_cg_delivery_whatsapp_failed',
+    );
+    return { sent: false, messageId: null };
+  }
+}
