@@ -375,11 +375,14 @@ export async function openOneDriveItemContent(
 }
 
 /**
- * Compensação do upload: remove o objeto que ficou sem linha correspondente no
- * banco. Um PUT no Graph não participa da transação Postgres, então o que se
- * pode garantir não é atomicidade, é recolher o órfão — e ofício carrega dado
- * clínico, então deixá-lo para trás não é opção. 404 conta como sucesso: o
- * objeto já não está lá.
+ * Move um item para outra pasta do mesmo drive (Graph: PATCH com
+ * `parentReference`). Usado para arquivar certidão vencida na pasta `Vencidas`
+ * sem a apagar: mover é reversível, apagar não — e a pasta é da contabilidade,
+ * não nossa.
+ *
+ * Ao contrário de `deleteOneDriveItem`, aqui 404 NÃO é sucesso: `graphWrite`
+ * lança em qualquer resposta não-2xx. Item que sumiu é sinal de que a varredura
+ * está a agir sobre estado velho, e isso tem de aparecer, não de ser engolido.
  */
 export async function moveOneDriveItem(
   accessToken: string,
@@ -401,6 +404,13 @@ export async function moveOneDriveItem(
   return { id: payload.id, parentId: payload.parentReference?.id ?? null };
 }
 
+/**
+ * Compensação do upload: remove o objeto que ficou sem linha correspondente no
+ * banco. Um PUT no Graph não participa da transação Postgres, então o que se
+ * pode garantir não é atomicidade, é recolher o órfão — e ofício carrega dado
+ * clínico, então deixá-lo para trás não é opção. 404 conta como sucesso: o
+ * objeto já não está lá.
+ */
 export async function deleteOneDriveItem(
   accessToken: string,
   driveId: string,
