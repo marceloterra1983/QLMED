@@ -75,21 +75,12 @@ export default function ProdutosPage() {
 
   // --- group collapsing ---
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // Toggle puro: expandir linha NÃO deve recolher os grupos filhos (bug que
+  // deixava a página em branco após um clique em "Clique para expandir").
   const toggleGroup = (g: string) => setCollapsedGroups((prev) => {
     const n = new Set(prev);
-    if (n.has(g)) {
-      n.delete(g);
-      if (g.startsWith('line:')) {
-        const lineName = g.slice(5);
-        for (const p of filtered) {
-          if ((p.productType || 'Sem linha') === lineName) {
-            n.add(`group:${lineName}|${p.productSubtype || 'Sem grupo'}`);
-          }
-        }
-      }
-    } else {
-      n.add(g);
-    }
+    if (n.has(g)) n.delete(g);
+    else n.add(g);
     return n;
   });
 
