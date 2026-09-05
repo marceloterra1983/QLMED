@@ -19,6 +19,7 @@ export function productGroupKey(product: ProductRow, sortBy: SortField): string 
     case 'lastIssueDate': {
       if (!product.lastIssueDate) return 'Sem data';
       const d = new Date(product.lastIssueDate);
+      // ui-ok: mês por extenso e ano, formato único de cabeçalho de grupo
       return `${d.toLocaleString('pt-BR', { month: 'long' })} / ${d.getFullYear()}`;
     }
     case 'description':
