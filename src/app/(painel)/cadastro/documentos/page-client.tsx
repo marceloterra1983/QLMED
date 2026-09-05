@@ -52,12 +52,25 @@ function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory)
   }
 }
 
+function listingNeedsEmissao(listing: DocumentosListing): boolean {
+  for (const family of DOCUMENTOS_FAMILIES) {
+    if (family.category === 'balanco') continue;
+    for (const row of rowsForFamily(listing, family.category)) {
+      if (row.id && !row.emitidoEm) return true;
+    }
+  }
+  return false;
+}
+
 export default function DocumentosPageClient() {
   const { canWrite } = useRole();
   const [data, setData] = useState<DocumentosListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillRestantes, setBackfillRestantes] = useState(0);
+  const [backfillCursor, setBackfillCursor] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadKind, setUploadKind] = useState<CertidaoKind>(CERTIDAO_KINDS_ORDER[0]);
@@ -135,6 +148,47 @@ export default function DocumentosPageClient() {
       toast.error('Erro de rede ao atualizar');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleBackfill() {
+    setBackfilling(true);
+    try {
+      const res = await fetch('/api/documentos/backfill-emissao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // O cursor do lote anterior faz a varredura AVANÇAR. Sem ele, as linhas
+        // cujo PDF não declara emissão continuam à cabeça e são re-descarregadas
+        // a cada clique, sem nunca chegar às seguintes.
+        body: JSON.stringify(backfillCursor ? { aposId: backfillCursor } : {}),
+      });
+      const payload: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(apiErrorMessage(payload, 'Não foi possível preencher as emissões'));
+        return;
+      }
+      const result = payload as {
+        preenchidos?: number;
+        semEmissao?: number;
+        restantes?: number;
+        proximoId?: string | null;
+        ocupado?: boolean;
+      };
+      if (result.ocupado) {
+        toast.error('já em andamento');
+        return;
+      }
+      const restantes = result.restantes ?? 0;
+      setBackfillRestantes(restantes);
+      setBackfillCursor(restantes > 0 ? (result.proximoId ?? null) : null);
+      toast.success(
+        `${formatInt(result.preenchidos ?? 0)} preenchidos, ${formatInt(result.semEmissao ?? 0)} sem emissão no PDF, ${formatInt(restantes)} restantes`,
+      );
+      await load({ quiet: true });
+    } catch {
+      toast.error('Erro de rede ao preencher emissões');
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -242,9 +296,22 @@ export default function DocumentosPageClient() {
         subtitle="Certidões, autorizações, contratos, documentos básicos e balanços"
         actions={
           canWrite ? (
-            <Button type="button" onClick={() => void handleSync()} loading={syncing} icon="sync">
-              Atualizar do OneDrive
-            </Button>
+            <>
+              {data && (listingNeedsEmissao(data) || backfillRestantes > 0) ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleBackfill()}
+                  loading={backfilling}
+                  icon="calendar_month"
+                >
+                  Preencher emissões
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => void handleSync()} loading={syncing} icon="sync">
+                Atualizar do OneDrive
+              </Button>
+            </>
           ) : undefined
         }
       />
