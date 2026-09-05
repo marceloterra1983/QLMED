@@ -122,6 +122,7 @@ export async function processSpicaRows(
         fiscalObs: norm.fiscalObs,
         updatedAt: new Date(),
       };
+      updateData.description = norm.nome; // verdade oficial Spica sobrescreve descrição NF-e
 
       // ANVISA: preenche se não tiver ou se veio de fonte não-manual
       if (!match.anvisaCode && norm.anvisaCode) {

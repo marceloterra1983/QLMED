@@ -51,7 +51,7 @@ export default function ProdutosPage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [subtypeFilter, setSubtypeFilter] = useState<string>('');
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
-  const [sortBy, setSortBy] = useState<SortField>('productType');
+  const [sortBy, setSortBy] = useState<SortField>('codigo');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
 
@@ -165,7 +165,7 @@ export default function ProdutosPage() {
 
   // ---- server-side sort field mapping ----
   const serverSortField = useMemo(() => {
-    const map: Record<string, string> = { description: 'description', code: 'code', ncm: 'ncm', anvisa: 'anvisa', lastPrice: 'lastPrice', lastIssueDate: 'lastIssueDate', lastSaleDate: 'lastSaleDate', supplier: 'supplier', productType: 'productType', totalQuantity: 'quantity', invoiceCount: 'invoices' };
+    const map: Record<string, string> = { description: 'description', code: 'code', codigo: 'codigo', ncm: 'ncm', anvisa: 'anvisa', lastPrice: 'lastPrice', lastIssueDate: 'lastIssueDate', lastSaleDate: 'lastSaleDate', supplier: 'supplier', productType: 'productType', totalQuantity: 'quantity', invoiceCount: 'invoices' };
     return map[sortBy] || 'lastIssueDate';
   }, [sortBy]);
   const exportQuery = useMemo(() => ({
@@ -281,7 +281,7 @@ export default function ProdutosPage() {
 
   // ---- handlers ----
   const handleSort = (field: SortField) => {
-    if (sortBy === field) { setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc')); } else { setSortBy(field); setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(field) ? 'asc' : 'desc'); }
+    if (sortBy === field) { setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc')); } else { setSortBy(field); setSortOrder(['description', 'code', 'codigo', 'ncm', 'anvisa', 'supplier', 'productType'].includes(field) ? 'asc' : 'desc'); }
   };
 
   const handleAutoClassify = async (dryRun: boolean) => {
