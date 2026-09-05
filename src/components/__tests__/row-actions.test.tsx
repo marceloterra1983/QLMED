@@ -199,3 +199,31 @@ describe('fecho do menu', () => {
     expect(screen.queryByRole('button', { name: 'Detalhes' })).toBeNull();
   });
 });
+
+describe('modo compact é opt-in — as 5 páginas fiscais não podem encolher por acidente', () => {
+  /**
+   * `compact` existe só para a tabela de Documentos, onde a altura da linha
+   * importa. As páginas fiscais (issued, invoices, cte, nfse-recebidas e
+   * InvoiceListSection) usam o invólucro de nota fiscal e têm de continuar
+   * exatamente como estavam. Sem este teste, trocar o valor por omissão
+   * mudaria as cinco de uma vez sem nada reprovar.
+   */
+  it('o invólucro de nota fiscal renderiza no tamanho normal', () => {
+    render(<RowActions invoiceId="inv-1" onView={vi.fn()} onDetails={vi.fn()} />);
+    const botao = screen.getAllByRole('button')[0];
+    expect(botao.className).toMatch(/\bp-1\.5\b/);
+    expect(botao.className).not.toMatch(/sm:p-1\b/);
+    const glifo = botao.querySelector('.material-symbols-outlined')!;
+    expect(glifo.className).toMatch(/text-\[18px\]/);
+    expect(glifo.className).not.toMatch(/sm:text-\[16px\]/);
+  });
+
+  it('RowActionsBase com compact encolhe apenas no desktop', () => {
+    const acao = { label: 'Ver', icon: 'receipt_long', onSelect: vi.fn() };
+    render(<RowActionsBase inline={[acao]} menu={[{ ...acao, label: 'Baixar', icon: 'download' }]} compact />);
+    const botao = screen.getAllByRole('button')[0];
+    expect(botao.className).toMatch(/sm:p-1\b/);
+    // no telemóvel o alvo de toque fica como estava
+    expect(botao.className).toMatch(/\bp-1\.5\b/);
+  });
+});
