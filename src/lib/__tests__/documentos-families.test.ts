@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   DOCUMENTOS_FAMILIES,
   familyByCategory,
+  kindConfig,
   kindExpires,
 } from '@/lib/documentos/constants';
-import { kindStoresFilenameDate } from '@/lib/documentos/families';
+import { automacaoOf, kindStoresFilenameDate } from '@/lib/documentos/families';
 
 describe('SPEC-042 L10 — tabela de famílias', () => {
   it('seis famílias; AFE não expira; limiares por família', () => {
@@ -62,5 +63,22 @@ describe('SPEC-042 L11 — societário, básicos, balanços', () => {
     expect(kindStoresFilenameDate('cartao_cnpj')).toBe(true);
     expect(kindStoresFilenameDate('afe_anvisa')).toBe(false);
     expect(kindExpires('cartao_cnpj')).toBe(false);
+  });
+});
+
+describe('SPEC-042 L12 — tags de automação', () => {
+  it('só o FGTS é automático; municipais assistidas; o resto que vence é manual', () => {
+    const automaticas = DOCUMENTOS_FAMILIES.flatMap((family) => family.kinds)
+      .filter((kind) => kind.automacao === 'automatica')
+      .map((kind) => kind.kind);
+    expect(automaticas, 'só o FGTS é automático').toEqual(['crf_fgts']);
+    expect(kindConfig('cnd_municipal_mobiliario')?.automacao).toBe('assistida');
+    expect(kindConfig('cnd_municipal_gerais')?.automacao).toBe('assistida');
+    expect(kindConfig('cnd_federal')?.automacao).toBe('manual');
+    expect(kindConfig('cndt')?.automacao).toBe('manual');
+    expect(automacaoOf(kindConfig('afe_anvisa'))).toBeNull();
+    expect(automacaoOf(kindConfig('cartao_cnpj'))).toBeNull();
+    expect(automacaoOf(kindConfig('contrato_social_constituicao'))).toBeNull();
+    expect(automacaoOf(kindConfig('balanco_anual'))).toBeNull();
   });
 });

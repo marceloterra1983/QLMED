@@ -3,6 +3,8 @@ import type { CompanyDocumentKind } from '@prisma/client';
 export type DocumentosCategory = 'certidao' | 'sanitaria' | 'carta' | 'societario' | 'basicos' | 'balanco';
 export type DocumentosFamilyMode = 'closed' | 'open';
 export type DocumentosScan = 'subfolders' | 'root' | 'yearFolders';
+/** Emissão comprovada — a tag diz o que foi provado, não o que se espera. */
+export type DocumentosAutomacao = 'automatica' | 'assistida' | 'manual';
 
 export type DocumentosKindConfig = {
   kind: CompanyDocumentKind;
@@ -13,6 +15,11 @@ export type DocumentosKindConfig = {
    * da ANVISA ("Situação: Ativo"), não certificado com data de validade.
    */
   expira: boolean;
+  /**
+   * Como a emissão foi comprovada. Ausente quando `expira: false` — não há
+   * emissão periódica a automatizar, e a tabela não mostra tag.
+   */
+  automacao?: DocumentosAutomacao;
   /**
    * false: a ingestão não grava a data do nome (AFE: data da consulta, não
    * validade). Independente de `expira`. Omissão = grava quando o nome tem data.
@@ -44,6 +51,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cnd_federal',
     label: 'CND Receita Federal',
     expira: true,
+    automacao: 'manual',
     folder: 'Federais',
     uploadName: (d) => `CERTIDAO RECEITA FEDERAL ${d} - QL MED.pdf`,
     emissaoUrl: 'https://servicos.receitafederal.gov.br/servico/certidoes',
@@ -53,6 +61,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'crf_fgts',
     label: 'CRF FGTS',
     expira: true,
+    automacao: 'automatica',
     folder: 'FGTS',
     uploadName: (d) => `CERTIDÃO FGTS ${d} QL MED.pdf`,
     emissaoUrl: 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf',
@@ -62,6 +71,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cndt',
     label: 'CNDT (Débitos Trabalhistas)',
     expira: true,
+    automacao: 'manual',
     folder: 'Débitos Trabalhistas',
     uploadName: (d) => `CERTIDÃO DEBITOS TRABALHISTA ${d}.pdf`,
     emissaoUrl: 'https://cndt-certidao.tst.jus.br/gerarCertidao',
@@ -71,6 +81,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cnd_estadual_ms',
     label: 'CND Estadual (MS)',
     expira: true,
+    automacao: 'manual',
     folder: 'Estaduais',
     uploadName: (d) => `CERTIDAO ESTADUAL ${d} QL MED.pdf`,
     emissaoUrl: 'https://servicos.efazenda.ms.gov.br/pndfis/Home/Emissao',
@@ -80,6 +91,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cnd_estadual_mt',
     label: 'CND Estadual (MT)',
     expira: true,
+    automacao: 'manual',
     folder: 'Estaduais',
     uploadName: (d) => `CERTIDÃO ESTADUAL DO MATO GROSSO ${d}.pdf`,
     emissaoUrl: 'https://www.sefaz.mt.gov.br/cnd/certidao/servlet/ServletRotdAberto?origem=60',
@@ -89,6 +101,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cnd_municipal_mobiliario',
     label: 'CND Municipal — mobiliário',
     expira: true,
+    automacao: 'assistida',
     folder: 'Municipais',
     uploadName: (d) => `CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO ${d}.pdf`,
     emissaoUrl: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
@@ -98,6 +111,7 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cnd_municipal_gerais',
     label: 'CND Municipal — débitos gerais',
     expira: true,
+    automacao: 'assistida',
     folder: 'Municipais',
     uploadName: (d) => `certidão débitos gerais val. ${d}.pdf`,
     emissaoUrl: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidao',
@@ -110,30 +124,35 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'alvara_funcionamento',
     label: 'Alvará de Funcionamento — Prefeitura',
     expira: true,
+    automacao: 'manual',
     uploadName: (d) => `ALVARA DE FUNCIONAMENTO PREFEITURA ${d}.pdf`,
   },
   {
     kind: 'licenca_sanitaria',
     label: 'Alvará/Licença Sanitária',
     expira: true,
+    automacao: 'manual',
     uploadName: (d) => `ALVARÁ LICENÇA SANITÁRIA ${d} QL MED.pdf`,
   },
   {
     kind: 'licenca_sanitaria_veiculo',
     label: 'Licença Sanitária de Veículo',
     expira: true,
+    automacao: 'manual',
     uploadName: (d) => `Licença Sanitária Veiculo ${d}.pdf`,
   },
   {
     kind: 'crf_conselho',
     label: 'CRF — Conselho Regional de Farmácia',
     expira: true,
+    automacao: 'manual',
     uploadName: (d) => `CRF ${d}.pdf`,
   },
   {
     kind: 'controle_pragas',
     label: 'Controle de Pragas',
     expira: true,
+    automacao: 'manual',
     uploadName: (d) => `CONTROLE DE PRAGAS - QL MED ${d}.pdf`,
   },
   {
@@ -149,6 +168,7 @@ const CARTA_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'carta_comercializacao',
     label: 'Carta de comercialização',
     expira: true,
+    automacao: 'manual',
   },
 ];
 
@@ -326,6 +346,15 @@ export function kindConfig(kind: CompanyDocumentKind): DocumentosKindConfig | un
 /** Ausência de config (outro) trata-se como expirável; AFE e as famílias L11 são false. */
 export function kindExpires(kind: CompanyDocumentKind): boolean {
   return KIND_TO_CONFIG.get(kind)?.expira ?? true;
+}
+
+/**
+ * Tag na tabela. `expira: false` não tem emissão periódica — sem tag.
+ * Omissão em tipo que vence = `manual` (ainda não testado não é automático).
+ */
+export function automacaoOf(config: DocumentosKindConfig | undefined): DocumentosAutomacao | null {
+  if (!config || config.expira === false) return null;
+  return config.automacao ?? 'manual';
 }
 
 /**

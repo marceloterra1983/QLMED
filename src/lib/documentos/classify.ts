@@ -105,7 +105,7 @@ function classifySocietario(fileName: string): CompanyDocumentKind {
   return 'outro';
 }
 
-/** Linha já persistida como `outro` (pré-FR-031) volta a aparecer no card societário. */
+/** Linha já persistida como `outro` (pré-FR-036) volta a aparecer no card societário. */
 export function effectiveSocietarioKind(
   kind: CompanyDocumentKind,
   fileName: string,

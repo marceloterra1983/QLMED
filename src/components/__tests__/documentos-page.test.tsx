@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { CERTIDAO_EMISSAO_URL, CERTIDAO_KINDS_ORDER, CERTIDAO_LABEL } from '@/lib/documentos/constants';
+import { DOCUMENTOS_SHARE_RECIPIENTS } from '@/lib/documentos/share-email';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
 
 const roleState = vi.hoisted(() => ({ canWrite: true }));
@@ -35,6 +36,12 @@ vi.mock('@/hooks/useModalBackButton', () => ({
 
 import DocumentosPageClient from '@/app/(painel)/cadastro/documentos/page-client';
 
+function automacaoFor(kind: DocumentosRow['kind']): DocumentosRow['automacao'] {
+  if (kind === 'crf_fgts') return 'automatica';
+  if (kind === 'cnd_municipal_mobiliario' || kind === 'cnd_municipal_gerais') return 'assistida';
+  return 'manual';
+}
+
 function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow {
   return {
     id: null,
@@ -50,6 +57,7 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
     emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
     emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
     webUrl: null,
+    automacao: automacaoFor(kind),
   };
 }
 
@@ -71,6 +79,7 @@ function row(
     emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
     emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
     webUrl: null,
+    automacao: automacaoFor(kind),
     ...overrides,
   };
 }
@@ -118,6 +127,7 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     basicos: [],
     balancos: [],
     ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null },
+    shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
     ...overrides,
   };
 }
@@ -159,9 +169,9 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
       expect(within(table).getByText(CERTIDAO_LABEL[kind])).toBeTruthy();
     }
 
-    const bodyRows = within(table).getAllByRole('row').slice(1);
+    const bodyRows = [...table.querySelectorAll('tbody tr')];
     expect(bodyRows).toHaveLength(7);
-    expect(bodyRows.map((r) => within(r).getByText(/CND|CRF|CNDT/).textContent)).toEqual(
+    expect(bodyRows.map((r) => within(r as HTMLElement).getByText(/CND|CRF|CNDT/).textContent)).toEqual(
       CERTIDAO_KINDS_ORDER.map((kind) => CERTIDAO_LABEL[kind]),
     );
 
@@ -208,7 +218,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Ver' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
     const iframe = await screen.findByTitle('Preview do documento');
     expect(iframe.tagName).toBe('IFRAME');
     expect(iframe.getAttribute('src')).toBe('/api/documentos/doc-federal/arquivo');
@@ -235,10 +245,15 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('o lápis só existe para canWrite, tem aria-label, e o card recolhe/expande', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    const table = await screen.findByRole('table', { name: 'Certidões' });
 
-    expect(screen.getByRole('button', { name: 'Editar validade de CND Receita Federal' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Editar validade de CND Municipal — débitos gerais' })).toBeNull();
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
+    expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
+
+    const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
+    fireEvent.click(within(gerais).getByRole('button', { name: 'Mais opções' }));
+    expect(within(gerais).queryByRole('button', { name: 'Editar validade' })).toBeNull();
 
     const toggle = screen.getByRole('button', { name: /Certidões/ });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
@@ -283,13 +298,18 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editar validade de CND Receita Federal' }));
+    const table = screen.getByRole('table', { name: 'Certidões' });
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
+    fireEvent.click(within(federal).getByRole('button', { name: 'Editar validade' }));
     const input = screen.getByLabelText('Validade') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '2027-01-15' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(screen.queryByLabelText('Validade')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Editar validade de CRF FGTS' }));
+    const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
+    fireEvent.click(within(fgts).getByRole('button', { name: 'Mais opções' }));
+    fireEvent.click(within(fgts).getByRole('button', { name: 'Editar validade' }));
     expect((screen.getByLabelText('Validade') as HTMLInputElement).value).toBe('2026-09-01');
   });
 
@@ -299,14 +319,14 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Ver' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
     const iframe = await screen.findByTitle('Preview do documento');
     const printSpy = vi.fn();
     Object.defineProperty(iframe, 'contentWindow', {
       value: { print: printSpy },
       configurable: true,
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Imprimir' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'CND Receita Federal' })).getByRole('button', { name: 'Imprimir' }));
     expect(printSpy).toHaveBeenCalledTimes(1);
     expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
@@ -348,9 +368,16 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    const baixar = screen.getAllByRole('link', { name: 'Baixar' });
-    expect(baixar[0].getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo?download=1');
-    expect(baixar[0].hasAttribute('download')).toBe(true);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      expect(this.getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo?download=1');
+      expect(this.hasAttribute('download')).toBe(true);
+    });
+    const table = screen.getByRole('table', { name: 'Certidões' });
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
+    fireEvent.click(within(federal).getByRole('button', { name: 'Baixar' }));
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
 
     fireEvent.click(screen.getByRole('button', { name: 'Atualizar do OneDrive' }));
     await waitFor(() => {
@@ -397,6 +424,7 @@ describe('SPEC-042 L10 — três famílias na mesma página', () => {
           emissaoUrl: null,
           emissaoAria: null,
           webUrl: null,
+          automacao: null,
         },
       ],
     })));
@@ -432,6 +460,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoUrl: null,
           emissaoAria: null,
           webUrl: null,
+          automacao: null,
         },
       ],
       basicos: [
@@ -449,6 +478,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoUrl: null,
           emissaoAria: null,
           webUrl: null,
+          automacao: null,
         },
       ],
       balancos: [
@@ -466,6 +496,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoUrl: null,
           emissaoAria: null,
           webUrl: 'https://onedrive.example/balanco-2026',
+          automacao: null,
         },
       ],
     })));
@@ -482,11 +513,119 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
     expect(within(table).queryByRole('columnheader', { name: 'Válida até' })).toBeNull();
     expect(within(table).queryByRole('columnheader', { name: 'Dias restantes' })).toBeNull();
     expect(within(table).queryByText('não vence')).toBeNull();
-    expect(within(table).queryByRole('button', { name: 'Ver' })).toBeNull();
+    expect(within(table).queryByRole('button', { name: 'Ver documento' })).toBeNull();
     expect(within(table).queryByRole('button', { name: /Editar validade/ })).toBeNull();
-    const open = within(table).getByRole('link', { name: 'Abrir no OneDrive' });
+    expect(within(table).queryByRole('button', { name: 'Mais opções' })).toBeNull();
+    const open = within(table).getByRole('link', { name: 'Abrir pasta no OneDrive' });
     expect(open.getAttribute('href')).toBe('https://onedrive.example/balanco-2026');
     expect(open.getAttribute('target')).toBe('_blank');
     expect(open.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+});
+
+describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
+  it('clicar em Ver não abre o modal de atualização', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
+    expect(screen.queryByRole('dialog', { name: 'Atualizar CND Receita Federal' })).toBeNull();
+    expect(screen.getByTitle('Preview do documento')).toBeTruthy();
+  });
+
+  it('clicar na linha ou Enter abre o modal de atualização', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir atualização de CND Receita Federal' }));
+    expect(await screen.findByRole('dialog', { name: 'Atualizar CND Receita Federal' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Anexar PDF' })).toBeTruthy();
+  });
+
+  it('balanço não abre modal de atualização e não tem kebab', async () => {
+    stubFetch(() => jsonResponse(listing({
+      balancos: [
+        {
+          id: 'doc-bal-2026',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          label: '2026',
+          fileName: 'BALANÇO 2026',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: 'https://onedrive.example/balanco-2026',
+          automacao: null,
+        },
+      ],
+    })));
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<DocumentosPageClient />);
+    fireEvent.click(await screen.findByRole('button', { name: /Balanços/ }));
+    const table = await screen.findByRole('table', { name: 'Balanços' });
+    expect(within(table).queryByRole('button', { name: 'Mais opções' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir pasta 2026 no OneDrive' }));
+    expect(screen.queryByRole('dialog', { name: /Atualizar/ })).toBeNull();
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://onedrive.example/balanco-2026',
+      '_blank',
+      'noopener,noreferrer',
+    );
+    openSpy.mockRestore();
+  });
+
+  it('ícones do padrão: Ver documento, Imprimir, menu com Compartilhar', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    expect(within(federal).getByRole('button', { name: 'Ver documento' })).toBeTruthy();
+    expect(within(federal).getByRole('button', { name: 'Imprimir' })).toBeTruthy();
+    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
+    expect(within(federal).getByRole('button', { name: 'Compartilhar' })).toBeTruthy();
+    expect(within(federal).getByRole('button', { name: 'Baixar' })).toBeTruthy();
+    expect(within(federal).getByRole('button', { name: 'Atualizar arquivo' })).toBeTruthy();
+    expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
+  });
+
+  it('tags: só o FGTS é Automática; municipais Assistida; o resto Manual; AFE sem tag', async () => {
+    stubFetch(() => jsonResponse(listing({
+      sanitaria: [
+        {
+          id: 'doc-afe',
+          kind: 'afe_anvisa',
+          category: 'sanitaria',
+          label: 'AFE — Autorização de Funcionamento ANVISA',
+          fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: null,
+          automacao: null,
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
+    const mobiliario = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_mobiliario).closest('tr')!;
+    expect(within(federal).getByText('Manual')).toBeTruthy();
+    expect(within(fgts).getByText('Automática')).toBeTruthy();
+    expect(within(mobiliario).getByText('Assistida')).toBeTruthy();
+    const sanitaria = screen.getByRole('table', { name: 'Autorizações sanitárias' });
+    expect(within(sanitaria).queryByText('Automática')).toBeNull();
+    expect(within(sanitaria).queryByText('Manual')).toBeNull();
+    expect(within(sanitaria).queryByText('Assistida')).toBeNull();
   });
 });

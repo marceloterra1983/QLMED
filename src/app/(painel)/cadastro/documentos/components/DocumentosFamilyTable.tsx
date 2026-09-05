@@ -1,8 +1,12 @@
 'use client';
 
+import type { KeyboardEvent, SyntheticEvent } from 'react';
+import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { FIELD_CONTROL_CLS } from '@/components/ui/Field';
+import { RowActionsBase, type RowAction } from '@/components/ui/RowActions';
 import { formatDocumentDate, formatInt } from '@/lib/utils';
+import type { DocumentosAutomacao } from '@/lib/documentos/families';
 import type { DocumentosRow } from '@/lib/documentos/list';
 
 /** Destaque de dias restantes: uma semana ou menos (inclui vence hoje e vencida). */
@@ -25,8 +29,27 @@ export function isDaysDestaque(days: number | null): boolean {
 const ICON_BTN =
   'inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
 
+const INLINE_ICON_BTN =
+  'p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors';
+
+const AUTOMACAO_LABEL: Record<DocumentosAutomacao, string> = {
+  automatica: 'Automática',
+  assistida: 'Assistida',
+  manual: 'Manual',
+};
+
+const AUTOMACAO_TONE: Record<DocumentosAutomacao, 'success' | 'warning' | 'neutral'> = {
+  automatica: 'success',
+  assistida: 'warning',
+  manual: 'neutral',
+};
+
 function arquivoUrl(id: string, download = false): string {
   return download ? `/api/documentos/${id}/arquivo?download=1` : `/api/documentos/${id}/arquivo`;
+}
+
+function stopRowEvent(event: SyntheticEvent) {
+  event.stopPropagation();
 }
 
 function ValidityText({ value }: { value: string | null }) {
@@ -58,6 +81,31 @@ function DaysCell({ row }: { row: DocumentosRow }) {
   );
 }
 
+function AutomacaoTag({ value }: { value: DocumentosAutomacao | null }) {
+  if (!value) return null;
+  return (
+    <Badge tone={AUTOMACAO_TONE[value]} dot={false} className="ml-2 uppercase tracking-wide">
+      {AUTOMACAO_LABEL[value]}
+    </Badge>
+  );
+}
+
+function downloadArquivo(id: string, fileName: string) {
+  const link = document.createElement('a');
+  link.href = arquivoUrl(id, true);
+  link.download = fileName;
+  link.rel = 'noopener noreferrer';
+  link.click();
+}
+
+function printArquivo(id: string) {
+  window.open(arquivoUrl(id), '_blank', 'noopener,noreferrer');
+}
+
+function openFolder(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 export type DocumentosFamilyTableProps = {
   caption: string;
   columnLabel: string;
@@ -71,6 +119,8 @@ export type DocumentosFamilyTableProps = {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
+  onUpdate: (row: DocumentosRow) => void;
+  onShare: (row: DocumentosRow) => void;
   layout?: 'validity' | 'yearFolders';
 };
 
@@ -87,64 +137,112 @@ export default function DocumentosFamilyTable({
   onSaveEdit,
   onCancelEdit,
   onView,
+  onUpdate,
+  onShare,
   layout = 'validity',
 }: DocumentosFamilyTableProps) {
   function isEditingRow(row: DocumentosRow): boolean {
     return canWrite && row.id !== null && editingId === row.id;
   }
 
+  function canUpdateRow(row: DocumentosRow): boolean {
+    return canWrite && layout !== 'yearFolders' && row.category === 'certidao';
+  }
+
+  function rowActivateLabel(row: DocumentosRow): string | null {
+    if (layout === 'yearFolders') {
+      return row.webUrl ? `Abrir pasta ${row.label} no OneDrive` : null;
+    }
+    if (canUpdateRow(row) && !isEditingRow(row)) {
+      return `Abrir atualização de ${row.label}`;
+    }
+    return null;
+  }
+
+  function activateRow(row: DocumentosRow) {
+    if (layout === 'yearFolders') {
+      if (row.webUrl) openFolder(row.webUrl);
+      return;
+    }
+    if (isEditingRow(row)) return;
+    if (canUpdateRow(row)) onUpdate(row);
+  }
+
   function rowActions(row: DocumentosRow) {
     if (layout === 'yearFolders') {
       if (!row.webUrl) return null;
       return (
-        <Button
+        <a
           href={row.webUrl}
-          external
           target="_blank"
           rel="noopener noreferrer"
-          size="xs"
-          variant="ghost"
-          icon="open_in_new"
+          className={INLINE_ICON_BTN}
+          title="Abrir pasta no OneDrive"
+          aria-label="Abrir pasta no OneDrive"
         >
-          Abrir no OneDrive
-        </Button>
+          <span className="material-symbols-outlined text-[18px]">folder_open</span>
+        </a>
       );
     }
+
+    const hasFile = Boolean(row.id && row.fileName);
+    const inline: RowAction[] = [];
+    const menu: RowAction[] = [];
+
+    if (hasFile && row.id && row.fileName) {
+      inline.push({ label: 'Ver documento', icon: 'receipt_long', onSelect: () => onView(row) });
+      inline.push({
+        label: 'Imprimir',
+        icon: 'print',
+        onSelect: () => printArquivo(row.id!),
+        hideOnMobile: true,
+      });
+      if (canWrite) {
+        menu.push({ label: 'Compartilhar', icon: 'share', onSelect: () => onShare(row) });
+      }
+      menu.push({
+        label: 'Baixar',
+        icon: 'download',
+        onSelect: () => downloadArquivo(row.id!, row.fileName!),
+      });
+    }
+
+    if (canUpdateRow(row)) {
+      menu.push({ label: 'Atualizar arquivo', icon: 'upload_file', onSelect: () => onUpdate(row) });
+    }
+    if (canWrite && row.id && row.expira !== false) {
+      menu.push({ label: 'Editar validade', icon: 'edit', onSelect: () => onStartEdit(row) });
+    }
+
+    const actions =
+      inline.length === 0 && menu.length === 0 ? null : menu.length === 0 ? (
+        <div className="flex items-center justify-center gap-0">
+          {inline.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={action.onSelect}
+              className={`${action.hideOnMobile ? 'hidden sm:flex ' : ''}${INLINE_ICON_BTN}`}
+              title={action.label}
+              aria-label={action.label}
+            >
+              <span className="material-symbols-outlined text-[18px]">{action.icon}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <RowActionsBase inline={inline} menu={menu} />
+      );
+
     return (
       <div className="flex flex-wrap items-center gap-1">
-        {row.id && row.fileName ? (
-          <>
-            <Button
-              size="xs"
-              variant="ghost"
-              icon="picture_as_pdf"
-              onClick={() => onView(row)}
-            >
-              Ver
-            </Button>
-            <Button
-              href={arquivoUrl(row.id, true)}
-              external
-              download={row.fileName}
-              size="xs"
-              variant="ghost"
-              icon="download"
-            >
-              Baixar
-            </Button>
-          </>
-        ) : null}
+        {actions}
         {isEditingRow(row) ? (
           <>
             <Button size="xs" onClick={() => onSaveEdit()} loading={saving} disabled={!editDraft}>
               Salvar
             </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={onCancelEdit}
-              disabled={saving}
-            >
+            <Button size="xs" variant="ghost" onClick={onCancelEdit} disabled={saving}>
               Cancelar
             </Button>
           </>
@@ -183,17 +281,40 @@ export default function DocumentosFamilyTable({
         <tbody>
           {rows.map((row) => {
             const key = row.id ?? `${row.category}:${row.kind}`;
+            const activateLabel = rowActivateLabel(row);
+            const clickable = activateLabel != null;
             return (
               <tr
                 key={key}
-                className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                aria-label={activateLabel ?? undefined}
+                onClick={clickable ? () => activateRow(row) : undefined}
+                onKeyDown={
+                  clickable
+                    ? (event: KeyboardEvent<HTMLTableRowElement>) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          activateRow(row);
+                        }
+                      }
+                    : undefined
+                }
+                className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                  clickable ? 'cursor-pointer' : ''
+                }`}
               >
                 <td className="px-4 py-3">
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
+                  <AutomacaoTag value={row.automacao} />
                 </td>
                 {layout === 'yearFolders' ? null : (
                   <>
-                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <td
+                      className="px-4 py-3 text-sm whitespace-nowrap"
+                      onClick={stopRowEvent}
+                      onKeyDown={stopRowEvent}
+                    >
                       {isEditingRow(row) ? (
                         <input
                           type="date"
@@ -209,16 +330,6 @@ export default function DocumentosFamilyTable({
                           ) : (
                             <ValidityText value={row.validUntil} />
                           )}
-                          {canWrite && row.id && row.expira !== false ? (
-                            <button
-                              type="button"
-                              className={ICON_BTN}
-                              aria-label={`Editar validade de ${row.label}`}
-                              onClick={() => onStartEdit(row)}
-                            >
-                              <span aria-hidden="true" className="material-symbols-outlined text-[16px]">edit</span>
-                            </button>
-                          ) : null}
                         </span>
                       )}
                     </td>
@@ -227,7 +338,13 @@ export default function DocumentosFamilyTable({
                     </td>
                   </>
                 )}
-                <td className="px-4 py-3 whitespace-nowrap">{rowActions(row)}</td>
+                <td
+                  className="px-4 py-3 whitespace-nowrap"
+                  onClick={stopRowEvent}
+                  onKeyDown={stopRowEvent}
+                >
+                  {rowActions(row)}
+                </td>
               </tr>
             );
           })}
