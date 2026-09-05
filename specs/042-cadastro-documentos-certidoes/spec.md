@@ -248,6 +248,13 @@ falhar de forma visível, não chutar.
   Básicos: `CARTAO CNPJ` | `INSCRICAO MUNICIPAL` | `INSCRICAO ESTADUAL` |
   `SISCOMEX` | `E-CJUR`/`ECJUR` | `DADOS CADASTRAIS`.
 
+- **FR-029**: Se o OneDrive não tiver a pasta de uma família
+  (`pasta não encontrada`), a ingestão **não aborta** o ciclo. As outras
+  famílias continuam; as linhas da família não enumerada **não** recebem
+  `removedAt`. Falta de capacidade na porta (`listChildren` ausente) continua
+  abortando — isso não pode parecer pasta vazia. O estado grava
+  `lastSuccessAt` e um `lastError` âmbar com as famílias saltadas.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -331,6 +338,11 @@ falhar de forma visível, não chutar.
 - **AC-021** (FR-026/027): o card Balanços não tem colunas "Válida até" /
   "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir no
   OneDrive" com `target=_blank` `rel=noopener noreferrer`.
+- **AC-022** (FR-029): após ingestão com Contrato Social presente, um ciclo
+  em que `listPdfs` da pasta societário lança `pasta não encontrada` devolve
+  `skippedFamilies=['societario']`, mantém `removedAt` nulo no contrato e
+  nas certidões, e atualiza `lastSuccessAt`. Controlo negativo: porta sem
+  `listChildren` continua a abortar.
 
 ## Non-functional
 
