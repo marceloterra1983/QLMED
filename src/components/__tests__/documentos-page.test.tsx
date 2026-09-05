@@ -696,16 +696,25 @@ describe('SPEC-042 L13 — cards recolhidos, tabela compacta, gestão', () => {
     }
   });
 
-  it('células da tabela usam py-1.5 no desktop e o link de emissão continua na linha', async () => {
+  it('linha compacta no desktop: célula py-1 e botão de ícone p-1; link de emissão na linha', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
     const table = await certidoesTable();
     const th = within(table).getByRole('columnheader', { name: 'Certidão' });
-    expect(th.className).toMatch(/py-1\.5/);
+    expect(th.className).toMatch(/sm:py-1\b/);
     expect(th.className).toMatch(/px-3/);
     const td = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('td')!;
-    expect(td.className).toMatch(/py-1\.5/);
+    expect(td.className).toMatch(/sm:py-1\b/);
+
+    // O padding da célula NÃO decide a altura da linha: o botão de ícone é o
+    // elemento mais alto. Reduzir só o `py` não muda o resultado — foi por isso
+    // que a primeira compactação quase não se viu.
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    const botao = within(federal).getAllByRole('button')[0];
+    expect(botao.className).toMatch(/sm:p-1\b/);
+    const glifo = botao.querySelector('.material-symbols-outlined')!;
+    expect(glifo.className).toMatch(/sm:text-\[16px\]/);
+
     expect(within(federal).getByRole('link', { name: /Emitir CND Receita Federal/ })).toBeTruthy();
   });
 });

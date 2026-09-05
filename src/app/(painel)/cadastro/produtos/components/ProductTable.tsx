@@ -98,6 +98,13 @@ export default function ProductTable({
   const hasGroups = allGroups.length > 0;
   const hasCollapsedGroups = collapsedGroups.size > 0;
   const tableColSpan = TABLE_DATA_COLS + (selectionEnabled ? 1 : 0);
+  const anyProductRowVisible = visible.some((p) => {
+    if (sortBy === 'productType') {
+      return !collapsedGroups.has(getLineLabel(p)) && !collapsedGroups.has(getGroupLabel(p, sortBy));
+    }
+    const g = getGroupLabel(p, sortBy);
+    return !g || !collapsedGroups.has(g);
+  });
 
   const renderProductRow = (product: ProductRow, inTable: boolean) => {
     if (inTable) {
@@ -357,6 +364,17 @@ export default function ProductTable({
       {hasGroups && hasCollapsedGroups && (
         <div className="sm:hidden px-3 py-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-800/40">
           Grupos recolhidos — toque no grupo ou em Expandir para ver os itens.
+        </div>
+      )}
+
+      {hasGroups && hasCollapsedGroups && !anyProductRowVisible && !loading && !isRebuilding && (
+        <div className="px-4 py-6 flex flex-col sm:flex-row items-center justify-center gap-3 border-b border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/20">
+          <p className="text-sm text-amber-900 dark:text-amber-200 text-center">
+            Itens ocultos pelos grupos recolhidos nesta pagina.
+          </p>
+          <Button type="button" icon="unfold_more" onClick={() => setCollapsedGroups(new Set())}>
+            Expandir e mostrar produtos
+          </Button>
         </div>
       )}
 

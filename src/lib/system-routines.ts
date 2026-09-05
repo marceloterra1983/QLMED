@@ -5,6 +5,7 @@ import {
   DOCUMENTOS_INGEST_INTERVAL_MS,
 } from './documentos/constants';
 import { IMPCG_INGEST_INTERVAL_MS } from './impcg/constants';
+import { PAGE_GROUPS } from './navigation';
 
 function intervalLabel(ms: number): string {
   const minutes = Math.round(ms / 60_000);
@@ -465,5 +466,87 @@ export function buildRoutineSummary(
     errorServicesCount,
     ...extras,
   };
+}
+
+/**
+ * Agrupamento da UI de Rotinas alinhado às seções de `PAGE_GROUPS`
+ * (menu lateral). Qualquer rotina sem mapeamento cai em Outros.
+ */
+export type RoutinePageSection =
+  | 'Cadastros'
+  | 'Fiscal'
+  | 'Estoque'
+  | 'Financeiro'
+  | 'Gestão'
+  | 'Relatórios'
+  | 'Sistema'
+  | 'Outros';
+
+export const ROUTINE_PAGE_SECTION_META: Record<
+  RoutinePageSection,
+  { icon: string; tone: 'primary' | 'indigo' | 'teal' | 'amber' | 'emerald' | 'violet' | 'rose' | 'orange' | 'purple' | 'blue' }
+> = {
+  Cadastros: { icon: 'folder_managed', tone: 'indigo' },
+  Fiscal: { icon: 'receipt_long', tone: 'emerald' },
+  Estoque: { icon: 'inventory_2', tone: 'amber' },
+  Financeiro: { icon: 'payments', tone: 'teal' },
+  Gestão: { icon: 'clinical_notes', tone: 'blue' },
+  Relatórios: { icon: 'assessment', tone: 'violet' },
+  Sistema: { icon: 'dns', tone: 'primary' },
+  Outros: { icon: 'more_horiz', tone: 'orange' },
+};
+
+/** Ordem canónica = seções do menu + Outros no fim. */
+export const ROUTINE_PAGE_SECTION_ORDER: RoutinePageSection[] = [
+  ...(PAGE_GROUPS.map((g) => g.section) as RoutinePageSection[]),
+  'Outros',
+];
+
+const ROUTINE_PAGE_SECTION_BY_ID: Record<string, RoutinePageSection> = {
+  'sefaz-auto-sync': 'Fiscal',
+  'nsdocs-auto-sync': 'Fiscal',
+  'receita-nfse-sync': 'Fiscal',
+  'stuck-sync-recovery': 'Fiscal',
+  'cte-dist-sync': 'Fiscal',
+  'local-xml-watcher': 'Fiscal',
+  'onedrive-xml-sync': 'Fiscal',
+  'product-aggregate-rebuild': 'Estoque',
+  'anvisa-registry-sync': 'Cadastros',
+  'documentos-ingest': 'Cadastros',
+  'documentos-alert': 'Cadastros',
+  'impcg-mail-ingest': 'Gestão',
+  'cassems-mail-ingest': 'Gestão',
+  'daily-summary-catchup': 'Financeiro',
+  'notification-outbox-worker': 'Sistema',
+  'notification-outbox-purge': 'Sistema',
+  'evolution-session-watchdog': 'Sistema',
+  'n8n-stuck-watchdog': 'Sistema',
+  'postgres-backup': 'Sistema',
+};
+
+export function pageSectionForRoutine(routine: Pick<SystemRoutine, 'id'>): RoutinePageSection {
+  return ROUTINE_PAGE_SECTION_BY_ID[routine.id] ?? 'Outros';
+}
+
+export type RoutinePageSectionGroup<T extends Pick<SystemRoutine, 'id'> = SystemRoutine> = {
+  section: RoutinePageSection;
+  routines: T[];
+};
+
+/** Agrupa rotinas por seção do menu; omite seções vazias; Outros só se houver órfãs. */
+export function groupRoutinesByPageSection<T extends Pick<SystemRoutine, 'id'>>(
+  routines: T[],
+): RoutinePageSectionGroup<T>[] {
+  const buckets = new Map<RoutinePageSection, T[]>();
+  for (const section of ROUTINE_PAGE_SECTION_ORDER) {
+    buckets.set(section, []);
+  }
+  for (const routine of routines) {
+    const section = pageSectionForRoutine(routine);
+    buckets.get(section)!.push(routine);
+  }
+  return ROUTINE_PAGE_SECTION_ORDER
+    .map((section) => ({ section, routines: buckets.get(section)! }))
+    .filter((group) => group.routines.length > 0);
 }
 

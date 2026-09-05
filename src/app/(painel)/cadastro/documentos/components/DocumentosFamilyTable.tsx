@@ -26,10 +26,19 @@ export function isDaysDestaque(days: number | null): boolean {
   return days != null && days <= CERTIDAO_DIAS_DESTAQUE;
 }
 
-const CELL = 'px-3 py-2 sm:py-1.5';
+/**
+ * A altura da linha NÃO era ditada pelo padding: os botões de ícone medem
+ * 18px de glifo dentro de `p-1.5`, ou seja 30px, e nenhuma linha pode ficar
+ * abaixo do seu conteúdo mais alto. Reduzir só o `py` da célula não mexia no
+ * resultado — foi por isso que a primeira compactação quase não se viu.
+ *
+ * Aqui o padding da célula e o botão encolhem juntos, e só no desktop: no
+ * telemóvel o alvo de toque fica como estava.
+ */
+const CELL = 'px-3 py-2 sm:py-1';
 
 const INLINE_ICON_BTN =
-  'p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors';
+  'p-1.5 sm:p-1 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors';
 
 /**
  * Só o que é automático ganha etiqueta. `manual` é o caso comum e não merece
@@ -185,7 +194,7 @@ export default function DocumentosFamilyTable({
           title="Abrir pasta no OneDrive"
           aria-label="Abrir pasta no OneDrive"
         >
-          <span className="material-symbols-outlined text-[18px]">folder_open</span>
+          <span className="material-symbols-outlined text-[18px] sm:text-[16px]">folder_open</span>
         </a>
       );
     }
@@ -231,12 +240,12 @@ export default function DocumentosFamilyTable({
               title={action.label}
               aria-label={action.label}
             >
-              <span className="material-symbols-outlined text-[18px]">{action.icon}</span>
+              <span className="material-symbols-outlined text-[18px] sm:text-[16px]">{action.icon}</span>
             </button>
           ))}
         </div>
       ) : (
-        <RowActionsBase inline={inline} menu={menu} />
+        <RowActionsBase inline={inline} menu={menu} compact />
       );
 
     const emissao = row.emissaoUrl ? (
@@ -249,7 +258,7 @@ export default function DocumentosFamilyTable({
         className={INLINE_ICON_BTN}
         onClick={stopRowEvent}
       >
-        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-[18px] sm:text-[16px]">open_in_new</span>
       </a>
     ) : null;
 

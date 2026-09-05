@@ -53,7 +53,7 @@ export default function ProdutosPage() {
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('active');
+  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -207,6 +207,8 @@ export default function ProdutosPage() {
       setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
       setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
       setMeta(data.meta || null);
+      // Sempre abrir grupos após carga/paginação — evita tela em branco (1 linha recolhida).
+      setCollapsedGroups(new Set());
       if (data.needsRebuild && !rebuiltOnceRef.current) {
         rebuiltOnceRef.current = true;
         setIsRebuilding(true);
@@ -219,6 +221,7 @@ export default function ProdutosPage() {
               setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
               setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
               setMeta(d.meta || null);
+              setCollapsedGroups(new Set());
             }).catch(() => {});
           })
           .catch(() => setIsRebuilding(false));
@@ -382,7 +385,7 @@ export default function ProdutosPage() {
       {pagination.pages > 1 && (
         <Card padding="none" className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Pagina {formatInt(pagination.page)} de {formatInt(pagination.pages)} · {formatInt(pagination.total)} produtos
+            Pagina {formatInt(pagination.page)} de {formatInt(pagination.pages)} · {formatInt(pagination.total)} produtos{lineStatusFilter === 'active' ? ' em linha' : lineStatusFilter === 'outOfLine' ? ' fora de linha' : ''}
           </p>
           <div className="flex items-center gap-2">
             <button

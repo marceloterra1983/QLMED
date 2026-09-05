@@ -11,7 +11,29 @@ export type RowAction = {
   hideOnMobile?: boolean;
 };
 
-export function RowActionsBase({ inline, menu }: { inline: RowAction[]; menu: RowAction[] }): JSX.Element {
+/**
+ * `compact` encolhe os botões só no desktop. Existe porque a altura de uma
+ * linha de tabela é ditada pelo seu elemento mais alto — aqui, o botão de
+ * 18px de glifo dentro de `p-1.5`, ou seja 30px. Reduzir o padding da CÉLULA
+ * não muda nada enquanto o botão não encolher.
+ *
+ * É opcional e o padrão é `false`, portanto as cinco páginas fiscais que já
+ * usam este componente continuam idênticas. No telemóvel nada muda em nenhum
+ * dos modos: o alvo de toque fica como está.
+ */
+export function RowActionsBase({
+  inline,
+  menu,
+  compact = false,
+}: {
+  inline: RowAction[];
+  menu: RowAction[];
+  compact?: boolean;
+}): JSX.Element {
+  const pad = compact ? 'p-1.5 sm:p-1' : 'p-1.5';
+  const glifo = compact
+    ? 'material-symbols-outlined text-[18px] sm:text-[16px]'
+    : 'material-symbols-outlined text-[18px]';
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -39,23 +61,23 @@ export function RowActionsBase({ inline, menu }: { inline: RowAction[]; menu: Ro
         <button
           key={action.label}
           onClick={action.onSelect}
-          className={`${action.hideOnMobile ? 'hidden sm:flex ' : ''}p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors`}
+          className={`${action.hideOnMobile ? 'hidden sm:flex ' : ''}${pad} rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors`}
           title={action.label}
           aria-label={action.label}
         >
-          <span className="material-symbols-outlined text-[18px]">{action.icon}</span>
+          <span className={glifo}>{action.icon}</span>
         </button>
       ))}
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setOpen(!open)}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
+          className={`${pad} rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors`}
           title="Mais opções"
           aria-label="Mais opções"
           aria-expanded={open}
           aria-haspopup="true"
         >
-          <span className="material-symbols-outlined text-[18px]">more_vert</span>
+          <span className={glifo}>more_vert</span>
         </button>
         {open && (
           <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-black/30 z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
