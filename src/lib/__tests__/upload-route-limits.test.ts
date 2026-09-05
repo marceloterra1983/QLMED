@@ -74,6 +74,13 @@ describe('rotas de upload recusam corpo hostil com 413 (FILE-001/002/006)', () =
 
     expect(response.status).toBe(413);
   });
+
+  it('POST /api/products/import-spica devolve 413 sem bufferizar o corpo inteiro', async () => {
+    const { POST: importSpica } = await import('@/app/api/products/import-spica/route');
+    const response = await importSpica(endlessRequest());
+
+    expect(response.status).toBe(413);
+  });
 });
 
 describe('XML hostil (fixtures sintéticas, nenhum XML fiscal real)', () => {

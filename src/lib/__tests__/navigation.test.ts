@@ -83,6 +83,14 @@ describe('navigation ACL helpers', () => {
       }
     });
 
+
+    it('rotinas API is gated by /sistema/rotinas page', () => {
+      expect(requiredPagesForApi('/api/sistema/rotinas')).toEqual(['/sistema/rotinas']);
+      expect(canAccessApi('viewer', ['/sistema/rotinas'], '/api/sistema/rotinas')).toBe(true);
+      expect(canAccessApi('viewer', ['/sistema/sync'], '/api/sistema/rotinas')).toBe(false);
+      expect(VALID_PAGE_PATHS.has('/sistema/rotinas')).toBe(true);
+    });
+
     it('anvisa APIs are gated by produtos, not a standalone page', () => {
       expect(VALID_PAGE_PATHS.has('/cadastro/anvisa')).toBe(false);
       expect(PAGE_GROUPS.find((g) => g.section === 'Cadastros')?.pages.map((p) => p.path)).toEqual([

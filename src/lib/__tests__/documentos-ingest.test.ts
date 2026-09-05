@@ -2,6 +2,7 @@ import type { CompanyDocumentKind } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentosFolderChild, DocumentosFolderFile, DocumentosFolderPort } from '@/lib/documentos/ingest';
 import { DOCUMENTOS_ONEDRIVE_ACCOUNT } from '@/lib/documentos/constants';
+import type { PdfValidityResult } from '@/lib/documentos/pdf-validity';
 
 type DocRow = {
   id: string;
@@ -112,6 +113,23 @@ const lock = vi.hoisted(() => ({
 const uploadOd = vi.hoisted(() => ({
   uploadOneDriveFile: vi.fn(async () => ({ id: 'item-up', name: 'up.pdf' })),
   ensureToken: vi.fn(async () => 'token'),
+}));
+
+const pdfValidity = vi.hoisted(() => {
+  const empty: PdfValidityResult = {
+    validUntil: null,
+    confidence: 'nenhuma',
+    matchedLabel: null,
+    textChars: 0,
+  };
+  return {
+    empty,
+    readValidityFromPdf: vi.fn(async (): Promise<PdfValidityResult> => empty),
+  };
+});
+
+vi.mock('@/lib/documentos/pdf-validity', () => ({
+  readValidityFromPdf: pdfValidity.readValidityFromPdf,
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -267,6 +285,7 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     vi.clearAllMocks();
     resetMemory();
     lock.acquire.mockImplementation(async () => ({ release: async () => lock.release() }));
+    pdfValidity.readValidityFromPdf.mockResolvedValue(pdfValidity.empty);
   });
 
   it('24 itens da fixture → 24 linhas; segunda passada → 0 creates', async () => {
@@ -306,6 +325,37 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.docs).toHaveLength(24);
     expect(memory.creates).toBe(24);
     expect(new Set(memory.docs.map((row) => row.id)).size).toBe(24);
+  });
+
+  it('sem data no nome, lê validade do PDF; com data no nome não baixa', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    pdfValidity.readValidityFromPdf.mockResolvedValue({
+      validUntil: '2026-12-01',
+      confidence: 'alta' as const,
+      matchedLabel: 'Validade ate',
+      textChars: 32,
+    });
+    const downloads: string[] = [];
+    const port = fakePort(filesFromFixture());
+    port.downloadPdf = async (itemId) => {
+      downloads.push(itemId);
+      return Buffer.from('%PDF-1.4 fixture-nao-logar');
+    };
+
+    await runDocumentosIngest(COMPANY, port, NOW);
+
+    const nameless = memory.docs.find((row) => row.oneDriveItemId === itemIdFor(23));
+    expect(nameless?.fileName).toMatch(/05\.04\.pdf$/);
+    expect(ymd(nameless?.validUntil ?? null)).toBe('2026-12-01');
+    expect(nameless?.validUntilSource).toBe('pdf');
+    expect(new Set(downloads)).toEqual(new Set([itemIdFor(3), itemIdFor(23)]));
+    expect(pdfValidity.readValidityFromPdf).toHaveBeenCalledTimes(2);
+    expect(ymd(memory.docs.find((row) => row.oneDriveItemId === itemIdFor(0))?.validUntil ?? null)).toBe(
+      '2026-12-12',
+    );
+    expect(memory.docs.find((row) => row.oneDriveItemId === itemIdFor(0))?.validUntilSource).toBe(
+      'filename',
+    );
   });
 
   it('item ausente recebe removedAt; reaparecer zera removedAt', async () => {
@@ -801,6 +851,45 @@ describe('SPEC-042 — upload toma o lock da ingestão', () => {
     expect(lock.acquire).toHaveBeenCalledWith('documentos-ingest:co1');
     expect(lock.release).toHaveBeenCalledTimes(1);
     expect(uploadOd.uploadOneDriveFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SPEC-042 — pasta de uma família ausente não derruba as outras', () => {
+  it('Contrato Social sumiu do OneDrive: certidões seguem e o contrato não recebe removedAt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const entries = [
+      ...filesFromFixture(),
+      {
+        folder: '3 - CONTRATO SOCIAL',
+        file: {
+          itemId: 'od-cs',
+          name: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+          size: 2048,
+          lastModifiedAt: NOW,
+        },
+      },
+    ];
+    await runDocumentosIngest(COMPANY, fakePort(entries), NOW);
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cs')?.removedAt).toBeNull();
+
+    const later = new Date('2026-09-04T16:00:00.000Z');
+    const port = fakePort(filesFromFixture());
+    const listPdfs = port.listPdfs.bind(port);
+    port.listPdfs = async (folderPath) => {
+      if (folderPath.includes('CONTRATO SOCIAL')) {
+        throw new Error('pasta não encontrada');
+      }
+      return listPdfs(folderPath);
+    };
+
+    const result = await runDocumentosIngest(COMPANY, port, later);
+
+    expect(result.skippedFamilies).toEqual(['societario']);
+    expect(result.scanned).toBe(24);
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cs')?.removedAt).toBeNull();
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-0')?.removedAt).toBeNull();
+    expect(memory.ingest[0]?.lastSuccessAt).toEqual(later);
+    expect(memory.ingest[0]?.lastError).toMatch(/societario/);
   });
 });
 

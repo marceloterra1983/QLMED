@@ -18,6 +18,7 @@ import ProductFilters from './components/ProductFilters';
 import ProductDetailModal from './components/ProductDetailModal';
 import BulkEditModal from './components/BulkEditModal';
 import ExportCSVButton from './components/ExportCSVButton';
+import ImportSpicaModal from './components/ImportSpicaModal';
 import ProductTable from './components/ProductTable';
 import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
@@ -67,6 +68,7 @@ export default function ProdutosPage() {
 
   // --- action states ---
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [spicaImportOpen, setSpicaImportOpen] = useState(false);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
   const [autoClassifyPreview, setAutoClassifyPreview] = useState<any>(null);
@@ -332,6 +334,17 @@ export default function ProdutosPage() {
             >
               Consulta ANVISA
             </Button>
+            {canWrite && (
+              <Button
+                type="button"
+                variant="secondary"
+                icon="upload_file"
+                title="Importar cadastro oficial Spica (Rel_Produtos)"
+                onClick={() => setSpicaImportOpen(true)}
+              >
+                Importar Spica
+              </Button>
+            )}
             <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
           </>
         )}
@@ -530,6 +543,13 @@ export default function ProdutosPage() {
 
       {/* Invoice detail modal */}
       <InvoiceDetailsModal isOpen={!!invoiceModalId} onClose={() => setInvoiceModalId(null)} invoiceId={invoiceModalId} />
+
+      {spicaImportOpen && (
+        <ImportSpicaModal
+          onClose={() => setSpicaImportOpen(false)}
+          onImported={async () => { await Promise.all([loadProducts(), loadSettingsHierarchy()]); }}
+        />
+      )}
 
       {/* Settings Modal */}
       {settingsOpen && (

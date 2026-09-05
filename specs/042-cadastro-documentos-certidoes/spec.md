@@ -104,8 +104,8 @@ falhar de forma visível, não chutar.
   e, dentro de `Estaduais`/`Municipais`, por nome (`MATO GROSSO` sem `SUL` →
   `cnd_estadual_mt`; `MATO GROSSO DO SUL` → `cnd_estadual_ms`; `MOBILIARIO` →
   mobiliário; `gerais` → débitos gerais). Validade lida
-  do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match →
-  `validUntil = null`, `validUntilSource = null`, linha marcada "Sem data".
+  do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match
+  → fallback FR-030 no conteúdo do PDF; se ainda assim nulo, linha "Sem data".
 - **FR-005b**: Item que sumiu da pasta recebe `removedAt` (não é apagado do
   banco). Item renomeado mantém a linha (mesmo `oneDriveItemId`) e atualiza
   nome e validade extraída, exceto quando `validUntilSource = 'manual'`.
@@ -250,15 +250,29 @@ falhar de forma visível, não chutar.
   Básicos: `CARTAO CNPJ` | `INSCRICAO MUNICIPAL` | `INSCRICAO ESTADUAL` |
   `SISCOMEX` | `E-CJUR`/`ECJUR` | `DADOS CADASTRAIS`.
 
+- **FR-029**: Se o OneDrive não tiver a pasta de uma família
+  (`pasta não encontrada`), a ingestão **não aborta** o ciclo. As outras
+  famílias continuam; as linhas da família não enumerada **não** recebem
+  `removedAt`. Falta de capacidade na porta (`listChildren` ausente) continua
+  abortando — isso não pode parecer pasta vazia. O estado grava
+  `lastSuccessAt` e um `lastError` âmbar com as famílias saltadas.
+
+- **FR-030**: Se o nome do ficheiro não tem data extraível e o tipo
+  `kindStoresFilenameDate`, a ingestão baixa o PDF e aplica
+  `readValidityFromPdf`. Acerto grava `validUntilSource='pdf'`. Data no
+  nome continua a ganhar (`filename`) e **não** dispara download. Falha
+  de leitura deixa `validUntil` nulo e **não** aborta o ciclo. Tipos com
+  `filenameDate: false` (AFE) não leem o PDF.
+
 ### Tela integrada (L12)
 
-- **FR-029**: Na família `certidao`, a linha inteira (rato, Enter e Espaço;
+- **FR-031**: Na família `certidao`, a linha inteira (rato, Enter e Espaço;
   `role="button"` + `tabIndex={0}`) abre `DocumentoUpdateModal`. Clique em
   acção, no kebab ou num link da linha **não** abre o modal (`stopPropagation`
   nos controlos). Família `balanco`: a linha abre a pasta no OneDrive e **não**
   tem modal de atualização.
 
-- **FR-030**: O modal de atualização segue quatro etapas: anexar (arrastar ou
+- **FR-032**: O modal de atualização segue quatro etapas: anexar (arrastar ou
   clicar; só `.pdf`, ≤ 5 MB, recusa no cliente); ler (`POST /api/documentos/analisar`,
   que chama `readValidityFromPdf` no servidor e **não grava**); confirmar (data
   pré-preenchida com o que foi lido, rótulo "corrigir se estiver errada"; se
@@ -266,19 +280,19 @@ falhar de forma visível, não chutar.
   (`POST /api/documentos/upload`). Sem duplo envio. A rota `analisar` tem a
   mesma ACL de escrita que `upload`; parser sem texto → 200 `confidence: 'nenhuma'`.
 
-- **FR-031**: Acções de linha via `RowActionsBase`: inline `receipt_long`
+- **FR-033**: Acções de linha via `RowActionsBase`: inline `receipt_long`
   "Ver documento" e `print` "Imprimir" (`hideOnMobile`); menu Compartilhar
   (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`), Editar
   validade (`edit`). Balanço: só `folder_open` "Abrir pasta no OneDrive", sem
   kebab. O lápis sai da linha.
 
-- **FR-032**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
+- **FR-034**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
   `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo, sem e-mail livre), observação opcional,
   envio a `POST /api/documentos/{id}/compartilhar`. Zero destinatários desativa
   o botão. Não é `mailto:`. Sucesso: toast com a quantidade; falha: mensagem da
   rota.
 
-- **FR-033**: Cada tipo que `expira` tem `automacao` no config: `'automatica'`
+- **FR-035**: Cada tipo que `expira` tem `automacao` no config: `'automatica'`
   só `crf_fgts` (comprovado); `'assistida'` `cnd_municipal_mobiliario` e
   `cnd_municipal_gerais` (SIAT pela inscrição municipal); `'manual'` o resto
   que vence, incluindo o não testado. `expira: false` não recebe tag.
@@ -366,16 +380,25 @@ falhar de forma visível, não chutar.
 - **AC-021** (FR-026/027): o card Balanços não tem colunas "Válida até" /
   "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir pasta no
   OneDrive" com `target=_blank` `rel=noopener noreferrer`.
-- **AC-022** (FR-029): clicar em Ver não abre o modal de atualização; clicar
+- **AC-022** (FR-029): após ingestão com Contrato Social presente, um ciclo
+  em que `listPdfs` da pasta societário lança `pasta não encontrada` devolve
+  `skippedFamilies=['societario']`, mantém `removedAt` nulo no contrato e
+  nas certidões, e atualiza `lastSuccessAt`. Controlo negativo: porta sem
+  `listChildren` continua a abortar.
+- **AC-023** (FR-030): fixture `…MOBILIARIO 05.04.pdf` sem ano no nome,
+  com `readValidityFromPdf` devolvendo `2026-12-01`, persiste essa data
+  com `validUntilSource='pdf'` e **não** chama `downloadPdf` nos ficheiros
+  cuja data já saiu do nome.
+- **AC-024** (FR-031): clicar em Ver não abre o modal de atualização; clicar
   na linha da certidão abre. Controlo negativo: deixar o clique do botão
   propagar para a linha faz o teste falhar.
-- **AC-023** (FR-030): validade lida (`confidence: 'alta'`) entra
+- **AC-025** (FR-032): validade lida (`confidence: 'alta'`) entra
   pré-preenchida no campo; `nenhuma` deixa o campo vazio e não bloqueia.
   Controlo negativo: ignorar o valor lido faz o teste "validade lida entra
   pré-preenchida" falhar.
-- **AC-024** (FR-032): enviar com zero destinatários é impossível (botão
+- **AC-026** (FR-034): enviar com zero destinatários é impossível (botão
   desativado). Controlo negativo: permitir enviar vazio faz o teste falhar.
-- **AC-025** (FR-033): só `crf_fgts` é `automacao: 'automatica'`. Controlo
+- **AC-027** (FR-035): só `crf_fgts` é `automacao: 'automatica'`. Controlo
   negativo: marcar `cnd_federal` como automática faz o teste das tags falhar
   nomeando que só o FGTS é automático.
 
@@ -394,9 +417,10 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias ainda não modeladas (CRT CREA, falência, protestos):
   entram como nova entrada em `DOCUMENTOS_FAMILIES`, não nesta folha.
-- Parser de validade no conteúdo do PDF (entregue em P1; L12 só o consome
-  via `POST /api/documentos/analisar`).
+- Parser de validade no conteúdo do PDF (entregue em P1 via ingestão
+  FR-030; L12 consome via `POST /api/documentos/analisar`).
 - E-mail livre no diálogo de compartilhar (a rota recusa fora da allowlist).
+- E-mail e push para estes avisos.
 
 ## Applicable ADRs
 

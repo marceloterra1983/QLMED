@@ -13,7 +13,7 @@ import {
   type RoutineCategory,
   type RoutineTriggerType,
 } from '@/lib/system-routines';
-import type { EnrichedSystemRoutine } from '@/app/api/sistema/rotinas/route';
+import type { EnrichedSystemRoutine } from '@/lib/system-routines';
 
 type FilterCategory = 'all' | RoutineCategory;
 type FilterTrigger = 'all' | RoutineTriggerType;
