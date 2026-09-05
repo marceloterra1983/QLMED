@@ -26,45 +26,64 @@ function row(partial: Partial<ProductRow> & { key: string; codigo: string; descr
 
 const summary: ProductsSummary = { totalProducts: 2, productsWithAnvisa: 0, totalQuantity: 0 };
 
-describe('ProductTable blank-page guard', () => {
-  it('mostra linhas de produto mesmo com line:CARDIACA no collapsedGroups', () => {
+const baseProps = {
+  loading: false,
+  isRebuilding: false,
+  summary,
+  sortBy: 'productType' as const,
+  sortOrder: 'asc' as const,
+  search: '',
+  toggleGroup: () => {},
+  selectionEnabled: false,
+  setSelectionEnabled: () => {},
+  selectedKeys: new Set<string>(),
+  setSelectedKeys: () => {},
+  toggleSelect: () => {},
+  toggleSelectGroup: () => {},
+  setCollapsedGroups: () => {},
+  handleSort: () => {},
+  openDetail: () => {},
+  openHistory: () => {},
+  canWrite: false,
+  setSettingsOpen: () => {},
+};
+
+describe('ProductTable collapsed-by-default', () => {
+  it('com line recolhida mostra cabeçalho e esconde produtos', () => {
     const products = [
       row({ key: 'a', codigo: 'SPICA-111', description: 'Stent Coronary A' }),
       row({ key: 'b', codigo: 'SPICA-222', description: 'Stent Coronary B' }),
     ];
-    const collapsedGroups = new Set(['line:CARDIACA']);
+    const collapsedGroups = new Set(['line:CARDIACA', 'group:CARDIACA|STENTS']);
 
     render(
       <ProductTable
+        {...baseProps}
         products={products}
-        loading={false}
-        isRebuilding={false}
-        summary={summary}
-        sortBy="productType"
-        sortOrder="asc"
-        search=""
         collapsedGroups={collapsedGroups}
-        toggleGroup={() => {}}
-        selectionEnabled={false}
-        setSelectionEnabled={() => {}}
-        selectedKeys={new Set()}
-        setSelectedKeys={() => {}}
-        toggleSelect={() => {}}
-        toggleSelectGroup={() => {}}
-        setCollapsedGroups={() => {}}
-        handleSort={() => {}}
-        openDetail={() => {}}
-        openHistory={() => {}}
-        canWrite={false}
-        setSettingsOpen={() => {}}
       />,
     );
 
-    // Desktop + mobile renderizam os mesmos produtos — pelo menos 1 ocorrência cada.
+    expect(screen.getAllByText(/CARDIACA/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('SPICA-111')).toBeNull();
+    expect(screen.queryByText('Stent Coronary A')).toBeNull();
+  });
+
+  it('com grupos expandidos mostra produtos', () => {
+    const products = [
+      row({ key: 'a', codigo: 'SPICA-111', description: 'Stent Coronary A' }),
+      row({ key: 'b', codigo: 'SPICA-222', description: 'Stent Coronary B' }),
+    ];
+
+    render(
+      <ProductTable
+        {...baseProps}
+        products={products}
+        collapsedGroups={new Set()}
+      />,
+    );
+
     expect(screen.getAllByText('SPICA-111').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('SPICA-222').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Stent Coronary A').length).toBeGreaterThanOrEqual(1);
-    // Não deve mostrar o hint de colapso da linha (effective expand)
-    expect(screen.queryByText('Clique para expandir')).toBeNull();
   });
 });

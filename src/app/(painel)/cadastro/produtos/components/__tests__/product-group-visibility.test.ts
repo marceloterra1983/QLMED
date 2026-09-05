@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductRow } from '../../types';
 import {
+  allCollapseKeys,
   anyProductRowVisible,
-  effectiveCollapsedGroups,
   productLineKey,
   safeCollapseKeys,
 } from '../product-group-visibility';
@@ -22,26 +22,26 @@ describe('product-group-visibility', () => {
     row({ key: '1', productType: 'CARDIACA', productSubtype: 'STENTS', codigo: '100' }),
     row({ key: '2', productType: 'CARDIACA', productSubtype: 'STENTS', codigo: '101' }),
     row({ key: '3', productType: 'CARDIACA', productSubtype: 'BALOES', codigo: '102' }),
+    row({ key: '4', productType: 'ORTOPEDIA', productSubtype: 'PLACAS', codigo: '200' }),
   ];
 
-  it('effectiveCollapsedGroups força expandido quando a linha única está recolhida', () => {
-    const collapsed = new Set([productLineKey(page[0])]);
-    expect(anyProductRowVisible(page, 'productType', collapsed)).toBe(false);
-    const effective = effectiveCollapsedGroups(page, 'productType', collapsed);
-    expect(effective.size).toBe(0);
-    expect(anyProductRowVisible(page, 'productType', effective)).toBe(true);
+  it('allCollapseKeys recolhe linhas e grupos (tudo fechado)', () => {
+    const keys = allCollapseKeys(page, 'productType');
+    expect(keys.has('line:CARDIACA')).toBe(true);
+    expect(keys.has('line:ORTOPEDIA')).toBe(true);
+    expect(keys.has('group:CARDIACA|STENTS')).toBe(true);
+    expect(keys.has('group:CARDIACA|BALOES')).toBe(true);
+    expect(anyProductRowVisible(page, 'productType', keys)).toBe(false);
   });
 
-  it('safeCollapseKeys com uma linha não esconde todos os produtos', () => {
+  it('safeCollapseKeys = allCollapseKeys (Recolher fecha tudo)', () => {
     const keys = safeCollapseKeys(page, 'productType');
-    expect(keys.has('line:CARDIACA')).toBe(false);
-    expect(anyProductRowVisible(page, 'productType', keys)).toBe(true);
+    expect(keys).toEqual(allCollapseKeys(page, 'productType'));
+    expect(keys.has(productLineKey(page[0]))).toBe(true);
   });
 
-  it('mantém colapso parcial quando ainda há itens visíveis', () => {
+  it('colapso parcial ainda deixa outros grupos visíveis', () => {
     const collapsed = new Set(['group:CARDIACA|STENTS']);
     expect(anyProductRowVisible(page, 'productType', collapsed)).toBe(true);
-    const effective = effectiveCollapsedGroups(page, 'productType', collapsed);
-    expect(effective.has('group:CARDIACA|STENTS')).toBe(true);
   });
 });

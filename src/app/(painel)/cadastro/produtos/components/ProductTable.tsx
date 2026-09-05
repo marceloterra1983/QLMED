@@ -12,8 +12,6 @@ import { formatAmount, formatInt } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
 import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
 import {
-  anyProductRowVisible as computeAnyProductRowVisible,
-  effectiveCollapsedGroups,
   productGroupKey,
   productLineKey,
   safeCollapseKeys,
@@ -60,18 +58,7 @@ export default function ProductTable({
 }: ProductTableProps) {
   const visible = products;
 
-  // Se o estado de colapso esconderia todos os itens, renderiza como expandido.
-  const renderCollapsed = React.useMemo(
-    () => effectiveCollapsedGroups(products, sortBy, collapsedGroups),
-    [products, sortBy, collapsedGroups],
-  );
-
-  React.useLayoutEffect(() => {
-    if (loading || isRebuilding || products.length === 0) return;
-    if (collapsedGroups.size === 0) return;
-    if (computeAnyProductRowVisible(products, sortBy, collapsedGroups)) return;
-    setCollapsedGroups(new Set());
-  }, [products, sortBy, collapsedGroups, loading, isRebuilding, setCollapsedGroups]);
+  const renderCollapsed = collapsedGroups;
 
   // visible keys for select-all
   const visibleKeys = React.useMemo(() => {
@@ -103,9 +90,7 @@ export default function ProductTable({
 
   const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy)).filter(Boolean)));
   const hasGroups = !FLAT_SORTS.has(sortBy) && allGroups.length > 0;
-  const hasCollapsedGroups = renderCollapsed.size > 0;
   const tableColSpan = TABLE_DATA_COLS + (selectionEnabled ? 1 : 0);
-  const anyProductRowVisible = computeAnyProductRowVisible(visible, sortBy, renderCollapsed);
 
   const renderProductRow = (product: ProductRow, inTable: boolean) => {
     if (inTable) {
@@ -363,33 +348,12 @@ export default function ProductTable({
             >
               <span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir
             </button>
-            {hasCollapsedGroups && (
-              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 px-2.5 py-1.5 rounded-lg">
-                <span className="material-symbols-outlined text-[14px]">info</span>
-                Grupos recolhidos — clique no grupo ou em Expandir
-              </span>
-            )}
+
           </>
         )}
         <button onClick={() => { setSelectionEnabled((v) => { if (v) setSelectedKeys(() => new Set()); return !v; }); }} aria-pressed={selectionEnabled} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${selectionEnabled ? 'text-primary dark:text-blue-400 border-primary/40 bg-primary/10 hover:bg-primary/20' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>Selecionar</button>
         {canWrite && <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all" title="Linhas, fabricantes, dados fiscais"><span className="material-symbols-outlined text-[14px]">settings</span>Parametros</button>}
       </div>
-      {hasGroups && hasCollapsedGroups && (
-        <div className="sm:hidden px-3 py-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-800/40">
-          Grupos recolhidos — toque no grupo ou em Expandir para ver os itens.
-        </div>
-      )}
-
-      {hasGroups && hasCollapsedGroups && !anyProductRowVisible && !loading && !isRebuilding && (
-        <div className="px-4 py-6 flex flex-col sm:flex-row items-center justify-center gap-3 border-b border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/20">
-          <p className="text-sm text-amber-900 dark:text-amber-200 text-center">
-            Itens ocultos pelos grupos recolhidos nesta pagina.
-          </p>
-          <Button type="button" icon="unfold_more" onClick={() => setCollapsedGroups(new Set())}>
-            Expandir e mostrar produtos
-          </Button>
-        </div>
-      )}
 
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">

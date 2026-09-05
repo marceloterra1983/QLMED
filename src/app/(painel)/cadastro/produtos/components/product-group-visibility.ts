@@ -54,46 +54,28 @@ export function anyProductRowVisible(
 }
 
 /**
- * Se o Set de colapso esconderia TODOS os itens da página, devolve Set vazio.
- * Impede a tela em branco (só cabeçalho + "Clique para expandir").
+ * Todas as chaves de linha/grupo da página — carregar sempre recolhido
+ * e botão "Recolher" fecha tudo.
  */
-export function effectiveCollapsedGroups(
+export function allCollapseKeys(
   products: ProductRow[],
   sortBy: SortField,
-  collapsed: ReadonlySet<string>,
 ): Set<string> {
-  if (collapsed.size === 0 || products.length === 0) {
-    return collapsed instanceof Set ? collapsed : new Set(collapsed);
+  const keys = new Set<string>();
+  if (sortBy === 'productType') {
+    for (const p of products) keys.add(productLineKey(p));
   }
-  if (anyProductRowVisible(products, sortBy, collapsed)) {
-    return collapsed instanceof Set ? collapsed : new Set(collapsed);
+  for (const p of products) {
+    const g = productGroupKey(p, sortBy);
+    if (g) keys.add(g);
   }
-  return new Set();
+  return keys;
 }
 
-/**
- * Chaves seguras para "Recolher": nunca deixar a página sem nenhuma linha de produto.
- */
+/** Botão Recolher = fechar todas as linhas e grupos. */
 export function safeCollapseKeys(
   products: ProductRow[],
   sortBy: SortField,
 ): Set<string> {
-  const lines = sortBy === 'productType'
-    ? Array.from(new Set(products.map(productLineKey)))
-    : [];
-  const groups = Array.from(new Set(products.map((p) => productGroupKey(p, sortBy)).filter(Boolean)));
-
-  let candidate: Set<string>;
-  if (sortBy === 'productType') {
-    candidate = lines.length <= 1
-      ? new Set(groups)
-      : new Set([...lines, ...groups]);
-  } else {
-    candidate = new Set(groups);
-  }
-
-  if (!anyProductRowVisible(products, sortBy, candidate)) {
-    return new Set();
-  }
-  return candidate;
+  return allCollapseKeys(products, sortBy);
 }
