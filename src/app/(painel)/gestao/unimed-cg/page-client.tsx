@@ -5,17 +5,18 @@ import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import Section from '@/components/ui/Section';
 import { toast } from 'sonner';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
-import { closeEmbeddedPdfSidebar, embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
+import { embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
 
-type UnimedCgListItem = {
+type BillingItem = {
   id: string;
   processId: string;
   authorizationNumber: string | null;
@@ -27,12 +28,27 @@ type UnimedCgListItem = {
   parseStatus: ParseStatus;
 };
 
+type DeliveryItem = {
+  id: string;
+  processId: string;
+  principalAuthorization: string | null;
+  status: string | null;
+  authorizedAt: string | null;
+  supplier: string | null;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+};
+
 type ListPayload = {
   lastCollectedAt: string | null;
   lastError: string | null;
   canSync: boolean;
-  items: UnimedCgListItem[];
+  billing: BillingItem[];
+  deliveries: DeliveryItem[];
 };
+
+type PdfKind = 'billing' | 'delivery';
 
 function formatBrl(value: string): string {
   const formatted = new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -54,8 +70,9 @@ export default function UnimedCgPageClient() {
   const [data, setData] = useState<ListPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<UnimedCgListItem | null>(null);
+  const [selected, setSelected] = useState<{ kind: PdfKind; id: string } | null>(null);
+  const [billingDetail, setBillingDetail] = useState<BillingItem | null>(null);
+  const [deliveryDetail, setDeliveryDetail] = useState<DeliveryItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -80,19 +97,30 @@ export default function UnimedCgPageClient() {
   }, [loadList]);
 
   useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
+    if (!selected) {
+      setBillingDetail(null);
+      setDeliveryDetail(null);
       return;
     }
     let cancelled = false;
     setDetailLoading(true);
-    fetch(`/api/gestao/unimed-cg/${selectedId}`)
+    const url = selected.kind === 'billing'
+      ? `/api/gestao/unimed-cg/${selected.id}`
+      : `/api/gestao/unimed-cg/entrega/${selected.id}`;
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error('detail');
         return res.json();
       })
-      .then((payload: UnimedCgListItem) => {
-        if (!cancelled) setDetail(payload);
+      .then((payload) => {
+        if (cancelled) return;
+        if (selected.kind === 'billing') {
+          setBillingDetail(payload as BillingItem);
+          setDeliveryDetail(null);
+        } else {
+          setDeliveryDetail(payload as DeliveryItem);
+          setBillingDetail(null);
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error('Erro ao abrir a autorização');
@@ -103,7 +131,7 @@ export default function UnimedCgPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selected]);
 
   async function handleSync() {
     if (!data?.canSync) return;
@@ -132,12 +160,21 @@ export default function UnimedCgPageClient() {
     }
   }
 
-  const items = data?.items ?? [];
-  const modalTitle = detail
-    ? `Processo ${detail.processId}${detail.authorizationNumber ? ` — Aut. ${detail.authorizationNumber}` : ''}`
-    : selectedId
-      ? 'Autorização Unimed CG'
-      : '';
+  const billing = data?.billing ?? [];
+  const deliveries = data?.deliveries ?? [];
+  const modalTitle = selected?.kind === 'billing' && billingDetail
+    ? `Processo ${billingDetail.processId}${billingDetail.authorizationNumber ? ` — Aut. ${billingDetail.authorizationNumber}` : ''}`
+    : selected?.kind === 'delivery' && deliveryDetail
+      ? `Processo ${deliveryDetail.processId}${deliveryDetail.principalAuthorization ? ` — Aut. ${deliveryDetail.principalAuthorization}` : ''} (entrega)`
+      : selected
+        ? 'Autorização Unimed CG'
+        : '';
+
+  const pdfSrc = selected
+    ? selected.kind === 'billing'
+      ? embeddedPdfViewerSrc(`/api/gestao/unimed-cg/${selected.id}/arquivo`)
+      : embeddedPdfViewerSrc(`/api/gestao/unimed-cg/entrega/${selected.id}/arquivo`)
+    : '';
 
   return (
     <div className="space-y-6">
@@ -171,78 +208,159 @@ export default function UnimedCgPageClient() {
         </Card>
       )}
 
-      {!loading && items.length === 0 && (
-        <Card padding="none">
-          <EmptyState icon="clinical_notes" title="Nenhuma autorização Unimed CG." />
-        </Card>
-      )}
+      {!loading && (
+        <>
+          <Section
+            icon="receipt_long"
+            tone="teal"
+            title={`AUTORIZAÇÃO DE FATURAMENTO (${billing.length})`}
+            defaultOpen={false}
+          >
+            {billing.length === 0 ? (
+              <EmptyState icon="clinical_notes" title="Nenhuma autorização de faturamento." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Processo</th>
+                      <th className="px-4 py-3 font-semibold">Autorização</th>
+                      <th className="px-4 py-3 font-semibold">Data prev.</th>
+                      <th className="px-4 py-3 font-semibold">Local</th>
+                      <th className="px-4 py-3 font-semibold text-right">Valor total</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {billing.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'billing', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.processId}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                          {item.authorizationNumber ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDocumentDate(item.procedureDate)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[220px] truncate">
+                          {item.location ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-900 dark:text-white">
+                          {formatBrl(item.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'billing', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
 
-      {!loading && items.length > 0 && (
-        <Card padding="none" className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Processo</th>
-                <th className="px-4 py-3 font-semibold">Autorização</th>
-                <th className="px-4 py-3 font-semibold">Data prev.</th>
-                <th className="px-4 py-3 font-semibold">Local</th>
-                <th className="px-4 py-3 font-semibold text-right">Valor total</th>
-                <th className="px-4 py-3 font-semibold">Recebido em</th>
-                <th className="px-4 py-3 font-semibold">PDF</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
-                  onClick={() => setSelectedId(item.id)}
-                >
-                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
-                    <span className="inline-flex items-center gap-2">
-                      {item.processId}
-                      <ParseBadge status={item.parseStatus} />
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                    {item.authorizationNumber ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                    {formatDocumentDate(item.procedureDate)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[220px] truncate">
-                    {item.location ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-900 dark:text-white">
-                    {formatBrl(item.totalAmount)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                    {formatDateTime(item.receivedAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      icon="picture_as_pdf"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedId(item.id);
-                      }}
-                    >
-                      Ver
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+          <Section
+            icon="local_shipping"
+            tone="indigo"
+            title={`AUTORIZAÇÃO PARA ENTREGA (${deliveries.length})`}
+            defaultOpen={false}
+          >
+            {deliveries.length === 0 ? (
+              <EmptyState icon="local_shipping" title="Nenhuma autorização para entrega." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Processo</th>
+                      <th className="px-4 py-3 font-semibold">Autorização principal</th>
+                      <th className="px-4 py-3 font-semibold">Situação</th>
+                      <th className="px-4 py-3 font-semibold">Data autorização</th>
+                      <th className="px-4 py-3 font-semibold">Fornecedor</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {deliveries.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'delivery', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.processId}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                          {item.principalAuthorization ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {item.status ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDocumentDate(item.authorizedAt)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[220px] truncate">
+                          {item.supplier ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'delivery', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+        </>
       )}
 
       <Modal
-        isOpen={Boolean(selectedId)}
-        onClose={() => setSelectedId(null)}
+        isOpen={Boolean(selected)}
+        onClose={() => {
+          setSelected(null);
+        }}
         title={modalTitle}
         width="max-w-5xl"
       >
@@ -252,35 +370,65 @@ export default function UnimedCgPageClient() {
             <Skeleton className="h-64 w-full" />
           </div>
         )}
-        {!detailLoading && detail && (
+        {!detailLoading && billingDetail && selected?.kind === 'billing' && (
           <div className="space-y-4">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div>
                 <dt className="text-xs text-slate-500">Processo</dt>
-                <dd className="font-medium">{detail.processId}</dd>
+                <dd className="font-medium">{billingDetail.processId}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Autorização</dt>
-                <dd className="font-medium">{detail.authorizationNumber ?? '—'}</dd>
+                <dd className="font-medium">{billingDetail.authorizationNumber ?? '—'}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Data prevista</dt>
-                <dd>{formatDocumentDate(detail.procedureDate)}</dd>
+                <dd>{formatDocumentDate(billingDetail.procedureDate)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Valor total</dt>
-                <dd className="font-medium tabular-nums">{formatBrl(detail.totalAmount)}</dd>
+                <dd className="font-medium tabular-nums">{formatBrl(billingDetail.totalAmount)}</dd>
               </div>
               <div className="sm:col-span-2">
                 <dt className="text-xs text-slate-500">Local</dt>
-                <dd>{detail.location ?? '—'}</dd>
+                <dd>{billingDetail.location ?? '—'}</dd>
               </div>
             </dl>
             <iframe
-              title={`PDF processo ${detail.processId}`}
+              title={`PDF processo ${billingDetail.processId}`}
               className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
-              src={embeddedPdfViewerSrc(`/api/gestao/unimed-cg/${detail.id}/arquivo`)}
-              onLoad={(event) => closeEmbeddedPdfSidebar(event.currentTarget)}
+              src={pdfSrc}
+            />
+          </div>
+        )}
+        {!detailLoading && deliveryDetail && selected?.kind === 'delivery' && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">Processo</dt>
+                <dd className="font-medium">{deliveryDetail.processId}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Autorização principal</dt>
+                <dd className="font-medium">{deliveryDetail.principalAuthorization ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Situação</dt>
+                <dd>{deliveryDetail.status ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Data autorização</dt>
+                <dd>{formatDocumentDate(deliveryDetail.authorizedAt)}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-500">Fornecedor</dt>
+                <dd>{deliveryDetail.supplier ?? '—'}</dd>
+              </div>
+            </dl>
+            <iframe
+              title={`PDF entrega processo ${deliveryDetail.processId}`}
+              className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
+              src={pdfSrc}
             />
           </div>
         )}
