@@ -164,3 +164,52 @@ describe('SPEC-042 P1 — readValidityFromPdf', () => {
     });
   });
 });
+
+describe('rotulos e formatos reais que faltavam (correcao pos-merge)', () => {
+  const HOJE = '2026-09-05';
+
+  it('"Validade ate:" — o rotulo real da CNDG de Campo Grande', () => {
+    expect(matchValidityFromText('Validade até: 01/12/2026', HOJE).validUntil).toBe('2026-12-01');
+    // controlo positivo: a forma sem "ate" ja funcionava e continua a funcionar
+    expect(matchValidityFromText('VALIDADE: 01/12/2026', HOJE).validUntil).toBe('2026-12-01');
+  });
+
+  it('data por extenso, dia sem zero a esquerda — forma impressa pela CNDG', () => {
+    const r = matchValidityFromText('Validade até: 1 de dezembro de 2026', HOJE);
+    expect(r.validUntil).toBe('2026-12-01');
+    expect(r.confidence).toBe('alta');
+    expect(matchValidityFromText('Valida ate 15 de marco de 2027', HOJE).validUntil).toBe('2027-03-15');
+    expect(matchValidityFromText('Validade: 3 de nov de 2026', HOJE).validUntil).toBe('2026-11-03');
+  });
+
+  it('mes por extenso inexistente nao vira data', () => {
+    expect(matchValidityFromText('Validade: 1 de brumario de 2026', HOJE).validUntil).toBeNull();
+  });
+
+  it('faixa cujo FIM nao existe devolve null, nunca a data de INICIO', () => {
+    // 31 de setembro nao existe: gralha corrente num CRF. Antes desta correcao
+    // o `continue` caia na regra simples e devolvia 2026-08-31 com confianca alta.
+    const r = matchValidityFromText('Validade: 31/08/2026 a 31/09/2026', HOJE);
+    expect(r.validUntil).toBeNull();
+    expect(r.confidence).toBe('nenhuma');
+  });
+
+  it('faixa cujo FIM e implausivel devolve null, nunca o inicio', () => {
+    const r = matchValidityFromText('Validade: 31/08/2026 a 05/09/2099', HOJE);
+    expect(r.validUntil).toBeNull();
+  });
+
+  it('faixa valida continua a devolver o FIM', () => {
+    expect(matchValidityFromText('Validade: 31/08/2026 a 29/09/2026', HOJE).validUntil).toBe('2026-09-29');
+  });
+
+  it('nao casa dentro de palavra de sentido oposto', () => {
+    expect(matchValidityFromText('Certidao invalida ate 12/10/2026', HOJE).validUntil).toBeNull();
+    expect(matchValidityFromText('INVALIDADE: 01/10/2026', HOJE).validUntil).toBeNull();
+  });
+
+  it('numero maior colado a data nao e truncado', () => {
+    expect(matchValidityFromText('VALIDADE: 29/09/20261', HOJE).validUntil).toBeNull();
+    expect(matchValidityFromText('VALIDADE: 129/09/2026', HOJE).validUntil).toBeNull();
+  });
+});

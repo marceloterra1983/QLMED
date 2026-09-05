@@ -16,8 +16,36 @@ const NONE: PdfValidityResult = {
   textChars: 0,
 };
 
-const DATE = String.raw`(\d{2}/\d{2}/(?:\d{4}|\d{2}))`;
-const LABEL = String.raw`(certidao\s+valida\s+ate|valida\s+ate|validade)`;
+const MESES: Record<string, number> = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+/**
+ * Duas formas reais. A numérica é a das certidões federais/estaduais/FGTS.
+ * A por extenso é a da CNDG de Campo Grande, que imprime
+ * `Validade até: 1 de dezembro de 2024` — dia sem zero à esquerda e mês por
+ * nome. Sem ela a certidão municipal sai sem validade apesar de ter texto.
+ *
+ * O `(?!\d)` impede que um número maior colado à data (um protocolo, p. ex.)
+ * seja truncado nos primeiros dígitos: `29/09/20261` tem de ser recusado, não
+ * lido como 29/09/2026.
+ */
+const DATE_NUM = String.raw`\d{2}/\d{2}/(?:\d{4}|\d{2})(?!\d)`;
+const DATE_EXT = String.raw`\d{1,2}\s+de\s+[a-z]{3,9}\s+de\s+\d{4}(?!\d)`;
+const DATE = String.raw`((?<!\d)(?:${DATE_NUM}|${DATE_EXT}))`;
+/**
+ * Alternativas da mais longa para a mais curta: `validade ate` tem de vir
+ * antes de `validade`, senão o rótulo real da CNDG (`Validade até:`) casa só
+ * o prefixo e a palavra `ate` sobra entre o rótulo e a data, matando o
+ * casamento.
+ *
+ * O `\b` inicial impede casar dentro de palavra de sentido oposto:
+ * `Certidao invalida ate 12/10/2026` casava `valida ate` e devolvia a data.
+ */
+const LABEL = String.raw`\b(certidao\s+valida\s+ate|validade\s+ate|valida\s+ate|validade)`;
 
 /** Faixa (X a Y) tem de vir antes do rótulo simples, senão devolve X. */
 const RANGE_SOURCE = `${LABEL}\\s*:?\\s*(?:de\\s+)?${DATE}\\s+a\\s+${DATE}`;
@@ -86,20 +114,29 @@ function pad2(value: number): string {
 }
 
 function parseBrDate(token: string): { ymd: string; yearDigits: 2 | 4 } | null {
+  const extenso = /^(\d{1,2})\s+de\s+([a-z]{3,9})\s+de\s+(\d{4})$/.exec(token);
+  if (extenso) {
+    const mes = MESES[extenso[2]];
+    if (!mes) return null;
+    return buildYmd(Number(extenso[1]), mes, Number(extenso[3]), 4);
+  }
   const match = /^(\d{2})\/(\d{2})\/(\d{4}|\d{2})$/.exec(token);
   if (!match) return null;
   const day = Number(match[1]);
   const month = Number(match[2]);
   const yearToken = match[3];
   const year = yearToken.length === 2 ? 2000 + Number(yearToken) : Number(yearToken);
+  return buildYmd(day, month, year, yearToken.length === 2 ? 2 : 4);
+}
+
+/** Rejeita data civilmente inexistente (31/09, 29/02 fora de bissexto). */
+function buildYmd(day: number, month: number, year: number, yearDigits: 2 | 4):
+  { ymd: string; yearDigits: 2 | 4 } | null {
   const utc = new Date(Date.UTC(year, month - 1, day));
   if (utc.getUTCFullYear() !== year || utc.getUTCMonth() !== month - 1 || utc.getUTCDate() !== day) {
     return null;
   }
-  return {
-    ymd: `${year}-${pad2(month)}-${pad2(day)}`,
-    yearDigits: yearToken.length === 2 ? 2 : 4,
-  };
+  return { ymd: `${year}-${pad2(month)}-${pad2(day)}`, yearDigits };
 }
 
 function addCivilYears(ymd: string, years: number): string {
@@ -133,10 +170,11 @@ export function matchValidityFromText(text: string, todayYmd: string = todayInSa
   const normalized = foldPdfText(text);
   for (const rule of RULES) {
     const re = new RegExp(rule.source, 'g');
+    let casouSemDataUtil = false;
     for (const match of normalized.matchAll(re)) {
       const parsed = parseBrDate(match[rule.dateGroup] ?? '');
-      if (!parsed) continue;
-      if (!isPlausibleYmd(parsed.ymd, todayYmd)) continue;
+      if (!parsed) { casouSemDataUtil = true; continue; }
+      if (!isPlausibleYmd(parsed.ymd, todayYmd)) { casouSemDataUtil = true; continue; }
       return {
         validUntil: parsed.ymd,
         confidence: parsed.yearDigits === 4 ? 'alta' : 'media',
@@ -144,6 +182,13 @@ export function matchValidityFromText(text: string, todayYmd: string = todayInSa
         textChars,
       };
     }
+    /**
+     * Uma faixa `X a Y` cujo fim não serve (31/09 não existe; ano gralhado)
+     * NÃO pode cair na regra simples: ela casaria o mesmo rótulo e devolveria
+     * X — a data de INÍCIO — como validade, e ainda com confiança alta. É
+     * exatamente o erro que a ordem das regras existe para impedir.
+     */
+    if (rule === RANGE_RULE && casouSemDataUtil) break;
   }
 
   return { validUntil: null, confidence: 'nenhuma', matchedLabel: null, textChars };
