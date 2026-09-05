@@ -4,6 +4,8 @@ import { todayInSaoPaulo } from './validity';
 
 export type PdfValidityResult = {
   validUntil: string | null;
+  /** Início da faixa ou rótulo explícito de emissão. Nunca lastModifiedAt. */
+  emitidoEm: string | null;
   confidence: 'alta' | 'media' | 'nenhuma';
   matchedLabel: string | null;
   textChars: number;
@@ -11,6 +13,7 @@ export type PdfValidityResult = {
 
 const NONE: PdfValidityResult = {
   validUntil: null,
+  emitidoEm: null,
   confidence: 'nenhuma',
   matchedLabel: null,
   textChars: 0,
@@ -50,14 +53,22 @@ const LABEL = String.raw`\b(certidao\s+valida\s+ate|validade\s+ate|valida\s+ate|
 /** Faixa (X a Y) tem de vir antes do rótulo simples, senão devolve X. */
 const RANGE_SOURCE = `${LABEL}\\s*:?\\s*(?:de\\s+)?${DATE}\\s+a\\s+${DATE}`;
 const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*${DATE}`;
+/**
+ * Rótulos de emissão, do mais longo para o mais curto: `data de emissao`
+ * antes de `emissao`, senão a palavra solta casa o sufixo e a data fica
+ * atrás de `data de`.
+ */
+const EMISSAO_LABEL = String.raw`\b(emitida\s+em|emitido\s+em|data\s+de\s+emissao|emissao)`;
+const EMISSAO_SOURCE = `${EMISSAO_LABEL}\\s*:?\\s*${DATE}`;
 
 type ValidityRule = {
   source: string;
   dateGroup: number;
   labelGroup: number;
+  startGroup?: number;
 };
 
-const RANGE_RULE: ValidityRule = { source: RANGE_SOURCE, dateGroup: 3, labelGroup: 1 };
+const RANGE_RULE: ValidityRule = { source: RANGE_SOURCE, dateGroup: 3, labelGroup: 1, startGroup: 2 };
 const SIMPLE_RULE: ValidityRule = { source: SIMPLE_SOURCE, dateGroup: 2, labelGroup: 1 };
 const RULES: ValidityRule[] = [RANGE_RULE, SIMPLE_RULE];
 
@@ -145,8 +156,22 @@ function addCivilYears(ymd: string, years: number): string {
   return `${year + years}-${pad2(month)}-${pad2(Math.min(day, lastDay))}`;
 }
 
+/** Validade olha para a frente: até 10 anos à frente, 5 para trás. */
 function isPlausibleYmd(ymd: string, todayYmd: string): boolean {
   return ymd <= addCivilYears(todayYmd, 10) && ymd >= addCivilYears(todayYmd, -5);
+}
+
+/**
+ * Emissão olha para trás, e a janela da validade não serve: a AFE da empresa
+ * foi autorizada em 20/08/2007 e o alvará tem emissões igualmente antigas. Com
+ * o corte de 5 anos, todo documento antigo perdia a emissão e o popup dizia
+ * "não informado" justamente onde a data é mais útil.
+ *
+ * O futuro continua curto de propósito: um documento não pode ter sido emitido
+ * amanhã, e uma data à frente é gralha ou leitura errada.
+ */
+function isPlausibleEmissaoYmd(ymd: string, todayYmd: string): boolean {
+  return ymd <= addCivilYears(todayYmd, 1) && ymd >= addCivilYears(todayYmd, -40);
 }
 
 function canonicalLabel(raw: string): string {
@@ -161,27 +186,62 @@ function countExtractedChars(text: string): number {
   return text.replace(/\s+/g, '').length;
 }
 
+function firstPlausibleYmd(
+  token: string,
+  todayYmd: string,
+): { ymd: string; yearDigits: 2 | 4 } | null {
+  const parsed = parseBrDate(token);
+  if (!parsed) return null;
+  if (!isPlausibleYmd(parsed.ymd, todayYmd)) return null;
+  return parsed;
+}
+
+/** Como `firstPlausibleYmd`, mas com a janela da EMISSÃO (para trás, não para a frente). */
+function firstPlausibleEmissaoYmd(token: string, todayYmd: string): { ymd: string } | null {
+  const parsed = parseBrDate(token);
+  if (!parsed) return null;
+  if (!isPlausibleEmissaoYmd(parsed.ymd, todayYmd)) return null;
+  return parsed;
+}
+
+function matchEmitidoEm(normalized: string, todayYmd: string): string | null {
+  const re = new RegExp(EMISSAO_SOURCE, 'g');
+  for (const match of normalized.matchAll(re)) {
+    const parsed = firstPlausibleEmissaoYmd(match[2] ?? '', todayYmd);
+    if (parsed) return parsed.ymd;
+  }
+  return null;
+}
+
 export function matchValidityFromText(text: string, todayYmd: string = todayInSaoPaulo()): PdfValidityResult {
   const textChars = countExtractedChars(text);
   if (textChars === 0) {
-    return { validUntil: null, confidence: 'nenhuma', matchedLabel: null, textChars: 0 };
+    return { ...NONE };
   }
 
   const normalized = foldPdfText(text);
+  let validUntil: string | null = null;
+  let confidence: PdfValidityResult['confidence'] = 'nenhuma';
+  let matchedLabel: string | null = null;
+  let emitidoEm: string | null = null;
+
   for (const rule of RULES) {
     const re = new RegExp(rule.source, 'g');
     let casouSemDataUtil = false;
     for (const match of normalized.matchAll(re)) {
-      const parsed = parseBrDate(match[rule.dateGroup] ?? '');
+      const parsed = firstPlausibleYmd(match[rule.dateGroup] ?? '', todayYmd);
       if (!parsed) { casouSemDataUtil = true; continue; }
-      if (!isPlausibleYmd(parsed.ymd, todayYmd)) { casouSemDataUtil = true; continue; }
-      return {
-        validUntil: parsed.ymd,
-        confidence: parsed.yearDigits === 4 ? 'alta' : 'media',
-        matchedLabel: canonicalLabel(match[rule.labelGroup] ?? ''),
-        textChars,
-      };
+      validUntil = parsed.ymd;
+      confidence = parsed.yearDigits === 4 ? 'alta' : 'media';
+      matchedLabel = canonicalLabel(match[rule.labelGroup] ?? '');
+      if (rule.startGroup != null) {
+        const start = firstPlausibleEmissaoYmd(match[rule.startGroup] ?? '', todayYmd);
+        // Emissão posterior à validade é incoerente: descarta a emissão.
+        if (start && start.ymd <= parsed.ymd) emitidoEm = start.ymd;
+      }
+      break;
     }
+    if (validUntil) break;
     /**
      * Uma faixa `X a Y` cujo fim não serve (31/09 não existe; ano gralhado)
      * NÃO pode cair na regra simples: ela casaria o mesmo rótulo e devolveria
@@ -191,7 +251,14 @@ export function matchValidityFromText(text: string, todayYmd: string = todayInSa
     if (rule === RANGE_RULE && casouSemDataUtil) break;
   }
 
-  return { validUntil: null, confidence: 'nenhuma', matchedLabel: null, textChars };
+  if (emitidoEm == null) {
+    emitidoEm = matchEmitidoEm(normalized, todayYmd);
+  }
+  if (emitidoEm && validUntil && emitidoEm > validUntil) {
+    emitidoEm = null;
+  }
+
+  return { validUntil, emitidoEm, confidence, matchedLabel, textChars };
 }
 
 async function extractPdfText(data: Uint8Array): Promise<string> {
@@ -230,7 +297,7 @@ export async function readValidityFromPdf(
     const extracted = await extractPdfText(bytes);
     const textChars = countExtractedChars(extracted);
     if (textChars === 0) {
-      return { validUntil: null, confidence: 'nenhuma', matchedLabel: null, textChars: 0 };
+      return { ...NONE, textChars: 0 };
     }
     return matchValidityFromText(extracted, todayYmd);
   } catch {

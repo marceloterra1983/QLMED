@@ -18,6 +18,7 @@ export type DocumentosRow = {
   label: string;
   fileName: string | null;
   validUntil: string | null;
+  emitidoEm: string | null;
   daysRemaining: number | null;
   status: { key: string; label: string };
   validUntilSource: string | null;
@@ -48,6 +49,7 @@ export type DocumentosListSource = {
   fileName: string;
   validUntil: Date | string | null;
   validUntilSource: string | null;
+  emitidoEm?: Date | string | null;
   removedAt: Date | string | null;
   webUrl?: string | null;
 };
@@ -106,6 +108,7 @@ function toRow(row: DocumentosListSource, today: string, family: DocumentosFamil
     label,
     fileName: row.fileName,
     validUntil: ymd,
+    emitidoEm: toYmd(row.emitidoEm),
     daysRemaining: days,
     status: expira ? statusFor(days) : { key: 'nao_vence', label: 'não vence' },
     validUntilSource: expira ? row.validUntilSource : null,
@@ -126,6 +129,7 @@ function missingRow(kind: CompanyDocumentKind, family: DocumentosFamily): Docume
     label: config?.label ?? labelForKind(kind),
     fileName: null,
     validUntil: null,
+    emitidoEm: null,
     daysRemaining: null,
     status: { key: 'sem_data', label: 'Não encontrada' },
     validUntilSource: null,
@@ -146,6 +150,7 @@ function toYearRow(row: DocumentosListSource, family: DocumentosFamily): Documen
     label: year != null ? String(year) : row.fileName,
     fileName: row.fileName,
     validUntil: null,
+    emitidoEm: null,
     daysRemaining: null,
     status: { key: 'nao_vence', label: 'não vence' },
     validUntilSource: null,
@@ -274,6 +279,7 @@ export async function loadDocumentosListing(
         fileName: true,
         validUntil: true,
         validUntilSource: true,
+        emitidoEm: true,
         removedAt: true,
         webUrl: true,
       },

@@ -51,6 +51,7 @@ describe('SPEC-042 P1 — matchValidityFromText', () => {
   it('FGTS faixa: Validade: 31/08/2026 a 29/09/2026 devolve o fim, nao o inicio', () => {
     const result = matchValidityFromText('Validade: 31/08/2026 a 29/09/2026', TODAY);
     expect(result.validUntil).toBe('2026-09-29');
+    expect(result.emitidoEm).toBe('2026-08-31');
     expect(result.confidence).toBe('alta');
     expect(result.matchedLabel).toBe('Validade');
     expect(result.textChars).toBeGreaterThan(0);
@@ -158,6 +159,7 @@ describe('SPEC-042 P1 — readValidityFromPdf', () => {
   it('bytes invalidos nao lancam e devolvem resultado nulo', async () => {
     await expect(readValidityFromPdf(Buffer.from('isto nao e um pdf'), TODAY)).resolves.toEqual({
       validUntil: null,
+      emitidoEm: null,
       confidence: 'nenhuma',
       matchedLabel: null,
       textChars: 0,
@@ -202,6 +204,49 @@ describe('rotulos e formatos reais que faltavam (correcao pos-merge)', () => {
   it('faixa valida continua a devolver o FIM', () => {
     expect(matchValidityFromText('Validade: 31/08/2026 a 29/09/2026', HOJE).validUntil).toBe('2026-09-29');
   });
+});
+
+describe('SPEC-042 L13 — data de emissão', () => {
+  const HOJE = '2026-09-05';
+
+  it('faixa: o início é a emissão e o fim é a validade', () => {
+    const r = matchValidityFromText('Validade: 31/08/2026 a 29/09/2026', HOJE);
+    expect(r.validUntil).toBe('2026-09-29');
+    expect(r.emitidoEm).toBe('2026-08-31');
+  });
+
+  it('rótulo explícito emitida em / emitido em / data de emissão / emissão', () => {
+    expect(matchValidityFromText('Emitida em 01/03/2026. VALIDADE: 01/10/2026', HOJE).emitidoEm).toBe(
+      '2026-03-01',
+    );
+    expect(matchValidityFromText('Emitido em 15/04/2026. Validade até 12/10/2026', HOJE).emitidoEm).toBe(
+      '2026-04-15',
+    );
+    expect(matchValidityFromText('Data de emissão: 1 de dezembro de 2025. Validade: 01/12/2026', HOJE).emitidoEm).toBe(
+      '2025-12-01',
+    );
+    expect(matchValidityFromText('Emissão: 20/01/2026. VALIDADE: 20/07/2026', HOJE).emitidoEm).toBe('2026-01-20');
+  });
+
+  it('nada casou → emitidoEm null, sem inventar', () => {
+    const r = matchValidityFromText('Protocolo 12/12/2025. Socio nascido em 12/04/1980.', HOJE);
+    expect(r.validUntil).toBeNull();
+    expect(r.emitidoEm).toBeNull();
+  });
+
+  it('emissão posterior à validade é descartada', () => {
+    const r = matchValidityFromText('Emitida em 01/12/2026. VALIDADE: 01/10/2026', HOJE);
+    expect(r.validUntil).toBe('2026-10-01');
+    expect(r.emitidoEm).toBeNull();
+  });
+
+  it('emissão implausível não vira data', () => {
+    expect(matchValidityFromText('Emitida em 01/01/1900. VALIDADE: 01/10/2026', HOJE).emitidoEm).toBeNull();
+  });
+
+  it('não casa emissão dentro de palavra', () => {
+    expect(matchValidityFromText('reemissao 01/03/2026 VALIDADE: 01/10/2026', HOJE).emitidoEm).toBeNull();
+  });
 
   it('nao casa dentro de palavra de sentido oposto', () => {
     expect(matchValidityFromText('Certidao invalida ate 12/10/2026', HOJE).validUntil).toBeNull();
@@ -211,5 +256,24 @@ describe('rotulos e formatos reais que faltavam (correcao pos-merge)', () => {
   it('numero maior colado a data nao e truncado', () => {
     expect(matchValidityFromText('VALIDADE: 29/09/20261', HOJE).validUntil).toBeNull();
     expect(matchValidityFromText('VALIDADE: 129/09/2026', HOJE).validUntil).toBeNull();
+  });
+});
+
+describe('emissão tem janela própria, olhando para trás', () => {
+  const HOJE = '2026-09-05';
+
+  it('emissão antiga é aceite — a AFE da empresa é de 2007', () => {
+    const r = matchValidityFromText('Data de emissão: 20/08/2007', HOJE);
+    expect(r.emitidoEm).toBe('2007-08-20');
+  });
+
+  it('emissão no futuro é recusada — documento não é emitido amanhã', () => {
+    const r = matchValidityFromText('Emitida em 20/08/2030', HOJE);
+    expect(r.emitidoEm).toBeNull();
+  });
+
+  it('a validade continua com a janela dela: 2007 não é validade plausível', () => {
+    const r = matchValidityFromText('Validade: 20/08/2007', HOJE);
+    expect(r.validUntil).toBeNull();
   });
 });

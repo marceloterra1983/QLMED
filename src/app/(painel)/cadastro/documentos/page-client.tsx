@@ -21,6 +21,7 @@ import type { DocumentosCategory } from '@/lib/documentos/constants';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
 import { formatDateTime, formatInt } from '@/lib/utils';
 import CertidaoPdfModal from './components/CertidaoPdfModal';
+import DocumentoDetalheModal from './components/DocumentoDetalheModal';
 import DocumentoShareModal from './components/DocumentoShareModal';
 import DocumentoUpdateModal from './components/DocumentoUpdateModal';
 import DocumentosFamilyTable from './components/DocumentosFamilyTable';
@@ -66,6 +67,7 @@ export default function DocumentosPageClient() {
   const [editDraft, setEditDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState<{ id: string; title: string } | null>(null);
+  const [detailRow, setDetailRow] = useState<DocumentosRow | null>(null);
   const [updateRow, setUpdateRow] = useState<DocumentosRow | null>(null);
   const [shareRow, setShareRow] = useState<DocumentosRow | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -218,8 +220,12 @@ export default function DocumentosPageClient() {
       if (!row.id) return;
       setViewer({ id: row.id, title: row.label });
     },
+    onOpenDetail: (row: DocumentosRow) => {
+      setDetailRow(row);
+    },
     onUpdate: (row: DocumentosRow) => {
       setEditingId(null);
+      setDetailRow(null);
       setUpdateRow(row);
     },
     onShare: (row: DocumentosRow) => {
@@ -252,19 +258,19 @@ export default function DocumentosPageClient() {
             <table className="w-full min-w-[40rem] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-                  <th className="px-4 py-3">Certidão</th>
-                  <th className="px-4 py-3">Válida até</th>
-                  <th className="px-4 py-3">Dias restantes</th>
-                  <th className="px-4 py-3">Ações</th>
+                  <th className="px-3 py-2 sm:py-1.5">Certidão</th>
+                  <th className="px-3 py-2 sm:py-1.5">Válida até</th>
+                  <th className="px-3 py-2 sm:py-1.5">Dias restantes</th>
+                  <th className="px-3 py-2 sm:py-1.5">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 7 }, (_, index) => (
                   <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-48" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-3 py-2 sm:py-1.5"><Skeleton className="h-4 w-48" /></td>
+                    <td className="px-3 py-2 sm:py-1.5"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-3 py-2 sm:py-1.5"><Skeleton className="h-4 w-28" /></td>
+                    <td className="px-3 py-2 sm:py-1.5"><Skeleton className="h-4 w-32" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -324,11 +330,30 @@ export default function DocumentosPageClient() {
         </div>
       ) : null}
 
-      <CertidaoPdfModal
-        isOpen={viewer != null}
-        onClose={() => setViewer(null)}
-        documentId={viewer?.id ?? null}
-        title={viewer?.title ?? 'Documento'}
+      <DocumentoDetalheModal
+        isOpen={detailRow != null}
+        onClose={() => setDetailRow(null)}
+        row={detailRow}
+        canWrite={canWrite}
+        onView={(row) => {
+          if (!row.id) return;
+          setViewer({ id: row.id, title: row.label });
+        }}
+        onShare={(row) => {
+          if (!row.id) return;
+          setShareRow(row);
+        }}
+        onUpdate={(row) => {
+          setDetailRow(null);
+          setEditingId(null);
+          setUpdateRow(row);
+        }}
+        onStartEdit={(row) => {
+          if (!row.id) return;
+          setDetailRow(null);
+          setEditingId(row.id);
+          setEditDraft(row.validUntil ?? '');
+        }}
       />
 
       <DocumentoUpdateModal
@@ -347,6 +372,13 @@ export default function DocumentosPageClient() {
         documentId={shareRow?.id ?? ''}
         title={shareRow?.label ?? 'Documento'}
         recipients={data?.shareRecipients ?? []}
+      />
+
+      <CertidaoPdfModal
+        isOpen={viewer != null}
+        onClose={() => setViewer(null)}
+        documentId={viewer?.id ?? null}
+        title={viewer?.title ?? 'Documento'}
       />
 
       <Modal

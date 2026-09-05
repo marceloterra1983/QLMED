@@ -338,6 +338,27 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.balancos.every((row) => row.validUntil == null)).toBe(true);
     expect(listing.balancos[0]?.webUrl).toBe('https://onedrive.example/2026');
   });
+
+  it('lista devolve emitidoEm e nunca lastModifiedAt como emissão', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'fgts',
+          kind: 'crf_fgts',
+          fileName: 'CERTIDÃO FGTS 29.09.26 QL MED.pdf',
+          validUntil: '2026-09-29',
+          validUntilSource: 'filename',
+          emitidoEm: '2026-08-31',
+          removedAt: null,
+        },
+      ],
+      null,
+      NOW,
+    );
+    expect(listing.certidoes[1]?.emitidoEm).toBe('2026-08-31');
+    expect(listing.certidoes[1]).not.toHaveProperty('lastModifiedAt');
+    expect(listing.certidoes[0]?.emitidoEm).toBeNull();
+  });
 });
 
 describe('GET /api/documentos', () => {

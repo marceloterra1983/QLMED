@@ -133,14 +133,20 @@ function fileSizeOf(size: number | null): number | null {
 
 type ExistingRow = {
   id: string;
+  lastModifiedAt: Date | null;
   kind: CompanyDocumentKind;
   category: string | null;
   validUntil: Date | null;
+  emitidoEm: Date | null;
   removedAt: Date | null;
   oneDriveItemId: string;
   validUntilSource: string | null;
   renewalNotifiedAt: Date | null;
 };
+
+function conteudoMudou(antes: Date | null, agora: Date | null): boolean {
+  return (antes?.getTime() ?? null) !== (agora?.getTime() ?? null);
+}
 
 async function saveIngestSuccess(companyId: string, now: Date, lastError: string | null = null): Promise<void> {
   await prisma.companyDocumentIngestState.upsert({
@@ -169,26 +175,28 @@ async function resolveIngestValidity(opts: {
   itemId: string;
   port: DocumentosFolderPort;
   now: Date;
-}): Promise<{ validUntil: Date | null; validUntilSource: string | null }> {
+}): Promise<{ validUntil: Date | null; validUntilSource: string | null; emitidoEm: Date | null }> {
   if (!kindStoresFilenameDate(opts.kind)) {
-    return { validUntil: null, validUntilSource: null };
+    return { validUntil: null, validUntilSource: null, emitidoEm: null };
   }
   const fromName = extractValidUntil(opts.fileName);
   if (fromName) {
-    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename' };
+    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
   }
   try {
     const pdf = await readValidityFromPdf(
       await opts.port.downloadPdf(opts.itemId),
       todayInSaoPaulo(opts.now),
     );
+    const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
     if (pdf.validUntil) {
-      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf' };
+      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf', emitidoEm };
     }
+    return { validUntil: null, validUntilSource: null, emitidoEm };
   } catch {
     // PDF ilegível ou download falhou: linha fica Sem data; o ciclo segue.
   }
-  return { validUntil: null, validUntilSource: null };
+  return { validUntil: null, validUntilSource: null, emitidoEm: null };
 }
 
 async function saveIngestError(companyId: string, now: Date, error: unknown): Promise<void> {
@@ -227,6 +235,7 @@ type UpsertInput = {
   webUrl: string | null;
   validUntil: Date | null;
   validUntilSource: string | null;
+  emitidoEm?: Date | null;
 };
 
 async function upsertItem(
@@ -248,6 +257,7 @@ async function upsertItem(
         webUrl: input.webUrl,
         validUntil: input.validUntil,
         validUntilSource: input.validUntilSource,
+        emitidoEm: input.emitidoEm ?? null,
         removedAt: null,
       },
       select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -269,6 +279,19 @@ async function upsertItem(
       ...(existing.validUntilSource === 'manual'
         ? {}
         : { validUntil: input.validUntil, validUntilSource: input.validUntilSource }),
+      /**
+       * `emitidoEm` descreve o CONTEÚDO do ficheiro, não a linha. Se o conteúdo
+       * mudou (o `lastModifiedAt` do OneDrive mexeu) e desta vez não deu para
+       * ler a emissão, a data antiga passaria a acompanhar um documento que já
+       * não é o mesmo — e o popup mostraria emissão de uma versão ao lado da
+       * validade de outra. Nesse caso limpa-se; "não informado" é honesto,
+       * a data errada não é. Conteúdo intacto preserva o que já se sabia.
+       */
+      ...(input.emitidoEm != null
+        ? { emitidoEm: input.emitidoEm }
+        : conteudoMudou(existing.lastModifiedAt, input.lastModifiedAt)
+          ? { emitidoEm: null }
+          : {}),
       ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
     },
     select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -287,6 +310,11 @@ async function ingestCompany(
       kind: true,
       category: true,
       validUntil: true,
+      emitidoEm: true,
+      // lastModifiedAt entra porque `conteudoMudou` o lê; o `as ExistingRow[]`
+      // abaixo silencia o TypeScript, logo o compilador NÃO apanha um campo em
+      // falta aqui — só a leitura da consulta apanha.
+      lastModifiedAt: true,
       removedAt: true,
       oneDriveItemId: true,
       validUntilSource: true,
@@ -352,7 +380,7 @@ async function ingestCompany(
           seenIds.add(file.itemId);
 
           const kind = classifyDocument(target.folderName, file.name, family.category);
-          const { validUntil, validUntilSource } = await resolveIngestValidity({
+          const { validUntil, validUntilSource, emitidoEm } = await resolveIngestValidity({
             kind,
             fileName: file.name,
             itemId: file.itemId,
@@ -377,6 +405,7 @@ async function ingestCompany(
               webUrl: file.webUrl ?? null,
               validUntil,
               validUntilSource,
+              emitidoEm,
             },
             existing,
           );
