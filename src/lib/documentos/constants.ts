@@ -30,8 +30,28 @@ export const DOCUMENTOS_PAGE_PATH = '/cadastro/documentos';
 
 export const DOCUMENTOS_INGEST_INTERVAL_MS = 60 * 60 * 1000;
 
-/** Hora local do job diário de alerta (America/Sao_Paulo). */
-export const DOCUMENTOS_ALERT_HOUR_LOCAL = 8;
+/** Hora local por omissão do job diário de alerta (America/Sao_Paulo). */
+export const DOCUMENTOS_ALERT_HOUR_DEFAULT = 8;
+
+/**
+ * Hora local do job diário de alerta, configurável por ambiente.
+ *
+ * Existe para poder HOMOLOGAR: com a hora fixa em 8, provar que o alerta é
+ * entregue de facto exigia esperar até às 8 da manhã seguinte, e o portão L7-G7
+ * ficou aberto por isso. Agora basta apontar `DOCUMENTOS_ALERT_HOUR_LOCAL` para
+ * a hora corrente e o tick de 60s dispara.
+ *
+ * Valor inválido — texto, negativo, acima de 23 — cai no padrão em vez de
+ * desligar o alerta: uma variável mal escrita não pode silenciar avisos de
+ * vencimento sem ninguém dar por isso.
+ */
+export function documentosAlertHourLocal(): number {
+  const bruto = (process.env.DOCUMENTOS_ALERT_HOUR_LOCAL ?? '').trim();
+  if (bruto === '') return DOCUMENTOS_ALERT_HOUR_DEFAULT;
+  const n = Number(bruto);
+  if (!Number.isInteger(n) || n < 0 || n > 23) return DOCUMENTOS_ALERT_HOUR_DEFAULT;
+  return n;
+}
 
 /** Tick do scheduler de alerta: só age na hora local acima. */
 export const DOCUMENTOS_ALERT_TICK_MS = 60 * 1000;
