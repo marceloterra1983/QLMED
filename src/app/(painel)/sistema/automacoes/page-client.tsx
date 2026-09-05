@@ -137,7 +137,7 @@ export default function AutomacoesPage() {
           tone="slate"
           icon="link_off"
           title="Integração com o n8n não configurada"
-          detail="Cadastre o endereço e a chave de API em Configurações para ver o estado dos workflows aqui."
+          detail="Cadastre o endereço e a chave de API em Sistema → Configurações → Integração n8n para ver o estado dos workflows aqui."
         />
       )}
 
