@@ -3,6 +3,7 @@ import { SYSTEM_ROUTINES } from '@/lib/system-routines';
 
 const mocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
+  userFindUnique: vi.fn(),
   syncLogCount: vi.fn().mockResolvedValue(42),
   notificationDeliveryCount: vi.fn().mockResolvedValue(3),
   getBackgroundServiceHealth: vi.fn().mockReturnValue({
@@ -24,10 +25,16 @@ vi.mock('@/lib/auth', () => ({
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     }),
+  forbiddenResponse: () =>
+    new Response(JSON.stringify({ error: 'Sem permissão' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    }),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    user: { findUnique: mocks.userFindUnique },
     syncLog: { count: mocks.syncLogCount },
     notificationDelivery: { count: mocks.notificationDeliveryCount },
   },
@@ -54,8 +61,57 @@ describe('GET /api/sistema/rotinas', () => {
     expect(body.error).toBe('Não autorizado');
   });
 
+  it('rejeita viewer sem /sistema/rotinas em allowedPages com 403', async () => {
+    mocks.requireAuth.mockResolvedValueOnce('user-viewer');
+    mocks.userFindUnique.mockResolvedValueOnce({
+      role: 'viewer',
+      allowedPages: ['/fiscal/invoices'],
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(403);
+
+    const body = await response.json();
+    expect(body.error).toBe('Sem permissão');
+    expect(mocks.syncLogCount).not.toHaveBeenCalled();
+  });
+
+  it('permite usuário com /sistema/rotinas em allowedPages', async () => {
+    mocks.requireAuth.mockResolvedValueOnce('user-editor');
+    mocks.userFindUnique.mockResolvedValueOnce({
+      role: 'editor',
+      allowedPages: ['/sistema/rotinas'],
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.routines).toHaveLength(SYSTEM_ROUTINES.length);
+  });
+
+  it('permite admin mesmo sem allowedPages', async () => {
+    mocks.requireAuth.mockResolvedValueOnce('user-admin');
+    mocks.userFindUnique.mockResolvedValueOnce({
+      role: 'admin',
+      allowedPages: [],
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.routines).toHaveLength(SYSTEM_ROUTINES.length);
+  });
+
   it('retorna rotinas enriquecidas, summary canônico e telemetria', async () => {
     mocks.requireAuth.mockResolvedValueOnce('user-1');
+    mocks.userFindUnique.mockResolvedValueOnce({
+      role: 'editor',
+      allowedPages: ['/sistema/rotinas'],
+    });
 
     const response = await GET();
     expect(response.status).toBe(200);

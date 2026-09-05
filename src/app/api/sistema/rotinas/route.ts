@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { requireAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { canAccessPage } from '@/lib/navigation';
 import prisma from '@/lib/prisma';
 import { getBackgroundServiceHealth } from '@/lib/background-service-health';
 import { apiError } from '@/lib/api-error';
@@ -15,10 +16,22 @@ export const dynamic = 'force-dynamic';
 export type { EnrichedSystemRoutine };
 
 export async function GET() {
+  let userId: string;
   try {
-    await requireAuth();
+    userId = await requireAuth();
   } catch {
     return unauthorizedResponse();
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, allowedPages: true },
+  });
+  if (!user) {
+    return unauthorizedResponse();
+  }
+  if (!canAccessPage(user.role, user.allowedPages, '/sistema/rotinas')) {
+    return forbiddenResponse();
   }
 
   try {
