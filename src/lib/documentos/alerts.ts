@@ -16,7 +16,7 @@ import { acquirePostgresAdvisoryLock, documentosAlertLockKey } from '@/lib/postg
 import { getSingleCompany } from '@/lib/single-company';
 import { cartaLabelFromFileName } from './classify';
 import {
-  DOCUMENTOS_ALERT_HOUR_LOCAL,
+  documentosAlertHourLocal,
   DOCUMENTOS_ALERT_TICK_MS,
   DOCUMENTOS_FAMILIES,
   familyForKind,
@@ -232,7 +232,7 @@ async function runDocumentosAlertTickLocked(
   });
   if (state?.lastAlertDay === today) return { sent: 0, markedDay: true };
 
-  if (hourInSaoPaulo(now) !== DOCUMENTOS_ALERT_HOUR_LOCAL) return { sent: 0, markedDay: false };
+  if (hourInSaoPaulo(now) !== documentosAlertHourLocal()) return { sent: 0, markedDay: false };
 
   const target = resolveTarget(deps);
   if (!target) return { sent: 0, markedDay: false };
@@ -445,8 +445,9 @@ export function startDocumentosAlert(): void {
     markBackgroundServiceHeartbeat('documentos-alert');
     try {
       const now = new Date();
-      if (hourInSaoPaulo(now) !== DOCUMENTOS_ALERT_HOUR_LOCAL) return;
-      const slotKey = `${todayInSaoPaulo(now)} ${String(DOCUMENTOS_ALERT_HOUR_LOCAL).padStart(2, '0')}`;
+      const hora = documentosAlertHourLocal();
+      if (hourInSaoPaulo(now) !== hora) return;
+      const slotKey = `${todayInSaoPaulo(now)} ${String(hora).padStart(2, '0')}`;
       if (lastSlotKey === slotKey) return;
 
       const company = await getSingleCompany();

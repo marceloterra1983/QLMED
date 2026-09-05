@@ -1,5 +1,5 @@
 import type { CompanyDocumentKind } from '@prisma/client';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CERTIDAO_LABEL } from '@/lib/documentos/constants';
 import type { DocumentosFolderPort } from '@/lib/documentos/ingest';
 import type { DocumentosWhatsAppTarget } from '@/lib/documentos/alerts';
@@ -468,5 +468,41 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(result.sent).toBe(0);
     expect(sent).toHaveLength(0);
     expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+  });
+});
+
+describe('hora do alerta é configurável — para poder homologar', () => {
+  /**
+   * Com a hora fixa em 8, provar que o alerta chega de facto exigia esperar
+   * até às 8 da manhã seguinte, e o portão L7-G7 ficou aberto por isso.
+   *
+   * O fallback é deliberadamente SEGURO: variável inválida cai no padrão em vez
+   * de desligar o alerta. Uma variável mal escrita não pode silenciar avisos de
+   * vencimento sem ninguém dar por isso.
+   */
+  const guardado = process.env.DOCUMENTOS_ALERT_HOUR_LOCAL;
+  afterEach(() => {
+    if (guardado === undefined) delete process.env.DOCUMENTOS_ALERT_HOUR_LOCAL;
+    else process.env.DOCUMENTOS_ALERT_HOUR_LOCAL = guardado;
+  });
+
+  it('sem variável, mantém as 8', async () => {
+    delete process.env.DOCUMENTOS_ALERT_HOUR_LOCAL;
+    const { documentosAlertHourLocal } = await import('@/lib/documentos/constants');
+    expect(documentosAlertHourLocal()).toBe(8);
+  });
+
+  it('respeita a hora configurada', async () => {
+    process.env.DOCUMENTOS_ALERT_HOUR_LOCAL = '15';
+    const { documentosAlertHourLocal } = await import('@/lib/documentos/constants');
+    expect(documentosAlertHourLocal()).toBe(15);
+  });
+
+  it('valor inválido cai no padrão, nunca desliga o alerta', async () => {
+    const { documentosAlertHourLocal } = await import('@/lib/documentos/constants');
+    for (const mau of ['abc', '-1', '24', '8.5', '']) {
+      process.env.DOCUMENTOS_ALERT_HOUR_LOCAL = mau;
+      expect(documentosAlertHourLocal(), `valor ${JSON.stringify(mau)}`).toBe(8);
+    }
   });
 });
