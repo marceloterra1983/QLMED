@@ -30,6 +30,7 @@ const LIST_PAGES = [
   'src/app/(painel)/sistema/errors/page-client.tsx',
   'src/app/(painel)/sistema/companies/page-client.tsx',
   'src/app/(painel)/sistema/automacoes/page-client.tsx',
+  'src/app/(painel)/sistema/rotinas/page-client.tsx',
 ] as const;
 
 describe('SPEC-028 page sticky header', () => {

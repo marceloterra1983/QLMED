@@ -7,7 +7,7 @@
   "spec_kit": {
     "mode": "required",
     "version": "0.14.2",
-    "feature_root": "specs/036-cassems-sender",
+    "feature_root": "specs/044-pagina-rotinas",
     "validator": "npm run docs:validate"
   },
   "gsd": {

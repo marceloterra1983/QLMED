@@ -1,0 +1,73 @@
+---
+id: SPEC-044
+status: draft
+owner: QLMED
+affected_modules:
+  - sistema-rotinas-ui
+  - sistema-rotinas-api
+  - navigation
+---
+
+# Feature Specification: Página de Rotinas do Sistema
+
+**Feature Branch**: `feat/044-pagina-rotinas`
+
+**Created**: 2026-09-04
+
+**Status**: Draft
+
+**Input**: Solicitação do usuário: "crie uma pagina chama Rotinas, e na forma de tabela, relacione todas as rotinas que o codigo do portal realiza hoje".
+
+## Contexto & Visão Geral
+
+O QLMED executa uma série de rotinas em segundo plano (background services contínuos, agendamentos periódicos, watchers de arquivos locais e na nuvem, rotinas de integração externa, workers de notificação e scripts operacionais).
+Até o momento, o operador precisava navegar entre diferentes telas (como *Sincronizar*, *Automações*, *Erros*, *Documentos*) ou consultar logs e documentação para ter visibilidade sobre os processos assíncronos.
+
+Esta especificação cria a página canônica **Rotinas** (`/sistema/rotinas`), acessível no menu lateral sob a seção **Sistema**, contendo uma visão tabular rica e exaustiva de todas as rotinas operacionais executadas pelo código do portal, integrando metadados estruturais (categoria, frequência, mecanismo de concorrência e descrição de negócio) com status operacional em tempo real obtido via health check (`getBackgroundServiceHealth()`).
+
+## Catálogo Canônico de Rotinas Mapeadas
+
+1. **Sincronização Fiscal SEFAZ (DistDFe)**: Consulta horária (no minuto `:00`) via WebService DistDFe com certificado A1 (.pfx), controle anti-bloqueio cStat 656 e cooldown progressivo.
+2. **Sincronização Fiscal NSDocs (API Nuvem Fiscal)**: Consulta periódica configurável para reconciliação de NF-e, NFS-e e CT-e com paginação e rate limit.
+3. **Sincronização Fiscal Receita NFS-e (ADN Nacional)**: Consulta periódica ao Ambiente de Dados Nacional da Receita Federal para notas de serviços via mTLS.
+4. **Recuperação de Sincronizações Travadas (Stuck Sync Recovery)**: Ciclo a cada 60s que detecta processos fiscais caídos há mais de 30 minutos sob lock Postgres liberado e auto-recupera para erro.
+5. **Reconciliação e Rebuild de Agregados de Produtos**: Rebuild noturno diário às 03:00 e atualização incremental a cada nota emitida/recebida, recalculando estoque, preços médios e tributação.
+6. **Monitoramento de XMLs Locais (File Watcher)**: Monitoramento contínuo de pastas locais de emissão e entrada de notas fiscais via Chokidar.
+7. **Sincronização de XMLs do OneDrive**: Varredura a cada 5 minutos e reconciliação a cada 30 minutos de XMLs fiscais sincronizados na nuvem Microsoft.
+8. **Ingestão Automática de E-mails/Faturas IMPCG**: Ciclo a cada 15 minutos via Microsoft Graph para download e OCR de guias e relatórios de faturamento do IMPCG.
+9. **Ingestão Automática de E-mails/Faturas CASSEMS**: Ciclo a cada 15 minutos via Microsoft Graph para processamento de demonstrativos de contas médicas CASSEMS.
+10. **Ingestão de Documentos Corporativos (OneDrive)**: Ciclo a cada 10 minutos para detecção de certidões, alvarás e contratos da pasta corporativa da empresa.
+11. **Alertas Diários de Vencimento de Documentos**: Execução diária às 08:00 (Brasília) para verificação de prazos de certidões e envio de PDFs com aviso via WhatsApp Evolution API.
+12. **Purga e Retenção do Outbox de Notificações**: Ciclo a cada 24 horas para expurgo seguro de entregas de notificações antigas acima do teto de retenção.
+13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada minuto via script host consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
+14. **Sincronização e Validação com Base ANVISA**: Validação cadastral periódica e sob demanda de produtos hospitalares contra os dados abertos da ANVISA.
+15. **Watchdog de Sessão WhatsApp (Evolution API)**: Monitoramento a cada 5 minutos com circuit breaker e auto-reconexão do gateway WhatsApp.
+16. **Watchdog de Execuções Travadas do n8n**: Monitoramento a cada 10 minutos para identificação e cancelamento seguro de execuções órfãs do n8n.
+17. **Backup Automatizado do PostgreSQL**: Rotina noturna às 02:00 com validação de integridade de dump e retenção gerenciada.
+18. **Sincronização de Distribuição DFe para CT-e**: Rotina periódica a cada 2 horas para captura dedicada de conhecimentos de transporte eletrônico.
+19. **Resumo Diário Operacional e Financeiro**: Consolidação diária às 19:30 de faturamento, vendas e notas autorizadas para a diretoria.
+
+## User Scenarios & Testing
+
+### User Story 1 - Visualizar o painel de rotinas em formato de tabela (Priority: P1)
+
+Como operador ou administrador do sistema, ao acessar `/sistema/rotinas`, quero visualizar uma tabela detalhada com todas as rotinas que o portal executa, identificando o objetivo de cada uma, sua frequência e seu estado atual de funcionamento.
+
+**Critérios de Aceitação**:
+1. A tabela exibe todas as rotinas catalogadas com nome, categoria, frequência/horário, tipo de gatilho, lock/concorrência e descrição.
+2. Indicadores visuais de status ao vivo diferenciam serviços ativos, agendados, em execução, saudáveis ou desativados.
+3. Filtros por categoria e campo de busca rápida por texto permitem localizar rotinas específicas em segundos.
+
+### User Story 2 - Integração ao Menu e Segurança (Priority: P1)
+
+A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar protegidas pelo sistema de autorização canônico do QLMED, registradas em `PAGE_GROUPS`, `PAGE_LABELS`, `buildNavItems` e testadas contra regressões de rotas.
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: O sistema MUST disponibilizar a rota `/sistema/rotinas` sob o layout do painel, utilizando o componente `PageHeader` padrão.
+- **FR-002**: A tela MUST apresentar uma tabela responsiva com colunas: *Rotina*, *Categoria*, *Gatilho / Frequência*, *Mecanismo de Segurança / Lock*, *Status* e *Ações / Detalhes*.
+- **FR-003**: O sistema MUST expor a rota de API `/api/sistema/rotinas` (autorizada para usuários da sessão com acesso à página ou perfil admin) fornecendo o catálogo estático enriquecido com a telemetria ao vivo de `getBackgroundServiceHealth()`.
+- **FR-004**: O menu de navegação lateral (`SidebarNav`) MUST incluir o item "Rotinas" com ícone representativo (`schedule`), sincronizado entre `PAGE_GROUPS`, `PAGE_LABELS` e `buildNavItems`.
+- **FR-005**: A tabela MUST disponibilizar contadores de resumo (total de rotinas, serviços em background ativos, rotinas agendadas/cron e rotinas de proteção/watchdog).

@@ -1,18 +1,33 @@
-# Gates: Importação Oficial Spica (Motor + Carga)
+# Gates: Página de Rotinas do Sistema
 
-Scope: Implementação do import-service, scripts auditáveis e execução da carga real de 7.965 produtos.
+Scope: Criar a página de Rotinas com tabela relacionando todas as rotinas executadas pelo código do portal QLMED
 
-- [x] G1: Suíte de testes do import-service passa
-  CHECK: ./node_modules/.bin/vitest run src/lib/__tests__/spica-import-service.test.ts src/lib/__tests__/spica-parse.test.ts src/lib/__tests__/product-codigo.test.ts
-  EXPECT: /Test Files\s+3 passed/
-  EVIDENCE: Test Files  3 passed (3)
+- [x] G1: Catálogo de rotinas com pelo menos 18 rotinas mapeadas do sistema
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npx tsx -e "import { SYSTEM_ROUTINES } from './src/lib/system-routines'; if (!Array.isArray(SYSTEM_ROUTINES) || SYSTEM_ROUTINES.length < 18) process.exit(1); console.log('ROUTINES_COUNT=' + SYSTEM_ROUTINES.length);"
+  EXPECT: ROUTINES_COUNT=
+  EVIDENCE: ROUTINES_COUNT=19
 
-- [x] G2: Banco de dados com 7.965 produtos oficiais do Spica gravados
-  CHECK: python3 -c "import os, psycopg2; conn = psycopg2.connect(os.environ['DBURL']); cur = conn.cursor(); cur.execute('SELECT count(*) FROM product_registry WHERE codigo ~ \'^[0-9]{6}$\''); print(cur.fetchone()[0])" 2>/dev/null || node -e "const { Client } = require('pg'); const c = new Client({ connectionString: process.env.DATABASE_URL.replace('qlmed-db', '127.0.0.1') }); c.connect().then(() => c.query('SELECT count(*) FROM product_registry WHERE codigo ~ \'^[0-9]{6}$\'')).then(r => { console.log(r.rows[0].count); c.end(); });"
-  EXPECT: 7965
-  EVIDENCE: 7965
+- [x] G2: Navegação e sidebar sincronizados com a nova rota /sistema/rotinas
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npx vitest run src/components/__tests__/sidebar-nav-paths.test.ts
+  EXPECT: 3 passed
+  EVIDENCE: Start at  23:30:40 | Duration  153ms (transform 42ms, setup 17ms, import 51ms, tests 3ms, environment 0ms)
 
-- [x] G3: Dados fiscais de 7.965 produtos preenchidos
-  CHECK: node -e "const { Client } = require('pg'); const c = new Client({ connectionString: process.env.DATABASE_URL.replace('qlmed-db', '127.0.0.1') }); c.connect().then(() => c.query('SELECT count(*) FROM product_registry WHERE fiscal_sit_tributaria IS NOT NULL')).then(r => { console.log(r.rows[0].count); c.end(); });"
-  EXPECT: 7965
-  EVIDENCE: 7965
+- [x] G3: Testes de unidade do catálogo de rotinas e API passam
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npx vitest run src/lib/__tests__/system-routines.test.ts
+  EXPECT: 1 passed
+  EVIDENCE: Start at  23:35:36 | Duration  272ms (transform 64ms, setup 39ms, import 38ms, tests 10ms, environment 0ms)
+
+- [x] G4: Verificação de tipos TypeScript sem erros
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npx tsc --noEmit
+  EXPECT: 
+  EVIDENCE: (no output)
+
+- [x] G5: Verificação de lint do código sem erros
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npm run lint
+  EXPECT: 
+  EVIDENCE: > qlmed@0.1.0 lint | > eslint .
+
+- [x] G6: Validação de governança de documentação passa
+  CHECK: cd /home/marce/qlmed/worktrees/044-pagina-rotinas && npm run docs:validate
+  EXPECT: Documentation validation passed
+  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (198 Markdown files, 55 IDs).

@@ -61,6 +61,7 @@ export const PAGE_GROUPS: PageGroup[] = [
       { label: 'Erros', path: '/sistema/errors' },
       { label: 'Upload XML', path: '/sistema/upload' },
       { label: 'Automações', path: '/sistema/automacoes' },
+      { label: 'Rotinas', path: '/sistema/rotinas' },
       { label: 'Configurações', path: '/sistema/settings' },
       { label: 'Usuários', path: '/sistema/usuarios' },
     ],
@@ -112,6 +113,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Integrações
   { prefix: '/api/integrations', pages: ['/sistema/automacoes'] },
   // Sistema
+  { prefix: '/api/sistema/rotinas', pages: ['/sistema/rotinas'] },
   { prefix: '/api/users',      pages: ['/sistema/usuarios'] },
   { prefix: '/api/access-log', pages: ['/sistema/usuarios'] },
   { prefix: '/api/nsdocs',     pages: ['/sistema/sync'] },
