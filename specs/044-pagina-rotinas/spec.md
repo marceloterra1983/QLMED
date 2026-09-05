@@ -39,7 +39,7 @@ Esta especificação cria a página canônica **Rotinas** (`/sistema/rotinas`), 
 10. **Ingestão de Documentos Corporativos (OneDrive)**: Ciclo a cada 1 hora (`DOCUMENTOS_INGEST_INTERVAL_MS`) para detecção de certidões, alvarás e contratos da pasta corporativa da empresa.
 11. **Alertas Diários de Vencimento de Documentos**: Execução diária às 08:00 (Brasília) para verificação de prazos de certidões e envio de PDFs com aviso via WhatsApp Evolution API.
 12. **Purga e Retenção do Outbox de Notificações**: Ciclo a cada 24 horas para expurgo seguro de entregas de notificações antigas acima do teto de retenção.
-13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada minuto via script host consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
+13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada 10 minutos (`*/10` em `install-notification-outbox-cron.sh`, NFE e CTE) consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
 14. **Sincronização e Validação com Base ANVISA**: Validação cadastral periódica e sob demanda de produtos hospitalares contra os dados abertos da ANVISA.
 15. **Watchdog de Sessão WhatsApp (Evolution API)**: Monitoramento a cada 5 minutos com circuit breaker e auto-reconexão do gateway WhatsApp.
 16. **Watchdog de Execuções Travadas do n8n**: Monitoramento a cada 2 minutos (`OnUnitActiveSec=2min`) para identificação e cancelamento seguro de execuções órfãs do n8n.
