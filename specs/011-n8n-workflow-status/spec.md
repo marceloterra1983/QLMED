@@ -124,8 +124,11 @@ O administrador vê há quanto tempo o status foi consultado e pode forçar uma 
 - **FR-007**: O acesso ao status MUST ser autorizado no servidor, com papel mínimo `viewer` (decidido pelo dono em 2026-08-26). Preserva quem enxerga a tela hoje — ela nunca verificou papel — enquanto move a verificação para onde o Princípio II a exige. Gravar a credencial continua exigindo `admin`: proteger a chave e proteger o resultado dela são perguntas distintas.
 - **FR-008**: Registros e mensagens de erro MUST NOT conter a credencial do n8n nem conteúdo de execução, conforme a regra de log seguro do projeto.
 - **FR-009**: O sistema MUST NOT permitir, nesta feature, disparar, pausar ou editar workflows a partir do QLMED. Escopo é leitura. Escrita é decisão separada, com consequência operacional real.
+- **FR-010**: Sistema → Configurações MUST expor a seção **Integração n8n** (endereço HTTPS + chave de API) via `GET`/`PUT /api/integrations/n8n/config`, para que o estado `not_configured` de Automações seja resolvível na UI sem API manual.
 
-### Key Entities
+## Acceptance Criteria
+
+- **AC-010** (FR-010): o teste de contrato exige `Integração n8n` e `/api/integrations/n8n/config` em `IntegrationsSection.tsx`.
 
 - **Workflow (do n8n)**: identidade, nome e estado ativo/pausado. Pertence ao n8n; o QLMED não o cria nem o altera, apenas lê.
 - **Execução (do n8n)**: pertence a um workflow; tem início, fim e desfecho. O QLMED usa a mais recente por workflow, mais uma contagem agregada por janela de tempo.
