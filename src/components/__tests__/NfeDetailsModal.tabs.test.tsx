@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import NfeDetailsModal from '../NfeDetailsModal';
 
+// SPEC-047: o modal lê o papel do utilizador para mostrar "Relacionar".
+vi.mock('@/hooks/useRole', () => ({
+  useRole: () => ({ role: 'editor', isAdmin: false, canWrite: true, allowedPages: [], hasPageAccess: () => true }),
+}));
+
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));

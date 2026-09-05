@@ -30,6 +30,9 @@ export async function GET(req: Request) {
 
     const filterMode = searchParams.get('filter')?.trim() || 'normal'; // 'normal' | 'consignment'
     const description = searchParams.get('description')?.trim();
+    // SPEC-047: em compras, itens vinculados ao produto (nfe_item_product_link)
+    // entram mesmo quando o cProd do fornecedor difere da referência Spica.
+    const registryId = direction === 'received' ? searchParams.get('registryId')?.trim() || null : null;
 
     if (!code && !description) {
       return NextResponse.json({ error: 'code ou description é obrigatório' }, { status: 400 });
@@ -100,6 +103,32 @@ export async function GET(req: Request) {
       likePatterns[0],
       direction as 'received' | 'issued',
     );
+
+    const linkedItems = new Map<string, Set<number>>();
+    if (registryId) {
+      const links = await prisma.nfeItemProductLink.findMany({
+        where: { companyId: company.id, productRegistryId: registryId },
+        select: { invoiceId: true, itemNumber: true },
+      });
+      for (const l of links) {
+        const set = linkedItems.get(l.invoiceId) ?? new Set<number>();
+        set.add(l.itemNumber);
+        linkedItems.set(l.invoiceId, set);
+      }
+      const known = new Set(invoices.map((i) => i.id));
+      const missing = [...linkedItems.keys()].filter((id) => !known.has(id));
+      if (missing.length > 0) {
+        const extra = await prisma.invoice.findMany({
+          where: { id: { in: missing }, companyId: company.id, type: 'NFE', direction: 'received' },
+          select: {
+            id: true, number: true, issueDate: true, senderName: true, senderCnpj: true,
+            recipientName: true, recipientCnpj: true, xmlContent: true,
+          },
+        });
+        invoices.push(...extra);
+        invoices.sort((a, b) => (b.issueDate?.getTime() || 0) - (a.issueDate?.getTime() || 0));
+      }
+    }
 
     // For issued direction, exclude resale customers (Navix/Prime)
     if (direction === 'issued') {
@@ -203,7 +232,9 @@ export async function GET(req: Request) {
         const det = match[0];
         if (matchMode === 'cProd') {
           const cProd = tagVal(det, 'cProd');
-          if (cProd !== code) continue;
+          const nItem = Number(det.match(/<det\b[^>]*\bnItem="(\d+)"/i)?.[1]);
+          const linked = Number.isFinite(nItem) && (linkedItems.get(inv.id)?.has(nItem) ?? false);
+          if (cProd !== code && !linked) continue;
         } else {
           // Match by: supplier code in xProd prefix, OR internal cProd discovered earlier
           const xProd = tagVal(det, 'xProd').toUpperCase();

@@ -45,6 +45,11 @@ export function documentosAlertLockKey(companyId: string): string {
   return `documentos-alert:${companyId}`;
 }
 
+/** SPEC-047: varredura de vínculo item NF-e → produto, uma por empresa. */
+export function nfeItemLinkLockKey(companyId: string): string {
+  return `nfe-item-link-sweep:${companyId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,

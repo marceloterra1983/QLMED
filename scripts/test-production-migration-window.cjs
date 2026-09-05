@@ -9,7 +9,7 @@ assert.equal(gate.TABLES.length, 11);
 assert.ok(gate.EXPECTED_MIGRATIONS.length >= 8, 'o conjunto pinado tem a âncora + as 7 da remediação');
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905210000_unimed_cg_autorizacoes'),
-  'SPEC-045 unimed_cg_autorizacoes deve estar pinada',
+  'SPEC-047 unimed_cg_autorizacoes deve estar pinada',
 );
 for (const { name, sha256 } of gate.EXPECTED_MIGRATIONS) {
   assert.match(name, /^2026\d{10}_/);
@@ -43,6 +43,10 @@ assert.equal(gate.migrationState(seteDaRemediacao), 'pending');
 // E o conjunto pinado INTEIRO tem de ser aceite de uma vez: é exatamente o que
 // o deploy encontra quando a produção está atrás de várias migrações.
 assert.equal(gate.migrationState([...pinadas]), 'pending');
+// SPEC-047: a tabela de vínculo item NF-e → produto Spica entra pinada e é a
+// última do conjunto (EXPECTED_MIGRATION aponta para ela).
+assert.equal(gate.EXPECTED_MIGRATION, '20260905220000_nfe_item_product_link');
+assert.equal(gate.migrationState(['20260905220000_nfe_item_product_link']), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).
 {
   const { spawnSync } = require('node:child_process');

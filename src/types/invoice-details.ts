@@ -70,6 +70,17 @@ export interface NfeInfo {
   dataAutorizacao: string;
 }
 
+/** SPEC-047: vínculo do item de NF-e recebida ao produto Spica (null = pendente). */
+export interface NfeItemVinculo {
+  linkId: string;
+  productRegistryId: string;
+  codigo: string | null;
+  referencia: string | null;
+  descricao: string | null;
+  strategy: string | null;
+  confidence: number | null;
+}
+
 export interface NfeProduto {
   num: string;
   codigo: string;
@@ -87,6 +98,10 @@ export interface NfeProduto {
   ipi: TaxFields;
   pis: TaxFields;
   cofins: TaxFields;
+  /** ausente em nota emitida; null em nota recebida sem vínculo */
+  vinculo?: NfeItemVinculo | null;
+  /** id da linha nfe_item_product_link (nota recebida já varrida) */
+  linkId?: string | null;
 }
 
 export interface NfeTotais {
@@ -177,6 +192,7 @@ export interface NfeInfAdicionais {
 
 export interface NfeDetails {
   docType: 'NFE';
+  direction?: 'received' | 'issued' | string;
   accessKey: string;
   number: string;
   series: string;

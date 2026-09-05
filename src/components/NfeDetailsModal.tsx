@@ -13,6 +13,16 @@ import { nfeProdutoExpandKey, retainExpandedIds } from '@/lib/list-collapse';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import { formatAmount, formatDateTimeSeconds } from '@/lib/utils';
+import { useRole } from '@/hooks/useRole';
+import SpicaCodeTag from '@/components/nfe-item-link/SpicaCodeTag';
+import ProductLinkPicker, { type LinkScope } from '@/components/nfe-item-link/ProductLinkPicker';
+
+/** SPEC-047: alvo do "Relacionar" aberto a partir de um item da nota. */
+interface RelateTarget {
+  scope: LinkScope;
+  label: string;
+  search: string;
+}
 
 interface NfeDetailsModalProps {
   isOpen: boolean;
@@ -212,13 +222,32 @@ function TabProdutos({
   data,
   expanded,
   onToggle,
+  canWrite,
+  onRelate,
 }: {
   data: NfeDetails;
   expanded: Set<string>;
   onToggle: (key: string) => void;
+  canWrite: boolean;
+  onRelate: (target: RelateTarget) => void;
 }) {
   const produtos = data.produtos || [];
   const rowKey = (prod: NfeProduto, idx: number) => nfeProdutoExpandKey(prod) || `i:${idx}`;
+  const received = data.direction === 'received';
+  const relate = (prod: NfeProduto) => {
+    // Sem linha de vínculo ainda (nota não varrida): vincula pelo grupo fornecedor + cProd.
+    const scope: LinkScope = prod.linkId
+      ? { linkId: prod.linkId }
+      : { supplierCnpj: data.emitente?.cnpj || data.nfe.emitente.cnpj, supplierCode: prod.codigo };
+    onRelate({ scope, label: `${prod.codigo} · ${prod.descricao}`, search: prod.codigo });
+  };
+  const tag = (prod: NfeProduto) => (
+    <SpicaCodeTag
+      vinculo={received ? prod.vinculo ?? null : undefined}
+      canWrite={canWrite}
+      onRelate={() => relate(prod)}
+    />
+  );
 
   if (produtos.length === 0) {
     return (
@@ -249,6 +278,8 @@ function TabProdutos({
                 </div>
               </div>
             </button>
+            {/* Fora do <button> do cartão: a tag tem o seu próprio botão Relacionar. */}
+            {received && <div className="px-2.5 pb-2">{tag(prod)}</div>}
             {expanded.has(key) && (
               <div className="px-2.5 pb-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-2">
                 <div className="grid grid-cols-2 gap-2 mb-2">
@@ -278,6 +309,7 @@ function TabProdutos({
               <th className="px-3 py-2.5 w-8"></th>
               <th className="px-3 py-2.5 text-left">Num.</th>
               <th className="px-3 py-2.5 text-left">Descrição</th>
+              {received && <th className="px-3 py-2.5 text-left">Cód. Spica</th>}
               <th className="px-3 py-2.5 text-right">Qtd.</th>
               <th className="px-3 py-2.5 text-left">Unid.</th>
               <th className="px-3 py-2.5 text-right">Valor</th>
@@ -301,13 +333,14 @@ function TabProdutos({
                   </td>
                   <td className="px-3 py-2.5 text-xs font-mono text-slate-500 dark:text-slate-400">{prod.num}</td>
                   <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{prod.descricao}</td>
+                  {received && <td className="px-3 py-2.5 text-xs">{tag(prod)}</td>}
                   <td className="px-3 py-2.5 text-right text-xs tabular-nums text-slate-600 dark:text-slate-300">{prod.quantidade}</td>
                   <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{prod.unidade}</td>
                   <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</td>
                 </tr>
                 {expanded.has(key) && (
                   <tr>
-                    <td colSpan={6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
+                    <td colSpan={received ? 7 : 6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
                         <Field label="Código" value={prod.codigo} />
                         <Field label="NCM" value={prod.ncm} />
@@ -540,6 +573,9 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('nfe');
   const [expandedProdutos, setExpandedProdutos] = useState<Set<string>>(new Set());
+  const [relateTarget, setRelateTarget] = useState<RelateTarget | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const { canWrite } = useRole();
   const tabsRef = useRef<HTMLDivElement>(null);
   const idBase = useId();
   const idDaAba = (id: string) => `${idBase}-tab-${id}`;
@@ -555,12 +591,18 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
     tabsRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[alvo]?.focus();
   };
 
+  // Troca de nota limpa tudo; `reloadTick` só refaz o fetch (após Relacionar)
+  // sem apagar a tela.
+  useEffect(() => {
+    setData(null);
+    setExpandedProdutos(new Set());
+    setReloadTick(0);
+  }, [isOpen, invoiceId]);
+
   useEffect(() => {
     if (!isOpen || !invoiceId) return;
     setLoading(true);
     setError(null);
-    setData(null);
-    setExpandedProdutos(new Set());
 
     fetch(`/api/invoices/${invoiceId}/details`)
       .then(res => {
@@ -574,7 +616,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [isOpen, invoiceId]);
+  }, [isOpen, invoiceId, reloadTick]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -622,6 +664,8 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
               return next;
             });
           }}
+          canWrite={canWrite}
+          onRelate={setRelateTarget}
         />
       );
       case 'totais': return <TabTotais data={data} />;
@@ -764,6 +808,14 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
           )}
           {data && !loading && renderTabContent()}
         </div>
+        <ProductLinkPicker
+          isOpen={relateTarget !== null}
+          onClose={() => setRelateTarget(null)}
+          scope={relateTarget?.scope ?? null}
+          itemLabel={relateTarget?.label ?? ''}
+          initialSearch={relateTarget?.search}
+          onLinked={() => setReloadTick((n) => n + 1)}
+        />
     </Modal>
   );
 }

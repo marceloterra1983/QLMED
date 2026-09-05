@@ -1,4 +1,6 @@
 export interface ProductRow {
+  /** id em product_registry (SPEC-047: usado para histórico por vínculo) */
+  id?: string;
   key: string;
   codigo?: string | null;
   code: string;

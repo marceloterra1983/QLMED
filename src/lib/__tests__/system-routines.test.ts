@@ -17,8 +17,8 @@ import { CASSEMS_INGEST_INTERVAL_MS } from '@/lib/cassems/constants';
 import { canAccessApi, PAGE_GROUPS } from '@/lib/navigation';
 
 describe('System Routines Catalog', () => {
-  it('contém exatamente 19 rotinas catalogadas', () => {
-    expect(SYSTEM_ROUTINES).toHaveLength(19);
+  it('contém exatamente 20 rotinas catalogadas', () => {
+    expect(SYSTEM_ROUTINES).toHaveLength(20);
   });
 
   it('toda rotina possui identificador único e campos obrigatórios preenchidos', () => {
@@ -209,6 +209,7 @@ describe('System Routines Catalog', () => {
     expect(pageSectionForRoutine({ id: 'documentos-ingest' })).toBe('Cadastros');
     expect(pageSectionForRoutine({ id: 'sefaz-auto-sync' })).toBe('Fiscal');
     expect(pageSectionForRoutine({ id: 'product-aggregate-rebuild' })).toBe('Estoque');
+    expect(pageSectionForRoutine({ id: 'nfe-item-product-link' })).toBe('Estoque');
     expect(pageSectionForRoutine({ id: 'daily-summary-catchup' })).toBe('Financeiro');
     expect(pageSectionForRoutine({ id: 'impcg-mail-ingest' })).toBe('Gestão');
     expect(pageSectionForRoutine({ id: 'postgres-backup' })).toBe('Sistema');

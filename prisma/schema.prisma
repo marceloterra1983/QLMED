@@ -186,6 +186,7 @@ model Company {
   productRegistries     ProductRegistry[]
   stockEntries          StockEntry[]
   nfeEntryItems         NfeEntryItem[]
+  nfeItemProductLinks   NfeItemProductLink[]
   productSettings       ProductSettingsCatalog[]
   cnpjMonitorings       CnpjMonitoring[]
   createdAt             DateTime                               @default(now())
@@ -348,6 +349,7 @@ model Invoice {
   duplicatas            InvoiceDuplicata[]
   stockEntries          StockEntry[]
   nfeEntryItems         NfeEntryItem[]
+  nfeItemProductLinks   NfeItemProductLink[]
   sourcedContactFiscals ContactFiscal[]
   createdAt             DateTime                               @default(now())
   updatedAt             DateTime                               @updatedAt
@@ -726,6 +728,7 @@ model ProductRegistry {
   aggResaleQuantity         Float?    @map("agg_resale_quantity")
   aggComputedAt             DateTime? @map("agg_computed_at") @db.Timestamptz
   aggSearchText             String?   @map("agg_search_text")
+  nfeItemLinks              NfeItemProductLink[]
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                 DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
@@ -847,6 +850,43 @@ model NfeEntryItem {
   @@index([companyId, codigoInterno])
   @@index([invoiceId])
   @@map("nfe_entry_item")
+}
+
+// SPEC-047: vínculo item de NF-e recebida → produto Spica. Uma linha por item
+// (company, invoice, nItem). MANUAL nunca é sobrescrito pela varredura; a
+// memória S6 (fornecedor + cProd normalizado) deriva desta mesma tabela.
+model NfeItemProductLink {
+  id                  String           @id
+  companyId           String           @map("company_id")
+  company             Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceId           String           @map("invoice_id")
+  invoice             Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemNumber          Int              @map("item_number")
+  supplierCnpj        String           @map("supplier_cnpj")
+  supplierCode        String           @map("supplier_code")
+  supplierCodeNorm    String           @map("supplier_code_norm")
+  supplierDescription String?          @map("supplier_description")
+  ean                 String?
+  anvisa              String?
+  ncm                 String?
+  unit                String?
+  productRegistryId   String?          @map("product_registry_id")
+  productRegistry     ProductRegistry? @relation(fields: [productRegistryId], references: [id], onDelete: SetNull)
+  matchedCodigo       String?          @map("matched_codigo")
+  /// S1..S6 | MANUAL; null = pendente
+  matchStrategy       String?          @map("match_strategy")
+  matchConfidence     Float?           @map("match_confidence")
+  matchedAt           DateTime?        @map("matched_at") @db.Timestamptz
+  /// 'system' ou userId
+  matchedBy           String?          @map("matched_by")
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([companyId, invoiceId, itemNumber], map: "nfe_item_product_link_company_invoice_item_key")
+  @@index([companyId, productRegistryId], map: "nfe_item_product_link_registry_idx")
+  @@index([companyId, supplierCnpj, supplierCodeNorm], map: "nfe_item_product_link_supplier_idx")
+  @@index([invoiceId], map: "nfe_item_product_link_invoice_idx")
+  @@map("nfe_item_product_link")
 }
 
 // Satellite table baselined in Phase 11; store uses Prisma Client (no runtime DDL).

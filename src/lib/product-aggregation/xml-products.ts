@@ -101,7 +101,9 @@ export async function extractProductsFromXml(
       const totalValue = toNumber(prod?.vProd);
       const safeUnitPrice = unitPrice > 0 ? unitPrice : (quantity > 0 ? totalValue / quantity : 0);
 
+      const nItemRaw = Number(det?.nItem ?? det?.$?.nItem);
       return {
+        nItem: Number.isInteger(nItemRaw) && nItemRaw > 0 ? nItemRaw : undefined,
         code: cleanString(prod?.cProd) || '-',
         description: cleanString(prod?.xProd) || 'Item sem descrição',
         ncm: cleanString(prod?.NCM),

@@ -6,8 +6,10 @@ import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { val } from '@/lib/xml-helpers';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { idParamSchema } from '@/lib/schemas/common';
+import { listInvoiceLinks } from '@/lib/nfe-item-link/store';
 import type { XmlNode } from '@/types/xml-common';
 import type { NFeDet, NFeImposto, NFeTaxGroup } from '@/types/nfe-xml';
+import type { NfeProduto } from '@/types/invoice-details';
 import type { CTeInfCte } from '@/types/cte-xml';
 import type { NFSeNacionalInfNFSe, NFSeInfNfse } from '@/types/nfse-xml';
 
@@ -514,7 +516,7 @@ export async function GET(
 
     const invoice = await prisma.invoice.findFirst({
       where: { id, companyId: company.id },
-      select: { id: true, accessKey: true, number: true, series: true, type: true, xmlContent: true },
+      select: { id: true, accessKey: true, number: true, series: true, type: true, direction: true, xmlContent: true },
     });
 
     if (!invoice) {
@@ -589,8 +591,32 @@ export async function GET(
 
     const protNFe = nfeProc?.protNFe?.infProt || {};
 
+    // SPEC-047: em nota recebida, cada item carrega o vínculo ao produto Spica
+    // (ou null = pendente). Nota emitida não tem vínculo (cProd já é o código).
+    const produtos: NfeProduto[] = parseProdutos(det);
+    if (invoice.direction === 'received') {
+      const links = await listInvoiceLinks(company.id, invoice.id);
+      const byItem = new Map(links.map((l) => [l.itemNumber, l]));
+      for (const prod of produtos) {
+        const link = byItem.get(Number(prod.num));
+        prod.linkId = link?.id ?? null;
+        prod.vinculo = link?.productRegistryId
+          ? {
+            linkId: link.id,
+            productRegistryId: link.productRegistryId,
+            codigo: link.matchedCodigo,
+            referencia: link.productRegistry?.code ?? null,
+            descricao: link.productRegistry?.description ?? null,
+            strategy: link.matchStrategy,
+            confidence: link.matchConfidence,
+          }
+          : null;
+      }
+    }
+
     const details = {
       docType: 'NFE' as const,
+      direction: invoice.direction,
       accessKey: invoice.accessKey,
       number: invoice.number,
       series: invoice.series || '',
@@ -628,7 +654,7 @@ export async function GET(
       },
       emitente: parseEmitDest(emit),
       destinatario: parseEmitDest(dest),
-      produtos: parseProdutos(det),
+      produtos,
       totais: parseTotais(total),
       transporte: parseTransporte(transp),
       cobranca: parseCobranca(cobr, pag),

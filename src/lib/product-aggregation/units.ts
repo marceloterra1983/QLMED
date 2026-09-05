@@ -10,6 +10,8 @@ export interface ProductBatch {
 }
 
 export interface ProductFromXml {
+  /** nItem do <det>; posição 1-based quando ausente. */
+  nItem?: number;
   code: string;
   description: string;
   ncm: string | null;
