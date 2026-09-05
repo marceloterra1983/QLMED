@@ -198,7 +198,7 @@ export async function GET(req: Request) {
       totalQuantity: Number(row.aggTotalQuantity || 0),
     }));
 
-    const [withAnvisa, qtyAgg] = await Promise.all([
+    const [withAnvisa, qtyAgg, lineGroups, subtypeGroups] = await Promise.all([
       prisma.productRegistry.count({
         where: {
           AND: [
@@ -211,6 +211,17 @@ export async function GET(req: Request) {
       prisma.productRegistry.aggregate({
         where,
         _sum: { aggTotalQuantity: true },
+      }),
+      // Totais reais Linha/Grupo no filtro (evita badge "CARDIACA 50" = tamanho da página).
+      prisma.productRegistry.groupBy({
+        by: ['productType'],
+        where,
+        _count: { _all: true },
+      }),
+      prisma.productRegistry.groupBy({
+        by: ['productType', 'productSubtype'],
+        where,
+        _count: { _all: true },
       }),
     ]);
 
@@ -225,6 +236,18 @@ export async function GET(req: Request) {
       // pior que numero ausente.
     };
 
+    const hierarchyCounts = {
+      byLine: Object.fromEntries(
+        lineGroups.map((g) => [`line:${g.productType || 'Sem linha'}`, g._count._all]),
+      ),
+      byGroup: Object.fromEntries(
+        subtypeGroups.map((g) => [
+          `group:${g.productType || 'Sem linha'}|${g.productSubtype || 'Sem grupo'}`,
+          g._count._all,
+        ]),
+      ),
+    };
+
     return NextResponse.json(
       {
         products,
@@ -235,6 +258,7 @@ export async function GET(req: Request) {
           total,
           pages,
         },
+        hierarchyCounts,
         exportLimited: exportAll && total > EXPORT_ALL_LIMIT,
         needsRebuild: !hasAggregates,
       },

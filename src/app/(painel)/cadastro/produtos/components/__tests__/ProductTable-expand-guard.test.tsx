@@ -86,4 +86,29 @@ describe('ProductTable collapsed-by-default', () => {
     expect(screen.getAllByText('SPICA-111').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Stent Coronary A').length).toBeGreaterThanOrEqual(1);
   });
+
+  it('badge de linha usa total do catálogo (hierarchyCounts), nao so a pagina', () => {
+    const products = [
+      row({ key: 'a', codigo: 'SPICA-111', description: 'Stent Coronary A' }),
+      row({ key: 'b', codigo: 'SPICA-222', description: 'Stent Coronary B' }),
+    ];
+    const collapsedGroups = new Set(['line:CARDIACA', 'group:CARDIACA|STENTS']);
+
+    render(
+      <ProductTable
+        {...baseProps}
+        products={products}
+        collapsedGroups={collapsedGroups}
+        hierarchyCounts={{
+          byLine: { 'line:CARDIACA': 826 },
+          byGroup: { 'group:CARDIACA|STENTS': 40 },
+        }}
+      />,
+    );
+
+    // Página tem 2 produtos, mas o badge deve mostrar 826 (total filtrado).
+    // Desktop + mobile renderizam o mesmo cabeçalho.
+    expect(screen.getAllByTitle(/826 no cadastro/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('826').length).toBeGreaterThanOrEqual(1);
+  });
 });

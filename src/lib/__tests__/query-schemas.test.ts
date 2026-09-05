@@ -20,6 +20,12 @@ describe('query schemas', () => {
     expect(parsed.onlyMissingAnvisa).toBe(true);
   });
 
+  it('defaults lineStatus to all so fora-de-linha Spica aparece', () => {
+    const parsed = productsListQuerySchema.parse({});
+    expect(parsed.lineStatus).toBe('all');
+    expect(parsed.limit).toBe(50);
+  });
+
   it('rejects invalid products list sort and line status', () => {
     expect(productsListQuerySchema.safeParse({ sort: 'lastIssue' }).success).toBe(false);
     expect(productsListQuerySchema.safeParse({ lineStatus: 'inactive' }).success).toBe(false);

@@ -12,7 +12,7 @@ import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import SettingsModal from './SettingsModal';
-import type { ProductRow, ProductsSummary, ProductsResponse, SortField } from './types';
+import type { ProductRow, ProductsHierarchyCounts, ProductsSummary, ProductsResponse, SortField } from './types';
 import type { HierOptions } from './components/product-utils';
 import ProductFilters from './components/ProductFilters';
 import ProductDetailModal from './components/ProductDetailModal';
@@ -31,6 +31,7 @@ export default function ProdutosPage() {
   // --- server-paginated data ---
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [summary, setSummary] = useState<ProductsSummary>({ totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
+  const [hierarchyCounts, setHierarchyCounts] = useState<ProductsHierarchyCounts | null>(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [meta, setMeta] = useState<ProductsResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,6 +198,7 @@ export default function ProdutosPage() {
       const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
       setProducts(data.products || []);
       setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
+      setHierarchyCounts(data.hierarchyCounts || null);
       setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
       setMeta(data.meta || null);
       // Sempre iniciar recolhido (Linha → Grupo → Subgrupo); Expandir abre tudo.
@@ -216,6 +218,7 @@ export default function ProdutosPage() {
             fetch(`/api/products/list?${params}`).then((r) => r.json()).then((d: ProductsResponse) => {
               setProducts(d.products || []);
               setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
+              setHierarchyCounts(d.hierarchyCounts || null);
               setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
               setMeta(d.meta || null);
               setCollapsedGroups(
@@ -349,7 +352,8 @@ export default function ProdutosPage() {
         lineStatusFilter={lineStatusFilter} setLineStatusFilter={setLineStatusFilter}
         setCollapsedGroups={setCollapsedGroups}
         hierOptions={hierOptions}
-        filteredCount={filtered.length}
+        catalogTotal={pagination.total}
+        pageSize={products.length}
       />
 
       {meta?.invoicesLimited && (
@@ -364,6 +368,7 @@ export default function ProdutosPage() {
         loading={loading}
         isRebuilding={isRebuilding}
         summary={summary}
+        hierarchyCounts={hierarchyCounts}
         sortBy={sortBy}
         sortOrder={sortOrder}
         search={search}
@@ -383,11 +388,15 @@ export default function ProdutosPage() {
         setSettingsOpen={setSettingsOpen}
       />
 
-      {pagination.pages > 1 && (
-        <Card padding="none" className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Pagina {formatInt(pagination.page)} de {formatInt(pagination.pages)} · {formatInt(pagination.total)} produtos{lineStatusFilter === 'active' ? ' em linha' : lineStatusFilter === 'outOfLine' ? ' fora de linha' : ''}
-          </p>
+      <Card padding="none" className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {formatInt(pagination.total)} produtos no cadastro
+          {lineStatusFilter === 'active' ? ' (em linha)' : lineStatusFilter === 'outOfLine' ? ' (fora de linha)' : ''}
+          {pagination.pages > 1
+            ? ` · pagina ${formatInt(pagination.page)} de ${formatInt(pagination.pages)} · ${formatInt(products.length)} nesta pagina`
+            : ''}
+        </p>
+        {pagination.pages > 1 && (
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -406,8 +415,8 @@ export default function ProdutosPage() {
               Proxima
             </button>
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* Bulk action toolbar */}
       {selectedKeys.size > 0 && (

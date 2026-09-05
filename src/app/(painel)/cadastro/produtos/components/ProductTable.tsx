@@ -9,7 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, formatInt } from '@/lib/utils';
-import type { ProductRow, ProductsSummary, SortField } from '../types';
+import type { ProductRow, ProductsHierarchyCounts, ProductsSummary, SortField } from '../types';
 import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
 import {
   productGroupKey,
@@ -22,6 +22,7 @@ interface ProductTableProps {
   loading: boolean;
   isRebuilding: boolean;
   summary: ProductsSummary;
+  hierarchyCounts?: ProductsHierarchyCounts | null;
   sortBy: SortField;
   sortOrder: 'asc' | 'desc';
   search: string;
@@ -51,7 +52,7 @@ const TABLE_DATA_COLS = 8; // Cod. Spica, Referencia, Produto, ANVISA, Fabricant
 const FLAT_SORTS = new Set<SortField>(['codigo']);
 
 export default function ProductTable({
-  products, loading, isRebuilding, summary, sortBy, sortOrder, search,
+  products, loading, isRebuilding, summary, hierarchyCounts, sortBy, sortOrder, search,
   collapsedGroups, toggleGroup, selectionEnabled, setSelectionEnabled,
   selectedKeys, setSelectedKeys, toggleSelect, toggleSelectGroup,
   setCollapsedGroups, handleSort, openDetail, openHistory, canWrite, setSettingsOpen,
@@ -183,7 +184,19 @@ export default function ProductTable({
           <span className="material-symbols-outlined text-[18px] text-indigo-400 dark:text-indigo-500 transition-transform duration-200" style={{ transform: lineCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-1 h-4 rounded-full bg-indigo-400 dark:bg-indigo-500" />
           <span className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{lineName}</span>
-          <Badge tone="info" dot={false}>{lineCountMap.get(lineKey)}</Badge>
+          <Badge
+            tone="info"
+            dot={false}
+            title={
+              hierarchyCounts?.byLine?.[lineKey] != null && hierarchyCounts.byLine[lineKey] !== lineCountMap.get(lineKey)
+                ? `${formatInt(hierarchyCounts.byLine[lineKey])} no cadastro · ${formatInt(lineCountMap.get(lineKey) || 0)} nesta página`
+                : hierarchyCounts?.byLine?.[lineKey] != null
+                  ? `${formatInt(hierarchyCounts.byLine[lineKey])} no cadastro`
+                  : `${formatInt(lineCountMap.get(lineKey) || 0)} nesta página`
+            }
+          >
+            {formatInt(hierarchyCounts?.byLine?.[lineKey] ?? lineCountMap.get(lineKey) ?? 0)}
+          </Badge>
           {lineCollapsed && (
             <span className="ml-auto text-xs font-medium text-indigo-500/90 dark:text-indigo-400/90">
               Clique para expandir
@@ -201,7 +214,19 @@ export default function ProductTable({
           <span className="material-symbols-outlined text-[15px] text-amber-400 dark:text-amber-600 transition-transform duration-200" style={{ transform: grpCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-0.5 h-3 rounded-full bg-amber-400 dark:bg-amber-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">{grpName}</span>
-          <Badge tone="warning" dot={false}>{groupCountMap.get(grpKey)}</Badge>
+          <Badge
+            tone="warning"
+            dot={false}
+            title={
+              hierarchyCounts?.byGroup?.[grpKey] != null && hierarchyCounts.byGroup[grpKey] !== groupCountMap.get(grpKey)
+                ? `${formatInt(hierarchyCounts.byGroup[grpKey])} no cadastro · ${formatInt(groupCountMap.get(grpKey) || 0)} nesta página`
+                : hierarchyCounts?.byGroup?.[grpKey] != null
+                  ? `${formatInt(hierarchyCounts.byGroup[grpKey])} no cadastro`
+                  : `${formatInt(groupCountMap.get(grpKey) || 0)} nesta página`
+            }
+          >
+            {formatInt(hierarchyCounts?.byGroup?.[grpKey] ?? groupCountMap.get(grpKey) ?? 0)}
+          </Badge>
           {grpCollapsed && (
             <span className="ml-auto text-xs font-medium text-amber-600/90 dark:text-amber-400/90">
               Clique para expandir
