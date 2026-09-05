@@ -48,7 +48,7 @@ const DATE = String.raw`((?<!\d)(?:${DATE_NUM}|${DATE_EXT}))`;
  * O `\b` inicial impede casar dentro de palavra de sentido oposto:
  * `Certidao invalida ate 12/10/2026` casava `valida ate` e devolvia a data.
  */
-const LABEL = String.raw`\b(certidao\s+valida\s+ate|validade\s+ate|valida\s+ate|validade)`;
+const LABEL = String.raw`\b(certidao\s+valida\s+ate|validade\s+ate|valid[ao]\s+ate|validade)`;
 
 /** Faixa (X a Y) tem de vir antes do rótulo simples, senão devolve X. */
 const RANGE_SOURCE = `${LABEL}\\s*:?\\s*(?:de\\s+)?${DATE}\\s+a\\s+${DATE}`;
