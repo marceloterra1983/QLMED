@@ -1,6 +1,6 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { cartaLabelFromFileName } from './classify';
+import { cartaLabelFromFileName, effectiveSocietarioKind } from './classify';
 import {
   DOCUMENTOS_FAMILIES,
   kindConfig,
@@ -180,7 +180,12 @@ function buildClosedFamily(
   today: string,
 ): DocumentosRow[] {
   const kinds = family.kinds.map((kind) => kind.kind);
-  const ofFamily = rows.filter((row) => kinds.includes(row.kind));
+  const remapped = rows.map((row) => {
+    if (family.category !== 'societario') return row;
+    const kind = effectiveSocietarioKind(row.kind, row.fileName);
+    return kind === row.kind ? row : { ...row, kind };
+  });
+  const ofFamily = remapped.filter((row) => kinds.includes(row.kind));
   const vigenteByKind = selectVigente(ofFamily);
   return kinds.map((kind) => {
     const vigente = vigenteByKind.get(kind);

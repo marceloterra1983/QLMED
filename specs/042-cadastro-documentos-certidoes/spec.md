@@ -297,6 +297,13 @@ falhar de forma visível, não chutar.
   `cnd_municipal_gerais` (SIAT pela inscrição municipal); `'manual'` o resto
   que vence, incluindo o não testado. `expira: false` não recebe tag.
 
+- **FR-036**: Na família societário, ficheiro cujo nome contém `contrato`
+  e não contém tokens de constituição/alteração classifica
+  `contrato_social_consolidado` (ex.: `CONTRATO SOCIAL.pdf`). ATA e
+  demais nomes sem `contrato` continuam `outro`. Linha já persistida
+  como `outro` com esse nome **aparece** no card de consolidado até a
+  próxima ingestão gravar o kind novo.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -401,6 +408,10 @@ falhar de forma visível, não chutar.
 - **AC-027** (FR-035): só `crf_fgts` é `automacao: 'automatica'`. Controlo
   negativo: marcar `cnd_federal` como automática faz o teste das tags falhar
   nomeando que só o FGTS é automático.
+- **AC-028** (FR-036): `CONTRATO SOCIAL.pdf` na pasta societário classifica
+  `contrato_social_consolidado`; `ATA ASSEMBLEIA.pdf` permanece `outro`.
+  Listagem com kind persistido `outro` e nome `CONTRATO SOCIAL.pdf`
+  preenche a linha de consolidado; a ATA não aparece.
 
 ## Non-functional
 

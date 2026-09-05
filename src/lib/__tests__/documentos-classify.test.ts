@@ -276,8 +276,18 @@ describe('SPEC-042 L11 — classify societário / básicos', () => {
       file: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
       kind: 'contrato_social_consolidado' as const,
     },
+    {
+      file: 'CONTRATO SOCIAL.pdf',
+      kind: 'contrato_social_consolidado' as const,
+    },
   ])('$file → $kind', ({ file, kind }) => {
     expect(classifyDocument('3 - CONTRATO SOCIAL', file, 'societario')).toBe(kind);
+  });
+
+  it('ATA ASSEMBLEIA não vira contrato só por estar na pasta societário', () => {
+    expect(classifyDocument('3 - CONTRATO SOCIAL', 'ATA ASSEMBLEIA.pdf', 'societario')).toBe(
+      'outro',
+    );
   });
 
   it.each([
