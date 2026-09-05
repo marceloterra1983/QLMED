@@ -133,6 +133,7 @@ function fileSizeOf(size: number | null): number | null {
 
 type ExistingRow = {
   id: string;
+  lastModifiedAt: Date | null;
   kind: CompanyDocumentKind;
   category: string | null;
   validUntil: Date | null;
@@ -142,6 +143,10 @@ type ExistingRow = {
   validUntilSource: string | null;
   renewalNotifiedAt: Date | null;
 };
+
+function conteudoMudou(antes: Date | null, agora: Date | null): boolean {
+  return (antes?.getTime() ?? null) !== (agora?.getTime() ?? null);
+}
 
 async function saveIngestSuccess(companyId: string, now: Date, lastError: string | null = null): Promise<void> {
   await prisma.companyDocumentIngestState.upsert({
@@ -274,7 +279,19 @@ async function upsertItem(
       ...(existing.validUntilSource === 'manual'
         ? {}
         : { validUntil: input.validUntil, validUntilSource: input.validUntilSource }),
-      ...(input.emitidoEm != null ? { emitidoEm: input.emitidoEm } : {}),
+      /**
+       * `emitidoEm` descreve o CONTEÚDO do ficheiro, não a linha. Se o conteúdo
+       * mudou (o `lastModifiedAt` do OneDrive mexeu) e desta vez não deu para
+       * ler a emissão, a data antiga passaria a acompanhar um documento que já
+       * não é o mesmo — e o popup mostraria emissão de uma versão ao lado da
+       * validade de outra. Nesse caso limpa-se; "não informado" é honesto,
+       * a data errada não é. Conteúdo intacto preserva o que já se sabia.
+       */
+      ...(input.emitidoEm != null
+        ? { emitidoEm: input.emitidoEm }
+        : conteudoMudou(existing.lastModifiedAt, input.lastModifiedAt)
+          ? { emitidoEm: null }
+          : {}),
       ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
     },
     select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -294,6 +311,10 @@ async function ingestCompany(
       category: true,
       validUntil: true,
       emitidoEm: true,
+      // lastModifiedAt entra porque `conteudoMudou` o lê; o `as ExistingRow[]`
+      // abaixo silencia o TypeScript, logo o compilador NÃO apanha um campo em
+      // falta aqui — só a leitura da consulta apanha.
+      lastModifiedAt: true,
       removedAt: true,
       oneDriveItemId: true,
       validUntilSource: true,

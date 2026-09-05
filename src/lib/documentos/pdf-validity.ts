@@ -156,8 +156,22 @@ function addCivilYears(ymd: string, years: number): string {
   return `${year + years}-${pad2(month)}-${pad2(Math.min(day, lastDay))}`;
 }
 
+/** Validade olha para a frente: até 10 anos à frente, 5 para trás. */
 function isPlausibleYmd(ymd: string, todayYmd: string): boolean {
   return ymd <= addCivilYears(todayYmd, 10) && ymd >= addCivilYears(todayYmd, -5);
+}
+
+/**
+ * Emissão olha para trás, e a janela da validade não serve: a AFE da empresa
+ * foi autorizada em 20/08/2007 e o alvará tem emissões igualmente antigas. Com
+ * o corte de 5 anos, todo documento antigo perdia a emissão e o popup dizia
+ * "não informado" justamente onde a data é mais útil.
+ *
+ * O futuro continua curto de propósito: um documento não pode ter sido emitido
+ * amanhã, e uma data à frente é gralha ou leitura errada.
+ */
+function isPlausibleEmissaoYmd(ymd: string, todayYmd: string): boolean {
+  return ymd <= addCivilYears(todayYmd, 1) && ymd >= addCivilYears(todayYmd, -40);
 }
 
 function canonicalLabel(raw: string): string {
@@ -182,10 +196,18 @@ function firstPlausibleYmd(
   return parsed;
 }
 
+/** Como `firstPlausibleYmd`, mas com a janela da EMISSÃO (para trás, não para a frente). */
+function firstPlausibleEmissaoYmd(token: string, todayYmd: string): { ymd: string } | null {
+  const parsed = parseBrDate(token);
+  if (!parsed) return null;
+  if (!isPlausibleEmissaoYmd(parsed.ymd, todayYmd)) return null;
+  return parsed;
+}
+
 function matchEmitidoEm(normalized: string, todayYmd: string): string | null {
   const re = new RegExp(EMISSAO_SOURCE, 'g');
   for (const match of normalized.matchAll(re)) {
-    const parsed = firstPlausibleYmd(match[2] ?? '', todayYmd);
+    const parsed = firstPlausibleEmissaoYmd(match[2] ?? '', todayYmd);
     if (parsed) return parsed.ymd;
   }
   return null;
@@ -213,7 +235,7 @@ export function matchValidityFromText(text: string, todayYmd: string = todayInSa
       confidence = parsed.yearDigits === 4 ? 'alta' : 'media';
       matchedLabel = canonicalLabel(match[rule.labelGroup] ?? '');
       if (rule.startGroup != null) {
-        const start = firstPlausibleYmd(match[rule.startGroup] ?? '', todayYmd);
+        const start = firstPlausibleEmissaoYmd(match[rule.startGroup] ?? '', todayYmd);
         // Emissão posterior à validade é incoerente: descarta a emissão.
         if (start && start.ymd <= parsed.ymd) emitidoEm = start.ymd;
       }

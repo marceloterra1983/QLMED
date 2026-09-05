@@ -258,3 +258,22 @@ describe('SPEC-042 L13 — data de emissão', () => {
     expect(matchValidityFromText('VALIDADE: 129/09/2026', HOJE).validUntil).toBeNull();
   });
 });
+
+describe('emissão tem janela própria, olhando para trás', () => {
+  const HOJE = '2026-09-05';
+
+  it('emissão antiga é aceite — a AFE da empresa é de 2007', () => {
+    const r = matchValidityFromText('Data de emissão: 20/08/2007', HOJE);
+    expect(r.emitidoEm).toBe('2007-08-20');
+  });
+
+  it('emissão no futuro é recusada — documento não é emitido amanhã', () => {
+    const r = matchValidityFromText('Emitida em 20/08/2030', HOJE);
+    expect(r.emitidoEm).toBeNull();
+  });
+
+  it('a validade continua com a janela dela: 2007 não é validade plausível', () => {
+    const r = matchValidityFromText('Validade: 20/08/2007', HOJE);
+    expect(r.validUntil).toBeNull();
+  });
+});

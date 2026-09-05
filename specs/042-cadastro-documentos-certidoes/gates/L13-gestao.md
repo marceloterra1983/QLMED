@@ -13,22 +13,22 @@ documentos-page 20→22; documentos-detalhe-modal 0→5. Nenhum `it()` dentro de
 `afterAll`/`beforeEach`.
 
 - [x] G1: todos os cards recolhidos
-  CHECK: npx vitest run src/lib/__tests__/documentos-families.test.ts -t "todos os cards recolhidos" > /dev/null 2>&1 && npx vitest run src/components/__tests__/documentos-page.test.tsx -t "todos os cards recolhidos ao entrar" > /dev/null 2>&1 && echo OK_G1
+  CHECK: npx vitest run src/lib/__tests__/documentos-families.test.ts -t "todos os cards recolhidos" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && npx vitest run src/components/__tests__/documentos-page.test.tsx -t "todos os cards recolhidos ao entrar" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && echo OK_G1
   EXPECT: OK_G1
   EVIDENCE: OK_G1
 
 - [x] G2: popup de gestão; clique na linha não abre o de atualização
-  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx -t "abre o modal de gestão" > /dev/null 2>&1 && npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx > /dev/null 2>&1 && echo OK_G2
+  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx -t "abre o modal de gestão" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx > /dev/null 2>&1 && echo OK_G2
   EXPECT: OK_G2
   EVIDENCE: OK_G2
 
 - [x] G3: emissão da faixa é o início; lastModifiedAt não substitui
-  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "o início é a emissão" > /dev/null 2>&1 && npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx -t "não informado" > /dev/null 2>&1 && echo OK_G3
+  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "o início é a emissão" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx -t "não informado" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && echo OK_G3
   EXPECT: OK_G3
   EVIDENCE: OK_G3
 
 - [x] G4: quem emite aparece com expira false; todos os tipos têm descricao/orgao
-  CHECK: npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx -t "quem emite aparece" > /dev/null 2>&1 && npx vitest run src/lib/__tests__/documentos-families.test.ts -t "todos os tipos têm descricao e orgao" > /dev/null 2>&1 && echo OK_G4
+  CHECK: npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx -t "quem emite aparece" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && npx vitest run src/lib/__tests__/documentos-families.test.ts -t "todos os tipos têm descricao e orgao" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed" && echo OK_G4
   EXPECT: OK_G4
   EVIDENCE: OK_G4
 

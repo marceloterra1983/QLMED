@@ -951,3 +951,66 @@ describe('SPEC-042 — porta sem capacidade de enumerar não pode parecer pasta 
     await expect(runDocumentosIngest(COMPANY, portaCega, NOW)).rejects.toThrow(/balanco/);
   });
 });
+
+describe('SPEC-042 — emissão descreve o conteúdo e não sobrevive a ele', () => {
+  /**
+   * `emitidoEm` vem do PDF. Se o conteúdo do item mudar e desta vez a emissão
+   * não puder ser lida — por exemplo porque o nome passou a ter data e a
+   * ingestão deixa de descarregar o PDF — a data antiga acompanharia um
+   * documento que já não é o mesmo, e o popup mostraria a emissão de uma versão
+   * ao lado da validade de outra.
+   */
+  const item = (fileName: string, lastModifiedAt: Date): { folder: string; file: DocumentosFolderFile } => ({
+    folder: 'FGTS',
+    file: {
+      itemId: 'item-fgts-1',
+      name: fileName,
+      size: 1000,
+      lastModifiedAt,
+      webUrl: null,
+    } as DocumentosFolderFile,
+  });
+
+  it('conteúdo mudou e a emissão não pôde ser lida: a data antiga é limpa', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+
+    // 1ª passagem: nome SEM data -> lê o PDF -> grava a emissão
+    pdfValidity.readValidityFromPdf.mockResolvedValue({
+      validUntil: '2026-09-29',
+      emitidoEm: '2026-08-31',
+      confidence: 'alta',
+      matchedLabel: 'Validade',
+      textChars: 50,
+    });
+    await runDocumentosIngest(COMPANY, fakePort([item('CERTIDÃO FGTS QL MED.pdf', new Date('2026-08-31T10:00:00Z'))]), NOW);
+    const depois1 = memory.docs.find((r) => r.oneDriveItemId === 'item-fgts-1');
+    expect(ymd(depois1!.emitidoEm as Date | null)).toBe('2026-08-31');
+
+    // 2ª passagem: MESMO item, conteúdo novo, nome COM data -> não lê o PDF
+    await runDocumentosIngest(COMPANY, fakePort([item('CERTIDÃO FGTS 12.12.26 QL MED.pdf', new Date('2026-12-01T10:00:00Z'))]), NOW);
+    const depois2 = memory.docs.find((r) => r.oneDriveItemId === 'item-fgts-1');
+    expect(ymd(depois2!.validUntil as Date | null)).toBe('2026-12-12');
+    expect(depois2!.emitidoEm).toBeNull();
+  });
+
+  it('conteúdo intacto preserva a emissão já conhecida', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const quando = new Date('2026-08-31T10:00:00Z');
+
+    pdfValidity.readValidityFromPdf.mockResolvedValue({
+      validUntil: '2026-09-29',
+      emitidoEm: '2026-08-31',
+      confidence: 'alta',
+      matchedLabel: 'Validade',
+      textChars: 50,
+    });
+    await runDocumentosIngest(COMPANY, fakePort([item('CERTIDÃO FGTS QL MED.pdf', quando)]), NOW);
+
+    // mesma passagem outra vez, sem mexer no conteúdo, mas agora sem ler o PDF
+    pdfValidity.readValidityFromPdf.mockResolvedValue(pdfValidity.empty);
+    await runDocumentosIngest(COMPANY, fakePort([item('CERTIDÃO FGTS QL MED.pdf', quando)]), NOW);
+
+    const row = memory.docs.find((r) => r.oneDriveItemId === 'item-fgts-1');
+    expect(ymd(row!.emitidoEm as Date | null)).toBe('2026-08-31');
+  });
+});
