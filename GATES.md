@@ -1,23 +1,18 @@
-# Gates: fix-invoice-details-modal-render
+# Gates: Importação Oficial Spica (Motor + Carga)
 
-Scope: Corrigir o layout e altura do container no InvoiceDetailsModal para que a DANFE e o XML preencham 100% da área do modal sem cortes ou colapso para 150px
+Scope: Implementação do import-service, scripts auditáveis e execução da carga real de 7.965 produtos.
 
-- [x] G1: InvoiceDetailsModal define bodyClassName com flex flex-col e h-full para esticar a área do corpo
-  CHECK: node -e "const fs = require('fs'); const src = fs.readFileSync('src/components/InvoiceDetailsModal.tsx', 'utf8'); if (!src.includes('bodyClassName=\"flex flex-col flex-1 h-full min-h-0 overflow-hidden\"') && !src.includes('bodyClassName=\"flex flex-col h-full min-h-0 overflow-hidden\"')) process.exit(1); console.log('G1 passed: InvoiceDetailsModal sets flex-col full-height bodyClassName');"
-  EXPECT: G1 passed: InvoiceDetailsModal sets flex-col full-height bodyClassName
-  EVIDENCE: G1 passed: InvoiceDetailsModal sets flex-col full-height bodyClassName
+- [x] G1: Suíte de testes do import-service passa
+  CHECK: ./node_modules/.bin/vitest run src/lib/__tests__/spica-import-service.test.ts src/lib/__tests__/spica-parse.test.ts src/lib/__tests__/product-codigo.test.ts
+  EXPECT: /Test Files\s+3 passed/
+  EVIDENCE: Test Files  3 passed (3)
 
-- [x] G2: Container do iframe e visualizador XML configurados com flex-1 h-full min-h-0 para preenchimento total
-  CHECK: node -e "const fs = require('fs'); const src = fs.readFileSync('src/components/InvoiceDetailsModal.tsx', 'utf8'); if (!src.includes('min-h-0') || !src.includes('flex-1')) process.exit(1); console.log('G2 passed: iframe and xml containers configured for full expansion');"
-  EXPECT: G2 passed: iframe and xml containers configured for full expansion
-  EVIDENCE: G2 passed: iframe and xml containers configured for full expansion
+- [x] G2: Banco de dados com 7.965 produtos oficiais do Spica gravados
+  CHECK: python3 -c "import os, psycopg2; conn = psycopg2.connect(os.environ['DBURL']); cur = conn.cursor(); cur.execute('SELECT count(*) FROM product_registry WHERE codigo ~ \'^[0-9]{6}$\''); print(cur.fetchone()[0])" 2>/dev/null || node -e "const { Client } = require('pg'); const c = new Client({ connectionString: process.env.DATABASE_URL.replace('qlmed-db', '127.0.0.1') }); c.connect().then(() => c.query('SELECT count(*) FROM product_registry WHERE codigo ~ \'^[0-9]{6}$\'')).then(r => { console.log(r.rows[0].count); c.end(); });"
+  EXPECT: 7965
+  EVIDENCE: 7965
 
-- [x] G3: Teste unitário/contrato de renderização para InvoiceDetailsModal garante estrutura de altura total
-  CHECK: npx vitest run src/components/__tests__/InvoiceDetailsModal.render.test.tsx
-  EXPECT: passed
-  EVIDENCE: Start at  11:54:29 | Duration  175ms (transform 51ms, setup 15ms, import 72ms, tests 8ms, environment 0ms)
-
-- [x] G4: Verificações de UI, typecheck e testes de regressão passam sem erros
-  CHECK: npm run ui:verify && npm run ui:dialogs && npm run typecheck && npm test
-  EXPECT: passed
-  EVIDENCE: Start at  11:50:21 | Duration  7.53s (transform 5.48s, setup 1.03s, import 12.06s, tests 17.83s, environment 2.61s)
+- [x] G3: Dados fiscais de 7.965 produtos preenchidos
+  CHECK: node -e "const { Client } = require('pg'); const c = new Client({ connectionString: process.env.DATABASE_URL.replace('qlmed-db', '127.0.0.1') }); c.connect().then(() => c.query('SELECT count(*) FROM product_registry WHERE fiscal_sit_tributaria IS NOT NULL')).then(r => { console.log(r.rows[0].count); c.end(); });"
+  EXPECT: 7965
+  EVIDENCE: 7965
