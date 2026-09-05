@@ -12,12 +12,19 @@ const productTable = readFileSync(
   'utf8',
 );
 
-describe('produtos groups expanded contract', () => {
-  it('limpa collapsedGroups após fetch bem-sucedido (evita tela em branco)', () => {
+const visibility = readFileSync(
+  join(process.cwd(), 'src/app/(painel)/cadastro/produtos/components/product-group-visibility.ts'),
+  'utf8',
+);
+
+describe('produtos groups collapsed-by-default contract', () => {
+  it('colapsa todos os grupos após fetch bem-sucedido', () => {
     const fetchIdx = pageClient.indexOf('setMeta(data.meta || null)');
     expect(fetchIdx).toBeGreaterThan(0);
-    const afterFetch = pageClient.slice(fetchIdx, fetchIdx + 280);
-    expect(afterFetch).toContain('setCollapsedGroups(new Set())');
+    const afterFetch = pageClient.slice(fetchIdx, fetchIdx + 320);
+    expect(afterFetch).toContain('allCollapseKeys');
+    expect(afterFetch).toContain('allCollapseKeys(data.products');
+    expect(afterFetch).toContain('debouncedSearch.trim()');
   });
 
   it('nao reaplica auto-collapse por sort/filteredLen', () => {
@@ -31,18 +38,19 @@ describe('produtos groups expanded contract', () => {
     );
   });
 
-  it('ProductTable usa effectiveCollapsedGroups (blank-page guard)', () => {
-    expect(productTable).toContain('effectiveCollapsedGroups');
+  it('ProductTable nao força expandir via blank-page guard', () => {
+    expect(productTable).not.toContain('effectiveCollapsedGroups');
+    expect(productTable).not.toContain('useLayoutEffect');
     expect(productTable).toContain('safeCollapseKeys');
-    expect(productTable).toContain('useLayoutEffect');
+    expect(visibility).toContain('allCollapseKeys');
   });
 
   it('toggleGroup nao recolhe grupos filhos ao expandir linha', () => {
     expect(pageClient).not.toMatch(/n\.add\(`group:\$\{lineName\}/);
   });
 
-  it('default sort e lista flat por Cod. Spica (sem hierarquia colapsavel)', () => {
-    expect(pageClient).toMatch(/useState<SortField>\('codigo'\)/);
-    expect(productTable).toContain("FLAT_SORTS");
+  it('default sort e hierarquia Linha/Grupo/Subgrupo (productType)', () => {
+    expect(pageClient).toMatch(/useState<SortField>\('productType'\)/);
+    expect(productTable).toContain('FLAT_SORTS');
   });
 });

@@ -20,6 +20,7 @@ import BulkEditModal from './components/BulkEditModal';
 import ExportCSVButton from './components/ExportCSVButton';
 import ImportSpicaModal from './components/ImportSpicaModal';
 import ProductTable from './components/ProductTable';
+import { allCollapseKeys } from './components/product-group-visibility';
 import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
 import PageHeader from '@/components/PageHeader';
@@ -51,7 +52,7 @@ export default function ProdutosPage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [subtypeFilter, setSubtypeFilter] = useState<string>('');
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
-  const [sortBy, setSortBy] = useState<SortField>('codigo');
+  const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
 
@@ -198,8 +199,13 @@ export default function ProdutosPage() {
       setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
       setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
       setMeta(data.meta || null);
-      // Sempre abrir grupos após carga/paginação — evita tela em branco (1 linha recolhida).
-      setCollapsedGroups(new Set());
+      // Sempre iniciar recolhido (Linha → Grupo → Subgrupo); Expandir abre tudo.
+      // Busca: manter expandido; demais cargas: tudo recolhido.
+      setCollapsedGroups(
+        debouncedSearch.trim()
+          ? new Set()
+          : allCollapseKeys(data.products || [], sortBy),
+      );
       if (data.needsRebuild && !rebuiltOnceRef.current) {
         rebuiltOnceRef.current = true;
         setIsRebuilding(true);
@@ -212,7 +218,11 @@ export default function ProdutosPage() {
               setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
               setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
               setMeta(d.meta || null);
-              setCollapsedGroups(new Set());
+              setCollapsedGroups(
+                debouncedSearch.trim()
+                  ? new Set()
+                  : allCollapseKeys(d.products || [], sortBy),
+              );
             }).catch(() => {});
           })
           .catch(() => setIsRebuilding(false));
@@ -223,7 +233,7 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
+  }, [serverSortField, sortBy, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
 
   useEffect(() => {
     setPagination((current) => current.page === 1 ? current : { ...current, page: 1 });

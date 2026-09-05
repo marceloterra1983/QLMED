@@ -44,7 +44,7 @@ export const productsListQuerySchema = z.object({
   page: intQuery(1, 1, 100000),
   limit: intQuery(50, 1, 200),
   search: stringQuery('', 200),
-  sort: productListSortSchema.optional().default('codigo'),
+  sort: productListSortSchema.optional().default('productType'),
   order: z.enum(['asc', 'desc']).optional().default('asc'),
   lineStatus: z.enum(['active', 'outOfLine', 'all']).optional().default('active'),
   productType: stringQuery('', 120),
