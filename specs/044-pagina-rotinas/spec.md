@@ -42,10 +42,10 @@ Esta especificação cria a página canônica **Rotinas** (`/sistema/rotinas`), 
 13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada 10 minutos (`*/10` em `install-notification-outbox-cron.sh`, NFE e CTE) consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
 14. **Sincronização e Validação com Base ANVISA**: Validação cadastral periódica e sob demanda de produtos hospitalares contra os dados abertos da ANVISA.
 15. **Watchdog de Sessão WhatsApp (Evolution API)**: Monitoramento a cada 5 minutos com circuit breaker e auto-reconexão do gateway WhatsApp.
-16. ~~Watchdog de Execuções Travadas do n8n~~: **retirado (SPEC-045)** — stack n8n QLMED aposentada.
+16. ~~Watchdog de Execuções Travadas do n8n~~: **retirado (SPEC-046)** — stack n8n QLMED aposentada.
 17. **Backup Automatizado do PostgreSQL**: Script `qlmed-pg-backup.sh` como fallback manual; sem timer 02:00 no repositório. A cobertura noturna documentada é o snapshot `server-backup`.
 18. **Sincronização de Distribuição DFe para CT-e**: Timer horário no minuto `:17` (`OnCalendar=*-*-* *:17:00`) para captura dedicada de conhecimentos de transporte eletrônico.
-19. **Resumo Diário NF-e Emitidas (nativo)**: Job do app às 18h `America/Campo_Grande` + catch-up systemd a cada 15 min via `/api/system/daily-issued-summary` (SPEC-045; substitui n8n `dailysummaryissued01`).
+19. **Resumo Diário NF-e Emitidas (nativo)**: Job do app às 18h `America/Campo_Grande` + catch-up systemd a cada 15 min via `/api/system/daily-issued-summary` (SPEC-046; substitui n8n `dailysummaryissued01`).
 
 ## User Scenarios & Testing
 

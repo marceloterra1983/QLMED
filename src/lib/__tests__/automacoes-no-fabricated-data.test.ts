@@ -6,10 +6,10 @@ const PAGE = join(process.cwd(), 'src/app/(painel)/sistema/automacoes/page-clien
 const src = readFileSync(PAGE, 'utf8');
 
 /**
- * SPEC-045: a tela Automações foi aposentada. Continua sem lista fabricada
+ * SPEC-046: a tela Automações foi aposentada. Continua sem lista fabricada
  * e aponta para Rotinas.
  */
-describe('Automações — página aposentada (SPEC-045)', () => {
+describe('Automações — página aposentada (SPEC-046)', () => {
   const NOMES_DA_LISTA_FIXA = [
     'Sync NF-e/CT-e',
     'Alertas Financeiros',

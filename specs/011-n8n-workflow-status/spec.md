@@ -5,11 +5,11 @@ owner: QLMED
 affected_modules:
   - automacoes-ui
   - n8n-integration
-superseded_by: SPEC-045
+superseded_by: SPEC-046
 ---
 
 # Feature Specification: Status real dos workflows do n8n
-> **Retired (SPEC-045):** a superfície Automações / Integração n8n foi aposentada com a migração do resumo diário para o app e o desligamento da stack `qlmed-n8n`.
+> **Retired (SPEC-046):** a superfície Automações / Integração n8n foi aposentada com a migração do resumo diário para o app e o desligamento da stack `qlmed-n8n`.
 
 **Feature Branch**: `011-n8n-workflow-status`
 

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('n8n settings UI contract (SPEC-045 retired)', () => {
+describe('n8n settings UI contract (SPEC-046 retired)', () => {
   it('Configurações não expõe formulário Integração n8n', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/app/(painel)/sistema/settings/components/IntegrationsSection.tsx'),

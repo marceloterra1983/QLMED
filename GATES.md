@@ -2,7 +2,7 @@
 
 Scope: Resumo diário NF-e nativo no app; aposentar workflows n8n QLMED e superfície Automações.
 
-- [x] G1: SPEC-045 existe com FR/AC do resumo nativo e aposentadoria n8n
+- [x] G1: SPEC-046 existe com FR/AC do resumo nativo e aposentadoria n8n
   CHECK: test -f specs/045-retire-n8n-daily-summary/spec.md && rg -q "status: approved" specs/045-retire-n8n-daily-summary/spec.md
   EXPECT: status: approved
   EVIDENCE: specs/045-retire-n8n-daily-summary/spec.md status: approved

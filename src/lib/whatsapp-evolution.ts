@@ -126,7 +126,7 @@ export type SendTextInput = {
 
 /**
  * Envia texto puro via Evolution sendText. Mesma política de egresso e
- * redirect:error que sendWhatsAppDocument (SPEC-045).
+ * redirect:error que sendWhatsAppDocument (SPEC-046).
  */
 export async function sendWhatsAppText(
   input: SendTextInput,

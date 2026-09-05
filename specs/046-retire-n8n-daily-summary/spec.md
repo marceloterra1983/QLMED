@@ -1,5 +1,5 @@
 ---
-id: SPEC-045
+id: SPEC-046
 status: approved
 owner: QLMED
 related_decisions: [ADR-0010]
