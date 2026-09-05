@@ -1,6 +1,6 @@
 ---
 id: SPEC-044
-status: draft
+status: implemented
 owner: QLMED
 affected_modules:
   - sistema-rotinas-ui
@@ -14,7 +14,7 @@ affected_modules:
 
 **Created**: 2026-09-04
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: Solicitação do usuário: "crie uma pagina chama Rotinas, e na forma de tabela, relacione todas as rotinas que o codigo do portal realiza hoje".
 
