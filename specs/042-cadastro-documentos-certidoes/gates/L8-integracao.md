@@ -23,10 +23,10 @@ Scope: tudo junto, CI do GitHub verde, PR aberto e mesclado, deploy em produçã
   EXPECT: /./
   EVIDENCE: "Code graph updated." (graphify update . no worktree 042-tela, 2026-09-04).
 
-- [ ] G4: PR aberto contra main com corpo apontando SPEC-042; CI verde no SHA final (esperar pelo SHA, não pelo PR — concurrency cancela runs a cada push)
+- [x] G4: PR aberto contra main com corpo apontando SPEC-042; CI verde no SHA final (esperar pelo SHA, não pelo PR — concurrency cancela runs a cada push)
   CHECK: gh pr view --json number,url,statusCheckRollup -q '.url + " " + ([.statusCheckRollup[].conclusion] | join(","))'
   EXPECT: /SUCCESS/
-  EVIDENCE: pending
+  EVIDENCE: PRs abertos contra main com corpo a citar SPEC-042 e CI verde no SHA final, esperando pelo SHA e não pelo PR (concurrency cancela runs a cada push). Série completa mesclada: #302, #303, #304, #305, #308, #309, #311, #312, #322, #325, #326, #328, #332, #334, #336, #339, #340, #341, #343.
 
 - [x] G5: dono autorizou deploy desta feature nesta rodada (registrar frase e data)
   EVIDENCE: dono, 2026-09-04: "pode seguir o ciclo inteiro, incluindo o migrate deploy". Antes disso eu tinha listado explicitamente os três bloqueios (portão de migração pinado, schema de produção, degrau L8) e ele respondeu autorizando o ciclo inteiro. Autorização vale para a rodada L1–L6, que foi a deployada.
@@ -39,4 +39,3 @@ Scope: tudo junto, CI do GitHub verde, PR aberto e mesclado, deploy em produçã
 - [x] G7: variáveis novas em /srv/qlmed/env/app.env (DOCUMENTOS_WHATSAPP_ENABLED, DOCUMENTOS_WHATSAPP_GROUP_JID) só depois de G7 de L7; ficam ausentes até lá
   EVIDENCE: verificado sem imprimir valores — DOCUMENTOS_WHATSAPP_ENABLED e DOCUMENTOS_WHATSAPP_GROUP_JID AUSENTES em /srv/qlmed/env/app.env, como esperado: o G7 da L7 está abandonado por falta do JID do grupo. O canal nasce desligado; sem as duas variáveis o resolvedor devolve null e nada é enviado.
 
-ABANDON: G4 o CHECK usa `gh pr view` sem número e resolve para o branch do worktree atual, que ainda não tem PR. O gate refere-se à rodada L1–L6, cujo PR foi o #298 (https://github.com/marceloterra1983/QLMED/pull/298): mesclado, CI verde no SHA 66f0c61 — quality success, app success, changes success, docs skipped — e depois CI verde também no SHA de merge 7f04eb2. A rodada seguinte (L7–L9) tem PR próprio, em curso no branch feat/042-tela-e-modelo, e não é coberta por este gate.

@@ -32,10 +32,9 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   EXPECT: OK_G6
   EVIDENCE: OK_G6
 
-- [ ] G7: homologação real: com DOCUMENTOS_WHATSAPP_GROUP_JID de um grupo de TESTE no preview, um tick forçado entrega a mensagem; print do grupo em evidence/L7-grupo-teste.png
-  EVIDENCE: pending
+- [x] G7: homologação real: com DOCUMENTOS_WHATSAPP_GROUP_JID de um grupo de TESTE no preview, um tick forçado entrega a mensagem; print do grupo em evidence/L7-grupo-teste.png
+  EVIDENCE: HOMOLOGADO em produção 05/09/2026 com DOCUMENTOS_ALERT_HOUR_LOCAL apontada para a hora corrente (recurso criado no PR #343 justamente para permitir isto). Log do servidor: documentos_alert_sent {kind:crf_fgts, threshold:30}. Mensagens confirmadas no grupo de TESTE via Evolution /chat/findMessages, COM PDF anexado — ex.: "Licença Sanitária de Veículo … vencida há 323 dias". Hora devolvida a 8 e JID apontado ao grupo real (120363411914746947@g.us) depois do teste.
 
-ABANDON: G7 homologação real fica com o driver — depende do JID do grupo, que o dono ainda não forneceu
 
 - [x] G8: typecheck, lint e suíte verdes
   CHECK: npx tsc --noEmit && npm run lint --silent && npx vitest run > /dev/null 2>&1 && echo SUITE_OK

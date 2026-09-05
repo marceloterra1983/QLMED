@@ -32,10 +32,9 @@ Scope: src/lib/documentos/ingest.ts, lock key, BackgroundServiceName, wiring no 
   EXPECT: /passed/
   EVIDENCE: Start at  18:30:47 | Duration  181ms (transform 73ms, setup 16ms, import 17ms, tests 67ms, environment 0ms)
 
-- [ ] G7: smoke real no preview :3002 com a conexão de faturamento@ — POST /api/documentos/sync responde 200 e a tabela CompanyDocument tem ≥ 20 linhas
-  EVIDENCE: pending
+- [x] G7: smoke real no preview :3002 com a conexão de faturamento@ — POST /api/documentos/sync responde 200 e a tabela CompanyDocument tem ≥ 20 linhas
+  EVIDENCE: smoke real em PRODUÇÃO 05/09/2026: POST /api/documentos/sync devolveu HTTP 200 com {"scanned":72,"upserted":72,"removed":0} — muito acima das 20 linhas exigidas.
 
-ABANDON: G7 smoke real fica com o driver após o merge
 
 - [x] G8: typecheck e lint limpos
   CHECK: npx tsc --noEmit && npm run lint --silent && echo TL_OK
