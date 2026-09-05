@@ -36,7 +36,7 @@ Fonte: Claude — GO condicional.
 
 ### Três bloqueadores
 
-1. **`extractAndStoreTaxData` sobrescreve `fiscal_*` em toda NF** após o apply Spica. Precisa `fiscal_source` (`spica|nfe|manual`) ou sentinela — senão SC-003 passa no teste e falha no dia seguinte.
+1. **`extractAndStoreTaxData` (resolvido):** sentinela `fiscalSitTributaria IS NOT NULL` — não sobrescreve `fiscalIcms/Pis/Cofins/Ipi` nem `fiscalCfopEntrada` quando a tributação mestre já está cadastrada (FR-009).
 2. **`nextCodigo` em 3 cópias** com `padStart(5)` → colisão visual `"07972"` vs `"007972"`; unificar pad 6.
 3. **`SPICA:` em massa** nos órfãos → duplicata quando NF chegar (já rejeitado por Gemini/Grok).
 

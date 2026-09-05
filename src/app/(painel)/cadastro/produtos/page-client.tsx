@@ -266,11 +266,15 @@ export default function ProdutosPage() {
     };
   }, [products, settingsHierarchy]);
 
-  // Collapse behavior on sort/search change
+  // Collapse behavior on sort/search change.
+  // Com busca ativa: expandir todos os grupos que contêm resultados (lista já filtrada).
   const filteredLen = filtered.length;
-  const isSearching = search !== '';
+  const isSearching = debouncedSearch.trim() !== '';
   useEffect(() => {
-    if (isSearching) { setCollapsedGroups(new Set()); return; }
+    if (isSearching) {
+      setCollapsedGroups(new Set());
+      return;
+    }
     if (filteredLen > 0) {
       const groups = new Set<string>();
       for (const p of filtered) {

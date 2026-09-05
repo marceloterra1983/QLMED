@@ -108,7 +108,7 @@ Já existe no Postgres (migration `20260609190000`):
 ## Riscos
 
 - **Colisão de `codigo`:** Spica (até 007971) intersecta a sequência atual do portal (~5 dígitos). Dry-run deve reportar interseção com portal-only (Grok).
-- **Dois escritores fiscais:** `extractAndStoreTaxData` sobrescreve `fiscal_*` a cada NF — precisa `fiscal_source` / sentinela (Claude).
+- **Dois escritores fiscais (resolvido):** `extractAndStoreTaxData` só preenche `fiscalIcms/Pis/Cofins/Ipi` e `fiscalCfopEntrada` quando `fiscalSitTributaria IS NULL` (sentinela de tributação mestre Spica/cadastro; FR-009).
 - Sobrescrever `codigo` exige `nextCodigo` unificado com pad 6 (3 call sites hoje).
 - Dup refs (33) + folga portal 12 → match só 1:1.
 - Tipos inválidos (31) → quarentena branda (importa sem tipo).

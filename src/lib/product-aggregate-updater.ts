@@ -156,6 +156,8 @@ async function extractAndStoreTaxData(
           },
           select: {
             id: true,
+            // FR-009 / Spica: sentinela de tributação mestre oficial da empresa.
+            fiscalSitTributaria: true,
             fiscalIcms: true,
             fiscalPis: true,
             fiscalCofins: true,
@@ -164,6 +166,9 @@ async function extractAndStoreTaxData(
           },
         });
         for (const row of matches) {
+          // Não sobrescrever alíquotas/CFOP mestre quando Spica (ou cadastro)
+          // já gravou situação tributária oficial.
+          if (row.fiscalSitTributaria) continue;
           await prisma.productRegistry.update({
             where: { id: row.id },
             data: {
