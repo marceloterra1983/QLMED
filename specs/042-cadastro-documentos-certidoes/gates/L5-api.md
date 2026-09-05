@@ -7,7 +7,7 @@ Scope: src/app/api/documentos/{route.ts,sync/route.ts,upload/route.ts,[id]/route
   EXPECT: /passed/
   EVIDENCE: Test Files  1 passed (1) | Tests  6 passed (6)
 
-- [x] G2: GET /api/documentos devolve exatamente 6 linhas em `certidoes` na ordem CERTIDAO_KINDS_ORDER, com daysRemaining/status vindos do servidor
+- [x] G2: GET /api/documentos devolve exatamente 7 linhas em `certidoes` na ordem CERTIDAO_KINDS_ORDER, com daysRemaining/status vindos do servidor; sem `history` e sem `outros`
   CHECK: npx vitest run src/lib/__tests__/documentos-list-contract.test.ts 2>&1 | tail -6
   EXPECT: /passed/
   EVIDENCE: Test Files  1 passed (1) | Tests  7 passed (7)

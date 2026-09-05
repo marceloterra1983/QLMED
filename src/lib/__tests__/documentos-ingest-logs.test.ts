@@ -52,6 +52,7 @@ function fakePort(): DocumentosFolderPort {
     async downloadPdf() {
       return Buffer.from('accessToken=nao-pode-vazar-refreshToken');
     },
+    async moveToArchive() {},
   };
 }
 

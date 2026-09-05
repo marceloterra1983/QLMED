@@ -1,12 +1,16 @@
 import prisma from '@/lib/prisma';
+import { createLogger } from '@/lib/logger';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
   listOneDriveChildren,
+  moveOneDriveItem,
   type OneDriveItem,
 } from '@/lib/onedrive-client';
-import { DOCUMENTOS_ONEDRIVE_ACCOUNT, DOCUMENTOS_ONEDRIVE_ROOT } from './constants';
+import { CERTIDAO_ARCHIVE_FOLDER, DOCUMENTOS_ONEDRIVE_ACCOUNT, DOCUMENTOS_ONEDRIVE_ROOT } from './constants';
 import type { DocumentosFolderFile, DocumentosFolderPort } from './ingest';
+
+const log = createLogger('documentos/onedrive-port');
 
 function isPdfItem(item: OneDriveItem): boolean {
   if (item.folder) return false;
@@ -58,6 +62,27 @@ export async function createDocumentosFolderPort(companyId: string): Promise<Doc
     return id;
   }
 
+  let vencidasId: string | null | undefined;
+
+  async function resolveVencidasId(): Promise<string> {
+    if (typeof vencidasId === 'string') return vencidasId;
+    if (vencidasId === null) {
+      throw new Error('pasta Vencidas não encontrada');
+    }
+    const rootId = await resolveExistingFolderId(accessToken, driveId, DOCUMENTOS_ONEDRIVE_ROOT);
+    const children = await listOneDriveChildren(accessToken, driveId, rootId);
+    const match = children.find(
+      (item) => item.folder && sameFolderName(item.name || '', CERTIDAO_ARCHIVE_FOLDER),
+    );
+    if (!match) {
+      vencidasId = null;
+      log.error({ folder: CERTIDAO_ARCHIVE_FOLDER }, 'documentos_archive_folder_missing');
+      throw new Error('pasta Vencidas não encontrada');
+    }
+    vencidasId = match.id;
+    return match.id;
+  }
+
   return {
     async listPdfs(folderName: string): Promise<DocumentosFolderFile[]> {
       const id = await folderId(folderName);
@@ -71,6 +96,10 @@ export async function createDocumentosFolderPort(companyId: string): Promise<Doc
     },
     async downloadPdf(itemId: string): Promise<Buffer> {
       return downloadOneDriveItemContent(accessToken, driveId, itemId);
+    },
+    async moveToArchive(itemId: string): Promise<void> {
+      const parentId = await resolveVencidasId();
+      await moveOneDriveItem(accessToken, driveId, itemId, parentId);
     },
   };
 }

@@ -6,12 +6,16 @@ import {
   markBackgroundServiceError,
   markBackgroundServiceHeartbeat,
   markBackgroundServiceStarted,
+  sanitizeError,
 } from '@/lib/background-service-health';
 import { getSingleCompany } from '@/lib/single-company';
-import { CERTIDAO_FOLDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
+import { CERTIDAO_FOLDER, CERTIDAO_KINDS_ORDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
 import { classifyDocument } from './classify';
-import { extractValidUntil, selectVigente, toYmd } from './validity';
+import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
+import type { DocumentosAlertDeps } from './alerts';
+
+export { sanitizeError };
 
 /**
  * SPEC-042 — contrato da ingestão de certidões (OneDrive → CompanyDocument).
@@ -32,6 +36,8 @@ export type DocumentosFolderPort = {
   /** Lista os PDFs diretos de uma subpasta de DOCUMENTOS_ONEDRIVE_ROOT. */
   listPdfs(folderName: string): Promise<DocumentosFolderFile[]>;
   downloadPdf(itemId: string): Promise<Buffer>;
+  /** Move o item para a pasta Vencidas. Não apaga. */
+  moveToArchive(itemId: string): Promise<void>;
 };
 
 /** Documento novo cuja validade supera a do vigente anterior do mesmo tipo. */
@@ -48,6 +54,7 @@ export type DocumentosIngestResult = {
   upserted: number;
   removed: number;
   renewals: RenewalEvent[];
+  arquivados: number;
 };
 
 /** Outra ingestão já detém o advisory lock desta empresa. Rotas respondem 409. */
@@ -61,14 +68,6 @@ export class DocumentosIngestBusyError extends Error {
 const log = createLogger('documentos/ingest');
 
 const CERTIDAO_FOLDERS = [...new Set(Object.values(CERTIDAO_FOLDER))];
-
-function sanitizeError(message: string): string {
-  return message
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
-    .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
-    .replace(/eyJ[a-zA-Z0-9_-]{10,}/g, '[token]')
-    .slice(0, 500);
-}
 
 function dateFromYmd(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
@@ -187,6 +186,8 @@ async function ingestCompany(
           select: { id: true, validUntil: true, renewalNotifiedAt: true },
         });
       } else {
+        const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : validUntil;
+        const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
         row = await prisma.companyDocument.update({
           where: { id: existing.id },
           data: {
@@ -199,6 +200,7 @@ async function ingestCompany(
             ...(existing.validUntilSource === 'manual'
               ? {}
               : { validUntil, validUntilSource }),
+            ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
           },
           select: { id: true, validUntil: true, renewalNotifiedAt: true },
         });
@@ -228,6 +230,8 @@ async function ingestCompany(
     }
   }
 
+  // removedAt deste ciclo ANTES de arquivar: um ficheiro que sumiu agora não
+  // pode contar como substituto (hasLaterSubstitute lê removedAt: null).
   const removed = await prisma.companyDocument.updateMany({
     where: {
       companyId,
@@ -238,25 +242,119 @@ async function ingestCompany(
     data: { removedAt: now },
   });
 
+  const arquivados = await archiveExpiredDocuments(companyId, port, now);
+
   const result: DocumentosIngestResult = {
     scanned,
     upserted,
     removed: removed.count,
     renewals,
+    arquivados,
   };
 
   await saveIngestSuccess(companyId, now);
   log.info(
-    { scanned: result.scanned, upserted: result.upserted, removed: result.removed, renewals: result.renewals.length },
+    {
+      scanned: result.scanned,
+      upserted: result.upserted,
+      removed: result.removed,
+      renewals: result.renewals.length,
+      arquivados: result.arquivados,
+    },
     'documentos_ingest_ok',
   );
   return result;
+}
+
+type ArchiveCandidate = {
+  id: string;
+  kind: CompanyDocumentKind;
+  fileName: string;
+  validUntil: Date | null;
+  validUntilSource: string | null;
+  oneDriveItemId: string;
+};
+
+const CERTIDAO_KIND_SET = new Set<string>(CERTIDAO_KINDS_ORDER);
+
+function hasLaterSubstitute(row: ArchiveCandidate, siblings: ArchiveCandidate[]): boolean {
+  const ymd = toYmd(row.validUntil);
+  if (!ymd) return false;
+  return siblings.some((other) => {
+    if (other.id === row.id) return false;
+    const otherYmd = toYmd(other.validUntil);
+    return otherYmd != null && otherYmd > ymd;
+  });
+}
+
+/**
+ * Move para Vencidas só o que já tem substituto. Falha da pasta aborta o
+ * ciclo de arquivo (fail-closed) e não derruba a ingestão.
+ */
+async function archiveExpiredDocuments(
+  companyId: string,
+  port: DocumentosFolderPort,
+  now: Date,
+): Promise<number> {
+  const today = todayInSaoPaulo(now);
+  const live = (await prisma.companyDocument.findMany({
+    where: {
+      companyId,
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      removedAt: null,
+    },
+    select: {
+      id: true,
+      kind: true,
+      fileName: true,
+      validUntil: true,
+      validUntilSource: true,
+      oneDriveItemId: true,
+    },
+  })) as ArchiveCandidate[];
+
+  const byKind = new Map<CompanyDocumentKind, ArchiveCandidate[]>();
+  for (const row of live) {
+    if (!CERTIDAO_KIND_SET.has(row.kind)) continue;
+    const list = byKind.get(row.kind);
+    if (list) list.push(row);
+    else byKind.set(row.kind, [row]);
+  }
+
+  const candidates: ArchiveCandidate[] = [];
+  for (const rows of byKind.values()) {
+    for (const row of rows) {
+      const ymd = toYmd(row.validUntil);
+      if (!ymd) continue;
+      if (daysRemaining(today, ymd) >= 0) continue;
+      if (!hasLaterSubstitute(row, rows)) continue;
+      candidates.push(row);
+    }
+  }
+
+  if (candidates.length === 0) return 0;
+
+  let arquivados = 0;
+  try {
+    for (const row of candidates) {
+      await port.moveToArchive(row.oneDriveItemId);
+      arquivados += 1;
+      log.info({ kind: row.kind, fileName: row.fileName }, 'documentos_archived');
+    }
+  } catch (error) {
+    log.warn(
+      { err: sanitizeError(error instanceof Error ? error.message : 'archive') },
+      'documentos_archive_failed',
+    );
+  }
+  return arquivados;
 }
 
 export async function runDocumentosIngest(
   companyId: string,
   port?: DocumentosFolderPort,
   now: Date = new Date(),
+  alertDeps?: DocumentosAlertDeps,
 ): Promise<DocumentosIngestResult> {
   const lock = await acquirePostgresAdvisoryLock(documentosIngestLockKey(companyId));
   if (!lock) {
@@ -265,7 +363,22 @@ export async function runDocumentosIngest(
 
   try {
     const folderPort = port ?? (await createDocumentosFolderPort(companyId));
-    return await ingestCompany(companyId, folderPort, now);
+    const result = await ingestCompany(companyId, folderPort, now);
+    if (result.renewals.length > 0) {
+      try {
+        const { notifyRenewals } = await import('./alerts');
+        await notifyRenewals(result.renewals, {
+          ...alertDeps,
+          port: alertDeps?.port ?? folderPort,
+        });
+      } catch (error) {
+        log.warn(
+          { err: sanitizeError(error instanceof Error ? error.message : 'renewal') },
+          'documentos_renewal_notify_failed',
+        );
+      }
+    }
+    return result;
   } catch (error) {
     try {
       await saveIngestError(companyId, now, error);

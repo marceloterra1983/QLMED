@@ -1,4 +1,5 @@
 import { generateOneDriveOAuthState } from '@/lib/onedrive-oauth-state';
+import { oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
 
 const GRAPH_SCOPE = 'offline_access User.Read Files.ReadWrite';
 
@@ -40,6 +41,7 @@ export type OneDriveItem = {
 
 type OneDriveChildrenResponse = {
   value?: OneDriveItem[];
+  '@odata.nextLink'?: string;
 };
 
 function requireOAuthConfig() {
@@ -206,16 +208,21 @@ export async function listOneDriveChildren(
 ): Promise<OneDriveItem[]> {
   const encodedDriveId = encodeURIComponent(driveId);
   const encodedItemId = encodeURIComponent(itemId);
-
   const select = '$select=id,name,size,webUrl,lastModifiedDateTime,createdDateTime,folder,file';
-  const top = '$top=50';
+  const top = '$top=200';
 
-  const path = itemId === 'root'
+  let nextPath: string | null = itemId === 'root'
     ? `/drives/${encodedDriveId}/root/children?${top}&${select}`
     : `/drives/${encodedDriveId}/items/${encodedItemId}/children?${top}&${select}`;
 
-  const response = await graphRequest<OneDriveChildrenResponse>(path, accessToken);
-  return response.value || [];
+  const all: OneDriveItem[] = [];
+  while (nextPath) {
+    const response: OneDriveChildrenResponse = await oneDriveGraphJsonRequest<OneDriveChildrenResponse>(accessToken, nextPath);
+    const chunk = Array.isArray(response.value) ? response.value : [];
+    all.push(...chunk);
+    nextPath = typeof response['@odata.nextLink'] === 'string' ? response['@odata.nextLink'] : null;
+  }
+  return all;
 }
 
 function graphTimeoutMs(): number {
@@ -372,6 +379,36 @@ export async function openOneDriveItemContent(
     body: response.body,
     size: Number.isFinite(declared) ? declared : null,
   };
+}
+
+/**
+ * Move um item para outra pasta do mesmo drive (Graph: PATCH com
+ * `parentReference`). Usado para arquivar certidão vencida na pasta `Vencidas`
+ * sem a apagar: mover é reversível, apagar não — e a pasta é da contabilidade,
+ * não nossa.
+ *
+ * Ao contrário de `deleteOneDriveItem`, aqui 404 NÃO é sucesso: `graphWrite`
+ * lança em qualquer resposta não-2xx. Item que sumiu é sinal de que a varredura
+ * está a agir sobre estado velho, e isso tem de aparecer, não de ser engolido.
+ */
+export async function moveOneDriveItem(
+  accessToken: string,
+  driveId: string,
+  itemId: string,
+  novoParentId: string,
+): Promise<{ id: string; parentId: string | null }> {
+  const encodedDriveId = encodeURIComponent(driveId);
+  const encodedItemId = encodeURIComponent(itemId);
+  const payload = await graphWrite<OneDriveItem & { parentReference?: { id?: string } }>(
+    accessToken,
+    `/drives/${encodedDriveId}/items/${encodedItemId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentReference: { id: novoParentId } }),
+    },
+  );
+  return { id: payload.id, parentId: payload.parentReference?.id ?? null };
 }
 
 /**

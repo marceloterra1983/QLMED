@@ -40,13 +40,15 @@ import { GET } from '@/app/api/documentos/route';
 const NOW = new Date('2026-09-04T18:00:00.000Z');
 
 describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
-  it('devolve exatamente 6 linhas na ordem CERTIDAO_KINDS_ORDER', () => {
+  it('devolve exatamente 7 linhas na ordem CERTIDAO_KINDS_ORDER', () => {
     const listing = buildDocumentosListing([], null, NOW);
-    expect(listing.certidoes).toHaveLength(6);
+    expect(listing.certidoes).toHaveLength(7);
     expect(listing.certidoes.map((row) => row.kind)).toEqual([...CERTIDAO_KINDS_ORDER]);
+    expect(listing.certidoes[3]?.kind).toBe('cnd_estadual_ms');
+    expect(listing.certidoes[4]?.kind).toBe('cnd_estadual_mt');
   });
 
-  it('tipo ausente: fileName null e status Não encontrada', () => {
+  it('tipo ausente: fileName null e status Não encontrada; sem history', () => {
     const listing = buildDocumentosListing([], null, NOW);
     for (const row of listing.certidoes) {
       expect(row.id).toBeNull();
@@ -54,12 +56,13 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
       expect(row.validUntil).toBeNull();
       expect(row.daysRemaining).toBeNull();
       expect(row.status).toEqual({ key: 'sem_data', label: 'Não encontrada' });
-      expect(row.history).toEqual([]);
+      expect(row).not.toHaveProperty('history');
       expect(row.label).toBe(CERTIDAO_LABEL[row.kind]);
     }
+    expect(listing).not.toHaveProperty('outros');
   });
 
-  it('vigente é o de maior validUntil; histórico são os demais, desc; removedAt não entra', () => {
+  it('vigente é o de maior validUntil; anteriores e removedAt não entram na listagem', () => {
     const listing = buildDocumentosListing(
       [
         {
@@ -105,10 +108,9 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(federal.validUntil).toBe('2026-12-12');
     expect(federal.daysRemaining).toBe(99);
     expect(federal.status).toEqual({ key: 'ok', label: 'ok' });
-    expect(federal.history).toEqual([
-      { id: 'old', fileName: 'CERTIDAO RECEITA FEDERAL 06.07.26- QL MED.pdf', validUntil: '2026-07-06' },
-    ]);
-    expect(federal.history.map((item) => item.id)).not.toContain('removed');
+    expect(federal).not.toHaveProperty('history');
+    expect(listing.certidoes.map((row) => row.id)).not.toContain('old');
+    expect(listing.certidoes.map((row) => row.id)).not.toContain('removed');
 
     const fgts = listing.certidoes[1];
     expect(fgts.id).toBe('fgts');
@@ -120,17 +122,9 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.ingest.lastError).toBeNull();
   });
 
-  it('outros lista cada linha kind=outro, sem agrupamento', () => {
+  it('kind=outro não entra na listagem (fica no banco, invisível na página)', () => {
     const listing = buildDocumentosListing(
       [
-        {
-          id: 'mt',
-          kind: 'outro',
-          fileName: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf',
-          validUntil: '2026-08-13',
-          validUntilSource: 'filename',
-          removedAt: null,
-        },
         {
           id: 'trf',
           kind: 'outro',
@@ -143,10 +137,9 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
       null,
       NOW,
     );
-    expect(listing.outros.map((row) => row.id)).toEqual(['mt', 'trf']);
-    expect(listing.outros[0].daysRemaining).toBe(-22);
-    expect(listing.outros[0].status.key).toBe('vencida');
-    expect(listing.outros[1].status).toEqual({ key: 'sem_data', label: 'sem data' });
+    expect(listing).not.toHaveProperty('outros');
+    expect(listing.certidoes.map((row) => row.id)).not.toContain('trf');
+    expect(listing.certidoes.every((row) => row.kind !== 'outro')).toBe(true);
   });
 });
 
@@ -177,7 +170,7 @@ describe('GET /api/documentos', () => {
     expect(mocks.documentFindMany).not.toHaveBeenCalled();
   });
 
-  it('200 com 6 certidões na ordem fixa, daysRemaining/status do servidor, sem companyId', async () => {
+  it('200 com 7 certidões na ordem fixa, daysRemaining/status do servidor, sem history/outros/companyId', async () => {
     mocks.documentFindMany.mockResolvedValue([
       {
         id: 'vigente',
@@ -204,11 +197,11 @@ describe('GET /api/documentos', () => {
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.certidoes).toHaveLength(6);
+    expect(body.certidoes).toHaveLength(7);
     expect(body.certidoes.map((row: { kind: string }) => row.kind)).toEqual([...CERTIDAO_KINDS_ORDER]);
     expect(body.certidoes[0].id).toBe('vigente');
-    expect(body.certidoes[0].history).toHaveLength(1);
-    expect(body.certidoes[0].history[0].id).toBe('old');
+    expect(body.certidoes[0]).not.toHaveProperty('history');
+    expect(body).not.toHaveProperty('outros');
     expect(typeof body.certidoes[0].daysRemaining).toBe('number');
     expect(body.certidoes[0].status).toEqual(
       expect.objectContaining({ key: expect.any(String), label: expect.any(String) }),

@@ -111,25 +111,25 @@ const FIXTURE: FixtureRow[] = [
   {
     folder: 'Estaduais',
     file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf',
-    kind: 'outro',
+    kind: 'cnd_estadual_mt',
     validUntil: '2026-08-13',
   },
   {
     folder: 'Estaduais',
     file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 06.07.26.pdf',
-    kind: 'outro',
+    kind: 'cnd_estadual_mt',
     validUntil: '2026-07-06',
   },
   {
     folder: 'Estaduais',
     file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 04.06.26.pdf',
-    kind: 'outro',
+    kind: 'cnd_estadual_mt',
     validUntil: '2026-06-04',
   },
   {
     folder: 'Estaduais',
     file: 'CERTIDÃO ESTADUAL DO MATO GROSSO 08.02.26.pdf',
-    kind: 'outro',
+    kind: 'cnd_estadual_mt',
     validUntil: '2026-02-08',
   },
   {
@@ -197,5 +197,8 @@ describe('SPEC-042 L3 — classifyDocument / extractValidUntil', () => {
     expect(extractValidUntil('arquivo 01.10.2026.pdf')).toEqual({ date: '2026-10-01' });
     expect(classifyDocument('Outros', 'qualquer.pdf')).toBe('outro');
     expect(classifyDocument('Municipais', 'alvara 12.12.26.pdf')).toBe('outro');
+    expect(classifyDocument('Estaduais', 'CERTIDÃO ESTADUAL DO MATO GROSSO DO SUL 12.10.26.pdf')).toBe(
+      'cnd_estadual_ms',
+    );
   });
 });

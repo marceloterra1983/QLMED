@@ -37,6 +37,10 @@ export function documentosIngestLockKey(companyId: string): string {
   return `documentos-ingest:${companyId}`;
 }
 
+export function documentosAlertLockKey(companyId: string): string {
+  return `documentos-alert:${companyId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,

@@ -18,7 +18,10 @@ affected_modules:
 
 **Status**: Approved (dono mandou executar L1 em 2026-09-04; perguntas 1–3 do PLAN adiadas para L7)
 
-A entrega L1–L6 cobre FR-001 a FR-009, FR-013 e FR-014. FR-010, FR-011 e FR-012 ficam para a folha L7, ainda não executada.
+A entrega L1–L6 cobriu FR-001 a FR-009, FR-014 e a parcela de ingestão do
+FR-013 (Graph, health `documentos-ingest`). A L7 cobre FR-010, FR-011, FR-012
+e a parcela de alerta do FR-013 (timeout e log saneado nas chamadas à
+Evolution, health `documentos-alert`).
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -33,7 +36,7 @@ MS, Municipal) vivem no OneDrive de `faturamento@qlmed.com.br`, em
 `1 - DOCUMENTOS/1 - QL MED/2 - CERTIDÕES/<pasta>`. Ninguém vê a validade sem
 abrir pasta por pasta; hoje (04/09/2026) a auditoria manual encontrou uma
 certidão vencida há 22 dias sem que ninguém soubesse. Quem monta envelope de
-licitação precisa de: a lista fixa de 5 certidões, o arquivo vigente de cada
+licitação precisa de: a lista fixa de 7 certidões, o arquivo vigente de cada
 uma, a validade, quantos dias faltam, e um aviso antes de vencer.
 
 ## Fatos verificados na fonte (2026-09-04)
@@ -62,21 +65,31 @@ falhar de forma visível, não chutar.
 - **FR-001**: Existe a página `/cadastro/documentos`, no grupo **Cadastros** da
   navegação (`PAGE_GROUPS`, `PAGE_LABELS`), com a seção **Certidões**.
 - **FR-002**: A seção mostra uma tabela com **uma linha por tipo**, nesta ordem
-  fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Municipal —
-  mobiliário; CND Municipal — débitos gerais. Colunas: Certidão, Arquivo,
-  Válida até, Dias restantes, Ações. Tipo sem documento mostra "Não encontrada"
-  e nenhuma ação.
+  fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Estadual
+  (MT); CND Municipal — mobiliário; CND Municipal — débitos gerais. Colunas:
+  Certidão, Válida até, Dias restantes, Ações. "Dias restantes" mostra o
+  número vindo do servidor (`N dias` / `1 dia` / `vence hoje` /
+  `vencida há N dias` / `—`); destaque visual só quando
+  `daysRemaining <= 7`. Tipo sem documento não tem Ver/Baixar; o link de
+  emissão (FR-017) permanece.
 - **FR-003**: "Dias restantes" é calculado **no servidor**, em
   `America/Sao_Paulo`, por diferença de datas civis (não de instantes). Faixas
   e rótulos: `> 30` → "ok"; `8–30` → "atenção"; `1–7` → "urgente"; `0` → "vence
   hoje"; `< 0` → "vencida há N dias". A mesma função pura alimenta a tabela e o
   alerta (FR-010).
-- **FR-004**: Ações **Ver** (inline) e **Baixar** (attachment) servidas por
+- **FR-004**: Ações **Ver** (popup com o PDF no visualizador da página) e
+  **Baixar** (attachment) servidas por
   `GET /api/documentos/{id}/arquivo[?download=1]`, lendo o conteúdo do OneDrive
   pela conexão **nomeada** `faturamento@qlmed.com.br` — sem fallback para
-  "qualquer conexão da empresa" (mesma regra do IMPCG, PRIV-002).
+  "qualquer conexão da empresa" (mesma regra do IMPCG, PRIV-002). Não abre
+  noutra aba.
 - **FR-006**: O documento **vigente** de um tipo é o de maior `validUntil` não
-  removido. Os anteriores ficam acessíveis num histórico expansível por linha.
+  removido. Os anteriores não aparecem na UI: certidão vencida não tem valor
+  operacional depois de arquivada no OneDrive (FR-016). Continuam no banco.
+- **FR-017**: Cada linha da tabela (incluindo tipo sem documento) tem um
+  link direto para o sítio de emissão do órgão (`CERTIDAO_EMISSAO_URL`),
+  `target="_blank"` com `rel="noopener noreferrer"`. A emissão destas
+  certidões é humana; o sistema leva a pessoa ao sítio certo em um clique.
 
 ### Ingestão (fonte: OneDrive)
 
@@ -84,7 +97,8 @@ falhar de forma visível, não chutar.
   sob demanda pelo botão "Atualizar do OneDrive" (editor+). Cada PDF vira/atualiza
   um `CompanyDocument` com upsert por `oneDriveItemId`. Classificação por pasta
   e, dentro de `Estaduais`/`Municipais`, por nome (`MATO GROSSO` sem `SUL` →
-  `outro`; `MOBILIARIO` → mobiliário; `gerais` → débitos gerais). Validade lida
+  `cnd_estadual_mt`; `MATO GROSSO DO SUL` → `cnd_estadual_ms`; `MOBILIARIO` →
+  mobiliário; `gerais` → débitos gerais). Validade lida
   do nome: **última** data `dd.MM.yy`, `dd.MM.yyyy` ou `dd-MM-yyyy`; sem match →
   `validUntil = null`, `validUntilSource = null`, linha marcada "Sem data".
 - **FR-005b**: Item que sumiu da pasta recebe `removedAt` (não é apagado do
@@ -109,18 +123,18 @@ falhar de forma visível, não chutar.
 
 ### Alerta por WhatsApp
 
-- **FR-010**: (L7, pendente) Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s com
+- **FR-010**: Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s com
   chave de slot, como `sync-scheduler`) percorre o documento vigente de cada
   tipo e envia **o PDF como documento** com legenda quando `diasRestantes` está
   em `{30, 15, 7, 3, 1, 0}` ou, vencido, a cada 7 dias (`-7, -14, ...`).
   Idempotência por `(documento, limiar)` em `alertedThresholds Int[]`; o
   limiar entra no array **antes** do envio (sem duplicar em reinício).
   Tipo **sem documento** gera uma linha de texto no mesmo aviso diário.
-- **FR-011**: (L7, pendente) Quando a ingestão encontra um documento cujo `validUntil` supera
+- **FR-011**: Quando a ingestão encontra um documento cujo `validUntil` supera
   o vigente anterior do mesmo tipo, envia o PDF com legenda "renovada — válida
   até dd/MM/yyyy" uma única vez (`renewalNotifiedAt`). Sem vigente anterior
   (primeira carga) não avisa: backfill não é evento.
-- **FR-012**: (L7, pendente) Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
+- **FR-012**: Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
   `DOCUMENTOS_WHATSAPP_GROUP_JID` (`@g.us`) e config Evolution presente.
   Faltando qualquer peça: silencioso, sem erro, sem fallback para o grupo
   fiscal (mesma decisão do IMPCG). Envio via `sendWhatsAppDocument` existente.
@@ -133,12 +147,30 @@ falhar de forma visível, não chutar.
   registra em `background-service-health` como `documentos-ingest` e
   `documentos-alert`, e respeita `QLMED_DISABLE_BACKGROUND_SERVICES`.
 - **FR-014**: Nenhum runtime DDL: schema por migração Prisma versionada.
+- **FR-015**: A CND Estadual de Mato Grosso é um tipo próprio
+  (`cnd_estadual_mt`) e aparece na tabela de certidões junto das demais, na
+  ordem de FR-002, imediatamente a seguir da CND Estadual (MS). Linhas já
+  gravadas como `outro` com nome de MT são reclassificadas na ingestão
+  (upsert por `oneDriveItemId` recalcula `kind`); não há UPDATE SQL na
+  migração.
+- **FR-016**: Certidão vencida (`validUntil` anterior à data civil de hoje em
+  `America/Sao_Paulo`) que tenha substituto do mesmo `kind` (não removido, com
+  `validUntil` posterior) é **movida** para a pasta `Vencidas` já existente em
+  `2 - CERTIDÕES` no OneDrive. Sem substituto, permanece na pasta de origem.
+  Nada é apagado. Documento com `validUntil` nulo não é arquivado; documento
+  com `validUntilSource = 'manual'` sem substituto também não. O item movido
+  some da pasta de origem na varredura seguinte e recebe `removedAt` pelo
+  caminho já existente, deixando de ser vigente. Se a pasta `Vencidas` não
+  existir, o ciclo de arquivo é fail-closed (não arquiva nada; não cria a
+  pasta).
 
 ## Acceptance Criteria
 
-- **AC-001** (FR-001/002/009): usuário com `/cadastro/documentos` em
-  `allowedPages` vê a página no menu e a tabela com 6 linhas na ordem fixa;
-  usuário sem a página recebe 403 na página e em `/api/documentos`.
+- **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
+  `allowedPages` vê a página no menu e a tabela com 7 linhas na ordem fixa,
+  colunas Certidão / Válida até / Dias restantes / Ações, e um link de
+  emissão por linha; usuário sem a página recebe 403 na página e em
+  `/api/documentos`.
 - **AC-002** (FR-003): `daysRemaining('2026-09-04', '2026-09-29') === 25`;
   `('2026-09-04','2026-09-04') === 0`; `('2026-09-04','2026-08-13') === -22`;
   rótulos conforme faixas; teste cobre virada de dia em SP vs UTC.
@@ -148,7 +180,8 @@ falhar de forma visível, não chutar.
   com sessão sem página → 403; com página → 200 `application/pdf`; com
   `download=1` → `Content-Disposition: attachment`.
 - **AC-005** (FR-006/005b): duas linhas do mesmo tipo → a de maior
-  `validUntil` é a vigente; linha com `removedAt` nunca é vigente.
+  `validUntil` é a vigente; linha com `removedAt` nunca é vigente. A
+  listagem da página não inclui histórico nem arquivos `kind=outro`.
 - **AC-006** (FR-010): com `now` = 25 dias antes da validade não envia; = 30
   envia uma vez e não repete no tick seguinte; = -7 envia; envio recebe o PDF
   e a legenda contém tipo, arquivo e "vence em N dias"/"vencida há N dias".
@@ -162,6 +195,25 @@ falhar de forma visível, não chutar.
 - **AC-010** (FR-013/014): `npm run db:migrate:verify` e `db:reconcile:verify`
   passam; nenhum `log.*` recebe `content`, `caption` ou token (teste de
   grep/spy como em `whatsapp-evolution-egress.test.ts`).
+- **AC-011** (FR-015): `classifyDocument('Estaduais', 'CERTIDÃO ESTADUAL DO
+  MATO GROSSO 13.08.26.pdf') === 'cnd_estadual_mt'`; o mesmo nome com
+  `MATO GROSSO DO SUL` continua `cnd_estadual_ms`. A fixture de 24 nomes
+  classifica as 4 linhas de MT como `cnd_estadual_mt`. Uma linha já gravada
+  com `kind = 'outro'` e nome de MT passa a `cnd_estadual_mt` na varredura
+  seguinte (mesmo `oneDriveItemId`).
+- **AC-012** (FR-016):
+  (a) só arquiva quando `validUntil` é anterior a hoje (data civil em
+  `America/Sao_Paulo`); vence hoje permanece;
+  (b) só arquiva se existir outro documento do mesmo `kind`, não removido,
+  com `validUntil` posterior — sem substituto, a vencida fica;
+  (c) nunca arquiva `validUntilSource = 'manual'` sem substituto; nunca
+  arquiva `validUntil` nulo;
+  (d) o movimento é `moveOneDriveItem` para `Vencidas`; nada é apagado;
+  (e) cada movimento é registado em log com `kind` e nome do ficheiro; a
+  ingestão devolve a contagem em `arquivados`;
+  (f) na varredura seguinte o item já não está na pasta de origem, recebe
+  `removedAt` e não é vigente. Pasta `Vencidas` ausente → `arquivados = 0`
+  e a ingestão não falha.
 
 ## Non-functional
 
@@ -178,8 +230,6 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias (alvará, CRT CREA, falência, protestos): o modelo tem
   `category`, a UI só mostra `certidao`.
-- Certidão estadual de MT: dono decidiu que a exigida é MS; MT cai em `outro`
-  e só aparece em "Outros arquivos na pasta" (colapsado).
 - E-mail e push para estes avisos.
 
 ## Applicable ADRs
@@ -192,7 +242,7 @@ Nenhum ADR novo: escolhas locais e reversíveis ficam no plano.
 
 Unit (vitest, sem banco): classificação e validade (fixture real), dias
 restantes, resolvedor de destino WhatsApp, seleção de limiares, montagem de
-legenda, vigente/histórico. Guard de rotas: o scan automático de
+legenda, vigente (a listagem não tem histórico). Guard de rotas: o scan automático de
 `api-route-guards.test.ts` cobre as rotas novas. ACL: caso novo em
 `acl-default-deny.test.ts` para `/api/documentos`. Integração (opcional,
 `RUN_DB_INTEGRATION_TESTS=1`): upsert por `oneDriveItemId` e `removedAt`.
