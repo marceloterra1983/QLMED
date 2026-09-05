@@ -64,6 +64,7 @@ describe('produtos groups collapsed-by-default contract', () => {
       'utf8',
     );
     expect(listRoute).toContain('hierarchyCounts');
+    expect(listRoute).toContain('bySubgroup');
     expect(listRoute).toContain("by: ['productType']");
     const schema = readFileSync(
       join(process.cwd(), 'src/lib/schemas/product.ts'),

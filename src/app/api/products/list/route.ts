@@ -198,7 +198,7 @@ export async function GET(req: Request) {
       totalQuantity: Number(row.aggTotalQuantity || 0),
     }));
 
-    const [withAnvisa, qtyAgg, lineGroups, subtypeGroups] = await Promise.all([
+    const [withAnvisa, qtyAgg, lineGroups, subtypeGroups, subgroupGroups] = await Promise.all([
       prisma.productRegistry.count({
         where: {
           AND: [
@@ -212,7 +212,7 @@ export async function GET(req: Request) {
         where,
         _sum: { aggTotalQuantity: true },
       }),
-      // Totais reais Linha/Grupo no filtro (evita badge "CARDIACA 50" = tamanho da página).
+      // Totais reais Linha/Grupo/Subgrupo no filtro (evita badge "CARDIACA 50" = tamanho da página).
       prisma.productRegistry.groupBy({
         by: ['productType'],
         where,
@@ -220,6 +220,11 @@ export async function GET(req: Request) {
       }),
       prisma.productRegistry.groupBy({
         by: ['productType', 'productSubtype'],
+        where,
+        _count: { _all: true },
+      }),
+      prisma.productRegistry.groupBy({
+        by: ['productType', 'productSubtype', 'productSubgroup'],
         where,
         _count: { _all: true },
       }),
@@ -245,6 +250,14 @@ export async function GET(req: Request) {
           `group:${g.productType || 'Sem linha'}|${g.productSubtype || 'Sem grupo'}`,
           g._count._all,
         ]),
+      ),
+      bySubgroup: Object.fromEntries(
+        subgroupGroups
+          .filter((g) => !!(g.productSubgroup && String(g.productSubgroup).trim()))
+          .map((g) => [
+            `sub:${g.productType || 'Sem linha'}|${g.productSubtype || 'Sem grupo'}|${g.productSubgroup}`,
+            g._count._all,
+          ]),
       ),
     };
 
