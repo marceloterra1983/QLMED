@@ -6,6 +6,7 @@
 
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
+import { nextCodigo } from '@/lib/product-codigo';
 import { createLogger } from '@/lib/logger';
 import { extractProductsFromXml, buildProductKey, normalizeUnit, isResaleCustomer, computeSearchText, normalizeAnvisaRegistration, type ProductFromXml } from '@/lib/product-aggregation';
 import { buildResaleIndex, matchResaleProduct } from '@/lib/product-aggregation/resale-match';
@@ -126,24 +127,6 @@ function pickIfNewerOrFirst<T>(
   if (lastIssueDate == null) return newVal;
   if (issueDate >= lastIssueDate) return newVal;
   return (oldVal ?? newVal) as T;
-}
-
-async function nextCodigo(
-  db: Prisma.TransactionClient | typeof prisma,
-  companyId: string,
-): Promise<string> {
-  const codigos = await db.productRegistry.findMany({
-    where: { companyId, NOT: { codigo: null } },
-    select: { codigo: true },
-  });
-  let maxNum = 0;
-  for (const row of codigos) {
-    const digits = (row.codigo || '').replace(/\D/g, '');
-    if (!digits) continue;
-    const n = Number(digits);
-    if (Number.isFinite(n) && n > maxNum) maxNum = n;
-  }
-  return String(maxNum + 1).padStart(5, '0');
 }
 
 async function extractAndStoreTaxData(

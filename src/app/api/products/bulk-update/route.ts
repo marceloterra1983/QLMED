@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { cleanString } from '@/lib/utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { bulkUpdateSchema } from '@/lib/schemas/product';
+import { nextCodigo } from '@/lib/product-codigo';
 
 function normalizeAnvisa(value: unknown): string | null {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -25,21 +26,6 @@ interface ProductItem {
   ncm?: string | null;
   unit?: string | null;
   ean?: string | null;
-}
-
-async function nextCodigo(companyId: string): Promise<string> {
-  const codigos = await prisma.productRegistry.findMany({
-    where: { companyId, NOT: { codigo: null } },
-    select: { codigo: true },
-  });
-  let maxNum = 0;
-  for (const row of codigos) {
-    const digits = (row.codigo || '').replace(/\D/g, '');
-    if (!digits) continue;
-    const n = Number(digits);
-    if (Number.isFinite(n) && n > maxNum) maxNum = n;
-  }
-  return String(maxNum + 1).padStart(5, '0');
 }
 
 /**
@@ -145,7 +131,7 @@ export async function PATCH(req: Request) {
           data: updateData,
         });
       } else {
-        const codigo = await nextCodigo(company.id);
+        const codigo = await nextCodigo(prisma, company.id);
         await prisma.productRegistry.create({
           data: {
             id: randomUUID(),
