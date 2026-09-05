@@ -369,7 +369,7 @@ describe('product-registry-store Prisma CRUD', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           productKey: 'pk-1',
-          codigo: '00008',
+          codigo: '000008',
           outOfLine: true,
         }),
       }),
@@ -390,7 +390,7 @@ describe('product-registry-store Prisma CRUD', () => {
         id: 'pr-1',
         companyId: 'co-1',
         productKey: 'pk-1',
-        codigo: '00008',
+        codigo: '000008',
         code: 'C1',
         description: 'Atualizado',
         ncm: '12345678',

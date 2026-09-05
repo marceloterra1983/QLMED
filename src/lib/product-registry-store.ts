@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
+import { nextCodigo } from '@/lib/product-codigo';
 
 
 export interface ProductRegistryRow {
@@ -278,18 +279,7 @@ export async function upsertProductRegistry(
     return;
   }
 
-  const codigos = await prisma.productRegistry.findMany({
-    where: { companyId: input.companyId, NOT: { codigo: null } },
-    select: { codigo: true },
-  });
-  let maxNum = 0;
-  for (const row of codigos) {
-    const digits = (row.codigo || '').replace(/\D/g, '');
-    if (!digits) continue;
-    const n = Number(digits);
-    if (Number.isFinite(n) && n > maxNum) maxNum = n;
-  }
-  const nextCodigo = String(maxNum + 1).padStart(5, '0');
+  const codigo = await nextCodigo(prisma, input.companyId);
 
   await prisma.productRegistry.create({
     data: {
@@ -312,7 +302,7 @@ export async function upsertProductRegistry(
       anvisaRiskClass: input.anvisaRiskClass ?? null,
       anvisaSyncedAt: input.anvisaSyncedAt,
       outOfLine: true,
-      codigo: nextCodigo,
+      codigo,
     },
   });
 }
