@@ -19,6 +19,7 @@ const globalForBootstrap = globalThis as unknown as {
   __localXmlSyncStarted?: boolean;
   __impcgIngestStarted?: boolean;
   __cassemsIngestStarted?: boolean;
+  __unimedCgIngestStarted?: boolean;
   __documentosIngestStarted?: boolean;
   __documentosAlertStarted?: boolean;
   __outboxPurgeStarted?: boolean;
@@ -58,6 +59,16 @@ if (!globalForBootstrap.__cassemsIngestStarted) {
       .then((m) => m.startCassemsMailIngest())
       .catch((err) => log.error({ err }, 'CassemsMailIngest falha ao iniciar'));
   }, 16_000);
+}
+
+
+if (!globalForBootstrap.__unimedCgIngestStarted) {
+  globalForBootstrap.__unimedCgIngestStarted = true;
+  setTimeout(() => {
+    import('./unimed-cg/ingest')
+      .then((m) => m.startUnimedCgMailIngest())
+      .catch((err) => log.error({ err }, 'UnimedCgMailIngest falha ao iniciar'));
+  }, 10_000);
 }
 
 if (!globalForBootstrap.__documentosIngestStarted) {

@@ -46,6 +46,7 @@ export const PAGE_GROUPS: PageGroup[] = [
     pages: [
       { label: 'IMPCG', path: '/gestao/impcg' },
       { label: 'CASSEMS', path: '/gestao/cassems' },
+      { label: 'Unimed CG', path: '/gestao/unimed-cg' },
     ],
   },
   {
@@ -108,6 +109,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Gestão
   { prefix: '/api/gestao/cassems', pages: ['/gestao/cassems'] },
   { prefix: '/api/gestao/impcg',   pages: ['/gestao/impcg'] },
+  { prefix: '/api/gestao/unimed-cg', pages: ['/gestao/unimed-cg'] },
   // Relatórios
   { prefix: '/api/reports',   pages: ['/relatorios/valvulas-importadas'] },
   // Integrações

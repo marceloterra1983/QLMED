@@ -252,3 +252,106 @@ export async function listImpcgPdfAttachments(
   }
   return pdfs;
 }
+
+/**
+ * Lista mensagens do remetente SEM exigir anexo.
+ * Usa `$search="from:email"` + ConsistencyLevel eventual para evitar
+ * InefficientFilter do Graph em `$filter` em from/emailAddress.
+ */
+export async function listMailboxMessagesBySenderWithoutAttachments(
+  mailbox: string,
+  senderEmail: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<ImpcgMailMessage[]> {
+  const accessToken = await getGraphAppOnlyToken();
+  const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
+  const search = `"from:${senderEmail}"`;
+  let next: string | null =
+    `/users/${encodeURIComponent(mailbox)}/messages?$select=${select}&$search=${encodeURIComponent(search)}&$top=50`;
+
+  type MessageListResponse = {
+    value?: Array<{
+      id?: string;
+      subject?: string;
+      receivedDateTime?: string;
+      hasAttachments?: boolean;
+      internetMessageId?: string;
+    }>;
+    '@odata.nextLink'?: string;
+    error?: { message?: string; code?: string };
+  };
+
+  const messages: ImpcgMailMessage[] = [];
+  while (next) {
+    const url = /^https?:\/\//i.test(next)
+      ? assertAllowedHost(next, GRAPH_ALLOWED_HOSTS).toString()
+      : `${GRAPH_BASE}${next}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        ConsistencyLevel: 'eventual',
+      },
+      cache: 'no-store',
+      signal: perRequestSignal(options.signal),
+    });
+    const body = (await response.json().catch(() => null)) as MessageListResponse;
+    const status = response.status;
+
+    if (status === 403 || status === 401) {
+      throw new GraphMailboxError('mailbox_forbidden', status);
+    }
+    if (status < 200 || status >= 300) {
+      throw new GraphMailboxError('mailbox_unavailable', status);
+    }
+
+    for (const row of body.value ?? []) {
+      if (!row.id || !row.internetMessageId) continue;
+      messages.push({
+        graphMessageId: row.id,
+        internetMessageId: row.internetMessageId,
+        subject: row.subject || '',
+        receivedAt: row.receivedDateTime ? new Date(row.receivedDateTime) : new Date(),
+        hasAttachments: Boolean(row.hasAttachments),
+      });
+    }
+    next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
+  }
+
+  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
+  return messages;
+}
+
+export type MailboxMessageBody = {
+  contentType: string;
+  content: string;
+};
+
+export async function getMailboxMessageBodyHtml(
+  mailbox: string,
+  graphMessageId: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<MailboxMessageBody> {
+  const accessToken = await getGraphAppOnlyToken();
+  const { status, body } = await graphJson<{
+    body?: { contentType?: string; content?: string };
+    error?: { message?: string };
+  }>(
+    accessToken,
+    `/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(graphMessageId)}?$select=body`,
+    perRequestSignal(options.signal),
+  );
+
+  if (status === 403 || status === 401) {
+    throw new GraphMailboxError('mailbox_forbidden', status);
+  }
+  if (status < 200 || status >= 300) {
+    throw new GraphMailboxError('mailbox_unavailable', status);
+  }
+
+  return {
+    contentType: body.body?.contentType || 'text',
+    content: body.body?.content || '',
+  };
+}
+

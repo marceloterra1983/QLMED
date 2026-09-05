@@ -7,6 +7,10 @@ const gate = require('./verify-production-migration-window.cjs');
 
 assert.equal(gate.TABLES.length, 11);
 assert.ok(gate.EXPECTED_MIGRATIONS.length >= 8, 'o conjunto pinado tem a âncora + as 7 da remediação');
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905210000_unimed_cg_autorizacoes'),
+  'SPEC-045 unimed_cg_autorizacoes deve estar pinada',
+);
 for (const { name, sha256 } of gate.EXPECTED_MIGRATIONS) {
   assert.match(name, /^2026\d{10}_/);
   assert.match(sha256, /^[0-9a-f]{64}$/);
