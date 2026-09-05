@@ -7,7 +7,8 @@ import {
   labelForKind,
   type DocumentosCategory,
 } from './constants';
-import { balancoYearFromName, type DocumentosFamily } from './families';
+import { DOCUMENTOS_SHARE_RECIPIENTS } from './share-email';
+import { automacaoOf, balancoYearFromName, type DocumentosAutomacao, type DocumentosFamily } from './families';
 import { daysRemaining, selectVigente, statusFor, todayInSaoPaulo, toYmd } from './validity';
 
 export type DocumentosRow = {
@@ -24,7 +25,10 @@ export type DocumentosRow = {
   emissaoUrl: string | null;
   emissaoAria: string | null;
   webUrl: string | null;
+  automacao: DocumentosAutomacao | null;
 };
+
+export type DocumentosShareRecipientOption = { email: string; label: string };
 
 export type DocumentosListing = {
   certidoes: DocumentosRow[];
@@ -34,6 +38,7 @@ export type DocumentosListing = {
   basicos: DocumentosRow[];
   balancos: DocumentosRow[];
   ingest: { lastSuccessAt: string | null; lastError: string | null };
+  shareRecipients: DocumentosShareRecipientOption[];
 };
 
 export type DocumentosListSource = {
@@ -108,6 +113,7 @@ function toRow(row: DocumentosListSource, today: string, family: DocumentosFamil
     emissaoUrl: config?.emissaoUrl ?? null,
     emissaoAria: config?.emissaoAria ?? null,
     webUrl: row.webUrl ?? null,
+    automacao: automacaoOf(config),
   };
 }
 
@@ -127,6 +133,7 @@ function missingRow(kind: CompanyDocumentKind, family: DocumentosFamily): Docume
     emissaoUrl: config?.emissaoUrl ?? null,
     emissaoAria: config?.emissaoAria ?? null,
     webUrl: null,
+    automacao: automacaoOf(config),
   };
 }
 
@@ -146,6 +153,7 @@ function toYearRow(row: DocumentosListSource, family: DocumentosFamily): Documen
     emissaoUrl: null,
     emissaoAria: null,
     webUrl: row.webUrl ?? null,
+    automacao: null,
   };
 }
 
@@ -243,6 +251,7 @@ export function buildDocumentosListing(
       lastSuccessAt: toIso(ingest?.lastSuccessAt),
       lastError: ingest?.lastError ?? null,
     },
+    shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
   };
 }
 
