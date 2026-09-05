@@ -1,29 +1,21 @@
-# Gates: fix produtos grupos expandidos v2
+# Gates: 044 rotinas detail popup
 
-Scope: Grupos em /cadastro/produtos abertos por padrão com linhas visíveis; total explicado; preview smoke + PR/merge/deploy.
+Scope: Popup Detalhes/Histórico em rotinas; API history; tabela sem Categoria/Lock; FR-009/AC-009.
 
-- [x] G1: loadProducts limpa collapsedGroups após fetch bem-sucedido
-  CHECK: rg -n "setCollapsedGroups\(new Set\(\)\)" src/app/\(painel\)/cadastro/produtos/page-client.tsx
-  EXPECT: /setCollapsedGroups\(new Set\(\)\)/
-  EVIDENCE: lines 211, 224, 278
+- [x] G1: Vitest rotinas + system-routines
+  CHECK: npx vitest run src/lib/__tests__/system-routines.test.ts src/app/api/sistema/rotinas --reporter=dot
+  EXPECT: /Test Files\s+3 passed/
+  EVIDENCE: Test Files 3 passed (3); Tests 24 passed (24)
 
-- [x] G2: Banner "Grupos recolhidos" só aparece quando collapsedGroups.size > 0 + CTA se nenhum item visível
-  CHECK: rg -n "hasCollapsedGroups|anyProductRowVisible|Expandir e mostrar" src/app/\(painel\)/cadastro/produtos/components/ProductTable.tsx
-  EXPECT: /anyProductRowVisible/
-  EVIDENCE: anyProductRowVisible + CTA "Expandir e mostrar produtos"
+- [x] G2: Typecheck limpo
+  CHECK: npx tsc --noEmit
+  EXPECT: exit 0
+  EVIDENCE: exit 0 (2026-09-05)
 
-- [x] G3: Teste contract + list-collapse passam
-  CHECK: npm test -- --run src/lib/__tests__/produtos-groups-expanded-contract.test.ts src/lib/__tests__/list-collapse.test.ts 2>&1 | tail -20
-  EXPECT: /Test Files  2 passed/
-  EVIDENCE: Test Files 2 passed (2); Tests 10 passed (10)
+- [x] G3: docs:validate
+  CHECK: npm run docs:validate
+  EXPECT: /Documentation validation passed/
+  EVIDENCE: Documentation validation passed (205 Markdown files, 55 IDs)
 
-- [x] G4: Contagem 4957 vs Spica documentada (active filter)
-  EVIDENCE: product_registry total=7965 active=4957 out_of_line=3008 with_codigo=7965; default lineStatus agora 'all'
-
-- [x] G5: Smoke preview :3002 HTTP ok na rota
-  CHECK: curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/cadastro/produtos
-  EXPECT: /200|307|302/
-  EVIDENCE: 307 (redirect login); unit WorkingDirectory=fix-produtos-grupos-v2; /login 200
-
-- [ ] G6: PR mergeado e produção no SHA novo
+- [ ] G4: PR mergeado + produção no SHA
   EVIDENCE: pending
