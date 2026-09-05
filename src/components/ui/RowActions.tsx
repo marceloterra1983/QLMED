@@ -1,7 +1,93 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type JSX } from 'react';
 import { toast } from 'sonner';
+
+export type RowAction = {
+  label: string;
+  icon: string;
+  onSelect: () => void;
+  danger?: boolean;
+  hideOnMobile?: boolean;
+};
+
+export function RowActionsBase({ inline, menu }: { inline: RowAction[]; menu: RowAction[] }): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="flex items-center justify-center gap-0">
+      {inline.map((action) => (
+        <button
+          key={action.label}
+          onClick={action.onSelect}
+          className={`${action.hideOnMobile ? 'hidden sm:flex ' : ''}p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors`}
+          title={action.label}
+          aria-label={action.label}
+        >
+          <span className="material-symbols-outlined text-[18px]">{action.icon}</span>
+        </button>
+      ))}
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
+          title="Mais opções"
+          aria-label="Mais opções"
+          aria-expanded={open}
+          aria-haspopup="true"
+        >
+          <span className="material-symbols-outlined text-[18px]">more_vert</span>
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-black/30 z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+            {menu.map((item) => (
+              <div key={item.label}>
+                {item.danger && <div className="my-1 h-px bg-slate-200 dark:bg-slate-700" />}
+                <button
+                  onClick={() => {
+                    item.onSelect();
+                    setOpen(false);
+                  }}
+                  title={item.label}
+                  aria-label={item.label}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors ${
+                    item.danger
+                      ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${item.danger ? '' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface RowActionsProps {
   invoiceId: string;
@@ -13,39 +99,18 @@ interface RowActionsProps {
 }
 
 export default function RowActions({ invoiceId, accessKey, onView, onDetails, onViewProducts, onDelete }: RowActionsProps) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
-
   const handlePrint = () => {
     window.open(`/api/invoices/${invoiceId}/pdf?print=true`, '_blank');
   };
 
   const handleSaveXml = () => {
     window.open(`/api/invoices/${invoiceId}/download`, '_blank');
-    setOpen(false);
   };
 
   const handleSavePdf = () => {
     const link = document.createElement('a');
     link.href = `/api/invoices/${invoiceId}/pdf?download=true`;
     link.click();
-    setOpen(false);
-  };
-
-  const handleDetails = () => {
-    onDetails(invoiceId);
-    setOpen(false);
   };
 
   const handleCopyKey = () => {
@@ -69,80 +134,22 @@ export default function RowActions({ invoiceId, accessKey, onView, onDetails, on
         else toast.error('Erro ao copiar chave');
       }
     }
-    setOpen(false);
   };
 
-  const menuItems = [
-    { label: 'Detalhes', icon: 'search', action: handleDetails },
-    ...(accessKey ? [{ label: 'Copiar Chave', icon: 'key', action: handleCopyKey }] : []),
-    { label: 'Imprimir', icon: 'print', action: () => { handlePrint(); setOpen(false); } },
-    { label: 'Salvar XML', icon: 'code', action: handleSaveXml },
-    { label: 'Salvar PDF', icon: 'picture_as_pdf', action: handleSavePdf },
-    ...(onDelete ? [{ label: 'Excluir', icon: 'delete', action: () => { onDelete(invoiceId); setOpen(false); }, danger: true }] : []),
+  const inline: RowAction[] = [
+    { label: 'Visualizar documento', icon: 'receipt_long', onSelect: () => onView(invoiceId) },
+    ...(onViewProducts ? [{ label: 'Ver detalhes', icon: 'search', onSelect: () => onViewProducts(invoiceId) }] : []),
+    { label: 'Imprimir', icon: 'print', onSelect: handlePrint, hideOnMobile: true },
   ];
 
-  return (
-    <div className="flex items-center justify-center gap-0">
-      <button
-        onClick={() => onView(invoiceId)}
-        className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
-        title="Visualizar documento"
-        aria-label="Visualizar documento"
-      >
-        <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-      </button>
-      {onViewProducts && (
-        <button
-          onClick={() => onViewProducts(invoiceId)}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
-          title="Ver detalhes"
-          aria-label="Ver detalhes"
-        >
-          <span className="material-symbols-outlined text-[18px]">search</span>
-        </button>
-      )}
-      <button
-        onClick={handlePrint}
-        className="hidden sm:flex p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
-        title="Imprimir"
-        aria-label="Imprimir PDF"
-      >
-        <span className="material-symbols-outlined text-[18px]">print</span>
-      </button>
-      <div className="relative" ref={menuRef}>
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
-          title="Mais opções"
-          aria-label="Mais opções"
-          aria-expanded={open}
-          aria-haspopup="true"
-        >
-          <span className="material-symbols-outlined text-[18px]">more_vert</span>
-        </button>
-        {open && (
-          <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-black/30 z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
-            {menuItems.map((item, i) => (
-              <div key={item.label}>
-                {item.danger && <div className="my-1 h-px bg-slate-200 dark:bg-slate-700" />}
-                <button
-                  onClick={item.action}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors ${
-                    item.danger
-                      ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[16px] ${item.danger ? '' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const menu: RowAction[] = [
+    { label: 'Detalhes', icon: 'search', onSelect: () => onDetails(invoiceId) },
+    ...(accessKey ? [{ label: 'Copiar Chave', icon: 'key', onSelect: handleCopyKey }] : []),
+    { label: 'Imprimir', icon: 'print', onSelect: handlePrint },
+    { label: 'Salvar XML', icon: 'code', onSelect: handleSaveXml },
+    { label: 'Salvar PDF', icon: 'picture_as_pdf', onSelect: handleSavePdf },
+    ...(onDelete ? [{ label: 'Excluir', icon: 'delete', onSelect: () => onDelete(invoiceId), danger: true }] : []),
+  ];
+
+  return <RowActionsBase inline={inline} menu={menu} />;
 }
