@@ -1,4 +1,5 @@
 import { generateOneDriveOAuthState } from '@/lib/onedrive-oauth-state';
+import { oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
 
 const GRAPH_SCOPE = 'offline_access User.Read Files.ReadWrite';
 
@@ -40,6 +41,7 @@ export type OneDriveItem = {
 
 type OneDriveChildrenResponse = {
   value?: OneDriveItem[];
+  '@odata.nextLink'?: string;
 };
 
 function requireOAuthConfig() {
@@ -206,16 +208,21 @@ export async function listOneDriveChildren(
 ): Promise<OneDriveItem[]> {
   const encodedDriveId = encodeURIComponent(driveId);
   const encodedItemId = encodeURIComponent(itemId);
-
   const select = '$select=id,name,size,webUrl,lastModifiedDateTime,createdDateTime,folder,file';
-  const top = '$top=50';
+  const top = '$top=200';
 
-  const path = itemId === 'root'
+  let nextPath: string | null = itemId === 'root'
     ? `/drives/${encodedDriveId}/root/children?${top}&${select}`
     : `/drives/${encodedDriveId}/items/${encodedItemId}/children?${top}&${select}`;
 
-  const response = await graphRequest<OneDriveChildrenResponse>(path, accessToken);
-  return response.value || [];
+  const all: OneDriveItem[] = [];
+  while (nextPath) {
+    const response: OneDriveChildrenResponse = await oneDriveGraphJsonRequest<OneDriveChildrenResponse>(accessToken, nextPath);
+    const chunk = Array.isArray(response.value) ? response.value : [];
+    all.push(...chunk);
+    nextPath = typeof response['@odata.nextLink'] === 'string' ? response['@odata.nextLink'] : null;
+  }
+  return all;
 }
 
 function graphTimeoutMs(): number {

@@ -36,7 +36,7 @@ MS, Municipal) vivem no OneDrive de `faturamento@qlmed.com.br`, em
 `1 - DOCUMENTOS/1 - QL MED/2 - CERTIDÕES/<pasta>`. Ninguém vê a validade sem
 abrir pasta por pasta; hoje (04/09/2026) a auditoria manual encontrou uma
 certidão vencida há 22 dias sem que ninguém soubesse. Quem monta envelope de
-licitação precisa de: a lista fixa de 5 certidões, o arquivo vigente de cada
+licitação precisa de: a lista fixa de 7 certidões, o arquivo vigente de cada
 uma, a validade, quantos dias faltam, e um aviso antes de vencer.
 
 ## Fatos verificados na fonte (2026-09-04)
@@ -77,10 +77,12 @@ falhar de forma visível, não chutar.
   e rótulos: `> 30` → "ok"; `8–30` → "atenção"; `1–7` → "urgente"; `0` → "vence
   hoje"; `< 0` → "vencida há N dias". A mesma função pura alimenta a tabela e o
   alerta (FR-010).
-- **FR-004**: Ações **Ver** (inline) e **Baixar** (attachment) servidas por
+- **FR-004**: Ações **Ver** (popup com o PDF no visualizador da página) e
+  **Baixar** (attachment) servidas por
   `GET /api/documentos/{id}/arquivo[?download=1]`, lendo o conteúdo do OneDrive
   pela conexão **nomeada** `faturamento@qlmed.com.br` — sem fallback para
-  "qualquer conexão da empresa" (mesma regra do IMPCG, PRIV-002).
+  "qualquer conexão da empresa" (mesma regra do IMPCG, PRIV-002). Não abre
+  noutra aba.
 - **FR-006**: O documento **vigente** de um tipo é o de maior `validUntil` não
   removido. Os anteriores não aparecem na UI: certidão vencida não tem valor
   operacional depois de arquivada no OneDrive (FR-016). Continuam no banco.
@@ -240,7 +242,7 @@ Nenhum ADR novo: escolhas locais e reversíveis ficam no plano.
 
 Unit (vitest, sem banco): classificação e validade (fixture real), dias
 restantes, resolvedor de destino WhatsApp, seleção de limiares, montagem de
-legenda, vigente/histórico. Guard de rotas: o scan automático de
+legenda, vigente (a listagem não tem histórico). Guard de rotas: o scan automático de
 `api-route-guards.test.ts` cobre as rotas novas. ACL: caso novo em
 `acl-default-deny.test.ts` para `/api/documentos`. Integração (opcional,
 `RUN_DB_INTEGRATION_TESTS=1`): upsert por `oneDriveItemId` e `removedAt`.

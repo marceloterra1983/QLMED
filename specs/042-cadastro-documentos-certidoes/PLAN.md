@@ -25,6 +25,7 @@ enum CompanyDocumentKind {
   crf_fgts
   cndt
   cnd_estadual_ms
+  cnd_estadual_mt
   cnd_municipal_mobiliario
   cnd_municipal_gerais
   outro
@@ -79,10 +80,10 @@ export const DOCUMENTOS_ALERT_HOUR_LOCAL = 8;            // America/Sao_Paulo
 export const DOCUMENTOS_ALERT_THRESHOLDS = [30, 15, 7, 3, 1, 0] as const;
 export const DOCUMENTOS_EXPIRED_REPEAT_DAYS = 7;
 export const DOCUMENTOS_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
-export const CERTIDAO_KINDS_ORDER = [ 'cnd_federal','crf_fgts','cndt','cnd_estadual_ms','cnd_municipal_mobiliario','cnd_municipal_gerais' ] as const;
-export const CERTIDAO_LABEL: Record<Kind,string> = { cnd_federal:'CND Receita Federal', crf_fgts:'CRF FGTS', cndt:'CNDT (Débitos Trabalhistas)', cnd_estadual_ms:'CND Estadual (MS)', cnd_municipal_mobiliario:'CND Municipal — mobiliário', cnd_municipal_gerais:'CND Municipal — débitos gerais', outro:'Outro' };
-export const CERTIDAO_FOLDER: Record<Exclude<Kind,'outro'>,string> = { cnd_federal:'Federais', crf_fgts:'FGTS', cndt:'Débitos Trabalhistas', cnd_estadual_ms:'Estaduais', cnd_municipal_mobiliario:'Municipais', cnd_municipal_gerais:'Municipais' };
-export const CERTIDAO_UPLOAD_NAME: Record<Exclude<Kind,'outro'>,(ddMMyy:string)=>string> = { cnd_federal: d=>`CERTIDAO RECEITA FEDERAL ${d} - QL MED.pdf`, crf_fgts: d=>`CERTIDÃO FGTS ${d} QL MED.pdf`, cndt: d=>`CERTIDÃO DEBITOS TRABALHISTA ${d}.pdf`, cnd_estadual_ms: d=>`CERTIDAO ESTADUAL ${d} QL MED.pdf`, cnd_municipal_mobiliario: d=>`CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO ${d}.pdf`, cnd_municipal_gerais: d=>`certidão débitos gerais val. ${d}.pdf` };
+export const CERTIDAO_KINDS_ORDER = [ 'cnd_federal','crf_fgts','cndt','cnd_estadual_ms','cnd_estadual_mt','cnd_municipal_mobiliario','cnd_municipal_gerais' ] as const;
+export const CERTIDAO_LABEL: Record<Kind,string> = { cnd_federal:'CND Receita Federal', crf_fgts:'CRF FGTS', cndt:'CNDT (Débitos Trabalhistas)', cnd_estadual_ms:'CND Estadual (MS)', cnd_estadual_mt:'CND Estadual (MT)', cnd_municipal_mobiliario:'CND Municipal — mobiliário', cnd_municipal_gerais:'CND Municipal — débitos gerais', outro:'Outro' };
+export const CERTIDAO_FOLDER: Record<Exclude<Kind,'outro'>,string> = { cnd_federal:'Federais', crf_fgts:'FGTS', cndt:'Débitos Trabalhistas', cnd_estadual_ms:'Estaduais', cnd_estadual_mt:'Estaduais', cnd_municipal_mobiliario:'Municipais', cnd_municipal_gerais:'Municipais' };
+export const CERTIDAO_UPLOAD_NAME: Record<Exclude<Kind,'outro'>,(ddMMyy:string)=>string> = { cnd_federal: d=>`CERTIDAO RECEITA FEDERAL ${d} - QL MED.pdf`, crf_fgts: d=>`CERTIDÃO FGTS ${d} QL MED.pdf`, cndt: d=>`CERTIDÃO DEBITOS TRABALHISTA ${d}.pdf`, cnd_estadual_ms: d=>`CERTIDAO ESTADUAL ${d} QL MED.pdf`, cnd_estadual_mt: d=>`CERTIDÃO ESTADUAL DO MATO GROSSO ${d}.pdf`, cnd_municipal_mobiliario: d=>`CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO ${d}.pdf`, cnd_municipal_gerais: d=>`certidão débitos gerais val. ${d}.pdf` };
 export function isDocumentosWhatsAppEnabled(): boolean;      // DOCUMENTOS_WHATSAPP_ENABLED === 'true'
 export function getDocumentosWhatsAppGroupRaw(): string|null; // DOCUMENTOS_WHATSAPP_GROUP_JID, sem fallback
 ```
@@ -118,10 +119,10 @@ Estaduais/CERTIDAO ESTADUAL 01.08.26 QL MED.pdf                    → cnd_estad
 Estaduais/CERTIDAO ESTADUAL 26.06.26 QL MED.pdf                    → cnd_estadual_ms, 2026-06-26
 Estaduais/CERTIDÃO ESTADUAL 18.05.26 QL MED.pdf                    → cnd_estadual_ms, 2026-05-18
 Estaduais/CERTIDÃO ESTADUAL 12.04.26 QL MED.pdf                    → cnd_estadual_ms, 2026-04-12
-Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf            → outro, 2026-08-13
-Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 06.07.26.pdf            → outro, 2026-07-06
-Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 04.06.26.pdf            → outro, 2026-06-04
-Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 08.02.26.pdf            → outro, 2026-02-08
+Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 13.08.26.pdf            → cnd_estadual_mt, 2026-08-13
+Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 06.07.26.pdf            → cnd_estadual_mt, 2026-07-06
+Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 04.06.26.pdf            → cnd_estadual_mt, 2026-06-04
+Estaduais/CERTIDÃO ESTADUAL DO MATO GROSSO 08.02.26.pdf            → cnd_estadual_mt, 2026-02-08
 Municipais/certidão débitos gerais val. 01-10-2026.pdf             → cnd_municipal_gerais, 2026-10-01   (nome vem em NFD do Graph)
 Municipais/CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO 30.09.26.pdf    → cnd_municipal_mobiliario, 2026-09-30
 Municipais/CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO 02.09.26.pdf    → cnd_municipal_mobiliario, 2026-09-02
@@ -148,13 +149,13 @@ fallback (diferente de `resolveImpcgOneDrive`, que tem fallback — não copiar)
 
 | Rota | Método | Guarda | Corpo/Resposta |
 |---|---|---|---|
-| `/api/documentos` | GET | `requireAuth` + página | `{ certidoes: Row[6], outros: Row[], ingest: {lastSuccessAt,lastError} }` |
+| `/api/documentos` | GET | `requireAuth` + página | `{ certidoes: Row[7], ingest: {lastSuccessAt,lastError} }` |
 | `/api/documentos/sync` | POST | `requireEditor` + página | roda `runDocumentosIngest`; 409 se lock ocupado |
 | `/api/documentos/upload` | POST | `requireEditor` + página; `formDataWithLimit` | `kind`, `validUntil`, `file` → cria no OneDrive + linha |
 | `/api/documentos/[id]` | PATCH | `requireEditor` + página; zod | `{ validUntil }` → `validUntilSource='manual'` |
 | `/api/documentos/[id]/arquivo` | GET | `requireAuth` + página | stream PDF; `?download=1` → attachment |
 
-`Row = { id, kind, label, fileName, validUntil, daysRemaining, status:{key,label}, validUntilSource, history: {id,fileName,validUntil}[] }`.
+`Row = { id, kind, label, fileName, validUntil, daysRemaining, status:{key,label}, validUntilSource }` — sem `history`, sem `outros`.
 Guarda de página: criar `requireDocumentosPage()` em `src/lib/documentos/access.ts`
 copiando `requireImpcgPage`. Rotas só autenticam, validam e delegam.
 
@@ -170,12 +171,15 @@ notifyRenewals(events: RenewalEvent[]): Promise<void>              // chamado pe
 Marcação `alertedThresholds` **antes** do envio (falha → limiar consumido, log
 de erro, sem reenvio infinito — mesmo espírito de JOB-005 do outbox).
 
-### UI — L6
+### UI — L6 / L9
 
+- Tabela fixa de **7 linhas** (CERTIDAO_KINDS_ORDER, inclui MT). Sem histórico,
+  sem card "Outros arquivos". Ver abre o PDF num popup na própria página
+  (não noutra aba); Baixar continua attachment.
 - `src/app/(painel)/cadastro/documentos/{layout.tsx,page.tsx,page-client.tsx}`
   seguindo `cadastro/clientes` (page.tsx com `dynamic(..., { ssr:false })`).
-- Componentes existentes: `PageHeader`, `Card`, `Badge`, `Button`, `EmptyState`,
-  `SortableTh` não é necessário (ordem fixa), `ConfirmDialog` para upload.
+- Componentes existentes: `PageHeader`, `Card`, `Button`, `EmptyState`,
+  `SortableTh` não é necessário (ordem fixa), modal de upload.
 - Ícone em `PAGE_LABELS`: `'/cadastro/documentos': { label: 'Documentos', icon: 'verified' }`.
 - Estado visual por `status.key` com as classes já usadas em
   `sistema/automacoes/page-client.tsx` (`text-emerald-600 dark:text-emerald-400`,
@@ -225,3 +229,4 @@ Ordem: L1 → (L2 ‖ L3) → L4 → L5 → L6 → L7 → L8. S1 a qualquer mome
 - 2026-09-04 — L3 funções puras classify/validity + testes da fixture 24 (SPEC-042).
 - 2026-09-04 — fan-out L4/L5: contrato src/lib/documentos/ingest.ts commitado (só tipos e assinaturas); L4 (ingestão OneDrive) em feat/042-L4-ingest, L5 (rotas de API) em feat/042-L5-api, em worktrees separados — a L4 preenche os corpos, a L5 só importa.
 - 2026-09-04 — L4 (b56ea00) e L5 (b03e2ee) mescladas + origin/main (traz 26c6c7e, que conserta o teste-bomba de receivedAt). tsc, lint e suíte: 1517 passed / 9 skipped / 0 failed. Gates L5-G7, L7-G8 e L8-G2 corrigidos: o pipe engolia o exit code do vitest e EXPECT /passed/ casava com "1 failed | 1508 passed" — trocado por sentinela guardada por &&.
+- 2026-09-04 — revisão cruzada L7/L8/L9: contrato da listagem alinhado ao que a L9 entregou (7 tipos, sem histórico, sem Outros, Ver em popup). Paginação de `listOneDriveChildren`, lock no upload, substituto só depois de `removedAt` do ciclo.

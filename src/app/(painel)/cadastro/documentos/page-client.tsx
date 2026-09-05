@@ -128,6 +128,8 @@ export default function DocumentosPageClient() {
       if (!res.ok) throw new Error('load');
       const payload = (await res.json()) as DocumentosListing;
       setData(payload);
+      setEditingId(null);
+      setEditDraft('');
       setLoadError(false);
     } catch {
       if (opts?.quiet) toast.error('Erro ao recarregar documentos');
@@ -140,6 +142,10 @@ export default function DocumentosPageClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (editingId === null) setEditDraft('');
+  }, [editingId]);
 
   function resetUpload() {
     setUploadKind(CERTIDAO_KINDS_ORDER[0]);
@@ -194,6 +200,7 @@ export default function DocumentosPageClient() {
       }
       toast.success('Validade atualizada');
       setEditingId(null);
+      setEditDraft('');
       await load({ quiet: true });
     } catch {
       toast.error('Erro de rede ao salvar a validade');
@@ -238,6 +245,10 @@ export default function DocumentosPageClient() {
     }
   }
 
+  function isEditingRow(row: DocumentosRow): boolean {
+    return canWrite && row.id !== null && editingId === row.id;
+  }
+
   function rowActions(row: DocumentosRow) {
     const kind = row.kind as CertidaoKind;
     return (
@@ -264,12 +275,20 @@ export default function DocumentosPageClient() {
             </Button>
           </>
         ) : null}
-        {editingId === row.id ? (
+        {isEditingRow(row) ? (
           <>
             <Button size="xs" onClick={() => void saveEdit()} loading={saving} disabled={!editDraft}>
               Salvar
             </Button>
-            <Button size="xs" variant="ghost" onClick={() => setEditingId(null)} disabled={saving}>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => {
+                setEditingId(null);
+                setEditDraft('');
+              }}
+              disabled={saving}
+            >
               Cancelar
             </Button>
           </>
@@ -297,7 +316,7 @@ export default function DocumentosPageClient() {
           <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
         </td>
         <td className="px-4 py-3 text-sm whitespace-nowrap">
-          {editingId === row.id ? (
+          {isEditingRow(row) ? (
             <input
               type="date"
               value={editDraft}

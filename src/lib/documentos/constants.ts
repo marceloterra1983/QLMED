@@ -93,5 +93,6 @@ export const CERTIDAO_EMISSAO_URL: Record<Exclude<CompanyDocumentKind, 'outro'>,
   cnd_estadual_ms: 'https://servicos.efazenda.ms.gov.br/pndfis/Home/Emissao',
   cnd_estadual_mt: 'https://www.sefaz.mt.gov.br/cnd/certidao/servlet/ServletRotdAberto?origem=60',
   cnd_municipal_mobiliario: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
-  cnd_municipal_gerais: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
+  // CNDG (pessoa / TIPO=P), distinta da mobiliária. Spike-042 quadro 1.
+  cnd_municipal_gerais: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidao',
 };

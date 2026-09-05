@@ -1,6 +1,6 @@
 # Gates: L6 — Página UI + preview
 
-Scope: src/app/(painel)/cadastro/documentos/{layout,page,page-client}.tsx. Tabela fixa de 6 linhas, Ver/Baixar, histórico expansível, "Atualizar do OneDrive", upload, editar validade. "Outros arquivos" colapsado.
+Scope: src/app/(painel)/cadastro/documentos/{layout,page,page-client}.tsx. Tabela fixa de 7 linhas, Ver (popup)/Baixar, sem histórico, "Atualizar do OneDrive", upload, editar validade. Sem card "Outros arquivos".
 
 - [x] G1: verificadores de UI do repo passam (tokens, dialogs, empty state, modal trap)
   CHECK: npm run ui:check --silent && echo UI_OK
@@ -17,10 +17,10 @@ Scope: src/app/(painel)/cadastro/documentos/{layout,page,page-client}.tsx. Tabel
   EXPECT: cadastro/documentos
   EVIDENCE: ✓ Compiled successfully; ├ ○ /cadastro/documentos 1.3 kB
 
-- [ ] G4: smoke no preview :3002 (checkout desta branch no worktree preview): screenshot da tabela com dados reais anexado em specs/042-cadastro-documentos-certidoes/evidence/L6-tabela.png; 6 linhas; dias restantes batem com a conta manual de 04/09 (ou do dia do smoke)
+- [ ] G4: smoke no preview :3002 (checkout desta branch no worktree preview): screenshot da tabela com dados reais anexado em specs/042-cadastro-documentos-certidoes/evidence/L6-tabela.png; 7 linhas; dias restantes batem com a conta manual de 04/09 (ou do dia do smoke)
   EVIDENCE: pending
 
-- [ ] G5: Ver abre o PDF inline em nova aba; Baixar salva com o nome original; ambos testados no preview
+- [ ] G5: Ver abre o PDF num popup na própria página (não noutra aba); Baixar salva com o nome original; ambos testados no preview
   EVIDENCE: pending
 
 - [ ] G6: viewer não vê botões de escrita (sync/upload/editar) E o servidor nega mesmo assim (G5 de L5)

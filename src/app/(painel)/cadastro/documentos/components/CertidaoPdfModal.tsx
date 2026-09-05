@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
@@ -20,6 +20,7 @@ export default function CertidaoPdfModal({ isOpen, onClose, documentId, title }:
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -44,8 +45,10 @@ export default function CertidaoPdfModal({ isOpen, onClose, documentId, title }:
     ? `/pdfjs/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`
     : pdfUrl;
 
+  // A rota /arquivo só conhece ?download=1; ?print=true era ignorado.
+  // O PDF já está no iframe — imprimir o visualizador é o caminho mínimo.
   const handlePrint = () => {
-    window.open(`${pdfUrl}?print=true`, '_blank');
+    iframeRef.current?.contentWindow?.print();
   };
 
   const handleDownloadPdf = () => {
@@ -139,6 +142,7 @@ export default function CertidaoPdfModal({ isOpen, onClose, documentId, title }:
                 </div>
               ) : null}
               <iframe
+                ref={iframeRef}
                 src={iframeSrc}
                 className="w-full h-full min-h-0 border-0 block"
                 title="Preview do documento"

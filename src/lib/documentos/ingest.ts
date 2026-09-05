@@ -230,8 +230,8 @@ async function ingestCompany(
     }
   }
 
-  const arquivados = await archiveExpiredDocuments(companyId, port, now);
-
+  // removedAt deste ciclo ANTES de arquivar: um ficheiro que sumiu agora não
+  // pode contar como substituto (hasLaterSubstitute lê removedAt: null).
   const removed = await prisma.companyDocument.updateMany({
     where: {
       companyId,
@@ -241,6 +241,8 @@ async function ingestCompany(
     },
     data: { removedAt: now },
   });
+
+  const arquivados = await archiveExpiredDocuments(companyId, port, now);
 
   const result: DocumentosIngestResult = {
     scanned,

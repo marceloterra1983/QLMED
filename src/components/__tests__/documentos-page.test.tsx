@@ -241,6 +241,62 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
   });
 
+  it('linha sem documento não nasce em edição; canWrite=false nenhuma linha edita', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
+
+    expect(within(gerais).queryByLabelText('Validade')).toBeNull();
+    expect(within(gerais).queryByRole('button', { name: 'Salvar' })).toBeNull();
+    expect(within(gerais).queryByRole('button', { name: 'Cancelar' })).toBeNull();
+    expect(screen.queryByLabelText('Validade')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
+
+    cleanup();
+    roleState.canWrite = false;
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+    expect(screen.queryByLabelText('Validade')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Editar validade/ })).toBeNull();
+  });
+
+  it('Cancelar limpa o rascunho para não pinar a data noutra linha', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar validade de CND Receita Federal' }));
+    const input = screen.getByLabelText('Validade') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2027-01-15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByLabelText('Validade')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar validade de CRF FGTS' }));
+    expect((screen.getByLabelText('Validade') as HTMLInputElement).value).toBe('2026-09-01');
+  });
+
+  it('Imprimir usa o visualizador, sem ?print=true', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ver' })[0]);
+    const iframe = await screen.findByTitle('Preview do documento');
+    const printSpy = vi.fn();
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { print: printSpy },
+      configurable: true,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir' }));
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
   it('mostra botões de escrita só para editor/admin', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);

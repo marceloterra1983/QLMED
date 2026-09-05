@@ -92,6 +92,7 @@ const memory = vi.hoisted(() => {
   return {
     docs: [] as DocRow[],
     ingest: [] as IngestStateRow[],
+    connection: { id: 'conn-1', driveId: 'drive-1' } as { id: string; driveId: string } | null,
     seq: 1,
     creates: 0,
     pick,
@@ -104,6 +105,11 @@ const lock = vi.hoisted(() => ({
   acquire: vi.fn(async (): Promise<{ release: () => Promise<undefined> } | null> => ({
     release: async () => lock.release(),
   })),
+}));
+
+const uploadOd = vi.hoisted(() => ({
+  uploadOneDriveFile: vi.fn(async () => ({ id: 'item-up', name: 'up.pdf' })),
+  ensureToken: vi.fn(async () => 'token'),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -149,6 +155,9 @@ vi.mock('@/lib/prisma', () => ({
         return { count };
       }),
     },
+    oneDriveConnection: {
+      findFirst: vi.fn(async () => memory.connection),
+    },
     companyDocumentIngestState: {
       upsert: vi.fn(async ({
         where,
@@ -183,9 +192,18 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
   documentosAlertLockKey: (companyId: string) => `documentos-alert:${companyId}`,
 }));
 
+vi.mock('@/lib/onedrive-client', () => ({
+  uploadOneDriveFile: uploadOd.uploadOneDriveFile,
+}));
+
+vi.mock('@/lib/onedrive-connections', () => ({
+  ensureValidOneDriveAccessToken: uploadOd.ensureToken,
+}));
+
 function resetMemory() {
   memory.docs.length = 0;
   memory.ingest.length = 0;
+  memory.connection = { id: 'conn-1', driveId: 'drive-1' };
   memory.seq = 1;
   memory.creates = 0;
 }
@@ -497,5 +515,110 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(ymd(memory.docs[0]?.validUntil ?? null)).toBe('2026-10-12');
     expect(memory.docs[0]?.alertedThresholds).toEqual([30, 15]);
     expect(memory.docs[0]?.renewalNotifiedAt).toEqual(notifiedAt);
+  });
+
+  it('substituto que some nesta varredura não arquiva o vencido', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const archived: string[] = [];
+    memory.docs.push(
+      {
+        id: 'doc-expired',
+        companyId: COMPANY,
+        kind: 'cnd_federal',
+        fileName: 'CERTIDAO RECEITA FEDERAL 01.08.26 - QL MED.pdf',
+        oneDriveItemId: 'od-expired',
+        oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+        folderName: 'Federais',
+        fileSize: 1024,
+        lastModifiedAt: new Date('2026-08-01T00:00:00.000Z'),
+        validUntil: new Date('2026-08-01T00:00:00.000Z'),
+        validUntilSource: 'filename',
+        removedAt: null,
+        renewalNotifiedAt: null,
+        alertedThresholds: [],
+      },
+      {
+        id: 'doc-sub',
+        companyId: COMPANY,
+        kind: 'cnd_federal',
+        fileName: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
+        oneDriveItemId: 'od-sub',
+        oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+        folderName: 'Federais',
+        fileSize: 1024,
+        lastModifiedAt: new Date('2026-09-01T00:00:00.000Z'),
+        validUntil: new Date('2026-12-12T00:00:00.000Z'),
+        validUntilSource: 'filename',
+        removedAt: null,
+        renewalNotifiedAt: null,
+        alertedThresholds: [],
+      },
+    );
+
+    const port = fakePort([
+      {
+        folder: 'Federais',
+        file: {
+          itemId: 'od-expired',
+          name: 'CERTIDAO RECEITA FEDERAL 01.08.26 - QL MED.pdf',
+          size: 1024,
+          lastModifiedAt: new Date('2026-09-04T12:00:00.000Z'),
+        },
+      },
+    ]);
+    port.moveToArchive = async (itemId: string) => {
+      archived.push(itemId);
+    };
+
+    const result = await runDocumentosIngest(COMPANY, port, NOW);
+
+    expect(result.arquivados).toBe(0);
+    expect(archived).toEqual([]);
+    expect(memory.docs.find((row) => row.id === 'doc-expired')?.removedAt).toBeNull();
+    expect(memory.docs.find((row) => row.id === 'doc-sub')?.removedAt).toEqual(NOW);
+  });
+});
+
+describe('SPEC-042 — upload toma o lock da ingestão', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMemory();
+    lock.acquire.mockImplementation(async () => ({ release: async () => lock.release() }));
+    uploadOd.uploadOneDriveFile.mockResolvedValue({ id: 'item-up', name: 'up.pdf' });
+    uploadOd.ensureToken.mockResolvedValue('token');
+  });
+
+  it('lock ocupado lança DocumentosUploadBusyError e não grava', async () => {
+    const { uploadDocumentosPdf, DocumentosUploadBusyError } = await import('@/lib/documentos/upload');
+    lock.acquire.mockResolvedValueOnce(null);
+
+    await expect(
+      uploadDocumentosPdf({
+        companyId: COMPANY,
+        kind: 'cnd_federal',
+        validUntil: '2026-12-12',
+        content: Buffer.from('%PDF-1.4 lock'),
+      }),
+    ).rejects.toBeInstanceOf(DocumentosUploadBusyError);
+
+    expect(uploadOd.uploadOneDriveFile).not.toHaveBeenCalled();
+    expect(memory.creates).toBe(0);
+    expect(lock.release).not.toHaveBeenCalled();
+  });
+
+  it('sucesso toma o lock e liberta no finally', async () => {
+    const { uploadDocumentosPdf } = await import('@/lib/documentos/upload');
+
+    const row = await uploadDocumentosPdf({
+      companyId: COMPANY,
+      kind: 'cnd_federal',
+      validUntil: '2026-12-12',
+      content: Buffer.from('%PDF-1.4 lock'),
+    });
+
+    expect(row.oneDriveItemId).toBe('item-up');
+    expect(lock.acquire).toHaveBeenCalledWith('documentos-ingest:co1');
+    expect(lock.release).toHaveBeenCalledTimes(1);
+    expect(uploadOd.uploadOneDriveFile).toHaveBeenCalledTimes(1);
   });
 });
