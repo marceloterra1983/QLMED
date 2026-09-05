@@ -1,6 +1,6 @@
 ---
 id: SPEC-043
-status: draft
+status: implemented
 owner: QLMED
 affected_modules:
   - product-registry
@@ -11,7 +11,7 @@ affected_modules:
 # Feature Specification: Importação de produtos Spica
 
 **Feature Branch**: `043-spica-product-import`  
-**Status**: Draft (estudo + contrato; sync produção bloqueado até dry-run)  
+**Status**: Implemented (UI + API em `/cadastro/produtos`; apply exige dry-run + `confirmChecksum`; sync produção continua bloqueado até dry-run operacional aprovado)  
 **Input**: Exports Spica `Rel_Produtos_*.ods` + `List_Produtos_Cad_*.ods`  
 **Research**: [research.md](./research.md)
 
