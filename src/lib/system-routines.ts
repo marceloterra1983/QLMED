@@ -1,4 +1,4 @@
-import type { BackgroundServiceName } from './background-service-health';
+import type { BackgroundServiceName, BackgroundServiceStatus } from './background-service-health';
 import { CASSEMS_INGEST_INTERVAL_MS } from './cassems/constants';
 import {
   DOCUMENTOS_ALERT_THRESHOLDS,
@@ -361,3 +361,109 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     description: 'Gera dump integral comprimido do banco relacional de produção, valida a integridade do arquivo gerado e gerencia a rotação de retenção de segurança.',
   },
 ];
+
+
+export type RoutineLiveStatus = 'running' | 'stale' | 'disabled' | 'error' | 'scheduled' | 'worker';
+
+export interface EnrichedSystemRoutine extends SystemRoutine {
+  liveStatus: RoutineLiveStatus;
+  liveStatusLabel: string;
+  lastHeartbeatAt: string | null;
+  lastHeartbeatAgeMs: number | null;
+  lastError: string | null;
+}
+
+function liveStatusLabel(status: RoutineLiveStatus): string {
+  switch (status) {
+    case 'running':
+      return 'Ativo (Em Execução)';
+    case 'stale':
+      return 'Sem Batimento (Stale)';
+    case 'disabled':
+      return 'Desativado';
+    case 'error':
+      return 'Falha / Erro';
+    case 'worker':
+      return 'Worker do Host';
+    case 'scheduled':
+    default:
+      return 'Agendado no Sistema';
+  }
+}
+
+/** Enriquece o catálogo estático com telemetria ao vivo de background services. */
+export function enrichRoutinesWithHealth(
+  health: Partial<Record<string, BackgroundServiceStatus>>,
+  routines: SystemRoutine[] = SYSTEM_ROUTINES,
+): EnrichedSystemRoutine[] {
+  return routines.map((routine) => {
+    if (routine.backgroundServiceName) {
+      const serviceStatus = health[routine.backgroundServiceName];
+      if (serviceStatus) {
+        const status = serviceStatus.status as RoutineLiveStatus;
+        return {
+          ...routine,
+          liveStatus: status,
+          liveStatusLabel: liveStatusLabel(status),
+          lastHeartbeatAt: serviceStatus.lastHeartbeatAt,
+          lastHeartbeatAgeMs: serviceStatus.lastHeartbeatAgeMs,
+          lastError: serviceStatus.lastError,
+        };
+      }
+    }
+
+    const defaultStatus: RoutineLiveStatus =
+      routine.triggerType === 'worker_cron' ? 'worker' : 'scheduled';
+
+    return {
+      ...routine,
+      liveStatus: defaultStatus,
+      liveStatusLabel: liveStatusLabel(defaultStatus),
+      lastHeartbeatAt: null,
+      lastHeartbeatAgeMs: null,
+      lastError: null,
+    };
+  });
+}
+
+export interface RoutineSummary {
+  total: number;
+  backgroundServices: number;
+  scheduledTimers: number;
+  watchdogs: number;
+  totalRoutines: number;
+  backgroundServicesCount: number;
+  activeServicesCount: number;
+  errorServicesCount: number;
+  recentSyncs24h?: number;
+  pendingOutbox?: number;
+}
+
+/** Contadores de resumo para cards do painel e resposta da API. */
+export function buildRoutineSummary(
+  routines: SystemRoutine[],
+  health: Partial<Record<string, BackgroundServiceStatus>>,
+  extras: { recentSyncs24h?: number; pendingOutbox?: number } = {},
+): RoutineSummary {
+  const activeServicesCount = Object.values(health).filter((h) => h?.status === 'running').length;
+  const errorServicesCount = Object.values(health).filter(
+    (h) => h?.status === 'error' || h?.status === 'stale',
+  ).length;
+  const scheduledTimers = routines.filter(
+    (r) => r.triggerType === 'scheduled_timer' || r.triggerType === 'worker_cron',
+  ).length;
+  const watchdogs = routines.filter((r) => r.id.includes('watchdog') || r.name.toLowerCase().includes('watchdog')).length;
+
+  return {
+    total: routines.length,
+    backgroundServices: Object.keys(health).length,
+    scheduledTimers,
+    watchdogs,
+    totalRoutines: routines.length,
+    backgroundServicesCount: Object.keys(health).length,
+    activeServicesCount,
+    errorServicesCount,
+    ...extras,
+  };
+}
+
