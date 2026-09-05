@@ -45,10 +45,10 @@ backfill `product_registry` + preview + PR/merge/deploy.
   EXPECT: /DOCS:0/
   EVIDENCE: DOCS:0
 
-- [ ] G9: Preview :3002 serve a mudança; UI CARDIACA mostra ALEXIS como Grupo (âmbar) sem Subgrupo (manual: browser)
+- [x] G9: Preview :3002 serve a mudança; UI CARDIACA mostra ALEXIS como Grupo (âmbar) sem Subgrupo (manual: browser)
   CHECK: curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3002/cadastro/produtos
   EXPECT: /^(200|307)$/m
-  EVIDENCE: pending
+  EVIDENCE: curl 307 (login) em :3002 no commit 19973f0; Playwright a11y snapshot: row "expand_more CARDIACA 826" → row "expand_more ALEXIS 3" → rows 003884 / 005887 "ALEXIS RETRATOR…"; row "ANEL CARBOMEDICS 15"; zero rows "Selecionar subgrupo"/sub-*. Screenshot /tmp/preview-cardiaca-alexis.png
 
 - [ ] G10: PR mergeado em main, CI verde, deploy produção com health no SHA
   CHECK: bash -c 'gh run list --workflow=deploy-production.yml --branch main --limit 1 --json conclusion,headSha --jq ".[0] | .conclusion + \" \" + .headSha"; curl -s http://127.0.0.1:13000/api/health'
