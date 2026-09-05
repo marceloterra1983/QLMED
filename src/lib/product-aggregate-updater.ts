@@ -15,6 +15,7 @@ import { extractPartyFiscalData } from '@/lib/parse-invoice-xml';
 import { upsertContactFiscal } from '@/lib/contact-fiscal-store';
 import { extractAndStoreDuplicatas } from '@/lib/invoice-duplicata-store';
 import { acquirePostgresAdvisoryLock, type PostgresAdvisoryLock } from '@/lib/postgres-advisory-lock';
+import { linkInvoiceItems } from '@/lib/nfe-item-link/store';
 import { productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 import type { Prisma } from '@prisma/client';
 
@@ -79,8 +80,38 @@ export async function updateProductAggregatesForInvoice(opts: {
     await extractAndStoreTaxData(opts.invoiceId, opts.companyId, opts.xmlContent);
     await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
     await extractAndStoreDuplicatas(opts.invoiceId, opts.companyId, opts.xmlContent);
+    if (opts.direction === 'received') {
+      await linkReceivedItems(opts);
+    }
   } finally {
     await aggregateLock?.release();
+  }
+}
+
+/**
+ * SPEC-047: cada item da nota recebida tenta vincular-se a um produto Spica
+ * (cascata S1..S6). Falha aqui não pode derrubar a ingestão da nota.
+ */
+async function linkReceivedItems(opts: {
+  companyId: string;
+  invoiceId: string;
+  xmlContent: string;
+  senderCnpj: string | null;
+  senderName: string | null;
+}) {
+  try {
+    const stats = await linkInvoiceItems({
+      id: opts.invoiceId,
+      companyId: opts.companyId,
+      senderCnpj: opts.senderCnpj || '',
+      senderName: opts.senderName,
+      xmlContent: opts.xmlContent,
+    });
+    if (stats.writes > 0) {
+      log.info({ invoiceId: opts.invoiceId, linked: stats.linked, pending: stats.pending, writes: stats.writes }, 'nfe item links');
+    }
+  } catch (error) {
+    log.warn({ invoiceId: opts.invoiceId, error: error instanceof Error ? error.message : String(error) }, 'nfe item link failed');
   }
 }
 

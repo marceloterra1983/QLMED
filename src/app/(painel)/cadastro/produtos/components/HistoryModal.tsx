@@ -77,6 +77,8 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
     if (!product.code) return;
     const params = new URLSearchParams({ code: product.code });
     if (product.unit) params.set('unit', product.unit);
+    // SPEC-047: compras também pelo vínculo item→produto (S2 variantes, S5, MANUAL).
+    if (product.id) params.set('registryId', product.id);
     setLoadingHistory(true);
     fetch(`/api/products/history?${params}`).then(r => r.json()).then(d => setPurchaseHistory(d.history || [])).catch(() => {}).finally(() => setLoadingHistory(false));
     const salesParams = new URLSearchParams({ code: product.code, direction: 'issued', description: product.description });
@@ -87,7 +89,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
     if (product.unit) consigParams.set('unit', product.unit);
     setLoadingConsignment(true);
     fetch(`/api/products/history?${consigParams}`).then(r => r.json()).then(d => setConsignmentHistory(d.history || [])).catch(() => {}).finally(() => setLoadingConsignment(false));
-  }, [product.code, product.unit, product.description]);
+  }, [product.id, product.code, product.unit, product.description]);
 
   const calcStats = (items: HistoryItem[]) => {
     const totalValue = items.reduce((s, h) => s + h.totalValue, 0);

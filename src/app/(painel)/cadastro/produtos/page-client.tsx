@@ -339,6 +339,14 @@ export default function ProdutosPage() {
                 Importar Spica
               </Button>
             )}
+            <Button
+              href="/cadastro/produtos/vinculos-nfe"
+              variant="secondary"
+              icon="link_off"
+              title="Itens de NF-e recebida ainda sem produto Spica"
+            >
+              Itens de NF sem vínculo
+            </Button>
             <ExportCSVButton filteredCount={filtered.length} query={exportQuery} />
           </>
         )}

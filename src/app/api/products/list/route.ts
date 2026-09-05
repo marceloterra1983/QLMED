@@ -146,6 +146,7 @@ export async function GET(req: Request) {
     });
 
     const products = rows.map((row) => ({
+      id: row.id,
       key: row.productKey,
       codigo: row.codigo || null,
       code: row.code || '-',
