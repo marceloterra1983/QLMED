@@ -466,12 +466,12 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
       {/* Integração n8n — alimenta /sistema/automacoes */}
       <Section icon="account_tree" title="Integração n8n" defaultOpen badge={badgeDe(n8nBadge)}>
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-3">
+          <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <div className="flex items-start gap-2">
-              <span className="material-symbols-outlined text-violet-600 dark:text-violet-400 text-[20px] mt-0.5">info</span>
+              <span className="material-symbols-outlined text-primary dark:text-blue-400 text-[20px] mt-0.5">info</span>
               <div>
-                <h4 className="font-bold text-violet-900 dark:text-violet-300 text-xs">Como obter a chave de API</h4>
-                <ol className="text-xs text-violet-800 dark:text-violet-400 mt-1 space-y-0.5 list-decimal list-inside">
+                <h4 className="font-bold text-blue-900 dark:text-blue-300 text-xs">Como obter a chave de API</h4>
+                <ol className="text-xs text-blue-800 dark:text-blue-400 mt-1 space-y-0.5 list-decimal list-inside">
                   <li>Abra o n8n (ex.: n8n.qlmed.com.br)</li>
                   <li>Vá em <strong>Settings → API</strong> e crie uma API key</li>
                   <li>Informe o endereço HTTPS e cole a chave abaixo</li>
@@ -794,9 +794,9 @@ export default function IntegrationsSection({ company, canManageSettings }: Inte
       {/* Integração OneDrive */}
       <Section icon="cloud_sync" title="Integração OneDrive" defaultOpen badge={badgeDe(oneDriveBadge)}>
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">
-            <p className="text-xs text-indigo-900 dark:text-indigo-300 font-semibold">Conecte múltiplas contas Microsoft</p>
-            <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-1">
+          <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-xs text-blue-900 dark:text-blue-300 font-semibold">Conecte múltiplas contas Microsoft</p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
               Exemplo: conectar <strong>adm@qlmed.com.br</strong> e <strong>faturamento@qlmed.com.br</strong> para consultar e enviar arquivos.
             </p>
           </div>
