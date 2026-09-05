@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { normalizeSpicaRelRow, SpicaRelRowInput, SpicaNormalizedRow } from '@/lib/spica/parse';
+import { normalizeSpicaRelRow, SpicaRelRowInput } from '@/lib/spica/parse';
 import { normalizeToken } from '@/lib/product-aggregation/shared';
 import { randomUUID } from 'crypto';
 

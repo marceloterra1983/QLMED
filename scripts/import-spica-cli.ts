@@ -9,7 +9,6 @@ function parseCsv(content: string): SpicaRelRowInput[] {
   const rows: SpicaRelRowInput[] = [];
   if (lines.length <= 1) return rows;
 
-  const header = lines[0].split(',').map((h) => h.trim());
   
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
