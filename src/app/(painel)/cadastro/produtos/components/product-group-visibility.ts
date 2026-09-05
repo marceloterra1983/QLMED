@@ -1,5 +1,12 @@
 import type { ProductRow, SortField } from '../types';
 
+/**
+ * Acima deste total de produtos, "Expandir" e a busca abrem só até o nível de
+ * Subgrupo. Renderizar milhares de <tr> (desktop + mobile) trava a página; o
+ * catálogo inteiro (~8k) chega de uma vez na hierarquia.
+ */
+export const FULL_EXPAND_LIMIT = 1000;
+
 /** Chave de linha no Set collapsedGroups (hierarquia productType). */
 export function productLineKey(product: Pick<ProductRow, 'productType'>): string {
   return `line:${product.productType || 'Sem linha'}`;
@@ -12,6 +19,16 @@ export function productSubgroupKey(
   const name = product.productSubgroup?.trim();
   if (!name) return null;
   return `sub:${product.productType || 'Sem linha'}|${product.productSubtype || 'Sem grupo'}|${name}`;
+}
+
+/**
+ * Grupo igual à Linha (Tipo Spica preenche os dois): não há cabeçalho de grupo,
+ * logo a chave `group:` desse produto nunca conta como recolhida.
+ */
+export function isGroupSameAsLine(
+  product: Pick<ProductRow, 'productType' | 'productSubtype'>,
+): boolean {
+  return !!(product.productType && product.productSubtype) && product.productType === product.productSubtype;
 }
 
 /** Chave de grupo no Set collapsedGroups conforme o sort ativo. */
@@ -49,7 +66,7 @@ export function isProductRowVisible(
 ): boolean {
   if (sortBy === 'productType') {
     if (collapsed.has(productLineKey(product))) return false;
-    if (collapsed.has(productGroupKey(product, sortBy))) return false;
+    if (!isGroupSameAsLine(product) && collapsed.has(productGroupKey(product, sortBy))) return false;
     const sub = productSubgroupKey(product);
     if (sub && collapsed.has(sub)) return false;
     return true;
@@ -67,7 +84,7 @@ export function anyProductRowVisible(
 }
 
 /**
- * Todas as chaves de linha/grupo/subgrupo da página — carregar sempre recolhido
+ * Todas as chaves de linha/grupo/subgrupo do conjunto — carregar sempre recolhido
  * e botão "Recolher" fecha tudo.
  */
 export function allCollapseKeys(
@@ -95,4 +112,26 @@ export function safeCollapseKeys(
   sortBy: SortField,
 ): Set<string> {
   return allCollapseKeys(products, sortBy);
+}
+
+/** Só as chaves de subgrupo: linhas e grupos abertos, subgrupos fechados. */
+export function subgroupCollapseKeys(products: ProductRow[]): Set<string> {
+  const keys = new Set<string>();
+  for (const p of products) {
+    const sub = productSubgroupKey(p);
+    if (sub) keys.add(sub);
+  }
+  return keys;
+}
+
+/**
+ * Botão "Expandir" e busca ativa: abre tudo quando o conjunto é pequeno; acima
+ * de FULL_EXPAND_LIMIT abre só até Subgrupo (produtos ao clicar no subgrupo).
+ */
+export function expandCollapseKeys(
+  products: ProductRow[],
+  sortBy: SortField,
+): Set<string> {
+  if (sortBy !== 'productType' || products.length <= FULL_EXPAND_LIMIT) return new Set();
+  return subgroupCollapseKeys(products);
 }

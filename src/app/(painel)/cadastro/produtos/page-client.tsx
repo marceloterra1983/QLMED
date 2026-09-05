@@ -20,10 +20,13 @@ import BulkEditModal from './components/BulkEditModal';
 import ExportCSVButton from './components/ExportCSVButton';
 import ImportSpicaModal from './components/ImportSpicaModal';
 import ProductTable from './components/ProductTable';
-import { allCollapseKeys } from './components/product-group-visibility';
+import { allCollapseKeys, expandCollapseKeys } from './components/product-group-visibility';
 import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
 import PageHeader from '@/components/PageHeader';
+
+/** Tamanho de página das ordenações flat (a hierarquia carrega o catálogo inteiro). */
+const PAGE_SIZE = 50;
 
 export default function ProdutosPage() {
   const { canWrite } = useRole();
@@ -32,8 +35,10 @@ export default function ProdutosPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [summary, setSummary] = useState<ProductsSummary>({ totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
   const [hierarchyCounts, setHierarchyCounts] = useState<ProductsHierarchyCounts | null>(null);
-  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
   const [meta, setMeta] = useState<ProductsResponse['meta'] | null>(null);
+  /** > 0 quando a hierarquia foi truncada no limite exportAll da API. */
+  const [exportLimitedAt, setExportLimitedAt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [settingsHierarchy, setSettingsHierarchy] = useState<{ lines: { name: string; groups: { name: string; subgroups: string[] }[] }[] }>({ lines: [] });
   const [nomeTributacaoOptions, setNomeTributacaoOptions] = useState<string[]>([]);
@@ -56,6 +61,9 @@ export default function ProdutosPage() {
   const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
+  // Hierarquia Linha > Grupo > Subgrupo: a árvore só faz sentido com o catálogo
+  // inteiro (paginar 50 escondia linhas e subgrupos). Ordenações flat paginam.
+  const isTreeView = sortBy === 'productType';
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -181,14 +189,35 @@ export default function ProdutosPage() {
     const controller = new AbortController();
     fetchAbortRef.current = controller;
     setLoading(true);
+    const applyResponse = (data: ProductsResponse & { needsRebuild?: boolean }) => {
+      setProducts(data.products || []);
+      setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
+      setHierarchyCounts(data.hierarchyCounts || null);
+      // Na hierarquia a API devolve limit=10000 (exportAll); manter o tamanho de
+      // página local para a volta às ordenações flat não estourar o schema (max 200).
+      const pg = data.pagination || { page: 1, limit: PAGE_SIZE, total: data.products?.length || 0, pages: 1 };
+      setPagination(isTreeView ? { ...pg, limit: PAGE_SIZE } : pg);
+      setExportLimitedAt(data.exportLimited ? pg.limit : 0);
+      setMeta(data.meta || null);
+      // Sempre iniciar recolhido; busca expande (até FULL_EXPAND_LIMIT).
+      setCollapsedGroups(
+        debouncedSearch.trim()
+          ? expandCollapseKeys(data.products || [], sortBy)
+          : allCollapseKeys(data.products || [], sortBy),
+      );
+    };
     try {
       const params = new URLSearchParams({
         sort: serverSortField,
         order: sortOrder,
         lineStatus: lineStatusFilter,
-        page: String(pagination.page),
-        limit: String(pagination.limit),
       });
+      if (isTreeView) {
+        params.set('exportAll', 'true');
+      } else {
+        params.set('page', String(pagination.page));
+        params.set('limit', String(pagination.limit));
+      }
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (typeFilter) params.set('productType', typeFilter);
       if (subtypeFilter) params.set('productSubtype', subtypeFilter);
@@ -196,18 +225,7 @@ export default function ProdutosPage() {
       const res = await fetch(`/api/products/list?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Falha ao carregar produtos');
       const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
-      setProducts(data.products || []);
-      setSummary(data.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
-      setHierarchyCounts(data.hierarchyCounts || null);
-      setPagination(data.pagination || { page: 1, limit: data.products?.length || 0, total: data.products?.length || 0, pages: 1 });
-      setMeta(data.meta || null);
-      // Sempre iniciar recolhido (Linha → Grupo → Subgrupo); Expandir abre tudo.
-      // Busca: manter expandido; demais cargas: tudo recolhido.
-      setCollapsedGroups(
-        debouncedSearch.trim()
-          ? new Set()
-          : allCollapseKeys(data.products || [], sortBy),
-      );
+      applyResponse(data);
       if (data.needsRebuild && !rebuiltOnceRef.current) {
         rebuiltOnceRef.current = true;
         setIsRebuilding(true);
@@ -215,18 +233,10 @@ export default function ProdutosPage() {
           .then((r) => { if (r.ok) return r.json(); throw new Error(); })
           .then(() => {
             setIsRebuilding(false);
-            fetch(`/api/products/list?${params}`).then((r) => r.json()).then((d: ProductsResponse) => {
-              setProducts(d.products || []);
-              setSummary(d.summary || { totalProducts: 0, productsWithAnvisa: 0, totalQuantity: 0 });
-              setHierarchyCounts(d.hierarchyCounts || null);
-              setPagination(d.pagination || { page: 1, limit: d.products?.length || 0, total: d.products?.length || 0, pages: 1 });
-              setMeta(d.meta || null);
-              setCollapsedGroups(
-                debouncedSearch.trim()
-                  ? new Set()
-                  : allCollapseKeys(d.products || [], sortBy),
-              );
-            }).catch(() => {});
+            fetch(`/api/products/list?${params}`)
+              .then((r) => r.json())
+              .then((d: ProductsResponse) => applyResponse(d))
+              .catch(() => {});
           })
           .catch(() => setIsRebuilding(false));
       }
@@ -234,9 +244,10 @@ export default function ProdutosPage() {
       if (err instanceof Error && err.name === 'AbortError') return;
       toast.error('Erro ao carregar produtos');
     } finally {
-      setLoading(false);
+      // Requisição abortada por outra mais nova não pode apagar o loading dela.
+      if (fetchAbortRef.current === controller) setLoading(false);
     }
-  }, [serverSortField, sortBy, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
+  }, [serverSortField, sortBy, isTreeView, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
 
   useEffect(() => {
     setPagination((current) => current.page === 1 ? current : { ...current, page: 1 });
@@ -274,14 +285,6 @@ export default function ProdutosPage() {
       subgroupsForGroup: (group: string) => Array.from(subgroupByGroup.get(group) || []).sort(sort),
     };
   }, [products, settingsHierarchy]);
-
-  // Com busca ativa: expandir todos os grupos para exibir resultados imediatamente.
-  const isSearching = debouncedSearch.trim() !== '';
-  useEffect(() => {
-    if (isSearching) {
-      setCollapsedGroups(new Set());
-    }
-  }, [isSearching]);
 
   // ---- handlers ----
   const handleSort = (field: SortField) => {
@@ -355,6 +358,12 @@ export default function ProdutosPage() {
         catalogTotal={pagination.total}
         pageSize={products.length}
       />
+
+      {exportLimitedAt > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+          A hierarquia mostra os primeiros {formatInt(exportLimitedAt)} produtos do filtro; refine os filtros para ver todos.
+        </div>
+      )}
 
       {meta?.invoicesLimited && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
