@@ -105,9 +105,16 @@ function matchWhere(row: DocRow, where?: Record<string, unknown>): boolean {
       const obj = value as {
         not?: unknown;
         lte?: number;
+        gt?: string;
         endsWith?: string;
         mode?: string;
       };
+      // `gt` é o cursor da varredura. Sem isto no duplo, o teste do avanço
+      // passaria sem o cursor fazer nada — mediria a si próprio.
+      if ('gt' in obj) {
+        if (String(current ?? '') <= String(obj.gt)) return false;
+        continue;
+      }
       if ('not' in obj) {
         if (current === obj.not) return false;
         continue;
@@ -153,14 +160,17 @@ vi.mock('@/lib/prisma', () => ({
         where,
         orderBy,
         select,
+        take,
       }: {
         where?: Record<string, unknown>;
         orderBy?: Record<string, string>;
         select?: Record<string, boolean>;
+        take?: number;
       }) => {
         const matched = memory.docs.filter((row) => matchWhere(row, where));
         const ordered = sortRows(matched, orderBy);
-        return ordered.map((row) => pick(row, select));
+        const limitado = typeof take === 'number' ? ordered.slice(0, take) : ordered;
+        return limitado.map((row) => pick(row, select));
       }),
       count: vi.fn(async ({ where }: { where?: Record<string, unknown> }) =>
         memory.docs.filter((row) => matchWhere(row, where)).length,
@@ -484,6 +494,7 @@ describe('SPEC-042 L14 — runBackfillEmissao', () => {
       ignorados: 0,
       falhas: 0,
       restantes: 1,
+      proximoId: null,
       ocupado: true,
     });
     expect(downloadPdf).not.toHaveBeenCalled();
@@ -566,5 +577,81 @@ describe('POST /api/documentos/backfill-emissao', () => {
     expect(dumped).not.toContain('AbC123Segredo');
     expect(dumped).toContain('password=[redacted]');
     expect(dumped).toContain('accessToken=[redacted]');
+  });
+});
+
+describe('SPEC-042 — a varredura tem de AVANÇAR', () => {
+  /**
+   * As candidatas saem de `emitidoEm: null`. Uma linha cujo PDF não declara a
+   * emissão continua com null, portanto SEM CURSOR volta a ser a primeira da
+   * fila e é re-descarregada a cada clique. Com 25 dessas à cabeça, a varredura
+   * nunca chegaria à 26.ª e `restantes` ficaria preso — o botão convidaria ao
+   * clique para sempre, gastando rede e heap sem progresso nenhum.
+   */
+  it('linha sem emissão legível não trava o lote seguinte', async () => {
+    const a = seedRow({ id: 'a-sem-emissao', fileName: 'A.pdf', fileSize: 2048 });
+    const b = seedRow({ id: 'b-com-emissao', fileName: 'B.pdf', fileSize: 2048 });
+
+    const downloadPdf = vi.fn(async (itemId: string) =>
+      Buffer.from(itemId === a.oneDriveItemId ? '%PDF-A' : '%PDF-B'),
+    );
+    pdfValidity.readValidityFromPdf.mockImplementation(async (buf: Buffer) =>
+      String(buf).includes('%PDF-B')
+        ? emitted('2026-03-01')
+        : { validUntil: null, emitidoEm: null, confidence: 'nenhuma' as const, matchedLabel: null, textChars: 20 },
+    );
+
+    const primeiro = await runBackfillEmissao(COMPANY, { port: fakePort(downloadPdf), limite: 1 });
+    expect(primeiro.proximoId).toBe(a.id);
+    expect(primeiro.semEmissao).toBe(1);
+    expect(a.emitidoEm).toBeNull();
+
+    const segundo = await runBackfillEmissao(COMPANY, {
+      port: fakePort(downloadPdf),
+      limite: 1,
+      aposId: primeiro.proximoId,
+    });
+    expect(segundo.proximoId).toBe(b.id);
+    expect(segundo.preenchidos).toBe(1);
+    expect(b.emitidoEm).toEqual(new Date('2026-03-01T00:00:00.000Z'));
+    expect(segundo.restantes).toBe(0);
+  });
+});
+
+describe('SPEC-042 — corpo sem Content-Length também tem teto', () => {
+  /**
+   * Quando o Graph responde em chunks sem `Content-Length`, o teto por cabeçalho
+   * não se aplica e a única defesa é contar bytes ao ler. O contentor corre com
+   * `mem_limit: 1g` e a materialização tem pico de ~3x, portanto um corpo de
+   * algumas centenas de MB derruba a APLICAÇÃO, não só o pedido.
+   *
+   * Este teste existia em falta: apagar a guarda `total > maxBytes` mantinha a
+   * suíte inteira verde.
+   */
+  it('aborta a leitura ao passar do teto e não chama o leitor de PDF', async () => {
+    const row = seedRow({ id: 'a-chunked', fileName: 'grande.pdf', fileSize: null });
+    const pedaco = new Uint8Array(64 * 1024);
+    let entregues = 0;
+
+    const openContent = vi.fn(async () => ({
+      size: null as number | null,
+      body: new ReadableStream<Uint8Array>({
+        pull(controller) {
+          entregues += 1;
+          // Muito acima do teto se ninguém parar a leitura.
+          if (entregues > 5000) controller.close();
+          else controller.enqueue(pedaco);
+        },
+      }),
+    }));
+
+    const result = await runBackfillEmissao(COMPANY, { openContent, limite: 5 });
+
+    expect(result.ignorados).toBe(1);
+    expect(result.preenchidos).toBe(0);
+    expect(row.emitidoEm).toBeNull();
+    expect(pdfValidity.readValidityFromPdf).not.toHaveBeenCalled();
+    // Parou cedo: não leu os 5000 pedaços (~320 MB).
+    expect(entregues * pedaco.byteLength).toBeLessThan(DOCUMENTOS_UPLOAD_MAX_BYTES * 3);
   });
 });

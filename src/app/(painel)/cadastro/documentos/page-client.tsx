@@ -70,6 +70,7 @@ export default function DocumentosPageClient() {
   const [syncing, setSyncing] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillRestantes, setBackfillRestantes] = useState(0);
+  const [backfillCursor, setBackfillCursor] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadKind, setUploadKind] = useState<CertidaoKind>(CERTIDAO_KINDS_ORDER[0]);
@@ -153,7 +154,14 @@ export default function DocumentosPageClient() {
   async function handleBackfill() {
     setBackfilling(true);
     try {
-      const res = await fetch('/api/documentos/backfill-emissao', { method: 'POST' });
+      const res = await fetch('/api/documentos/backfill-emissao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // O cursor do lote anterior faz a varredura AVANÇAR. Sem ele, as linhas
+        // cujo PDF não declara emissão continuam à cabeça e são re-descarregadas
+        // a cada clique, sem nunca chegar às seguintes.
+        body: JSON.stringify(backfillCursor ? { aposId: backfillCursor } : {}),
+      });
       const payload: unknown = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(apiErrorMessage(payload, 'Não foi possível preencher as emissões'));
@@ -163,6 +171,7 @@ export default function DocumentosPageClient() {
         preenchidos?: number;
         semEmissao?: number;
         restantes?: number;
+        proximoId?: string | null;
         ocupado?: boolean;
       };
       if (result.ocupado) {
@@ -171,6 +180,7 @@ export default function DocumentosPageClient() {
       }
       const restantes = result.restantes ?? 0;
       setBackfillRestantes(restantes);
+      setBackfillCursor(restantes > 0 ? (result.proximoId ?? null) : null);
       toast.success(
         `${formatInt(result.preenchidos ?? 0)} preenchidos, ${formatInt(result.semEmissao ?? 0)} sem emissão no PDF, ${formatInt(restantes)} restantes`,
       );

@@ -12,6 +12,8 @@ const log = createLogger('documentos/backfill-emissao');
 const bodySchema = z
   .object({
     limite: z.number().finite().optional(),
+    // Cursor do lote anterior. Sem ele a varredura repete a mesma cabeça de fila.
+    aposId: z.string().min(1).max(64).optional(),
   })
   .strict();
 
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
 
     const result = await runBackfillEmissao(access.companyId, {
       limite: clampBackfillEmissaoLimite(parsed.data.limite),
+      aposId: parsed.data.aposId ?? null,
     });
     return NextResponse.json(result);
   } catch (error) {

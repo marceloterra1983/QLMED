@@ -20,6 +20,16 @@ export type BackfillResult = {
   ignorados: number;
   falhas: number;
   restantes: number;
+  /**
+   * Id da última linha EXAMINADA neste lote — processada, ignorada ou falhada.
+   * O cliente devolve-o no pedido seguinte para a varredura AVANÇAR.
+   *
+   * Sem isto o lote não progride: as candidatas saem de `emitidoEm: null`, e
+   * uma linha cujo PDF não declara emissão continua com null, logo volta a ser
+   * a primeira da fila e é re-descarregada em cada clique. Com 25 dessas à
+   * cabeça, a varredura nunca chega à 26.ª e `restantes` fica preso.
+   */
+  proximoId: string | null;
   /** Lock próprio ocupado — resultado vazio, não é exceção. */
   ocupado: boolean;
 };
@@ -32,6 +42,7 @@ export type BackfillOpenContent = (itemId: string) => Promise<{
 type BackfillPrisma = {
   companyDocument: {
     findMany: (args: {
+      take?: number;
       where: unknown;
       orderBy?: unknown;
       select?: unknown;
@@ -55,6 +66,8 @@ type Candidate = {
 
 export type BackfillEmissaoOpts = {
   limite?: number;
+  /** Cursor: continua depois desta linha. Vem do `proximoId` do lote anterior. */
+  aposId?: string | null;
   port?: DocumentosFolderPort;
   prisma?: BackfillPrisma;
   openContent?: BackfillOpenContent;
@@ -83,10 +96,11 @@ function exceedsUploadCap(size: number | null | undefined): boolean {
   return size != null && Number.isFinite(size) && size > DOCUMENTOS_UPLOAD_MAX_BYTES;
 }
 
-function candidateWhere(companyId: string) {
+function candidateWhere(companyId: string, aposId?: string | null) {
   return {
     companyId,
     emitidoEm: null,
+    ...(aposId ? { id: { gt: aposId } } : {}),
     removedAt: null,
     oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
     category: { not: 'balanco' },
@@ -94,9 +108,15 @@ function candidateWhere(companyId: string) {
   };
 }
 
-function processableWhere(companyId: string) {
+/**
+ * `restantes` conta o que FALTA VISITAR nesta varredura, não o que continua sem
+ * emissão no total. A diferença importa: uma linha cujo PDF não declara emissão
+ * fica para sempre com `emitidoEm: null`, portanto um total global nunca
+ * chegaria a zero e o botão convidaria ao clique indefinidamente.
+ */
+function processableWhere(companyId: string, aposId?: string | null) {
   return {
-    ...candidateWhere(companyId),
+    ...candidateWhere(companyId, aposId),
     fileName: { endsWith: '.pdf', mode: 'insensitive' as const },
     OR: [{ fileSize: null }, { fileSize: { lte: DOCUMENTOS_UPLOAD_MAX_BYTES } }],
   };
@@ -110,6 +130,7 @@ function emptyResult(restantes: number, ocupado: boolean): BackfillResult {
     ignorados: 0,
     falhas: 0,
     restantes,
+    proximoId: null,
     ocupado,
   };
 }
@@ -178,14 +199,20 @@ export async function runBackfillEmissao(
 
   const lock = await acquirePostgresAdvisoryLock(documentosBackfillEmissaoLockKey(companyId));
   if (!lock) {
-    const restantes = await db.companyDocument.count({ where: processableWhere(companyId) });
+    const restantes = await db.companyDocument.count({
+      where: processableWhere(companyId, opts?.aposId),
+    });
     return emptyResult(restantes, true);
   }
 
   try {
     const opener = await resolveOpen(companyId, db, opts);
     const rows = await db.companyDocument.findMany({
-      where: candidateWhere(companyId),
+      // `take` limitado: sem ele a consulta trazia TODAS as candidatas para a
+      // heap a cada pedido, e o limite só travava os downloads. O fator 4 dá
+      // folga para as ignoradas (balanço, não-PDF, grandes) sem carregar tudo.
+      take: limite * 4,
+      where: candidateWhere(companyId, opts?.aposId),
       orderBy: { id: 'asc' },
       select: {
         id: true,
@@ -202,6 +229,8 @@ export async function runBackfillEmissao(
 
     for (const row of rows) {
       if (downloads >= limite) break;
+      // Examinada conta como avanço, mesmo quando ignorada ou sem emissão.
+      result.proximoId = row.id;
       if (row.category === 'balanco' || !isPdfFileName(row.fileName) || exceedsUploadCap(row.fileSize)) {
         result.ignorados += 1;
         continue;
@@ -258,7 +287,9 @@ export async function runBackfillEmissao(
     }
 
     result.processados = result.preenchidos + result.semEmissao + result.ignorados + result.falhas;
-    result.restantes = await db.companyDocument.count({ where: processableWhere(companyId) });
+    result.restantes = await db.companyDocument.count({
+      where: processableWhere(companyId, result.proximoId ?? opts?.aposId),
+    });
     return result;
   } finally {
     await lock.release();
