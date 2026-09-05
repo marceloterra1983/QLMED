@@ -141,6 +141,11 @@ describe('System Routines Catalog', () => {
     const evoTimer = readFileSync(resolve(process.cwd(), 'ops/systemd/qlmed-evolution-session-monitor.timer'), 'utf8');
     expect(evoTimer).toMatch(/OnUnitActiveSec=5min/);
     expect(byId['evolution-session-watchdog'].frequency).toMatch(/5 minutos/i);
+
+    const outboxCron = readFileSync(resolve(process.cwd(), 'scripts/install-notification-outbox-cron.sh'), 'utf8');
+    expect(outboxCron).toMatch(/\*\/10 \* \* \* \* \/usr\/bin\/python3 \/srv\/qlmed\/services\/notification-outbox\/worker\.py/);
+    expect(byId['notification-outbox-worker'].frequency).toMatch(/10 minutos/i);
+    expect(byId['notification-outbox-worker'].frequency).not.toMatch(/1 minuto/);
   });
 
   it('/api/sistema/rotinas só abre com a página Rotinas', () => {
