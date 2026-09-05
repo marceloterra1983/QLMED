@@ -50,6 +50,7 @@ const getGroupLabel = (product: ProductRow, sortBy: SortField): string => {
     }
     case 'description': return (product.description?.[0] || '#').toUpperCase();
     case 'code': return product.code ? product.code[0].toUpperCase() : '#';
+    case 'codigo': return '';
     default: return '';
   }
 };
@@ -58,6 +59,9 @@ const getLineLabel = (product: ProductRow): string => `line:${product.productTyp
 
 const TABLE_DATA_COLS = 8; // Cod. Spica, Referencia, Produto, ANVISA, Fabricante, Ult. Compra, Ult. Preco, Acoes
 
+/** Ordenações sem agrupamento hierárquico — lista flat linha a linha. */
+const FLAT_SORTS = new Set<SortField>(['codigo']);
+
 export default function ProductTable({
   products, loading, isRebuilding, summary, sortBy, sortOrder, search,
   collapsedGroups, toggleGroup, selectionEnabled, setSelectionEnabled,
@@ -65,16 +69,16 @@ export default function ProductTable({
   setCollapsedGroups, handleSort, openDetail, openHistory, canWrite, setSettingsOpen,
 }: ProductTableProps) {
   const visible = products;
-
   // visible keys for select-all
   const visibleKeys = React.useMemo(() => {
+    if (FLAT_SORTS.has(sortBy)) return products.map((p) => p.key);
     const keys: string[] = [];
     let lastGroup = '';
     for (const p of products) {
       const g = getGroupLabel(p, sortBy);
       if (g !== lastGroup) lastGroup = g;
       const lineKey = sortBy === 'productType' ? getLineLabel(p) : '';
-      if (collapsedGroups.has(g)) continue;
+      if (g && collapsedGroups.has(g)) continue;
       if (sortBy === 'productType' && collapsedGroups.has(lineKey)) continue;
       keys.push(p.key);
     }
@@ -93,9 +97,9 @@ export default function ProductTable({
     }
   };
 
-  const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy))));
+  const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy)).filter(Boolean)));
   const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
-  const hasGroups = allGroups.length > 0;
+  const hasGroups = !FLAT_SORTS.has(sortBy) && allGroups.length > 0;
   const hasCollapsedGroups = collapsedGroups.size > 0;
   const tableColSpan = TABLE_DATA_COLS + (selectionEnabled ? 1 : 0);
   const anyProductRowVisible = visible.some((p) => {
@@ -268,6 +272,14 @@ export default function ProductTable({
       return inTable ? <tr><td colSpan={tableColSpan}>{content}</td></tr> : content;
     }
 
+    if (FLAT_SORTS.has(sortBy)) {
+      return visible.map((product) => (
+        <React.Fragment key={inTable ? product.key : `m-${product.key}`}>
+          {renderProductRow(product, inTable)}
+        </React.Fragment>
+      ));
+    }
+
     if (sortBy === 'productType') {
       const lineCountMap = new Map<string, number>();
       const groupCountMap = new Map<string, number>();
@@ -384,7 +396,7 @@ export default function ProductTable({
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
               {selectionEnabled && <th className="px-3 py-1.5 w-8"><input type="checkbox" checked={allVisibleSelected} ref={(el) => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer" title="Selecionar todos visiveis" aria-label="Selecionar todos visiveis" /></th>}
-              <th className="px-3 py-1.5 w-[4.5rem]"><div className="flex items-center gap-1">Cod. Spica</div></th>
+              <SortableTh col="codigo" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol} className="w-[4.5rem]">Cod. Spica</SortableTh>
               <SortableTh col="code" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Referencia</SortableTh>
               <SortableTh col="description" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>Produto</SortableTh>
               <SortableTh col="anvisa" sortBy={sortBy} sortOrder={sortOrder} onSort={sortCol}>ANVISA</SortableTh>

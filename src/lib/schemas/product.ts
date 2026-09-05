@@ -22,6 +22,7 @@ function flagQuery() {
 const productListSortSchema = z.enum([
   'description',
   'code',
+  'codigo',
   'ncm',
   'anvisa',
   'lastPrice',
@@ -43,8 +44,8 @@ export const productsListQuerySchema = z.object({
   page: intQuery(1, 1, 100000),
   limit: intQuery(50, 1, 200),
   search: stringQuery('', 200),
-  sort: productListSortSchema.optional().default('lastIssueDate'),
-  order: z.enum(['asc', 'desc']).optional().default('desc'),
+  sort: productListSortSchema.optional().default('codigo'),
+  order: z.enum(['asc', 'desc']).optional().default('asc'),
   lineStatus: z.enum(['active', 'outOfLine', 'all']).optional().default('active'),
   productType: stringQuery('', 120),
   productSubtype: stringQuery('', 120),

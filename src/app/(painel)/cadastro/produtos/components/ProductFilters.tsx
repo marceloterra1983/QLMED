@@ -97,11 +97,12 @@ export default function ProductFilters({
                 onChange={(e) => {
                   const f = e.target.value as SortField;
                   setSortBy(f);
-                  setSortOrder(['description', 'code', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
+                  setSortOrder(['description', 'code', 'codigo', 'ncm', 'anvisa', 'supplier', 'productType'].includes(f) ? 'asc' : 'desc');
                   setCollapsedGroups(new Set());
                 }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-700 dark:text-slate-200"
               >
+                <option value="codigo">Cod. Spica</option>
                 <option value="productType">Linha</option>
                 <option value="lastIssueDate">Ult. Compra</option>
                 <option value="ncm">NCM</option>

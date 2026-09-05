@@ -13,6 +13,7 @@ const EXPORT_ALL_LIMIT = 10000;
 const SORT_FIELD_MAP: Record<string, Prisma.ProductRegistryOrderByWithRelationInput> = {
   description: { description: 'asc' },
   code: { code: 'asc' },
+  codigo: { codigo: 'asc' },
   ncm: { ncm: 'asc' },
   anvisa: { anvisaCode: 'asc' },
   lastPrice: { aggLastPrice: 'asc' },
@@ -117,6 +118,8 @@ export async function GET(req: Request) {
         { aggLastSupplierName: 'asc' },
         { description: 'asc' },
       ];
+    } else if (sort === 'codigo') {
+      orderBy = [{ codigo: orderDir }, { description: 'asc' }];
     } else {
       const base = SORT_FIELD_MAP[sort];
       if (base && hasAggregates) {
