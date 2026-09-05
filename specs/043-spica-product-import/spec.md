@@ -73,6 +73,7 @@ código interno.
 - **FR-009**: Após apply, `fiscal_*` com origem Spica não pode ser apagado por `extractAndStoreTaxData` (dono via `fiscal_source` ou sentinela documentada).
 - **FR-010**: Apply (`dryRun=false`) exige `confirmChecksum` do arquivo previsto no dry-run.
 - **FR-011**: Entrada XLSX/CSV; ODS convertido fora (sem pacote ODS novo neste fluxo).
+- **FR-012**: Listagem `/cadastro/produtos` na ordenação hierárquica (Linha > Grupo > Subgrupo, default) carrega o catálogo filtrado **inteiro** via `GET /api/products/list?exportAll=true` (teto `EXPORT_ALL_LIMIT`=10000, flag `exportLimited` quando truncado) e monta a árvore no cliente, renderizando só filhos de nós expandidos; tudo recolhido ao carregar, badges com `hierarchyCounts`. Ordenações flat (`codigo`, `description`, `ncm`...) continuam paginadas em 50. "Expandir" e busca abrem só até o último nível de agrupamento quando o conjunto passa de 1000 produtos.
 
 ### Key Entities
 

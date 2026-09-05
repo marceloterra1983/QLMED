@@ -54,6 +54,20 @@ describe('produtos groups collapsed-by-default contract', () => {
     expect(productTable).toContain('FLAT_SORTS');
   });
 
+  it('hierarquia carrega o catálogo inteiro (exportAll) e só as ordenações flat paginam', () => {
+    expect(pageClient).toMatch(/const isTreeView = sortBy === 'productType'/);
+    expect(pageClient).toContain("params.set('exportAll', 'true')");
+    // page/limit só fora da árvore
+    expect(pageClient).toMatch(/else \{\s*params\.set\('page'/);
+    // volta ao flat não pode mandar limit=10000 (schema max 200)
+    expect(pageClient).toContain('limit: PAGE_SIZE }');
+    // busca e Expandir respeitam o teto de linhas renderizadas
+    expect(pageClient).toContain('expandCollapseKeys(data.products');
+    expect(productTable).toContain('expandCollapseKeys(visible, sortBy)');
+    expect(productTable).toContain('buildProductTree');
+    expect(visibility).toContain('FULL_EXPAND_LIMIT');
+  });
+
   it('lista usa hierarchyCounts da API e total do cadastro (nao so a pagina)', () => {
     expect(pageClient).toContain('setHierarchyCounts');
     expect(pageClient).toContain('hierarchyCounts={hierarchyCounts}');
