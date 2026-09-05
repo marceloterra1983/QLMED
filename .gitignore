@@ -113,3 +113,4 @@ __pycache__/
 
 # estado do Stop hook do unlazy — muda a cada sessão, não é fonte
 .unlazy-hook-state.json
+tmp/

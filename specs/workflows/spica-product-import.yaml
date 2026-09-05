@@ -1,0 +1,65 @@
+name: spica-product-import
+command: /spica-import
+description: >
+  Aposentar Spica: avaliar exports ODS de produtos, mapear para ProductRegistry,
+  dry-run de sync e importação idempotente por código interno Spica.
+skills:
+  - survey-context
+  - research-first
+  - grill-me
+  - elaborate-spec
+  - plan-work
+  - develop-tdd
+  - enforce-first
+  - smoke-test
+  - verify-work
+args:
+  feature: specs/043-spica-product-import
+  sources:
+    - tmp/spica-import/Rel_Produtos_2026_180228.ods
+    - tmp/spica-import/List_Produtos_Cad_20260904_182240.ods
+  canonical_key: spica_codigo_interno
+  match_primary: referencia_eq_code
+verify:
+  - test -f specs/043-spica-product-import/research.md
+  - test -f specs/043-spica-product-import/spec.md
+  - test -f specs/workflows/spica-product-import.yaml
+  - npm run docs:validate
+phases:
+  - id: study
+    skills: [survey-context, research-first]
+    models_external:
+      - cursor-grok-4.6-xhigh-fast
+      - gemini-3.7-flash-high
+      - claude-fable-5-1-thinking-high
+    outputs:
+      - specs/043-spica-product-import/research.md
+      - specs/043-spica-product-import/external-model-study.md
+    terminal: success
+  - id: contract
+    skills: [grill-me, elaborate-spec]
+    outputs:
+      - specs/043-spica-product-import/spec.md
+      - specs/043-spica-product-import/data-model.md
+    terminal: success
+  - id: implement
+    skills: [plan-work, develop-tdd, enforce-first]
+    gate: dry_run_only_until_approved
+    prs:
+      - PR1: product-codigo pad6 + spica/parse.ts
+      - PR2: import-spica dry-run only
+      - PR3: fiscal_source + extrator NF respeita Spica (migration)
+      - PR4: apply + confirmChecksum + resolutions
+    outputs:
+      - API POST /api/products/import-spica
+      - parser XLSX/CSV + mapa de campos
+      - testes de match/idempotência/fiscal_source
+    terminal: blocked # até aprovação humana do dry-run
+  - id: apply
+    skills: [smoke-test, verify-work]
+    gate: human_approve_dry_run
+    terminal: blocked
+notes: |
+  Código interno Spica → ProductRegistry.codigo (pad 6).
+  Bloqueadores: colisão codigo, fiscal_source, productKey agregador.
+  Produção só após dry-run aprovado + CI verde. Preview :3002 se UI.

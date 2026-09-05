@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { nextCodigo } from '@/lib/product-codigo';
 import { aggregateProductsFromInvoices, computeSearchText, type AggregatedProduct } from '@/lib/product-aggregation';
 import { acquirePostgresAdvisoryLock, productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 
@@ -14,24 +15,6 @@ export interface ProductAggregateRebuildResult {
   aggregationTimeMs: number;
   totalTimeMs: number;
   cutoffCreatedAt: Date;
-}
-
-async function nextCodigo(
-  tx: Prisma.TransactionClient,
-  companyId: string,
-): Promise<string> {
-  const codigos = await tx.productRegistry.findMany({
-    where: { companyId, NOT: { codigo: null } },
-    select: { codigo: true },
-  });
-  let maxNum = 0;
-  for (const row of codigos) {
-    const digits = (row.codigo || '').replace(/\D/g, '');
-    if (!digits) continue;
-    const n = Number(digits);
-    if (Number.isFinite(n) && n > maxNum) maxNum = n;
-  }
-  return String(maxNum + 1).padStart(5, '0');
 }
 
 async function updateExistingProduct(
