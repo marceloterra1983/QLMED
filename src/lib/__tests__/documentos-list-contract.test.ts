@@ -129,6 +129,16 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(fgts.id).toBe('fgts');
     expect(fgts.daysRemaining).toBe(25);
     expect(fgts.status).toEqual({ key: 'atencao', label: 'atenção' });
+    expect(fgts.automacao).toBe('automatica');
+    expect(federal.automacao).toBe('manual');
+    expect(listing.certidoes.find((row) => row.kind === 'cnd_municipal_mobiliario')?.automacao).toBe('assistida');
+    expect(listing.shareRecipients.map((row) => row.label)).toEqual([
+      'Faturamento',
+      'Marcelo',
+      'Daniele',
+      'Flavio',
+      'José Roberto',
+    ]);
 
     expect(listing.certidoes[2].status.label).toBe('Não encontrada');
     expect(listing.ingest.lastSuccessAt).toBe('2026-09-04T13:00:00.000Z');
@@ -177,6 +187,7 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(afe?.daysRemaining).toBeNull();
     expect(afe?.validUntil).toBeNull();
     expect(afe?.status).toEqual({ key: 'nao_vence', label: 'não vence' });
+    expect(afe?.automacao).toBeNull();
   });
 
   it('cartas: uma linha por ficheiro, sem data no fim, fabricante no rótulo', () => {

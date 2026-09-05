@@ -19,6 +19,20 @@ import {
 } from '@/lib/documentos/constants';
 import type { DocumentosCategory } from '@/lib/documentos/constants';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
+import { formatDateTime, formatInt } from '@/lib/utils';
+import CertidaoPdfModal from './components/CertidaoPdfModal';
+import DocumentoShareModal from './components/DocumentoShareModal';
+import DocumentoUpdateModal from './components/DocumentoUpdateModal';
+import DocumentosFamilyTable from './components/DocumentosFamilyTable';
+
+export { formatDaysRemaining, CERTIDAO_DIAS_DESTAQUE, isDaysDestaque } from './components/DocumentosFamilyTable';
+
+type CertidaoKind = (typeof CERTIDAO_KINDS_ORDER)[number];
+
+function apiErrorMessage(payload: unknown, fallback: string): string {
+  const error = (payload as { error?: unknown } | null)?.error;
+  return typeof error === 'string' && error.trim() ? error : fallback;
+}
 
 function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory): DocumentosRow[] {
   switch (category) {
@@ -36,18 +50,6 @@ function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory)
       return listing.balancos;
   }
 }
-import { formatDateTime, formatInt } from '@/lib/utils';
-import CertidaoPdfModal from './components/CertidaoPdfModal';
-import DocumentosFamilyTable from './components/DocumentosFamilyTable';
-
-export { formatDaysRemaining, CERTIDAO_DIAS_DESTAQUE, isDaysDestaque } from './components/DocumentosFamilyTable';
-
-type CertidaoKind = (typeof CERTIDAO_KINDS_ORDER)[number];
-
-function apiErrorMessage(payload: unknown, fallback: string): string {
-  const error = (payload as { error?: unknown } | null)?.error;
-  return typeof error === 'string' && error.trim() ? error : fallback;
-}
 
 export default function DocumentosPageClient() {
   const { canWrite } = useRole();
@@ -64,6 +66,8 @@ export default function DocumentosPageClient() {
   const [editDraft, setEditDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState<{ id: string; title: string } | null>(null);
+  const [updateRow, setUpdateRow] = useState<DocumentosRow | null>(null);
+  const [shareRow, setShareRow] = useState<DocumentosRow | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (opts?: { quiet?: boolean }) => {
@@ -214,6 +218,14 @@ export default function DocumentosPageClient() {
       if (!row.id) return;
       setViewer({ id: row.id, title: row.label });
     },
+    onUpdate: (row: DocumentosRow) => {
+      setEditingId(null);
+      setUpdateRow(row);
+    },
+    onShare: (row: DocumentosRow) => {
+      if (!row.id) return;
+      setShareRow(row);
+    },
   };
 
   return (
@@ -317,6 +329,24 @@ export default function DocumentosPageClient() {
         onClose={() => setViewer(null)}
         documentId={viewer?.id ?? null}
         title={viewer?.title ?? 'Documento'}
+      />
+
+      <DocumentoUpdateModal
+        isOpen={updateRow != null}
+        onClose={() => setUpdateRow(null)}
+        kind={updateRow?.kind ?? CERTIDAO_KINDS_ORDER[0]}
+        label={updateRow?.label ?? ''}
+        onUploaded={() => {
+          void load({ quiet: true });
+        }}
+      />
+
+      <DocumentoShareModal
+        isOpen={shareRow != null && shareRow.id != null}
+        onClose={() => setShareRow(null)}
+        documentId={shareRow?.id ?? ''}
+        title={shareRow?.label ?? 'Documento'}
+        recipients={data?.shareRecipients ?? []}
       />
 
       <Modal

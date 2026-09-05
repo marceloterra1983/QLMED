@@ -24,7 +24,9 @@ e a parcela de alerta do FR-013 (timeout e log saneado nas chamadas à
 Evolution, health `documentos-alert`). A L10 generaliza o motor para três
 famílias (certidão, sanitária, carta) sobre a coluna `category`. A L11
 acrescenta contrato social, documentos básicos e balanços (modo
-`yearFolders`) à mesma tabela.
+`yearFolders`) à mesma tabela. A L12 liga a tela: linha clicável com popup
+de atualização (leitura da validade no PDF), ícones no padrão `RowActionsBase`,
+compartilhar no app e tags de automação.
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -248,6 +250,39 @@ falhar de forma visível, não chutar.
   Básicos: `CARTAO CNPJ` | `INSCRICAO MUNICIPAL` | `INSCRICAO ESTADUAL` |
   `SISCOMEX` | `E-CJUR`/`ECJUR` | `DADOS CADASTRAIS`.
 
+### Tela integrada (L12)
+
+- **FR-029**: Na família `certidao`, a linha inteira (rato, Enter e Espaço;
+  `role="button"` + `tabIndex={0}`) abre `DocumentoUpdateModal`. Clique em
+  acção, no kebab ou num link da linha **não** abre o modal (`stopPropagation`
+  nos controlos). Família `balanco`: a linha abre a pasta no OneDrive e **não**
+  tem modal de atualização.
+
+- **FR-030**: O modal de atualização segue quatro etapas: anexar (arrastar ou
+  clicar; só `.pdf`, ≤ 5 MB, recusa no cliente); ler (`POST /api/documentos/analisar`,
+  que chama `readValidityFromPdf` no servidor e **não grava**); confirmar (data
+  pré-preenchida com o que foi lido, rótulo "corrigir se estiver errada"; se
+  `confidence: 'nenhuma'`, campo vazio e obrigatório — não é erro); enviar
+  (`POST /api/documentos/upload`). Sem duplo envio. A rota `analisar` tem a
+  mesma ACL de escrita que `upload`; parser sem texto → 200 `confidence: 'nenhuma'`.
+
+- **FR-031**: Acções de linha via `RowActionsBase`: inline `receipt_long`
+  "Ver documento" e `print` "Imprimir" (`hideOnMobile`); menu Compartilhar
+  (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`), Editar
+  validade (`edit`). Balanço: só `folder_open` "Abrir pasta no OneDrive", sem
+  kebab. O lápis sai da linha.
+
+- **FR-032**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
+  `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo, sem e-mail livre), observação opcional,
+  envio a `POST /api/documentos/{id}/compartilhar`. Zero destinatários desativa
+  o botão. Não é `mailto:`. Sucesso: toast com a quantidade; falha: mensagem da
+  rota.
+
+- **FR-033**: Cada tipo que `expira` tem `automacao` no config: `'automatica'`
+  só `crf_fgts` (comprovado); `'assistida'` `cnd_municipal_mobiliario` e
+  `cnd_municipal_gerais` (SIAT pela inscrição municipal); `'manual'` o resto
+  que vence, incluindo o não testado. `expira: false` não recebe tag.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -329,8 +364,20 @@ falhar de forma visível, não chutar.
   Controlo negativo: listar ficheiros em vez de subpastas faz o teste
   "uma linha por ano" falhar.
 - **AC-021** (FR-026/027): o card Balanços não tem colunas "Válida até" /
-  "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir no
+  "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir pasta no
   OneDrive" com `target=_blank` `rel=noopener noreferrer`.
+- **AC-022** (FR-029): clicar em Ver não abre o modal de atualização; clicar
+  na linha da certidão abre. Controlo negativo: deixar o clique do botão
+  propagar para a linha faz o teste falhar.
+- **AC-023** (FR-030): validade lida (`confidence: 'alta'`) entra
+  pré-preenchida no campo; `nenhuma` deixa o campo vazio e não bloqueia.
+  Controlo negativo: ignorar o valor lido faz o teste "validade lida entra
+  pré-preenchida" falhar.
+- **AC-024** (FR-032): enviar com zero destinatários é impossível (botão
+  desativado). Controlo negativo: permitir enviar vazio faz o teste falhar.
+- **AC-025** (FR-033): só `crf_fgts` é `automacao: 'automatica'`. Controlo
+  negativo: marcar `cnd_federal` como automática faz o teste das tags falhar
+  nomeando que só o FGTS é automático.
 
 ## Non-functional
 
@@ -347,8 +394,9 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias ainda não modeladas (CRT CREA, falência, protestos):
   entram como nova entrada em `DOCUMENTOS_FAMILIES`, não nesta folha.
-- Parser de validade no conteúdo do PDF.
-- E-mail e push para estes avisos.
+- Parser de validade no conteúdo do PDF (entregue em P1; L12 só o consome
+  via `POST /api/documentos/analisar`).
+- E-mail livre no diálogo de compartilhar (a rota recusa fora da allowlist).
 
 ## Applicable ADRs
 
