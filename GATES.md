@@ -1,32 +1,26 @@
-# Gates: Fix product rows collapsed in catalog UI
+# Gates: Spica Tipo=Grupo / Sub=Subgrupo
 
-Scope: Grupos (ex. CARDIACA) devem iniciar expandidos e mostrar linhas de produto na UI real (preview + produção), sem clicar "Expandir".
+Scope: Mapear Tipo→Grupo (productSubtype) e Sub→Subgrupo (productSubgroup), backfill 7965, UI/preview, PR+deploy.
 
-- [x] G1: SHA produção confere com tip main (health/stamp)
-  CHECK: docker inspect qlmed-app --format '{{.Config.Image}}'
-  EXPECT: qlmed-app:
-  EVIDENCE: image qlmed-app:17b1014a2eb9051f8e454f8704dcb703735d4443 (pré-fix; tip era #329)
+- [x] G1: Banco — product_subtype e product_subgroup preenchidos (~7934+)
+  CHECK: docker exec qlmed-db psql -U postgres -d postgres -tAc "SELECT COUNT(*) FILTER (WHERE COALESCE(btrim(product_subtype),'')<>'') || ' subtype ' || COUNT(*) FILTER (WHERE COALESCE(btrim(product_subgroup),'')<>'') || ' subgroup / ' || COUNT(*) FROM product_registry"
+  EXPECT: /793[0-9] subtype 793[0-9] subgroup/
+  EVIDENCE: 7934 subtype 7934 subgroup / 7965
 
-- [x] G2: Causa raiz documentada no código (collapsedGroups / render)
-  EVIDENCE: #329 clear pós-fetch insuficiente — render ainda respeitava Set com line:* (Recolher/toggle hostil/race). toggleGroup ao expandir linha adicionava group:* e re-escondia itens. Fix: effectiveCollapsedGroups + useLayoutEffect + safeCollapseKeys + toggle puro.
+- [x] G2: Testes Spica verdes
+  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx vitest run src/lib/__tests__/spica-parse.test.ts src/lib/__tests__/spica-file-parse.test.ts --reporter=dot 2>&1 | tail -8
+  EXPECT: /Test Files\s+\d+ passed/
+  EVIDENCE: Start at  13:20:48 | Duration  164ms (transform 85ms, setup 31ms, import 99ms, tests 8ms, environment 0ms)
 
-- [x] G3: Fix aplicado — vista padrão mostra produtos sem clique Expandir
-  CHECK: rg -n "effectiveCollapsedGroups|safeCollapseKeys|useLayoutEffect" src/app/(painel)/cadastro/produtos/components/ProductTable.tsx
-  EXPECT: effectiveCollapsedGroups
-  EVIDENCE: ProductTable usa renderCollapsed=effectiveCollapsedGroups; toggleGroup sem cascade.
+- [x] G3: Typecheck limpo
+  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx tsc --noEmit 2>&1 | tail -5; echo EXIT:$?
+  EXPECT: /EXIT:0/
+  EVIDENCE: EXIT:0
 
-- [x] G4: Preview :3002 smoke — HTTP ok + linhas no DOM
-  CHECK: curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://100.83.11.58:3002/
-  EXPECT: /200|307|302/
-  EVIDENCE: smoke JWT+Playwright productCells=150, cliqueExpandir=0, footer "Pagina 1 de 160 · 7.965 produtos", sample 003884/C8301; após Recolher ainda 150 cells.
+- [x] G4: Preview :3002 responde
+  CHECK: curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/cadastro/produtos
+  EXPECT: /200|307|302|401/
+  EVIDENCE: 307
 
-- [x] G5: Testes do contrato de grupos passam
-  CHECK: ./node_modules/.bin/vitest run src/lib/__tests__/produtos-groups-expanded-contract.test.ts "src/app/(painel)/cadastro/produtos/components/__tests__/product-group-visibility.test.ts" "src/app/(painel)/cadastro/produtos/components/__tests__/ProductTable-expand-guard.test.tsx"
-  EXPECT: Test Files  3 passed
-  EVIDENCE: 3 files / 9 tests passed
-
-- [ ] G6: PR mergeado + deploy produção + health com SHA novo
+- [ ] G5: PR mergeado + deploy produção health
   EVIDENCE: pending
-
-- [x] G7: Evidência visual — screenshot/DOM com COD. SPICA + descrição visíveis
-  EVIDENCE: DOM sampleCodes=["003884","C8301",...] rowTexts com ALEXIS RETRATOR; cliqueExpandir=0

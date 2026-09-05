@@ -92,6 +92,10 @@ describe('spica/parse', () => {
     expect(row.anvisaCode).toBe('80071910005');
     expect(row.ipiSaidaNaoZero).toBe(false);
     expect(row.tipoInvalid).toBe(false);
+    // Tipo Spica → Linha + Grupo; SubTipo → Subgrupo
+    expect(row.productType).toBe('ORTOPEDIA');
+    expect(row.productSubtype).toBe('ORTOPEDIA');
+    expect(row.productSubgroup).toBe('CAIXAS DE ORTOPEDIA');
   });
 
   it('ref _ e tipo invalido + inconsistencia CST/ICMS', () => {

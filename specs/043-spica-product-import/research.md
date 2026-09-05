@@ -61,8 +61,8 @@ Mesmo universo; `ANVISA` ≡ `RVS` do Rel; traz `CST-ICMS` Cadastro, Obs ICMS, P
 | Código (Cód. Int.) | ProductRegistry.codigo | **Chave canônica Spica**; único; sobrescrever sequência atual no match |
 | Referência | ProductRegistry.productRefs (+ match em ProductRegistry.code) | Match primário com cProd da NF; não apagar code da NF |
 | Nome do Produto | ProductRegistry.description / ProductRegistry.shortName | Só preencher description se vazia ou flag “forçar Spica” |
-| Tipo (strip `N - `) | ProductRegistry.productType | Se contém `FORA DE LINHA` → ProductRegistry.outOfLine=true |
-| SubTipo | ProductRegistry.productSubtype | |
+| Tipo (strip `N - `) | ProductRegistry.productType **e** productSubtype | Linha + Grupo (convenção: Tipo Spica = Grupo). Se contém `FORA DE LINHA` → outOfLine=true |
+| SubTipo / Sub | ProductRegistry.productSubgroup | Subgrupo (convenção: Subtipo Spica = Subgrupo) |
 | Fabricante | ProductRegistry.manufacturerShortName | Catálogo via rename-manufacturer |
 | Fornecedor | ProductRegistry.defaultSupplier | Sparse |
 | Instrumental Sim/Não | ProductRegistry.instrumental | |
