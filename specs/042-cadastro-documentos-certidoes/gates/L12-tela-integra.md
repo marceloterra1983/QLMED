@@ -6,14 +6,14 @@ Scope: `page-client.tsx`, `DocumentosFamilyTable.tsx`, `DocumentoUpdateModal.tsx
 Não toca `RowActions.tsx`, `upload.ts`, `share-email.ts`, `pdf-validity.ts`.
 
 - [x] G1: linha clicável abre o modal; clique em Ver não abre
-  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx -t "clicar em Ver não abre o modal de atualização" src/components/__tests__/documentos-page.test.tsx -t "clicar na linha ou Enter abre" > /dev/null 2>&1 && echo OK_G1
+  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx -t "clicar em Ver não abre o modal de atualização" > /dev/null 2>&1 && npx vitest run src/components/__tests__/documentos-page.test.tsx -t "clicar na linha ou Enter abre" > /dev/null 2>&1 && echo OK_G1
   EXPECT: OK_G1
-  EVIDENCE: OK_G1 (folha: Test Files 6 passed / Tests 55 passed nos testes L12)
+  EVIDENCE: OK_G1 — CHECK corrigido: o vitest recusa `-t` duas vezes no mesmo comando (exit 1), logo a evidência anterior era impossível de produzir.
 
 - [x] G2: validade lida entra pré-preenchida; nenhuma não bloqueia
-  CHECK: npx vitest run src/components/__tests__/documentos-update-modal.test.tsx -t "validade lida entra pré-preenchida" src/components/__tests__/documentos-update-modal.test.tsx -t "confidence nenhuma" > /dev/null 2>&1 && echo OK_G2
+  CHECK: npx vitest run src/components/__tests__/documentos-update-modal.test.tsx -t "validade lida entra pré-preenchida" > /dev/null 2>&1 && npx vitest run src/components/__tests__/documentos-update-modal.test.tsx -t "confidence nenhuma" > /dev/null 2>&1 && echo OK_G2
   EXPECT: OK_G2
-  EVIDENCE: OK_G2
+  EVIDENCE: OK_G2 — mesma correção do G1: dois comandos encadeados por &&.
 
 - [x] G3: compartilhar com zero destinatários desativa o botão
   CHECK: npx vitest run src/components/__tests__/documentos-share-modal.test.tsx -t "não envia com zero destinatários" > /dev/null 2>&1 && echo OK_G3
@@ -56,3 +56,8 @@ Não toca `RowActions.tsx`, `upload.ts`, `share-email.ts`, `pdf-validity.ts`.
   CHECK: npm run build > /dev/null 2>&1 && echo BUILD_OK
   EXPECT: BUILD_OK
   EVIDENCE: `npm run build` Compiled successfully; rota `○ /cadastro/documentos` e `ƒ /api/documentos/analisar`. `node scripts/validate-docs.mjs` → Documentation validation passed (204 Markdown files, 55 IDs).
+
+- [x] G9: resposta atrasada de /analisar não contamina o ficheiro seguinte
+  CHECK: npx vitest run src/components/__tests__/documentos-update-modal.test.tsx -t "resposta atrasada" > /dev/null 2>&1 && echo OK_G9
+  EXPECT: OK_G9
+  EVIDENCE: OK_G9 — controlo negativo: removendo a guarda de sequência, o teste reprova com `expected '2020-01-01' to be '2027-10-10'`. O mesmo padrão foi aplicado ao DocumentoShareModal (seqRef), sem teste dedicado.

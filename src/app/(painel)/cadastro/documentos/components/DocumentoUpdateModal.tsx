@@ -50,6 +50,13 @@ export default function DocumentoUpdateModal({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingRef = useRef(false);
+  /**
+   * Cada anexo e cada fecho do modal incrementam este contador. Uma resposta de
+   * `/analisar` que volte depois disso pertence a um ficheiro que já não está
+   * na tela: aplicá-la gravaria a validade do PDF antigo com o ficheiro novo, e
+   * é essa data que alimenta os alertas de vencimento.
+   */
+  const seqRef = useRef(0);
   const busy = reading || uploading;
 
   useEffect(() => {
@@ -61,7 +68,9 @@ export default function DocumentoUpdateModal({
     setValidity(null);
     setValidUntil('');
     setUploading(false);
-    uploadingRef.current = false;
+    // uploadingRef NÃO é limpo aqui: o POST pode estar em curso, e zerá-lo
+    // abriria a porta a um segundo envio. Quem o limpa é o `finally` do submit.
+    seqRef.current += 1;
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [isOpen]);
 
@@ -96,11 +105,13 @@ export default function DocumentoUpdateModal({
     setValidity(null);
     setValidUntil('');
     setReading(true);
+    const mine = ++seqRef.current;
     try {
       const form = new FormData();
       form.set('file', next);
       const res = await fetch('/api/documentos/analisar', { method: 'POST', body: form });
       const payload: unknown = await res.json().catch(() => null);
+      if (seqRef.current !== mine) return;
       if (!res.ok) {
         setFileError(apiErrorMessage(payload, 'Não foi possível ler o PDF'));
         return;
@@ -109,9 +120,10 @@ export default function DocumentoUpdateModal({
       setValidity(result);
       if (isYmd(result.validUntil)) setValidUntil(result.validUntil);
     } catch {
+      if (seqRef.current !== mine) return;
       setFileError('Erro de rede ao ler o PDF');
     } finally {
-      setReading(false);
+      if (seqRef.current === mine) setReading(false);
     }
   }
 
@@ -124,6 +136,7 @@ export default function DocumentoUpdateModal({
     }
     uploadingRef.current = true;
     setUploading(true);
+    const mine = seqRef.current;
     try {
       const form = new FormData();
       form.set('kind', kind);
@@ -137,7 +150,7 @@ export default function DocumentoUpdateModal({
       }
       toast.success('Arquivo enviado');
       onUploaded();
-      onClose();
+      if (seqRef.current === mine) onClose();
     } catch {
       toast.error('Erro de rede ao enviar o arquivo');
     } finally {
@@ -263,7 +276,14 @@ export default function DocumentoUpdateModal({
         ) : null}
 
         <div className="mt-auto flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" onClick={onClose} block className="sm:w-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={uploading}
+            block
+            className="sm:w-auto"
+          >
             Cancelar
           </Button>
           <Button type="submit" loading={uploading} disabled={!canSubmit} block className="sm:w-auto">

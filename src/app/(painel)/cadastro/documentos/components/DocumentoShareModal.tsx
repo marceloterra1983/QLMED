@@ -32,13 +32,18 @@ export default function DocumentoShareModal({
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
+  /** Invalida respostas em voo quando o modal fecha ou muda de documento. */
+  const seqRef = useRef(0);
 
   useEffect(() => {
     if (isOpen) return;
     setSelected([]);
     setNote('');
     setSending(false);
-    sendingRef.current = false;
+    // sendingRef NÃO é limpo aqui: o POST pode estar em curso e zerá-lo
+    // permitiria um segundo envio do mesmo documento. Quem o limpa é o
+    // `finally` do envio.
+    seqRef.current += 1;
   }, [isOpen]);
 
   function toggle(email: string) {
@@ -52,6 +57,7 @@ export default function DocumentoShareModal({
     if (sendingRef.current || selected.length === 0) return;
     sendingRef.current = true;
     setSending(true);
+    const mine = seqRef.current;
     try {
       const trimmed = note.trim();
       const res = await fetch(`/api/documentos/${documentId}/compartilhar`, {
@@ -70,7 +76,7 @@ export default function DocumentoShareModal({
       const sent = (payload as { sent?: unknown } | null)?.sent;
       const n = Array.isArray(sent) ? sent.length : selected.length;
       toast.success(n === 1 ? 'Enviado para 1 destinatário' : `Enviado para ${n} destinatários`);
-      onClose();
+      if (seqRef.current === mine) onClose();
     } catch {
       toast.error('Erro de rede ao compartilhar');
     } finally {

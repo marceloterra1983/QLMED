@@ -184,3 +184,50 @@ describe('DocumentoUpdateModal (SPEC-042 L12)', () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalled());
   });
 });
+
+describe('corridas: resposta atrasada e fecho durante o envio', () => {
+  /**
+   * O modal bloqueia um segundo anexo enquanto lê (`if (busy) return`), portanto
+   * a corrida NÃO acontece no mesmo modal aberto. O caminho real é fechar
+   * durante a leitura — o botão Cancelar não estava desativado — e reabrir: o
+   * reset zerava `reading`, e a resposta atrasada do PDF antigo escrevia a sua
+   * validade por cima do ficheiro novo. É essa data que alimenta os alertas.
+   */
+  it('resposta atrasada do PDF anterior não sobrescreve a validade do actual', async () => {
+    const A = new File([new Uint8Array(Buffer.from('%PDF-1.4 A\n'))], 'antigo.pdf', { type: 'application/pdf' });
+    const B = new File([new Uint8Array(Buffer.from('%PDF-1.4 B\n'))], 'novo.pdf', { type: 'application/pdf' });
+
+    let liberaA: (() => void) | null = null;
+    const esperaA = new Promise<void>((resolve) => { liberaA = resolve; });
+    let chamada = 0;
+
+    vi.stubGlobal('fetch', vi.fn(async (input: unknown) => {
+      if (!String(input).includes('/analisar')) return jsonResponse({});
+      chamada += 1;
+      if (chamada === 1) {
+        await esperaA;
+        return jsonResponse({ validUntil: '2020-01-01', confidence: 'alta', matchedLabel: 'Validade', textChars: 10 });
+      }
+      return jsonResponse({ validUntil: '2027-10-10', confidence: 'alta', matchedLabel: 'Validade', textChars: 10 });
+    }));
+
+    const props = { kind: 'crf_fgts' as const, label: 'CRF FGTS', onUploaded: vi.fn(), onClose: vi.fn() };
+    const { rerender } = render(<DocumentoUpdateModal isOpen {...props} />);
+
+    // anexa A e fecha ANTES da resposta chegar
+    fireEvent.drop(dropZone(), { dataTransfer: { files: [A] } });
+    rerender(<DocumentoUpdateModal isOpen={false} {...props} />);
+    rerender(<DocumentoUpdateModal isOpen {...props} />);
+
+    // anexa B, que responde já
+    fireEvent.drop(dropZone(), { dataTransfer: { files: [B] } });
+    await waitFor(() => {
+      expect((screen.getByLabelText(/corrigir se estiver errada/) as HTMLInputElement).value).toBe('2027-10-10');
+    });
+
+    // a resposta atrasada de A chega agora e NÃO pode reescrever nada
+    liberaA!();
+    await new Promise((r) => setTimeout(r, 20));
+    expect((screen.getByLabelText(/corrigir se estiver errada/) as HTMLInputElement).value).toBe('2027-10-10');
+  });
+});
