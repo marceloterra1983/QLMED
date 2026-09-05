@@ -1,6 +1,6 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { DocumentosFolderFile, DocumentosFolderPort } from '@/lib/documentos/ingest';
+import type { DocumentosFolderChild, DocumentosFolderFile, DocumentosFolderPort } from '@/lib/documentos/ingest';
 import { DOCUMENTOS_ONEDRIVE_ACCOUNT } from '@/lib/documentos/constants';
 
 type DocRow = {
@@ -19,6 +19,7 @@ type DocRow = {
   removedAt: Date | null;
   renewalNotifiedAt: Date | null;
   alertedThresholds: number[];
+  webUrl?: string | null;
 };
 
 type IngestStateRow = {
@@ -195,6 +196,7 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
 
 vi.mock('@/lib/onedrive-client', () => ({
   uploadOneDriveFile: uploadOd.uploadOneDriveFile,
+  listOneDriveChildren: vi.fn(async () => []),
 }));
 
 vi.mock('@/lib/onedrive-connections', () => ({
@@ -631,6 +633,121 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.docs[0]?.category).toBe('carta');
     expect(memory.docs[0]?.validUntil).toBeNull();
     expect(memory.docs[0]?.validUntilSource).toBeNull();
+  });
+
+  it('Cartão CNPJ grava a data do nome; vigente é 31.08.26; sem renovação', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const { buildDocumentosListing } = await import('@/lib/documentos/list');
+    const folder = '0 - DOCUMENTOS BÁSICOS';
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder,
+          file: {
+            itemId: 'od-cnpj-nov',
+            name: 'CARTÃO CNPJ 13.11.25.pdf',
+            size: 100,
+            lastModifiedAt: NOW,
+            webUrl: 'https://onedrive.example/cnpj-nov',
+          },
+        },
+        {
+          folder,
+          file: {
+            itemId: 'od-cnpj-mar',
+            name: 'CARTÃO CNPJ 16.03.26.pdf',
+            size: 100,
+            lastModifiedAt: NOW,
+          },
+        },
+        {
+          folder,
+          file: {
+            itemId: 'od-cnpj-ago',
+            name: 'CARTÃO CNPJ 31.08.26.pdf',
+            size: 100,
+            lastModifiedAt: NOW,
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(result.renewals).toHaveLength(0);
+    const byName = Object.fromEntries(memory.docs.map((row) => [row.fileName, ymd(row.validUntil)]));
+    expect(byName['CARTÃO CNPJ 13.11.25.pdf']).toBe('2025-11-13');
+    expect(byName['CARTÃO CNPJ 16.03.26.pdf']).toBe('2026-03-16');
+    expect(byName['CARTÃO CNPJ 31.08.26.pdf']).toBe('2026-08-31');
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cnpj-nov')?.webUrl).toBe(
+      'https://onedrive.example/cnpj-nov',
+    );
+
+    const listing = buildDocumentosListing(memory.docs, null, NOW);
+    const cnpj = listing.basicos.find((row) => row.kind === 'cartao_cnpj');
+    expect(cnpj?.fileName).toBe('CARTÃO CNPJ 31.08.26.pdf');
+    expect(cnpj?.expira).toBe(false);
+    expect(cnpj?.daysRemaining).toBeNull();
+  });
+
+  it('uma linha por ano: pastas batem; zip duplicado não; zip sem pasta sim; ruído não', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const root = '1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS';
+    const children: DocumentosFolderChild[] = [
+      { itemId: 'folder-2024', name: 'BALANÇO 2024', size: null, lastModifiedAt: NOW, webUrl: 'https://od/2024', folder: true },
+      { itemId: 'folder-2025', name: 'BALANÇO 2025', size: null, lastModifiedAt: NOW, webUrl: 'https://od/2025', folder: true },
+      { itemId: 'folder-2026', name: 'BALANÇO 2026', size: null, lastModifiedAt: NOW, webUrl: 'https://od/2026', folder: true },
+      { itemId: 'folder-noise', name: 'Conta bancária', size: null, lastModifiedAt: NOW, webUrl: null, folder: true },
+      { itemId: 'zip-2026', name: 'BALANÇO 2026.zip', size: 10, lastModifiedAt: NOW, webUrl: 'https://od/zip2026', folder: false },
+      { itemId: 'zip-2013', name: 'BALANÇO 2013.zip', size: 10, lastModifiedAt: NOW, webUrl: 'https://od/2013', folder: false },
+      { itemId: 'pdf-2013', name: 'BALANÇO 2013.pdf', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
+      { itemId: 'ecf', name: 'ECF QL 2023.pdf', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
+      { itemId: 'fat', name: 'Faturamento QL MED 12 julho 2024.pdf', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
+      { itemId: 'xls', name: 'planilha.xls', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
+    ];
+    const port = fakePort([]);
+    port.listChildren = async (folderPath) => {
+      expect(folderPath).toBe(root);
+      return children;
+    };
+
+    const result = await runDocumentosIngest(COMPANY, port, NOW);
+    const years = memory.docs.filter((row) => row.kind === 'balanco_anual');
+
+    expect(years).toHaveLength(4);
+    expect(result.upserted).toBe(4);
+    expect(years.map((row) => row.fileName).sort()).toEqual([
+      'BALANÇO 2013.zip',
+      'BALANÇO 2024',
+      'BALANÇO 2025',
+      'BALANÇO 2026',
+    ]);
+    expect(years.every((row) => row.validUntil == null)).toBe(true);
+    expect(years.every((row) => row.validUntilSource == null)).toBe(true);
+    expect(years.find((row) => row.fileName === 'BALANÇO 2026')?.oneDriveItemId).toBe('folder-2026');
+    expect(years.find((row) => row.fileName === 'BALANÇO 2026')?.webUrl).toBe('https://od/2026');
+    expect(memory.docs.some((row) => row.fileName.includes('ECF'))).toBe(false);
+    expect(memory.docs.some((row) => row.oneDriveItemId === 'zip-2026')).toBe(false);
+    expect(memory.docs.some((row) => row.oneDriveItemId === 'pdf-2013')).toBe(false);
+  });
+
+  it('contrato social classifica consolidado e não gera renovação', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const folder = '3 - CONTRATO SOCIAL';
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        { folder, file: { itemId: 'od-const', name: 'CONTRATO SOCIAL- CONSTITUIÇÃO.pdf', size: 1, lastModifiedAt: NOW } },
+        { folder, file: { itemId: 'od-alt', name: 'CONTRATO SOCIAL ALTERAÇÃO 2014 - ULTIMA ALTERAÇÃO.pdf', size: 1, lastModifiedAt: NOW } },
+        { folder, file: { itemId: 'od-cons', name: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf', size: 1, lastModifiedAt: NOW } },
+      ]),
+      NOW,
+    );
+    expect(result.renewals).toHaveLength(0);
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cons')?.kind).toBe(
+      'contrato_social_consolidado',
+    );
+    expect(memory.docs.every((row) => row.validUntil == null)).toBe(true);
   });
 });
 

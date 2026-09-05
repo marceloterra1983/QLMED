@@ -22,7 +22,9 @@ A entrega L1–L6 cobriu FR-001 a FR-009, FR-014 e a parcela de ingestão do
 FR-013 (Graph, health `documentos-ingest`). A L7 cobre FR-010, FR-011, FR-012
 e a parcela de alerta do FR-013 (timeout e log saneado nas chamadas à
 Evolution, health `documentos-alert`). A L10 generaliza o motor para três
-famílias (certidão, sanitária, carta) sobre a coluna `category`.
+famílias (certidão, sanitária, carta) sobre a coluna `category`. A L11
+acrescenta contrato social, documentos básicos e balanços (modo
+`yearFolders`) à mesma tabela.
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -209,6 +211,43 @@ falhar de forma visível, não chutar.
   Baixar, lápis, link de emissão quando existir). A certidão não muda de
   comportamento. Sem parser de conteúdo de PDF e sem dependência nova.
 
+### Famílias L11 (contrato social, documentos básicos, balanços)
+
+- **FR-024**: Família `societario`, pasta
+  `1 - DOCUMENTOS/1 - QL MED/3 - CONTRATO SOCIAL`, modo `closed`, scan
+  `root`, limiares vazios, card **Contrato social** recolhido. Tipos, todos
+  com `expira: false`: constituição; última alteração; consolidado. Sem
+  alerta, sem contador, sem arquivo por vencimento.
+
+- **FR-025**: Família `basicos`, pasta
+  `1 - DOCUMENTOS/1 - QL MED/0 - DOCUMENTOS BÁSICOS`, `archiveFolder`
+  `Vencidos` (masculino), modo `closed`, scan `root`, limiares vazios, card
+  **Documentos básicos** recolhido. Tipos, todos com `expira: false`: Cartão
+  CNPJ; Inscrição Municipal; Inscrição Estadual; SISCOMEX RADAR; Cadastro
+  e-CJUR; Dados cadastrais. `expira: false` não ignora a data do nome: o
+  Cartão CNPJ vigente é o de maior data (31.08.26 entre 13.11.25 / 16.03.26
+  / 31.08.26). A ingestão só lê PDF (`.docx` não entra).
+
+- **FR-026**: Família `balanco`, pasta
+  `1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS`, scan `yearFolders`. A unidade é
+  a subpasta `BALANÇO YYYY` (uma linha por ano, `kind: balanco_anual`,
+  `oneDriveItemId` da pasta, `validUntil` nulo). Subpasta que não casa é
+  ignorada. Ficheiro solto `BALANÇO YYYY.zip` (ou `.pdf`) no raiz só cria
+  linha se o ano ainda não tem pasta. Ruído (`ECF`, `Faturamento`, `.xls`)
+  é ignorado. Não se lê o ZIP nem o conteúdo da pasta. Card **Balanços**
+  recolhido, colunas **Ano** e ação **Abrir no OneDrive** (nova aba). Sem
+  coluna de prazo, sem Ver, sem upload, sem lápis de validade.
+
+- **FR-027**: `CompanyDocument.webUrl` (nullable) é persistido na ingestão
+  de todas as famílias. Balanço usa-o para abrir a pasta no OneDrive.
+
+- **FR-028**: Classificação por nome (sem acento, sem caixa). Societário:
+  `CONSTITUICAO`+`ALTERACAO` → consolidado; `ALTERACAO` → alteração;
+  `CONSTITUICAO` → constituição. A ordem importa:
+  `CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf` é consolidado.
+  Básicos: `CARTAO CNPJ` | `INSCRICAO MUNICIPAL` | `INSCRICAO ESTADUAL` |
+  `SISCOMEX` | `E-CJUR`/`ECJUR` | `DADOS CADASTRAIS`.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -277,6 +316,21 @@ falhar de forma visível, não chutar.
   classifica AFE, pragas, veículo, licença, alvará de prefeitura, CRF e
   protocolo/publicação (outro); `PUBLICAÇÃO DIARIO OFICIAL AFE` é `outro`,
   não `afe_anvisa`.
+- **AC-018** (FR-024/028): `CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA
+  ALTERAÇÃO.pdf` classifica `contrato_social_consolidado`. Controlo
+  negativo: inverter a ordem da classificação faz o teste falhar com
+  `constituicao`.
+- **AC-019** (FR-025): três Cartões CNPJ 13.11.25 / 16.03.26 / 31.08.26 →
+  a linha mostra 31.08.26; `kindExpires('cartao_cnpj') === false`;
+  `thresholds` da família vazios. Controlo negativo: `expira: true` no
+  Cartão CNPJ faz o teste "documentos básicos não alertam" falhar.
+- **AC-020** (FR-026): ingestão de pastas 2024/2025/2026 + zip 2026
+  duplicado + zip 2013 sem pasta + ruído → 4 linhas (uma por ano).
+  Controlo negativo: listar ficheiros em vez de subpastas faz o teste
+  "uma linha por ano" falhar.
+- **AC-021** (FR-026/027): o card Balanços não tem colunas "Válida até" /
+  "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir no
+  OneDrive" com `target=_blank` `rel=noopener noreferrer`.
 
 ## Non-functional
 

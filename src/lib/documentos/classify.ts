@@ -95,6 +95,25 @@ export function cartaManufacturerKey(fileName: string): string {
   return fold(cartaLabelFromFileName(fileName));
 }
 
+function classifySocietario(fileName: string): CompanyDocumentKind {
+  const file = fold(fileName);
+  if (file.includes('constituicao') && file.includes('alteracao')) return 'contrato_social_consolidado';
+  if (file.includes('alteracao')) return 'contrato_social_alteracao';
+  if (file.includes('constituicao')) return 'contrato_social_constituicao';
+  return 'outro';
+}
+
+function classifyBasicos(fileName: string): CompanyDocumentKind {
+  const file = fold(fileName);
+  if (file.includes('cartao cnpj')) return 'cartao_cnpj';
+  if (file.includes('inscricao municipal')) return 'inscricao_municipal';
+  if (file.includes('inscricao estadual')) return 'inscricao_estadual';
+  if (file.includes('siscomex')) return 'siscomex_radar';
+  if (file.includes('e-cjur') || file.includes('ecjur')) return 'cadastro_ecjur';
+  if (file.includes('dados cadastrais')) return 'dados_cadastrais';
+  return 'outro';
+}
+
 export function classifyDocument(
   folderName: string,
   fileName: string,
@@ -102,5 +121,8 @@ export function classifyDocument(
 ): CompanyDocumentKind {
   if (category === 'sanitaria') return classifySanitaria(fileName);
   if (category === 'carta') return 'carta_comercializacao';
+  if (category === 'societario') return classifySocietario(fileName);
+  if (category === 'basicos') return classifyBasicos(fileName);
+  if (category === 'balanco') return 'balanco_anual';
   return classifyCertidao(folderName, fileName);
 }

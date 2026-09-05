@@ -18,10 +18,18 @@ import {
   kindExpires,
 } from './constants';
 import { cartaManufacturerKey, classifyDocument } from './classify';
-import type { DocumentosFamily } from './families';
+import {
+  balancoYearFromFolderName,
+  balancoYearFromLooseFile,
+  kindStoresFilenameDate,
+  lastPathSegment,
+  type DocumentosFamily,
+} from './families';
 import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
+import { listOneDriveChildren, type OneDriveItem } from '@/lib/onedrive-client';
+import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 
 export { sanitizeError };
 
@@ -38,6 +46,16 @@ export type DocumentosFolderFile = {
   name: string;
   size: number | null;
   lastModifiedAt: Date | null;
+  webUrl?: string | null;
+};
+
+export type DocumentosFolderChild = {
+  itemId: string;
+  name: string;
+  size: number | null;
+  lastModifiedAt: Date | null;
+  webUrl: string | null;
+  folder: boolean;
 };
 
 export type DocumentosFolderPort = {
@@ -46,7 +64,32 @@ export type DocumentosFolderPort = {
   downloadPdf(itemId: string): Promise<Buffer>;
   /** Move o item para a pasta Vencidas da família. Não apaga. */
   moveToArchive(itemId: string, familyRoot: string): Promise<void>;
+  /** Filhos (pastas e ficheiros) de `folderPath`. Usado por scan='yearFolders'. */
+  listChildren?(folderPath: string): Promise<DocumentosFolderChild[]>;
 };
+
+/**
+ * Uma linha por ano: primeiro as SUBPASTAS `BALANÇO YYYY`; depois, ficheiros
+ * soltos `BALANÇO YYYY.zip`/`.pdf` só para anos sem pasta. O resto é ruído.
+ */
+export function selectYearFolderItems(children: DocumentosFolderChild[]): DocumentosFolderChild[] {
+  const byYear = new Map<number, DocumentosFolderChild>();
+  for (const child of children) {
+    if (!child.folder) continue;
+    const year = balancoYearFromFolderName(child.name);
+    if (year == null) continue;
+    if (!byYear.has(year)) byYear.set(year, child);
+  }
+  for (const child of children) {
+    if (child.folder) continue;
+    const year = balancoYearFromLooseFile(child.name);
+    if (year == null || byYear.has(year)) continue;
+    byYear.set(year, child);
+  }
+  return [...byYear.entries()]
+    .sort((left, right) => right[0] - left[0])
+    .map(([, item]) => item);
+}
 
 /** Documento novo cuja validade supera a do vigente anterior do mesmo tipo. */
 export type RenewalEvent = {
@@ -127,6 +170,66 @@ function isRenewal(input: {
   return input.kindExisted;
 }
 
+type UpsertInput = {
+  companyId: string;
+  family: DocumentosFamily;
+  kind: CompanyDocumentKind;
+  fileName: string;
+  itemId: string;
+  folderName: string;
+  fileSize: number | null;
+  lastModifiedAt: Date | null;
+  webUrl: string | null;
+  validUntil: Date | null;
+  validUntilSource: string | null;
+};
+
+async function upsertItem(
+  input: UpsertInput,
+  existing: ExistingRow | undefined,
+): Promise<{ id: string; validUntil: Date | null; renewalNotifiedAt: Date | null }> {
+  if (!existing) {
+    return prisma.companyDocument.create({
+      data: {
+        companyId: input.companyId,
+        category: input.family.category,
+        kind: input.kind,
+        fileName: input.fileName,
+        oneDriveItemId: input.itemId,
+        oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+        folderName: input.folderName,
+        fileSize: fileSizeOf(input.fileSize),
+        lastModifiedAt: input.lastModifiedAt,
+        webUrl: input.webUrl,
+        validUntil: input.validUntil,
+        validUntilSource: input.validUntilSource,
+        removedAt: null,
+      },
+      select: { id: true, validUntil: true, renewalNotifiedAt: true },
+    });
+  }
+  const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : input.validUntil;
+  const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
+  return prisma.companyDocument.update({
+    where: { id: existing.id },
+    data: {
+      fileName: input.fileName,
+      fileSize: fileSizeOf(input.fileSize),
+      lastModifiedAt: input.lastModifiedAt,
+      folderName: input.folderName,
+      category: input.family.category,
+      kind: input.kind,
+      webUrl: input.webUrl,
+      removedAt: null,
+      ...(existing.validUntilSource === 'manual'
+        ? {}
+        : { validUntil: input.validUntil, validUntilSource: input.validUntilSource }),
+      ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
+    },
+    select: { id: true, validUntil: true, renewalNotifiedAt: true },
+  });
+}
+
 async function ingestCompany(
   companyId: string,
   port: DocumentosFolderPort,
@@ -156,6 +259,34 @@ async function ingestCompany(
   let upserted = 0;
 
   for (const family of DOCUMENTOS_FAMILIES) {
+    if (family.scan === 'yearFolders') {
+      const children = port.listChildren ? await port.listChildren(family.root) : [];
+      const selected = selectYearFolderItems(children);
+      const folderName = lastPathSegment(family.root);
+      for (const item of selected) {
+        scanned += 1;
+        seenIds.add(item.itemId);
+        await upsertItem(
+          {
+            companyId,
+            family,
+            kind: 'balanco_anual',
+            fileName: item.name,
+            itemId: item.itemId,
+            folderName,
+            fileSize: item.size,
+            lastModifiedAt: item.lastModifiedAt,
+            webUrl: item.webUrl,
+            validUntil: null,
+            validUntilSource: null,
+          },
+          byItemId.get(item.itemId),
+        );
+        upserted += 1;
+      }
+      continue;
+    }
+
     for (const target of familyScanTargets(family)) {
       const files = await port.listPdfs(target.path);
       for (const file of files) {
@@ -163,7 +294,7 @@ async function ingestCompany(
         seenIds.add(file.itemId);
 
         const kind = classifyDocument(target.folderName, file.name, family.category);
-        const extracted = kindExpires(kind) ? extractValidUntil(file.name) : null;
+        const extracted = kindStoresFilenameDate(kind) ? extractValidUntil(file.name) : null;
         const validUntil = extracted ? dateFromYmd(extracted.date) : null;
         const validUntilSource = extracted ? 'filename' : null;
         const existing = byItemId.get(file.itemId);
@@ -171,75 +302,46 @@ async function ingestCompany(
         const previous = vigenteByKind.get(kind);
         const previousYmd = previous ? toYmd(previous.validUntil) : null;
 
-        let row: {
-          id: string;
-          validUntil: Date | null;
-          renewalNotifiedAt: Date | null;
-        };
+        const row = await upsertItem(
+          {
+            companyId,
+            family,
+            kind,
+            fileName: file.name,
+            itemId: file.itemId,
+            folderName: target.folderName,
+            fileSize: file.size,
+            lastModifiedAt: file.lastModifiedAt,
+            webUrl: file.webUrl ?? null,
+            validUntil,
+            validUntilSource,
+          },
+          existing,
+        );
 
-        if (!existing) {
-          row = await prisma.companyDocument.create({
-            data: {
-              companyId,
-              category: family.category,
-              kind,
-              fileName: file.name,
-              oneDriveItemId: file.itemId,
-              oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
-              folderName: target.folderName,
-              fileSize: fileSizeOf(file.size),
-              lastModifiedAt: file.lastModifiedAt,
-              validUntil,
-              validUntilSource,
-              removedAt: null,
-            },
-            select: { id: true, validUntil: true, renewalNotifiedAt: true },
-          });
-        } else {
-          const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : validUntil;
-          const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
-          row = await prisma.companyDocument.update({
-            where: { id: existing.id },
-            data: {
-              fileName: file.name,
-              fileSize: fileSizeOf(file.size),
-              lastModifiedAt: file.lastModifiedAt,
-              folderName: target.folderName,
-              category: family.category,
-              kind,
-              removedAt: null,
-              ...(existing.validUntilSource === 'manual'
-                ? {}
-                : { validUntil, validUntilSource }),
-              ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
-            },
-            select: { id: true, validUntil: true, renewalNotifiedAt: true },
+        upserted += 1;
+
+        if (
+          family.mode === 'closed' &&
+          kindExpires(kind) &&
+          isRenewal({
+            persistedYmd: toYmd(row.validUntil),
+            renewalNotifiedAt: row.renewalNotifiedAt,
+            previousYmd,
+            hadPreviousVigente: Boolean(previous),
+            kindExisted: kindsSeenBefore.has(kind),
+          })
+        ) {
+          // Consumidor (L7): gravar renewalNotifiedAt ANTES do envio.
+          // Reinício entre envio e escrita duplica o aviso (FR-011).
+          renewals.push({
+            companyId,
+            kind,
+            documentId: row.id,
+            previousValidUntil: previousYmd,
+            validUntil: toYmd(row.validUntil) as string,
           });
         }
-
-      upserted += 1;
-
-      if (
-        family.mode === 'closed' &&
-        kindExpires(kind) &&
-        isRenewal({
-          persistedYmd: toYmd(row.validUntil),
-          renewalNotifiedAt: row.renewalNotifiedAt,
-          previousYmd,
-          hadPreviousVigente: Boolean(previous),
-          kindExisted: kindsSeenBefore.has(kind),
-        })
-      ) {
-        // Consumidor (L7): gravar renewalNotifiedAt ANTES do envio.
-        // Reinício entre envio e escrita duplica o aviso (FR-011).
-        renewals.push({
-          companyId,
-          kind,
-          documentId: row.id,
-          previousValidUntil: previousYmd,
-          validUntil: toYmd(row.validUntil) as string,
-        });
-      }
       }
     }
   }
@@ -370,6 +472,90 @@ async function archiveExpiredDocuments(
   return arquivados;
 }
 
+function sameFolderName(left: string, right: string): boolean {
+  return left.normalize('NFC').trim() === right.normalize('NFC').trim();
+}
+
+function mapGraphChild(item: OneDriveItem): DocumentosFolderChild {
+  return {
+    itemId: item.id,
+    name: item.name,
+    size: typeof item.size === 'number' && Number.isFinite(item.size) ? item.size : null,
+    lastModifiedAt: item.lastModifiedDateTime ? new Date(item.lastModifiedDateTime) : null,
+    webUrl: item.webUrl ?? null,
+    folder: Boolean(item.folder),
+  };
+}
+
+async function mergeWebUrl(
+  files: DocumentosFolderFile[],
+  children: DocumentosFolderChild[],
+): Promise<DocumentosFolderFile[]> {
+  if (files.every((file) => file.webUrl)) return files;
+  const byId = new Map(children.map((child) => [child.itemId, child]));
+  return files.map((file) => ({
+    ...file,
+    webUrl: file.webUrl ?? byId.get(file.itemId)?.webUrl ?? null,
+  }));
+}
+
+/**
+ * A porta de produção (onedrive-port, noutro worktree) lista PDFs sem webUrl
+ * e sem filhos. Este wrap usa listOneDriveChildren, que já devolve pastas e
+ * webUrl, sem editar esse ficheiro.
+ */
+async function enhancePort(companyId: string, base: DocumentosFolderPort): Promise<DocumentosFolderPort> {
+  if (base.listChildren) {
+    return {
+      ...base,
+      async listPdfs(folderPath: string) {
+        const files = await base.listPdfs(folderPath);
+        return mergeWebUrl(files, await base.listChildren!(folderPath));
+      },
+    };
+  }
+
+  const connection = await prisma.oneDriveConnection.findFirst({
+    where: { companyId, accountEmail: DOCUMENTOS_ONEDRIVE_ACCOUNT },
+  });
+  if (!connection) return base;
+
+  const accessToken = await ensureValidOneDriveAccessToken(connection);
+  const { driveId } = connection;
+  const folderIdByPath = new Map<string, string>();
+
+  async function folderId(folderPath: string): Promise<string> {
+    const cached = folderIdByPath.get(folderPath);
+    if (cached) return cached;
+    const segments = folderPath.split('/').map((part) => part.trim()).filter(Boolean);
+    let currentId = 'root';
+    for (const segment of segments) {
+      const children = await listOneDriveChildren(accessToken, driveId, currentId);
+      const match = children.find((item) => item.folder && sameFolderName(item.name || '', segment));
+      if (!match) throw new Error('pasta não encontrada');
+      currentId = match.id;
+    }
+    folderIdByPath.set(folderPath, currentId);
+    return currentId;
+  }
+
+  async function listChildren(folderPath: string): Promise<DocumentosFolderChild[]> {
+    const id = await folderId(folderPath);
+    const items = await listOneDriveChildren(accessToken, driveId, id);
+    return items.map(mapGraphChild);
+  }
+
+  return {
+    async listPdfs(folderPath: string) {
+      const files = await base.listPdfs(folderPath);
+      return mergeWebUrl(files, await listChildren(folderPath));
+    },
+    downloadPdf: (itemId) => base.downloadPdf(itemId),
+    moveToArchive: (itemId, familyRoot) => base.moveToArchive(itemId, familyRoot),
+    listChildren,
+  };
+}
+
 export async function runDocumentosIngest(
   companyId: string,
   port?: DocumentosFolderPort,
@@ -382,7 +568,7 @@ export async function runDocumentosIngest(
   }
 
   try {
-    const folderPort = port ?? (await createDocumentosFolderPort(companyId));
+    const folderPort = port ?? (await enhancePort(companyId, await createDocumentosFolderPort(companyId)));
     const result = await ingestCompany(companyId, folderPort, now);
     if (result.renewals.length > 0) {
       try {

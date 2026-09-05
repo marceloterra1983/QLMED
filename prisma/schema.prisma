@@ -1070,6 +1070,16 @@ enum CompanyDocumentKind {
   controle_pragas
   afe_anvisa
   carta_comercializacao
+  contrato_social_constituicao
+  contrato_social_alteracao
+  contrato_social_consolidado
+  cartao_cnpj
+  inscricao_municipal
+  inscricao_estadual
+  siscomex_radar
+  cadastro_ecjur
+  dados_cadastrais
+  balanco_anual
   outro
 }
 
@@ -1085,6 +1095,7 @@ model CompanyDocument {
   folderName        String
   fileSize          Int?
   lastModifiedAt    DateTime?
+  webUrl            String?
   validUntil        DateTime?           @db.Date
   validUntilSource  String?             // 'filename' | 'manual' | null
   removedAt         DateTime?

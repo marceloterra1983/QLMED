@@ -14,10 +14,28 @@ import { useRole } from '@/hooks/useRole';
 import {
   CERTIDAO_KINDS_ORDER,
   CERTIDAO_LABEL,
+  DOCUMENTOS_FAMILIES,
   DOCUMENTOS_UPLOAD_MAX_BYTES,
-  familyByCategory,
 } from '@/lib/documentos/constants';
+import type { DocumentosCategory } from '@/lib/documentos/constants';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
+
+function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory): DocumentosRow[] {
+  switch (category) {
+    case 'certidao':
+      return listing.certidoes;
+    case 'sanitaria':
+      return listing.sanitaria;
+    case 'carta':
+      return listing.cartas;
+    case 'societario':
+      return listing.societario;
+    case 'basicos':
+      return listing.basicos;
+    case 'balanco':
+      return listing.balancos;
+  }
+}
 import { formatDateTime, formatInt } from '@/lib/utils';
 import CertidaoPdfModal from './components/CertidaoPdfModal';
 import DocumentosFamilyTable from './components/DocumentosFamilyTable';
@@ -198,19 +216,12 @@ export default function DocumentosPageClient() {
     },
   };
 
-  const certidoes = data?.certidoes ?? [];
-  const sanitaria = data?.sanitaria ?? [];
-  const cartas = data?.cartas ?? [];
-  const certidaoFamily = familyByCategory('certidao');
-  const sanitariaFamily = familyByCategory('sanitaria');
-  const cartaFamily = familyByCategory('carta');
-
   return (
     <>
       <PageHeader
         icon="verified"
         title="Documentos"
-        subtitle="Certidões, autorizações sanitárias e cartas de comercialização"
+        subtitle="Certidões, autorizações, contratos, documentos básicos e balanços"
         actions={
           canWrite ? (
             <Button type="button" onClick={() => void handleSync()} loading={syncing} icon="sync">
@@ -267,51 +278,29 @@ export default function DocumentosPageClient() {
 
       {data ? (
         <div className="space-y-4">
-          <Section
-            icon={certidaoFamily.icon}
-            title={certidaoFamily.label}
-            defaultOpen={certidaoFamily.defaultOpen}
-          >
-            {canWrite ? (
-              <div className="mb-3 flex justify-end">
-                <Button size="sm" variant="secondary" icon="upload_file" onClick={() => setUploadOpen(true)}>
-                  Enviar arquivo
-                </Button>
-              </div>
-            ) : null}
-            <DocumentosFamilyTable
-              caption={certidaoFamily.label}
-              columnLabel={certidaoFamily.columnLabel}
-              rows={certidoes}
-              {...tableProps}
-            />
-          </Section>
-
-          <Section
-            icon={sanitariaFamily.icon}
-            title={sanitariaFamily.label}
-            defaultOpen={sanitariaFamily.defaultOpen}
-          >
-            <DocumentosFamilyTable
-              caption={sanitariaFamily.label}
-              columnLabel={sanitariaFamily.columnLabel}
-              rows={sanitaria}
-              {...tableProps}
-            />
-          </Section>
-
-          <Section
-            icon={cartaFamily.icon}
-            title={cartaFamily.label}
-            defaultOpen={cartaFamily.defaultOpen}
-          >
-            <DocumentosFamilyTable
-              caption={cartaFamily.label}
-              columnLabel={cartaFamily.columnLabel}
-              rows={cartas}
-              {...tableProps}
-            />
-          </Section>
+          {DOCUMENTOS_FAMILIES.map((family) => (
+            <Section
+              key={family.category}
+              icon={family.icon}
+              title={family.label}
+              defaultOpen={family.defaultOpen}
+            >
+              {family.category === 'certidao' && canWrite ? (
+                <div className="mb-3 flex justify-end">
+                  <Button size="sm" variant="secondary" icon="upload_file" onClick={() => setUploadOpen(true)}>
+                    Enviar arquivo
+                  </Button>
+                </div>
+              ) : null}
+              <DocumentosFamilyTable
+                caption={family.label}
+                columnLabel={family.columnLabel}
+                rows={rowsForFamily(data, family.category)}
+                layout={family.scan === 'yearFolders' ? 'yearFolders' : 'validity'}
+                {...tableProps}
+              />
+            </Section>
+          ))}
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Última varredura:{' '}
