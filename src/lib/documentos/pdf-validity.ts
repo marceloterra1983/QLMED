@@ -71,7 +71,7 @@ const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*${DATE}`;
  * e por isso extraiu ZERO emissões de 54 documentos reais. Os testes passavam
  * porque as fixtures usavam os rótulos que eu tinha escolhido.
  */
-const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao|expedicao|expedida|expedido|emitida|emitido|emissao)`;
+const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao|expedicao|expedida|expedido|emitida|emitido|emissao|campo\s+grande\s*\(ms\)|campo\s+grande)`;
 
 /**
  * Entre o rótulo e a data cabe hora e ligação ("as 16:15:51 do dia"), mas NÃO
@@ -79,7 +79,7 @@ const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao
  * portaria ... de 2/10/2014", e um preenchimento largo colheria 2014 como
  * emissão. O recheio é fechado de propósito.
  */
-const EMISSAO_LIGACAO = String.raw`(?:\s*:)?\s*(?:em\s+)?(?:as\s+)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:horas\s+)?(?:do\s+dia\s+)?`;
+const EMISSAO_LIGACAO = String.raw`(?:\s*[:,])?\s*(?:em\s+)?(?:as\s+)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:horas\s+)?(?:do\s+dia\s+)?`;
 
 /** Emissão aceita dia de 1 dígito: a Receita imprime "2/10/2014". */
 const EMISSAO_DATE = String.raw`((?<!\d)(?:\d{1,2}/\d{2}/(?:\d{4}|\d{2})(?!\d)|\d{1,2}\s+de\s+[a-z]{3,9}\s+de\s+\d{4}(?!\d)))`;
