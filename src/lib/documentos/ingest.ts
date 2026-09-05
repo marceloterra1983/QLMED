@@ -136,6 +136,7 @@ type ExistingRow = {
   kind: CompanyDocumentKind;
   category: string | null;
   validUntil: Date | null;
+  emitidoEm: Date | null;
   removedAt: Date | null;
   oneDriveItemId: string;
   validUntilSource: string | null;
@@ -169,26 +170,28 @@ async function resolveIngestValidity(opts: {
   itemId: string;
   port: DocumentosFolderPort;
   now: Date;
-}): Promise<{ validUntil: Date | null; validUntilSource: string | null }> {
+}): Promise<{ validUntil: Date | null; validUntilSource: string | null; emitidoEm: Date | null }> {
   if (!kindStoresFilenameDate(opts.kind)) {
-    return { validUntil: null, validUntilSource: null };
+    return { validUntil: null, validUntilSource: null, emitidoEm: null };
   }
   const fromName = extractValidUntil(opts.fileName);
   if (fromName) {
-    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename' };
+    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
   }
   try {
     const pdf = await readValidityFromPdf(
       await opts.port.downloadPdf(opts.itemId),
       todayInSaoPaulo(opts.now),
     );
+    const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
     if (pdf.validUntil) {
-      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf' };
+      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf', emitidoEm };
     }
+    return { validUntil: null, validUntilSource: null, emitidoEm };
   } catch {
     // PDF ilegível ou download falhou: linha fica Sem data; o ciclo segue.
   }
-  return { validUntil: null, validUntilSource: null };
+  return { validUntil: null, validUntilSource: null, emitidoEm: null };
 }
 
 async function saveIngestError(companyId: string, now: Date, error: unknown): Promise<void> {
@@ -227,6 +230,7 @@ type UpsertInput = {
   webUrl: string | null;
   validUntil: Date | null;
   validUntilSource: string | null;
+  emitidoEm?: Date | null;
 };
 
 async function upsertItem(
@@ -248,6 +252,7 @@ async function upsertItem(
         webUrl: input.webUrl,
         validUntil: input.validUntil,
         validUntilSource: input.validUntilSource,
+        emitidoEm: input.emitidoEm ?? null,
         removedAt: null,
       },
       select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -269,6 +274,7 @@ async function upsertItem(
       ...(existing.validUntilSource === 'manual'
         ? {}
         : { validUntil: input.validUntil, validUntilSource: input.validUntilSource }),
+      ...(input.emitidoEm != null ? { emitidoEm: input.emitidoEm } : {}),
       ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
     },
     select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -287,6 +293,7 @@ async function ingestCompany(
       kind: true,
       category: true,
       validUntil: true,
+      emitidoEm: true,
       removedAt: true,
       oneDriveItemId: true,
       validUntilSource: true,
@@ -352,7 +359,7 @@ async function ingestCompany(
           seenIds.add(file.itemId);
 
           const kind = classifyDocument(target.folderName, file.name, family.category);
-          const { validUntil, validUntilSource } = await resolveIngestValidity({
+          const { validUntil, validUntilSource, emitidoEm } = await resolveIngestValidity({
             kind,
             fileName: file.name,
             itemId: file.itemId,
@@ -377,6 +384,7 @@ async function ingestCompany(
               webUrl: file.webUrl ?? null,
               validUntil,
               validUntilSource,
+              emitidoEm,
             },
             existing,
           );

@@ -82,3 +82,24 @@ describe('SPEC-042 L12 — tags de automação', () => {
     expect(automacaoOf(kindConfig('balanco_anual'))).toBeNull();
   });
 });
+
+describe('SPEC-042 L13 — cards recolhidos, descrição e órgão', () => {
+  it('todos os cards recolhidos', () => {
+    for (const family of DOCUMENTOS_FAMILIES) {
+      expect(family.defaultOpen, family.category).toBe(false);
+    }
+  });
+
+  it('todos os tipos têm descricao e orgao', () => {
+    for (const family of DOCUMENTOS_FAMILIES) {
+      for (const kind of family.kinds) {
+        expect(kind.descricao.length, kind.kind).toBeGreaterThan(20);
+        expect(kind.orgao.length, kind.kind).toBeGreaterThan(2);
+      }
+    }
+    expect(kindConfig('cnd_federal')?.descricao).toMatch(/Receita Federal/);
+    expect(kindConfig('cnd_federal')?.orgao).toBe('Receita Federal do Brasil');
+    expect(kindConfig('afe_anvisa')?.orgao).toBe('ANVISA');
+    expect(kindConfig('afe_anvisa')?.emissaoUrl).toMatch(/consultas\.anvisa\.gov\.br/);
+  });
+});

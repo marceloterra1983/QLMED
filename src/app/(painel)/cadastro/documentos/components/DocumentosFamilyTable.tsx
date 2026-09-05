@@ -26,6 +26,8 @@ export function isDaysDestaque(days: number | null): boolean {
   return days != null && days <= CERTIDAO_DIAS_DESTAQUE;
 }
 
+const CELL = 'px-3 py-2 sm:py-1.5';
+
 const ICON_BTN =
   'inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
 
@@ -119,6 +121,7 @@ export type DocumentosFamilyTableProps = {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
+  onOpenDetail: (row: DocumentosRow) => void;
   onUpdate: (row: DocumentosRow) => void;
   onShare: (row: DocumentosRow) => void;
   layout?: 'validity' | 'yearFolders';
@@ -137,6 +140,7 @@ export default function DocumentosFamilyTable({
   onSaveEdit,
   onCancelEdit,
   onView,
+  onOpenDetail,
   onUpdate,
   onShare,
   layout = 'validity',
@@ -153,10 +157,8 @@ export default function DocumentosFamilyTable({
     if (layout === 'yearFolders') {
       return row.webUrl ? `Abrir pasta ${row.label} no OneDrive` : null;
     }
-    if (canUpdateRow(row) && !isEditingRow(row)) {
-      return `Abrir atualização de ${row.label}`;
-    }
-    return null;
+    if (isEditingRow(row)) return null;
+    return `Abrir gestão de ${row.label}`;
   }
 
   function activateRow(row: DocumentosRow) {
@@ -165,7 +167,7 @@ export default function DocumentosFamilyTable({
       return;
     }
     if (isEditingRow(row)) return;
-    if (canUpdateRow(row)) onUpdate(row);
+    onOpenDetail(row);
   }
 
   function rowActions(row: DocumentosRow) {
@@ -268,14 +270,14 @@ export default function DocumentosFamilyTable({
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
-            <th className="px-4 py-3">{columnLabel}</th>
+            <th className={CELL}>{columnLabel}</th>
             {layout === 'yearFolders' ? null : (
               <>
-                <th className="px-4 py-3">Válida até</th>
-                <th className="px-4 py-3">Dias restantes</th>
+                <th className={CELL}>Válida até</th>
+                <th className={CELL}>Dias restantes</th>
               </>
             )}
-            <th className="px-4 py-3">Ações</th>
+            <th className={CELL}>Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -304,14 +306,14 @@ export default function DocumentosFamilyTable({
                   clickable ? 'cursor-pointer' : ''
                 }`}
               >
-                <td className="px-4 py-3">
+                <td className={CELL}>
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                   <AutomacaoTag value={row.automacao} />
                 </td>
                 {layout === 'yearFolders' ? null : (
                   <>
                     <td
-                      className="px-4 py-3 text-sm whitespace-nowrap"
+                      className={`${CELL} text-sm whitespace-nowrap`}
                       onClick={stopRowEvent}
                       onKeyDown={stopRowEvent}
                     >
@@ -333,13 +335,13 @@ export default function DocumentosFamilyTable({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={CELL}>
                       <DaysCell row={row} />
                     </td>
                   </>
                 )}
                 <td
-                  className="px-4 py-3 whitespace-nowrap"
+                  className={`${CELL} whitespace-nowrap`}
                   onClick={stopRowEvent}
                   onKeyDown={stopRowEvent}
                 >

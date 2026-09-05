@@ -30,6 +30,10 @@ export type DocumentosKindConfig = {
   uploadName?: (ddMMyy: string) => string;
   emissaoUrl?: string;
   emissaoAria?: string;
+  /** Uma ou duas frases: o que o documento é e para que serve. */
+  descricao: string;
+  /** Órgão que emite ou a quem recorrer para renovar. */
+  orgao: string;
 };
 
 export type DocumentosFamily = {
@@ -56,6 +60,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDAO RECEITA FEDERAL ${d} - QL MED.pdf`,
     emissaoUrl: 'https://servicos.receitafederal.gov.br/servico/certidoes',
     emissaoAria: 'Emitir CND Receita Federal no site da Receita',
+    descricao:
+      'Prova que a empresa não tem dívidas com a Receita Federal nem com a Procuradoria-Geral da Fazenda Nacional. Exigida em licitações e em cadastros de fornecedor.',
+    orgao: 'Receita Federal do Brasil',
   },
   {
     kind: 'crf_fgts',
@@ -66,6 +73,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDÃO FGTS ${d} QL MED.pdf`,
     emissaoUrl: 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf',
     emissaoAria: 'Emitir CRF FGTS no site da Caixa',
+    descricao:
+      'Certificado de Regularidade do FGTS. Prova que os depósitos de FGTS dos funcionários estão em dia.',
+    orgao: 'Caixa Econômica Federal',
   },
   {
     kind: 'cndt',
@@ -76,6 +86,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDÃO DEBITOS TRABALHISTA ${d}.pdf`,
     emissaoUrl: 'https://cndt-certidao.tst.jus.br/gerarCertidao',
     emissaoAria: 'Emitir CNDT no site do TST',
+    descricao:
+      'Certidão Negativa de Débitos Trabalhistas. Prova que a empresa não tem condenações trabalhistas inscritas na dívida. Exigida em licitações.',
+    orgao: 'Tribunal Superior do Trabalho',
   },
   {
     kind: 'cnd_estadual_ms',
@@ -86,6 +99,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDAO ESTADUAL ${d} QL MED.pdf`,
     emissaoUrl: 'https://servicos.efazenda.ms.gov.br/pndfis/Home/Emissao',
     emissaoAria: 'Emitir CND Estadual (MS) no site da SEFAZ-MS',
+    descricao:
+      'Prova que a empresa não tem débitos de ICMS inscritos na dívida ativa do Estado de Mato Grosso do Sul.',
+    orgao: 'SEFAZ-MS',
   },
   {
     kind: 'cnd_estadual_mt',
@@ -96,6 +112,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDÃO ESTADUAL DO MATO GROSSO ${d}.pdf`,
     emissaoUrl: 'https://www.sefaz.mt.gov.br/cnd/certidao/servlet/ServletRotdAberto?origem=60',
     emissaoAria: 'Emitir CND Estadual (MT) no site da SEFAZ-MT',
+    descricao:
+      'Prova que a empresa não tem débitos de ICMS inscritos na dívida ativa do Estado de Mato Grosso.',
+    orgao: 'SEFAZ-MT',
   },
   {
     kind: 'cnd_municipal_mobiliario',
@@ -106,6 +125,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `CERTIDAO NEGATIVA DE DEBITOS MOBILIARIO ${d}.pdf`,
     emissaoUrl: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
     emissaoAria: 'Emitir CND Municipal — mobiliário no site da Prefeitura',
+    descricao:
+      'Certidão negativa de ISS e demais tributos mobiliários do município de Campo Grande. Exigida em licitações e alvará.',
+    orgao: 'Prefeitura de Campo Grande',
   },
   {
     kind: 'cnd_municipal_gerais',
@@ -116,6 +138,9 @@ const CERTIDAO_KINDS: readonly DocumentosKindConfig[] = [
     uploadName: (d) => `certidão débitos gerais val. ${d}.pdf`,
     emissaoUrl: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidao',
     emissaoAria: 'Emitir CND Municipal — débitos gerais no site da Prefeitura',
+    descricao:
+      'Certidão negativa de débitos gerais junto à Prefeitura de Campo Grande, além do ISS mobiliário.',
+    orgao: 'Prefeitura de Campo Grande',
   },
 ];
 
@@ -126,6 +151,9 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     expira: true,
     automacao: 'manual',
     uploadName: (d) => `ALVARA DE FUNCIONAMENTO PREFEITURA ${d}.pdf`,
+    descricao:
+      'Alvará de funcionamento da Prefeitura. É o que autoriza a empresa a ocupar e operar no endereço cadastrado.',
+    orgao: 'Prefeitura de Campo Grande',
   },
   {
     kind: 'licenca_sanitaria',
@@ -133,6 +161,9 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     expira: true,
     automacao: 'manual',
     uploadName: (d) => `ALVARÁ LICENÇA SANITÁRIA ${d} QL MED.pdf`,
+    descricao:
+      'Licença sanitária da vigilância municipal. Autoriza o estabelecimento a armazenar e comercializar produtos para saúde.',
+    orgao: 'Vigilância Sanitária de Campo Grande',
   },
   {
     kind: 'licenca_sanitaria_veiculo',
@@ -140,6 +171,9 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     expira: true,
     automacao: 'manual',
     uploadName: (d) => `Licença Sanitária Veiculo ${d}.pdf`,
+    descricao:
+      'Licença sanitária do veículo de transporte. Autoriza o veículo a circular com produtos para saúde.',
+    orgao: 'Vigilância Sanitária de Campo Grande',
   },
   {
     kind: 'crf_conselho',
@@ -147,6 +181,9 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     expira: true,
     automacao: 'manual',
     uploadName: (d) => `CRF ${d}.pdf`,
+    descricao:
+      'Certidão de Regularidade do Conselho Regional de Farmácia. Prova que a empresa está inscrita e em dia com o CRF.',
+    orgao: 'Conselho Regional de Farmácia de Mato Grosso do Sul',
   },
   {
     kind: 'controle_pragas',
@@ -154,12 +191,20 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     expira: true,
     automacao: 'manual',
     uploadName: (d) => `CONTROLE DE PRAGAS - QL MED ${d}.pdf`,
+    descricao:
+      'Atestado de controle de pragas urbanas. Comprova que o estabelecimento recebeu o serviço no prazo exigido pela vigilância.',
+    orgao: 'Empresa prestadora do serviço de controle de pragas',
   },
   {
     kind: 'afe_anvisa',
     label: 'AFE — Autorização de Funcionamento ANVISA',
     expira: false,
     filenameDate: false,
+    emissaoUrl: 'https://consultas.anvisa.gov.br/#/empresas/empresas/',
+    emissaoAria: 'Consultar AFE no cadastro da ANVISA',
+    descricao:
+      'Autorização de Funcionamento da ANVISA. É o que permite a empresa operar com produtos para saúde. NÃO tem validade: o que muda é a situação no cadastro da ANVISA.',
+    orgao: 'ANVISA',
   },
 ];
 
@@ -169,6 +214,9 @@ const CARTA_KINDS: readonly DocumentosKindConfig[] = [
     label: 'Carta de comercialização',
     expira: true,
     automacao: 'manual',
+    descricao:
+      'Carta de autorização de comercialização emitida pelo fabricante. Comprova que a QL MED está autorizada a vender aquele produto.',
+    orgao: 'Fabricante do produto',
   },
 ];
 
@@ -177,16 +225,25 @@ const SOCIETARIO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'contrato_social_constituicao',
     label: 'Contrato Social — Constituição',
     expira: false,
+    descricao:
+      'Contrato social de constituição. É o ato que criou a empresa na Junta Comercial.',
+    orgao: 'Junta Comercial de Mato Grosso do Sul',
   },
   {
     kind: 'contrato_social_alteracao',
     label: 'Contrato Social — Última alteração',
     expira: false,
+    descricao:
+      'Última alteração do contrato social. Registra mudanças de sócios, capital ou objeto.',
+    orgao: 'Junta Comercial de Mato Grosso do Sul',
   },
   {
     kind: 'contrato_social_consolidado',
     label: 'Contrato Social — Consolidado',
     expira: false,
+    descricao:
+      'Contrato social consolidado. Junta constituição e alterações num único instrumento atualizado.',
+    orgao: 'Junta Comercial de Mato Grosso do Sul',
   },
 ];
 
@@ -195,31 +252,51 @@ const BASICOS_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'cartao_cnpj',
     label: 'Cartão CNPJ',
     expira: false,
+    emissaoUrl: 'https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/',
+    emissaoAria: 'Emitir Cartão CNPJ no site da Receita',
+    descricao:
+      'Comprovante de inscrição e de situação cadastral no CNPJ. Identifica a empresa perante a Receita Federal.',
+    orgao: 'Receita Federal do Brasil',
   },
   {
     kind: 'inscricao_municipal',
     label: 'Inscrição Municipal',
     expira: false,
+    descricao:
+      'Comprovante de inscrição municipal (ISS) em Campo Grande. É o cadastro da empresa na Prefeitura.',
+    orgao: 'Prefeitura de Campo Grande',
   },
   {
     kind: 'inscricao_estadual',
     label: 'Inscrição Estadual',
     expira: false,
+    descricao:
+      'Comprovante de inscrição estadual (ICMS) em Mato Grosso do Sul. Necessário para operações de circulação de mercadorias.',
+    orgao: 'SEFAZ-MS',
   },
   {
     kind: 'siscomex_radar',
     label: 'SISCOMEX RADAR',
     expira: false,
+    descricao:
+      'Habilitação no SISCOMEX (RADAR). É o que permite a empresa operar no comércio exterior.',
+    orgao: 'Receita Federal do Brasil',
   },
   {
     kind: 'cadastro_ecjur',
     label: 'Cadastro e-CJUR',
     expira: false,
+    descricao:
+      'Cadastro da empresa no e-CJUR. Credencia a peticionar em precatórios e processos da justiça estadual.',
+    orgao: 'Tribunal de Justiça de Mato Grosso do Sul',
   },
   {
     kind: 'dados_cadastrais',
     label: 'Dados cadastrais',
     expira: false,
+    descricao:
+      'Ficha de dados cadastrais da empresa (endereço, sócios, contatos) para cadastros de cliente e licitação.',
+    orgao: 'QL MED',
   },
 ];
 
@@ -228,6 +305,9 @@ const BALANCO_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'balanco_anual',
     label: 'Balanço anual',
     expira: false,
+    descricao:
+      'Demonstrações contábeis do exercício (balanço patrimonial e DRE). Usado em licitações e análise de crédito.',
+    orgao: 'Contabilista da empresa',
   },
 ];
 
@@ -244,7 +324,7 @@ export const DOCUMENTOS_FAMILIES: readonly DocumentosFamily[] = [
     archiveFolder: 'Vencidas',
     mode: 'closed',
     scan: 'subfolders',
-    defaultOpen: true,
+    defaultOpen: false,
     columnLabel: 'Certidão',
     thresholds: [30, 15, 7, 3, 1, 0],
     kinds: CERTIDAO_KINDS,
@@ -257,7 +337,7 @@ export const DOCUMENTOS_FAMILIES: readonly DocumentosFamily[] = [
     archiveFolder: 'Vencidas',
     mode: 'closed',
     scan: 'root',
-    defaultOpen: true,
+    defaultOpen: false,
     columnLabel: 'Documento',
     // 60 vem da observação II da Licença Sanitária nº 87858: "A renovação
     // deverá ser requerida até 60 (sessenta) dias antes do término de sua

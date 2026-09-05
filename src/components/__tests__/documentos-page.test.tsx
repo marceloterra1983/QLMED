@@ -50,6 +50,7 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
     label: CERTIDAO_LABEL[kind],
     fileName: null,
     validUntil: null,
+    emitidoEm: null,
     daysRemaining: null,
     status: { key: 'sem_data', label: 'Não encontrada' },
     validUntilSource: null,
@@ -72,6 +73,7 @@ function row(
     label: CERTIDAO_LABEL[kind],
     fileName: `${kind}.pdf`,
     validUntil: '2026-12-12',
+    emitidoEm: null,
     daysRemaining: 99,
     status: { key: 'ok', label: 'ok' },
     validUntilSource: 'filename',
@@ -159,12 +161,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+async function certidoesTable() {
+  const toggle = await screen.findByRole('button', { name: /Certidões/ });
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
+  return screen.findByRole('table', { name: 'Certidões' });
+}
+
+async function expandFamily(name: string | RegExp) {
+  const toggle = await screen.findByRole('button', { name });
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
+  return toggle;
+}
+
 describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('renderiza as 7 certidões na ordem, sem histórico, sem coluna Arquivo e sem Outros', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
 
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
     for (const kind of CERTIDAO_KINDS_ORDER) {
       expect(within(table).getByText(CERTIDAO_LABEL[kind])).toBeTruthy();
     }
@@ -185,7 +199,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('mostra o texto exato de dias nos cinco casos e destaca 7, não 8', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
 
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     expect(within(federal).getByText('99 dias')).toBeTruthy();
@@ -216,7 +230,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
     const iframe = await screen.findByTitle('Preview do documento');
@@ -229,7 +243,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('cada uma das 7 linhas tem o link de emissão com href da constante e rel noopener', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     const emitLinks = screen.getAllByRole('link', { name: /Emitir / });
     expect(emitLinks).toHaveLength(7);
@@ -245,7 +259,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('o lápis só existe para canWrite, tem aria-label, e o card recolhe/expande', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
 
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
@@ -265,7 +279,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     cleanup();
     roleState.canWrite = false;
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
     expect(screen.queryByRole('button', { name: /Editar validade/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
@@ -274,7 +288,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('linha sem documento não nasce em edição; canWrite=false nenhuma linha edita', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
     const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
 
     expect(within(gerais).queryByLabelText('Validade')).toBeNull();
@@ -286,7 +300,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     cleanup();
     roleState.canWrite = false;
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
     expect(screen.queryByLabelText('Validade')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
@@ -296,7 +310,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('Cancelar limpa o rascunho para não pinar a data noutra linha', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     const table = screen.getByRole('table', { name: 'Certidões' });
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
@@ -317,7 +331,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
     const iframe = await screen.findByTitle('Preview do documento');
@@ -335,14 +349,14 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
   it('mostra botões de escrita só para editor/admin', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
     expect(screen.getByRole('button', { name: 'Atualizar do OneDrive' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Enviar arquivo' })).toBeTruthy();
 
     cleanup();
     roleState.canWrite = false;
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
     expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
   });
@@ -355,7 +369,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     expect(await screen.findByText('Não foi possível carregar os documentos')).toBeTruthy();
     fetchMock.mockImplementation(async () => jsonResponse(listing()));
     fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
-    expect(await screen.findByRole('table', { name: 'Certidões' })).toBeTruthy();
+    expect(await certidoesTable()).toBeTruthy();
   });
 
   it('Baixar continua link direto; 409 do sync vira toast', async () => {
@@ -366,7 +380,7 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
       return jsonResponse(listing());
     });
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       expect(this.getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo?download=1');
@@ -390,6 +404,7 @@ describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
   it('mostra 12/12/2026, e não o dia anterior, para validUntil 2026-12-12', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
+    await certidoesTable();
 
     const linha = (await screen.findByText('CND Receita Federal')).closest('tr')!;
     expect(within(linha).getByText('12/12/2026')).toBeTruthy();
@@ -399,6 +414,7 @@ describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
   it('a data vencida da FGTS também não desliza', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
+    await certidoesTable();
 
     const linha = (await screen.findByText('CRF FGTS')).closest('tr')!;
     expect(within(linha).getByText('01/09/2026')).toBeTruthy();
@@ -407,7 +423,7 @@ describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
 });
 
 describe('SPEC-042 L10 — três famílias na mesma página', () => {
-  it('três cards: certidões e sanitária abertos, cartas recolhidas', async () => {
+  it('todos os cards nascem recolhidos; sanitária mostra AFE sem lápis', async () => {
     stubFetch(() => jsonResponse(listing({
       sanitaria: [
         {
@@ -425,17 +441,19 @@ describe('SPEC-042 L10 — três famílias na mesma página', () => {
           emissaoAria: null,
           webUrl: null,
           automacao: null,
+          emitidoEm: null,
         },
       ],
     })));
     render(<DocumentosPageClient />);
 
-    expect((await screen.findByRole('button', { name: /Certidões/ })).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('button', { name: /Autorizações sanitárias/ }).getAttribute('aria-expanded')).toBe('true');
+    expect((await screen.findByRole('button', { name: /Certidões/ })).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: /Autorizações sanitárias/ }).getAttribute('aria-expanded')).toBe('false');
     const cartas = screen.getByRole('button', { name: /Cartas de comercialização/ });
     expect(cartas.getAttribute('aria-expanded')).toBe('false');
 
-    const sanitaria = screen.getByRole('table', { name: 'Autorizações sanitárias' });
+    await expandFamily(/Autorizações sanitárias/);
+    const sanitaria = await screen.findByRole('table', { name: 'Autorizações sanitárias' });
     expect(within(sanitaria).getByText('AFE — Autorização de Funcionamento ANVISA')).toBeTruthy();
     expect(within(sanitaria).getByText('não vence')).toBeTruthy();
     expect(within(sanitaria).queryByRole('button', { name: /Editar validade/ })).toBeNull();
@@ -461,6 +479,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoAria: null,
           webUrl: null,
           automacao: null,
+          emitidoEm: null,
         },
       ],
       basicos: [
@@ -479,6 +498,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoAria: null,
           webUrl: null,
           automacao: null,
+          emitidoEm: null,
         },
       ],
       balancos: [
@@ -497,6 +517,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           emissaoAria: null,
           webUrl: 'https://onedrive.example/balanco-2026',
           automacao: null,
+          emitidoEm: null,
         },
       ],
     })));
@@ -527,19 +548,24 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
   it('clicar em Ver não abre o modal de atualização', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Ver documento' })[0]);
     expect(screen.queryByRole('dialog', { name: 'Atualizar CND Receita Federal' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Gestão: CND Receita Federal' })).toBeNull();
     expect(screen.getByTitle('Preview do documento')).toBeTruthy();
   });
 
-  it('clicar na linha ou Enter abre o modal de atualização', async () => {
+  it('clicar na linha ou Enter abre o modal de gestão, não o de atualização', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    await screen.findByRole('table', { name: 'Certidões' });
+    await certidoesTable();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir atualização de CND Receita Federal' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir gestão de CND Receita Federal' }));
+    expect(await screen.findByRole('dialog', { name: 'Gestão: CND Receita Federal' })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: 'Atualizar CND Receita Federal' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Anexar PDF' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar arquivo' }));
     expect(await screen.findByRole('dialog', { name: 'Atualizar CND Receita Federal' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Anexar PDF' })).toBeTruthy();
   });
@@ -562,6 +588,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
           emissaoAria: null,
           webUrl: 'https://onedrive.example/balanco-2026',
           automacao: null,
+          emitidoEm: null,
         },
       ],
     })));
@@ -572,6 +599,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     expect(within(table).queryByRole('button', { name: 'Mais opções' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Abrir pasta 2026 no OneDrive' }));
     expect(screen.queryByRole('dialog', { name: /Atualizar/ })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: /Gestão/ })).toBeNull();
     expect(openSpy).toHaveBeenCalledWith(
       'https://onedrive.example/balanco-2026',
       '_blank',
@@ -583,7 +611,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
   it('ícones do padrão: Ver documento, Imprimir, menu com Compartilhar', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     expect(within(federal).getByRole('button', { name: 'Ver documento' })).toBeTruthy();
     expect(within(federal).getByRole('button', { name: 'Imprimir' })).toBeTruthy();
@@ -612,20 +640,55 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
           emissaoAria: null,
           webUrl: null,
           automacao: null,
+          emitidoEm: null,
         },
       ],
     })));
     render(<DocumentosPageClient />);
-    const table = await screen.findByRole('table', { name: 'Certidões' });
+    const table = await certidoesTable();
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
     const mobiliario = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_mobiliario).closest('tr')!;
     expect(within(federal).getByText('Manual')).toBeTruthy();
     expect(within(fgts).getByText('Automática')).toBeTruthy();
     expect(within(mobiliario).getByText('Assistida')).toBeTruthy();
+    await expandFamily(/Autorizações sanitárias/);
     const sanitaria = screen.getByRole('table', { name: 'Autorizações sanitárias' });
     expect(within(sanitaria).queryByText('Automática')).toBeNull();
     expect(within(sanitaria).queryByText('Manual')).toBeNull();
     expect(within(sanitaria).queryByText('Assistida')).toBeNull();
+  });
+});
+
+describe('SPEC-042 L13 — cards recolhidos, tabela compacta, gestão', () => {
+  it('todos os cards recolhidos ao entrar', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    const names = [
+      /Certidões/,
+      /Autorizações sanitárias/,
+      /Cartas de comercialização/,
+      /Contrato social/,
+      /Documentos básicos/,
+      /Balanços/,
+    ];
+    for (const name of names) {
+      expect((await screen.findByRole('button', { name })).getAttribute('aria-expanded'), String(name)).toBe(
+        'false',
+      );
+    }
+  });
+
+  it('células da tabela usam py-1.5 no desktop e o link de emissão continua na linha', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    const table = await certidoesTable();
+    const th = within(table).getByRole('columnheader', { name: 'Certidão' });
+    expect(th.className).toMatch(/py-1\.5/);
+    expect(th.className).toMatch(/px-3/);
+    const td = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('td')!;
+    expect(td.className).toMatch(/py-1\.5/);
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    expect(within(federal).getByRole('link', { name: /Emitir CND Receita Federal/ })).toBeTruthy();
   });
 });

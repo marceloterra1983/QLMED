@@ -26,7 +26,10 @@ famílias (certidão, sanitária, carta) sobre a coluna `category`. A L11
 acrescenta contrato social, documentos básicos e balanços (modo
 `yearFolders`) à mesma tabela. A L12 liga a tela: linha clicável com popup
 de atualização (leitura da validade no PDF), ícones no padrão `RowActionsBase`,
-compartilhar no app e tags de automação.
+compartilhar no app e tags de automação. A L13 recolhe todos os cards ao
+entrar, compacta as linhas da tabela e troca o alvo do clique da linha para um
+popup de gestão (resumo de datas, descrição, órgão emissor); o modal de
+atualização passa a abrir por um botão dentro desse popup.
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -174,9 +177,9 @@ falhar de forma visível, não chutar.
 
 ### Famílias (L10)
 
-- **FR-018**: A página `/cadastro/documentos` tem três cards `Section` na
-  mesma rota: **Certidões** (aberto), **Autorizações sanitárias** (aberto) e
-  **Cartas de comercialização** (recolhido). A coluna `CompanyDocument.category`
+- **FR-018**: A página `/cadastro/documentos` tem cards `Section` na
+  mesma rota, todos **recolhidos** ao entrar (`defaultOpen: false` em cada
+  família da tabela). A coluna `CompanyDocument.category`
   (`certidao` | `sanitaria` | `carta`) é o eixo: escrita na ingestão/upload e
   lida na listagem, no alerta e no arquivo. O motor
   (`ingest`/`list`/`alerts`/`upload`/`onedrive-port`) itera
@@ -266,11 +269,13 @@ falhar de forma visível, não chutar.
 
 ### Tela integrada (L12)
 
-- **FR-031**: Na família `certidao`, a linha inteira (rato, Enter e Espaço;
-  `role="button"` + `tabIndex={0}`) abre `DocumentoUpdateModal`. Clique em
+- **FR-031**: A linha inteira (rato, Enter e Espaço; `role="button"` +
+  `tabIndex={0}`) abre `DocumentoDetalheModal`, o painel de gestão. Clique em
   acção, no kebab ou num link da linha **não** abre o modal (`stopPropagation`
   nos controlos). Família `balanco`: a linha abre a pasta no OneDrive e **não**
-  tem modal de atualização.
+  tem modal de gestão nem de atualização. O `DocumentoUpdateModal` abre só
+  pelo botão **Atualizar arquivo** dentro do popup de gestão (família
+  `certidao`, editor+).
 
 - **FR-032**: O modal de atualização segue quatro etapas: anexar (arrastar ou
   clicar; só `.pdf`, ≤ 5 MB, recusa no cliente); ler (`POST /api/documentos/analisar`,
@@ -303,6 +308,28 @@ falhar de forma visível, não chutar.
   demais nomes sem `contrato` continuam `outro`. Linha já persistida
   como `outro` com esse nome **aparece** no card de consolidado até a
   próxima ingestão gravar o kind novo.
+
+### Gestão do documento (L13)
+
+- **FR-037**: Todos os cards da página nascem recolhidos (`defaultOpen: false`
+  na tabela de famílias; o campo permanece, não vira literal no JSX).
+- **FR-038**: Células da tabela usam `px-3 py-2 sm:py-1.5`. Os botões de
+  acção mantêm `min-h-11 min-w-11` no telemóvel. O link de emissão da linha
+  (FR-017) permanece.
+- **FR-039**: O popup de gestão mostra, nesta ordem: tipo e nome do ficheiro;
+  **Emitido em** (`CompanyDocument.emitidoEm`, ou "não informado" — nunca
+  `lastModifiedAt`); **Vence em** (ou "não vence" se `expira: false`); **Dias
+  restantes** com o mesmo destaque `<= 7` da tabela; **O que é este
+  documento** (`descricao` do tipo); **Quem emite / onde renovar** (`orgao` +
+  `emissaoUrl` quando existir) — este bloco aparece **sempre**, inclusive nos
+  tipos que não vencem; acções Ver, Baixar, Compartilhar, Atualizar arquivo,
+  Editar validade.
+- **FR-040**: `emitidoEm DateTime? @db.Date` é extraído do PDF pela mesma
+  máquina de validade: início da faixa `Validade: X a Y`; rótulos `emitida em`,
+  `emitido em`, `data de emissão`, `emissão:`. Sem match → `null`. Guarda de
+  plausibilidade idêntico ao da validade. Emissão posterior à validade é
+  descartada. A ingestão grava quando lê o PDF; documentos já persistidos
+  ficam `null` até a próxima leitura.
 
 ## Acceptance Criteria
 
@@ -355,8 +382,8 @@ falhar de forma visível, não chutar.
   `removedAt` e não é vigente. Pasta `Vencidas` ausente → `arquivados = 0`
   e a ingestão não falha.
 - **AC-013** (FR-018/023): a listagem devolve `certidoes` (7), `sanitaria`
-  (6 tipos fechados) e `cartas` (N ficheiros). A página tem três `Section`
-  com esses títulos; cartas nasce recolhida.
+  (6 tipos fechados) e `cartas` (N ficheiros). A página tem as `Section`
+  com esses títulos; todos os cards nascem recolhidos.
 - **AC-014** (FR-019): `kindExpires('afe_anvisa') === false`; ingestão de
   `AFE - EMITIDO EM 06.01.2026.pdf` grava `validUntil = null`; o tick de
   alerta com AFE a 30 dias da data do nome envia 0. Controlo negativo: pôr
@@ -396,9 +423,10 @@ falhar de forma visível, não chutar.
   com `readValidityFromPdf` devolvendo `2026-12-01`, persiste essa data
   com `validUntilSource='pdf'` e **não** chama `downloadPdf` nos ficheiros
   cuja data já saiu do nome.
-- **AC-024** (FR-031): clicar em Ver não abre o modal de atualização; clicar
-  na linha da certidão abre. Controlo negativo: deixar o clique do botão
-  propagar para a linha faz o teste falhar.
+- **AC-024** (FR-031): clicar em Ver não abre o modal de gestão nem o de
+  atualização; clicar na linha da certidão abre o de gestão. "Atualizar
+  arquivo" dentro do popup abre o de atualização. Controlo negativo: deixar
+  o clique do botão Ver propagar para a linha faz o teste falhar.
 - **AC-025** (FR-032): validade lida (`confidence: 'alta'`) entra
   pré-preenchida no campo; `nenhuma` deixa o campo vazio e não bloqueia.
   Controlo negativo: ignorar o valor lido faz o teste "validade lida entra
@@ -412,6 +440,15 @@ falhar de forma visível, não chutar.
   `contrato_social_consolidado`; `ATA ASSEMBLEIA.pdf` permanece `outro`.
   Listagem com kind persistido `outro` e nome `CONTRATO SOCIAL.pdf`
   preenche a linha de consolidado; a ATA não aparece.
+- **AC-029** (FR-037): `DOCUMENTOS_FAMILIES.every((f) => f.defaultOpen === false)`.
+  Controlo negativo: `defaultOpen: true` numa família faz o teste "todos os
+  cards recolhidos" falhar.
+- **AC-030** (FR-039/040): `emitidoEm` null no popup mostra "não informado";
+  `lastModifiedAt` não é consultado. Controlo negativo: usar `lastModifiedAt`
+  como fallback faz o teste falhar. Faixa `31/08/2026 a 29/09/2026` devolve
+  emissão 31/08 e validade 29/09; devolver o fim nas duas faz o teste da
+  emissão falhar. O bloco "quem emite" aparece com `expira: false`; escondê-lo
+  nesse caso faz o teste falhar.
 
 ## Non-functional
 

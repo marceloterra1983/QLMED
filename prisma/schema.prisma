@@ -1098,6 +1098,8 @@ model CompanyDocument {
   webUrl            String?
   validUntil        DateTime?           @db.Date
   validUntilSource  String?             // 'filename' | 'pdf' | 'manual' | null
+  emitidoEm         DateTime?           @db.Date
+
   removedAt         DateTime?
   alertedThresholds Int[]               @default([])
   renewalNotifiedAt DateTime?

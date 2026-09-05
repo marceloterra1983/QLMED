@@ -17,6 +17,7 @@ type DocRow = {
   lastModifiedAt: Date | null;
   validUntil: Date | null;
   validUntilSource: string | null;
+  emitidoEm?: Date | null;
   removedAt: Date | null;
   renewalNotifiedAt: Date | null;
   alertedThresholds: number[];
@@ -118,6 +119,7 @@ const uploadOd = vi.hoisted(() => ({
 const pdfValidity = vi.hoisted(() => {
   const empty: PdfValidityResult = {
     validUntil: null,
+    emitidoEm: null,
     confidence: 'nenhuma',
     matchedLabel: null,
     textChars: 0,
@@ -331,6 +333,7 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
     pdfValidity.readValidityFromPdf.mockResolvedValue({
       validUntil: '2026-12-01',
+      emitidoEm: '2026-11-01',
       confidence: 'alta' as const,
       matchedLabel: 'Validade ate',
       textChars: 32,
@@ -348,6 +351,9 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(nameless?.fileName).toMatch(/05\.04\.pdf$/);
     expect(ymd(nameless?.validUntil ?? null)).toBe('2026-12-01');
     expect(nameless?.validUntilSource).toBe('pdf');
+    expect(ymd(nameless?.emitidoEm ?? null)).toBe('2026-11-01');
+    expect(nameless?.lastModifiedAt).toEqual(new Date('2026-09-04T12:00:00.000Z'));
+    expect(ymd(nameless?.emitidoEm ?? null)).not.toBe('2026-09-04');
     expect(new Set(downloads)).toEqual(new Set([itemIdFor(3), itemIdFor(23)]));
     expect(pdfValidity.readValidityFromPdf).toHaveBeenCalledTimes(2);
     expect(ymd(memory.docs.find((row) => row.oneDriveItemId === itemIdFor(0))?.validUntil ?? null)).toBe(
@@ -356,6 +362,23 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.docs.find((row) => row.oneDriveItemId === itemIdFor(0))?.validUntilSource).toBe(
       'filename',
     );
+  });
+
+  it('grava emitidoEm lido do PDF, distinto de lastModifiedAt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    pdfValidity.readValidityFromPdf.mockResolvedValue({
+      validUntil: '2026-12-01',
+      emitidoEm: '2026-11-01',
+      confidence: 'alta' as const,
+      matchedLabel: 'Validade ate',
+      textChars: 32,
+    });
+    const port = fakePort(filesFromFixture());
+    await runDocumentosIngest(COMPANY, port, NOW);
+    const nameless = memory.docs.find((row) => row.oneDriveItemId === itemIdFor(23));
+    expect(ymd(nameless?.emitidoEm ?? null)).toBe('2026-11-01');
+    expect(nameless?.lastModifiedAt).toEqual(new Date('2026-09-04T12:00:00.000Z'));
+    expect(ymd(nameless?.lastModifiedAt ?? null)).not.toBe(ymd(nameless?.emitidoEm ?? null));
   });
 
   it('item ausente recebe removedAt; reaparecer zera removedAt', async () => {
