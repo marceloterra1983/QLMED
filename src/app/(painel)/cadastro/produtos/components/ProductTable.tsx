@@ -11,6 +11,13 @@ import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, formatInt } from '@/lib/utils';
 import type { ProductRow, ProductsSummary, SortField } from '../types';
 import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-utils';
+import {
+  anyProductRowVisible as computeAnyProductRowVisible,
+  effectiveCollapsedGroups,
+  productGroupKey,
+  productLineKey,
+  safeCollapseKeys,
+} from './product-group-visibility';
 
 interface ProductTableProps {
   products: ProductRow[];
@@ -36,25 +43,9 @@ interface ProductTableProps {
   setSettingsOpen: (v: boolean) => void;
 }
 
-const getGroupLabel = (product: ProductRow, sortBy: SortField): string => {
-  switch (sortBy) {
-    case 'supplier': return product.lastSupplierName || 'Sem fabricante';
-    case 'productType': return `group:${product.productType || 'Sem linha'}|${product.productSubtype || 'Sem grupo'}`;
-    case 'ncm': return product.ncm ? product.ncm.slice(0, 4) + '.xx.xx' : 'Sem NCM';
-    case 'anvisa': return product.anvisa ? 'Com ANVISA' : 'Sem ANVISA';
-    case 'lastIssueDate': {
-      if (!product.lastIssueDate) return 'Sem data';
-      const d = new Date(product.lastIssueDate);
-      // ui-ok: mês por extenso e ano, formato único de cabeçalho de grupo
-      return `${d.toLocaleString('pt-BR', { month: 'long' })} / ${d.getFullYear()}`;
-    }
-    case 'description': return (product.description?.[0] || '#').toUpperCase();
-    case 'code': return product.code ? product.code[0].toUpperCase() : '#';
-    default: return '';
-  }
-};
+const getGroupLabel = (product: ProductRow, sortBy: SortField): string => productGroupKey(product, sortBy);
 
-const getLineLabel = (product: ProductRow): string => `line:${product.productType || 'Sem linha'}`;
+const getLineLabel = (product: ProductRow): string => productLineKey(product);
 
 const TABLE_DATA_COLS = 8; // Cod. Spica, Referencia, Produto, ANVISA, Fabricante, Ult. Compra, Ult. Preco, Acoes
 
@@ -66,6 +57,20 @@ export default function ProductTable({
 }: ProductTableProps) {
   const visible = products;
 
+  // Se o estado de colapso esconderia todos os itens, renderiza como expandido.
+  // Cobre race/Recolher/toggle hostil que o clear pós-fetch (#329) não bastou na UI real.
+  const renderCollapsed = React.useMemo(
+    () => effectiveCollapsedGroups(products, sortBy, collapsedGroups),
+    [products, sortBy, collapsedGroups],
+  );
+
+  React.useLayoutEffect(() => {
+    if (loading || isRebuilding || products.length === 0) return;
+    if (collapsedGroups.size === 0) return;
+    if (computeAnyProductRowVisible(products, sortBy, collapsedGroups)) return;
+    setCollapsedGroups(new Set());
+  }, [products, sortBy, collapsedGroups, loading, isRebuilding, setCollapsedGroups]);
+
   // visible keys for select-all
   const visibleKeys = React.useMemo(() => {
     const keys: string[] = [];
@@ -74,12 +79,12 @@ export default function ProductTable({
       const g = getGroupLabel(p, sortBy);
       if (g !== lastGroup) lastGroup = g;
       const lineKey = sortBy === 'productType' ? getLineLabel(p) : '';
-      if (collapsedGroups.has(g)) continue;
-      if (sortBy === 'productType' && collapsedGroups.has(lineKey)) continue;
+      if (renderCollapsed.has(g)) continue;
+      if (sortBy === 'productType' && renderCollapsed.has(lineKey)) continue;
       keys.push(p.key);
     }
     return keys;
-  }, [products, collapsedGroups, sortBy]);
+  }, [products, renderCollapsed, sortBy]);
 
   const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((k) => selectedKeys.has(k));
   const someVisibleSelected = visibleKeys.some((k) => selectedKeys.has(k));
@@ -94,17 +99,10 @@ export default function ProductTable({
   };
 
   const allGroups = Array.from(new Set(visible.map((p) => getGroupLabel(p, sortBy))));
-  const allLines = sortBy === 'productType' ? Array.from(new Set(visible.map(getLineLabel))) : [];
   const hasGroups = allGroups.length > 0;
-  const hasCollapsedGroups = collapsedGroups.size > 0;
+  const hasCollapsedGroups = renderCollapsed.size > 0;
   const tableColSpan = TABLE_DATA_COLS + (selectionEnabled ? 1 : 0);
-  const anyProductRowVisible = visible.some((p) => {
-    if (sortBy === 'productType') {
-      return !collapsedGroups.has(getLineLabel(p)) && !collapsedGroups.has(getGroupLabel(p, sortBy));
-    }
-    const g = getGroupLabel(p, sortBy);
-    return !g || !collapsedGroups.has(g);
-  });
+  const anyProductRowVisible = computeAnyProductRowVisible(visible, sortBy, renderCollapsed);
 
   const renderProductRow = (product: ProductRow, inTable: boolean) => {
     if (inTable) {
@@ -284,8 +282,8 @@ export default function ProductTable({
         if (showGrp) lastSubgroup = '';
         lastLine = lineKey; lastGrp = grpKey;
         if (product.productSubgroup) lastSubgroup = subgroupKey;
-        const lineCollapsed = collapsedGroups.has(lineKey);
-        const grpCollapsed = collapsedGroups.has(grpKey);
+        const lineCollapsed = renderCollapsed.has(lineKey);
+        const grpCollapsed = renderCollapsed.has(grpKey);
         return (
           <React.Fragment key={inTable ? product.key : `m-${product.key}`}>
             {renderGroupHeaders(product, showLine, showGrp, showSubgroup, lineKey, grpKey, lineCollapsed, grpCollapsed, lineCountMap, groupCountMap, inTable)}
@@ -309,11 +307,11 @@ export default function ProductTable({
             const divContent = (
               <div className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent border-y border-slate-200/80 dark:border-slate-700/60">
                 {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => getGroupLabel(p, sortBy) === group).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => getGroupLabel(p, sortBy) === group); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar grupo ${group}`} className="w-4 h-4 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
-                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
+                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: renderCollapsed.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
                 <div className="w-0.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
                 <Badge dot={false}>{groupCountMap.get(group)}</Badge>
-                {collapsedGroups.has(group) && (
+                {renderCollapsed.has(group) && (
                   <span className="ml-auto text-xs font-medium text-slate-500 dark:text-slate-400">
                     Clique para expandir
                   </span>
@@ -322,7 +320,7 @@ export default function ProductTable({
             );
             return inTable ? <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}><td colSpan={tableColSpan} className="px-0 py-0">{divContent}</td></tr> : <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>{divContent}</div>;
           })()}
-          {!collapsedGroups.has(group) && renderProductRow(product, inTable)}
+          {!renderCollapsed.has(group) && renderProductRow(product, inTable)}
         </React.Fragment>
       );
     });
@@ -336,7 +334,7 @@ export default function ProductTable({
           <>
             <button
               type="button"
-              onClick={() => setCollapsedGroups(new Set(sortBy === 'productType' ? [...allLines, ...allGroups] : allGroups))}
+              onClick={() => setCollapsedGroups(safeCollapseKeys(visible, sortBy))}
               className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
               aria-label="Recolher todos os grupos"
             >

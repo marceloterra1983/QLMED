@@ -7,9 +7,13 @@ const pageClient = readFileSync(
   'utf8',
 );
 
+const productTable = readFileSync(
+  join(process.cwd(), 'src/app/(painel)/cadastro/produtos/components/ProductTable.tsx'),
+  'utf8',
+);
+
 describe('produtos groups expanded contract', () => {
   it('limpa collapsedGroups após fetch bem-sucedido (evita tela em branco)', () => {
-    // Após setMeta do fetch principal deve expandir grupos.
     const fetchIdx = pageClient.indexOf('setMeta(data.meta || null)');
     expect(fetchIdx).toBeGreaterThan(0);
     const afterFetch = pageClient.slice(fetchIdx, fetchIdx + 280);
@@ -25,5 +29,15 @@ describe('produtos groups expanded contract', () => {
     expect(pageClient).toMatch(
       /useState<'active' \| 'outOfLine' \| 'all'>\('all'\)/,
     );
+  });
+
+  it('ProductTable usa effectiveCollapsedGroups (blank-page guard)', () => {
+    expect(productTable).toContain('effectiveCollapsedGroups');
+    expect(productTable).toContain('safeCollapseKeys');
+    expect(productTable).toContain('useLayoutEffect');
+  });
+
+  it('toggleGroup nao recolhe grupos filhos ao expandir linha', () => {
+    expect(pageClient).not.toMatch(/n\.add\(`group:\$\{lineName\}/);
   });
 });
