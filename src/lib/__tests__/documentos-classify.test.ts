@@ -251,3 +251,44 @@ describe('SPEC-042 L10 — classify sanitária / carta', () => {
     expect(extractValidUntil('Carta Comercialização TECHIMPORT.pdf')).toBeNull();
   });
 });
+
+describe('SPEC-042 L11 — classify societário / básicos', () => {
+  it('CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO é consolidado, não constituição', () => {
+    expect(
+      classifyDocument(
+        '3 - CONTRATO SOCIAL',
+        'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+        'societario',
+      ),
+    ).toBe('contrato_social_consolidado');
+  });
+
+  it.each([
+    {
+      file: 'CONTRATO SOCIAL- CONSTITUIÇÃO.pdf',
+      kind: 'contrato_social_constituicao' as const,
+    },
+    {
+      file: 'CONTRATO SOCIAL ALTERAÇÃO 2014 - ULTIMA ALTERAÇÃO.pdf',
+      kind: 'contrato_social_alteracao' as const,
+    },
+    {
+      file: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+      kind: 'contrato_social_consolidado' as const,
+    },
+  ])('$file → $kind', ({ file, kind }) => {
+    expect(classifyDocument('3 - CONTRATO SOCIAL', file, 'societario')).toBe(kind);
+  });
+
+  it.each([
+    { file: 'CARTÃO CNPJ 31.08.26.pdf', kind: 'cartao_cnpj' as const },
+    { file: 'INSCRICAO MUNICIPAL.pdf', kind: 'inscricao_municipal' as const },
+    { file: 'INSCRIÇÃO ESTADUAL.pdf', kind: 'inscricao_estadual' as const },
+    { file: 'SISCOMEX RADAR.pdf', kind: 'siscomex_radar' as const },
+    { file: 'CADASTRO E-CJUR.pdf', kind: 'cadastro_ecjur' as const },
+    { file: 'DADOS CADASTRAIS QL MED.pdf', kind: 'dados_cadastrais' as const },
+    { file: 'DADOS CADASTRAIS QL MED.docx', kind: 'dados_cadastrais' as const },
+  ])('$file → $kind', ({ file, kind }) => {
+    expect(classifyDocument('0 - DOCUMENTOS BÁSICOS', file, 'basicos')).toBe(kind);
+  });
+});

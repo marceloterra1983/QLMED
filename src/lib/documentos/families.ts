@@ -1,8 +1,8 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 
-export type DocumentosCategory = 'certidao' | 'sanitaria' | 'carta';
+export type DocumentosCategory = 'certidao' | 'sanitaria' | 'carta' | 'societario' | 'basicos' | 'balanco';
 export type DocumentosFamilyMode = 'closed' | 'open';
-export type DocumentosScan = 'subfolders' | 'root';
+export type DocumentosScan = 'subfolders' | 'root' | 'yearFolders';
 
 export type DocumentosKindConfig = {
   kind: CompanyDocumentKind;
@@ -13,6 +13,11 @@ export type DocumentosKindConfig = {
    * da ANVISA ("Situação: Ativo"), não certificado com data de validade.
    */
   expira: boolean;
+  /**
+   * false: a ingestão não grava a data do nome (AFE: data da consulta, não
+   * validade). Independente de `expira`. Omissão = grava quando o nome tem data.
+   */
+  filenameDate?: boolean;
   /** Subpasta sob `root` quando scan='subfolders'. */
   folder?: string;
   uploadName?: (ddMMyy: string) => string;
@@ -135,6 +140,7 @@ const SANITARIA_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'afe_anvisa',
     label: 'AFE — Autorização de Funcionamento ANVISA',
     expira: false,
+    filenameDate: false,
   },
 ];
 
@@ -143,6 +149,65 @@ const CARTA_KINDS: readonly DocumentosKindConfig[] = [
     kind: 'carta_comercializacao',
     label: 'Carta de comercialização',
     expira: true,
+  },
+];
+
+const SOCIETARIO_KINDS: readonly DocumentosKindConfig[] = [
+  {
+    kind: 'contrato_social_constituicao',
+    label: 'Contrato Social — Constituição',
+    expira: false,
+  },
+  {
+    kind: 'contrato_social_alteracao',
+    label: 'Contrato Social — Última alteração',
+    expira: false,
+  },
+  {
+    kind: 'contrato_social_consolidado',
+    label: 'Contrato Social — Consolidado',
+    expira: false,
+  },
+];
+
+const BASICOS_KINDS: readonly DocumentosKindConfig[] = [
+  {
+    kind: 'cartao_cnpj',
+    label: 'Cartão CNPJ',
+    expira: false,
+  },
+  {
+    kind: 'inscricao_municipal',
+    label: 'Inscrição Municipal',
+    expira: false,
+  },
+  {
+    kind: 'inscricao_estadual',
+    label: 'Inscrição Estadual',
+    expira: false,
+  },
+  {
+    kind: 'siscomex_radar',
+    label: 'SISCOMEX RADAR',
+    expira: false,
+  },
+  {
+    kind: 'cadastro_ecjur',
+    label: 'Cadastro e-CJUR',
+    expira: false,
+  },
+  {
+    kind: 'dados_cadastrais',
+    label: 'Dados cadastrais',
+    expira: false,
+  },
+];
+
+const BALANCO_KINDS: readonly DocumentosKindConfig[] = [
+  {
+    kind: 'balanco_anual',
+    label: 'Balanço anual',
+    expira: false,
   },
 ];
 
@@ -193,6 +258,45 @@ export const DOCUMENTOS_FAMILIES: readonly DocumentosFamily[] = [
     thresholds: [60, 30, 15, 7],
     kinds: CARTA_KINDS,
   },
+  {
+    category: 'societario',
+    label: 'Contrato social',
+    icon: 'contract',
+    root: '1 - DOCUMENTOS/1 - QL MED/3 - CONTRATO SOCIAL',
+    archiveFolder: 'Vencidos',
+    mode: 'closed',
+    scan: 'root',
+    defaultOpen: false,
+    columnLabel: 'Documento',
+    thresholds: [],
+    kinds: SOCIETARIO_KINDS,
+  },
+  {
+    category: 'basicos',
+    label: 'Documentos básicos',
+    icon: 'badge',
+    root: '1 - DOCUMENTOS/1 - QL MED/0 - DOCUMENTOS BÁSICOS',
+    archiveFolder: 'Vencidos',
+    mode: 'closed',
+    scan: 'root',
+    defaultOpen: false,
+    columnLabel: 'Documento',
+    thresholds: [],
+    kinds: BASICOS_KINDS,
+  },
+  {
+    category: 'balanco',
+    label: 'Balanços',
+    icon: 'account_balance',
+    root: '1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS',
+    archiveFolder: 'Vencidos',
+    mode: 'closed',
+    scan: 'yearFolders',
+    defaultOpen: false,
+    columnLabel: 'Ano',
+    thresholds: [],
+    kinds: BALANCO_KINDS,
+  },
 ];
 
 const FAMILY_BY_CATEGORY = new Map(DOCUMENTOS_FAMILIES.map((family) => [family.category, family]));
@@ -219,9 +323,47 @@ export function kindConfig(kind: CompanyDocumentKind): DocumentosKindConfig | un
   return KIND_TO_CONFIG.get(kind);
 }
 
-/** Ausência de config (outro) trata-se como expirável; só AFE é false. */
+/** Ausência de config (outro) trata-se como expirável; AFE e as famílias L11 são false. */
 export function kindExpires(kind: CompanyDocumentKind): boolean {
   return KIND_TO_CONFIG.get(kind)?.expira ?? true;
+}
+
+/**
+ * Gravar a data extraída do nome. Independente de `expira`: o Cartão CNPJ não
+ * vence (sem alerta) mas a vigente é a cópia de maior data. AFE omite
+ * (`filenameDate: false`) porque a data no nome é a da consulta.
+ */
+export function kindStoresFilenameDate(kind: CompanyDocumentKind): boolean {
+  return KIND_TO_CONFIG.get(kind)?.filenameDate !== false;
+}
+
+function foldKey(value: string): string {
+  return value
+    .normalize('NFC')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/** Pasta `BALANÇO 2024` — a unidade da família balanço. */
+export function balancoYearFromFolderName(name: string): number | null {
+  const match = /^balanco\s+(\d{4})$/.exec(foldKey(name));
+  if (!match) return null;
+  const year = Number(match[1]);
+  return year >= 1900 && year <= 2100 ? year : null;
+}
+
+/** Ficheiro solto `BALANÇO 2024.zip` / `.pdf` no raiz, só se o ano não tem pasta. */
+export function balancoYearFromLooseFile(name: string): number | null {
+  const match = /^balanco\s+(\d{4})\.(zip|pdf)$/.exec(foldKey(name));
+  if (!match) return null;
+  const year = Number(match[1]);
+  return year >= 1900 && year <= 2100 ? year : null;
+}
+
+export function balancoYearFromName(name: string): number | null {
+  return balancoYearFromFolderName(name.replace(/\.(zip|pdf)$/i, '')) ?? balancoYearFromLooseFile(name);
 }
 
 export function labelForKind(kind: CompanyDocumentKind): string {
@@ -243,7 +385,7 @@ export function lastPathSegment(path: string): string {
 export type FamilyScanTarget = { folderName: string; path: string };
 
 export function familyScanTargets(family: DocumentosFamily): FamilyScanTarget[] {
-  if (family.scan === 'root') {
+  if (family.scan === 'root' || family.scan === 'yearFolders') {
     return [{ folderName: lastPathSegment(family.root), path: family.root }];
   }
   const seen = new Set<string>();

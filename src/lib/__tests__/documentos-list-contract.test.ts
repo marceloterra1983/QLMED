@@ -48,6 +48,9 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.certidoes[4]?.kind).toBe('cnd_estadual_mt');
     expect(listing.sanitaria).toHaveLength(6);
     expect(listing.cartas).toEqual([]);
+    expect(listing.societario).toHaveLength(3);
+    expect(listing.basicos).toHaveLength(6);
+    expect(listing.balancos).toEqual([]);
     expect(listing.sanitaria.map((row) => row.kind)).toEqual([
       'alvara_funcionamento',
       'licenca_sanitaria',
@@ -205,6 +208,92 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.cartas[0]?.label).toBe('OSTEOMED');
     expect(listing.cartas[1]?.label).toBe('TECHIMPORT');
     expect(listing.cartas[1]?.daysRemaining).toBeNull();
+  });
+
+  it('Cartão CNPJ vigente é o de maior data mesmo com expira: false (31.08.26)', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'cnpj-nov',
+          kind: 'cartao_cnpj',
+          category: 'basicos',
+          fileName: 'CARTÃO CNPJ 13.11.25.pdf',
+          validUntil: '2025-11-13',
+          validUntilSource: 'filename',
+          removedAt: null,
+        },
+        {
+          id: 'cnpj-mar',
+          kind: 'cartao_cnpj',
+          category: 'basicos',
+          fileName: 'CARTÃO CNPJ 16.03.26.pdf',
+          validUntil: '2026-03-16',
+          validUntilSource: 'filename',
+          removedAt: null,
+        },
+        {
+          id: 'cnpj-ago',
+          kind: 'cartao_cnpj',
+          category: 'basicos',
+          fileName: 'CARTÃO CNPJ 31.08.26.pdf',
+          validUntil: '2026-08-31',
+          validUntilSource: 'filename',
+          removedAt: null,
+        },
+      ],
+      null,
+      NOW,
+    );
+    const cnpj = listing.basicos.find((row) => row.kind === 'cartao_cnpj');
+    expect(cnpj?.id).toBe('cnpj-ago');
+    expect(cnpj?.fileName).toBe('CARTÃO CNPJ 31.08.26.pdf');
+    expect(cnpj?.expira).toBe(false);
+    expect(cnpj?.daysRemaining).toBeNull();
+    expect(cnpj?.validUntil).toBeNull();
+    expect(cnpj?.status).toEqual({ key: 'nao_vence', label: 'não vence' });
+  });
+
+  it('balanços: uma linha por ano, DESC, sem prazo', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'b-2024',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          fileName: 'BALANÇO 2024',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+          webUrl: 'https://onedrive.example/2024',
+        },
+        {
+          id: 'b-2026',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          fileName: 'BALANÇO 2026',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+          webUrl: 'https://onedrive.example/2026',
+        },
+        {
+          id: 'b-2025',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          fileName: 'BALANÇO 2025',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+          webUrl: 'https://onedrive.example/2025',
+        },
+      ],
+      null,
+      NOW,
+    );
+    expect(listing.balancos.map((row) => row.label)).toEqual(['2026', '2025', '2024']);
+    expect(listing.balancos.every((row) => row.daysRemaining == null)).toBe(true);
+    expect(listing.balancos.every((row) => row.validUntil == null)).toBe(true);
+    expect(listing.balancos[0]?.webUrl).toBe('https://onedrive.example/2026');
   });
 });
 

@@ -71,6 +71,7 @@ export type DocumentosFamilyTableProps = {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
+  layout?: 'validity' | 'yearFolders';
 };
 
 export default function DocumentosFamilyTable({
@@ -86,12 +87,29 @@ export default function DocumentosFamilyTable({
   onSaveEdit,
   onCancelEdit,
   onView,
+  layout = 'validity',
 }: DocumentosFamilyTableProps) {
   function isEditingRow(row: DocumentosRow): boolean {
     return canWrite && row.id !== null && editingId === row.id;
   }
 
   function rowActions(row: DocumentosRow) {
+    if (layout === 'yearFolders') {
+      if (!row.webUrl) return null;
+      return (
+        <Button
+          href={row.webUrl}
+          external
+          target="_blank"
+          rel="noopener noreferrer"
+          size="xs"
+          variant="ghost"
+          icon="open_in_new"
+        >
+          Abrir no OneDrive
+        </Button>
+      );
+    }
     return (
       <div className="flex flex-wrap items-center gap-1">
         {row.id && row.fileName ? (
@@ -153,8 +171,12 @@ export default function DocumentosFamilyTable({
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
             <th className="px-4 py-3">{columnLabel}</th>
-            <th className="px-4 py-3">Válida até</th>
-            <th className="px-4 py-3">Dias restantes</th>
+            {layout === 'yearFolders' ? null : (
+              <>
+                <th className="px-4 py-3">Válida até</th>
+                <th className="px-4 py-3">Dias restantes</th>
+              </>
+            )}
             <th className="px-4 py-3">Ações</th>
           </tr>
         </thead>
@@ -169,38 +191,42 @@ export default function DocumentosFamilyTable({
                 <td className="px-4 py-3">
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                 </td>
-                <td className="px-4 py-3 text-sm whitespace-nowrap">
-                  {isEditingRow(row) ? (
-                    <input
-                      type="date"
-                      value={editDraft}
-                      onChange={(event) => onEditDraft(event.target.value)}
-                      aria-label="Validade"
-                      className={`${FIELD_CONTROL_CLS} max-w-40`}
-                    />
-                  ) : (
-                    <span className="inline-flex items-center">
-                      {row.id && row.expira === false ? (
-                        <span className="text-slate-500 dark:text-slate-400">—</span>
+                {layout === 'yearFolders' ? null : (
+                  <>
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      {isEditingRow(row) ? (
+                        <input
+                          type="date"
+                          value={editDraft}
+                          onChange={(event) => onEditDraft(event.target.value)}
+                          aria-label="Validade"
+                          className={`${FIELD_CONTROL_CLS} max-w-40`}
+                        />
                       ) : (
-                        <ValidityText value={row.validUntil} />
+                        <span className="inline-flex items-center">
+                          {row.id && row.expira === false ? (
+                            <span className="text-slate-500 dark:text-slate-400">—</span>
+                          ) : (
+                            <ValidityText value={row.validUntil} />
+                          )}
+                          {canWrite && row.id && row.expira !== false ? (
+                            <button
+                              type="button"
+                              className={ICON_BTN}
+                              aria-label={`Editar validade de ${row.label}`}
+                              onClick={() => onStartEdit(row)}
+                            >
+                              <span aria-hidden="true" className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                          ) : null}
+                        </span>
                       )}
-                      {canWrite && row.id && row.expira !== false ? (
-                        <button
-                          type="button"
-                          className={ICON_BTN}
-                          aria-label={`Editar validade de ${row.label}`}
-                          onClick={() => onStartEdit(row)}
-                        >
-                          <span aria-hidden="true" className="material-symbols-outlined text-[16px]">edit</span>
-                        </button>
-                      ) : null}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <DaysCell row={row} />
-                </td>
+                    </td>
+                    <td className="px-4 py-3">
+                      <DaysCell row={row} />
+                    </td>
+                  </>
+                )}
                 <td className="px-4 py-3 whitespace-nowrap">{rowActions(row)}</td>
               </tr>
             );

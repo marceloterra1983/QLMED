@@ -7,7 +7,7 @@ import {
   labelForKind,
   type DocumentosCategory,
 } from './constants';
-import type { DocumentosFamily } from './families';
+import { balancoYearFromName, type DocumentosFamily } from './families';
 import { daysRemaining, selectVigente, statusFor, todayInSaoPaulo, toYmd } from './validity';
 
 export type DocumentosRow = {
@@ -23,12 +23,16 @@ export type DocumentosRow = {
   expira: boolean;
   emissaoUrl: string | null;
   emissaoAria: string | null;
+  webUrl: string | null;
 };
 
 export type DocumentosListing = {
   certidoes: DocumentosRow[];
   sanitaria: DocumentosRow[];
   cartas: DocumentosRow[];
+  societario: DocumentosRow[];
+  basicos: DocumentosRow[];
+  balancos: DocumentosRow[];
   ingest: { lastSuccessAt: string | null; lastError: string | null };
 };
 
@@ -40,6 +44,7 @@ export type DocumentosListSource = {
   validUntil: Date | string | null;
   validUntilSource: string | null;
   removedAt: Date | string | null;
+  webUrl?: string | null;
 };
 
 function toIso(value: Date | string | null | undefined): string | null {
@@ -48,12 +53,38 @@ function toIso(value: Date | string | null | undefined): string | null {
   return String(value);
 }
 
+function isCategory(value: string | null | undefined): value is DocumentosCategory {
+  return (
+    value === 'certidao' ||
+    value === 'sanitaria' ||
+    value === 'carta' ||
+    value === 'societario' ||
+    value === 'basicos' ||
+    value === 'balanco'
+  );
+}
+
 function categoryOf(row: DocumentosListSource): DocumentosCategory {
-  if (row.category === 'sanitaria' || row.category === 'carta' || row.category === 'certidao') {
-    return row.category;
-  }
+  if (isCategory(row.category)) return row.category;
   const family = DOCUMENTOS_FAMILIES.find((item) => item.kinds.some((kind) => kind.kind === row.kind));
   return family?.category ?? 'certidao';
+}
+
+export function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory): DocumentosRow[] {
+  switch (category) {
+    case 'certidao':
+      return listing.certidoes;
+    case 'sanitaria':
+      return listing.sanitaria;
+    case 'carta':
+      return listing.cartas;
+    case 'societario':
+      return listing.societario;
+    case 'basicos':
+      return listing.basicos;
+    case 'balanco':
+      return listing.balancos;
+  }
 }
 
 function toRow(row: DocumentosListSource, today: string, family: DocumentosFamily): DocumentosRow {
@@ -76,6 +107,7 @@ function toRow(row: DocumentosListSource, today: string, family: DocumentosFamil
     expira,
     emissaoUrl: config?.emissaoUrl ?? null,
     emissaoAria: config?.emissaoAria ?? null,
+    webUrl: row.webUrl ?? null,
   };
 }
 
@@ -94,7 +126,44 @@ function missingRow(kind: CompanyDocumentKind, family: DocumentosFamily): Docume
     expira: config?.expira ?? true,
     emissaoUrl: config?.emissaoUrl ?? null,
     emissaoAria: config?.emissaoAria ?? null,
+    webUrl: null,
   };
+}
+
+function toYearRow(row: DocumentosListSource, family: DocumentosFamily): DocumentosRow {
+  const year = balancoYearFromName(row.fileName);
+  return {
+    id: row.id,
+    kind: row.kind,
+    category: family.category,
+    label: year != null ? String(year) : row.fileName,
+    fileName: row.fileName,
+    validUntil: null,
+    daysRemaining: null,
+    status: { key: 'nao_vence', label: 'não vence' },
+    validUntilSource: null,
+    expira: false,
+    emissaoUrl: null,
+    emissaoAria: null,
+    webUrl: row.webUrl ?? null,
+  };
+}
+
+function buildYearFolderFamily(
+  family: DocumentosFamily,
+  rows: DocumentosListSource[],
+): DocumentosRow[] {
+  const kinds = new Set(family.kinds.map((kind) => kind.kind));
+  const listed = rows
+    .filter((row) => kinds.has(row.kind) && row.removedAt == null)
+    .map((row) => toYearRow(row, family));
+  listed.sort((a, b) => {
+    const yearA = Number.parseInt(a.label, 10);
+    const yearB = Number.parseInt(b.label, 10);
+    if (Number.isFinite(yearA) && Number.isFinite(yearB) && yearA !== yearB) return yearB - yearA;
+    return b.label.localeCompare(a.label, 'pt-BR');
+  });
+  return listed;
 }
 
 function buildClosedFamily(
@@ -148,20 +217,28 @@ export function buildDocumentosListing(
     certidao: [],
     sanitaria: [],
     carta: [],
+    societario: [],
+    basicos: [],
+    balanco: [],
   };
 
   for (const family of DOCUMENTOS_FAMILIES) {
     const familyRows = byCategory.get(family.category) ?? [];
     listingRows[family.category] =
-      family.mode === 'open'
-        ? buildOpenFamily(family, familyRows, today)
-        : buildClosedFamily(family, familyRows, today);
+      family.scan === 'yearFolders'
+        ? buildYearFolderFamily(family, familyRows)
+        : family.mode === 'open'
+          ? buildOpenFamily(family, familyRows, today)
+          : buildClosedFamily(family, familyRows, today);
   }
 
   return {
     certidoes: listingRows.certidao,
     sanitaria: listingRows.sanitaria,
     cartas: listingRows.carta,
+    societario: listingRows.societario,
+    basicos: listingRows.basicos,
+    balancos: listingRows.balanco,
     ingest: {
       lastSuccessAt: toIso(ingest?.lastSuccessAt),
       lastError: ingest?.lastError ?? null,
@@ -184,6 +261,7 @@ export async function loadDocumentosListing(
         validUntil: true,
         validUntilSource: true,
         removedAt: true,
+        webUrl: true,
       },
     }),
     prisma.companyDocumentIngestState.findUnique({

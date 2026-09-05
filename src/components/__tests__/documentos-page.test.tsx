@@ -49,6 +49,7 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
     expira: true,
     emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
     emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
+    webUrl: null,
   };
 }
 
@@ -69,6 +70,7 @@ function row(
     expira: true,
     emissaoUrl: CERTIDAO_EMISSAO_URL[kind],
     emissaoAria: `Emitir ${CERTIDAO_LABEL[kind]}`,
+    webUrl: null,
     ...overrides,
   };
 }
@@ -112,6 +114,9 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     certidoes,
     sanitaria: [],
     cartas: [],
+    societario: [],
+    basicos: [],
+    balancos: [],
     ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null },
     ...overrides,
   };
@@ -391,6 +396,7 @@ describe('SPEC-042 L10 — três famílias na mesma página', () => {
           expira: false,
           emissaoUrl: null,
           emissaoAria: null,
+          webUrl: null,
         },
       ],
     })));
@@ -405,5 +411,82 @@ describe('SPEC-042 L10 — três famílias na mesma página', () => {
     expect(within(sanitaria).getByText('AFE — Autorização de Funcionamento ANVISA')).toBeTruthy();
     expect(within(sanitaria).getByText('não vence')).toBeTruthy();
     expect(within(sanitaria).queryByRole('button', { name: /Editar validade/ })).toBeNull();
+  });
+});
+
+describe('SPEC-042 L11 — contrato social, básicos e balanços na página', () => {
+  it('três cards novos recolhidos; balanços sem coluna de prazo, sem Ver, com Abrir no OneDrive', async () => {
+    stubFetch(() => jsonResponse(listing({
+      societario: [
+        {
+          id: 'doc-cons',
+          kind: 'contrato_social_consolidado',
+          category: 'societario',
+          label: 'Contrato Social — Consolidado',
+          fileName: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: null,
+        },
+      ],
+      basicos: [
+        {
+          id: 'doc-cnpj',
+          kind: 'cartao_cnpj',
+          category: 'basicos',
+          label: 'Cartão CNPJ',
+          fileName: 'CARTÃO CNPJ 31.08.26.pdf',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: null,
+        },
+      ],
+      balancos: [
+        {
+          id: 'doc-bal-2026',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          label: '2026',
+          fileName: 'BALANÇO 2026',
+          validUntil: null,
+          daysRemaining: null,
+          status: { key: 'nao_vence', label: 'não vence' },
+          validUntilSource: null,
+          expira: false,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: 'https://onedrive.example/balanco-2026',
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+
+    expect((await screen.findByRole('button', { name: /Contrato social/ })).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: /Documentos básicos/ }).getAttribute('aria-expanded')).toBe('false');
+    const balancosToggle = screen.getByRole('button', { name: /Balanços/ });
+    expect(balancosToggle.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(balancosToggle);
+    const table = await screen.findByRole('table', { name: 'Balanços' });
+    expect(within(table).getByText('2026')).toBeTruthy();
+    expect(within(table).queryByRole('columnheader', { name: 'Válida até' })).toBeNull();
+    expect(within(table).queryByRole('columnheader', { name: 'Dias restantes' })).toBeNull();
+    expect(within(table).queryByText('não vence')).toBeNull();
+    expect(within(table).queryByRole('button', { name: 'Ver' })).toBeNull();
+    expect(within(table).queryByRole('button', { name: /Editar validade/ })).toBeNull();
+    const open = within(table).getByRole('link', { name: 'Abrir no OneDrive' });
+    expect(open.getAttribute('href')).toBe('https://onedrive.example/balanco-2026');
+    expect(open.getAttribute('target')).toBe('_blank');
+    expect(open.getAttribute('rel')).toBe('noopener noreferrer');
   });
 });

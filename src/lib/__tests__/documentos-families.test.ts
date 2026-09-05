@@ -5,13 +5,17 @@ import {
   familyByCategory,
   kindExpires,
 } from '@/lib/documentos/constants';
+import { kindStoresFilenameDate } from '@/lib/documentos/families';
 
 describe('SPEC-042 L10 — tabela de famílias', () => {
-  it('três famílias; AFE não expira; limiares por família', () => {
+  it('seis famílias; AFE não expira; limiares por família', () => {
     expect(DOCUMENTOS_FAMILIES.map((family) => family.category)).toEqual([
       'certidao',
       'sanitaria',
       'carta',
+      'societario',
+      'basicos',
+      'balanco',
     ]);
     expect([...familyByCategory('certidao').thresholds]).toEqual([30, 15, 7, 3, 1, 0]);
     expect([...familyByCategory('sanitaria').thresholds]).toEqual([90, 60, 30, 15, 7, 0]);
@@ -31,5 +35,32 @@ describe('SPEC-042 L10 — tabela de famílias', () => {
     expect(list).toMatch(/for \(const family of DOCUMENTOS_FAMILIES\)/);
     expect(ingest).not.toMatch(/if \(family\.category === 'sanitaria'\)/);
     expect(alerts).not.toMatch(/kind === 'afe_anvisa'/);
+  });
+});
+
+describe('SPEC-042 L11 — societário, básicos, balanços', () => {
+  it('documentos básicos não alertam', () => {
+    const family = familyByCategory('basicos');
+    expect(family.thresholds).toEqual([]);
+    expect(family.archiveFolder).toBe('Vencidos');
+    for (const kind of family.kinds) {
+      expect(kindExpires(kind.kind), kind.kind).toBe(false);
+    }
+    expect(kindExpires('cartao_cnpj')).toBe(false);
+  });
+
+  it('contrato social e balanços também não alertam', () => {
+    expect(familyByCategory('societario').thresholds).toEqual([]);
+    expect(familyByCategory('balanco').thresholds).toEqual([]);
+    expect(kindExpires('contrato_social_constituicao')).toBe(false);
+    expect(kindExpires('balanco_anual')).toBe(false);
+    expect(familyByCategory('balanco').scan).toBe('yearFolders');
+    expect(familyByCategory('balanco').defaultOpen).toBe(false);
+  });
+
+  it('Cartão CNPJ grava a data do nome; AFE não', () => {
+    expect(kindStoresFilenameDate('cartao_cnpj')).toBe(true);
+    expect(kindStoresFilenameDate('afe_anvisa')).toBe(false);
+    expect(kindExpires('cartao_cnpj')).toBe(false);
   });
 });
