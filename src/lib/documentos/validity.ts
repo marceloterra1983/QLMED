@@ -66,12 +66,28 @@ export function toYmd(value: Date | string | null | undefined): string | null {
 }
 
 export type SelectVigenteRow = {
+  /** Só serve de desempate estável; todos os `select` que alimentam isto já o trazem. */
+  id: string;
   kind: CompanyDocumentKind;
   validUntil: Date | string | null;
   removedAt: Date | string | null;
 };
 
-/** Por kind, a linha não removida de maior `validUntil`; null só ganha se for a única. */
+/**
+ * Por kind, a linha não removida de maior `validUntil`; null só ganha se for a
+ * única.
+ *
+ * Empate resolve pelo `id`, e isso não é preciosismo: nenhuma das três queries
+ * que alimentam esta função pede `orderBy`, portanto a ordem vinha do heap do
+ * Postgres e mudava a cada UPDATE que movesse a tupla. Duas certidões com a
+ * mesma validade faziam a linha alternar de nome e de link entre carregamentos.
+ *
+ * Nas famílias que não vencem (`societario`, `basicos`) o efeito era maior: com
+ * `validUntil` null dos dois lados, o guarda `nextDate != null` impedia
+ * qualquer troca e vencia simplesmente o primeiro que o heap devolvesse — a
+ * linha "Última alteração" podia mostrar um contrato social diferente a cada
+ * visita.
+ */
 export function selectVigente<T extends SelectVigenteRow>(rows: T[]): Map<CompanyDocumentKind, T> {
   const vigente = new Map<CompanyDocumentKind, T>();
   for (const row of rows) {
@@ -83,7 +99,9 @@ export function selectVigente<T extends SelectVigenteRow>(rows: T[]): Map<Compan
     }
     const currentDate = toYmd(current.validUntil);
     const nextDate = toYmd(row.validUntil);
-    if (nextDate != null && (currentDate == null || nextDate > currentDate)) {
+    const ganhaPorData = nextDate != null && (currentDate == null || nextDate > currentDate);
+    const empataEGanhaPorId = nextDate === currentDate && row.id > current.id;
+    if (ganhaPorData || empataEGanhaPorId) {
       vigente.set(row.kind, row);
     }
   }

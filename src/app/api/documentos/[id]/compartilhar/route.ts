@@ -8,7 +8,11 @@ import prisma from '@/lib/prisma';
 import { openOneDriveItemContent } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import { canWriteDocumentos, requireDocumentosPage } from '@/lib/documentos/access';
-import { CERTIDAO_LABEL, DOCUMENTOS_ONEDRIVE_ACCOUNT } from '@/lib/documentos/constants';
+import {
+  CERTIDAO_LABEL,
+  DOCUMENTOS_ONEDRIVE_ACCOUNT,
+  DOCUMENTOS_UPLOAD_MAX_BYTES,
+} from '@/lib/documentos/constants';
 import {
   resolveDocumentosShareRecipients,
   shareDocumentByEmail,
@@ -85,6 +89,22 @@ export async function POST(
     );
     if (!content.body) {
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
+    }
+
+    /**
+     * A rota irmã `[id]/arquivo` faz stream e nunca materializa; esta precisa do
+     * conteúdo em memória para o anexar. Sem teto isso é um risco de processo,
+     * não de pedido: o contentor corre com `mem_limit: 1g` e a materialização
+     * tem pico de ~3x, portanto algumas centenas de MB derrubam a aplicação
+     * inteira. E o alvo existe — os `BALANÇO <ano>.zip` são ingeridos como
+     * linhas com `oneDriveItemId`, e esta é a única rota que os materializa.
+     */
+    if (content.size !== null && content.size > DOCUMENTOS_UPLOAD_MAX_BYTES) {
+      await content.body.cancel().catch(() => {});
+      return NextResponse.json(
+        { error: 'Arquivo grande demais para anexar ao e-mail' },
+        { status: 413 },
+      );
     }
 
     const pdf = await pdfFromStream(content.body);

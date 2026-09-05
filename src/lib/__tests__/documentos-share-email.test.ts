@@ -65,6 +65,7 @@ import {
   ShareRecipientsNotAllowedError,
 } from '@/lib/documentos/share-email';
 import { POST } from '@/app/api/documentos/[id]/compartilhar/route';
+import { DOCUMENTOS_UPLOAD_MAX_BYTES } from '@/lib/documentos/constants';
 
 const DOC_ID = 'clxdocumentos0000000001';
 const FILE_NAME = 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf';
@@ -291,6 +292,37 @@ describe('POST /api/documentos/[id]/compartilhar', () => {
     expect(dumped).not.toContain('AbC123SegredoQueNaoEJwt');
     expect(dumped).toContain('password=[redacted]');
     expect(dumped).toContain('accessToken=[redacted]');
+  });
+  /**
+   * A rota irmã `[id]/arquivo` faz stream e nunca materializa; esta precisa do
+   * conteúdo em memória para o anexar. Sem teto isso é risco de PROCESSO, não
+   * de pedido: o contentor corre com `mem_limit: 1g` e a materialização tem
+   * pico de ~3x, portanto algumas centenas de MB derrubam a aplicação inteira.
+   * E o alvo existe: os `BALANÇO <ano>.zip` viram linhas com oneDriveItemId, e
+   * esta é a única rota que os materializa.
+   */
+  it('413 e não materializa quando o Content-Length passa do teto', async () => {
+    const cancel = vi.fn(async () => {});
+    mocks.openOneDriveItemContent.mockResolvedValue({
+      body: { cancel } as unknown as ReadableStream<Uint8Array>,
+      size: DOCUMENTOS_UPLOAD_MAX_BYTES + 1,
+    });
+
+    const res = await shareRequest({ recipients: ['faturamento@qlmed.com.br'] });
+
+    expect(res.status).toBe(413);
+    expect(cancel).toHaveBeenCalled();
+    expect(mocks.sendMail).not.toHaveBeenCalled();
+  });
+
+  it('exatamente no teto ainda passa', async () => {
+    mocks.openOneDriveItemContent.mockResolvedValue({
+      body: pdfStream(PDF_BYTES),
+      size: DOCUMENTOS_UPLOAD_MAX_BYTES,
+    });
+    const res = await shareRequest({ recipients: ['faturamento@qlmed.com.br'] });
+    expect(res.status).toBe(200);
+    expect(mocks.sendMail).toHaveBeenCalled();
   });
 });
 

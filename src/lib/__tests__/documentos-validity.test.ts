@@ -83,3 +83,44 @@ describe('SPEC-042 L3 — thresholdDue', () => {
     expect(thresholdDue(90, [], carta)).toBeNull();
   });
 });
+
+describe('selectVigente — empate tem de ser determinístico', () => {
+  /**
+   * Nenhuma das três queries que alimentam selectVigente (list.ts, ingest.ts,
+   * alerts.ts) pede `orderBy`, portanto a ordem vinha do heap do Postgres. Com
+   * duas linhas do mesmo kind e a mesma validade, a linha da tabela alternava
+   * de nome e de link entre carregamentos. Nas famílias que não vencem o efeito
+   * era maior: com `validUntil` null dos dois lados nada trocava, e vencia o
+   * primeiro que o heap devolvesse.
+   */
+  const linha = (id: string, validUntil: string | null) => ({
+    id,
+    kind: 'cnd_federal' as const,
+    validUntil,
+    removedAt: null,
+    fileName: `${id}.pdf`,
+  });
+
+  it('mesma validade: o vencedor não depende da ordem do array', () => {
+    const a = linha('doc-a', '2026-12-12');
+    const b = linha('doc-b', '2026-12-12');
+    const v1 = selectVigente([a, b]).get('cnd_federal');
+    const v2 = selectVigente([b, a]).get('cnd_federal');
+    expect(v1?.id).toBe(v2?.id);
+  });
+
+  it('ambas sem validade: o vencedor não depende da ordem do array', () => {
+    const a = linha('doc-a', null);
+    const b = linha('doc-b', null);
+    const v1 = selectVigente([a, b]).get('cnd_federal');
+    const v2 = selectVigente([b, a]).get('cnd_federal');
+    expect(v1?.id).toBe(v2?.id);
+  });
+
+  it('data continua a mandar sobre o desempate por id', () => {
+    const antiga = linha('doc-z', '2026-01-01');
+    const nova = linha('doc-a', '2026-12-12');
+    expect(selectVigente([antiga, nova]).get('cnd_federal')?.id).toBe('doc-a');
+    expect(selectVigente([nova, antiga]).get('cnd_federal')?.id).toBe('doc-a');
+  });
+});
