@@ -153,6 +153,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/postgres-advisory-lock', () => ({
   acquirePostgresAdvisoryLock: lock.acquire,
   documentosIngestLockKey: (companyId: string) => `documentos-ingest:${companyId}`,
+  documentosAlertLockKey: (companyId: string) => `documentos-alert:${companyId}`,
 }));
 
 vi.mock('@/lib/documentos/onedrive-port', () => ({
@@ -198,6 +199,10 @@ function fakeTarget(
     jid: GROUP,
     port: {
       async sendDocument(input) {
+        const row = memory.docs.find((item) => item.fileName === input.fileName);
+        if (row?.renewalNotifiedAt == null) {
+          throw new Error('renewalNotifiedAt still null at send time');
+        }
         sent.push(input);
         return { messageId: 'wamid-1' };
       },

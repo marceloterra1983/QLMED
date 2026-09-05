@@ -12,6 +12,7 @@ import {
   markBackgroundServiceHeartbeat,
   markBackgroundServiceStarted,
 } from '@/lib/background-service-health';
+import { acquirePostgresAdvisoryLock, documentosAlertLockKey } from '@/lib/postgres-advisory-lock';
 import { getSingleCompany } from '@/lib/single-company';
 import {
   CERTIDAO_KINDS_ORDER,
@@ -87,17 +88,18 @@ export type DocumentosAlertDeps = {
  * silencioso, sem erro e sem cair no grupo fiscal (SPEC-042 FR-012).
  */
 export function resolveDocumentosWhatsAppTarget(
-  config: EvolutionConfig | null = getEvolutionConfig(),
+  config?: EvolutionConfig | null,
 ): DocumentosWhatsAppTarget | null {
   if (!isDocumentosWhatsAppEnabled()) return null;
   const jid = getConfiguredWhatsAppGroup(getDocumentosWhatsAppGroupRaw());
   if (!jid) return null;
-  if (!config) return null;
+  const resolved = config === undefined ? getEvolutionConfig() : config;
+  if (!resolved) return null;
 
   return {
     jid,
     port: {
-      sendDocument: (input) => sendWhatsAppDocument(input, config),
+      sendDocument: (input) => sendWhatsAppDocument(input, resolved),
     },
   };
 }
@@ -190,6 +192,21 @@ export async function runDocumentosAlertTick(
   deps?: DocumentosAlertDeps,
   now: Date = new Date(),
 ): Promise<{ sent: number; markedDay: boolean }> {
+  const lock = await acquirePostgresAdvisoryLock(documentosAlertLockKey(companyId));
+  if (!lock) return { sent: 0, markedDay: false };
+
+  try {
+    return await runDocumentosAlertTickLocked(companyId, deps, now);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function runDocumentosAlertTickLocked(
+  companyId: string,
+  deps: DocumentosAlertDeps | undefined,
+  now: Date,
+): Promise<{ sent: number; markedDay: boolean }> {
   const db = dbOf(deps);
   const today = todayInSaoPaulo(now);
 
@@ -234,6 +251,13 @@ export async function runDocumentosAlertTick(
     if (threshold != null) due.push({ row, days, threshold });
   }
 
+  // Grave lastAlertDay ANTES de enviar. O dia é a mesma classe de estado que
+  // o limiar (JOB-005): dois ticks sobrepostos não podem ambos passar. O
+  // advisory lock serializa a corrida; esta escrita fecha a janela se o lock
+  // falhar. Um envio falhado com o dia já marcado perde o ciclo (fica no log),
+  // em vez de duplicar.
+  await markLastAlertDay(db, companyId, today);
+
   const port = deps?.port ?? (await createDocumentosFolderPort(companyId));
   let sent = 0;
   let captionExtras = missingKindLabels;
@@ -267,7 +291,6 @@ export async function runDocumentosAlertTick(
     item.row.alertedThresholds = nextThresholds;
 
     const caption = buildExpiryCaption(item.row, item.days, captionExtras);
-    captionExtras = [];
 
     try {
       await target.port.sendDocument({
@@ -277,6 +300,7 @@ export async function runDocumentosAlertTick(
         caption,
       });
       sent += 1;
+      captionExtras = [];
       log.info(
         { documentId: item.row.id, kind: item.row.kind, threshold: item.threshold },
         'documentos_alert_sent',
@@ -295,7 +319,6 @@ export async function runDocumentosAlertTick(
     }
   }
 
-  await markLastAlertDay(db, companyId, today);
   return { sent, markedDay: true };
 }
 

@@ -17,6 +17,7 @@ type DocRow = {
   validUntilSource: string | null;
   removedAt: Date | null;
   renewalNotifiedAt: Date | null;
+  alertedThresholds: number[];
 };
 
 type IngestStateRow = {
@@ -113,12 +114,13 @@ vi.mock('@/lib/prisma', () => ({
         if (!select) return rows;
         return rows.map((row) => memory.pick(row, select));
       }),
-      create: vi.fn(async ({ data, select }: { data: Omit<DocRow, 'id' | 'renewalNotifiedAt'>; select?: Record<string, boolean> }) => {
+      create: vi.fn(async ({ data, select }: { data: Omit<DocRow, 'id' | 'renewalNotifiedAt' | 'alertedThresholds'>; select?: Record<string, boolean> }) => {
         memory.creates += 1;
         const row: DocRow = {
           ...data,
           id: `doc-${memory.seq++}`,
           renewalNotifiedAt: null,
+          alertedThresholds: [],
         };
         memory.docs.push(row);
         return select ? memory.pick(row, select) : row;
@@ -178,6 +180,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/postgres-advisory-lock', () => ({
   acquirePostgresAdvisoryLock: lock.acquire,
   documentosIngestLockKey: (companyId: string) => `documentos-ingest:${companyId}`,
+  documentosAlertLockKey: (companyId: string) => `documentos-alert:${companyId}`,
 }));
 
 function resetMemory() {
@@ -388,6 +391,7 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
       validUntilSource: 'filename',
       removedAt: null,
       renewalNotifiedAt: null,
+      alertedThresholds: [],
     });
 
     const result = await runDocumentosIngest(
@@ -411,5 +415,87 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.docs).toHaveLength(1);
     expect(memory.docs[0]?.id).toBe('doc-mt-legado');
     expect(memory.docs[0]?.kind).toBe('cnd_estadual_mt');
+  });
+
+  it('mesmo itemId com validade nova zera alertedThresholds e renewalNotifiedAt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    memory.docs.push({
+      id: 'doc-federal-exist',
+      companyId: COMPANY,
+      kind: 'cnd_federal',
+      fileName: 'CERTIDAO RECEITA FEDERAL 12.10.26 - QL MED.pdf',
+      oneDriveItemId: 'od-rename',
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      folderName: 'Federais',
+      fileSize: 1024,
+      lastModifiedAt: new Date('2026-08-01T00:00:00.000Z'),
+      validUntil: new Date('2026-10-12T00:00:00.000Z'),
+      validUntilSource: 'filename',
+      removedAt: null,
+      renewalNotifiedAt: new Date('2026-08-01T00:00:00.000Z'),
+      alertedThresholds: [30, 15],
+    });
+
+    await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: 'Federais',
+          file: {
+            itemId: 'od-rename',
+            name: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
+            size: 1024,
+            lastModifiedAt: new Date('2026-09-04T12:00:00.000Z'),
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(ymd(memory.docs[0]?.validUntil ?? null)).toBe('2026-12-12');
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+    expect(memory.docs[0]?.renewalNotifiedAt).toBeNull();
+  });
+
+  it('mesmo itemId sem mudar validade preserva alertedThresholds e renewalNotifiedAt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const notifiedAt = new Date('2026-08-01T00:00:00.000Z');
+    memory.docs.push({
+      id: 'doc-federal-exist',
+      companyId: COMPANY,
+      kind: 'cnd_federal',
+      fileName: 'CERTIDAO RECEITA FEDERAL 12.10.26 - QL MED.pdf',
+      oneDriveItemId: 'od-rename',
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      folderName: 'Federais',
+      fileSize: 1024,
+      lastModifiedAt: new Date('2026-08-01T00:00:00.000Z'),
+      validUntil: new Date('2026-10-12T00:00:00.000Z'),
+      validUntilSource: 'filename',
+      removedAt: null,
+      renewalNotifiedAt: notifiedAt,
+      alertedThresholds: [30, 15],
+    });
+
+    await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: 'Federais',
+          file: {
+            itemId: 'od-rename',
+            name: 'CERTIDAO RECEITA FEDERAL 12.10.26 - QL MED (copia).pdf',
+            size: 2048,
+            lastModifiedAt: new Date('2026-09-04T12:00:00.000Z'),
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(memory.docs[0]?.fileName).toBe('CERTIDAO RECEITA FEDERAL 12.10.26 - QL MED (copia).pdf');
+    expect(ymd(memory.docs[0]?.validUntil ?? null)).toBe('2026-10-12');
+    expect(memory.docs[0]?.alertedThresholds).toEqual([30, 15]);
+    expect(memory.docs[0]?.renewalNotifiedAt).toEqual(notifiedAt);
   });
 });

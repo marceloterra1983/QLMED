@@ -28,6 +28,17 @@ const memory = vi.hoisted(() => ({
   state: null as StateRow | null,
 }));
 
+const lock = vi.hoisted(() => ({
+  release: vi.fn(async () => undefined),
+  acquire: vi.fn(async (): Promise<{ release: () => Promise<undefined> } | null> => ({
+    release: async () => lock.release(),
+  })),
+}));
+
+const evo = vi.hoisted(() => ({
+  getEvolutionConfig: vi.fn(() => null),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   default: {
     companyDocument: {
@@ -81,6 +92,16 @@ vi.mock('@/lib/documentos/onedrive-port', () => ({
   createDocumentosFolderPort: vi.fn(async () => {
     throw new Error('porta OneDrive não injetada no teste');
   }),
+}));
+
+vi.mock('@/lib/postgres-advisory-lock', () => ({
+  acquirePostgresAdvisoryLock: lock.acquire,
+  documentosAlertLockKey: (companyId: string) => `documentos-alert:${companyId}`,
+}));
+
+vi.mock('@/lib/whatsapp-evolution', () => ({
+  getEvolutionConfig: evo.getEvolutionConfig,
+  sendWhatsAppDocument: vi.fn(),
 }));
 
 const COMPANY = 'co1';
@@ -138,11 +159,34 @@ function fakeTarget(
   };
 }
 
+function seedKind(
+  kind: CompanyDocumentKind,
+  validUntilYmd: string,
+  thresholds: number[] = [],
+): DocRow {
+  const row: DocRow = {
+    id: `doc-${kind}`,
+    companyId: COMPANY,
+    kind,
+    fileName: `${kind}.pdf`,
+    oneDriveItemId: `od-${kind}`,
+    validUntil: new Date(`${validUntilYmd}T00:00:00.000Z`),
+    removedAt: null,
+    alertedThresholds: [...thresholds],
+    renewalNotifiedAt: null,
+  };
+  memory.docs.push(row);
+  return row;
+}
+
 describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
   beforeEach(() => {
     memory.docs.length = 0;
     memory.state = null;
     vi.clearAllMocks();
+    lock.acquire.mockImplementation(async () => ({ release: async () => lock.release() }));
+    delete process.env.DOCUMENTOS_WHATSAPP_ENABLED;
+    delete process.env.DOCUMENTOS_WHATSAPP_GROUP_JID;
   });
 
   it('lastAlertDay=hoje → 0 envios sem tocar em nada', async () => {
@@ -275,5 +319,84 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(second.sent).toBe(0);
     expect(sent).toHaveLength(1);
     expect(memory.docs[0]?.alertedThresholds).toEqual([30]);
+  });
+
+  it('lock ocupado → 0 envios, sem erro', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    seedFederal('2026-10-12');
+    lock.acquire.mockResolvedValueOnce(null);
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+
+    const result = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target: fakeTarget(sent) },
+      at8sp('2026-09-12'),
+    );
+
+    expect(result.sent).toBe(0);
+    expect(result.markedDay).toBe(false);
+    expect(sent).toHaveLength(0);
+    expect(lock.release).not.toHaveBeenCalled();
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+  });
+
+  it('dois ticks concorrentes: lock só concede uma vez → 1 envio', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    seedFederal('2026-10-12');
+    let granted = 0;
+    lock.acquire.mockImplementation(async () => {
+      granted += 1;
+      if (granted > 1) return null;
+      return { release: async () => lock.release() };
+    });
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+    const now = at8sp('2026-09-12');
+    const deps = { port: fakePort(), target: fakeTarget(sent) };
+
+    const [a, b] = await Promise.all([
+      runDocumentosAlertTick(COMPANY, deps, now),
+      runDocumentosAlertTick(COMPANY, deps, now),
+    ]);
+
+    expect(a.sent + b.sent).toBe(1);
+    expect(sent).toHaveLength(1);
+    expect(lock.acquire).toHaveBeenCalledWith('documentos-alert:co1');
+  });
+
+  it('tipo sem certidão só sai da fila depois de um envio com sucesso', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    seedFederal('2026-10-12');
+    seedKind('crf_fgts', '2026-10-12');
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+    let calls = 0;
+    const target: DocumentosWhatsAppTarget = {
+      jid: GROUP,
+      port: {
+        async sendDocument(input) {
+          sent.push(input);
+          calls += 1;
+          if (calls === 1) throw new Error('primeiro envio falhou');
+          return { messageId: 'wamid-2' };
+        },
+      },
+    };
+
+    const result = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(), target },
+      at8sp('2026-09-12'),
+    );
+
+    expect(result.sent).toBe(1);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.cndt}`);
+    expect(sent[1]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.cndt}`);
+  });
+
+  it('canal desligado não chama getEvolutionConfig', async () => {
+    const { resolveDocumentosWhatsAppTarget } = await import('@/lib/documentos/alerts');
+    evo.getEvolutionConfig.mockClear();
+    expect(resolveDocumentosWhatsAppTarget()).toBeNull();
+    expect(evo.getEvolutionConfig).not.toHaveBeenCalled();
   });
 });

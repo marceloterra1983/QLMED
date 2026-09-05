@@ -70,13 +70,31 @@ export function markBackgroundServiceHeartbeat(name: BackgroundServiceName): voi
   if (current.status === 'error') current.status = 'running';
 }
 
+/**
+ * Redige o VALOR de credenciais, não o nome. `accessToken=segredo` vira
+ * `accessToken=[redacted]`; o identificador fica para diagnóstico.
+ * Cobre `=`, `:` e JSON `": "` / `":"`, com e sem aspas.
+ */
+export function sanitizeError(message: string): string {
+  return message
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(
+      /\b(access_token|accessToken|refresh_token|refreshToken|api_key|apiKey|client_secret|clientSecret|password|Authorization)\b"?\s*[:=]\s*(?:"[^"]*"|'[^']*'|Bearer\s+\S+|\S+)/gi,
+      '$1=[redacted]',
+    )
+    .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/eyJ[a-zA-Z0-9_-]{10,}/g, '[token]')
+    .slice(0, 500);
+}
+
 export function markBackgroundServiceError(name: BackgroundServiceName, error: unknown): void {
   const current = store()[name];
   if (!current) markBackgroundServiceStarted(name);
   const status = store()[name];
   if (!status) return;
   status.status = 'error';
-  status.lastError = error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500);
+  const raw = error instanceof Error ? error.message : String(error);
+  status.lastError = sanitizeError(raw);
 }
 
 /**

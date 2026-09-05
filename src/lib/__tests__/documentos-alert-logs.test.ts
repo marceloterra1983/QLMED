@@ -38,6 +38,13 @@ const memory = vi.hoisted(() => ({
   state: null as StateRow | null,
 }));
 
+const lock = vi.hoisted(() => ({
+  release: vi.fn(async () => undefined),
+  acquire: vi.fn(async (): Promise<{ release: () => Promise<undefined> } | null> => ({
+    release: async () => lock.release(),
+  })),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   default: {
     companyDocument: {
@@ -83,6 +90,11 @@ vi.mock('@/lib/documentos/onedrive-port', () => ({
   createDocumentosFolderPort: vi.fn(async () => {
     throw new Error('porta OneDrive não injetada no teste');
   }),
+}));
+
+vi.mock('@/lib/postgres-advisory-lock', () => ({
+  acquirePostgresAdvisoryLock: lock.acquire,
+  documentosAlertLockKey: (companyId: string) => `documentos-alert:${companyId}`,
 }));
 
 const COMPANY = 'co1';
@@ -139,9 +151,12 @@ function assertSafe(value: unknown, seen = new Set<unknown>()): void {
     throw new Error('logger recebeu Buffer');
   }
   if (typeof value === 'string') {
-    expect(value).not.toMatch(/accessToken|refreshToken/i);
+    expect(value).not.toContain('leak');
+    expect(value).not.toContain('nao-pode-vazar');
     expect(value).not.toContain(CAPTION_SNIPPET);
     expect(value).not.toContain('eyJbbbbbbbbbb');
+    expect(value).not.toMatch(/accessToken\s*[:=]\s*(?!\[redacted\])/i);
+    expect(value).not.toMatch(/refreshToken\s*[:=]\s*(?!\[redacted\])/i);
     return;
   }
   if (typeof value !== 'object') return;
@@ -193,6 +208,8 @@ describe('SPEC-042 L7 — logs do alerta não carregam caption, buffer nem token
       for (const arg of args) assertSafe(arg);
     }
     expect(memory.state?.lastError).toBeTruthy();
-    expect(memory.state?.lastError).not.toMatch(/accessToken|refreshToken|eyJbbbbbbbbbb/i);
+    expect(memory.state?.lastError).not.toContain('leak');
+    expect(memory.state?.lastError).not.toContain('eyJbbbbbbbbbb');
+    expect(memory.state?.lastError).toMatch(/\[redacted\]/);
   });
 });

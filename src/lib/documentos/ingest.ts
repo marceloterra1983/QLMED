@@ -6,6 +6,7 @@ import {
   markBackgroundServiceError,
   markBackgroundServiceHeartbeat,
   markBackgroundServiceStarted,
+  sanitizeError,
 } from '@/lib/background-service-health';
 import { getSingleCompany } from '@/lib/single-company';
 import { CERTIDAO_FOLDER, CERTIDAO_KINDS_ORDER, DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ONEDRIVE_ACCOUNT } from './constants';
@@ -13,6 +14,8 @@ import { classifyDocument } from './classify';
 import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
+
+export { sanitizeError };
 
 /**
  * SPEC-042 — contrato da ingestão de certidões (OneDrive → CompanyDocument).
@@ -65,15 +68,6 @@ export class DocumentosIngestBusyError extends Error {
 const log = createLogger('documentos/ingest');
 
 const CERTIDAO_FOLDERS = [...new Set(Object.values(CERTIDAO_FOLDER))];
-
-export function sanitizeError(message: string): string {
-  return message
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
-    .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
-    .replace(/eyJ[a-zA-Z0-9_-]{10,}/g, '[token]')
-    .replace(/\b(accessToken|refreshToken|apiKey|apikey)\b/gi, '[token]')
-    .slice(0, 500);
-}
 
 function dateFromYmd(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
@@ -192,6 +186,8 @@ async function ingestCompany(
           select: { id: true, validUntil: true, renewalNotifiedAt: true },
         });
       } else {
+        const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : validUntil;
+        const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
         row = await prisma.companyDocument.update({
           where: { id: existing.id },
           data: {
@@ -204,6 +200,7 @@ async function ingestCompany(
             ...(existing.validUntilSource === 'manual'
               ? {}
               : { validUntil, validUntilSource }),
+            ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
           },
           select: { id: true, validUntil: true, renewalNotifiedAt: true },
         });

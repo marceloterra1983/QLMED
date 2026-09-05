@@ -42,7 +42,42 @@ ABANDON: G7 homologação real fica com o driver — depende do JID do grupo, qu
   EXPECT: SUITE_OK
   EVIDENCE: (node:1029094) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set. | (Use `node --trace-warnings ...` to show where the warning was created)
 
-- [x] G9: `renewalNotifiedAt` gravado ANTES do envio da renovação (FR-011); teste prova que a reexecução não reenvia
-  CHECK: grep -n "renewalNotifiedAt" src/lib/documentos/alerts.ts | head -8; npx vitest run src/lib/__tests__/documentos-renewal.test.ts > /dev/null 2>&1 && echo OK_G9
+- [x] G9: `renewalNotifiedAt` gravado ANTES do envio da renovação (FR-011); o sender falso falha se o campo ainda for null no momento do envio
+  CHECK: grep -n "renewalNotifiedAt still null at send time" src/lib/__tests__/documentos-renewal.test.ts; npx vitest run src/lib/__tests__/documentos-renewal.test.ts > /dev/null 2>&1 && echo OK_G9
   EXPECT: OK_G9
-  EVIDENCE: 352:    row.renewalNotifiedAt = new Date(); | OK_G9
+  EVIDENCE: 204:          throw new Error('renewalNotifiedAt still null at send time'); | OK_G9
+
+- [x] G10: B1 — sanitizeError redige o VALOR (accessToken=, refreshToken: "...", apikey":"...", Bearer, JWT, e-mail, corte 500); o nome fica visível
+  CHECK: npx vitest run src/lib/__tests__/sanitize-error.test.ts > /dev/null 2>&1 && echo OK_B1
+  EXPECT: OK_B1
+  EVIDENCE: OK_B1
+
+- [x] G11: B2 — tick de alerta toma advisory lock; ocupado → 0 envios; dois ticks concorrentes (lock só concede uma vez) → 1 envio
+  CHECK: grep -n "documentosAlertLockKey\|acquirePostgresAdvisoryLock" src/lib/documentos/alerts.ts src/lib/postgres-advisory-lock.ts | head -20; npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "concorrentes" > /dev/null 2>&1 && echo OK_B2
+  EXPECT: OK_B2
+  EVIDENCE: src/lib/postgres-advisory-lock.ts:122:export async function acquirePostgresAdvisoryLock( | OK_B2
+
+- [x] G12: B3 — markBackgroundServiceError sanea na raiz; refreshToken=SEGREDO não aparece em getBackgroundServiceHealth()
+  CHECK: npx vitest run src/lib/__tests__/sanitize-error.test.ts -t "markBackgroundServiceError" > /dev/null 2>&1 && echo OK_B3
+  EXPECT: OK_B3
+  EVIDENCE: OK_B3
+
+- [x] G13: B4 — validade nova no mesmo itemId zera alertedThresholds e renewalNotifiedAt; validade igual preserva
+  CHECK: npx vitest run src/lib/__tests__/documentos-ingest.test.ts -t "validade" > /dev/null 2>&1 && echo OK_B4
+  EXPECT: OK_B4
+  EVIDENCE: OK_B4
+
+- [x] G14: B5 — tipos sem certidão só saem da fila depois de um envio com sucesso
+  CHECK: npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "tipo sem certidão" > /dev/null 2>&1 && echo OK_B5
+  EXPECT: OK_B5
+  EVIDENCE: OK_B5
+
+- [x] G15: B6 — getEvolutionConfig não é default argument de resolveDocumentosWhatsAppTarget; só corre depois dos guards
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/lib/documentos/alerts.ts','utf8'); const i=s.indexOf('export function resolveDocumentosWhatsAppTarget'); const header=s.slice(i, s.indexOf('{', i)); if (header.includes('getEvolutionConfig')) { console.log('FAIL_B6'); process.exit(1);} console.log('OK_B6');"
+  EXPECT: OK_B6
+  EVIDENCE: OK_B6
+
+- [x] G16: B7 — sender de renovação verifica renewalNotifiedAt no momento da chamada
+  CHECK: grep -n "renewalNotifiedAt still null at send time" src/lib/__tests__/documentos-renewal.test.ts; npx vitest run src/lib/__tests__/documentos-renewal.test.ts > /dev/null 2>&1 && echo OK_B7
+  EXPECT: OK_B7
+  EVIDENCE: 204:          throw new Error('renewalNotifiedAt still null at send time'); | OK_B7
