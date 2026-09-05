@@ -8,8 +8,9 @@
 | referencia | string | Rel.Referência |
 | nome | string | Rel.Nome |
 | tipoRaw | string | Rel.Tipo |
-| tipo | string | tipoRaw sem `^\d+\s*[-–]\s*` |
-| subtipo | string | Rel.SubTipo |
+| tipo | string | tipoRaw sem `^\d+\s*[-–]\s*` → `ProductRegistry.productType` (**Linha**) |
+| subtipo | string | Rel.SubTipo → `ProductRegistry.productSubtype` (**Grupo**) |
+| — | null | `ProductRegistry.productSubgroup` sempre null: Spica não tem 3º nível |
 | fabricante | string | Rel.Fabricante |
 | fornecedor | string? | Rel.Fornecedor |
 | instrumental | boolean | Rel.Instrumental Sim/Não |

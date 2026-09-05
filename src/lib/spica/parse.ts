@@ -142,11 +142,11 @@ export interface SpicaNormalizedRow {
   referencia: string;
   refInvalid: boolean;
   nome: string;
-  /** Linha QLMED — mesma taxonomia do Tipo Spica (ex.: ORTOPEDIA). */
+  /** Linha QLMED — Tipo Spica sem prefixo numérico (ex.: `3 - ORTOPEDIA` → ORTOPEDIA). */
   productType: string | null;
-  /** Grupo QLMED — Tipo Spica (instrução: Tipo = Grupo). */
+  /** Grupo QLMED — SubTipo/Sub Spica (ex.: ALEXIS, CAIXAS DE ORTOPEDIA). */
   productSubtype: string | null;
-  /** Subgrupo QLMED — Sub/SubTipo Spica (instrução: Subtipo = Subgrupo). */
+  /** Subgrupo QLMED — null: o export Spica só tem dois níveis (Tipo, SubTipo); sem 3º nível na origem. */
   productSubgroup: string | null;
   outOfLine: boolean;
   tipoInvalid: boolean;
@@ -189,10 +189,11 @@ export function normalizeSpicaRelRow(row: SpicaRelRowInput): SpicaNormalizedRow 
     referencia,
     refInvalid: isInvalidSpicaRef(referencia),
     nome: String(row.nome ?? '').trim(),
-    // Spica Tipo → Linha + Grupo; Spica Sub/SubTipo → Subgrupo
+    // Spica Tipo → Linha; Spica SubTipo → Grupo; sem terceiro nível na origem → Subgrupo null.
+    // Tipo inválido (fabricante no campo Tipo) → quarentena branda: sem Linha nem Grupo.
     productType: tipo.invalid ? null : tipo.productType,
-    productSubtype: tipo.invalid ? null : tipo.productType,
-    productSubgroup: tipo.invalid ? null : String(row.subtipo ?? '').trim() || null,
+    productSubtype: tipo.invalid ? null : String(row.subtipo ?? '').trim() || null,
+    productSubgroup: null,
     outOfLine: tipo.outOfLine,
     tipoInvalid: tipo.invalid,
     manufacturerShortName: String(row.fabricante ?? '').trim() || null,
