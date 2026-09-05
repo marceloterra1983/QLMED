@@ -1,9 +1,9 @@
 import type { ProductRow, SortField } from '../types';
 
 /**
- * Acima deste total de produtos, "Expandir" e a busca abrem só até o nível de
- * Subgrupo. Renderizar milhares de <tr> (desktop + mobile) trava a página; o
- * catálogo inteiro (~8k) chega de uma vez na hierarquia.
+ * Acima deste total de produtos, "Expandir" e a busca abrem só até o último
+ * nível de agrupamento. Renderizar milhares de <tr> (desktop + mobile) trava a
+ * página; o catálogo inteiro (~8k) chega de uma vez na hierarquia.
  */
 export const FULL_EXPAND_LIMIT = 1000;
 
@@ -114,24 +114,31 @@ export function safeCollapseKeys(
   return allCollapseKeys(products, sortBy);
 }
 
-/** Só as chaves de subgrupo: linhas e grupos abertos, subgrupos fechados. */
-export function subgroupCollapseKeys(products: ProductRow[]): Set<string> {
+/**
+ * Chaves do último nível de agrupamento de cada produto (subgrupo; sem subgrupo,
+ * o grupo; grupo == linha, a linha). Com essas chaves recolhidas nenhum produto
+ * renderiza, mas toda a estrutura acima fica visível.
+ */
+export function leafCollapseKeys(products: ProductRow[]): Set<string> {
   const keys = new Set<string>();
   for (const p of products) {
     const sub = productSubgroupKey(p);
     if (sub) keys.add(sub);
+    else if (!isGroupSameAsLine(p)) keys.add(productGroupKey(p, 'productType'));
+    else keys.add(productLineKey(p));
   }
   return keys;
 }
 
 /**
  * Botão "Expandir" e busca ativa: abre tudo quando o conjunto é pequeno; acima
- * de FULL_EXPAND_LIMIT abre só até Subgrupo (produtos ao clicar no subgrupo).
+ * de FULL_EXPAND_LIMIT abre só até o último nível de agrupamento (produtos ao
+ * clicar nele).
  */
 export function expandCollapseKeys(
   products: ProductRow[],
   sortBy: SortField,
 ): Set<string> {
   if (sortBy !== 'productType' || products.length <= FULL_EXPAND_LIMIT) return new Set();
-  return subgroupCollapseKeys(products);
+  return leafCollapseKeys(products);
 }

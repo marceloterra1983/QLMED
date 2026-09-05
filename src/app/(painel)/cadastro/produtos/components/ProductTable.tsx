@@ -390,7 +390,7 @@ export default function ProductTable({
               onClick={() => setCollapsedGroups(expandCollapseKeys(visible, sortBy))}
               className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
               aria-label="Expandir todos os grupos"
-              title={isTree ? 'Abre linhas e grupos; subgrupos grandes abrem ao clicar' : undefined}
+              title={isTree ? 'Abre a hierarquia; em catálogos grandes os produtos aparecem ao clicar no último nível' : undefined}
             >
               <span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir
             </button>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductRow } from '../../types';
 import { buildProductTree, visibleTreeProductKeys } from '../product-tree';
-import { allCollapseKeys, expandCollapseKeys, FULL_EXPAND_LIMIT, subgroupCollapseKeys } from '../product-group-visibility';
+import { allCollapseKeys, expandCollapseKeys, FULL_EXPAND_LIMIT, leafCollapseKeys } from '../product-group-visibility';
 
 function row(partial: Partial<ProductRow> & { key: string }): ProductRow {
   return {
@@ -80,14 +80,32 @@ describe('expandCollapseKeys (Expandir / busca)', () => {
     expect(expandCollapseKeys(catalog, 'description').size).toBe(0);
   });
 
-  it('acima de FULL_EXPAND_LIMIT abre só até subgrupo (não renderiza milhares de linhas)', () => {
+  it('acima de FULL_EXPAND_LIMIT abre só até o último agrupamento (não renderiza milhares de linhas)', () => {
     const big: ProductRow[] = Array.from({ length: FULL_EXPAND_LIMIT + 1 }, (_, i) =>
       row({ key: `k${i}`, productType: 'ORTOPEDIA', productSubtype: 'ORTOPEDIA', productSubgroup: i % 2 ? 'PLACAS' : 'PARAFUSOS' }),
     );
     const keys = expandCollapseKeys(big, 'productType');
-    expect(keys).toEqual(subgroupCollapseKeys(big));
+    expect(keys).toEqual(leafCollapseKeys(big));
     expect(keys.has('sub:ORTOPEDIA|ORTOPEDIA|PLACAS')).toBe(true);
     expect(keys.has('line:ORTOPEDIA')).toBe(false);
+    expect(visibleTreeProductKeys(buildProductTree(big), keys)).toEqual([]);
+  });
+
+  it('sem subgrupo (Spica: Tipo=Linha, SubTipo=Grupo) recolhe o grupo; grupo==linha recolhe a linha', () => {
+    const big: ProductRow[] = Array.from({ length: FULL_EXPAND_LIMIT + 1 }, (_, i) =>
+      row({
+        key: `k${i}`,
+        productType: i % 3 ? 'CARDIACA' : 'OUTROS',
+        productSubtype: i % 3 ? (i % 2 ? 'ALEXIS' : 'CANULAS - EDWARDS') : 'OUTROS',
+        productSubgroup: null,
+      }),
+    );
+    const keys = expandCollapseKeys(big, 'productType');
+    expect(keys.has('group:CARDIACA|ALEXIS')).toBe(true);
+    expect(keys.has('group:CARDIACA|CANULAS - EDWARDS')).toBe(true);
+    expect(keys.has('line:CARDIACA')).toBe(false);
+    // OUTROS/OUTROS não tem cabeçalho de grupo: só recolher a linha impede as 334 linhas.
+    expect(keys.has('line:OUTROS')).toBe(true);
     expect(visibleTreeProductKeys(buildProductTree(big), keys)).toEqual([]);
   });
 });

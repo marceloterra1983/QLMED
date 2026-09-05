@@ -12,8 +12,8 @@ Scope: Ordenação hierárquica (`sortBy === 'productType'`) carrega TODO o cat�
   EXPECT: /buildProductTree/
   EVIDENCE: pending
 
-- [ ] G3: Expandir/busca não estouram DOM: Expandir abre linhas e grupos (subgrupos fechados); busca e Expandir abrem tudo só até `FULL_EXPAND_LIMIT` produtos
-  CHECK: rg -n "FULL_EXPAND_LIMIT|expandCollapseKeys|subgroupCollapseKeys" "src/app/(painel)/cadastro/produtos/components/product-group-visibility.ts" "src/app/(painel)/cadastro/produtos/page-client.tsx" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -20
+- [ ] G3: Expandir/busca não estouram DOM: acima de `FULL_EXPAND_LIMIT` produtos abrem só até o último nível de agrupamento (leafCollapseKeys)
+  CHECK: rg -n "FULL_EXPAND_LIMIT|expandCollapseKeys|leafCollapseKeys" "src/app/(painel)/cadastro/produtos/components/product-group-visibility.ts" "src/app/(painel)/cadastro/produtos/page-client.tsx" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -20
   EXPECT: /FULL_EXPAND_LIMIT/
   EVIDENCE: pending
 
