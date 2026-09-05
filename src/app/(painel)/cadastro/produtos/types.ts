@@ -62,6 +62,7 @@ export interface ProductsSummary {
 export interface ProductsHierarchyCounts {
   byLine: Record<string, number>;
   byGroup: Record<string, number>;
+  bySubgroup: Record<string, number>;
 }
 
 export interface ProductsResponse {

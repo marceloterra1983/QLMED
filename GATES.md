@@ -1,41 +1,36 @@
-# Gates: Produtos total catálogo vs paginação
+# Gates: Subgrupos (e grupos) colapsáveis na ProductTable
 
-Scope: Corrigir a impressão de que o Spica “voltou só os itens antigos”: filtro padrão Todos, totais reais de linha/grupo (não só os 50 da página) e total do catálogo visível na UI.
+Scope: Linha, Grupo e Subgrupo colapsáveis com chevron/badge; Recolher/Expandir e load inicial incluem subgrupos; preview + PR/merge/deploy.
 
-- [x] G1: Default de lineStatus na API e no page-client é `all`
-  CHECK: rg -n "lineStatus.*default\(|useState<'active' \| 'outOfLine' \| 'all'>" "src/lib/schemas/product.ts" "src/app/(painel)/cadastro/produtos/page-client.tsx" 2>&1 | head -20
-  EXPECT: /default\('all'\)|useState<'active' \| 'outOfLine' \| 'all'>\('all'\)/
-  EVIDENCE: src/app/(painel)/cadastro/produtos/page-client.tsx:58:  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all'); | src/lib/schemas/product.ts:49:  lineStatus: z
+- [x] G1: `productSubgroupKey` + `allCollapseKeys`/`isProductRowVisible` incluem subgrupos
+  CHECK: rg -n "productSubgroupKey|sub:" "src/app/(painel)/cadastro/produtos/components/product-group-visibility.ts" 2>&1 | head -30
+  EXPECT: /productSubgroupKey|sub:/
+  EVIDENCE: 53:    const sub = productSubgroupKey(product); | 81:      const sub = productSubgroupKey(p);
 
-- [x] G2: API list devolve hierarchyCounts (totais por linha/grupo/subgrupo no filtro atual)
-  CHECK: rg -n "hierarchyCounts|byLine|byGroup|bySubgroup" "src/app/api/products/list/route.ts" "src/app/(painel)/cadastro/produtos/types.ts" 2>&1 | head -40
-  EXPECT: /hierarchyCounts/
-  EVIDENCE: src/app/api/products/list/route.ts:243:      byGroup: Object.fromEntries( | src/app/api/products/list/route.ts:261:        hierarchyCounts,
+- [x] G2: Cabeçalho de subgrupo com chevron, badge, toggle e "Clique para expandir"
+  CHECK: rg -n "toggleGroup\(sub|subgroupCollapsed|Clique para expandir|expand_more" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -40
+  EXPECT: /subgroupCollapsed|toggleGroup\(sub/
+  EVIDENCE: 369:                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: renderCollapsed.has(group) ? 'rotat
 
-- [x] G3: Badge de linha/grupo usa total do catálogo filtrado (não só a página); UI mostra total paginado (não `filtered.length`)
-  CHECK: rg -n "hierarchyCounts|catalogTotal|pagination\.total|filteredCount" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" "src/app/(painel)/cadastro/produtos/components/ProductFilters.tsx" "src/app/(painel)/cadastro/produtos/page-client.tsx" 2>&1 | head -50
-  EXPECT: /hierarchyCounts|catalogTotal|pagination\.total/
-  EVIDENCE: src/app/(painel)/cadastro/produtos/components/ProductFilters.tsx:183:          {formatInt(catalogTotal)} produtos no cadastro | src/app/(painel)/cadastro/produtos/components/ProductFilters.tsx:184:   
+- [x] G3: Produto só renderiza se linha+grupo+subgrupo não estiverem recolhidos
+  CHECK: rg -n "!lineCollapsed && !grpCollapsed && !subgroupCollapsed" "src/app/(painel)/cadastro/produtos/components/ProductTable.tsx" 2>&1 | head -10
+  EXPECT: /!lineCollapsed && !grpCollapsed && !subgroupCollapsed/
+  EVIDENCE: 349:            {!lineCollapsed && !grpCollapsed && !subgroupCollapsed && renderProductRow(product, inTable)}
 
-- [x] G4: Testes de contrato/schema/badge verdes
-  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx vitest run src/lib/__tests__/query-schemas.test.ts src/lib/__tests__/produtos-groups-expanded-contract.test.ts src/app/\(painel\)/cadastro/produtos/components/__tests__/ --reporter=dot 2>&1 | tail -25
+- [x] G4: Recolher/Expandir e load usam chaves de subgrupo (safeCollapseKeys/allCollapseKeys)
+  CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx vitest run "src/app/(painel)/cadastro/produtos/components/__tests__/product-group-visibility.test.ts" "src/app/(painel)/cadastro/produtos/components/__tests__/ProductTable-expand-guard.test.tsx" --reporter=dot 2>&1 | tail -20
   EXPECT: /Test Files\s+\d+ passed/
-  EVIDENCE: Start at  16:15:56 | Duration  693ms (transform 178ms, setup 49ms, import 287ms, tests 85ms, environment 355ms)
+  EVIDENCE: Start at  17:46:50 | Duration  568ms (transform 102ms, setup 26ms, import 148ms, tests 93ms, environment 257ms)
 
 - [x] G5: Typecheck limpo
   CHECK: cd /home/marce/qlmed/.worktrees/042-spica-import && npx tsc --noEmit 2>&1 | tail -5; echo EXIT:$?
   EXPECT: /EXIT:0/
   EVIDENCE: EXIT:0
 
-- [x] G6: Banco: 7965 total, 3008 fora de linha; CARDIACA ≥ 800
-  CHECK: PASS=$(docker exec qlmed-db printenv POSTGRES_PASSWORD); docker exec -e PGPASSWORD="$PASS" qlmed-db psql -U postgres -d postgres -tAc "SELECT COUNT(*) FROM product_registry; SELECT COUNT(*) FILTER (WHERE out_of_line IS TRUE) FROM product_registry; SELECT COUNT(*) FROM product_registry WHERE product_type='CARDIACA';"
-  EXPECT: /7965/
-  EVIDENCE: 3008 | 826
-
-- [x] G7: Preview :3002 /cadastro/produtos responde
+- [x] G6: Preview :3002 /cadastro/produtos responde
   CHECK: curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/cadastro/produtos
   EXPECT: /200|307|302|401/
   EVIDENCE: 307
 
-- [ ] G8: PR mergeado + deploy produção health com SHA novo
+- [ ] G7: PR mergeado + deploy produção health com SHA novo
   EVIDENCE: pending

@@ -91,7 +91,7 @@ describe('GET /api/products/list — Product visibility without aggregate barrie
     expect(data.products[0].code).toBe('VALV-01');
     expect(data.products[1].code).toBe('CAT-02');
     expect(data.products[1].lastPrice).toBe(0);
-    expect(data.hierarchyCounts).toEqual({ byLine: {}, byGroup: {} });
+    expect(data.hierarchyCounts).toEqual({ byLine: {}, byGroup: {}, bySubgroup: {} });
     expect(mocks.groupBy).toHaveBeenCalled();
   });
 

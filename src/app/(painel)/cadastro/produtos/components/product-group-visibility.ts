@@ -5,6 +5,15 @@ export function productLineKey(product: Pick<ProductRow, 'productType'>): string
   return `line:${product.productType || 'Sem linha'}`;
 }
 
+/** Chave de subgrupo no Set collapsedGroups (hierarquia productType). */
+export function productSubgroupKey(
+  product: Pick<ProductRow, 'productType' | 'productSubtype' | 'productSubgroup'>,
+): string | null {
+  const name = product.productSubgroup?.trim();
+  if (!name) return null;
+  return `sub:${product.productType || 'Sem linha'}|${product.productSubtype || 'Sem grupo'}|${name}`;
+}
+
 /** Chave de grupo no Set collapsedGroups conforme o sort ativo. */
 export function productGroupKey(product: ProductRow, sortBy: SortField): string {
   switch (sortBy) {
@@ -39,7 +48,11 @@ export function isProductRowVisible(
   collapsed: ReadonlySet<string>,
 ): boolean {
   if (sortBy === 'productType') {
-    return !collapsed.has(productLineKey(product)) && !collapsed.has(productGroupKey(product, sortBy));
+    if (collapsed.has(productLineKey(product))) return false;
+    if (collapsed.has(productGroupKey(product, sortBy))) return false;
+    const sub = productSubgroupKey(product);
+    if (sub && collapsed.has(sub)) return false;
+    return true;
   }
   const g = productGroupKey(product, sortBy);
   return !g || !collapsed.has(g);
@@ -54,7 +67,7 @@ export function anyProductRowVisible(
 }
 
 /**
- * Todas as chaves de linha/grupo da página — carregar sempre recolhido
+ * Todas as chaves de linha/grupo/subgrupo da página — carregar sempre recolhido
  * e botão "Recolher" fecha tudo.
  */
 export function allCollapseKeys(
@@ -63,7 +76,11 @@ export function allCollapseKeys(
 ): Set<string> {
   const keys = new Set<string>();
   if (sortBy === 'productType') {
-    for (const p of products) keys.add(productLineKey(p));
+    for (const p of products) {
+      keys.add(productLineKey(p));
+      const sub = productSubgroupKey(p);
+      if (sub) keys.add(sub);
+    }
   }
   for (const p of products) {
     const g = productGroupKey(p, sortBy);
@@ -72,7 +89,7 @@ export function allCollapseKeys(
   return keys;
 }
 
-/** Botão Recolher = fechar todas as linhas e grupos. */
+/** Botão Recolher = fechar todas as linhas, grupos e subgrupos. */
 export function safeCollapseKeys(
   products: ProductRow[],
   sortBy: SortField,

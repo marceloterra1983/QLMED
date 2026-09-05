@@ -102,6 +102,7 @@ describe('ProductTable collapsed-by-default', () => {
         hierarchyCounts={{
           byLine: { 'line:CARDIACA': 826 },
           byGroup: { 'group:CARDIACA|STENTS': 40 },
+          bySubgroup: { 'sub:CARDIACA|STENTS|ALEXIS': 12 },
         }}
       />,
     );
@@ -110,5 +111,39 @@ describe('ProductTable collapsed-by-default', () => {
     // Desktop + mobile renderizam o mesmo cabeçalho.
     expect(screen.getAllByTitle(/826 no cadastro/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('826').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('subgrupo recolhido mostra cabeçalho e esconde produtos', () => {
+    const products = [
+      row({
+        key: 'a',
+        codigo: 'SPICA-111',
+        description: 'Alexis Retrator',
+        productSubtype: 'CARDIACA',
+        productSubgroup: 'ALEXIS',
+      }),
+      row({
+        key: 'b',
+        codigo: 'SPICA-222',
+        description: 'Alexis Outro',
+        productSubtype: 'CARDIACA',
+        productSubgroup: 'ALEXIS',
+      }),
+    ];
+    // Linha expandida, grupo=linha (sameLineGroup), subgrupo recolhido
+    const collapsedGroups = new Set(['sub:CARDIACA|CARDIACA|ALEXIS']);
+
+    render(
+      <ProductTable
+        {...baseProps}
+        products={products}
+        collapsedGroups={collapsedGroups}
+      />,
+    );
+
+    expect(screen.getAllByText(/ALEXIS/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Clique para expandir/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('SPICA-111')).toBeNull();
+    expect(screen.queryByText('Alexis Retrator')).toBeNull();
   });
 });

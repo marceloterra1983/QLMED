@@ -14,6 +14,7 @@ import { formatDate, getAnvisaExpirationBadge, highlightMatch } from './product-
 import {
   productGroupKey,
   productLineKey,
+  productSubgroupKey,
   safeCollapseKeys,
 } from './product-group-visibility';
 
@@ -72,6 +73,10 @@ export default function ProductTable({
       const lineKey = sortBy === 'productType' ? getLineLabel(p) : '';
       if (g && renderCollapsed.has(g)) continue;
       if (sortBy === 'productType' && renderCollapsed.has(lineKey)) continue;
+      if (sortBy === 'productType') {
+        const sub = productSubgroupKey(p);
+        if (sub && renderCollapsed.has(sub)) continue;
+      }
       keys.push(p.key);
     }
     return keys;
@@ -171,7 +176,7 @@ export default function ProductTable({
     );
   };
 
-  const renderGroupHeaders = (product: ProductRow, showLine: boolean, showGrp: boolean, showSubgroup: boolean, lineKey: string, grpKey: string, lineCollapsed: boolean, grpCollapsed: boolean, lineCountMap: Map<string, number>, groupCountMap: Map<string, number>, inTable: boolean) => {
+  const renderGroupHeaders = (product: ProductRow, showLine: boolean, showGrp: boolean, showSubgroup: boolean, lineKey: string, grpKey: string, subKey: string | null, lineCollapsed: boolean, grpCollapsed: boolean, subgroupCollapsed: boolean, lineCountMap: Map<string, number>, groupCountMap: Map<string, number>, subgroupCountMap: Map<string, number>, inTable: boolean) => {
     const lineName = product.productType || 'Sem linha';
     const grpName = product.productSubtype || 'Sem grupo';
     const subgroupName = product.productSubgroup || '';
@@ -237,14 +242,36 @@ export default function ProductTable({
       elements.push(inTable ? <tr key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}><td colSpan={tableColSpan} className="px-0 py-0">{grpContent}</td></tr> : <div key={`grp-${grpKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(grpKey)}>{grpContent}</div>);
     }
 
-    if (!lineCollapsed && !grpCollapsed && showSubgroup && subgroupName) {
+    if (!lineCollapsed && !grpCollapsed && showSubgroup && subgroupName && subKey) {
+      const pageSubCount = subgroupCountMap.get(subKey) || 0;
+      const catalogSubCount = hierarchyCounts?.bySubgroup?.[subKey];
       const subContent = (
         <div className="flex items-center gap-1.5 pl-14 pr-4 py-1 bg-gradient-to-r from-teal-50/60 to-transparent dark:from-teal-950/15 dark:to-transparent border-b border-teal-200/40 dark:border-teal-800/20">
+          {selectionEnabled && <input type="checkbox" checked={visible.filter((p) => productSubgroupKey(p) === subKey).every((p) => selectedKeys.has(p.key))} onChange={(e) => { e.stopPropagation(); toggleSelectGroup((p) => productSubgroupKey(p) === subKey); }} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar subgrupo ${subgroupName}`} className="w-3.5 h-3.5 rounded border-slate-200 text-primary dark:text-blue-400 cursor-pointer shrink-0" />}
+          <span className="material-symbols-outlined text-[14px] text-teal-400 dark:text-teal-600 transition-transform duration-200" style={{ transform: subgroupCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <div className="w-0.5 h-2.5 rounded-full bg-teal-400 dark:bg-teal-600" />
           <span className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">{subgroupName}</span>
+          <Badge
+            tone="success"
+            dot={false}
+            title={
+              catalogSubCount != null && catalogSubCount !== pageSubCount
+                ? `${formatInt(catalogSubCount)} no cadastro · ${formatInt(pageSubCount)} nesta página`
+                : catalogSubCount != null
+                  ? `${formatInt(catalogSubCount)} no cadastro`
+                  : `${formatInt(pageSubCount)} nesta página`
+            }
+          >
+            {formatInt(catalogSubCount ?? pageSubCount)}
+          </Badge>
+          {subgroupCollapsed && (
+            <span className="ml-auto text-xs font-medium text-teal-600/90 dark:text-teal-400/90">
+              Clique para expandir
+            </span>
+          )}
         </div>
       );
-      elements.push(inTable ? <tr key={`sub-${grpKey}-${subgroupName}`}><td colSpan={tableColSpan} className="px-0 py-0">{subContent}</td></tr> : <div key={`sub-${grpKey}-${subgroupName}`}>{subContent}</div>);
+      elements.push(inTable ? <tr key={`sub-${subKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(subKey)}><td colSpan={tableColSpan} className="px-0 py-0">{subContent}</td></tr> : <div key={`sub-${subKey}`} className="cursor-pointer select-none" onClick={() => toggleGroup(subKey)}>{subContent}</div>);
     }
 
     return elements;
@@ -290,29 +317,36 @@ export default function ProductTable({
     if (sortBy === 'productType') {
       const lineCountMap = new Map<string, number>();
       const groupCountMap = new Map<string, number>();
-      for (const p of visible) { lineCountMap.set(getLineLabel(p), (lineCountMap.get(getLineLabel(p)) || 0) + 1); groupCountMap.set(getGroupLabel(p, sortBy), (groupCountMap.get(getGroupLabel(p, sortBy)) || 0) + 1); }
+      const subgroupCountMap = new Map<string, number>();
+      for (const p of visible) {
+        lineCountMap.set(getLineLabel(p), (lineCountMap.get(getLineLabel(p)) || 0) + 1);
+        groupCountMap.set(getGroupLabel(p, sortBy), (groupCountMap.get(getGroupLabel(p, sortBy)) || 0) + 1);
+        const sk = productSubgroupKey(p);
+        if (sk) subgroupCountMap.set(sk, (subgroupCountMap.get(sk) || 0) + 1);
+      }
       let lastLine = '', lastGrp = '', lastSubgroup = '';
       return visible.map((product) => {
         const lineKey = getLineLabel(product);
         const grpKey = getGroupLabel(product, sortBy);
-        const subgroupKey = `${grpKey}|${product.productSubgroup || ''}`;
+        const subKey = productSubgroupKey(product);
         // Quando Grupo == Linha (Tipo Spica nos dois), não duplica cabeçalho âmbar.
         const sameLineGroup =
           !!(product.productType && product.productSubtype) &&
           product.productType === product.productSubtype;
         const showLine = lineKey !== lastLine;
         const showGrp = !sameLineGroup && grpKey !== lastGrp;
-        const showSubgroup = !!(product.productSubgroup && subgroupKey !== lastSubgroup);
+        const showSubgroup = !!(subKey && subKey !== lastSubgroup);
         if (showLine) { lastGrp = ''; lastSubgroup = ''; }
         if (showGrp) lastSubgroup = '';
         lastLine = lineKey; lastGrp = grpKey;
-        if (product.productSubgroup) lastSubgroup = subgroupKey;
+        if (subKey) lastSubgroup = subKey;
         const lineCollapsed = renderCollapsed.has(lineKey);
         const grpCollapsed = !sameLineGroup && renderCollapsed.has(grpKey);
+        const subgroupCollapsed = !!(subKey && renderCollapsed.has(subKey));
         return (
           <React.Fragment key={inTable ? product.key : `m-${product.key}`}>
-            {renderGroupHeaders(product, showLine, showGrp, showSubgroup, lineKey, grpKey, lineCollapsed, grpCollapsed, lineCountMap, groupCountMap, inTable)}
-            {!lineCollapsed && !grpCollapsed && renderProductRow(product, inTable)}
+            {renderGroupHeaders(product, showLine, showGrp, showSubgroup, lineKey, grpKey, subKey, lineCollapsed, grpCollapsed, subgroupCollapsed, lineCountMap, groupCountMap, subgroupCountMap, inTable)}
+            {!lineCollapsed && !grpCollapsed && !subgroupCollapsed && renderProductRow(product, inTable)}
           </React.Fragment>
         );
       });
