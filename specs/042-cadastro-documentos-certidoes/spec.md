@@ -262,6 +262,13 @@ falhar de forma visível, não chutar.
   de leitura deixa `validUntil` nulo e **não** aborta o ciclo. Tipos com
   `filenameDate: false` (AFE) não leem o PDF.
 
+- **FR-031**: Na família societário, ficheiro cujo nome contém `contrato`
+  e não contém tokens de constituição/alteração classifica
+  `contrato_social_consolidado` (ex.: `CONTRATO SOCIAL.pdf`). ATA e
+  demais nomes sem `contrato` continuam `outro`. Linha já persistida
+  como `outro` com esse nome **aparece** no card de consolidado até a
+  próxima ingestão gravar o kind novo.
+
 ## Acceptance Criteria
 
 - **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
@@ -354,6 +361,10 @@ falhar de forma visível, não chutar.
   com `readValidityFromPdf` devolvendo `2026-12-01`, persiste essa data
   com `validUntilSource='pdf'` e **não** chama `downloadPdf` nos ficheiros
   cuja data já saiu do nome.
+- **AC-024** (FR-031): `CONTRATO SOCIAL.pdf` na pasta societário classifica
+  `contrato_social_consolidado`; `ATA ASSEMBLEIA.pdf` permanece `outro`.
+  Listagem com kind persistido `outro` e nome `CONTRATO SOCIAL.pdf`
+  preenche a linha de consolidado; a ATA não aparece.
 
 ## Non-functional
 

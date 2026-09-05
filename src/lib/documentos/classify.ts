@@ -100,7 +100,18 @@ function classifySocietario(fileName: string): CompanyDocumentKind {
   if (file.includes('constituicao') && file.includes('alteracao')) return 'contrato_social_consolidado';
   if (file.includes('alteracao')) return 'contrato_social_alteracao';
   if (file.includes('constituicao')) return 'contrato_social_constituicao';
+  // Nome genérico (CONTRATO SOCIAL.pdf) sem constituição/alteração: consolidado vigente.
+  if (file.includes('contrato')) return 'contrato_social_consolidado';
   return 'outro';
+}
+
+/** Linha já persistida como `outro` (pré-FR-031) volta a aparecer no card societário. */
+export function effectiveSocietarioKind(
+  kind: CompanyDocumentKind,
+  fileName: string,
+): CompanyDocumentKind {
+  if (kind !== 'outro') return kind;
+  return classifySocietario(fileName);
 }
 
 function classifyBasicos(fileName: string): CompanyDocumentKind {

@@ -155,6 +155,38 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(listing.certidoes.every((row) => row.kind !== 'outro')).toBe(true);
   });
 
+  it('CONTRATO SOCIAL.pdf persistido como outro preenche consolidado; ATA segue invisível', () => {
+    const listing = buildDocumentosListing(
+      [
+        {
+          id: 'contrato',
+          kind: 'outro',
+          category: 'societario',
+          fileName: 'CONTRATO SOCIAL.pdf',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+        },
+        {
+          id: 'ata',
+          kind: 'outro',
+          category: 'societario',
+          fileName: 'ATA ASSEMBLEIA.pdf',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+        },
+      ],
+      null,
+      NOW,
+    );
+    const consolidado = listing.societario.find((row) => row.kind === 'contrato_social_consolidado');
+    expect(consolidado?.id).toBe('contrato');
+    expect(consolidado?.fileName).toBe('CONTRATO SOCIAL.pdf');
+    expect(listing.societario.map((row) => row.id)).not.toContain('ata');
+    expect(listing.societario.every((row) => row.kind !== 'outro')).toBe(true);
+  });
+
   it('AFE vigente mostra não vence e ignora data no nome', () => {
     const listing = buildDocumentosListing(
       [
