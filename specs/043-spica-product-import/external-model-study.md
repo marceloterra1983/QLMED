@@ -6,9 +6,9 @@
 
 | Modelo | Foco | Status |
 |--------|------|--------|
-| Grok | Mapa, match, checklist | [feito](224119c8-0432-436b-b6ec-ed63e27842f4) |
-| Gemini | productKey, merge, nextCodigo | [feito](1d7d865f-e7bf-46ae-b2c4-db960ab138de) |
-| Claude | Idempotência fiscal, endpoint, PRs | [feito](70ad3653-613c-4e6f-b434-1719ff8a492b) |
+| Grok | Mapa, match, checklist | feito |
+| Gemini | productKey, merge, nextCodigo | feito |
+| Claude | Idempotência fiscal, endpoint, PRs | feito |
 
 ## Consenso 3/3
 
@@ -20,19 +20,19 @@
 
 ## Parecer Grok
 
-Fonte: [Grok](224119c8-0432-436b-b6ec-ed63e27842f4).
+Fonte: Grok.
 
 Colisão numerica `codigo` Spica ∩ portal; apply só 1:1; não reusar import-types/bulk-update/`upsertProductRegistry` (`outOfLine:true`); checklist pré-produção completo.
 
 ## Parecer Gemini
 
-Fonte: [Gemini](1d7d865f-e7bf-46ae-b2c4-db960ab138de) — Conditional Go.
+Fonte: Gemini — Conditional Go.
 
 productKey agregador nos inserts; política merge campo a campo; testes NF-sobre-Spica-only + ANVISA no-clobber.
 
 ## Parecer Claude
 
-Fonte: [Claude](70ad3653-613c-4e6f-b434-1719ff8a492b) — GO condicional.
+Fonte: Claude — GO condicional.
 
 ### Três bloqueadores
 

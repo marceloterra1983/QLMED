@@ -1,3 +1,13 @@
+---
+id: SPEC-043
+status: draft
+owner: QLMED
+affected_modules:
+  - product-registry
+  - product-aggregation
+  - cadastro-produtos
+---
+
 # Feature Specification: Importação de produtos Spica
 
 **Feature Branch**: `043-spica-product-import`  
