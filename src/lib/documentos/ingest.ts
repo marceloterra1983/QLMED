@@ -13,9 +13,11 @@ import {
   DOCUMENTOS_FAMILIES,
   DOCUMENTOS_INGEST_INTERVAL_MS,
   DOCUMENTOS_ONEDRIVE_ACCOUNT,
+  familyByCategory,
   familyForKind,
   familyScanTargets,
   kindExpires,
+  type DocumentosCategory,
 } from './constants';
 import { cartaManufacturerKey, classifyDocument } from './classify';
 import {
@@ -106,6 +108,7 @@ export type DocumentosIngestResult = {
   removed: number;
   renewals: RenewalEvent[];
   arquivados: number;
+  skippedFamilies: DocumentosCategory[];
 };
 
 /** Outra ingestão já detém o advisory lock desta empresa. Rotas respondem 409. */
@@ -138,12 +141,25 @@ type ExistingRow = {
   renewalNotifiedAt: Date | null;
 };
 
-async function saveIngestSuccess(companyId: string, now: Date): Promise<void> {
+async function saveIngestSuccess(companyId: string, now: Date, lastError: string | null = null): Promise<void> {
   await prisma.companyDocumentIngestState.upsert({
     where: { companyId },
-    create: { companyId, lastSuccessAt: now, lastError: null, lastErrorAt: null },
-    update: { lastSuccessAt: now, lastError: null, lastErrorAt: null },
+    create: {
+      companyId,
+      lastSuccessAt: now,
+      lastError,
+      lastErrorAt: lastError ? now : null,
+    },
+    update: {
+      lastSuccessAt: now,
+      lastError,
+      lastErrorAt: lastError ? now : null,
+    },
   });
+}
+
+function isMissingFolderError(error: unknown): boolean {
+  return error instanceof Error && /pasta não encontrada/i.test(error.message);
 }
 
 async function saveIngestError(companyId: string, now: Date, error: unknown): Promise<void> {
@@ -255,117 +271,130 @@ async function ingestCompany(
 
   const seenIds = new Set<string>();
   const renewals: RenewalEvent[] = [];
+  const skippedFamilies: DocumentosCategory[] = [];
   let scanned = 0;
   let upserted = 0;
 
   for (const family of DOCUMENTOS_FAMILIES) {
-    if (family.scan === 'yearFolders') {
-      /**
-       * Não conseguir enumerar NUNCA pode virar "pasta vazia": o `updateMany`
-       * mais abaixo marca `removedAt` em tudo que não entrou em `seenIds`, de
-       * modo que um `[]` por falta de capacidade apagaria da tela todas as
-       * linhas já gravadas desta família. Falhar alto é o comportamento certo
-       * — a ingestão inteira aborta e o ciclo seguinte tenta de novo.
-       */
-      if (!port.listChildren) {
-        throw new Error(
-          `família '${family.category}' exige listChildren e a porta não o expõe`,
-        );
+    try {
+      if (family.scan === 'yearFolders') {
+        /**
+         * Não conseguir enumerar NUNCA pode virar "pasta vazia": o `updateMany`
+         * mais abaixo marca `removedAt` em tudo que não entrou em `seenIds`.
+         * Falta de capacidade na porta continua abortando o ciclo. Pasta
+         * inexistente no OneDrive é outra coisa: salta só esta família.
+         */
+        if (!port.listChildren) {
+          throw new Error(
+            `família '${family.category}' exige listChildren e a porta não o expõe`,
+          );
+        }
+        const children = await port.listChildren(family.root);
+        const selected = selectYearFolderItems(children);
+        const folderName = lastPathSegment(family.root);
+        for (const item of selected) {
+          scanned += 1;
+          seenIds.add(item.itemId);
+          await upsertItem(
+            {
+              companyId,
+              family,
+              kind: 'balanco_anual',
+              fileName: item.name,
+              itemId: item.itemId,
+              folderName,
+              fileSize: item.size,
+              lastModifiedAt: item.lastModifiedAt,
+              webUrl: item.webUrl,
+              validUntil: null,
+              validUntilSource: null,
+            },
+            byItemId.get(item.itemId),
+          );
+          upserted += 1;
+        }
+        continue;
       }
-      const children = await port.listChildren(family.root);
-      const selected = selectYearFolderItems(children);
-      const folderName = lastPathSegment(family.root);
-      for (const item of selected) {
-        scanned += 1;
-        seenIds.add(item.itemId);
-        await upsertItem(
-          {
-            companyId,
-            family,
-            kind: 'balanco_anual',
-            fileName: item.name,
-            itemId: item.itemId,
-            folderName,
-            fileSize: item.size,
-            lastModifiedAt: item.lastModifiedAt,
-            webUrl: item.webUrl,
-            validUntil: null,
-            validUntilSource: null,
-          },
-          byItemId.get(item.itemId),
-        );
-        upserted += 1;
-      }
-      continue;
-    }
 
-    for (const target of familyScanTargets(family)) {
-      const files = await port.listPdfs(target.path);
-      for (const file of files) {
-        scanned += 1;
-        seenIds.add(file.itemId);
+      for (const target of familyScanTargets(family)) {
+        const files = await port.listPdfs(target.path);
+        for (const file of files) {
+          scanned += 1;
+          seenIds.add(file.itemId);
 
-        const kind = classifyDocument(target.folderName, file.name, family.category);
-        const extracted = kindStoresFilenameDate(kind) ? extractValidUntil(file.name) : null;
-        const validUntil = extracted ? dateFromYmd(extracted.date) : null;
-        const validUntilSource = extracted ? 'filename' : null;
-        const existing = byItemId.get(file.itemId);
+          const kind = classifyDocument(target.folderName, file.name, family.category);
+          const extracted = kindStoresFilenameDate(kind) ? extractValidUntil(file.name) : null;
+          const validUntil = extracted ? dateFromYmd(extracted.date) : null;
+          const validUntilSource = extracted ? 'filename' : null;
+          const existing = byItemId.get(file.itemId);
 
-        const previous = vigenteByKind.get(kind);
-        const previousYmd = previous ? toYmd(previous.validUntil) : null;
+          const previous = vigenteByKind.get(kind);
+          const previousYmd = previous ? toYmd(previous.validUntil) : null;
 
-        const row = await upsertItem(
-          {
-            companyId,
-            family,
-            kind,
-            fileName: file.name,
-            itemId: file.itemId,
-            folderName: target.folderName,
-            fileSize: file.size,
-            lastModifiedAt: file.lastModifiedAt,
-            webUrl: file.webUrl ?? null,
-            validUntil,
-            validUntilSource,
-          },
-          existing,
-        );
+          const row = await upsertItem(
+            {
+              companyId,
+              family,
+              kind,
+              fileName: file.name,
+              itemId: file.itemId,
+              folderName: target.folderName,
+              fileSize: file.size,
+              lastModifiedAt: file.lastModifiedAt,
+              webUrl: file.webUrl ?? null,
+              validUntil,
+              validUntilSource,
+            },
+            existing,
+          );
 
-        upserted += 1;
+          upserted += 1;
 
-        if (
-          family.mode === 'closed' &&
-          kindExpires(kind) &&
-          isRenewal({
-            persistedYmd: toYmd(row.validUntil),
-            renewalNotifiedAt: row.renewalNotifiedAt,
-            previousYmd,
-            hadPreviousVigente: Boolean(previous),
-            kindExisted: kindsSeenBefore.has(kind),
-          })
-        ) {
-          // Consumidor (L7): gravar renewalNotifiedAt ANTES do envio.
-          // Reinício entre envio e escrita duplica o aviso (FR-011).
-          renewals.push({
-            companyId,
-            kind,
-            documentId: row.id,
-            previousValidUntil: previousYmd,
-            validUntil: toYmd(row.validUntil) as string,
-          });
+          if (
+            family.mode === 'closed' &&
+            kindExpires(kind) &&
+            isRenewal({
+              persistedYmd: toYmd(row.validUntil),
+              renewalNotifiedAt: row.renewalNotifiedAt,
+              previousYmd,
+              hadPreviousVigente: Boolean(previous),
+              kindExisted: kindsSeenBefore.has(kind),
+            })
+          ) {
+            // Consumidor (L7): gravar renewalNotifiedAt ANTES do envio.
+            // Reinício entre envio e escrita duplica o aviso (FR-011).
+            renewals.push({
+              companyId,
+              kind,
+              documentId: row.id,
+              previousValidUntil: previousYmd,
+              validUntil: toYmd(row.validUntil) as string,
+            });
+          }
         }
       }
+    } catch (error) {
+      if (!isMissingFolderError(error)) throw error;
+      skippedFamilies.push(family.category);
+      log.warn({ family: family.category }, 'documentos_ingest_family_folder_missing');
     }
   }
 
+  const protectedKinds = skippedFamilies.flatMap(
+    (category) => familyByCategory(category).kinds.map((kind) => kind.kind),
+  );
+
   // removedAt deste ciclo ANTES de arquivar: um ficheiro que sumiu agora não
   // pode contar como substituto (hasLaterSubstitute lê removedAt: null).
+  // Família que não deu para enumerar fica de fora — senão "pasta em falta"
+  // apagaria as linhas já gravadas.
   const removed = await prisma.companyDocument.updateMany({
     where: {
       companyId,
       oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
       removedAt: null,
       oneDriveItemId: { notIn: [...seenIds] },
+      ...(protectedKinds.length > 0 ? { kind: { notIn: protectedKinds } } : {}),
     },
     data: { removedAt: now },
   });
@@ -378,9 +407,14 @@ async function ingestCompany(
     removed: removed.count,
     renewals,
     arquivados,
+    skippedFamilies,
   };
 
-  await saveIngestSuccess(companyId, now);
+  const skipWarning =
+    skippedFamilies.length > 0
+      ? `famílias sem pasta no OneDrive: ${skippedFamilies.join(', ')}`
+      : null;
+  await saveIngestSuccess(companyId, now, skipWarning);
   log.info(
     {
       scanned: result.scanned,
@@ -388,6 +422,7 @@ async function ingestCompany(
       removed: result.removed,
       renewals: result.renewals.length,
       arquivados: result.arquivados,
+      skippedFamilies: result.skippedFamilies,
     },
     'documentos_ingest_ok',
   );

@@ -804,6 +804,45 @@ describe('SPEC-042 — upload toma o lock da ingestão', () => {
   });
 });
 
+describe('SPEC-042 — pasta de uma família ausente não derruba as outras', () => {
+  it('Contrato Social sumiu do OneDrive: certidões seguem e o contrato não recebe removedAt', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const entries = [
+      ...filesFromFixture(),
+      {
+        folder: '3 - CONTRATO SOCIAL',
+        file: {
+          itemId: 'od-cs',
+          name: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+          size: 2048,
+          lastModifiedAt: NOW,
+        },
+      },
+    ];
+    await runDocumentosIngest(COMPANY, fakePort(entries), NOW);
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cs')?.removedAt).toBeNull();
+
+    const later = new Date('2026-09-04T16:00:00.000Z');
+    const port = fakePort(filesFromFixture());
+    const listPdfs = port.listPdfs.bind(port);
+    port.listPdfs = async (folderPath) => {
+      if (folderPath.includes('CONTRATO SOCIAL')) {
+        throw new Error('pasta não encontrada');
+      }
+      return listPdfs(folderPath);
+    };
+
+    const result = await runDocumentosIngest(COMPANY, port, later);
+
+    expect(result.skippedFamilies).toEqual(['societario']);
+    expect(result.scanned).toBe(24);
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-cs')?.removedAt).toBeNull();
+    expect(memory.docs.find((row) => row.oneDriveItemId === 'od-0')?.removedAt).toBeNull();
+    expect(memory.ingest[0]?.lastSuccessAt).toEqual(later);
+    expect(memory.ingest[0]?.lastError).toMatch(/societario/);
+  });
+});
+
 describe('SPEC-042 — porta sem capacidade de enumerar não pode parecer pasta vazia', () => {
   /**
    * A fiação enhancePort/mergeWebUrl/listChildren não tinha cobertura: todos os
