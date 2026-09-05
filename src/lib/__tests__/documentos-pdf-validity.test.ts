@@ -336,3 +336,28 @@ describe('emissão: rótulos colhidos dos PDF REAIS da empresa', () => {
     expect(matchValidityFromText(t, HOJE).emitidoEm).toBeNull();
   });
 });
+
+describe('o import do pdf.js precisa da diretiva do webpack', () => {
+  /**
+   * Este teste é fraco de propósito, e é honesto sobre isso: ele lê a FONTE,
+   * porque o defeito que ele guarda é invisível para qualquer teste normal.
+   *
+   * `@vite-ignore` fala só com o Vite, que é o empacotador do vitest. Produção
+   * é Next/webpack. Sem `webpackIgnore`, o webpack tenta empacotar o caminho
+   * `file://` do asset em public/, falha em runtime, e o catch transforma isso
+   * em "0 caracteres extraídos" — indistinguível de um PDF digitalizado.
+   *
+   * Em 05/09/2026 isso significou que a leitura de PDF NUNCA funcionou em
+   * produção: 54 documentos com camada de texto perfeita devolveram
+   * `textChars: 0`, com a suíte inteira verde.
+   *
+   * A prova de verdade só existe em produção; aqui só impedimos a remoção.
+   */
+  it('a fonte mantém webpackIgnore no import dinâmico', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/lib/documentos/pdf-validity.ts', 'utf8');
+    const linha = src.split('\n').find((l) => l.includes('pdfJsModule = import('));
+    expect(linha, 'linha do import dinâmico não encontrada').toBeTruthy();
+    expect(linha).toContain('webpackIgnore: true');
+  });
+});
