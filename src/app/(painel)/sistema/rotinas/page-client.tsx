@@ -6,10 +6,13 @@ import Card from '@/components/ui/Card';
 import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
+import Section from '@/components/ui/Section';
 import { formatDateTime, formatTime } from '@/lib/utils';
 import {
   ROUTINE_CATEGORIES,
+  ROUTINE_PAGE_SECTION_META,
   SYSTEM_ROUTINES,
+  groupRoutinesByPageSection,
   type RoutineCategory,
   type RoutineTriggerType,
 } from '@/lib/system-routines';
@@ -71,6 +74,13 @@ function getStatusBadge(routine: EnrichedSystemRoutine): { tone: BadgeTone; labe
   }
 }
 
+function triggerIcon(routine: EnrichedSystemRoutine): string {
+  if (routine.triggerType === 'background_service') return 'autorenew';
+  if (routine.triggerType === 'worker_cron') return 'terminal';
+  if (routine.triggerType === 'scheduled_timer') return 'alarm';
+  return 'sensors';
+}
+
 export default function RotinasPageClient() {
   const [routines, setRoutines] = useState<EnrichedSystemRoutine[]>(() =>
     SYSTEM_ROUTINES.map((r) => ({
@@ -129,8 +139,22 @@ export default function RotinasPageClient() {
     });
   }, [routines, selectedCategory, selectedTrigger, searchTerm]);
 
+  const sectionGroups = useMemo(
+    () => groupRoutinesByPageSection(filteredRoutines),
+    [filteredRoutines],
+  );
+
+  const isFiltering =
+    searchTerm.trim() !== '' || selectedCategory !== 'all' || selectedTrigger !== 'all';
+
   const toggleExpand = (id: string) => {
     setExpandedRoutineId((prev) => (prev === id ? null : id));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setSelectedTrigger('all');
   };
 
   return (
@@ -160,7 +184,6 @@ export default function RotinasPageClient() {
         }
       />
 
-      {/* Cards de Métricas e Resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card padding="md">
           <div className="flex items-center gap-3">
@@ -227,7 +250,6 @@ export default function RotinasPageClient() {
         </Card>
       </div>
 
-      {/* Barra de Filtros e Busca */}
       <Card padding="md">
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
           <div className="relative flex-1 max-w-md">
@@ -272,16 +294,8 @@ export default function RotinasPageClient() {
               <option value="event_driven">Gatilho por Evento / Watcher</option>
             </select>
 
-            {(searchTerm || selectedCategory !== 'all' || selectedTrigger !== 'all') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('all');
-                  setSelectedTrigger('all');
-                }}
-              >
+            {isFiltering && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
                 Limpar
               </Button>
             )}
@@ -289,232 +303,226 @@ export default function RotinasPageClient() {
         </div>
       </Card>
 
-      {/* Tabela de Rotinas */}
-      <Card padding="none">
-        {filteredRoutines.length === 0 ? (
+      {filteredRoutines.length === 0 ? (
+        <Card padding="none">
           <EmptyState
             icon="schedule"
             title="Nenhuma rotina encontrada"
             hint="Tente alterar ou limpar os filtros de busca e categoria."
             action={
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('all');
-                  setSelectedTrigger('all');
-                }}
-              >
+              <Button variant="secondary" size="sm" onClick={clearFilters}>
                 Limpar Filtros
               </Button>
             }
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Rotina & Descrição</th>
-                  <th className="py-3.5 px-4">Categoria</th>
-                  <th className="py-3.5 px-4">Gatilho & Frequência</th>
-                  <th className="py-3.5 px-4">Mecanismo de Concorrência & Lock</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-right">Detalhes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredRoutines.map((routine) => {
-                  const statusInfo = getStatusBadge(routine);
-                  const isExpanded = expandedRoutineId === routine.id;
-
-                  return (
-                    <tr
-                      key={routine.id}
-                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group"
-                      onClick={() => toggleExpand(routine.id)}
-                    >
-                      <td className="py-4 px-4 align-top max-w-sm">
-                        <div className="flex items-start gap-2.5">
-                          <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400 shrink-0 mt-0.5">
-                            {routine.triggerType === 'background_service'
-                              ? 'autorenew'
-                              : routine.triggerType === 'worker_cron'
-                                ? 'terminal'
-                                : routine.triggerType === 'scheduled_timer'
-                                  ? 'alarm'
-                                  : 'sensors'}
-                          </span>
-                          <div>
-                            <p className="font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-blue-400 transition-colors">
-                              {routine.name}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                              {routine.description}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4 align-top whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          <span className="material-symbols-outlined text-[15px] opacity-70">
-                            {ROUTINE_CATEGORIES[routine.category].icon}
-                          </span>
-                          {routine.categoryLabel}
-                        </span>
-                      </td>
-
-                      <td className="py-4 px-4 align-top">
-                        <p className="font-medium text-slate-800 dark:text-slate-200 text-xs">
-                          {routine.frequency}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          {routine.triggerTypeLabel}
-                        </p>
-                      </td>
-
-                      <td className="py-4 px-4 align-top max-w-xs">
-                        <div className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 shrink-0 mt-0.5">
-                            lock
-                          </span>
-                          <span className="line-clamp-2" title={routine.concurrencyLock}>
-                            {routine.concurrencyLock}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4 align-top text-center whitespace-nowrap">
-                        <Badge tone={statusInfo.tone}>
-                          {statusInfo.label}
-                        </Badge>
-                        {routine.lastHeartbeatAgeMs !== null && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            batimento: {formatAge(routine.lastHeartbeatAgeMs)}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="py-4 px-4 align-top text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          icon={isExpanded ? 'expand_less' : 'expand_more'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpand(routine.id);
-                          }}
-                        >
-                          {isExpanded ? 'Ocultar' : 'Ver Mais'}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Painel de Detalhes da Linha Selecionada */}
-      {expandedRoutineId && (
-        (() => {
-          const routine = routines.find((r) => r.id === expandedRoutineId);
-          if (!routine) return null;
-
-          return (
-            <Card padding="md" className="border-primary/40 dark:border-blue-500/40 bg-slate-50/50 dark:bg-slate-900/40">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">
-                      info
-                    </span>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                      {routine.name}
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    ID técnico: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-primary-dark dark:text-blue-300 font-mono">{routine.id}</code>
-                  </p>
-                </div>
-                <Button variant="ghost" size="xs" icon="close" onClick={() => setExpandedRoutineId(null)}>
-                  Fechar
-                </Button>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4 mt-4 text-xs">
-                <div>
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Descrição Completa da Regra de Negócio
-                  </h4>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                    {routine.description}
-                  </p>
-
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mt-3 mb-1">
-                    Módulos e Arquivos Fonte
-                  </h4>
-                  <p className="font-mono text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                    {routine.sourceModule}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Agendamento & Temporização Detalhada
-                  </h4>
-                  <p className="text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                    {routine.scheduleDetails}
-                  </p>
-
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mt-3 mb-1">
-                    Mecanismo de Concorrência & Segurança
-                  </h4>
-                  <p className="text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                    {routine.concurrencyLock}
-                  </p>
-
-                  {routine.environmentVars && routine.environmentVars.length > 0 && (
-                    <div className="mt-3">
-                      <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                        Variáveis de Ambiente Relevantes
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {routine.environmentVars.map((env) => (
-                          <span
-                            key={env}
-                            className="font-mono text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded"
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {sectionGroups.map((group) => {
+            const meta = ROUTINE_PAGE_SECTION_META[group.section];
+            return (
+              <Section
+                key={group.section}
+                icon={meta.icon}
+                tone={meta.tone}
+                title={group.section}
+                subtitle={`${group.routines.length} rotina${group.routines.length === 1 ? '' : 's'}`}
+                badge={<Badge tone="neutral">{group.routines.length}</Badge>}
+                defaultOpen={false}
+              >
+                <div className="overflow-x-auto -mx-4 -mb-4">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <th className="py-3 px-4">Rotina & Descrição</th>
+                        <th className="py-3 px-4">Categoria</th>
+                        <th className="py-3 px-4">Gatilho & Frequência</th>
+                        <th className="py-3 px-4">Lock</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                        <th className="py-3 px-4 text-right">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {group.routines.map((routine) => {
+                        const statusInfo = getStatusBadge(routine);
+                        const isExpanded = expandedRoutineId === routine.id;
+                        return (
+                          <tr
+                            key={routine.id}
+                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group"
+                            onClick={() => toggleExpand(routine.id)}
                           >
-                            {env}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {routine.lastHeartbeatAt && (
-                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      Último batimento registrado:{' '}
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {formatIso(routine.lastHeartbeatAt)} ({formatAge(routine.lastHeartbeatAgeMs)})
-                      </span>
-                    </div>
-                  )}
-
-                  {routine.lastError && (
-                    <div className="mt-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-2.5 rounded-lg border border-red-200 dark:border-red-800">
-                      <span className="font-bold">Último erro capturado:</span> {routine.lastError}
-                    </div>
-                  )}
+                            <td className="py-3.5 px-4 align-top max-w-sm">
+                              <div className="flex items-start gap-2.5">
+                                <span className="material-symbols-outlined text-[20px] text-primary dark:text-blue-400 shrink-0 mt-0.5">
+                                  {triggerIcon(routine)}
+                                </span>
+                                <div>
+                                  <p className="font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-blue-400 transition-colors">
+                                    {routine.name}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                                    {routine.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                <span className="material-symbols-outlined text-[15px] opacity-70">
+                                  {ROUTINE_CATEGORIES[routine.category].icon}
+                                </span>
+                                {routine.categoryLabel}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 align-top">
+                              <p className="font-medium text-slate-800 dark:text-slate-200 text-xs">
+                                {routine.frequency}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                {routine.triggerTypeLabel}
+                              </p>
+                            </td>
+                            <td className="py-3.5 px-4 align-top max-w-xs">
+                              <div className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 shrink-0 mt-0.5">
+                                  lock
+                                </span>
+                                <span className="line-clamp-2" title={routine.concurrencyLock}>
+                                  {routine.concurrencyLock}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 align-top text-center whitespace-nowrap">
+                              <Badge tone={statusInfo.tone}>{statusInfo.label}</Badge>
+                              {routine.lastHeartbeatAgeMs !== null && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  batimento: {formatAge(routine.lastHeartbeatAgeMs)}
+                                </p>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                icon={isExpanded ? 'expand_less' : 'expand_more'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpand(routine.id);
+                                }}
+                              >
+                                {isExpanded ? 'Ocultar' : 'Ver Mais'}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </Card>
-          );
-        })()
+              </Section>
+            );
+          })}
+        </div>
       )}
+
+      {expandedRoutineId && (() => {
+        const routine = routines.find((r) => r.id === expandedRoutineId);
+        if (!routine) return null;
+
+        return (
+          <Card padding="md" className="border-primary/40 dark:border-blue-500/40 bg-slate-50/50 dark:bg-slate-900/40">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary dark:text-blue-400">
+                    info
+                  </span>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                    {routine.name}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  ID técnico:{' '}
+                  <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-primary-dark dark:text-blue-300 font-mono">
+                    {routine.id}
+                  </code>
+                </p>
+              </div>
+              <Button variant="ghost" size="xs" icon="close" onClick={() => setExpandedRoutineId(null)}>
+                Fechar
+              </Button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 mt-4 text-xs">
+              <div>
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Descrição Completa da Regra de Negócio
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                  {routine.description}
+                </p>
+
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mt-3 mb-1">
+                  Módulos e Arquivos Fonte
+                </h4>
+                <p className="font-mono text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  {routine.sourceModule}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Agendamento & Temporização Detalhada
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                  {routine.scheduleDetails}
+                </p>
+
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mt-3 mb-1">
+                  Mecanismo de Concorrência & Segurança
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                  {routine.concurrencyLock}
+                </p>
+
+                {routine.environmentVars && routine.environmentVars.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      Variáveis de Ambiente Relevantes
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {routine.environmentVars.map((env) => (
+                        <span
+                          key={env}
+                          className="font-mono text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded"
+                        >
+                          {env}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {routine.lastHeartbeatAt && (
+                  <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Último batimento registrado:{' '}
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {formatIso(routine.lastHeartbeatAt)} ({formatAge(routine.lastHeartbeatAgeMs)})
+                    </span>
+                  </div>
+                )}
+
+                {routine.lastError && (
+                  <div className="mt-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-2.5 rounded-lg border border-red-200 dark:border-red-800">
+                    <span className="font-bold">Último erro capturado:</span> {routine.lastError}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
