@@ -622,7 +622,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
   });
 
-  it('tags: só o FGTS é Automática; municipais Assistida; o resto Manual; AFE sem tag', async () => {
+  it('tag AUTO só no FGTS, junto dos dias restantes; nada para manual/assistida', async () => {
     stubFetch(() => jsonResponse(listing({
       sanitaria: [
         {
@@ -649,14 +649,28 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
     const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
     const mobiliario = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_mobiliario).closest('tr')!;
-    expect(within(federal).getByText('Manual')).toBeTruthy();
-    expect(within(fgts).getByText('Automática')).toBeTruthy();
-    expect(within(mobiliario).getByText('Assistida')).toBeTruthy();
+    // Só o automático ganha etiqueta. Manual é o caso comum e vira ruído;
+    // assistida também fica sem, por decisão do dono.
+    expect(within(fgts).getByText('AUTO')).toBeTruthy();
+    expect(within(federal).queryByText('AUTO')).toBeNull();
+    expect(within(mobiliario).queryByText('AUTO')).toBeNull();
+    expect(within(federal).queryByText(/Manual|Assistida|Automática/)).toBeNull();
+    expect(within(mobiliario).queryByText(/Manual|Assistida|Automática/)).toBeNull();
+
+    // A etiqueta vive na célula dos dias restantes, não junto do nome.
+    const celulas = within(fgts).getAllByRole('cell');
+    expect(within(celulas[0]).queryByText('AUTO')).toBeNull();
+    const celulaComTag = celulas.find((c) => within(c).queryByText('AUTO') !== null)!;
+    expect(within(celulaComTag).getByText(/dias|vence|vencida/)).toBeTruthy();
+
+    // A L13 faz os cards nascerem recolhidos: é preciso abrir antes de ler.
     await expandFamily(/Autorizações sanitárias/);
     const sanitaria = screen.getByRole('table', { name: 'Autorizações sanitárias' });
-    expect(within(sanitaria).queryByText('Automática')).toBeNull();
-    expect(within(sanitaria).queryByText('Manual')).toBeNull();
-    expect(within(sanitaria).queryByText('Assistida')).toBeNull();
+    expect(within(sanitaria).queryByText('AUTO')).toBeNull();
+
+    // O link de emissão continua visível em cada certidão que tem portal.
+    expect(within(fgts).getByRole('link', { name: /Emitir/ })).toBeTruthy();
+    expect(within(federal).getByRole('link', { name: /Emitir/ })).toBeTruthy();
   });
 });
 

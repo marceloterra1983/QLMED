@@ -28,22 +28,16 @@ export function isDaysDestaque(days: number | null): boolean {
 
 const CELL = 'px-3 py-2 sm:py-1.5';
 
-const ICON_BTN =
-  'inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
-
 const INLINE_ICON_BTN =
   'p-1.5 rounded-lg text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors';
 
-const AUTOMACAO_LABEL: Record<DocumentosAutomacao, string> = {
-  automatica: 'Automática',
-  assistida: 'Assistida',
-  manual: 'Manual',
-};
-
-const AUTOMACAO_TONE: Record<DocumentosAutomacao, 'success' | 'warning' | 'neutral'> = {
-  automatica: 'success',
-  assistida: 'warning',
-  manual: 'neutral',
+/**
+ * Só o que é automático ganha etiqueta. `manual` é o caso comum e não merece
+ * ruído; `assistida` também fica sem etiqueta por enquanto — decisão do dono,
+ * que pediu apenas AUTO ao lado dos dias restantes.
+ */
+const AUTOMACAO_TAG: Partial<Record<DocumentosAutomacao, string>> = {
+  automatica: 'AUTO',
 };
 
 function arquivoUrl(id: string, download = false): string {
@@ -70,24 +64,33 @@ function DaysCell({ row }: { row: DocumentosRow }) {
   const days = row.daysRemaining;
   const destaque = isDaysDestaque(days);
   return (
-    <span
-      className={`tabular-nums text-sm ${
-        destaque
-          ? 'font-medium text-amber-700 dark:text-amber-400'
-          : 'text-slate-700 dark:text-slate-300'
-      }`}
-      data-destaque={destaque ? 'true' : undefined}
-    >
-      {formatDaysRemaining(days)}
+    <span className="inline-flex items-center whitespace-nowrap">
+      <span
+        className={`tabular-nums text-sm ${
+          destaque
+            ? 'font-medium text-amber-700 dark:text-amber-400'
+            : 'text-slate-700 dark:text-slate-300'
+        }`}
+        data-destaque={destaque ? 'true' : undefined}
+      >
+        {formatDaysRemaining(days)}
+      </span>
+      <AutomacaoTag value={row.automacao} />
     </span>
   );
 }
 
 function AutomacaoTag({ value }: { value: DocumentosAutomacao | null }) {
-  if (!value) return null;
+  const texto = value ? AUTOMACAO_TAG[value] : undefined;
+  if (!texto) return null;
   return (
-    <Badge tone={AUTOMACAO_TONE[value]} dot={false} className="ml-2 uppercase tracking-wide">
-      {AUTOMACAO_LABEL[value]}
+    <Badge
+      tone="success"
+      dot={false}
+      className="ml-2 uppercase tracking-wide"
+      title="Emissão automatizável neste portal"
+    >
+      {texto}
     </Badge>
   );
 }
@@ -236,8 +239,29 @@ export default function DocumentosFamilyTable({
         <RowActionsBase inline={inline} menu={menu} />
       );
 
+    const emissao = row.emissaoUrl ? (
+      <a
+        href={row.emissaoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={row.emissaoAria ?? `Emitir ${row.label}`}
+        aria-label={row.emissaoAria ?? `Emitir ${row.label}`}
+        className={INLINE_ICON_BTN}
+        onClick={stopRowEvent}
+      >
+        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
+      </a>
+    ) : null;
+
     return (
-      <div className="flex flex-wrap items-center gap-1">
+      /**
+       * `whitespace-nowrap` de propósito: com `flex-wrap` o link de emissão,
+       * por ser o último filho, era empurrado para uma segunda linha e sumia da
+       * vista em ecrãs estreitos. Ele é a ação mais usada da tabela — é por ele
+       * que se vai emitir a certidão nova.
+       */
+      <div className="flex items-center justify-center gap-0 whitespace-nowrap">
+        {emissao}
         {actions}
         {isEditingRow(row) ? (
           <>
@@ -248,17 +272,6 @@ export default function DocumentosFamilyTable({
               Cancelar
             </Button>
           </>
-        ) : null}
-        {row.emissaoUrl ? (
-          <a
-            href={row.emissaoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={row.emissaoAria ?? `Emitir ${row.label}`}
-            className={ICON_BTN}
-          >
-            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
-          </a>
         ) : null}
       </div>
     );
@@ -308,7 +321,6 @@ export default function DocumentosFamilyTable({
               >
                 <td className={CELL}>
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
-                  <AutomacaoTag value={row.automacao} />
                 </td>
                 {layout === 'yearFolders' ? null : (
                   <>
