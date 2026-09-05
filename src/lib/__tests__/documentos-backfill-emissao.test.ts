@@ -52,7 +52,8 @@ const lock = vi.hoisted(() => ({
 }));
 
 const pdfValidity = vi.hoisted(() => ({
-  readValidityFromPdf: vi.fn(async (): Promise<PdfValidityResult> => NONE),
+  // O argumento é declarado porque um teste distingue o PDF pelo conteúdo.
+  readValidityFromPdf: vi.fn(async (_data?: Buffer): Promise<PdfValidityResult> => NONE),
 }));
 
 const openOd = vi.hoisted(() => ({
@@ -595,7 +596,7 @@ describe('SPEC-042 — a varredura tem de AVANÇAR', () => {
     const downloadPdf = vi.fn(async (itemId: string) =>
       Buffer.from(itemId === a.oneDriveItemId ? '%PDF-A' : '%PDF-B'),
     );
-    pdfValidity.readValidityFromPdf.mockImplementation(async (buf: Buffer) =>
+    pdfValidity.readValidityFromPdf.mockImplementation(async (buf?: Buffer) =>
       String(buf).includes('%PDF-B')
         ? emitted('2026-03-01')
         : { validUntil: null, emitidoEm: null, confidence: 'nenhuma' as const, matchedLabel: null, textChars: 20 },
