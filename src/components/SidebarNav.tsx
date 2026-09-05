@@ -29,6 +29,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/financeiro/contas-receber': { label: 'Contas a Receber', icon: 'request_quote' },
   '/gestao/impcg': { label: 'IMPCG', icon: 'assignment' },
   '/gestao/cassems': { label: 'CASSEMS', icon: 'clinical_notes' },
+  '/gestao/unimed-cg': { label: 'Unimed CG', icon: 'assignment_turned_in' },
   '/relatorios/valvulas-importadas': { label: 'Válvulas Mecânicas Corcym', icon: 'bar_chart' },
   '/sistema/sync': { label: 'Sincronizar', icon: 'cloud_sync' },
   '/sistema/errors': { label: 'Erros', icon: 'warning' },
@@ -113,6 +114,7 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
       items: [
         { label: 'IMPCG', icon: 'assignment', href: '/gestao/impcg' },
         { label: 'CASSEMS', icon: 'clinical_notes', href: '/gestao/cassems' },
+        { label: 'Unimed CG', icon: 'assignment_turned_in', href: '/gestao/unimed-cg' },
       ],
     },
     {

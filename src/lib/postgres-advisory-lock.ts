@@ -33,6 +33,10 @@ export function cassemsMailIngestLockKey(companyId: string): string {
   return `cassems-mail-ingest:${companyId}`;
 }
 
+export function unimedCgMailIngestLockKey(companyId: string): string {
+  return `unimed-cg-mail-ingest:${companyId}`;
+}
+
 export function documentosIngestLockKey(companyId: string): string {
   return `documentos-ingest:${companyId}`;
 }

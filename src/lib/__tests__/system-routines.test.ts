@@ -18,7 +18,7 @@ import { canAccessApi, PAGE_GROUPS } from '@/lib/navigation';
 
 describe('System Routines Catalog', () => {
   it('contém exatamente 19 rotinas catalogadas', () => {
-    expect(SYSTEM_ROUTINES).toHaveLength(19);
+    expect(SYSTEM_ROUTINES).toHaveLength(20);
   });
 
   it('toda rotina possui identificador único e campos obrigatórios preenchidos', () => {
@@ -60,7 +60,7 @@ describe('System Routines Catalog', () => {
 
   it('buildRoutineSummary expõe contadores total, backgroundServices, scheduledTimers e watchdogs', () => {
     const summary = buildRoutineSummary(SYSTEM_ROUTINES, { 'auto-sync': { status: 'running' } as any });
-    expect(summary.total).toBe(19);
+    expect(summary.total).toBe(20);
     expect(summary.backgroundServices).toBe(1);
     expect(summary.scheduledTimers).toBeGreaterThan(0);
     expect(summary.watchdogs).toBeGreaterThanOrEqual(2);
@@ -105,6 +105,7 @@ describe('System Routines Catalog', () => {
     expect(CASSEMS_INGEST_INTERVAL_MS).toBe(15 * 60 * 1000);
     expect(byId['impcg-mail-ingest'].frequency).toMatch(/15 minutos/i);
     expect(byId['cassems-mail-ingest'].frequency).toMatch(/15 minutos/i);
+    expect(byId['unimed-cg-mail-ingest'].frequency).toMatch(/15 minutos/i);
 
     expect(DOCUMENTOS_ALERT_THRESHOLDS).toEqual([30, 15, 7, 3, 1, 0]);
     expect(byId['documentos-alert'].description).toMatch(/30, 15, 7, 3, 1, 0/);
@@ -160,6 +161,7 @@ describe('System Routines Catalog', () => {
     expect(lockSrc).toMatch(/export function cassemsMailIngestLockKey/);
     expect(lockSrc).not.toMatch(/export function cassemsIngestLockKey/);
     expect(byId['cassems-mail-ingest'].concurrencyLock).toMatch(/cassemsMailIngestLockKey/);
+    expect(byId['unimed-cg-mail-ingest'].concurrencyLock).toMatch(/unimedCgMailIngestLockKey/);
     expect(byId['cassems-mail-ingest'].concurrencyLock).not.toMatch(/cassemsIngestLockKey/);
 
     expect(existsSync(resolve(process.cwd(), 'src/lib/anvisa'))).toBe(false);

@@ -3,6 +3,7 @@ export type BackgroundServiceName =
   | 'local-xml-sync'
   | 'impcg-mail-ingest'
   | 'cassems-mail-ingest'
+  | 'unimed-cg-mail-ingest'
   | 'documentos-ingest'
   | 'documentos-alert'
   | 'notification-outbox-purge';

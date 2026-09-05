@@ -1,5 +1,6 @@
 import type { BackgroundServiceName, BackgroundServiceStatus } from './background-service-health';
 import { CASSEMS_INGEST_INTERVAL_MS } from './cassems/constants';
+import { UNIMED_CG_INGEST_INTERVAL_MS } from './unimed-cg/constants';
 import {
   DOCUMENTOS_ALERT_THRESHOLDS,
   DOCUMENTOS_INGEST_INTERVAL_MS,
@@ -249,6 +250,21 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     description: 'Varre e-mails recebidos da CASSEMS via Microsoft Graph, processa demonstrativos de contas médicas, extrai dados de procedimentos/autorizações e atualiza o estado operacional.',
     backgroundServiceName: 'cassems-mail-ingest',
     environmentVars: ['QLMED_DISABLE_BACKGROUND_SERVICES', 'CASSEMS_MAILBOXES'],
+  },
+  {
+    id: 'unimed-cg-mail-ingest',
+    name: 'Ingestão Automática de Autorizações Unimed CG',
+    category: 'gestao',
+    categoryLabel: 'Gestão & Convênios',
+    triggerType: 'background_service',
+    triggerTypeLabel: 'Serviço em Segundo Plano (Contínuo)',
+    frequency: intervalLabel(UNIMED_CG_INGEST_INTERVAL_MS),
+    scheduleDetails: `Ciclo contínuo no timer com heartbeat ativo; ${intervalSeconds(UNIMED_CG_INGEST_INTERVAL_MS)}s (UNIMED_CG_INGEST_INTERVAL_MS)`,
+    concurrencyLock: 'Postgres Advisory Lock por empresa (unimedCgMailIngestLockKey) + dedup internetMessageId/processId',
+    sourceModule: 'src/lib/unimed-cg/ingest.ts',
+    description: 'Varre e-mails OPME Unimed CG via Microsoft Graph, abre o link Clique aqui, gera PDF, grava no OneDrive e notifica o grupo WhatsApp Evolution.',
+    backgroundServiceName: 'unimed-cg-mail-ingest',
+    environmentVars: ['QLMED_DISABLE_BACKGROUND_SERVICES', 'UNIMED_CG_WHATSAPP_ENABLED', 'UNIMED_CG_WHATSAPP_GROUP_JID'],
   },
   {
     id: 'daily-summary-catchup',
@@ -516,6 +532,7 @@ const ROUTINE_PAGE_SECTION_BY_ID: Record<string, RoutinePageSection> = {
   'documentos-alert': 'Cadastros',
   'impcg-mail-ingest': 'Gestão',
   'cassems-mail-ingest': 'Gestão',
+  'unimed-cg-mail-ingest': 'Gestão',
   'daily-summary-catchup': 'Financeiro',
   'notification-outbox-worker': 'Sistema',
   'notification-outbox-purge': 'Sistema',

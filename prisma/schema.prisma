@@ -173,6 +173,9 @@ model Company {
   cassemsAuthorizations CassemsAuthorization[]
   cassemsSourceMessages CassemsSourceMessage[]
   cassemsIngestState    CassemsIngestState?
+  unimedCgAuthorizations UnimedCgAuthorization[]
+  unimedCgSourceMessages UnimedCgSourceMessage[]
+  unimedCgIngestState    UnimedCgIngestState?
   documents             CompanyDocument[]
   documentIngestState   CompanyDocumentIngestState?
   invoiceEmissions      InvoiceEmission[]
@@ -1045,6 +1048,65 @@ model CassemsSourceMessage {
 }
 
 model CassemsIngestState {
+  companyId           String    @id
+  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lastSuccessAt       DateTime?
+  lastError           String?
+  lastErrorAt         DateTime?
+  backfillCompletedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+
+enum UnimedCgParseStatus {
+  ok
+  parcial
+  falha
+}
+
+model UnimedCgAuthorization {
+  id                   String                 @id @default(cuid())
+  companyId            String
+  company              Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  processId            String
+  authorizationNumber  String?
+  procedureDate        DateTime?
+  location             String?
+  totalAmount          Decimal
+  oneDriveItemId       String
+  fileName             String
+  sourceUrl            String?
+  parseStatus          UnimedCgParseStatus
+  receivedAt           DateTime
+  sourceMessages       UnimedCgSourceMessage[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@unique([companyId, processId])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgSourceMessage {
+  id                String                @id @default(cuid())
+  companyId         String
+  company           Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  authorizationId   String?
+  authorization     UnimedCgAuthorization? @relation(fields: [authorizationId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  whatsappSentAt    DateTime?
+  whatsappMessageId String?
+  createdAt         DateTime              @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([authorizationId])
+}
+
+model UnimedCgIngestState {
   companyId           String    @id
   company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lastSuccessAt       DateTime?
