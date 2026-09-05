@@ -157,7 +157,7 @@ export default function ImportSpicaModal({ onClose, onImported }: ImportSpicaMod
               : 'border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30'
           }`}
         >
-          <span className="material-symbols-outlined text-[32px] text-slate-400 dark:text-slate-500">upload_file</span>
+          <span className="material-symbols-outlined text-[32px] text-slate-500 dark:text-slate-400">upload_file</span>
           <p className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
             Arraste Rel_Produtos.csv ou .xlsx
           </p>
@@ -178,7 +178,7 @@ export default function ImportSpicaModal({ onClose, onImported }: ImportSpicaMod
           </div>
           {file && (
             <p className="mt-3 text-xs font-mono text-slate-600 dark:text-slate-300 truncate" title={file.name}>
-              {file.name} · {(file.size / 1024).toFixed(0)} KB
+              {file.name} · {formatInt(Math.round(file.size / 1024))} KB
             </p>
           )}
         </div>
@@ -197,7 +197,7 @@ export default function ImportSpicaModal({ onClose, onImported }: ImportSpicaMod
                 { label: 'Refs duplicadas', value: preview.summary.quarantinedDuplicates },
               ].map((item) => (
                 <div key={item.label} className="bg-white dark:bg-slate-900 px-4 py-3">
-                  <dt className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{item.label}</dt>
+                  <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.label}</dt>
                   <dd className="mt-0.5 text-lg font-bold tabular-nums text-slate-900 dark:text-white">
                     {formatInt(item.value)}
                   </dd>
@@ -206,7 +206,7 @@ export default function ImportSpicaModal({ onClose, onImported }: ImportSpicaMod
             </dl>
             {preview.samples && preview.samples.length > 0 && (
               <div className="px-4 py-3 max-h-40 overflow-y-auto">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Amostra</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Amostra</p>
                 <ul className="space-y-1.5">
                   {preview.samples.slice(0, 8).map((s, i) => (
                     <li key={`${s.productKey}-${i}`} className="text-xs text-slate-600 dark:text-slate-300 font-mono truncate">
