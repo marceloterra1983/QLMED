@@ -27,25 +27,25 @@ Esta especificação cria a página canônica **Rotinas** (`/sistema/rotinas`), 
 
 ## Catálogo Canônico de Rotinas Mapeadas
 
-1. **Sincronização Fiscal SEFAZ (DistDFe)**: Consulta horária (no minuto `:00`) via WebService DistDFe com certificado A1 (.pfx), controle anti-bloqueio cStat 656 e cooldown progressivo.
+1. **Sincronização Fiscal SEFAZ (DistDFe)**: Checagem no minuto `:00` com piso padrão de 6 horas (`SEFAZ_AUTO_SYNC_INTERVAL_MINUTES=360`) via WebService DistDFe com certificado A1 (.pfx), controle anti-bloqueio cStat 656 e cooldown progressivo.
 2. **Sincronização Fiscal NSDocs (API Nuvem Fiscal)**: Consulta periódica configurável para reconciliação de NF-e, NFS-e e CT-e com paginação e rate limit.
 3. **Sincronização Fiscal Receita NFS-e (ADN Nacional)**: Consulta periódica ao Ambiente de Dados Nacional da Receita Federal para notas de serviços via mTLS.
 4. **Recuperação de Sincronizações Travadas (Stuck Sync Recovery)**: Ciclo a cada 60s que detecta processos fiscais caídos há mais de 30 minutos sob lock Postgres liberado e auto-recupera para erro.
 5. **Reconciliação e Rebuild de Agregados de Produtos**: Rebuild noturno diário às 03:00 e atualização incremental a cada nota emitida/recebida, recalculando estoque, preços médios e tributação.
 6. **Monitoramento de XMLs Locais (File Watcher)**: Monitoramento contínuo de pastas locais de emissão e entrada de notas fiscais via Chokidar.
-7. **Sincronização de XMLs do OneDrive**: Varredura a cada 5 minutos e reconciliação a cada 30 minutos de XMLs fiscais sincronizados na nuvem Microsoft.
+7. **Sincronização de XMLs do OneDrive**: Cópia default a cada 1 minuto (`LOCAL_XML_COPY_INTERVAL_MS=60000`) e reconciliação a cada 30 minutos de XMLs fiscais sincronizados na nuvem Microsoft.
 8. **Ingestão Automática de E-mails/Faturas IMPCG**: Ciclo a cada 15 minutos via Microsoft Graph para download e OCR de guias e relatórios de faturamento do IMPCG.
 9. **Ingestão Automática de E-mails/Faturas CASSEMS**: Ciclo a cada 15 minutos via Microsoft Graph para processamento de demonstrativos de contas médicas CASSEMS.
-10. **Ingestão de Documentos Corporativos (OneDrive)**: Ciclo a cada 10 minutos para detecção de certidões, alvarás e contratos da pasta corporativa da empresa.
+10. **Ingestão de Documentos Corporativos (OneDrive)**: Ciclo a cada 1 hora (`DOCUMENTOS_INGEST_INTERVAL_MS`) para detecção de certidões, alvarás e contratos da pasta corporativa da empresa.
 11. **Alertas Diários de Vencimento de Documentos**: Execução diária às 08:00 (Brasília) para verificação de prazos de certidões e envio de PDFs com aviso via WhatsApp Evolution API.
 12. **Purga e Retenção do Outbox de Notificações**: Ciclo a cada 24 horas para expurgo seguro de entregas de notificações antigas acima do teto de retenção.
 13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada minuto via script host consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
 14. **Sincronização e Validação com Base ANVISA**: Validação cadastral periódica e sob demanda de produtos hospitalares contra os dados abertos da ANVISA.
 15. **Watchdog de Sessão WhatsApp (Evolution API)**: Monitoramento a cada 5 minutos com circuit breaker e auto-reconexão do gateway WhatsApp.
-16. **Watchdog de Execuções Travadas do n8n**: Monitoramento a cada 10 minutos para identificação e cancelamento seguro de execuções órfãs do n8n.
-17. **Backup Automatizado do PostgreSQL**: Rotina noturna às 02:00 com validação de integridade de dump e retenção gerenciada.
-18. **Sincronização de Distribuição DFe para CT-e**: Rotina periódica a cada 2 horas para captura dedicada de conhecimentos de transporte eletrônico.
-19. **Resumo Diário Operacional e Financeiro**: Consolidação diária às 19:30 de faturamento, vendas e notas autorizadas para a diretoria.
+16. **Watchdog de Execuções Travadas do n8n**: Monitoramento a cada 2 minutos (`OnUnitActiveSec=2min`) para identificação e cancelamento seguro de execuções órfãs do n8n.
+17. **Backup Automatizado do PostgreSQL**: Script `qlmed-pg-backup.sh` como fallback manual; sem timer 02:00 no repositório. A cobertura noturna documentada é o snapshot `server-backup`.
+18. **Sincronização de Distribuição DFe para CT-e**: Timer horário no minuto `:17` (`OnCalendar=*-*-* *:17:00`) para captura dedicada de conhecimentos de transporte eletrônico.
+19. **Resumo Diário Operacional e Financeiro**: Catch-up a cada 15 minutos do workflow n8n `dailysummaryissued01` após o alvo 18h `America/Campo_Grande` (não 19:30).
 
 ## User Scenarios & Testing
 
