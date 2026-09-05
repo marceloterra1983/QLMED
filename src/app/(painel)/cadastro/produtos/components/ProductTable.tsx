@@ -372,14 +372,9 @@ export default function ProductTable({
           <p className="text-sm text-amber-900 dark:text-amber-200 text-center">
             Itens ocultos pelos grupos recolhidos nesta pagina.
           </p>
-          <button
-            type="button"
-            onClick={() => setCollapsedGroups(new Set())}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-500 px-3 py-2 rounded-lg transition-colors"
-          >
-            <span className="material-symbols-outlined text-[16px]">unfold_more</span>
+          <Button type="button" icon="unfold_more" onClick={() => setCollapsedGroups(new Set())}>
             Expandir e mostrar produtos
-          </button>
+          </Button>
         </div>
       )}
 
