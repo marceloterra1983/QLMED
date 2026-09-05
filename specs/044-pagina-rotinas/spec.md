@@ -67,7 +67,10 @@ A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar
 ### Functional Requirements
 
 - **FR-001**: O sistema MUST disponibilizar a rota `/sistema/rotinas` sob o layout do painel, utilizando o componente `PageHeader` padrão.
-- **FR-002**: A tela MUST apresentar uma tabela responsiva com colunas: *Rotina*, *Categoria*, *Gatilho / Frequência*, *Mecanismo de Segurança / Lock*, *Status* e *Ações / Detalhes*.
+- **FR-002**: A tela MUST apresentar tabelas responsivas dentro dos cards de
+  seção, com colunas: *Rotina & Descrição*, *Gatilho / Frequência*, *Status* e
+  *Detalhes*. Categoria e Lock NÃO aparecem como colunas da listagem (ficam no
+  popup de detalhes).
 - **FR-003**: O sistema MUST expor a rota de API `/api/sistema/rotinas` (autorizada para usuários da sessão com acesso à página ou perfil admin) fornecendo o catálogo estático enriquecido com a telemetria ao vivo de `getBackgroundServiceHealth()`.
 - **FR-004**: O menu de navegação lateral (`SidebarNav`) MUST incluir o item "Rotinas" com ícone representativo (`schedule`), sincronizado entre `PAGE_GROUPS`, `PAGE_LABELS` e `buildNavItems`.
 - **FR-005**: A tabela MUST disponibilizar contadores de resumo (total de rotinas, serviços em background ativos, rotinas agendadas/cron e rotinas de proteção/watchdog).
@@ -80,6 +83,10 @@ A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar
   de `PAGE_GROUPS` (Cadastros, Fiscal, Estoque, Financeiro, Gestão, Relatórios,
   Sistema), com card **Outros** apenas para rotinas sem mapeamento. Todos os
   cards MUST iniciar **recolhidos** ao abrir a página (`defaultOpen=false`).
+- **FR-009**: O detalhe de uma rotina MUST abrir em popup (`CardDetailPopupModal`)
+  com abas **Detalhes** e **Histórico**. O histórico usa `GET /api/sistema/rotinas/[id]/history`
+  (ACL da página Rotinas); SyncLog para rotinas fiscais mapeadas; mensagem explícita
+  quando a rotina não tem fonte de execução persistida.
 
 ## Acceptance Criteria
 
@@ -89,3 +96,6 @@ A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar
 - **AC-008** (FR-008): o teste do catálogo cobre `groupRoutinesByPageSection`
   (sem duplicar/perder rotinas; ordem = PAGE_GROUPS + Outros) e o client
   declara `defaultOpen={false}` com `Section`.
+- **AC-009** (FR-009): o client usa `RoutineDetailModal`/`CardDetailPopupModal`
+  com aba Histórico; a tabela da listagem não contém cabeçalhos Categoria nem
+  Lock; a API de history responde 404 para id inexistente e 403 sem a página.

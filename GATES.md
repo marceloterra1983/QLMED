@@ -23,10 +23,10 @@ Scope: Grupos (ex. CARDIACA) devem iniciar expandidos e mostrar linhas de produt
 - [x] G5: Testes do contrato de grupos passam
   CHECK: ./node_modules/.bin/vitest run src/lib/__tests__/produtos-groups-expanded-contract.test.ts "src/app/(painel)/cadastro/produtos/components/__tests__/product-group-visibility.test.ts" "src/app/(painel)/cadastro/produtos/components/__tests__/ProductTable-expand-guard.test.tsx"
   EXPECT: Test Files  3 passed
-  EVIDENCE: 3 files / 9 tests passed (medido 12:24)
+  EVIDENCE: 3 files / 9 tests passed
 
 - [ ] G6: PR mergeado + deploy produção + health com SHA novo
   EVIDENCE: pending
 
 - [x] G7: Evidência visual — screenshot/DOM com COD. SPICA + descrição visíveis
-  EVIDENCE: DOM sampleCodes=["003884","C8301",...] rowTexts com ALEXIS RETRATOR; screenshots em .playwright-mcp/; cliqueExpandir=0
+  EVIDENCE: DOM sampleCodes=["003884","C8301",...] rowTexts com ALEXIS RETRATOR; cliqueExpandir=0
