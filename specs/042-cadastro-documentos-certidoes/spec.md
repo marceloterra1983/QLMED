@@ -67,8 +67,11 @@ falhar de forma visível, não chutar.
 - **FR-002**: A seção mostra uma tabela com **uma linha por tipo**, nesta ordem
   fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Estadual
   (MT); CND Municipal — mobiliário; CND Municipal — débitos gerais. Colunas:
-  Certidão, Arquivo, Válida até, Dias restantes, Ações. Tipo sem documento
-  mostra "Não encontrada" e nenhuma ação.
+  Certidão, Válida até, Dias restantes, Ações. "Dias restantes" mostra o
+  número vindo do servidor (`N dias` / `1 dia` / `vence hoje` /
+  `vencida há N dias` / `—`); destaque visual só quando
+  `daysRemaining <= 7`. Tipo sem documento não tem Ver/Baixar; o link de
+  emissão (FR-017) permanece.
 - **FR-003**: "Dias restantes" é calculado **no servidor**, em
   `America/Sao_Paulo`, por diferença de datas civis (não de instantes). Faixas
   e rótulos: `> 30` → "ok"; `8–30` → "atenção"; `1–7` → "urgente"; `0` → "vence
@@ -79,7 +82,12 @@ falhar de forma visível, não chutar.
   pela conexão **nomeada** `faturamento@qlmed.com.br` — sem fallback para
   "qualquer conexão da empresa" (mesma regra do IMPCG, PRIV-002).
 - **FR-006**: O documento **vigente** de um tipo é o de maior `validUntil` não
-  removido. Os anteriores ficam acessíveis num histórico expansível por linha.
+  removido. Os anteriores não aparecem na UI: certidão vencida não tem valor
+  operacional depois de arquivada no OneDrive (FR-016). Continuam no banco.
+- **FR-017**: Cada linha da tabela (incluindo tipo sem documento) tem um
+  link direto para o sítio de emissão do órgão (`CERTIDAO_EMISSAO_URL`),
+  `target="_blank"` com `rel="noopener noreferrer"`. A emissão destas
+  certidões é humana; o sistema leva a pessoa ao sítio certo em um clique.
 
 ### Ingestão (fonte: OneDrive)
 
@@ -156,9 +164,11 @@ falhar de forma visível, não chutar.
 
 ## Acceptance Criteria
 
-- **AC-001** (FR-001/002/009): usuário com `/cadastro/documentos` em
-  `allowedPages` vê a página no menu e a tabela com 7 linhas na ordem fixa;
-  usuário sem a página recebe 403 na página e em `/api/documentos`.
+- **AC-001** (FR-001/002/009/017): usuário com `/cadastro/documentos` em
+  `allowedPages` vê a página no menu e a tabela com 7 linhas na ordem fixa,
+  colunas Certidão / Válida até / Dias restantes / Ações, e um link de
+  emissão por linha; usuário sem a página recebe 403 na página e em
+  `/api/documentos`.
 - **AC-002** (FR-003): `daysRemaining('2026-09-04', '2026-09-29') === 25`;
   `('2026-09-04','2026-09-04') === 0`; `('2026-09-04','2026-08-13') === -22`;
   rótulos conforme faixas; teste cobre virada de dia em SP vs UTC.
@@ -168,7 +178,8 @@ falhar de forma visível, não chutar.
   com sessão sem página → 403; com página → 200 `application/pdf`; com
   `download=1` → `Content-Disposition: attachment`.
 - **AC-005** (FR-006/005b): duas linhas do mesmo tipo → a de maior
-  `validUntil` é a vigente; linha com `removedAt` nunca é vigente.
+  `validUntil` é a vigente; linha com `removedAt` nunca é vigente. A
+  listagem da página não inclui histórico nem arquivos `kind=outro`.
 - **AC-006** (FR-010): com `now` = 25 dias antes da validade não envia; = 30
   envia uma vez e não repete no tick seguinte; = -7 envia; envio recebe o PDF
   e a legenda contém tipo, arquivo e "vence em N dias"/"vencida há N dias".

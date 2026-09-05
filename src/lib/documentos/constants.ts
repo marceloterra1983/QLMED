@@ -78,3 +78,20 @@ export function getDocumentosWhatsAppGroupRaw(): string | null {
   // Sem fallback para o grupo fiscal. Sem destino próprio, o canal fica desligado.
   return process.env.DOCUMENTOS_WHATSAPP_GROUP_JID ?? null;
 }
+
+/**
+ * Onde uma pessoa emite cada certidão. As URLs foram verificadas uma a uma no
+ * spike de emissão automática (specs/042-cadastro-documentos-certidoes/SPIKE-emissao.md),
+ * que concluiu que só a federal é automatizável (API paga do SERPRO) e que
+ * TST, SEFAZ-MS e SEFAZ-MT ficam humanas por captcha. Enquanto for humano, o
+ * mínimo que o sistema deve é levar a pessoa ao sítio certo em um clique.
+ */
+export const CERTIDAO_EMISSAO_URL: Record<Exclude<CompanyDocumentKind, 'outro'>, string> = {
+  cnd_federal: 'https://servicos.receitafederal.gov.br/servico/certidoes',
+  crf_fgts: 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf',
+  cndt: 'https://cndt-certidao.tst.jus.br/gerarCertidao',
+  cnd_estadual_ms: 'https://servicos.efazenda.ms.gov.br/pndfis/Home/Emissao',
+  cnd_estadual_mt: 'https://www.sefaz.mt.gov.br/cnd/certidao/servlet/ServletRotdAberto?origem=60',
+  cnd_municipal_mobiliario: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
+  cnd_municipal_gerais: 'https://siatportal.campogrande.ms.gov.br/servicos/cidadao/certidaoMobiliaria',
+};

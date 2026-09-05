@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { CERTIDAO_KINDS_ORDER, CERTIDAO_LABEL } from '@/lib/documentos/constants';
+import { CERTIDAO_EMISSAO_URL, CERTIDAO_KINDS_ORDER, CERTIDAO_LABEL } from '@/lib/documentos/constants';
 import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
 
 const roleState = vi.hoisted(() => ({ canWrite: true }));
@@ -45,62 +45,63 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
     daysRemaining: null,
     status: { key: 'sem_data', label: 'Não encontrada' },
     validUntilSource: null,
-    history: [],
+  };
+}
+
+function row(
+  kind: (typeof CERTIDAO_KINDS_ORDER)[number],
+  overrides: Partial<DocumentosRow>,
+): DocumentosRow {
+  return {
+    id: `doc-${kind}`,
+    kind,
+    label: CERTIDAO_LABEL[kind],
+    fileName: `${kind}.pdf`,
+    validUntil: '2026-12-12',
+    daysRemaining: 99,
+    status: { key: 'ok', label: 'ok' },
+    validUntilSource: 'filename',
+    ...overrides,
   };
 }
 
 function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing {
-  const certidoes = CERTIDAO_KINDS_ORDER.map((kind, index) => {
-    if (index === 0) {
-      return {
-        id: 'doc-federal',
-        kind,
-        label: CERTIDAO_LABEL[kind],
-        fileName: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
-        validUntil: '2026-12-12',
-        daysRemaining: 99,
-        status: { key: 'ok', label: 'ok' },
-        validUntilSource: 'filename',
-        history: [
-          {
-            id: 'doc-federal-old',
-            fileName: 'CERTIDAO RECEITA FEDERAL 06.07.26- QL MED.pdf',
-            validUntil: '2026-07-06',
-          },
-        ],
-      } satisfies DocumentosRow;
-    }
-    if (index === 1) {
-      return {
-        id: 'doc-fgts',
-        kind,
-        label: CERTIDAO_LABEL[kind],
-        fileName: 'CERTIDAO FGTS 01.09.26 QL MED.pdf',
-        validUntil: '2026-09-01',
-        daysRemaining: -3,
-        status: { key: 'vencida', label: 'vencida há 3 dias' },
-        validUntilSource: 'filename',
-        history: [],
-      } satisfies DocumentosRow;
-    }
-    return missingRow(kind);
-  });
+  const certidoes: DocumentosRow[] = [
+    row('cnd_federal', {
+      id: 'doc-federal',
+      fileName: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
+      validUntil: '2026-12-12',
+      daysRemaining: 99,
+      status: { key: 'ok', label: 'ok' },
+    }),
+    row('crf_fgts', {
+      id: 'doc-fgts',
+      fileName: 'CERTIDAO FGTS 01.09.26 QL MED.pdf',
+      validUntil: '2026-09-01',
+      daysRemaining: -3,
+      status: { key: 'vencida', label: 'vencida há 3 dias' },
+    }),
+    row('cndt', {
+      daysRemaining: 1,
+      status: { key: 'urgente', label: 'urgente' },
+    }),
+    row('cnd_estadual_ms', {
+      daysRemaining: 0,
+      status: { key: 'hoje', label: 'vence hoje' },
+    }),
+    row('cnd_estadual_mt', {
+      daysRemaining: 7,
+      status: { key: 'urgente', label: 'urgente' },
+    }),
+    row('cnd_municipal_mobiliario', {
+      daysRemaining: 8,
+      status: { key: 'atencao', label: 'atenção' },
+    }),
+    missingRow('cnd_municipal_gerais'),
+  ];
 
   return {
     certidoes,
-    outros: [
-      {
-        id: 'doc-outro',
-        kind: 'outro',
-        label: CERTIDAO_LABEL.outro,
-        fileName: 'arquivo-avulso.pdf',
-        validUntil: null,
-        daysRemaining: null,
-        status: { key: 'sem_data', label: 'sem data' },
-        validUntilSource: null,
-        history: [],
-      },
-    ],
     ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null },
     ...overrides,
   };
@@ -133,8 +134,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Cadastro › Documentos (SPEC-042 L6)', () => {
-  it('renderiza as 7 certidões na ordem da API, sem ações nas linhas vazias', async () => {
+describe('Cadastro › Documentos (SPEC-042 L9)', () => {
+  it('renderiza as 7 certidões na ordem, sem histórico, sem coluna Arquivo e sem Outros', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
 
@@ -145,30 +146,99 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
 
     const bodyRows = within(table).getAllByRole('row').slice(1);
     expect(bodyRows).toHaveLength(7);
+    expect(bodyRows.map((r) => within(r).getByText(/CND|CRF|CNDT/).textContent)).toEqual(
+      CERTIDAO_KINDS_ORDER.map((kind) => CERTIDAO_LABEL[kind]),
+    );
 
-    const verLinks = screen.getAllByRole('link', { name: 'Ver' });
-    expect(verLinks).toHaveLength(2);
-    expect(verLinks[0].getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo');
-    expect(verLinks[0].getAttribute('target')).toBe('_blank');
-    expect(verLinks[0].getAttribute('rel')).toBe('noopener');
-
-    const baixar = screen.getAllByRole('link', { name: 'Baixar' });
-    expect(baixar[0].getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo?download=1');
-    expect(baixar[0].hasAttribute('download')).toBe(true);
-
+    expect(screen.queryByRole('columnheader', { name: 'Arquivo' })).toBeNull();
+    expect(screen.queryByText('Histórico')).toBeNull();
+    expect(screen.queryByText('Outros arquivos na pasta')).toBeNull();
     expect(screen.queryByText('arquivo-avulso.pdf')).toBeNull();
+    expect(screen.queryByText('CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf')).toBeNull();
   });
 
-  it('expande o histórico por linha e mostra Ver/Baixar dos anteriores', async () => {
+  it('mostra o texto exato de dias nos cinco casos e destaca 7, não 8', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    const table = await screen.findByRole('table', { name: 'Certidões' });
+
+    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
+    expect(within(federal).getByText('99 dias')).toBeTruthy();
+    expect(within(federal).getByText('99 dias').getAttribute('data-destaque')).toBeNull();
+
+    const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
+    expect(within(fgts).getByText('vencida há 3 dias')).toBeTruthy();
+    expect(within(fgts).getByText('vencida há 3 dias').getAttribute('data-destaque')).toBe('true');
+
+    const cndt = within(table).getByText(CERTIDAO_LABEL.cndt).closest('tr')!;
+    expect(within(cndt).getByText('1 dia')).toBeTruthy();
+
+    const ms = within(table).getByText(CERTIDAO_LABEL.cnd_estadual_ms).closest('tr')!;
+    expect(within(ms).getByText('vence hoje')).toBeTruthy();
+    expect(within(ms).getByText('vence hoje').getAttribute('data-destaque')).toBe('true');
+
+    const mt = within(table).getByText(CERTIDAO_LABEL.cnd_estadual_mt).closest('tr')!;
+    expect(within(mt).getByText('7 dias').getAttribute('data-destaque')).toBe('true');
+
+    const mobiliario = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_mobiliario).closest('tr')!;
+    expect(within(mobiliario).getByText('8 dias').getAttribute('data-destaque')).toBeNull();
+
+    const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
+    expect(within(gerais).getByText('—')).toBeTruthy();
+  });
+
+  it('abre o PDF em popup com iframe na rota certa, sem window.open', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Expandir histórico' }));
-    expect(await screen.findByText('CERTIDAO RECEITA FEDERAL 06.07.26- QL MED.pdf')).toBeTruthy();
-    const verLinks = screen.getAllByRole('link', { name: 'Ver' });
-    expect(verLinks).toHaveLength(3);
-    expect(verLinks.some((el) => el.getAttribute('href') === '/api/documentos/doc-federal-old/arquivo')).toBe(true);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ver' })[0]);
+    const iframe = await screen.findByTitle('Preview do documento');
+    expect(iframe.tagName).toBe('IFRAME');
+    expect(iframe.getAttribute('src')).toBe('/api/documentos/doc-federal/arquivo');
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
+  it('cada uma das 7 linhas tem o link de emissão com href da constante e rel noopener', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    const emitLinks = screen.getAllByRole('link', { name: /Emitir / });
+    expect(emitLinks).toHaveLength(7);
+    for (const kind of CERTIDAO_KINDS_ORDER) {
+      const href = CERTIDAO_EMISSAO_URL[kind];
+      const link = emitLinks.find((el) => el.getAttribute('href') === href);
+      expect(link).toBeTruthy();
+      expect(link!.getAttribute('target')).toBe('_blank');
+      expect(link!.getAttribute('rel')).toBe('noopener noreferrer');
+    }
+  });
+
+  it('o lápis só existe para canWrite, tem aria-label, e o card recolhe/expande', async () => {
+    stubFetch(() => jsonResponse(listing()));
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+
+    expect(screen.getByRole('button', { name: 'Editar validade de CND Receita Federal' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Editar validade de CND Municipal — débitos gerais' })).toBeNull();
+
+    const toggle = screen.getByRole('button', { name: /Certidões/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    cleanup();
+    roleState.canWrite = false;
+    render(<DocumentosPageClient />);
+    await screen.findByRole('table', { name: 'Certidões' });
+    expect(screen.queryByRole('button', { name: /Editar validade/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
   });
 
   it('mostra botões de escrita só para editor/admin', async () => {
@@ -177,7 +247,6 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     await screen.findByRole('table', { name: 'Certidões' });
     expect(screen.getByRole('button', { name: 'Atualizar do OneDrive' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Enviar arquivo' })).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Editar validade' }).length).toBeGreaterThan(0);
 
     cleanup();
     roleState.canWrite = false;
@@ -185,7 +254,6 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     await screen.findByRole('table', { name: 'Certidões' });
     expect(screen.queryByRole('button', { name: 'Atualizar do OneDrive' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enviar arquivo' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Editar validade' })).toBeNull();
   });
 
   it('erro de carga mostra EmptyState e tenta de novo', async () => {
@@ -199,7 +267,7 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     expect(await screen.findByRole('table', { name: 'Certidões' })).toBeTruthy();
   });
 
-  it('abre Outros arquivos só depois do clique e trata 409 do sync', async () => {
+  it('Baixar continua link direto; 409 do sync vira toast', async () => {
     stubFetch((url, init) => {
       if (url === '/api/documentos/sync' && init?.method === 'POST') {
         return jsonResponse({ error: 'ingestão de documentos já em curso' }, { status: 409 });
@@ -209,8 +277,9 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
     render(<DocumentosPageClient />);
     await screen.findByRole('table', { name: 'Certidões' });
 
-    fireEvent.click(screen.getByRole('button', { name: /Outros arquivos na pasta/ }));
-    expect(screen.getByText('arquivo-avulso.pdf')).toBeTruthy();
+    const baixar = screen.getAllByRole('link', { name: 'Baixar' });
+    expect(baixar[0].getAttribute('href')).toBe('/api/documentos/doc-federal/arquivo?download=1');
+    expect(baixar[0].hasAttribute('download')).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Atualizar do OneDrive' }));
     await waitFor(() => {
@@ -221,24 +290,19 @@ describe('Cadastro › Documentos (SPEC-042 L6)', () => {
 
 describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {
   it('mostra 12/12/2026, e não o dia anterior, para validUntil 2026-12-12', async () => {
-    // `validUntil` é `@db.Date`: chega como meia-noite UTC. `formatDate` resolve
-    // no fuso local (America/Sao_Paulo, UTC-3) e devolvia 11/12/2026 — um dia a
-    // menos numa página cujo assunto é exatamente a data de validade. O par
-    // correto é `formatDocumentDate`, que fixa timeZone UTC.
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
 
-    const linha = await screen.findByText('CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf');
-    const celulas = linha.closest('tr')!;
-    expect(within(celulas).getByText('12/12/2026')).toBeTruthy();
-    expect(within(celulas).queryByText('11/12/2026')).toBeNull();
+    const linha = (await screen.findByText('CND Receita Federal')).closest('tr')!;
+    expect(within(linha).getByText('12/12/2026')).toBeTruthy();
+    expect(within(linha).queryByText('11/12/2026')).toBeNull();
   });
 
   it('a data vencida da FGTS também não desliza', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
 
-    const linha = (await screen.findByText('CERTIDAO FGTS 01.09.26 QL MED.pdf')).closest('tr')!;
+    const linha = (await screen.findByText('CRF FGTS')).closest('tr')!;
     expect(within(linha).getByText('01/09/2026')).toBeTruthy();
     expect(within(linha).queryByText('31/08/2026')).toBeNull();
   });

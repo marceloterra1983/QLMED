@@ -1,32 +1,57 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
-import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import Field, { FIELD_CONTROL_CLS } from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
+import Section from '@/components/ui/Section';
 import Skeleton from '@/components/ui/Skeleton';
 import { useRole } from '@/hooks/useRole';
 import {
+  CERTIDAO_EMISSAO_URL,
   CERTIDAO_KINDS_ORDER,
   CERTIDAO_LABEL,
   DOCUMENTOS_UPLOAD_MAX_BYTES,
 } from '@/lib/documentos/constants';
-import type { DocumentosHistoryItem, DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
+import type { DocumentosListing, DocumentosRow } from '@/lib/documentos/list';
 import { formatDateTime, formatDocumentDate, formatInt } from '@/lib/utils';
+import CertidaoPdfModal from './components/CertidaoPdfModal';
 
 type CertidaoKind = (typeof CERTIDAO_KINDS_ORDER)[number];
 
-function statusTone(key: string): BadgeTone {
-  if (key === 'ok') return 'success';
-  if (key === 'atencao') return 'warning';
-  if (key === 'urgente' || key === 'hoje' || key === 'vencida') return 'danger';
-  return 'neutral';
+/** Destaque de dias restantes: uma semana ou menos (inclui vence hoje e vencida). */
+export const CERTIDAO_DIAS_DESTAQUE = 7;
+
+export function formatDaysRemaining(days: number | null): string {
+  if (days == null) return '—';
+  if (days === 0) return 'vence hoje';
+  if (days === 1) return '1 dia';
+  if (days > 0) return `${formatInt(days)} dias`;
+  const n = -days;
+  if (n === 1) return 'vencida há 1 dia';
+  return `vencida há ${formatInt(n)} dias`;
 }
+
+export function isDaysDestaque(days: number | null): boolean {
+  return days != null && days <= CERTIDAO_DIAS_DESTAQUE;
+}
+
+const EMISSAO_ARIA: Record<CertidaoKind, string> = {
+  cnd_federal: 'Emitir CND Receita Federal no site da Receita',
+  crf_fgts: 'Emitir CRF FGTS no site da Caixa',
+  cndt: 'Emitir CNDT no site do TST',
+  cnd_estadual_ms: 'Emitir CND Estadual (MS) no site da SEFAZ-MS',
+  cnd_estadual_mt: 'Emitir CND Estadual (MT) no site da SEFAZ-MT',
+  cnd_municipal_mobiliario: 'Emitir CND Municipal — mobiliário no site da Prefeitura',
+  cnd_municipal_gerais: 'Emitir CND Municipal — débitos gerais no site da Prefeitura',
+};
+
+const ICON_BTN =
+  'inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
 
 function apiErrorMessage(payload: unknown, fallback: string): string {
   const error = (payload as { error?: unknown } | null)?.error;
@@ -35,34 +60,6 @@ function apiErrorMessage(payload: unknown, fallback: string): string {
 
 function arquivoUrl(id: string, download = false): string {
   return download ? `/api/documentos/${id}/arquivo?download=1` : `/api/documentos/${id}/arquivo`;
-}
-
-function FileLinks({ id, fileName }: { id: string; fileName: string }) {
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      <Button
-        href={arquivoUrl(id)}
-        external
-        target="_blank"
-        rel="noopener"
-        size="xs"
-        variant="ghost"
-        icon="visibility"
-      >
-        Ver
-      </Button>
-      <Button
-        href={arquivoUrl(id, true)}
-        external
-        download={fileName}
-        size="xs"
-        variant="ghost"
-        icon="download"
-      >
-        Baixar
-      </Button>
-    </div>
-  );
 }
 
 function ValidityText({ value }: { value: string | null }) {
@@ -75,19 +72,11 @@ function ValidityText({ value }: { value: string | null }) {
   return <span className="tabular-nums">{formatDocumentDate(value)}</span>;
 }
 
-function FileNameCell({ fileName }: { fileName: string | null }) {
-  if (!fileName) {
-    return <span className="text-sm text-slate-500 dark:text-slate-400">Não encontrada</span>;
-  }
-  return <span className="text-sm text-slate-700 dark:text-slate-300">{fileName}</span>;
-}
-
 function TableHead() {
   return (
     <thead>
       <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
         <th className="px-4 py-3">Certidão</th>
-        <th className="px-4 py-3">Arquivo</th>
         <th className="px-4 py-3">Válida até</th>
         <th className="px-4 py-3">Dias restantes</th>
         <th className="px-4 py-3">Ações</th>
@@ -96,25 +85,19 @@ function TableHead() {
   );
 }
 
-function HistoryRows({ items }: { items: DocumentosHistoryItem[] }) {
+function DaysCell({ days }: { days: number | null }) {
+  const destaque = isDaysDestaque(days);
   return (
-    <>
-      {items.map((item) => (
-        <tr key={item.id} className="bg-slate-50/80 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
-          <td className="px-4 py-2 pl-8 text-xs text-slate-500 dark:text-slate-400">Histórico</td>
-          <td className="px-4 py-2">
-            <FileNameCell fileName={item.fileName} />
-          </td>
-          <td className="px-4 py-2 text-sm whitespace-nowrap">
-            <ValidityText value={item.validUntil} />
-          </td>
-          <td className="px-4 py-2" />
-          <td className="px-4 py-2 whitespace-nowrap">
-            <FileLinks id={item.id} fileName={item.fileName} />
-          </td>
-        </tr>
-      ))}
-    </>
+    <span
+      className={`tabular-nums text-sm ${
+        destaque
+          ? 'font-medium text-amber-700 dark:text-amber-400'
+          : 'text-slate-700 dark:text-slate-300'
+      }`}
+      data-destaque={destaque ? 'true' : undefined}
+    >
+      {formatDaysRemaining(days)}
+    </span>
   );
 }
 
@@ -129,11 +112,10 @@ export default function DocumentosPageClient() {
   const [uploadKind, setUploadKind] = useState<CertidaoKind>(CERTIDAO_KINDS_ORDER[0]);
   const [uploadValidUntil, setUploadValidUntil] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [outrosOpen, setOutrosOpen] = useState(false);
-  const [expandedKinds, setExpandedKinds] = useState<Set<string>>(() => new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [viewer, setViewer] = useState<{ id: string; title: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (opts?: { quiet?: boolean }) => {
@@ -158,15 +140,6 @@ export default function DocumentosPageClient() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  function toggleHistory(kind: string) {
-    setExpandedKinds((prev) => {
-      const next = new Set(prev);
-      if (next.has(kind)) next.delete(kind);
-      else next.add(kind);
-      return next;
-    });
-  }
 
   function resetUpload() {
     setUploadKind(CERTIDAO_KINDS_ORDER[0]);
@@ -266,10 +239,31 @@ export default function DocumentosPageClient() {
   }
 
   function rowActions(row: DocumentosRow) {
-    if (!row.id || !row.fileName) return null;
+    const kind = row.kind as CertidaoKind;
     return (
       <div className="flex flex-wrap items-center gap-1">
-        <FileLinks id={row.id} fileName={row.fileName} />
+        {row.id && row.fileName ? (
+          <>
+            <Button
+              size="xs"
+              variant="ghost"
+              icon="picture_as_pdf"
+              onClick={() => setViewer({ id: row.id as string, title: row.label })}
+            >
+              Ver
+            </Button>
+            <Button
+              href={arquivoUrl(row.id, true)}
+              external
+              download={row.fileName}
+              size="xs"
+              variant="ghost"
+              icon="download"
+            >
+              Baixar
+            </Button>
+          </>
+        ) : null}
         {editingId === row.id ? (
           <>
             <Button size="xs" onClick={() => void saveEdit()} loading={saving} disabled={!editDraft}>
@@ -279,78 +273,66 @@ export default function DocumentosPageClient() {
               Cancelar
             </Button>
           </>
-        ) : canWrite ? (
-          <Button
-            size="xs"
-            variant="ghost"
-            icon="edit_calendar"
-            onClick={() => {
-              setEditingId(row.id);
-              setEditDraft(row.validUntil ?? '');
-            }}
-          >
-            Editar validade
-          </Button>
         ) : null}
+        <a
+          href={CERTIDAO_EMISSAO_URL[kind]}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={EMISSAO_ARIA[kind]}
+          className={ICON_BTN}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
+        </a>
       </div>
     );
   }
 
   function renderCertidaoRow(row: DocumentosRow) {
-    const expanded = expandedKinds.has(row.kind);
     return (
-      <Fragment key={row.kind}>
-        <tr className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-          <td className="px-4 py-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
-              {row.history.length > 0 ? (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={expanded ? 'expand_less' : 'expand_more'}
-                  aria-expanded={expanded}
-                  aria-label={expanded ? 'Recolher histórico' : 'Expandir histórico'}
-                  onClick={() => toggleHistory(row.kind)}
-                >
-                  {formatInt(row.history.length)}
-                </Button>
-              ) : null}
-            </div>
-          </td>
-          <td className="px-4 py-3">
-            <FileNameCell fileName={row.fileName} />
-          </td>
-          <td className="px-4 py-3 text-sm whitespace-nowrap">
-            {editingId === row.id ? (
-              <input
-                type="date"
-                value={editDraft}
-                onChange={(event) => setEditDraft(event.target.value)}
-                aria-label="Validade"
-                className={`${FIELD_CONTROL_CLS} max-w-40`}
-              />
-            ) : (
+      <tr
+        key={row.kind}
+        className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+      >
+        <td className="px-4 py-3">
+          <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
+        </td>
+        <td className="px-4 py-3 text-sm whitespace-nowrap">
+          {editingId === row.id ? (
+            <input
+              type="date"
+              value={editDraft}
+              onChange={(event) => setEditDraft(event.target.value)}
+              aria-label="Validade"
+              className={`${FIELD_CONTROL_CLS} max-w-40`}
+            />
+          ) : (
+            <span className="inline-flex items-center">
               <ValidityText value={row.validUntil} />
-            )}
-          </td>
-          <td className="px-4 py-3">
-            <Badge
-              tone={statusTone(row.status.key)}
-              title={row.daysRemaining != null ? `${row.daysRemaining} dias` : undefined}
-            >
-              {row.status.label}
-            </Badge>
-          </td>
-          <td className="px-4 py-3 whitespace-nowrap">{rowActions(row)}</td>
-        </tr>
-        {expanded ? <HistoryRows items={row.history} /> : null}
-      </Fragment>
+              {canWrite && row.id ? (
+                <button
+                  type="button"
+                  className={ICON_BTN}
+                  aria-label={`Editar validade de ${row.label}`}
+                  onClick={() => {
+                    setEditingId(row.id);
+                    setEditDraft(row.validUntil ?? '');
+                  }}
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">edit</span>
+                </button>
+              ) : null}
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <DaysCell days={row.daysRemaining} />
+        </td>
+        <td className="px-4 py-3 whitespace-nowrap">{rowActions(row)}</td>
+      </tr>
     );
   }
 
   const certidoes = data?.certidoes ?? [];
-  const outros = data?.outros ?? [];
 
   return (
     <>
@@ -373,13 +355,12 @@ export default function DocumentosPageClient() {
             <Skeleton className="h-4 w-32" />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-left border-collapse">
+            <table className="w-full min-w-[40rem] text-left border-collapse">
               <TableHead />
               <tbody>
-                {Array.from({ length: 6 }, (_, index) => (
+                {Array.from({ length: 7 }, (_, index) => (
                   <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-4 py-3"><Skeleton className="h-4 w-48" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-64" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
@@ -408,63 +389,22 @@ export default function DocumentosPageClient() {
 
       {data ? (
         <div className="space-y-4">
-          <Card padding="none">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Certidões</h3>
-              {canWrite ? (
+          <Section icon="verified" title="Certidões" defaultOpen>
+            {canWrite ? (
+              <div className="mb-3 flex justify-end">
                 <Button size="sm" variant="secondary" icon="upload_file" onClick={() => setUploadOpen(true)}>
                   Enviar arquivo
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[52rem] text-left border-collapse">
+              <table className="w-full min-w-[40rem] text-left border-collapse">
                 <caption className="sr-only">Certidões</caption>
                 <TableHead />
                 <tbody>{certidoes.map(renderCertidaoRow)}</tbody>
               </table>
             </div>
-          </Card>
-
-          {outros.length > 0 ? (
-            <Card padding="none">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-4 py-3 text-left"
-                aria-expanded={outrosOpen}
-                onClick={() => setOutrosOpen((open) => !open)}
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">
-                  {outrosOpen ? 'expand_less' : 'expand_more'}
-                </span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">Outros arquivos na pasta</span>
-                <Badge tone="neutral" dot={false}>{formatInt(outros.length)}</Badge>
-              </button>
-              {outrosOpen ? (
-                <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-800">
-                  <table className="w-full min-w-[52rem] text-left border-collapse">
-                    <caption className="sr-only">Outros arquivos na pasta</caption>
-                    <TableHead />
-                    <tbody>
-                      {outros.map((row) => (
-                        <tr key={row.id ?? row.fileName} className="border-b border-slate-100 dark:border-slate-800">
-                          <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{row.label}</td>
-                          <td className="px-4 py-3"><FileNameCell fileName={row.fileName} /></td>
-                          <td className="px-4 py-3 text-sm whitespace-nowrap"><ValidityText value={row.validUntil} /></td>
-                          <td className="px-4 py-3">
-                            <Badge tone={statusTone(row.status.key)}>{row.status.label}</Badge>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {row.id && row.fileName ? <FileLinks id={row.id} fileName={row.fileName} /> : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-            </Card>
-          ) : null}
+          </Section>
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Última varredura:{' '}
@@ -475,6 +415,13 @@ export default function DocumentosPageClient() {
           ) : null}
         </div>
       ) : null}
+
+      <CertidaoPdfModal
+        isOpen={viewer != null}
+        onClose={() => setViewer(null)}
+        documentId={viewer?.id ?? null}
+        title={viewer?.title ?? 'Certidão'}
+      />
 
       <Modal
         isOpen={uploadOpen}
