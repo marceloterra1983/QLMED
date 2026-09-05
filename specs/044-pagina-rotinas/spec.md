@@ -76,9 +76,16 @@ A rota `/sistema/rotinas` e sua API associada `/api/sistema/rotinas` devem estar
   ANVISA aponta para `src/lib/anvisa-api.ts` e a rota de sync; **não** há
   `src/lib/anvisa/` nem sync automático no ingest de XML. As quatro rotinas
   fiscais do processo `auto-sync` declaram telemetria compartilhada.
+- **FR-008**: A listagem MUST agrupar rotinas em cards colapsáveis pelas seções
+  de `PAGE_GROUPS` (Cadastros, Fiscal, Estoque, Financeiro, Gestão, Relatórios,
+  Sistema), com card **Outros** apenas para rotinas sem mapeamento. Todos os
+  cards MUST iniciar **recolhidos** ao abrir a página (`defaultOpen=false`).
 
 ## Acceptance Criteria
 
 - **AC-006** (FR-006): o teste do catálogo falha se o lock IMPCG voltar a
   `impcgIngestLockKey`, se o módulo ANVISA voltar a `src/lib/anvisa/`, ou se
   algum `sourceModule` apontar para ficheiro inexistente.
+- **AC-008** (FR-008): o teste do catálogo cobre `groupRoutinesByPageSection`
+  (sem duplicar/perder rotinas; ordem = PAGE_GROUPS + Outros) e o client
+  declara `defaultOpen={false}` com `Section`.

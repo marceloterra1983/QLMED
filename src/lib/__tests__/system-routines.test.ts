@@ -4,14 +4,17 @@ import { describe, expect, it } from 'vitest';
 import {
   SYSTEM_ROUTINES,
   ROUTINE_CATEGORIES,
+  ROUTINE_PAGE_SECTION_ORDER,
   enrichRoutinesWithHealth,
   buildRoutineSummary,
+  groupRoutinesByPageSection,
+  pageSectionForRoutine,
 } from '@/lib/system-routines';
 import type { BackgroundServiceName } from '@/lib/background-service-health';
 import { DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ALERT_THRESHOLDS } from '@/lib/documentos/constants';
 import { IMPCG_INGEST_INTERVAL_MS } from '@/lib/impcg/constants';
 import { CASSEMS_INGEST_INTERVAL_MS } from '@/lib/cassems/constants';
-import { canAccessApi } from '@/lib/navigation';
+import { canAccessApi, PAGE_GROUPS } from '@/lib/navigation';
 
 describe('System Routines Catalog', () => {
   it('contém exatamente 19 rotinas catalogadas', () => {
@@ -189,5 +192,36 @@ describe('System Routines Catalog', () => {
     expect(canAccessApi('viewer', ['/sistema/rotinas'], '/api/sistema/rotinas')).toBe(true);
     expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/sistema/rotinas')).toBe(false);
     expect(canAccessApi('viewer', ['/sistema/automacoes'], '/api/sistema/rotinas')).toBe(false);
+  });
+
+  it('agrupa rotinas pelas seções de PAGE_GROUPS sem duplicar nem perder', () => {
+    const menuSections = PAGE_GROUPS.map((g) => g.section);
+    expect(ROUTINE_PAGE_SECTION_ORDER.slice(0, -1)).toEqual(menuSections);
+    expect(ROUTINE_PAGE_SECTION_ORDER.at(-1)).toBe('Outros');
+
+    const grouped = groupRoutinesByPageSection(SYSTEM_ROUTINES);
+    const flat = grouped.flatMap((g) => g.routines);
+    expect(flat).toHaveLength(SYSTEM_ROUTINES.length);
+    expect(new Set(flat.map((r) => r.id)).size).toBe(SYSTEM_ROUTINES.length);
+    expect(grouped.every((g) => g.routines.length > 0)).toBe(true);
+    expect(grouped.some((g) => g.section === 'Outros')).toBe(false);
+
+    expect(pageSectionForRoutine({ id: 'documentos-ingest' })).toBe('Cadastros');
+    expect(pageSectionForRoutine({ id: 'sefaz-auto-sync' })).toBe('Fiscal');
+    expect(pageSectionForRoutine({ id: 'product-aggregate-rebuild' })).toBe('Estoque');
+    expect(pageSectionForRoutine({ id: 'daily-summary-catchup' })).toBe('Financeiro');
+    expect(pageSectionForRoutine({ id: 'impcg-mail-ingest' })).toBe('Gestão');
+    expect(pageSectionForRoutine({ id: 'postgres-backup' })).toBe('Sistema');
+    expect(pageSectionForRoutine({ id: 'rotina-fantasma' })).toBe('Outros');
+  });
+
+  it('página Rotinas usa Section colapsável iniciando recolhida', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/app/(painel)/sistema/rotinas/page-client.tsx'),
+      'utf8',
+    );
+    expect(source).toMatch(/groupRoutinesByPageSection/);
+    expect(source).toMatch(/defaultOpen=\{false\}/);
+    expect(source).toMatch(/from '@\/components\/ui\/Section'/);
   });
 });
