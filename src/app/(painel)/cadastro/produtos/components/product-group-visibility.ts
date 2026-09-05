@@ -26,6 +26,8 @@ export function productGroupKey(product: ProductRow, sortBy: SortField): string 
       return (product.description?.[0] || '#').toUpperCase();
     case 'code':
       return product.code ? product.code[0].toUpperCase() : '#';
+    case 'codigo':
+      return '';
     default:
       return '';
   }

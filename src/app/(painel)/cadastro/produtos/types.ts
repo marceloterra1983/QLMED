@@ -71,4 +71,4 @@ export interface ProductsResponse {
   };
 }
 
-export type SortField = 'description' | 'code' | 'ncm' | 'anvisa' | 'lastPrice' | 'lastIssueDate' | 'lastSaleDate' | 'supplier' | 'productType' | 'totalQuantity' | 'invoiceCount';
+export type SortField = 'description' | 'code' | 'codigo' | 'ncm' | 'anvisa' | 'lastPrice' | 'lastIssueDate' | 'lastSaleDate' | 'supplier' | 'productType' | 'totalQuantity' | 'invoiceCount';

@@ -40,4 +40,9 @@ describe('produtos groups expanded contract', () => {
   it('toggleGroup nao recolhe grupos filhos ao expandir linha', () => {
     expect(pageClient).not.toMatch(/n\.add\(`group:\$\{lineName\}/);
   });
+
+  it('default sort e lista flat por Cod. Spica (sem hierarquia colapsavel)', () => {
+    expect(pageClient).toMatch(/useState<SortField>\('codigo'\)/);
+    expect(productTable).toContain("FLAT_SORTS");
+  });
 });

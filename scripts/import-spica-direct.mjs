@@ -219,6 +219,7 @@ async function main() {
       toUpdate.push({
         id: match.id,
         codigo,
+        description: nome,
         productRefs: mergedRefs,
         productType: tipo.invalid ? null : tipo.productType,
         productSubtype: tipo.invalid ? null : (r.subtipo?.trim() || null),
@@ -284,30 +285,31 @@ async function main() {
       // 1. Atualizar existentes
       console.log(`Atualizando ${toUpdate.length} produtos existentes...`);
       for (const u of toUpdate) {
-        await client.query(`
+                await client.query(`
           UPDATE product_registry SET
             codigo = $1,
-            product_refs = $2,
-            product_type = $3,
-            product_subtype = $4,
-            out_of_line = $5,
-            instrumental = $6,
-            manufacturer_short_name = $7,
-            default_supplier = $8,
-            fiscal_sit_tributaria = $9,
-            fiscal_origem = $10,
-            fiscal_nome_tributacao = $11,
-            fiscal_icms = $12,
-            fiscal_pis = $13,
-            fiscal_cofins = $14,
-            fiscal_ipi = $15,
-            fiscal_obs = $16,
-            anvisa_code = COALESCE(anvisa_code, $17),
-            anvisa_source = CASE WHEN anvisa_code IS NULL AND $17 IS NOT NULL THEN 'spica' ELSE anvisa_source END,
+            description = $2,
+            product_refs = $3,
+            product_type = $4,
+            product_subtype = $5,
+            out_of_line = $6,
+            instrumental = $7,
+            manufacturer_short_name = $8,
+            default_supplier = $9,
+            fiscal_sit_tributaria = $10,
+            fiscal_origem = $11,
+            fiscal_nome_tributacao = $12,
+            fiscal_icms = $13,
+            fiscal_pis = $14,
+            fiscal_cofins = $15,
+            fiscal_ipi = $16,
+            fiscal_obs = $17,
+            anvisa_code = COALESCE(anvisa_code, $18),
+            anvisa_source = CASE WHEN anvisa_code IS NULL AND $18 IS NOT NULL THEN 'spica' ELSE anvisa_source END,
             updated_at = NOW()
-          WHERE id = $18
+          WHERE id = $19
         `, [
-          u.codigo, u.productRefs, u.productType, u.productSubtype, u.outOfLine, u.instrumental,
+          u.codigo, u.description, u.productRefs, u.productType, u.productSubtype, u.outOfLine, u.instrumental,
           u.manufacturerShortName, u.defaultSupplier, u.fiscalSitTributaria, u.fiscalOrigem,
           u.fiscalNomeTributacao, u.fiscalIcms, u.fiscalPis, u.fiscalCofins, u.fiscalIpi,
           u.fiscalObs, u.anvisaCode, u.id
