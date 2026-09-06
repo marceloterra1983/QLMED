@@ -16,6 +16,10 @@ export type UnimedCgListItem = {
   receivedAt: string;
   fileName: string;
   parseStatus: UnimedCgParseStatus;
+  billedInvoiceId?: string | null;
+  billedInvoiceNumber?: string | null;
+  billedMatchedAt?: string | null;
+  billedMatchStatus?: string | null;
 };
 
 export type UnimedCgDetailItem = UnimedCgListItem & {
@@ -42,6 +46,10 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
       receivedAt: true,
       fileName: true,
       parseStatus: true,
+      billedInvoiceId: true,
+      billedInvoiceNumber: true,
+      billedMatchedAt: true,
+      billedMatchStatus: true,
     },
   });
 
@@ -56,7 +64,25 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
+    billedInvoiceId: row.billedInvoiceId,
+    billedInvoiceNumber: row.billedInvoiceNumber,
+    billedMatchedAt: row.billedMatchedAt ? row.billedMatchedAt.toISOString() : null,
+    billedMatchStatus: row.billedMatchStatus,
   }));
+}
+
+/** Autorizações com match definitivo (para card PROCESSOS FATURADOS). */
+export async function listUnimedCgBilledAuthorizations(companyId: string): Promise<UnimedCgListItem[]> {
+  const all = await listUnimedCgAuthorizations(companyId);
+  return all.filter((row) => row.billedMatchStatus === 'matched');
+}
+
+export async function listUnimedCgMatchedProcessIds(companyId: string): Promise<Set<string>> {
+  const rows = await prisma.unimedCgAuthorization.findMany({
+    where: { companyId, billedMatchStatus: 'matched' },
+    select: { processId: true },
+  });
+  return new Set(rows.map((r) => r.processId));
 }
 
 export async function getUnimedCgAuthorization(
@@ -79,6 +105,10 @@ export async function getUnimedCgAuthorization(
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
+    billedInvoiceId: row.billedInvoiceId,
+    billedInvoiceNumber: row.billedInvoiceNumber,
+    billedMatchedAt: row.billedMatchedAt ? row.billedMatchedAt.toISOString() : null,
+    billedMatchStatus: row.billedMatchStatus,
     oneDriveItemId: row.oneDriveItemId,
     sourceUrl: row.sourceUrl,
   };

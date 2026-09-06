@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
@@ -13,6 +13,9 @@ import { Decimal } from '@prisma/client-runtime-utils';
 import { embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
 import { formatDocumentDate, formatDateTime } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
+import dynamic from 'next/dynamic';
+
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
 
 type ParseStatus = 'ok' | 'parcial' | 'falha';
 
@@ -27,6 +30,35 @@ type BillingItem = {
   receivedAt: string;
   fileName: string;
   parseStatus: ParseStatus;
+  billedMatchStatus?: string | null;
+  billedInvoiceNumber?: string | null;
+};
+
+type BilledRelatedItem = {
+  kind: 'faturamento' | 'entrega' | 'reversao' | 'prazo';
+  id: string;
+  label: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+  summary: string;
+};
+
+type BilledItem = {
+  id: string;
+  processId: string;
+  authorizationNumber: string | null;
+  procedureDate: string | null;
+  patientName: string | null;
+  location: string | null;
+  totalAmount: string;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+  billedInvoiceId: string | null;
+  billedInvoiceNumber: string | null;
+  billedMatchedAt: string | null;
+  billedMatchStatus: string | null;
+  related: BilledRelatedItem[];
 };
 
 type DeliveryItem = {
@@ -84,9 +116,43 @@ type ListPayload = {
   reversals: ReversalItem[];
   preSolicitations: PreSolicitationItem[];
   invoiceDeadlines: InvoiceDeadlineItem[];
+  billed: BilledItem[];
 };
 
 type PdfKind = 'billing' | 'delivery' | 'reversal' | 'pre' | 'prazo';
+
+function relatedPdfKind(kind: BilledRelatedItem['kind']): PdfKind {
+  switch (kind) {
+    case 'faturamento':
+      return 'billing';
+    case 'entrega':
+      return 'delivery';
+    case 'reversao':
+      return 'reversal';
+    case 'prazo':
+      return 'prazo';
+  }
+}
+
+function NfYellowTag({
+  number,
+  onClick,
+}: {
+  number: string;
+  onClick: (e: MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={`Abrir NF-e ${number}`}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/70 dark:border-amber-700/60 hover:bg-amber-200/80 dark:hover:bg-amber-900/60"
+    >
+      <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
+      NF {number}
+    </button>
+  );
+}
 
 function formatBrl(value: string): string {
   const formatted = new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -155,6 +221,7 @@ export default function UnimedCgPageClient() {
   const [preDetail, setPreDetail] = useState<PreSolicitationItem | null>(null);
   const [prazoDetail, setPrazoDetail] = useState<InvoiceDeadlineItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     const res = await fetch('/api/gestao/unimed-cg');
@@ -244,6 +311,7 @@ export default function UnimedCgPageClient() {
   const reversals = data?.reversals ?? [];
   const preSolicitations = data?.preSolicitations ?? [];
   const invoiceDeadlines = data?.invoiceDeadlines ?? [];
+  const billed = data?.billed ?? [];
 
   const modalTitle = (() => {
     if (selected?.kind === 'billing' && billingDetail) {
@@ -301,6 +369,85 @@ export default function UnimedCgPageClient() {
       {!loading && (
         <>
           <Section
+            icon="paid"
+            tone="amber"
+            title={`PROCESSOS FATURADOS (${billed.length})`}
+            defaultOpen={false}
+          >
+            {billed.length === 0 ? (
+              <EmptyState icon="receipt" title="Nenhum processo faturado ainda." />
+            ) : (
+              <div className="space-y-3">
+                {billed.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 overflow-hidden"
+                  >
+                    <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-amber-200/60 dark:border-amber-900/40">
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        Processo {item.processId}
+                      </span>
+                      {item.billedInvoiceId && item.billedInvoiceNumber ? (
+                        <NfYellowTag
+                          number={item.billedInvoiceNumber}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInvoiceModalId(item.billedInvoiceId);
+                          }}
+                        />
+                      ) : null}
+                      <ParseBadge status={item.parseStatus} />
+                      <span className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[220px]">
+                        {item.patientName?.trim() || '—'}
+                      </span>
+                      {item.location?.trim() ? (
+                        <span className="text-xs text-slate-500 truncate max-w-[160px]">
+                          {item.location}
+                        </span>
+                      ) : null}
+                      <span className="ml-auto tabular-nums text-sm font-medium text-slate-900 dark:text-white">
+                        {formatBrl(item.totalAmount)}
+                      </span>
+                    </div>
+                    <ul className="divide-y divide-amber-100/80 dark:divide-amber-900/30">
+                      {item.related.map((rel) => (
+                        <li
+                          key={`${rel.kind}-${rel.id}`}
+                          className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm hover:bg-amber-50/60 dark:hover:bg-amber-950/30 cursor-pointer"
+                          onClick={() =>
+                            setSelected({ kind: relatedPdfKind(rel.kind), id: rel.id })
+                          }
+                        >
+                          <Badge tone="neutral" dot={false} className="shrink-0">
+                            {rel.label}
+                          </Badge>
+                          <span className="text-slate-700 dark:text-slate-200 truncate">
+                            {rel.summary}
+                          </span>
+                          <ParseBadge status={rel.parseStatus} />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            className="ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: relatedPdfKind(rel.kind), id: rel.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          <Section
             icon="receipt_long"
             tone="teal"
             title={`AUTORIZAÇÃO DE FATURAMENTO (${billing.length})`}
@@ -333,6 +480,11 @@ export default function UnimedCgPageClient() {
                           <span className="inline-flex items-center gap-2">
                             {item.processId}
                             <ParseBadge status={item.parseStatus} />
+                            {item.billedMatchStatus === 'ambiguous' ? (
+                              <Badge tone="warning" title="Mais de uma NF-e Unimed bateu com o beneficiário">
+                                Ambíguo
+                              </Badge>
+                            ) : null}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
@@ -800,6 +952,11 @@ export default function UnimedCgPageClient() {
           </div>
         )}
       </Modal>
+      <InvoiceDetailsModal
+        isOpen={!!invoiceModalId}
+        onClose={() => setInvoiceModalId(null)}
+        invoiceId={invoiceModalId}
+      />
     </div>
   );
 }

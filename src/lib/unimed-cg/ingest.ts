@@ -57,6 +57,7 @@ import {
 import { processEmailHtmlKind, shouldUpgradeOrNewer } from './ingest-email-html';
 import { openOpmePortalSession } from './opme-portal';
 import { backfillMissingUnimedCgPatientNames } from './backfill-patient-names';
+import { runUnimedCgBillingMatch } from './billing-match';
 import { prismaUnimedCgDeliveryStore } from './delivery-store';
 import { prismaUnimedCgInvoiceDeadlineStore } from './invoice-deadline-store';
 import { prismaUnimedCgPreSolicitationStore } from './pre-solicitation-store';
@@ -504,6 +505,19 @@ export async function runUnimedCgIngest(
         companyId,
         fetchBeneficiario: (processId) => opmeSession.fetchBeneficiario(processId),
       });
+    }
+
+    // Catch-up: autorizações × NF-e Unimed (infCpl). Trigger primário é a emissão.
+    try {
+      const billingMatch = await runUnimedCgBillingMatch(companyId);
+      if (billingMatch.matched || billingMatch.ambiguous) {
+        log.info(billingMatch, 'unimed_cg_billing_match_ingest_tick');
+      }
+    } catch (error) {
+      log.error(
+        { err: sanitizeError(error instanceof Error ? error.message : 'billing-match') },
+        'unimed_cg_billing_match_ingest_failed',
+      );
     }
 
     for (const mailbox of UNIMED_CG_MAILBOXES) {
