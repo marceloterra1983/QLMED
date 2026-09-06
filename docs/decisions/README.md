@@ -31,3 +31,15 @@ Toque no celular de nota recebida é Web Push do PWA, canal pessoal `push`:
 Login identifica o usuário só pela senha; a tela MUST NOT pedir e-mail.
 Auditoria não recoloca o campo sem substituir
 [ADR-0012](./0012-password-identity-login.md).
+
+Retenção de dado operacional (AccessLog, NotificationClick, SyncLog, CnpjCache, NcmCache)
+com acionamento diário seguro: [ADR-0014](./0014-retencao-de-dado-operacional.md).
+
+Ports & Adapters para Evolution WhatsApp e Microsoft Graph: [ADR-0015](./0015-ports-and-adapters-messaging.md).
+
+Tratamento funcional de erros via Result Types (neverthrow): [ADR-0016](./0016-functional-error-handling-neverthrow.md).
+
+Ciclo de vida simétrico e encerramento gracioso no Supervisor de Background: [ADR-0017](./0017-graceful-lifecycle-supervisor.md).
+
+Trace-as-State para parsers de operadoras e Resiliência HTTP com Jitter Backoff: [ADR-0018](./0018-trace-as-state-parsers-and-resilience.md).
+

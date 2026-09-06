@@ -1,3 +1,4 @@
+import { createParseTrace, type ParseTrace } from '@/lib/parse-trace';
 import { CASSEMS_PARSE_RANK, type CassemsParseStatus } from './constants';
 
 export type ParsedCassemsItem = {
@@ -22,6 +23,7 @@ export type ParsedCassemsOficio = {
   totalCents: number | null;
   items: ParsedCassemsItem[];
   parseStatus: CassemsParseStatus;
+  trace?: ParseTrace;
 };
 
 /** Converte "4.760,00" em centavos inteiros — sem float. */
@@ -345,7 +347,57 @@ export function parseOficio(text: string, subject = ''): ParsedCassemsOficio {
   const totalCents = totalMatch ? parseBrlToCents(totalMatch[1].replace(/\s/g, '')) : null;
   const items = parseItems(text);
 
-  const parsed: Omit<ParsedCassemsOficio, 'parseStatus'> = {
+  const traceBuilder = createParseTrace(text);
+  traceBuilder.step({
+    field: 'oficioNumber',
+    matched: oficioNumber !== null,
+    source: oficioNumber ? (text.includes(oficioNumber) ? 'document' : 'subject') : 'unmatched',
+    rawSnippet: oficioNumber ?? undefined,
+  });
+  traceBuilder.step({
+    field: 'issuedAt',
+    matched: issuedAt !== null,
+    source: issuedAt ? 'document' : 'unmatched',
+    rawSnippet: issuedAt ? issuedAt.toISOString() : undefined,
+  });
+  traceBuilder.step({
+    field: 'patientName',
+    matched: Boolean(patientName && patientName !== 'PACIENTE'),
+    source: documentPatient ? 'document' : subjectPatient ? 'subject' : 'fallback',
+    rawSnippet: patientName,
+  });
+  traceBuilder.step({
+    field: 'doctorName',
+    matched: doctorName !== null,
+    source: doctorName ? 'document' : 'unmatched',
+    rawSnippet: doctorName ?? undefined,
+  });
+  traceBuilder.step({
+    field: 'procedureName',
+    matched: procedureName !== null,
+    source: procedureName ? 'document' : 'unmatched',
+    rawSnippet: procedureName ?? undefined,
+  });
+  traceBuilder.step({
+    field: 'hospitalName',
+    matched: hospitalName !== null,
+    source: hospitalName ? 'document' : 'unmatched',
+    rawSnippet: hospitalName ?? undefined,
+  });
+  traceBuilder.step({
+    field: 'totalCents',
+    matched: totalCents !== null,
+    source: totalCents !== null ? 'document' : 'unmatched',
+    rawSnippet: totalCents !== null ? String(totalCents) : undefined,
+  });
+  traceBuilder.step({
+    field: 'items',
+    matched: items.length > 0,
+    source: items.length > 0 ? 'document' : 'unmatched',
+    rawSnippet: `${items.length} itens extraídos`,
+  });
+
+  const parsed: Omit<ParsedCassemsOficio, 'parseStatus' | 'trace'> = {
     oficioNumber,
     issuedAt,
     patientName,
@@ -358,7 +410,13 @@ export function parseOficio(text: string, subject = ''): ParsedCassemsOficio {
     items,
   };
 
-  return { ...parsed, parseStatus: computeCassemsParseStatus(parsed) };
+  const parseStatus = computeCassemsParseStatus(parsed);
+  const gap = describeCassemsParseGap({ ...parsed, parseStatus });
+  if (gap) {
+    traceBuilder.warn(gap);
+  }
+
+  return { ...parsed, parseStatus, trace: traceBuilder.build() };
 }
 
 export function buildCassemsFileName(oficioNumber: string, patientName: string): string {

@@ -442,4 +442,23 @@ Campo Grande, 08 de Agosto de 2019.
     expect(of3186.items[0]?.description).toContain('GONIUNTE');
     expect(of3186.items[0]?.description).toContain('EXTRACORPOREA');
   });
+
+  it('anexa trace de extração observável (Trace-as-State)', () => {
+    const of1589 = parseOficio(`
+OFÍCIO Nº 1589/2023
+PACIENTE: PAULO ROBERTO LOUREIRO PINHEIRO
+MEDICO DR. ARINO FARIA DA SILVA
+PROCEDIMENTO: TROCA VALVAR
+LOCAL DE ENTREGA: HOSPITAL EL KADRI
+KIT TESTE MARCA REF 1 10,00 10,00
+TOTAL GERAL: 10,00
+Campo Grande, 10 de Agosto de 2023.
+`);
+    expect(of1589.trace).toBeDefined();
+    expect(of1589.trace?.steps.length).toBeGreaterThanOrEqual(7);
+    expect(of1589.trace?.matchedCount).toBeGreaterThanOrEqual(6);
+    const patientStep = of1589.trace?.steps.find((s) => s.field === 'patientName');
+    expect(patientStep?.matched).toBe(true);
+    expect(patientStep?.rawSnippet).toBe('PAULO ROBERTO LOUREIRO PINHEIRO');
+  });
 });
