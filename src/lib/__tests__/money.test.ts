@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { addMoney, centsToDecimal, decimalToCents, formatMoneyDecimal, roundMoney, sumMoney } from '@/lib/money';
+import { Decimal } from '@prisma/client-runtime-utils';
+import {
+  addMoney,
+  centsToDecimal,
+  decimalToCents,
+  formatCurrency,
+  formatMoneyDecimal,
+  roundMoney,
+  sumMoney,
+} from '@/lib/money';
 
 describe('money', () => {
   it('roundMoney arredonda half-up em 2 casas', () => {
@@ -27,5 +36,15 @@ describe('money', () => {
     const value = centsToDecimal(1_255_000);
     expect(formatMoneyDecimal(value)).toBe('12550.00');
     expect(decimalToCents(value)).toBe(1_255_000);
+  });
+
+  it('formatCurrency formata de forma polimórfica Decimal, number, string, null e undefined', () => {
+    expect(formatCurrency(new Decimal('123.456'))).toBe('123.46');
+    expect(formatCurrency(123.456)).toBe('123.46');
+    expect(formatCurrency('123.4')).toBe('123.40');
+    expect(formatCurrency('4760')).toBe('4760.00');
+    expect(formatCurrency(null)).toBe('0.00');
+    expect(formatCurrency(undefined)).toBe('0.00');
+    expect(formatCurrency({ toString: () => '99.9' })).toBe('99.90');
   });
 });
