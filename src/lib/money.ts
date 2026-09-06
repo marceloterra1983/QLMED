@@ -43,9 +43,11 @@ export function decimalToCents(value: Decimal): number {
 
 /**
  * Formata qualquer valor monetário (Decimal, number, string, null, undefined)
- * em representação textual de 2 casas com ROUND_HALF_UP.
+ * em representação textual de 2 casas decimais ("0.00") com ROUND_HALF_UP.
+ *
+ * Para formatação com símbolo monetário (ex.: "R$ 1.234,56"), use `formatCurrency` de `@/lib/utils`.
  */
-export function formatCurrency(value: unknown): string {
+export function formatMoneyDecimalString(value: unknown): string {
   if (value instanceof Decimal) {
     return formatMoneyDecimal(value);
   }
@@ -54,3 +56,9 @@ export function formatCurrency(value: unknown): string {
   }
   return formatMoneyDecimal(new Decimal(value == null || value === '' ? 0 : String(value)));
 }
+
+/**
+ * @deprecated Use `formatMoneyDecimalString` para texto decimal ("0.00") ou `@/lib/utils` `formatCurrency` para moeda ("R$ ...").
+ */
+export const formatCurrency = formatMoneyDecimalString;
+

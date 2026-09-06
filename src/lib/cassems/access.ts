@@ -1,9 +1,9 @@
-import { formatCurrency } from '@/lib/money';
+import { formatMoneyDecimalString } from '@/lib/money';
 import { requireFeatureAccess, canWriteRole, type FeatureAccess } from '@/lib/feature-access';
 import { sortOperatorListItems } from '@/lib/operator-sort';
 import { CASSEMS_PAGE_PATH } from './constants';
 
-export const formatCassemsMoney = formatCurrency;
+export const formatCassemsMoney = formatMoneyDecimalString;
 export const sortCassemsListItems = sortOperatorListItems;
 
 export function canCassemsSync(role: string): boolean {

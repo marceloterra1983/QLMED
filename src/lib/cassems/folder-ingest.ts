@@ -1,23 +1,14 @@
 import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
-  downloadOneDriveItemContent,
-  ensureOneDriveFolder,
-  listOneDriveChildren,
-  type OneDriveItem,
-} from '@/lib/onedrive-client';
+  createOneDriveFolderPort,
+  type OneDriveFolderFile,
+  type OneDriveFolderPort,
+} from '@/lib/onedrive-folder-port';
 import { CASSEMS_ONEDRIVE_ACCOUNT, CASSEMS_ONEDRIVE_FOLDER } from './constants';
 import { oficioFromFileName, parseOficio, shouldUpgrade, type ParsedCassemsItem } from './parse-oficio';
 
-export type CassemsFolderFile = {
-  itemId: string;
-  name: string;
-  lastModifiedAt: Date | null;
-};
-
-export type CassemsFolderPort = {
-  listPdfs(): Promise<CassemsFolderFile[]>;
-  downloadPdf(itemId: string): Promise<Buffer>;
-};
+export type CassemsFolderFile = OneDriveFolderFile;
+export type CassemsFolderPort = OneDriveFolderPort;
 
 export type CassemsFolderPersist = {
   companyId: string;
@@ -59,32 +50,17 @@ export async function resolveCassemsOneDrive(companyId: string): Promise<{
   });
 }
 
-function isPdfItem(item: OneDriveItem): boolean {
-  if (item.folder) return false;
-  const name = item.name || '';
-  return name.toLowerCase().endsWith('.pdf') || item.file?.mimeType === 'application/pdf';
-}
-
 function subjectFromFileName(name: string): string {
   return name.replace(/\.pdf$/i, '').trim();
 }
 
 export async function defaultCassemsFolderPort(companyId: string): Promise<CassemsFolderPort> {
-  const { accessToken, driveId } = await resolveCassemsOneDrive(companyId);
-  const folder = await ensureOneDriveFolder(accessToken, driveId, CASSEMS_ONEDRIVE_FOLDER);
-  return {
-    async listPdfs() {
-      const children = await listOneDriveChildren(accessToken, driveId, folder.id);
-      return children.filter(isPdfItem).map((item) => ({
-        itemId: item.id,
-        name: item.name,
-        lastModifiedAt: item.lastModifiedDateTime ? new Date(item.lastModifiedDateTime) : null,
-      }));
-    },
-    async downloadPdf(itemId: string) {
-      return downloadOneDriveItemContent(accessToken, driveId, itemId);
-    },
-  };
+  return createOneDriveFolderPort({
+    companyId,
+    accountEmail: CASSEMS_ONEDRIVE_ACCOUNT,
+    folderName: CASSEMS_ONEDRIVE_FOLDER,
+    errorMessage: 'conta de arquivo nao conectada',
+  });
 }
 
 /**

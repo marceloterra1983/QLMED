@@ -1,4 +1,4 @@
-import type { ImpcgMailMessage } from '@/lib/graph-mail-client';
+import type { GraphMailMessage } from '@/lib/graph-mail-client';
 import { extractCliqueAquiUrl, shouldUpgrade } from './parse-page';
 import type { UnimedCgParseStatus } from './constants';
 import {
@@ -9,7 +9,7 @@ import {
 export type EmailHtmlKindProps = {
   companyId: string;
   mailbox: string;
-  message: ImpcgMailMessage;
+  message: GraphMailMessage;
   getBodyHtml: (mailbox: string, graphMessageId: string) => Promise<{ content: string }>;
   renderHtmlPdf: (html: string) => Promise<Buffer>;
   uploadPdf: (input: { fileName: string; content: Buffer }) => Promise<{ itemId: string }>;

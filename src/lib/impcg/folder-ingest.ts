@@ -1,23 +1,14 @@
 import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
-  downloadOneDriveItemContent,
-  ensureOneDriveFolder,
-  listOneDriveChildren,
-  type OneDriveItem,
-} from '@/lib/onedrive-client';
+  createOneDriveFolderPort,
+  type OneDriveFolderFile,
+  type OneDriveFolderPort,
+} from '@/lib/onedrive-folder-port';
 import { IMPCG_ONEDRIVE_ACCOUNT, IMPCG_ONEDRIVE_FOLDER } from './constants';
 import { normalizeOficioNumber, parseOficio, shouldUpgrade, type ParsedImpcgItem } from './parse-oficio';
 
-export type ImpcgFolderFile = {
-  itemId: string;
-  name: string;
-  lastModifiedAt: Date | null;
-};
-
-export type ImpcgFolderPort = {
-  listPdfs(): Promise<ImpcgFolderFile[]>;
-  downloadPdf(itemId: string): Promise<Buffer>;
-};
+export type ImpcgFolderFile = OneDriveFolderFile;
+export type ImpcgFolderPort = OneDriveFolderPort;
 
 export type ImpcgFolderPersist = {
   companyId: string;
@@ -63,12 +54,6 @@ export async function resolveImpcgOneDrive(companyId: string): Promise<{
   });
 }
 
-function isPdfItem(item: OneDriveItem): boolean {
-  if (item.folder) return false;
-  const name = item.name || '';
-  return name.toLowerCase().endsWith('.pdf') || item.file?.mimeType === 'application/pdf';
-}
-
 function subjectFromFileName(name: string): string {
   return name.replace(/\.pdf$/i, '').trim();
 }
@@ -80,21 +65,12 @@ function oficioFromFileName(name: string): string | null {
 }
 
 export async function defaultImpcgFolderPort(companyId: string): Promise<ImpcgFolderPort> {
-  const { accessToken, driveId } = await resolveImpcgOneDrive(companyId);
-  const folder = await ensureOneDriveFolder(accessToken, driveId, IMPCG_ONEDRIVE_FOLDER);
-  return {
-    async listPdfs() {
-      const children = await listOneDriveChildren(accessToken, driveId, folder.id);
-      return children.filter(isPdfItem).map((item) => ({
-        itemId: item.id,
-        name: item.name,
-        lastModifiedAt: item.lastModifiedDateTime ? new Date(item.lastModifiedDateTime) : null,
-      }));
-    },
-    async downloadPdf(itemId: string) {
-      return downloadOneDriveItemContent(accessToken, driveId, itemId);
-    },
-  };
+  return createOneDriveFolderPort({
+    companyId,
+    accountEmail: IMPCG_ONEDRIVE_ACCOUNT,
+    folderName: IMPCG_ONEDRIVE_FOLDER,
+    errorMessage: 'conta de arquivo nao conectada',
+  });
 }
 
 /**
