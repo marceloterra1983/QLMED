@@ -1,6 +1,5 @@
-import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
+import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
   listOneDriveChildren,
@@ -42,15 +41,10 @@ async function resolveExistingFolderId(
 }
 
 export async function createDocumentosFolderPort(companyId: string): Promise<DocumentosFolderPort> {
-  const connection = await prisma.oneDriveConnection.findFirst({
-    where: { companyId, accountEmail: DOCUMENTOS_ONEDRIVE_ACCOUNT },
+  const { accessToken, driveId } = await resolveAccountOneDrive(companyId, DOCUMENTOS_ONEDRIVE_ACCOUNT, {
+    allowFallback: false,
+    errorMessage: 'conta faturamento@ não conectada',
   });
-  if (!connection) {
-    throw new Error('conta faturamento@ não conectada');
-  }
-
-  const accessToken = await ensureValidOneDriveAccessToken(connection);
-  const { driveId } = connection;
   const folderIdByPath = new Map<string, string>();
 
   async function folderId(folderPath: string): Promise<string> {

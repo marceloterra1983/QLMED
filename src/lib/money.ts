@@ -40,3 +40,17 @@ export function decimalToCents(value: Decimal): number {
     .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
     .toNumber();
 }
+
+/**
+ * Formata qualquer valor monetário (Decimal, number, string, null, undefined)
+ * em representação textual de 2 casas com ROUND_HALF_UP.
+ */
+export function formatCurrency(value: unknown): string {
+  if (value instanceof Decimal) {
+    return formatMoneyDecimal(value);
+  }
+  if (value && typeof value === 'object' && 'toString' in value) {
+    return formatMoneyDecimal(new Decimal(value.toString()));
+  }
+  return formatMoneyDecimal(new Decimal(value == null || value === '' ? 0 : String(value)));
+}
