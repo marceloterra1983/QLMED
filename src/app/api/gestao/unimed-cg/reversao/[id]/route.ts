@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
-import { getUnimedCgAuthorization } from '@/lib/unimed-cg/store';
+import { getUnimedCgReversal } from '@/lib/unimed-cg/reversal-store';
 import { createLogger } from '@/lib/logger';
-import { formatUnimedCgMoney, requireUnimedCgPage } from '@/lib/unimed-cg/access';
+import { requireUnimedCgPage } from '@/lib/unimed-cg/access';
 
-const log = createLogger('gestao/unimed-cg/:id');
+const log = createLogger('gestao/unimed-cg/reversao/:id');
 
 export async function GET(
   _req: Request,
@@ -27,9 +27,9 @@ export async function GET(
     const access = await requireUnimedCgPage();
     if (!access.ok) return access.response;
 
-    const row = await getUnimedCgAuthorization(access.companyId, parsed.data.id);
+    const row = await getUnimedCgReversal(access.companyId, parsed.data.id);
     if (!row) {
-      return NextResponse.json({ error: 'Autorização não encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Reversão de processo não encontrada' }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -39,14 +39,14 @@ export async function GET(
       procedureDate: row.procedureDate,
       patientName: row.patientName,
       location: row.location,
-      totalAmount: formatUnimedCgMoney(row.totalAmount),
+      procedureType: row.procedureType,
       receivedAt: row.receivedAt,
       fileName: row.fileName,
       parseStatus: row.parseStatus,
       sourceUrl: row.sourceUrl,
     });
   } catch (error) {
-    log.error({ err: error }, 'Falha ao carregar autorização Unimed CG');
-    return apiError(error, 'gestao/unimed-cg/:id');
+    log.error({ err: error }, 'Falha ao carregar reversão Unimed CG');
+    return apiError(error, 'gestao/unimed-cg/reversao/:id');
   }
 }

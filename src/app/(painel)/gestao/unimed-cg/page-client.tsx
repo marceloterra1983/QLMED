@@ -21,6 +21,7 @@ type BillingItem = {
   processId: string;
   authorizationNumber: string | null;
   procedureDate: string | null;
+  patientName: string | null;
   location: string | null;
   totalAmount: string;
   receivedAt: string;
@@ -34,7 +35,41 @@ type DeliveryItem = {
   principalAuthorization: string | null;
   status: string | null;
   authorizedAt: string | null;
+  patientName: string | null;
   supplier: string | null;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+};
+
+type ReversalItem = {
+  id: string;
+  processId: string;
+  authorizationNumber: string | null;
+  procedureDate: string | null;
+  patientName: string | null;
+  location: string | null;
+  procedureType: string | null;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+};
+
+type PreSolicitationItem = {
+  id: string;
+  preSolicitationId: string;
+  patientName: string | null;
+  procedureType: string | null;
+  quoteDeadlineDays: number | null;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+};
+
+type InvoiceDeadlineItem = {
+  id: string;
+  processId: string;
+  patientName: string | null;
   receivedAt: string;
   fileName: string;
   parseStatus: ParseStatus;
@@ -46,9 +81,12 @@ type ListPayload = {
   canSync: boolean;
   billing: BillingItem[];
   deliveries: DeliveryItem[];
+  reversals: ReversalItem[];
+  preSolicitations: PreSolicitationItem[];
+  invoiceDeadlines: InvoiceDeadlineItem[];
 };
 
-type PdfKind = 'billing' | 'delivery';
+type PdfKind = 'billing' | 'delivery' | 'reversal' | 'pre' | 'prazo';
 
 function formatBrl(value: string): string {
   const formatted = new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -66,6 +104,46 @@ function ParseBadge({ status }: { status: ParseStatus }) {
   );
 }
 
+function BeneficiarioLocalCell({
+  patientName,
+  location,
+}: {
+  patientName: string | null | undefined;
+  location?: string | null;
+}) {
+  return (
+    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[240px]">
+      <div className="font-medium text-slate-800 dark:text-slate-100 truncate">
+        {patientName?.trim() || '—'}
+      </div>
+      {location !== undefined && (
+        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+          {location?.trim() || '—'}
+        </div>
+      )}
+    </td>
+  );
+}
+
+function detailUrl(kind: PdfKind, id: string): string {
+  switch (kind) {
+    case 'billing':
+      return `/api/gestao/unimed-cg/${id}`;
+    case 'delivery':
+      return `/api/gestao/unimed-cg/entrega/${id}`;
+    case 'reversal':
+      return `/api/gestao/unimed-cg/reversao/${id}`;
+    case 'pre':
+      return `/api/gestao/unimed-cg/pre-solicitacao/${id}`;
+    case 'prazo':
+      return `/api/gestao/unimed-cg/prazo-nf/${id}`;
+  }
+}
+
+function arquivoUrl(kind: PdfKind, id: string): string {
+  return `${detailUrl(kind, id)}/arquivo`;
+}
+
 export default function UnimedCgPageClient() {
   const [data, setData] = useState<ListPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +151,9 @@ export default function UnimedCgPageClient() {
   const [selected, setSelected] = useState<{ kind: PdfKind; id: string } | null>(null);
   const [billingDetail, setBillingDetail] = useState<BillingItem | null>(null);
   const [deliveryDetail, setDeliveryDetail] = useState<DeliveryItem | null>(null);
+  const [reversalDetail, setReversalDetail] = useState<ReversalItem | null>(null);
+  const [preDetail, setPreDetail] = useState<PreSolicitationItem | null>(null);
+  const [prazoDetail, setPrazoDetail] = useState<InvoiceDeadlineItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -100,30 +181,28 @@ export default function UnimedCgPageClient() {
     if (!selected) {
       setBillingDetail(null);
       setDeliveryDetail(null);
+      setReversalDetail(null);
+      setPreDetail(null);
+      setPrazoDetail(null);
       return;
     }
     let cancelled = false;
     setDetailLoading(true);
-    const url = selected.kind === 'billing'
-      ? `/api/gestao/unimed-cg/${selected.id}`
-      : `/api/gestao/unimed-cg/entrega/${selected.id}`;
-    fetch(url)
+    fetch(detailUrl(selected.kind, selected.id))
       .then((res) => {
         if (!res.ok) throw new Error('detail');
         return res.json();
       })
       .then((payload) => {
         if (cancelled) return;
-        if (selected.kind === 'billing') {
-          setBillingDetail(payload as BillingItem);
-          setDeliveryDetail(null);
-        } else {
-          setDeliveryDetail(payload as DeliveryItem);
-          setBillingDetail(null);
-        }
+        setBillingDetail(selected.kind === 'billing' ? (payload as BillingItem) : null);
+        setDeliveryDetail(selected.kind === 'delivery' ? (payload as DeliveryItem) : null);
+        setReversalDetail(selected.kind === 'reversal' ? (payload as ReversalItem) : null);
+        setPreDetail(selected.kind === 'pre' ? (payload as PreSolicitationItem) : null);
+        setPrazoDetail(selected.kind === 'prazo' ? (payload as InvoiceDeadlineItem) : null);
       })
       .catch(() => {
-        if (!cancelled) toast.error('Erro ao abrir a autorização');
+        if (!cancelled) toast.error('Erro ao abrir o registro');
       })
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
@@ -148,7 +227,7 @@ export default function UnimedCgPageClient() {
       }
       const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
       if (payload?.ok === false) {
-        toast.warning('Coleta parcial: parte das autorizações não foi importada');
+        toast.warning('Coleta parcial: parte dos registros não foi importada');
       } else {
         toast.success('Coleta concluída');
       }
@@ -162,19 +241,30 @@ export default function UnimedCgPageClient() {
 
   const billing = data?.billing ?? [];
   const deliveries = data?.deliveries ?? [];
-  const modalTitle = selected?.kind === 'billing' && billingDetail
-    ? `Processo ${billingDetail.processId}${billingDetail.authorizationNumber ? ` — Aut. ${billingDetail.authorizationNumber}` : ''}`
-    : selected?.kind === 'delivery' && deliveryDetail
-      ? `Processo ${deliveryDetail.processId}${deliveryDetail.principalAuthorization ? ` — Aut. ${deliveryDetail.principalAuthorization}` : ''} (entrega)`
-      : selected
-        ? 'Autorização Unimed CG'
-        : '';
+  const reversals = data?.reversals ?? [];
+  const preSolicitations = data?.preSolicitations ?? [];
+  const invoiceDeadlines = data?.invoiceDeadlines ?? [];
 
-  const pdfSrc = selected
-    ? selected.kind === 'billing'
-      ? embeddedPdfViewerSrc(`/api/gestao/unimed-cg/${selected.id}/arquivo`)
-      : embeddedPdfViewerSrc(`/api/gestao/unimed-cg/entrega/${selected.id}/arquivo`)
-    : '';
+  const modalTitle = (() => {
+    if (selected?.kind === 'billing' && billingDetail) {
+      return `Processo ${billingDetail.processId}${billingDetail.authorizationNumber ? ` — Aut. ${billingDetail.authorizationNumber}` : ''}`;
+    }
+    if (selected?.kind === 'delivery' && deliveryDetail) {
+      return `Processo ${deliveryDetail.processId}${deliveryDetail.principalAuthorization ? ` — Aut. ${deliveryDetail.principalAuthorization}` : ''} (entrega)`;
+    }
+    if (selected?.kind === 'reversal' && reversalDetail) {
+      return `Processo ${reversalDetail.processId} (reversão)`;
+    }
+    if (selected?.kind === 'pre' && preDetail) {
+      return `Pré-solicitação ${preDetail.preSolicitationId}`;
+    }
+    if (selected?.kind === 'prazo' && prazoDetail) {
+      return `Processo ${prazoDetail.processId} (prazo NF)`;
+    }
+    return selected ? 'Unimed CG' : '';
+  })();
+
+  const pdfSrc = selected ? embeddedPdfViewerSrc(arquivoUrl(selected.kind, selected.id)) : '';
 
   return (
     <div className="space-y-6">
@@ -226,7 +316,7 @@ export default function UnimedCgPageClient() {
                       <th className="px-4 py-3 font-semibold">Processo</th>
                       <th className="px-4 py-3 font-semibold">Autorização</th>
                       <th className="px-4 py-3 font-semibold">Data prev.</th>
-                      <th className="px-4 py-3 font-semibold">Local</th>
+                      <th className="px-4 py-3 font-semibold">Beneficiário / Local</th>
                       <th className="px-4 py-3 font-semibold text-right">Valor total</th>
                       <th className="px-4 py-3 font-semibold">Recebido em</th>
                       <th className="px-4 py-3 font-semibold">PDF</th>
@@ -251,9 +341,7 @@ export default function UnimedCgPageClient() {
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                           {formatDocumentDate(item.procedureDate)}
                         </td>
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[220px] truncate">
-                          {item.location ?? '—'}
-                        </td>
+                        <BeneficiarioLocalCell patientName={item.patientName} location={item.location} />
                         <td className="px-4 py-3 text-right tabular-nums text-slate-900 dark:text-white">
                           {formatBrl(item.totalAmount)}
                         </td>
@@ -299,6 +387,7 @@ export default function UnimedCgPageClient() {
                       <th className="px-4 py-3 font-semibold">Autorização principal</th>
                       <th className="px-4 py-3 font-semibold">Situação</th>
                       <th className="px-4 py-3 font-semibold">Data autorização</th>
+                      <th className="px-4 py-3 font-semibold">Beneficiário / Local</th>
                       <th className="px-4 py-3 font-semibold">Fornecedor</th>
                       <th className="px-4 py-3 font-semibold">Recebido em</th>
                       <th className="px-4 py-3 font-semibold">PDF</th>
@@ -326,6 +415,7 @@ export default function UnimedCgPageClient() {
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                           {formatDocumentDate(item.authorizedAt)}
                         </td>
+                        <BeneficiarioLocalCell patientName={item.patientName} />
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-[220px] truncate">
                           {item.supplier ?? '—'}
                         </td>
@@ -341,6 +431,198 @@ export default function UnimedCgPageClient() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelected({ kind: 'delivery', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
+          <Section
+            icon="undo"
+            tone="amber"
+            title={`REVERSÃO DE PROCESSO (${reversals.length})`}
+            defaultOpen={false}
+          >
+            {reversals.length === 0 ? (
+              <EmptyState icon="undo" title="Nenhuma reversão de processo." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Processo</th>
+                      <th className="px-4 py-3 font-semibold">Autorização</th>
+                      <th className="px-4 py-3 font-semibold">Data prev.</th>
+                      <th className="px-4 py-3 font-semibold">Beneficiário / Local</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {reversals.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'reversal', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.processId}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                          {item.authorizationNumber ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDocumentDate(item.procedureDate)}
+                        </td>
+                        <BeneficiarioLocalCell patientName={item.patientName} location={item.location} />
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'reversal', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
+          <Section
+            icon="request_quote"
+            tone="violet"
+            title={`PRÉ-SOLICITAÇÃO (${preSolicitations.length})`}
+            defaultOpen={false}
+          >
+            {preSolicitations.length === 0 ? (
+              <EmptyState icon="request_quote" title="Nenhuma pré-solicitação." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Pré-solicitação</th>
+                      <th className="px-4 py-3 font-semibold">Beneficiário / Local</th>
+                      <th className="px-4 py-3 font-semibold">Tipo</th>
+                      <th className="px-4 py-3 font-semibold">Prazo (dias)</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {preSolicitations.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'pre', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.preSolicitationId}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <BeneficiarioLocalCell patientName={item.patientName} />
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {item.procedureType ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 tabular-nums">
+                          {item.quoteDeadlineDays ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'pre', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
+          <Section
+            icon="schedule"
+            tone="rose"
+            title={`PRAZO DE NOTA FISCAL (${invoiceDeadlines.length})`}
+            defaultOpen={false}
+          >
+            {invoiceDeadlines.length === 0 ? (
+              <EmptyState icon="schedule" title="Nenhum alerta de prazo de nota fiscal." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Processo</th>
+                      <th className="px-4 py-3 font-semibold">Paciente</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {invoiceDeadlines.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'prazo', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.processId}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                          {item.patientName ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'prazo', id: item.id });
                             }}
                           >
                             Ver
@@ -382,6 +664,10 @@ export default function UnimedCgPageClient() {
                 <dd className="font-medium">{billingDetail.authorizationNumber ?? '—'}</dd>
               </div>
               <div>
+                <dt className="text-xs text-slate-500">Beneficiário</dt>
+                <dd>{billingDetail.patientName ?? '—'}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-slate-500">Data prevista</dt>
                 <dd>{formatDocumentDate(billingDetail.procedureDate)}</dd>
               </div>
@@ -413,6 +699,10 @@ export default function UnimedCgPageClient() {
                 <dd className="font-medium">{deliveryDetail.principalAuthorization ?? '—'}</dd>
               </div>
               <div>
+                <dt className="text-xs text-slate-500">Beneficiário</dt>
+                <dd>{deliveryDetail.patientName ?? '—'}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-slate-500">Situação</dt>
                 <dd>{deliveryDetail.status ?? '—'}</dd>
               </div>
@@ -427,6 +717,83 @@ export default function UnimedCgPageClient() {
             </dl>
             <iframe
               title={`PDF entrega processo ${deliveryDetail.processId}`}
+              className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
+              src={pdfSrc}
+            />
+          </div>
+        )}
+        {!detailLoading && reversalDetail && selected?.kind === 'reversal' && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">Processo</dt>
+                <dd className="font-medium">{reversalDetail.processId}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Autorização</dt>
+                <dd className="font-medium">{reversalDetail.authorizationNumber ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Beneficiário</dt>
+                <dd>{reversalDetail.patientName ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Data prevista</dt>
+                <dd>{formatDocumentDate(reversalDetail.procedureDate)}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-500">Local</dt>
+                <dd>{reversalDetail.location ?? '—'}</dd>
+              </div>
+            </dl>
+            <iframe
+              title={`PDF reversão processo ${reversalDetail.processId}`}
+              className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
+              src={pdfSrc}
+            />
+          </div>
+        )}
+        {!detailLoading && preDetail && selected?.kind === 'pre' && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">Pré-solicitação</dt>
+                <dd className="font-medium">{preDetail.preSolicitationId}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Beneficiário</dt>
+                <dd>{preDetail.patientName ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Tipo</dt>
+                <dd>{preDetail.procedureType ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Prazo (dias)</dt>
+                <dd>{preDetail.quoteDeadlineDays ?? '—'}</dd>
+              </div>
+            </dl>
+            <iframe
+              title={`PDF pré-solicitação ${preDetail.preSolicitationId}`}
+              className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
+              src={pdfSrc}
+            />
+          </div>
+        )}
+        {!detailLoading && prazoDetail && selected?.kind === 'prazo' && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">Processo</dt>
+                <dd className="font-medium">{prazoDetail.processId}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Paciente</dt>
+                <dd>{prazoDetail.patientName ?? '—'}</dd>
+              </div>
+            </dl>
+            <iframe
+              title={`PDF prazo NF processo ${prazoDetail.processId}`}
               className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
               src={pdfSrc}
             />

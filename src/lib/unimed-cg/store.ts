@@ -10,6 +10,7 @@ export type UnimedCgListItem = {
   processId: string;
   authorizationNumber: string | null;
   procedureDate: string | null;
+  patientName: string | null;
   location: string | null;
   totalAmount: string;
   receivedAt: string;
@@ -35,6 +36,7 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
       processId: true,
       authorizationNumber: true,
       procedureDate: true,
+      patientName: true,
       location: true,
       totalAmount: true,
       receivedAt: true,
@@ -48,6 +50,7 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
     processId: row.processId,
     authorizationNumber: row.authorizationNumber,
     procedureDate: row.procedureDate ? row.procedureDate.toISOString() : null,
+    patientName: row.patientName,
     location: row.location,
     totalAmount: moneyString(row.totalAmount),
     receivedAt: row.receivedAt.toISOString(),
@@ -70,6 +73,7 @@ export async function getUnimedCgAuthorization(
     processId: row.processId,
     authorizationNumber: row.authorizationNumber,
     procedureDate: row.procedureDate ? row.procedureDate.toISOString() : null,
+    patientName: row.patientName,
     location: row.location,
     totalAmount: moneyString(row.totalAmount),
     receivedAt: row.receivedAt.toISOString(),
@@ -89,6 +93,7 @@ export type PersistConfirmedInput = {
   processId: string;
   authorizationNumber: string | null;
   procedureDate: Date | null;
+  patientName: string | null;
   location: string | null;
   totalCents: number;
   parseStatus: DomainParseStatus;
@@ -109,6 +114,7 @@ export async function persistConfirmedAuthorization(input: PersistConfirmedInput
         processId: input.processId,
         authorizationNumber: input.authorizationNumber,
         procedureDate: input.procedureDate,
+        patientName: input.patientName,
         location: input.location,
         totalAmount: centsToDecimal(input.totalCents),
         oneDriveItemId: input.oneDriveItemId,
@@ -144,6 +150,7 @@ export async function persistUpgradeAuthorization(
       data: {
         authorizationNumber: input.authorizationNumber,
         procedureDate: input.procedureDate,
+        patientName: input.patientName,
         location: input.location,
         totalAmount: centsToDecimal(input.totalCents),
         oneDriveItemId: input.oneDriveItemId,

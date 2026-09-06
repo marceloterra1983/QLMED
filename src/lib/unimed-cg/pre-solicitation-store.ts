@@ -3,36 +3,34 @@ import prisma from '@/lib/prisma';
 import { isUniqueViolation } from '@/lib/prisma-errors';
 import type { UnimedCgParseStatus as DomainParseStatus } from './constants';
 
-export type UnimedCgDeliveryListItem = {
+export type UnimedCgPreSolicitationListItem = {
   id: string;
-  processId: string;
-  principalAuthorization: string | null;
-  status: string | null;
-  authorizedAt: string | null;
+  preSolicitationId: string;
   patientName: string | null;
-  supplier: string | null;
+  procedureType: string | null;
+  quoteDeadlineDays: number | null;
   receivedAt: string;
   fileName: string;
   parseStatus: UnimedCgParseStatus;
 };
 
-export type UnimedCgDeliveryDetailItem = UnimedCgDeliveryListItem & {
+export type UnimedCgPreSolicitationDetailItem = UnimedCgPreSolicitationListItem & {
   oneDriveItemId: string;
   sourceUrl: string | null;
 };
 
-export async function listUnimedCgDeliveries(companyId: string): Promise<UnimedCgDeliveryListItem[]> {
-  const rows = await prisma.unimedCgDeliveryAuthorization.findMany({
+export async function listUnimedCgPreSolicitations(
+  companyId: string,
+): Promise<UnimedCgPreSolicitationListItem[]> {
+  const rows = await prisma.unimedCgPreSolicitation.findMany({
     where: { companyId },
-    orderBy: [{ receivedAt: 'desc' }, { processId: 'desc' }],
+    orderBy: [{ receivedAt: 'desc' }, { preSolicitationId: 'desc' }],
     select: {
       id: true,
-      processId: true,
-      principalAuthorization: true,
-      status: true,
-      authorizedAt: true,
+      preSolicitationId: true,
       patientName: true,
-      supplier: true,
+      procedureType: true,
+      quoteDeadlineDays: true,
       receivedAt: true,
       fileName: true,
       parseStatus: true,
@@ -41,35 +39,31 @@ export async function listUnimedCgDeliveries(companyId: string): Promise<UnimedC
 
   return rows.map((row) => ({
     id: row.id,
-    processId: row.processId,
-    principalAuthorization: row.principalAuthorization,
-    status: row.status,
-    authorizedAt: row.authorizedAt ? row.authorizedAt.toISOString() : null,
+    preSolicitationId: row.preSolicitationId,
     patientName: row.patientName,
-    supplier: row.supplier,
+    procedureType: row.procedureType,
+    quoteDeadlineDays: row.quoteDeadlineDays,
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
   }));
 }
 
-export async function getUnimedCgDelivery(
+export async function getUnimedCgPreSolicitation(
   companyId: string,
   id: string,
-): Promise<UnimedCgDeliveryDetailItem | null> {
-  const row = await prisma.unimedCgDeliveryAuthorization.findFirst({
+): Promise<UnimedCgPreSolicitationDetailItem | null> {
+  const row = await prisma.unimedCgPreSolicitation.findFirst({
     where: { id, companyId },
   });
   if (!row) return null;
 
   return {
     id: row.id,
-    processId: row.processId,
-    principalAuthorization: row.principalAuthorization,
-    status: row.status,
-    authorizedAt: row.authorizedAt ? row.authorizedAt.toISOString() : null,
+    preSolicitationId: row.preSolicitationId,
     patientName: row.patientName,
-    supplier: row.supplier,
+    procedureType: row.procedureType,
+    quoteDeadlineDays: row.quoteDeadlineDays,
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
@@ -78,14 +72,12 @@ export async function getUnimedCgDelivery(
   };
 }
 
-export type PersistDeliveryConfirmedInput = {
+export type PersistPreSolicitationConfirmedInput = {
   companyId: string;
-  processId: string;
-  principalAuthorization: string | null;
-  status: string | null;
-  authorizedAt: Date | null;
+  preSolicitationId: string;
   patientName: string | null;
-  supplier: string | null;
+  procedureType: string | null;
+  quoteDeadlineDays: number | null;
   parseStatus: DomainParseStatus;
   fileName: string;
   oneDriveItemId: string;
@@ -96,19 +88,17 @@ export type PersistDeliveryConfirmedInput = {
   graphMessageId?: string;
 };
 
-export async function persistConfirmedDelivery(
-  input: PersistDeliveryConfirmedInput,
+export async function persistConfirmedPreSolicitation(
+  input: PersistPreSolicitationConfirmedInput,
 ): Promise<{ id: string }> {
   return prisma.$transaction(async (tx) => {
-    const created = await tx.unimedCgDeliveryAuthorization.create({
+    const created = await tx.unimedCgPreSolicitation.create({
       data: {
         companyId: input.companyId,
-        processId: input.processId,
-        principalAuthorization: input.principalAuthorization,
-        status: input.status,
-        authorizedAt: input.authorizedAt,
+        preSolicitationId: input.preSolicitationId,
         patientName: input.patientName,
-        supplier: input.supplier,
+        procedureType: input.procedureType,
+        quoteDeadlineDays: input.quoteDeadlineDays,
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
         sourceUrl: input.sourceUrl,
@@ -118,10 +108,10 @@ export async function persistConfirmedDelivery(
       select: { id: true },
     });
     if (input.internetMessageId && input.mailbox && input.graphMessageId) {
-      await tx.unimedCgDeliverySourceMessage.create({
+      await tx.unimedCgPreSolicitationSourceMessage.create({
         data: {
           companyId: input.companyId,
-          authorizationId: created.id,
+          preSolicitationRefId: created.id,
           mailbox: input.mailbox,
           graphMessageId: input.graphMessageId,
           internetMessageId: input.internetMessageId,
@@ -133,29 +123,28 @@ export async function persistConfirmedDelivery(
   });
 }
 
-export async function persistUpgradeDelivery(
-  input: PersistDeliveryConfirmedInput & { authorizationId: string },
+export async function persistUpgradePreSolicitation(
+  input: PersistPreSolicitationConfirmedInput & { recordId: string },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await tx.unimedCgDeliveryAuthorization.update({
-      where: { id: input.authorizationId },
+    await tx.unimedCgPreSolicitation.update({
+      where: { id: input.recordId },
       data: {
-        principalAuthorization: input.principalAuthorization,
-        status: input.status,
-        authorizedAt: input.authorizedAt,
         patientName: input.patientName,
-        supplier: input.supplier,
+        procedureType: input.procedureType,
+        quoteDeadlineDays: input.quoteDeadlineDays,
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
         sourceUrl: input.sourceUrl,
         parseStatus: input.parseStatus,
+        receivedAt: input.receivedAt,
       },
     });
     if (input.internetMessageId && input.mailbox && input.graphMessageId) {
-      await tx.unimedCgDeliverySourceMessage.create({
+      await tx.unimedCgPreSolicitationSourceMessage.create({
         data: {
           companyId: input.companyId,
-          authorizationId: input.authorizationId,
+          preSolicitationRefId: input.recordId,
           mailbox: input.mailbox,
           graphMessageId: input.graphMessageId,
           internetMessageId: input.internetMessageId,
@@ -166,19 +155,19 @@ export async function persistUpgradeDelivery(
   });
 }
 
-export async function persistDeliverySourceOnly(input: {
+export async function persistPreSolicitationSourceOnly(input: {
   companyId: string;
-  authorizationId: string;
+  recordId: string;
   mailbox: string;
   graphMessageId: string;
   internetMessageId: string;
   receivedAt: Date;
 }): Promise<void> {
   try {
-    await prisma.unimedCgDeliverySourceMessage.create({
+    await prisma.unimedCgPreSolicitationSourceMessage.create({
       data: {
         companyId: input.companyId,
-        authorizationId: input.authorizationId,
+        preSolicitationRefId: input.recordId,
         mailbox: input.mailbox,
         graphMessageId: input.graphMessageId,
         internetMessageId: input.internetMessageId,
@@ -190,31 +179,32 @@ export async function persistDeliverySourceOnly(input: {
   }
 }
 
-export const prismaUnimedCgDeliveryStore = {
+export const prismaUnimedCgPreSolicitationStore = {
   async findSourceByInternetMessageId(companyId: string, internetMessageId: string) {
-    return prisma.unimedCgDeliverySourceMessage.findUnique({
+    return prisma.unimedCgPreSolicitationSourceMessage.findUnique({
       where: { companyId_internetMessageId: { companyId, internetMessageId } },
-      select: { id: true, authorizationId: true, whatsappSentAt: true },
+      select: { id: true, preSolicitationRefId: true, whatsappSentAt: true },
     });
   },
   async markWhatsAppSent(companyId: string, internetMessageId: string, messageId: string | null) {
-    await prisma.unimedCgDeliverySourceMessage.updateMany({
+    await prisma.unimedCgPreSolicitationSourceMessage.updateMany({
       where: { companyId, internetMessageId },
       data: { whatsappSentAt: new Date(), whatsappMessageId: messageId },
     });
   },
-  async findByProcessId(companyId: string, processId: string) {
-    return prisma.unimedCgDeliveryAuthorization.findUnique({
-      where: { companyId_processId: { companyId, processId } },
+  async findByPreSolicitationId(companyId: string, preSolicitationId: string) {
+    return prisma.unimedCgPreSolicitation.findUnique({
+      where: { companyId_preSolicitationId: { companyId, preSolicitationId } },
       select: {
         id: true,
-        processId: true,
+        preSolicitationId: true,
         parseStatus: true,
         oneDriveItemId: true,
+        receivedAt: true,
       },
     });
   },
-  persistConfirmed: persistConfirmedDelivery,
-  persistUpgrade: persistUpgradeDelivery,
-  persistSourceOnly: persistDeliverySourceOnly,
+  persistConfirmed: persistConfirmedPreSolicitation,
+  persistUpgrade: persistUpgradePreSolicitation,
+  persistSourceOnly: persistPreSolicitationSourceOnly,
 };

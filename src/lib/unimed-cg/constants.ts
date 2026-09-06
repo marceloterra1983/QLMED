@@ -35,6 +35,25 @@ export const UNIMED_CG_SUBJECT_RE =
 export const UNIMED_CG_ENTREGA_SUBJECT_RE =
   /\[ID\s+(\d+)\]\s*\[OPME\]\s*etapa\s+de\s+autoriza[cç][aã]o\s+conclu[ií]da/i;
 
+
+/**
+ * Assunto reversão: `[ID N] [OPME] Reversão de Processo`
+ */
+export const UNIMED_CG_REVERSAO_SUBJECT_RE =
+  /\[ID\s+(\d+)\]\s*\[OPME\]\s*Revers[aã]o\s+de\s+Processo/i;
+
+/**
+ * Assunto pré-solicitação: `[OPME] solicitação para completar dados da pré-solicitação [Eletivo|Urgente]?`
+ */
+export const UNIMED_CG_PRE_SOLICITACAO_SUBJECT_RE =
+  /\[OPME\]\s*solicita[cç][aã]o\s+para\s+completar\s+dados\s+da\s+pr[eé]-solicita[cç][aã]o(?:\s*\[(Eletivo|Urgente)\])?/i;
+
+/**
+ * Assunto prazo NF: `[ID N] [OPME]` + `prazo para lançamento da Nota Fiscal`
+ */
+export const UNIMED_CG_PRAZO_NF_SUBJECT_RE =
+  /\[ID\s+(\d+)\]\s*\[OPME\][\s\S]*prazo\s+para\s+lan[cç]amento\s+da\s+Nota\s+Fiscal/i;
+
 export function isUnimedCgWhatsAppEnabled(): boolean {
   return (process.env.UNIMED_CG_WHATSAPP_ENABLED ?? '').toLowerCase() === 'true';
 }

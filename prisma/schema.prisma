@@ -178,6 +178,12 @@ model Company {
   unimedCgIngestState    UnimedCgIngestState?
   unimedCgDeliveryAuthorizations UnimedCgDeliveryAuthorization[]
   unimedCgDeliverySourceMessages UnimedCgDeliverySourceMessage[]
+  unimedCgProcessReversals UnimedCgProcessReversal[]
+  unimedCgProcessReversalSourceMessages UnimedCgProcessReversalSourceMessage[]
+  unimedCgPreSolicitations UnimedCgPreSolicitation[]
+  unimedCgPreSolicitationSourceMessages UnimedCgPreSolicitationSourceMessage[]
+  unimedCgInvoiceDeadlines UnimedCgInvoiceDeadline[]
+  unimedCgInvoiceDeadlineSourceMessages UnimedCgInvoiceDeadlineSourceMessage[]
   documents             CompanyDocument[]
   documentIngestState   CompanyDocumentIngestState?
   invoiceEmissions      InvoiceEmission[]
@@ -1114,6 +1120,7 @@ model UnimedCgAuthorization {
   processId            String
   authorizationNumber  String?
   procedureDate        DateTime?
+  patientName          String?
   location             String?
   totalAmount          Decimal
   oneDriveItemId       String
@@ -1168,6 +1175,7 @@ model UnimedCgDeliveryAuthorization {
   principalAuthorization  String?
   status                  String?
   authorizedAt            DateTime?
+  patientName             String?
   supplier                String?
   oneDriveItemId          String
   fileName                String
@@ -1201,6 +1209,128 @@ model UnimedCgDeliverySourceMessage {
   @@index([authorizationId])
 }
 
+
+
+
+model UnimedCgProcessReversal {
+  id                   String                                  @id @default(cuid())
+  companyId            String
+  company              Company                                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  processId            String
+  authorizationNumber  String?
+  procedureDate        DateTime?
+  patientName          String?
+  location             String?
+  procedureType        String?
+  oneDriveItemId       String
+  fileName             String
+  sourceUrl            String?
+  parseStatus          UnimedCgParseStatus
+  receivedAt           DateTime
+  sourceMessages       UnimedCgProcessReversalSourceMessage[]
+  createdAt            DateTime                                @default(now())
+  updatedAt            DateTime                                @updatedAt
+
+  @@unique([companyId, processId])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgProcessReversalSourceMessage {
+  id                String                  @id @default(cuid())
+  companyId         String
+  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reversalId        String?
+  reversal          UnimedCgProcessReversal? @relation(fields: [reversalId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  whatsappSentAt    DateTime?
+  whatsappMessageId String?
+  createdAt         DateTime                @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([reversalId])
+}
+
+model UnimedCgPreSolicitation {
+  id                 String                               @id @default(cuid())
+  companyId          String
+  company            Company                              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  preSolicitationId  String
+  patientName        String?
+  procedureType      String?
+  quoteDeadlineDays  Int?
+  oneDriveItemId     String
+  fileName           String
+  sourceUrl          String?
+  parseStatus        UnimedCgParseStatus
+  receivedAt         DateTime
+  sourceMessages     UnimedCgPreSolicitationSourceMessage[]
+  createdAt          DateTime                             @default(now())
+  updatedAt          DateTime                             @updatedAt
+
+  @@unique([companyId, preSolicitationId])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgPreSolicitationSourceMessage {
+  id                   String                 @id @default(cuid())
+  companyId            String
+  company              Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  preSolicitationRefId String?
+  preSolicitation      UnimedCgPreSolicitation? @relation(fields: [preSolicitationRefId], references: [id], onDelete: SetNull)
+  mailbox              String
+  graphMessageId       String
+  internetMessageId    String
+  receivedAt           DateTime
+  whatsappSentAt       DateTime?
+  whatsappMessageId    String?
+  createdAt            DateTime               @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([preSolicitationRefId])
+}
+
+model UnimedCgInvoiceDeadline {
+  id             String                               @id @default(cuid())
+  companyId      String
+  company        Company                              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  processId      String
+  patientName    String?
+  oneDriveItemId String
+  fileName       String
+  sourceUrl      String?
+  parseStatus    UnimedCgParseStatus
+  receivedAt     DateTime
+  sourceMessages UnimedCgInvoiceDeadlineSourceMessage[]
+  createdAt      DateTime                             @default(now())
+  updatedAt      DateTime                             @updatedAt
+
+  @@unique([companyId, processId])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgInvoiceDeadlineSourceMessage {
+  id                String                  @id @default(cuid())
+  companyId         String
+  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deadlineId        String?
+  deadline          UnimedCgInvoiceDeadline? @relation(fields: [deadlineId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  whatsappSentAt    DateTime?
+  whatsappMessageId String?
+  createdAt         DateTime                @default(now())
+
+  @@unique([companyId, internetMessageId])
+  @@index([companyId])
+  @@index([deadlineId])
+}
 
 enum CompanyDocumentKind {
   cnd_federal

@@ -38,6 +38,7 @@ export async function GET(
       principalAuthorization: row.principalAuthorization,
       status: row.status,
       authorizedAt: row.authorizedAt,
+      patientName: row.patientName,
       supplier: row.supplier,
       receivedAt: row.receivedAt,
       fileName: row.fileName,
