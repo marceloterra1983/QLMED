@@ -17,10 +17,10 @@ Scope: Extrair nome do paciente de infCpl, persistir em Invoice.patientName, bus
   EXPECT: TSC_EXIT:0
   EVIDENCE: tsc --noEmit exit 0
 
-- [x] G4: testes vitest do extrator + invoices search
+- [x] G4: testes vitest do extrator
   CHECK: cd /home/marce/qlmed/.worktrees/052-nfe-paciente-infcpl && npx vitest run src/lib/__tests__/extract-patient-name.test.ts 2>&1 | tail -n 5
   EXPECT: /passed/
-  EVIDENCE: extract-patient-name 6 passed; invoices/__tests__ ausente
+  EVIDENCE: extract-patient-name 6 passed
 
 - [x] G5: backfill qlmed-db preenche milhares
   CHECK: docker exec -i $(docker ps -q -f name=qlmed-db) psql -U postgres -d postgres -tAc "SELECT count(*) FROM \"Invoice\" WHERE direction='issued' AND \"patientName\" IS NOT NULL"

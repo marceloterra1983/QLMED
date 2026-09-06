@@ -1148,6 +1148,8 @@ model UnimedCgAuthorization {
   billedMatchedAt      DateTime?
   /// matched | ambiguous | null
   billedMatchStatus    String?
+  /// Candidatos [{id, number}] quando ambiguous (SPEC-051)
+  billedCandidateInvoices Json?
   sourceMessages       UnimedCgSourceMessage[]
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt

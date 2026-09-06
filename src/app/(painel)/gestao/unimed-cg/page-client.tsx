@@ -43,6 +43,8 @@ type BilledRelatedItem = {
   summary: string;
 };
 
+type BilledCandidateInvoice = { id: string; number: string };
+
 type BilledItem = {
   id: string;
   processId: string;
@@ -58,6 +60,7 @@ type BilledItem = {
   billedInvoiceNumber: string | null;
   billedMatchedAt: string | null;
   billedMatchStatus: string | null;
+  billedCandidateInvoices?: BilledCandidateInvoice[] | null;
   related: BilledRelatedItem[];
 };
 
@@ -378,24 +381,46 @@ export default function UnimedCgPageClient() {
               <EmptyState icon="receipt" title="Nenhum processo faturado ainda." />
             ) : (
               <div className="space-y-3">
-                {billed.map((item) => (
+                {billed.map((item) => {
+                  const isAmbiguous = item.billedMatchStatus === 'ambiguous';
+                  const candidateTags =
+                    isAmbiguous && item.billedCandidateInvoices?.length
+                      ? item.billedCandidateInvoices
+                      : item.billedInvoiceId && item.billedInvoiceNumber
+                        ? [{ id: item.billedInvoiceId, number: item.billedInvoiceNumber }]
+                        : [];
+                  return (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 overflow-hidden"
+                    className={
+                      isAmbiguous
+                        ? 'rounded-lg border border-orange-300 dark:border-orange-700/70 bg-orange-50/70 dark:bg-orange-950/30 overflow-hidden ring-1 ring-orange-200/80 dark:ring-orange-800/50'
+                        : 'rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 overflow-hidden'
+                    }
                   >
-                    <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-amber-200/60 dark:border-amber-900/40">
+                    <div className={
+                      isAmbiguous
+                        ? 'flex flex-wrap items-center gap-3 px-4 py-3 border-b border-orange-200/80 dark:border-orange-900/50'
+                        : 'flex flex-wrap items-center gap-3 px-4 py-3 border-b border-amber-200/60 dark:border-amber-900/40'
+                    }>
                       <span className="font-semibold text-slate-900 dark:text-white">
                         Processo {item.processId}
                       </span>
-                      {item.billedInvoiceId && item.billedInvoiceNumber ? (
+                      {isAmbiguous ? (
+                        <Badge tone="warning" title="Mais de uma NF-e Unimed contém o beneficiário">
+                          Ambíguo
+                        </Badge>
+                      ) : null}
+                      {candidateTags.map((cand) => (
                         <NfYellowTag
-                          number={item.billedInvoiceNumber}
+                          key={cand.id}
+                          number={cand.number}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setInvoiceModalId(item.billedInvoiceId);
+                            setInvoiceModalId(cand.id);
                           }}
                         />
-                      ) : null}
+                      ))}
                       <ParseBadge status={item.parseStatus} />
                       <span className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[220px]">
                         {item.patientName?.trim() || '—'}
@@ -442,7 +467,8 @@ export default function UnimedCgPageClient() {
                       ))}
                     </ul>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Section>
@@ -480,11 +506,7 @@ export default function UnimedCgPageClient() {
                           <span className="inline-flex items-center gap-2">
                             {item.processId}
                             <ParseBadge status={item.parseStatus} />
-                            {item.billedMatchStatus === 'ambiguous' ? (
-                              <Badge tone="warning" title="Mais de uma NF-e Unimed bateu com o beneficiário">
-                                Ambíguo
-                              </Badge>
-                            ) : null}
+
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
