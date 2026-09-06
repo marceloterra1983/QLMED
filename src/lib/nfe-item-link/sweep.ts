@@ -1,5 +1,5 @@
 /**
- * SPEC-047 — varredura idempotente de todas as NF-e recebidas desde uma data.
+ * SPEC-047/055 — varredura idempotente de NF-e recebidas e emitidas desde uma data.
  * Um lock por empresa; páginas de 100 notas; índice e memória carregados uma
  * vez e a memória cresce durante a corrida (S6 automático).
  */
@@ -24,6 +24,8 @@ const PAGE_SIZE = 100;
 export interface SweepOptions {
   companyId: string;
   since?: Date;
+  /** Default: received + issued (SPEC-047 + SPEC-055). */
+  direction?: 'received' | 'issued' | 'both';
   dryRun?: boolean;
   force?: boolean;
   /** Só decide, sem ler nem escrever a tabela de vínculos (diagnóstico antes da migration). */
@@ -92,7 +94,14 @@ export async function runNfeItemLinkSweep(opts: SweepOptions): Promise<SweepResu
     for (;;) {
       const page: Array<{ id: string; number: string; senderCnpj: string; senderName: string; issueDate: Date; xmlContent: string }> =
         await prisma.invoice.findMany({
-          where: { companyId: opts.companyId, type: 'NFE', direction: 'received', issueDate: { gte: since } },
+          where: {
+            companyId: opts.companyId,
+            type: 'NFE',
+            direction: opts.direction === 'received' || opts.direction === 'issued'
+              ? opts.direction
+              : { in: ['received', 'issued'] as const },
+            issueDate: { gte: since },
+          },
           orderBy: { id: 'asc' },
           take: PAGE_SIZE,
           ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),

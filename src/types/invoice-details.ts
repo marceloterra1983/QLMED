@@ -99,9 +99,9 @@ export interface NfeProduto {
   ipi: TaxFields;
   pis: TaxFields;
   cofins: TaxFields;
-  /** ausente em nota emitida; null em nota recebida sem vínculo */
+  /** Vínculo Spica — recebida (SPEC-047) e emitida (SPEC-055). */
   vinculo?: NfeItemVinculo | null;
-  /** id da linha nfe_item_product_link (nota recebida já varrida) */
+  /** id da linha nfe_item_product_link (nota já varrida) */
   linkId?: string | null;
 }
 

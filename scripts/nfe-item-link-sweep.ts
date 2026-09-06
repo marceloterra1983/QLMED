@@ -1,7 +1,7 @@
 /**
- * SPEC-047 — varredura de vínculo item NF-e recebida → produto Spica.
+ * SPEC-047/055 — varredura de vínculo item NF-e (recebida + emitida) → produto Spica.
  *
- *   npx tsx scripts/nfe-item-link-sweep.ts [--dry-run] [--diagnostic] [--force] [--since=2021-01-01]
+ *   npx tsx scripts/nfe-item-link-sweep.ts [--dry-run] [--diagnostic] [--force] [--since=2021-01-01] [--direction=both|received|issued]
  *
  * Escreve um CSV de backup em tmp/nfe-item-links-<timestamp>.csv (gitignored).
  * Requer DATABASE_URL canônica no ambiente.
@@ -29,6 +29,10 @@ async function main() {
   const dryRun = flag('dry-run');
   const diagnosticOnly = flag('diagnostic');
   const force = flag('force');
+  const directionRaw = option('direction') ?? 'both';
+  const direction = (directionRaw === 'received' || directionRaw === 'issued' || directionRaw === 'both')
+    ? directionRaw
+    : (() => { throw new Error(`direction inválido: ${directionRaw}`); })();
 
   fs.mkdirSync(path.join(process.cwd(), 'tmp'), { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -42,6 +46,7 @@ async function main() {
     const result = await runNfeItemLinkSweep({
       companyId: company.id,
       since,
+      direction,
       dryRun,
       force,
       diagnosticOnly,

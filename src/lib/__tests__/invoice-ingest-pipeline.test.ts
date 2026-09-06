@@ -57,8 +57,8 @@ describe('invoice-ingest-pipeline', () => {
     ]);
   });
 
-  it('skips item_links for issued invoice', async () => {
-    const linkInvoiceItems = vi.fn();
+  it('runs item_links for issued invoice (SPEC-055)', async () => {
+    const linkInvoiceItems = vi.fn(async () => ({ linked: 1, pending: 0, writes: 1 }));
     vi.doMock('@/lib/product-aggregate-updater', () => ({
       updateProductAggregatesOnly: vi.fn(async () => undefined),
       extractAndStoreTaxData: vi.fn(async () => undefined),
@@ -86,9 +86,9 @@ describe('invoice-ingest-pipeline', () => {
       invoiceNumber: '101',
     });
 
-    expect(linkInvoiceItems).not.toHaveBeenCalled();
+    expect(linkInvoiceItems).toHaveBeenCalledTimes(1);
     const itemLinkStage = result.stages.find((s) => s.stage === 'item_links');
-    expect(itemLinkStage?.status).toBe('skipped');
+    expect(itemLinkStage?.status).toBe('ok');
   });
 
   it('isolates stage failure so other stages continue', async () => {
