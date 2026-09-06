@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getUnimedCgInvoiceDeadline } from '@/lib/unimed-cg/invoice-deadline-store';
 import { UNIMED_CG_ONEDRIVE_ACCOUNT } from '@/lib/unimed-cg/constants';
 import { openOneDriveItemContent } from '@/lib/onedrive-client';
-import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
+import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import { createStreamFileResponse } from '@/lib/file-response';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
@@ -18,6 +19,13 @@ export async function GET(
 ) {
   const startedAt = Date.now();
   try {
+    await requireAuth();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
+  try {
     const { id } = await params;
     const parsed = idParamSchema.safeParse({ id });
     if (!parsed.success) return apiValidationError(parsed.error);
@@ -30,19 +38,17 @@ export async function GET(
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
     }
 
-    let oneDrive: { accessToken: string; driveId: string };
-    try {
-      oneDrive = await resolveAccountOneDrive(access.companyId, UNIMED_CG_ONEDRIVE_ACCOUNT, {
-        allowFallback: false,
-        errorMessage: 'Arquivo não encontrado',
-      });
-    } catch {
+    const connection = await prisma.oneDriveConnection.findFirst({
+      where: { companyId: access.companyId, accountEmail: UNIMED_CG_ONEDRIVE_ACCOUNT },
+    });
+    if (!connection) {
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
     }
 
+    const accessToken = await ensureValidOneDriveAccessToken(connection);
     const content = await openOneDriveItemContent(
-      oneDrive.accessToken,
-      oneDrive.driveId,
+      accessToken,
+      connection.driveId,
       row.oneDriveItemId,
     );
     if (!content.body) {
