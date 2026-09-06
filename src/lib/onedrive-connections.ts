@@ -72,3 +72,35 @@ export async function ensureValidOneDriveAccessToken(connection: OneDriveConnect
 
   return refreshed.access_token;
 }
+
+/**
+ * Localiza a conexão OneDrive ativa para a empresa (com suporte a conta específica e fallback opcional),
+ * valida / renova o access token criptografado e retorna as credenciais prontas para uso.
+ */
+export async function resolveAccountOneDrive(
+  companyId: string,
+  accountEmail?: string | null,
+  options?: {
+    allowFallback?: boolean;
+    errorMessage?: string;
+  },
+): Promise<{ accessToken: string; driveId: string }> {
+  const allowFallback = options?.allowFallback !== false;
+  const connection = (accountEmail
+    ? await prisma.oneDriveConnection.findFirst({
+        where: { companyId, accountEmail },
+      })
+    : null) ?? (allowFallback
+      ? await prisma.oneDriveConnection.findFirst({
+          where: { companyId },
+          orderBy: { updatedAt: 'desc' },
+        })
+      : null);
+
+  if (!connection) {
+    throw new Error(options?.errorMessage ?? 'Conexão OneDrive não encontrada');
+  }
+
+  const accessToken = await ensureValidOneDriveAccessToken(connection);
+  return { accessToken, driveId: connection.driveId };
+}

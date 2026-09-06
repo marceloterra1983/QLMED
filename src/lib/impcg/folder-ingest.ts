@@ -1,5 +1,4 @@
-import prisma from '@/lib/prisma';
-import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
+import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
   ensureOneDriveFolder,
@@ -59,17 +58,9 @@ export async function resolveImpcgOneDrive(companyId: string): Promise<{
   accessToken: string;
   driveId: string;
 }> {
-  const connection = await prisma.oneDriveConnection.findFirst({
-    where: { companyId, accountEmail: IMPCG_ONEDRIVE_ACCOUNT },
-  }) ?? await prisma.oneDriveConnection.findFirst({
-    where: { companyId },
-    orderBy: { updatedAt: 'desc' },
+  return resolveAccountOneDrive(companyId, IMPCG_ONEDRIVE_ACCOUNT, {
+    errorMessage: 'conta de arquivo nao conectada',
   });
-  if (!connection) {
-    throw new Error('conta de arquivo nao conectada');
-  }
-  const accessToken = await ensureValidOneDriveAccessToken(connection);
-  return { accessToken, driveId: connection.driveId };
 }
 
 function isPdfItem(item: OneDriveItem): boolean {
