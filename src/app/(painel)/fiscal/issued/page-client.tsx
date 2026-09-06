@@ -117,8 +117,8 @@ export default function IssuedInvoicesPage() {
   }, []);
 
   const handleExport = () => {
-    const headers = ['Numero', 'Chave', 'Destinatario', 'Data', 'Valor', 'Status'];
-    const rows = invoices.map(inv => [inv.number, inv.accessKey, inv.recipientName, formatDate(inv.issueDate), inv.totalValue, inv.status]);
+    const headers = ['Numero', 'Chave', 'Destinatario', 'Paciente', 'Data', 'Valor', 'Status'];
+    const rows = invoices.map(inv => [inv.number, inv.accessKey, inv.recipientName, inv.patientName ?? '', formatDate(inv.issueDate), inv.totalValue, inv.status]);
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -244,7 +244,7 @@ export default function IssuedInvoicesPage() {
 
   const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
     <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={6} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+      <td colSpan={7} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
@@ -279,6 +279,13 @@ export default function IssuedInvoicesPage() {
         </td>
         <td className="px-2 py-3">
           {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-xs text-slate-500 dark:text-slate-400">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
+        </td>
+        <td className="px-2 py-3">
+          {invoice.patientName ? (
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{invoice.patientName}</span>
+          ) : (
+            <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+          )}
         </td>
         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
@@ -315,6 +322,11 @@ export default function IssuedInvoicesPage() {
           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
           <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
         </div>
+        {invoice.patientName ? (
+          <p className="text-xs text-slate-600 dark:text-slate-300 truncate mb-1">
+            <span className="font-semibold text-slate-500 dark:text-slate-400">Paciente:</span> {invoice.patientName}
+          </p>
+        ) : null}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
           <RowActions invoiceId={invoice.id} accessKey={invoice.accessKey} onView={openModal} onDetails={openDetails} onViewProducts={openProducts} onDelete={canWrite ? confirmDelete : undefined} />
@@ -497,6 +509,7 @@ export default function IssuedInvoicesPage() {
                 <SortableTh col="number" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} className="w-px whitespace-nowrap">Número</SortableTh>
                 <SortableTh col="value" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right" className="w-px whitespace-nowrap">Valor</SortableTh>
                 <SortableTh col="recipient" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Destinatário</SortableTh>
+                <th className="px-2 py-2">Paciente</th>
                 <th className="px-2 py-2 text-center">Ações</th>
               </tr>
             </thead>
@@ -509,12 +522,13 @@ export default function IssuedInvoicesPage() {
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-2 py-1.5 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-28" /></td>
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12">
+                  <td colSpan={7} className="px-6 py-12">
                     <EmptyState
                       compact
                       icon="output"
