@@ -26,6 +26,9 @@ describe('NfeDetailsModal: abas', () => {
     expect(tabs).toHaveLength(8);
     const seleccionadas = tabs.filter((t) => t.includes('aria-selected="true"'));
     expect(seleccionadas).toHaveLength(1);
+    // SPEC-049: abertura padrão na aba Produtos
+    expect(seleccionadas[0]).toContain('aria-label="Produtos"');
+    expect(seleccionadas[0]).toContain('tab-produtos');
     // Só a seleccionada entra na ordem do Tab; as outras chegam pelas setas.
     expect(tabs.filter((t) => t.includes('tabindex="-1"'))).toHaveLength(7);
     for (const t of tabs) expect(t).toContain('aria-controls=');
