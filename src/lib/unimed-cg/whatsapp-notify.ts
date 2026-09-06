@@ -144,3 +144,137 @@ export async function notifyUnimedCgDelivery(input: {
     return { sent: false, messageId: null };
   }
 }
+
+
+export type UnimedCgReversalNotifyFields = {
+  processId: string;
+  authorizationNumber: string | null;
+  location: string | null;
+  procedureType: string | null;
+};
+
+export function buildUnimedCgReversalWhatsAppCaption(fields: UnimedCgReversalNotifyFields): string {
+  return [
+    `Reversão de processo Unimed CG — Processo ${fields.processId}`,
+    `Autorização: ${fields.authorizationNumber?.trim() || 'não identificada'}`,
+    `Local: ${fields.location?.trim() || 'não identificado'}`,
+    `Tipo: ${fields.procedureType?.trim() || 'não identificado'}`,
+  ].join('\n');
+}
+
+export async function notifyUnimedCgReversal(input: {
+  target: UnimedCgWhatsAppTarget;
+  fields: UnimedCgReversalNotifyFields;
+  fileName: string;
+  content: Buffer;
+}): Promise<NotifyResult> {
+  try {
+    const { messageId } = await input.target.port.sendDocument({
+      jid: input.target.jid,
+      fileName: input.fileName,
+      content: input.content,
+      caption: buildUnimedCgReversalWhatsAppCaption(input.fields),
+    });
+    log.info({ processId: input.fields.processId }, 'unimed_cg_reversal_whatsapp_sent');
+    return { sent: true, messageId };
+  } catch (error) {
+    log.warn(
+      {
+        processId: input.fields.processId,
+        err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
+      },
+      'unimed_cg_reversal_whatsapp_failed',
+    );
+    return { sent: false, messageId: null };
+  }
+}
+
+export type UnimedCgPreSolicitationNotifyFields = {
+  preSolicitationId: string;
+  procedureType: string | null;
+  quoteDeadlineDays: number | null;
+};
+
+export function buildUnimedCgPreSolicitationWhatsAppCaption(
+  fields: UnimedCgPreSolicitationNotifyFields,
+): string {
+  const prazo = fields.quoteDeadlineDays != null
+    ? `${fields.quoteDeadlineDays} dias`
+    : 'não identificado';
+  return [
+    `Pré-solicitação Unimed CG — ${fields.preSolicitationId}`,
+    `Tipo: ${fields.procedureType?.trim() || 'não identificado'}`,
+    `Prazo cotação: ${prazo}`,
+  ].join('\n');
+}
+
+export async function notifyUnimedCgPreSolicitation(input: {
+  target: UnimedCgWhatsAppTarget;
+  fields: UnimedCgPreSolicitationNotifyFields;
+  fileName: string;
+  content: Buffer;
+}): Promise<NotifyResult> {
+  try {
+    const { messageId } = await input.target.port.sendDocument({
+      jid: input.target.jid,
+      fileName: input.fileName,
+      content: input.content,
+      caption: buildUnimedCgPreSolicitationWhatsAppCaption(input.fields),
+    });
+    log.info(
+      { preSolicitationId: input.fields.preSolicitationId },
+      'unimed_cg_pre_solicitation_whatsapp_sent',
+    );
+    return { sent: true, messageId };
+  } catch (error) {
+    log.warn(
+      {
+        preSolicitationId: input.fields.preSolicitationId,
+        err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
+      },
+      'unimed_cg_pre_solicitation_whatsapp_failed',
+    );
+    return { sent: false, messageId: null };
+  }
+}
+
+export type UnimedCgInvoiceDeadlineNotifyFields = {
+  processId: string;
+  patientName: string | null;
+};
+
+export function buildUnimedCgInvoiceDeadlineWhatsAppCaption(
+  fields: UnimedCgInvoiceDeadlineNotifyFields,
+): string {
+  return [
+    `Prazo de Nota Fiscal Unimed CG — Processo ${fields.processId}`,
+    `Paciente: ${fields.patientName?.trim() || 'não identificado'}`,
+  ].join('\n');
+}
+
+export async function notifyUnimedCgInvoiceDeadline(input: {
+  target: UnimedCgWhatsAppTarget;
+  fields: UnimedCgInvoiceDeadlineNotifyFields;
+  fileName: string;
+  content: Buffer;
+}): Promise<NotifyResult> {
+  try {
+    const { messageId } = await input.target.port.sendDocument({
+      jid: input.target.jid,
+      fileName: input.fileName,
+      content: input.content,
+      caption: buildUnimedCgInvoiceDeadlineWhatsAppCaption(input.fields),
+    });
+    log.info({ processId: input.fields.processId }, 'unimed_cg_prazo_nf_whatsapp_sent');
+    return { sent: true, messageId };
+  } catch (error) {
+    log.warn(
+      {
+        processId: input.fields.processId,
+        err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
+      },
+      'unimed_cg_prazo_nf_whatsapp_failed',
+    );
+    return { sent: false, messageId: null };
+  }
+}

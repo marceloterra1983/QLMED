@@ -20,6 +20,7 @@ import {
 import { getSingleCompany } from '@/lib/single-company';
 import { assertAllowedHost } from '@/lib/http-allowlist';
 import { renderUrlToPdf } from '@/lib/pdf/render-url';
+import { renderHtmlToPdf } from '@/lib/pdf/render';
 import {
   UNIMED_CG_INGEST_INTERVAL_MS,
   UNIMED_CG_MAILBOXES,
@@ -33,18 +34,40 @@ import {
   buildFileName,
   extractCliqueAquiUrl,
   extractProcessIdFromSubject,
-  isUnimedCgEntregaSubject,
-  isUnimedCgFaturamentoSubject,
   parseAuthorizationPageHtml,
   parseDeliveryPageHtml,
   shouldUpgrade,
 } from './parse-page';
+import {
+  buildInvoiceDeadlineFileName,
+  buildPreSolicitationFileName,
+  buildReversalFileName,
+  classifyUnimedCgSubject,
+  extractPatientNameFromSubject,
+  extractProcedureTypeFromPreSubject,
+  extractProcessIdFromPrazoNfSubject,
+  extractProcessIdFromReversaoSubject,
+  parseInvoiceDeadlineEmailHtml,
+  parsePreSolicitationEmailHtml,
+  parseReversalEmailHtml,
+  type ParsedUnimedCgInvoiceDeadline,
+  type ParsedUnimedCgPreSolicitation,
+  type ParsedUnimedCgReversal,
+} from './parse-email-kinds';
+import { processEmailHtmlKind, shouldUpgradeOrNewer } from './ingest-email-html';
+import { openOpmePortalSession } from './opme-portal';
 import { prismaUnimedCgDeliveryStore } from './delivery-store';
+import { prismaUnimedCgInvoiceDeadlineStore } from './invoice-deadline-store';
+import { prismaUnimedCgPreSolicitationStore } from './pre-solicitation-store';
+import { prismaUnimedCgReversalStore } from './reversal-store';
 import { prismaUnimedCgStore } from './store';
 import {
   isWithinUnimedCgNotifyWindow,
   notifyUnimedCgAuthorization,
   notifyUnimedCgDelivery,
+  notifyUnimedCgInvoiceDeadline,
+  notifyUnimedCgPreSolicitation,
+  notifyUnimedCgReversal,
   resolveUnimedCgWhatsAppTarget,
   type UnimedCgWhatsAppTarget,
 } from './whatsapp-notify';
@@ -68,6 +91,7 @@ export type UnimedCgDrivePort = {
 export type UnimedCgFetchPort = {
   fetchHtml(url: string): Promise<string>;
   renderPdf(url: string): Promise<Buffer>;
+  renderHtmlPdf(html: string): Promise<Buffer>;
 };
 
 export type UnimedCgAuthorizationRow = {
@@ -82,6 +106,7 @@ export type PersistArgs = {
   processId: string;
   authorizationNumber: string | null;
   procedureDate: Date | null;
+  patientName: string | null;
   location: string | null;
   totalCents: number;
   parseStatus: 'ok' | 'parcial' | 'falha';
@@ -100,6 +125,7 @@ export type PersistDeliveryArgs = {
   principalAuthorization: string | null;
   status: string | null;
   authorizedAt: Date | null;
+  patientName: string | null;
   supplier: string | null;
   parseStatus: 'ok' | 'parcial' | 'falha';
   fileName: string;
@@ -166,6 +192,139 @@ export type UnimedCgDeliveryStorePort = {
   ): Promise<void>;
 };
 
+
+export type PersistReversalArgs = {
+  companyId: string;
+  processId: string;
+  authorizationNumber: string | null;
+  procedureDate: Date | null;
+  patientName: string | null;
+  location: string | null;
+  procedureType: string | null;
+  parseStatus: 'ok' | 'parcial' | 'falha';
+  fileName: string;
+  oneDriveItemId: string;
+  sourceUrl: string | null;
+  receivedAt: Date;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
+};
+
+export type PersistPreSolicitationArgs = {
+  companyId: string;
+  preSolicitationId: string;
+  patientName: string | null;
+  procedureType: string | null;
+  quoteDeadlineDays: number | null;
+  parseStatus: 'ok' | 'parcial' | 'falha';
+  fileName: string;
+  oneDriveItemId: string;
+  sourceUrl: string | null;
+  receivedAt: Date;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
+};
+
+export type PersistInvoiceDeadlineArgs = {
+  companyId: string;
+  processId: string;
+  patientName: string | null;
+  parseStatus: 'ok' | 'parcial' | 'falha';
+  fileName: string;
+  oneDriveItemId: string;
+  sourceUrl: string | null;
+  receivedAt: Date;
+  internetMessageId?: string;
+  mailbox?: string;
+  graphMessageId?: string;
+};
+
+export type UnimedCgReversalStorePort = {
+  findSourceByInternetMessageId(
+    companyId: string,
+    internetMessageId: string,
+  ): Promise<{ id: string; reversalId: string | null; whatsappSentAt?: Date | null } | null>;
+  findByProcessId(
+    companyId: string,
+    processId: string,
+  ): Promise<(UnimedCgAuthorizationRow & { receivedAt?: Date }) | null>;
+  persistConfirmed(input: PersistReversalArgs): Promise<{ id: string }>;
+  persistUpgrade(input: PersistReversalArgs & { reversalId: string }): Promise<void>;
+  persistSourceOnly(input: {
+    companyId: string;
+    reversalId: string;
+    mailbox: string;
+    graphMessageId: string;
+    internetMessageId: string;
+    receivedAt: Date;
+  }): Promise<void>;
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
+};
+
+export type UnimedCgPreSolicitationStorePort = {
+  findSourceByInternetMessageId(
+    companyId: string,
+    internetMessageId: string,
+  ): Promise<{ id: string; preSolicitationRefId: string | null; whatsappSentAt?: Date | null } | null>;
+  findByPreSolicitationId(
+    companyId: string,
+    preSolicitationId: string,
+  ): Promise<{
+    id: string;
+    preSolicitationId: string;
+    parseStatus: 'ok' | 'parcial' | 'falha';
+    oneDriveItemId: string;
+    receivedAt?: Date;
+  } | null>;
+  persistConfirmed(input: PersistPreSolicitationArgs): Promise<{ id: string }>;
+  persistUpgrade(input: PersistPreSolicitationArgs & { recordId: string }): Promise<void>;
+  persistSourceOnly(input: {
+    companyId: string;
+    recordId: string;
+    mailbox: string;
+    graphMessageId: string;
+    internetMessageId: string;
+    receivedAt: Date;
+  }): Promise<void>;
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
+};
+
+export type UnimedCgInvoiceDeadlineStorePort = {
+  findSourceByInternetMessageId(
+    companyId: string,
+    internetMessageId: string,
+  ): Promise<{ id: string; deadlineId: string | null; whatsappSentAt?: Date | null } | null>;
+  findByProcessId(
+    companyId: string,
+    processId: string,
+  ): Promise<(UnimedCgAuthorizationRow & { receivedAt?: Date }) | null>;
+  persistConfirmed(input: PersistInvoiceDeadlineArgs): Promise<{ id: string }>;
+  persistUpgrade(input: PersistInvoiceDeadlineArgs & { deadlineId: string }): Promise<void>;
+  persistSourceOnly(input: {
+    companyId: string;
+    deadlineId: string;
+    mailbox: string;
+    graphMessageId: string;
+    internetMessageId: string;
+    receivedAt: Date;
+  }): Promise<void>;
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
+};
+
 export type UnimedCgIngestResult = {
   ok: boolean;
   busy?: boolean;
@@ -183,6 +342,9 @@ export type UnimedCgIngestDeps = {
   fetch: UnimedCgFetchPort;
   store: UnimedCgStorePort;
   deliveryStore: UnimedCgDeliveryStorePort;
+  reversalStore: UnimedCgReversalStorePort;
+  preSolicitationStore: UnimedCgPreSolicitationStorePort;
+  invoiceDeadlineStore: UnimedCgInvoiceDeadlineStorePort;
   whatsapp?: UnimedCgWhatsAppTarget | null;
 };
 
@@ -245,6 +407,9 @@ function defaultFetchPort(): UnimedCgFetchPort {
     async renderPdf(url) {
       return renderUrlToPdf(url, UNIMED_CG_OPME_HOSTS);
     },
+    async renderHtmlPdf(html) {
+      return renderHtmlToPdf(html, { format: 'A4', printBackground: true });
+    },
   };
 }
 
@@ -260,6 +425,9 @@ export async function createDefaultUnimedCgDeps(companyId: string): Promise<Unim
     fetch: defaultFetchPort(),
     store: prismaUnimedCgStore,
     deliveryStore: prismaUnimedCgDeliveryStore,
+    reversalStore: prismaUnimedCgReversalStore,
+    preSolicitationStore: prismaUnimedCgPreSolicitationStore,
+    invoiceDeadlineStore: prismaUnimedCgInvoiceDeadlineStore,
   };
 }
 
@@ -296,6 +464,9 @@ export async function runUnimedCgIngest(
     fetch: options.fetch ?? defaultFetchPort(),
     store: options.store ?? prismaUnimedCgStore,
     deliveryStore: options.deliveryStore ?? prismaUnimedCgDeliveryStore,
+    reversalStore: options.reversalStore ?? prismaUnimedCgReversalStore,
+    preSolicitationStore: options.preSolicitationStore ?? prismaUnimedCgPreSolicitationStore,
+    invoiceDeadlineStore: options.invoiceDeadlineStore ?? prismaUnimedCgInvoiceDeadlineStore,
     whatsapp: options.whatsapp !== undefined ? options.whatsapp : resolveUnimedCgWhatsAppTarget(),
   };
 
@@ -323,6 +494,8 @@ export async function runUnimedCgIngest(
     }
   };
 
+  const opmeSession = await openOpmePortalSession();
+
   try {
     for (const mailbox of UNIMED_CG_MAILBOXES) {
       let messages: ImpcgMailMessage[] = [];
@@ -340,13 +513,323 @@ export async function runUnimedCgIngest(
       }
 
       for (const message of messages) {
-        const isFaturamento = isUnimedCgFaturamentoSubject(message.subject);
-        const isEntrega = isUnimedCgEntregaSubject(message.subject);
-        if (!isFaturamento && !isEntrega) {
+        const kind = classifyUnimedCgSubject(message.subject);
+        if (kind === 'skip') {
           skipped += 1;
           continue;
         }
 
+        if (kind === 'reversao' || kind === 'pre_solicitacao' || kind === 'prazo_nf') {
+          const counters = {
+            processed: 0,
+            skipped: 0,
+            failedUploads: 0,
+            failedPersists: 0,
+            errors,
+          };
+          const base = {
+            companyId,
+            mailbox,
+            message,
+            getBodyHtml: async (mb: string, gid: string) => resolved.mail.getBodyHtml(mb, gid),
+            renderHtmlPdf: (html: string) => resolved.fetch.renderHtmlPdf(html),
+            uploadPdf: (input: { fileName: string; content: Buffer }) => resolved.drive.uploadPdf(input),
+            deletePdf: resolved.drive.deletePdf
+              ? (itemId: string) => resolved.drive.deletePdf!(itemId)
+              : undefined,
+            whatsapp: resolved.whatsapp,
+            notifyAttempted,
+            collectOrphanUpload,
+            sanitizeError,
+            logWarn: (msg: string) => log.warn({ mailbox: mailboxLabel(mailbox) }, msg),
+            counters,
+          };
+
+          if (kind === 'reversao') {
+            const processIdFromSubject = extractProcessIdFromReversaoSubject(message.subject);
+            if (!processIdFromSubject) {
+              skipped += 1;
+              continue;
+            }
+            await processEmailHtmlKind<ParsedUnimedCgReversal>({
+              ...base,
+              findSource: async () => {
+                const row = await resolved.reversalStore.findSourceByInternetMessageId(
+                  companyId,
+                  message.internetMessageId,
+                );
+                return row
+                  ? { id: row.id, entityId: row.reversalId, whatsappSentAt: row.whatsappSentAt }
+                  : null;
+              },
+              findEntity: async (parsed) => resolved.reversalStore.findByProcessId(companyId, parsed.processId),
+              parseBody: (html) => parseReversalEmailHtml(html, processIdFromSubject),
+              isValid: (parsed) => Boolean(parsed.processId),
+              buildFileName: (parsed) => buildReversalFileName(parsed.processId),
+              shouldReplace: (existing, parsed, receivedAt) =>
+                shouldUpgradeOrNewer(existing, parsed.parseStatus, receivedAt),
+              persistConfirmed: async ({ parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.reversalStore.persistConfirmed({
+                  companyId,
+                  processId: parsed.processId,
+                  authorizationNumber: parsed.authorizationNumber,
+                  procedureDate: parsed.procedureDate,
+                  patientName: opmeSession
+                    ? await opmeSession.fetchBeneficiario(parsed.processId)
+                    : null,
+                  location: parsed.location,
+                  procedureType: parsed.procedureType,
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistUpgrade: async ({ entityId, parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.reversalStore.persistUpgrade({
+                  companyId,
+                  reversalId: entityId,
+                  processId: parsed.processId,
+                  authorizationNumber: parsed.authorizationNumber,
+                  procedureDate: parsed.procedureDate,
+                  patientName: opmeSession
+                    ? await opmeSession.fetchBeneficiario(parsed.processId)
+                    : null,
+                  location: parsed.location,
+                  procedureType: parsed.procedureType,
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistSourceOnly: async (entityId) =>
+                resolved.reversalStore.persistSourceOnly({
+                  companyId,
+                  reversalId: entityId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                  internetMessageId: message.internetMessageId,
+                  receivedAt: message.receivedAt,
+                }),
+              markWhatsAppSent: resolved.reversalStore.markWhatsAppSent
+                ? (messageId) => resolved.reversalStore.markWhatsAppSent!(
+                  companyId,
+                  message.internetMessageId,
+                  messageId,
+                )
+                : undefined,
+              notify: async (content, fileName, parsed) => {
+                if (!resolved.whatsapp) return { sent: false, messageId: null };
+                return notifyUnimedCgReversal({
+                  target: resolved.whatsapp,
+                  fields: {
+                    processId: parsed.processId,
+                    authorizationNumber: parsed.authorizationNumber,
+                    location: parsed.location,
+                    procedureType: parsed.procedureType,
+                  },
+                  fileName,
+                  content,
+                });
+              },
+            });
+          } else if (kind === 'pre_solicitacao') {
+            const subjectProcedureType = extractProcedureTypeFromPreSubject(message.subject);
+            await processEmailHtmlKind<ParsedUnimedCgPreSolicitation>({
+              ...base,
+              findSource: async () => {
+                const row = await resolved.preSolicitationStore.findSourceByInternetMessageId(
+                  companyId,
+                  message.internetMessageId,
+                );
+                return row
+                  ? {
+                    id: row.id,
+                    entityId: row.preSolicitationRefId,
+                    whatsappSentAt: row.whatsappSentAt,
+                  }
+                  : null;
+              },
+              findEntity: async (parsed) =>
+                resolved.preSolicitationStore.findByPreSolicitationId(
+                  companyId,
+                  parsed.preSolicitationId,
+                ),
+              parseBody: (html) => parsePreSolicitationEmailHtml(html, subjectProcedureType),
+              isValid: (parsed) => Boolean(parsed.preSolicitationId),
+              buildFileName: (parsed) => buildPreSolicitationFileName(parsed.preSolicitationId),
+              shouldReplace: (existing, parsed, receivedAt) =>
+                shouldUpgradeOrNewer(existing, parsed.parseStatus, receivedAt),
+              persistConfirmed: async ({ parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.preSolicitationStore.persistConfirmed({
+                  companyId,
+                  preSolicitationId: parsed.preSolicitationId,
+                  patientName: opmeSession
+                    ? await opmeSession.fetchBeneficiario(parsed.preSolicitationId)
+                    : null,
+                  procedureType: parsed.procedureType,
+                  quoteDeadlineDays: parsed.quoteDeadlineDays,
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistUpgrade: async ({ entityId, parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.preSolicitationStore.persistUpgrade({
+                  companyId,
+                  recordId: entityId,
+                  preSolicitationId: parsed.preSolicitationId,
+                  patientName: opmeSession
+                    ? await opmeSession.fetchBeneficiario(parsed.preSolicitationId)
+                    : null,
+                  procedureType: parsed.procedureType,
+                  quoteDeadlineDays: parsed.quoteDeadlineDays,
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistSourceOnly: async (entityId) =>
+                resolved.preSolicitationStore.persistSourceOnly({
+                  companyId,
+                  recordId: entityId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                  internetMessageId: message.internetMessageId,
+                  receivedAt: message.receivedAt,
+                }),
+              markWhatsAppSent: resolved.preSolicitationStore.markWhatsAppSent
+                ? (messageId) => resolved.preSolicitationStore.markWhatsAppSent!(
+                  companyId,
+                  message.internetMessageId,
+                  messageId,
+                )
+                : undefined,
+              notify: async (content, fileName, parsed) => {
+                if (!resolved.whatsapp) return { sent: false, messageId: null };
+                return notifyUnimedCgPreSolicitation({
+                  target: resolved.whatsapp,
+                  fields: {
+                    preSolicitationId: parsed.preSolicitationId,
+                    procedureType: parsed.procedureType,
+                    quoteDeadlineDays: parsed.quoteDeadlineDays,
+                  },
+                  fileName,
+                  content,
+                });
+              },
+            });
+          } else {
+            const processIdFromSubject = extractProcessIdFromPrazoNfSubject(message.subject);
+            if (!processIdFromSubject) {
+              skipped += 1;
+              continue;
+            }
+            const patientFromSubject = extractPatientNameFromSubject(message.subject);
+            await processEmailHtmlKind<ParsedUnimedCgInvoiceDeadline>({
+              ...base,
+              findSource: async () => {
+                const row = await resolved.invoiceDeadlineStore.findSourceByInternetMessageId(
+                  companyId,
+                  message.internetMessageId,
+                );
+                return row
+                  ? { id: row.id, entityId: row.deadlineId, whatsappSentAt: row.whatsappSentAt }
+                  : null;
+              },
+              findEntity: async (parsed) =>
+                resolved.invoiceDeadlineStore.findByProcessId(companyId, parsed.processId),
+              parseBody: (html) =>
+                parseInvoiceDeadlineEmailHtml(html, processIdFromSubject, patientFromSubject),
+              isValid: (parsed) => Boolean(parsed.processId),
+              buildFileName: (parsed) => buildInvoiceDeadlineFileName(parsed.processId),
+              shouldReplace: (existing, parsed, receivedAt) =>
+                shouldUpgradeOrNewer(existing, parsed.parseStatus, receivedAt),
+              persistConfirmed: async ({ parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.invoiceDeadlineStore.persistConfirmed({
+                  companyId,
+                  processId: parsed.processId,
+                  patientName: parsed.patientName
+                    ?? (opmeSession ? await opmeSession.fetchBeneficiario(parsed.processId) : null),
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistUpgrade: async ({ entityId, parsed, fileName, oneDriveItemId, sourceUrl }) =>
+                resolved.invoiceDeadlineStore.persistUpgrade({
+                  companyId,
+                  deadlineId: entityId,
+                  processId: parsed.processId,
+                  patientName: parsed.patientName
+                    ?? (opmeSession ? await opmeSession.fetchBeneficiario(parsed.processId) : null),
+                  parseStatus: parsed.parseStatus,
+                  fileName,
+                  oneDriveItemId,
+                  sourceUrl,
+                  receivedAt: message.receivedAt,
+                  internetMessageId: message.internetMessageId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                }),
+              persistSourceOnly: async (entityId) =>
+                resolved.invoiceDeadlineStore.persistSourceOnly({
+                  companyId,
+                  deadlineId: entityId,
+                  mailbox,
+                  graphMessageId: message.graphMessageId,
+                  internetMessageId: message.internetMessageId,
+                  receivedAt: message.receivedAt,
+                }),
+              markWhatsAppSent: resolved.invoiceDeadlineStore.markWhatsAppSent
+                ? (messageId) => resolved.invoiceDeadlineStore.markWhatsAppSent!(
+                  companyId,
+                  message.internetMessageId,
+                  messageId,
+                )
+                : undefined,
+              notify: async (content, fileName, parsed) => {
+                if (!resolved.whatsapp) return { sent: false, messageId: null };
+                return notifyUnimedCgInvoiceDeadline({
+                  target: resolved.whatsapp,
+                  fields: {
+                    processId: parsed.processId,
+                    patientName: parsed.patientName,
+                  },
+                  fileName,
+                  content,
+                });
+              },
+            });
+          }
+
+          processed += counters.processed;
+          skipped += counters.skipped;
+          failedUploads += counters.failedUploads;
+          failedPersists += counters.failedPersists;
+          continue;
+        }
+
+        const isEntrega = kind === 'entrega';
         const processIdFromSubject = extractProcessIdFromSubject(message.subject);
         if (!processIdFromSubject) {
           skipped += 1;
@@ -472,12 +955,16 @@ export async function runUnimedCgIngest(
             continue;
           }
 
+          const patientName = opmeSession
+            ? await opmeSession.fetchBeneficiario(parsed.processId)
+            : null;
           const persistBase: PersistDeliveryArgs = {
             companyId,
             processId: parsed.processId,
             principalAuthorization: parsed.principalAuthorization,
             status: parsed.status,
             authorizedAt: parsed.authorizedAt,
+            patientName,
             supplier: parsed.supplier,
             parseStatus: parsed.parseStatus,
             fileName,
@@ -630,11 +1117,15 @@ export async function runUnimedCgIngest(
           continue;
         }
 
+        const patientName = opmeSession
+          ? await opmeSession.fetchBeneficiario(parsed.processId)
+          : null;
         const persistBase: PersistArgs = {
           companyId,
           processId: parsed.processId,
           authorizationNumber: parsed.authorizationNumber,
           procedureDate: parsed.procedureDate,
+          patientName,
           location: parsed.location,
           totalCents,
           parseStatus: parsed.parseStatus,
@@ -689,6 +1180,7 @@ export async function runUnimedCgIngest(
       lastCollectedAt: ok ? now.toISOString() : previous?.lastSuccessAt?.toISOString() ?? null,
     };
   } finally {
+    await opmeSession?.close().catch(() => undefined);
     await lock.release();
   }
 }

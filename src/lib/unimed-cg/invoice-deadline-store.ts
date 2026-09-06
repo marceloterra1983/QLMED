@@ -3,36 +3,30 @@ import prisma from '@/lib/prisma';
 import { isUniqueViolation } from '@/lib/prisma-errors';
 import type { UnimedCgParseStatus as DomainParseStatus } from './constants';
 
-export type UnimedCgDeliveryListItem = {
+export type UnimedCgInvoiceDeadlineListItem = {
   id: string;
   processId: string;
-  principalAuthorization: string | null;
-  status: string | null;
-  authorizedAt: string | null;
   patientName: string | null;
-  supplier: string | null;
   receivedAt: string;
   fileName: string;
   parseStatus: UnimedCgParseStatus;
 };
 
-export type UnimedCgDeliveryDetailItem = UnimedCgDeliveryListItem & {
+export type UnimedCgInvoiceDeadlineDetailItem = UnimedCgInvoiceDeadlineListItem & {
   oneDriveItemId: string;
   sourceUrl: string | null;
 };
 
-export async function listUnimedCgDeliveries(companyId: string): Promise<UnimedCgDeliveryListItem[]> {
-  const rows = await prisma.unimedCgDeliveryAuthorization.findMany({
+export async function listUnimedCgInvoiceDeadlines(
+  companyId: string,
+): Promise<UnimedCgInvoiceDeadlineListItem[]> {
+  const rows = await prisma.unimedCgInvoiceDeadline.findMany({
     where: { companyId },
     orderBy: [{ receivedAt: 'desc' }, { processId: 'desc' }],
     select: {
       id: true,
       processId: true,
-      principalAuthorization: true,
-      status: true,
-      authorizedAt: true,
       patientName: true,
-      supplier: true,
       receivedAt: true,
       fileName: true,
       parseStatus: true,
@@ -42,22 +36,18 @@ export async function listUnimedCgDeliveries(companyId: string): Promise<UnimedC
   return rows.map((row) => ({
     id: row.id,
     processId: row.processId,
-    principalAuthorization: row.principalAuthorization,
-    status: row.status,
-    authorizedAt: row.authorizedAt ? row.authorizedAt.toISOString() : null,
     patientName: row.patientName,
-    supplier: row.supplier,
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
   }));
 }
 
-export async function getUnimedCgDelivery(
+export async function getUnimedCgInvoiceDeadline(
   companyId: string,
   id: string,
-): Promise<UnimedCgDeliveryDetailItem | null> {
-  const row = await prisma.unimedCgDeliveryAuthorization.findFirst({
+): Promise<UnimedCgInvoiceDeadlineDetailItem | null> {
+  const row = await prisma.unimedCgInvoiceDeadline.findFirst({
     where: { id, companyId },
   });
   if (!row) return null;
@@ -65,11 +55,7 @@ export async function getUnimedCgDelivery(
   return {
     id: row.id,
     processId: row.processId,
-    principalAuthorization: row.principalAuthorization,
-    status: row.status,
-    authorizedAt: row.authorizedAt ? row.authorizedAt.toISOString() : null,
     patientName: row.patientName,
-    supplier: row.supplier,
     receivedAt: row.receivedAt.toISOString(),
     fileName: row.fileName,
     parseStatus: row.parseStatus,
@@ -78,14 +64,10 @@ export async function getUnimedCgDelivery(
   };
 }
 
-export type PersistDeliveryConfirmedInput = {
+export type PersistInvoiceDeadlineConfirmedInput = {
   companyId: string;
   processId: string;
-  principalAuthorization: string | null;
-  status: string | null;
-  authorizedAt: Date | null;
   patientName: string | null;
-  supplier: string | null;
   parseStatus: DomainParseStatus;
   fileName: string;
   oneDriveItemId: string;
@@ -96,19 +78,15 @@ export type PersistDeliveryConfirmedInput = {
   graphMessageId?: string;
 };
 
-export async function persistConfirmedDelivery(
-  input: PersistDeliveryConfirmedInput,
+export async function persistConfirmedInvoiceDeadline(
+  input: PersistInvoiceDeadlineConfirmedInput,
 ): Promise<{ id: string }> {
   return prisma.$transaction(async (tx) => {
-    const created = await tx.unimedCgDeliveryAuthorization.create({
+    const created = await tx.unimedCgInvoiceDeadline.create({
       data: {
         companyId: input.companyId,
         processId: input.processId,
-        principalAuthorization: input.principalAuthorization,
-        status: input.status,
-        authorizedAt: input.authorizedAt,
         patientName: input.patientName,
-        supplier: input.supplier,
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
         sourceUrl: input.sourceUrl,
@@ -118,10 +96,10 @@ export async function persistConfirmedDelivery(
       select: { id: true },
     });
     if (input.internetMessageId && input.mailbox && input.graphMessageId) {
-      await tx.unimedCgDeliverySourceMessage.create({
+      await tx.unimedCgInvoiceDeadlineSourceMessage.create({
         data: {
           companyId: input.companyId,
-          authorizationId: created.id,
+          deadlineId: created.id,
           mailbox: input.mailbox,
           graphMessageId: input.graphMessageId,
           internetMessageId: input.internetMessageId,
@@ -133,29 +111,26 @@ export async function persistConfirmedDelivery(
   });
 }
 
-export async function persistUpgradeDelivery(
-  input: PersistDeliveryConfirmedInput & { authorizationId: string },
+export async function persistUpgradeInvoiceDeadline(
+  input: PersistInvoiceDeadlineConfirmedInput & { deadlineId: string },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await tx.unimedCgDeliveryAuthorization.update({
-      where: { id: input.authorizationId },
+    await tx.unimedCgInvoiceDeadline.update({
+      where: { id: input.deadlineId },
       data: {
-        principalAuthorization: input.principalAuthorization,
-        status: input.status,
-        authorizedAt: input.authorizedAt,
         patientName: input.patientName,
-        supplier: input.supplier,
         oneDriveItemId: input.oneDriveItemId,
         fileName: input.fileName,
         sourceUrl: input.sourceUrl,
         parseStatus: input.parseStatus,
+        receivedAt: input.receivedAt,
       },
     });
     if (input.internetMessageId && input.mailbox && input.graphMessageId) {
-      await tx.unimedCgDeliverySourceMessage.create({
+      await tx.unimedCgInvoiceDeadlineSourceMessage.create({
         data: {
           companyId: input.companyId,
-          authorizationId: input.authorizationId,
+          deadlineId: input.deadlineId,
           mailbox: input.mailbox,
           graphMessageId: input.graphMessageId,
           internetMessageId: input.internetMessageId,
@@ -166,19 +141,19 @@ export async function persistUpgradeDelivery(
   });
 }
 
-export async function persistDeliverySourceOnly(input: {
+export async function persistInvoiceDeadlineSourceOnly(input: {
   companyId: string;
-  authorizationId: string;
+  deadlineId: string;
   mailbox: string;
   graphMessageId: string;
   internetMessageId: string;
   receivedAt: Date;
 }): Promise<void> {
   try {
-    await prisma.unimedCgDeliverySourceMessage.create({
+    await prisma.unimedCgInvoiceDeadlineSourceMessage.create({
       data: {
         companyId: input.companyId,
-        authorizationId: input.authorizationId,
+        deadlineId: input.deadlineId,
         mailbox: input.mailbox,
         graphMessageId: input.graphMessageId,
         internetMessageId: input.internetMessageId,
@@ -190,31 +165,32 @@ export async function persistDeliverySourceOnly(input: {
   }
 }
 
-export const prismaUnimedCgDeliveryStore = {
+export const prismaUnimedCgInvoiceDeadlineStore = {
   async findSourceByInternetMessageId(companyId: string, internetMessageId: string) {
-    return prisma.unimedCgDeliverySourceMessage.findUnique({
+    return prisma.unimedCgInvoiceDeadlineSourceMessage.findUnique({
       where: { companyId_internetMessageId: { companyId, internetMessageId } },
-      select: { id: true, authorizationId: true, whatsappSentAt: true },
+      select: { id: true, deadlineId: true, whatsappSentAt: true },
     });
   },
   async markWhatsAppSent(companyId: string, internetMessageId: string, messageId: string | null) {
-    await prisma.unimedCgDeliverySourceMessage.updateMany({
+    await prisma.unimedCgInvoiceDeadlineSourceMessage.updateMany({
       where: { companyId, internetMessageId },
       data: { whatsappSentAt: new Date(), whatsappMessageId: messageId },
     });
   },
   async findByProcessId(companyId: string, processId: string) {
-    return prisma.unimedCgDeliveryAuthorization.findUnique({
+    return prisma.unimedCgInvoiceDeadline.findUnique({
       where: { companyId_processId: { companyId, processId } },
       select: {
         id: true,
         processId: true,
         parseStatus: true,
         oneDriveItemId: true,
+        receivedAt: true,
       },
     });
   },
-  persistConfirmed: persistConfirmedDelivery,
-  persistUpgrade: persistUpgradeDelivery,
-  persistSourceOnly: persistDeliverySourceOnly,
+  persistConfirmed: persistConfirmedInvoiceDeadline,
+  persistUpgrade: persistUpgradeInvoiceDeadline,
+  persistSourceOnly: persistInvoiceDeadlineSourceOnly,
 };

@@ -15,6 +15,10 @@ assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905230000_unimed_cg_entrega'),
   'SPEC-048 unimed_cg_entrega deve estar pinada',
 );
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905240000_unimed_cg_reversao_pre_prazo'),
+  'SPEC-049 unimed_cg_reversao_pre_prazo deve estar pinada',
+);
 for (const { name, sha256 } of gate.EXPECTED_MIGRATIONS) {
   assert.match(name, /^2026\d{10}_/);
   assert.match(sha256, /^[0-9a-f]{64}$/);
@@ -53,8 +57,8 @@ assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905220000_nfe_item_product_link'),
   'SPEC-047 nfe_item_product_link deve estar pinada',
 );
-assert.equal(gate.EXPECTED_MIGRATION, '20260905230000_unimed_cg_entrega');
-assert.equal(gate.migrationState(['20260905230000_unimed_cg_entrega']), 'pending');
+assert.equal(gate.EXPECTED_MIGRATION, '20260905240000_unimed_cg_reversao_pre_prazo');
+assert.equal(gate.migrationState(['20260905240000_unimed_cg_reversao_pre_prazo']), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).
 {
   const { spawnSync } = require('node:child_process');

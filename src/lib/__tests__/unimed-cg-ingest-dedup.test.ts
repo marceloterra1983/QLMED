@@ -3,8 +3,14 @@ import type {
   UnimedCgIngestDeps,
   UnimedCgStorePort,
   UnimedCgDeliveryStorePort,
+  UnimedCgReversalStorePort,
+  UnimedCgPreSolicitationStorePort,
+  UnimedCgInvoiceDeadlineStorePort,
   PersistArgs,
   PersistDeliveryArgs,
+  PersistReversalArgs,
+  PersistPreSolicitationArgs,
+  PersistInvoiceDeadlineArgs,
 } from '@/lib/unimed-cg/ingest';
 
 const UNIMED_CG_PAGE_FIXTURE = `
@@ -41,6 +47,12 @@ const memory = vi.hoisted(() => ({
   sources: [] as SourceRow[],
   deliveryAuthorizations: [] as AuthRow[],
   deliverySources: [] as SourceRow[],
+  reversalAuthorizations: [] as AuthRow[],
+  reversalSources: [] as SourceRow[],
+  preSolicitations: [] as { id: string; preSolicitationId: string; parseStatus: 'ok' | 'parcial' | 'falha'; oneDriveItemId: string }[],
+  preSources: [] as SourceRow[],
+  prazoAuthorizations: [] as AuthRow[],
+  prazoSources: [] as SourceRow[],
   ingestState: null as {
     lastSuccessAt: Date | null;
     backfillCompletedAt: Date | null;
@@ -55,11 +67,22 @@ vi.mock('@/lib/postgres-advisory-lock', () => ({
   unimedCgMailIngestLockKey: (companyId: string) => `unimed-cg-mail-ingest:${companyId}`,
 }));
 
+vi.mock('@/lib/unimed-cg/opme-portal', () => ({
+  openOpmePortalSession: vi.fn(async () => null),
+  getOpmePortalCredentialsFromEnv: vi.fn(() => null),
+}));
+
 function resetMemory() {
   memory.authorizations.length = 0;
   memory.sources.length = 0;
   memory.deliveryAuthorizations.length = 0;
   memory.deliverySources.length = 0;
+  memory.reversalAuthorizations.length = 0;
+  memory.reversalSources.length = 0;
+  memory.preSolicitations.length = 0;
+  memory.preSources.length = 0;
+  memory.prazoAuthorizations.length = 0;
+  memory.prazoSources.length = 0;
   memory.ingestState = null;
   memory.seq = 1;
   memory.uploads = 0;
@@ -82,6 +105,7 @@ function memoryStore(): UnimedCgStorePort {
         parseStatus: input.parseStatus,
         oneDriveItemId: input.oneDriveItemId,
       });
+      void (input as PersistArgs).patientName;
       if (input.internetMessageId) {
         memory.sources.push({
           id: `src-${memory.seq++}`,
@@ -182,6 +206,139 @@ function memoryDeliveryStore(): UnimedCgDeliveryStorePort {
   };
 }
 
+
+function memoryReversalStore(): UnimedCgReversalStorePort {
+  return {
+    async findSourceByInternetMessageId(_c, internetMessageId) {
+      const row = memory.reversalSources.find((item) => item.internetMessageId === internetMessageId);
+      return row ? { id: row.id, reversalId: row.authorizationId, whatsappSentAt: null } : null;
+    },
+    async findByProcessId(_c, processId) {
+      return memory.reversalAuthorizations.find((row) => row.processId === processId) ?? null;
+    },
+    async persistConfirmed(input: PersistReversalArgs) {
+      const id = `rauth-${memory.seq++}`;
+      memory.reversalAuthorizations.push({
+        id, processId: input.processId, parseStatus: input.parseStatus, oneDriveItemId: input.oneDriveItemId,
+      });
+      if (input.internetMessageId) {
+        memory.reversalSources.push({
+          id: `rsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: id,
+        });
+      }
+      return { id };
+    },
+    async persistUpgrade(input: PersistReversalArgs & { reversalId: string }) {
+      const row = memory.reversalAuthorizations.find((item) => item.id === input.reversalId);
+      if (!row) throw new Error('missing');
+      row.parseStatus = input.parseStatus;
+      row.oneDriveItemId = input.oneDriveItemId;
+      if (input.internetMessageId) {
+        memory.reversalSources.push({
+          id: `rsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: input.reversalId,
+        });
+      }
+    },
+    async persistSourceOnly(input) {
+      if (memory.reversalSources.some((row) => row.internetMessageId === input.internetMessageId)) return;
+      memory.reversalSources.push({
+        id: `rsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+        mailbox: input.mailbox, authorizationId: input.reversalId,
+      });
+    },
+  };
+}
+
+function memoryPreStore(): UnimedCgPreSolicitationStorePort {
+  return {
+    async findSourceByInternetMessageId(_c, internetMessageId) {
+      const row = memory.preSources.find((item) => item.internetMessageId === internetMessageId);
+      return row ? { id: row.id, preSolicitationRefId: row.authorizationId, whatsappSentAt: null } : null;
+    },
+    async findByPreSolicitationId(_c, preSolicitationId) {
+      return memory.preSolicitations.find((row) => row.preSolicitationId === preSolicitationId) ?? null;
+    },
+    async persistConfirmed(input: PersistPreSolicitationArgs) {
+      const id = `pauth-${memory.seq++}`;
+      memory.preSolicitations.push({
+        id, preSolicitationId: input.preSolicitationId, parseStatus: input.parseStatus, oneDriveItemId: input.oneDriveItemId,
+      });
+      if (input.internetMessageId) {
+        memory.preSources.push({
+          id: `psrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: id,
+        });
+      }
+      return { id };
+    },
+    async persistUpgrade(input: PersistPreSolicitationArgs & { recordId: string }) {
+      const row = memory.preSolicitations.find((item) => item.id === input.recordId);
+      if (!row) throw new Error('missing');
+      row.parseStatus = input.parseStatus;
+      row.oneDriveItemId = input.oneDriveItemId;
+      if (input.internetMessageId) {
+        memory.preSources.push({
+          id: `psrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: input.recordId,
+        });
+      }
+    },
+    async persistSourceOnly(input) {
+      if (memory.preSources.some((row) => row.internetMessageId === input.internetMessageId)) return;
+      memory.preSources.push({
+        id: `psrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+        mailbox: input.mailbox, authorizationId: input.recordId,
+      });
+    },
+  };
+}
+
+function memoryPrazoStore(): UnimedCgInvoiceDeadlineStorePort {
+  return {
+    async findSourceByInternetMessageId(_c, internetMessageId) {
+      const row = memory.prazoSources.find((item) => item.internetMessageId === internetMessageId);
+      return row ? { id: row.id, deadlineId: row.authorizationId, whatsappSentAt: null } : null;
+    },
+    async findByProcessId(_c, processId) {
+      return memory.prazoAuthorizations.find((row) => row.processId === processId) ?? null;
+    },
+    async persistConfirmed(input: PersistInvoiceDeadlineArgs) {
+      const id = `zauth-${memory.seq++}`;
+      memory.prazoAuthorizations.push({
+        id, processId: input.processId, parseStatus: input.parseStatus, oneDriveItemId: input.oneDriveItemId,
+      });
+      if (input.internetMessageId) {
+        memory.prazoSources.push({
+          id: `zsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: id,
+        });
+      }
+      return { id };
+    },
+    async persistUpgrade(input: PersistInvoiceDeadlineArgs & { deadlineId: string }) {
+      const row = memory.prazoAuthorizations.find((item) => item.id === input.deadlineId);
+      if (!row) throw new Error('missing');
+      row.parseStatus = input.parseStatus;
+      row.oneDriveItemId = input.oneDriveItemId;
+      if (input.internetMessageId) {
+        memory.prazoSources.push({
+          id: `zsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+          mailbox: input.mailbox ?? '', authorizationId: input.deadlineId,
+        });
+      }
+    },
+    async persistSourceOnly(input) {
+      if (memory.prazoSources.some((row) => row.internetMessageId === input.internetMessageId)) return;
+      memory.prazoSources.push({
+        id: `zsrc-${memory.seq++}`, internetMessageId: input.internetMessageId,
+        mailbox: input.mailbox, authorizationId: input.deadlineId,
+      });
+    },
+  };
+}
+
 function deps(overrides: Partial<UnimedCgIngestDeps> = {}): UnimedCgIngestDeps {
   return {
     mail: {
@@ -216,9 +373,15 @@ function deps(overrides: Partial<UnimedCgIngestDeps> = {}): UnimedCgIngestDeps {
       async renderPdf() {
         return Buffer.from('%PDF-1.4 unimed-cg');
       },
+      async renderHtmlPdf() {
+        return Buffer.from('%PDF-1.4 unimed-cg-html');
+      },
     },
     store: memoryStore(),
     deliveryStore: memoryDeliveryStore(),
+    reversalStore: memoryReversalStore(),
+    preSolicitationStore: memoryPreStore(),
+    invoiceDeadlineStore: memoryPrazoStore(),
     whatsapp: null,
     ...overrides,
   };
@@ -328,6 +491,9 @@ describe('unimed-cg ingest dedup', () => {
         async renderPdf() {
           return Buffer.from('%PDF-1.4 unimed-cg-entrega');
         },
+        async renderHtmlPdf() {
+          return Buffer.from('%PDF-1.4 unimed-cg-html');
+        },
       },
     });
     const result = await runUnimedCgIngest('co1', d);
@@ -368,10 +534,99 @@ describe('unimed-cg ingest dedup', () => {
         async renderPdf() {
           return Buffer.from('%PDF-1.4 unimed-cg-entrega');
         },
+        async renderHtmlPdf() {
+          return Buffer.from('%PDF-1.4 unimed-cg-html');
+        },
       },
     });
     await runUnimedCgIngest('co1', d);
     expect(memory.deliveryAuthorizations).toHaveLength(1);
     expect(memory.authorizations).toHaveLength(0);
   });
+
+  it('persiste mensagem de reversão uma vez (PDF do HTML)', async () => {
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps({
+      mail: {
+        async listMessages(mailbox: string) {
+          if (!mailbox.startsWith('marcelo@')) return [];
+          return [{
+            graphMessageId: 'graph-r1',
+            internetMessageId: '<msg-r1@unimedcg>',
+            subject: '[ID 75576] [OPME] Reversão de Processo',
+            receivedAt: new Date(),
+            hasAttachments: false,
+          }];
+        },
+        async getBodyHtml() {
+          return {
+            contentType: 'html',
+            content: `<p>Processo: 75576 Autorização: 260291512 Tipo de procedimento: Eletivo Data prevista do Procedimento: 06/08/2026 Local: UNIMED CG</p>`,
+          };
+        },
+      },
+    });
+    const result = await runUnimedCgIngest('co1', d);
+    expect(result.processed).toBe(1);
+    expect(memory.reversalAuthorizations).toHaveLength(1);
+    expect(memory.reversalAuthorizations[0]?.processId).toBe('75576');
+    expect(memory.uploads).toBe(1);
+  });
+
+  it('persiste pré-solicitação uma vez', async () => {
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps({
+      mail: {
+        async listMessages(mailbox: string) {
+          if (!mailbox.startsWith('marcelo@')) return [];
+          return [{
+            graphMessageId: 'graph-p1',
+            internetMessageId: '<msg-p1@unimedcg>',
+            subject: '[OPME] solicitação para completar dados da pré-solicitação [Eletivo]',
+            receivedAt: new Date(),
+            hasAttachments: false,
+          }];
+        },
+        async getBodyHtml() {
+          return {
+            contentType: 'html',
+            content: `<p>A Pré-Solicitação 77602 está aguardando</p><p>Tipo do procedimento: Eletivo</p><p>Prazo para a cotação: 3 dias.</p>`,
+          };
+        },
+      },
+    });
+    const result = await runUnimedCgIngest('co1', d);
+    expect(result.processed).toBe(1);
+    expect(memory.preSolicitations).toHaveLength(1);
+    expect(memory.preSolicitations[0]?.preSolicitationId).toBe('77602');
+  });
+
+  it('persiste prazo NF uma vez', async () => {
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps({
+      mail: {
+        async listMessages(mailbox: string) {
+          if (!mailbox.startsWith('marcelo@')) return [];
+          return [{
+            graphMessageId: 'graph-z1',
+            internetMessageId: '<msg-z1@unimedcg>',
+            subject: '[ID 74080] [OPME] Atenção! O prazo para lançamento da Nota Fiscal está se encerrando!',
+            receivedAt: new Date(),
+            hasAttachments: false,
+          }];
+        },
+        async getBodyHtml() {
+          return {
+            contentType: 'html',
+            content: `<p>Nº ID (Solicitação): 74080</p><p>Número da Solicitação: 74080</p>`,
+          };
+        },
+      },
+    });
+    const result = await runUnimedCgIngest('co1', d);
+    expect(result.processed).toBe(1);
+    expect(memory.prazoAuthorizations).toHaveLength(1);
+    expect(memory.prazoAuthorizations[0]?.processId).toBe('74080');
+  });
+
 });

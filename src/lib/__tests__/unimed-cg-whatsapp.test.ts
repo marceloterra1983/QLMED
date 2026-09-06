@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildUnimedCgDeliveryWhatsAppCaption,
+  buildUnimedCgInvoiceDeadlineWhatsAppCaption,
+  buildUnimedCgPreSolicitationWhatsAppCaption,
+  buildUnimedCgReversalWhatsAppCaption,
   buildUnimedCgWhatsAppCaption,
   isWithinUnimedCgNotifyWindow,
   resolveUnimedCgWhatsAppTarget,
@@ -52,5 +55,35 @@ describe('unimed-cg whatsapp', () => {
     expect(caption).toContain('Autorização principal: 260312345');
     expect(caption).toContain('Situação: Autorizado');
     expect(caption).toContain('Fornecedor: QL MED');
+  });
+
+  it('monta caption de reversão', () => {
+    const caption = buildUnimedCgReversalWhatsAppCaption({
+      processId: '75576',
+      authorizationNumber: '260291512',
+      location: 'UNIMED',
+      procedureType: 'Eletivo',
+    });
+    expect(caption).toContain('Reversão de processo Unimed CG — Processo 75576');
+    expect(caption).toContain('Autorização: 260291512');
+  });
+
+  it('monta caption de pré-solicitação', () => {
+    const caption = buildUnimedCgPreSolicitationWhatsAppCaption({
+      preSolicitationId: '77602',
+      procedureType: 'Eletivo',
+      quoteDeadlineDays: 3,
+    });
+    expect(caption).toContain('Pré-solicitação Unimed CG — 77602');
+    expect(caption).toContain('Prazo cotação: 3 dias');
+  });
+
+  it('monta caption de prazo NF', () => {
+    const caption = buildUnimedCgInvoiceDeadlineWhatsAppCaption({
+      processId: '74080',
+      patientName: 'JOAO',
+    });
+    expect(caption).toContain('Prazo de Nota Fiscal Unimed CG — Processo 74080');
+    expect(caption).toContain('Paciente: JOAO');
   });
 });
