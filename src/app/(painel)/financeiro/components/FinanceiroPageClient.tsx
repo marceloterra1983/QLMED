@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCurrency, formatAmount, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { isCollapsibleDateGroup } from '@/lib/list-collapse';
 import { useRole } from '@/hooks/useRole';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
@@ -167,7 +168,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
           if (g && !groupOrder.includes(g)) groupOrder.push(g);
         }
         const firstGroup = groupOrder[0];
-        const toCollapse = new Set(groupOrder.filter((g) => g !== firstGroup));
+        const toCollapse = new Set(groupOrder.filter((g) => isCollapsibleDateGroup(g) && g !== firstGroup));
         setCollapsedGroups(toCollapse);
         setCollapsedInitialized(true);
       }

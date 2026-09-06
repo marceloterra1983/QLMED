@@ -13,6 +13,34 @@ export type CollapseAfterFetchResult = {
   initialized: boolean;
 };
 
+
+const STATIC_RELATIVE_DATE_GROUPS = new Set([
+  'hoje',
+  'esta_semana',
+  'esta semana',
+  'semana_passada',
+  'semana passada',
+  'proxima semana',
+  'próxima semana',
+]);
+
+/** Hoje / Esta semana / Semana passada são só divisorias (SPEC-053). */
+export function isCollapsibleDateGroup(keyOrLabel: string): boolean {
+  return !STATIC_RELATIVE_DATE_GROUPS.has(keyOrLabel.trim().toLowerCase());
+}
+
+export function dateGroupItemsVisible(
+  keyOrLabel: string,
+  collapsed: ReadonlySet<string>,
+): boolean {
+  if (!isCollapsibleDateGroup(keyOrLabel)) return true;
+  return !collapsed.has(keyOrLabel);
+}
+
+export function collapsibleDateGroupKeys(keys: Iterable<string>): string[] {
+  return [...keys].filter(isCollapsibleDateGroup);
+}
+
 /** Poll/refetch silencioso não mexe no que o usuário abriu. */
 export function resolveCollapsedGroupsAfterFetch(
   input: CollapseAfterFetchInput,
@@ -37,10 +65,7 @@ export function defaultNfeCollapsedKeys(
     return buildYearMonths(invoices).map((month) => month.key);
   }
   const groups = buildNfeGroups(invoices);
-  const keys: string[] = [];
-  if (groups.semanaPassada.length > 0) keys.push('semana_passada');
-  for (const month of groups.currentYearMonths) keys.push(month.key);
-  return keys;
+  return groups.currentYearMonths.map((month) => month.key);
 }
 
 export function retainExpandedIds(

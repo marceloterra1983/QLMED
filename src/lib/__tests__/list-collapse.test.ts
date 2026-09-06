@@ -5,6 +5,9 @@ import {
   defaultNfeCollapsedKeys,
   retainExpandedIds,
   nfeProdutoExpandKey,
+  isCollapsibleDateGroup,
+  dateGroupItemsVisible,
+  collapsibleDateGroupKeys,
 } from '@/lib/list-collapse';
 
 function invoice(id: string, issueDate: string): Invoice {
@@ -89,6 +92,22 @@ describe('defaultNfeCollapsedKeys', () => {
     ], 2024);
     expect(keys).toEqual(['mes_2024-03', 'mes_2024-01']);
   });
+
+  it('sem recorte de ano não colapsa hoje/esta_semana/semana_passada', () => {
+    const now = new Date();
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const lastWeek = new Date(now);
+    lastWeek.setDate(now.getDate() - 10);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 12);
+    const keys = defaultNfeCollapsedKeys([
+      invoice('today', iso(now) + 'T12:00:00'),
+      invoice('week', iso(lastWeek) + 'T12:00:00'),
+      invoice('month', iso(lastMonth) + 'T12:00:00'),
+    ], null);
+    expect(keys.some((k) => k === 'hoje' || k === 'esta_semana' || k === 'semana_passada')).toBe(false);
+    expect(keys.every((k) => k.startsWith('mes_'))).toBe(true);
+  });
 });
 
 describe('retainExpandedIds', () => {
@@ -108,5 +127,38 @@ describe('nfeProdutoExpandKey', () => {
       .toBe(nfeProdutoExpandKey({ num: '3', codigo: 'ABC' }));
     expect(nfeProdutoExpandKey({ num: '1', codigo: 'X' }))
       .not.toBe(nfeProdutoExpandKey({ num: '2', codigo: 'X' }));
+  });
+});
+
+describe('isCollapsibleDateGroup', () => {
+  it('recusa buckets relativos por chave e por rótulo', () => {
+    for (const value of [
+      'hoje', 'Hoje', 'esta_semana', 'Esta semana',
+      'semana_passada', 'Semana passada', 'Próxima semana',
+    ]) {
+      expect(isCollapsibleDateGroup(value)).toBe(false);
+    }
+  });
+
+  it('aceita meses e grupos que não são bucket relativo', () => {
+    for (const value of ['mes_2026-08', 'Agosto/2026', 'Este mês', 'Mês passado', 'Campo Grande']) {
+      expect(isCollapsibleDateGroup(value)).toBe(true);
+    }
+  });
+});
+
+describe('dateGroupItemsVisible', () => {
+  it('relativos continuam visíveis mesmo se estiverem no Set colapsado', () => {
+    const collapsed = new Set(['hoje', 'esta_semana', 'semana_passada', 'mes_2026-08']);
+    expect(dateGroupItemsVisible('hoje', collapsed)).toBe(true);
+    expect(dateGroupItemsVisible('Esta semana', collapsed)).toBe(true);
+    expect(dateGroupItemsVisible('semana_passada', collapsed)).toBe(true);
+    expect(dateGroupItemsVisible('mes_2026-08', collapsed)).toBe(false);
+  });
+});
+
+describe('collapsibleDateGroupKeys', () => {
+  it('Recolher ignora buckets relativos', () => {
+    expect(collapsibleDateGroupKeys(['hoje', 'esta_semana', 'semana_passada', 'mes_2026-08'])).toEqual(['mes_2026-08']);
   });
 });
