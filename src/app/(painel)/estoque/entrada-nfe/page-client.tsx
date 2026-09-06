@@ -81,7 +81,6 @@ type EntryHierarchy = {
 };
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const p2 = (n: number) => String(n).padStart(2, '0');
 
 
 function splitEntryGroups(groups: EntryHierarchy) {
