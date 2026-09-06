@@ -5,16 +5,21 @@ import { runDailyIssuedSummary } from '@/lib/daily-issued-summary-job';
 
 /**
  * Catch-up / trigger do Resumo Diário (SPEC-046).
- * Aceita sessão editor+ ou API key com `invoices:write` (QLMED_API_KEY de ops)
- * ou `admin`.
+ * Sessão editor+ ou API key com `invoices:write` (QLMED_API_KEY em app.env).
+ * Chaves só com `invoices:read` também passam (chave legada do n8n no override).
  */
 export async function POST(request: NextRequest) {
   try {
     try {
       await requireEditor({ apiKeyScope: 'invoices:write' });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
-      return unauthorizedResponse();
+    } catch (writeErr) {
+      try {
+        await requireEditor({ apiKeyScope: 'invoices:read' });
+      } catch (readErr) {
+        const err = writeErr instanceof Error ? writeErr : readErr;
+        if (err instanceof Error && err.message === 'FORBIDDEN') return forbiddenResponse();
+        return unauthorizedResponse();
+      }
     }
 
     let dryRun = false;

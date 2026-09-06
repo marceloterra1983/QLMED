@@ -25,7 +25,7 @@ const LOCK_KEY = 'daily-issued-summary';
 let lastSentDate: string | null = null;
 
 function stateDir(): string {
-  return process.env.DAILY_SUMMARY_STATE_DIR || '/var/lib/qlmed-daily-summary-catchup';
+  return process.env.DAILY_SUMMARY_STATE_DIR || '/app/storage/qlmed-daily-summary';
 }
 
 function sentMarkerPath(dateISO: string): string {
