@@ -284,7 +284,7 @@ export default function IssuedInvoicesPage() {
           {invoice.patientName ? (
             <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{invoice.patientName}</span>
           ) : (
-            <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">—</span>
           )}
         </td>
         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
