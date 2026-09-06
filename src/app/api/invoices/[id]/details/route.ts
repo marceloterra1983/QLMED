@@ -610,6 +610,16 @@ export async function GET(
             strategy: link.matchStrategy,
             confidence: link.matchConfidence,
           }
+          : link?.matchStrategy?.startsWith('SKIPPED_')
+            ? {
+              linkId: link.id,
+              productRegistryId: null,
+              codigo: null,
+              referencia: null,
+              descricao: null,
+              strategy: link.matchStrategy,
+              confidence: link.matchConfidence,
+            }
           : null;
       }
     }

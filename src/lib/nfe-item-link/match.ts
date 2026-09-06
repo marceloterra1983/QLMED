@@ -18,8 +18,9 @@ import {
   stripLeadingZeros,
   trigramSimilarity,
 } from './normalize';
+import { classifyOutOfScope, isSkippedStrategy } from './skip';
 
-export type MatchStrategy = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'MANUAL';
+export type MatchStrategy = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'SKIPPED_NON_MEDICAL' | 'SKIPPED_LEGACY' | 'MANUAL';
 
 export interface RegistryProduct {
   id: string;
@@ -45,7 +46,8 @@ export interface LinkItemInput {
 }
 
 export interface MatchDecision {
-  productId: string;
+  /** null quando strategy é SKIPPED_* (fora de escopo, sem produto). */
+  productId: string | null;
   codigo: string | null;
   strategy: MatchStrategy;
   confidence: number;
@@ -133,6 +135,10 @@ function unique(list: string[] | undefined): string | null {
 
 function decide(index: RegistryIndex, productId: string, strategy: MatchStrategy, confidence: number): MatchDecision {
   return { productId, codigo: index.byId.get(productId)?.codigo ?? null, strategy, confidence };
+}
+
+function decideSkip(strategy: 'SKIPPED_NON_MEDICAL' | 'SKIPPED_LEGACY'): MatchDecision {
+  return { productId: null, codigo: null, strategy, confidence: 1 };
 }
 
 export const S5_SIMILARITY_THRESHOLD = 0.85;
@@ -283,9 +289,13 @@ function matchByDescription(item: LinkItemInput, index: RegistryIndex): MatchDec
 export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: LinkMemory): MatchDecision | null {
   const key = memoryKey(item.supplierCnpj, item.supplierCode);
   const remembered = memory?.get(key);
-  if (remembered && remembered.strategy === 'MANUAL' && index.byId.has(remembered.productId)) {
+  if (remembered && remembered.strategy === 'MANUAL' && remembered.productId && index.byId.has(remembered.productId)) {
     return decide(index, remembered.productId, 'S6', 1);
   }
+
+  // Fora de escopo (RCA legado, não-médicos) — antes da cascata Spica.
+  const skipped = classifyOutOfScope(item);
+  if (skipped) return decideSkip(skipped);
 
   const raw = (item.supplierCode || '').trim();
   const s1 = unique(index.byCodigo.get(raw));
@@ -338,7 +348,7 @@ export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: Li
   const s7 = matchByDescriptionContainment(item, index);
   if (s7) return s7;
 
-  if (remembered && remembered.strategy !== 'MANUAL' && remembered.confidence >= S6_AUTO_MIN_CONFIDENCE && index.byId.has(remembered.productId)) {
+  if (remembered && remembered.strategy !== 'MANUAL' && !isSkippedStrategy(remembered.strategy) && remembered.productId && remembered.confidence >= S6_AUTO_MIN_CONFIDENCE && index.byId.has(remembered.productId)) {
     return decide(index, remembered.productId, 'S6', Math.min(remembered.confidence, 0.9));
   }
 

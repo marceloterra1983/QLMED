@@ -98,7 +98,7 @@ describe('/api/products/nfe-item-links', () => {
     mocks.runNfeItemLinkSweep.mockResolvedValue(null);
     expect((await SWEEP(post('/api/products/nfe-item-links/sweep'))).status).toBe(409);
 
-    mocks.runNfeItemLinkSweep.mockResolvedValue({ invoices: 10, items: 50, linked: 45, pending: 5, writes: 3, byStrategy: { S2: 45 } });
+    mocks.runNfeItemLinkSweep.mockResolvedValue({ invoices: 10, items: 50, linked: 45, pending: 5, writes: 3, skippedManual: 0, skippedOutOfScope: 0, byStrategy: { S2: 45 } });
     const res = await SWEEP(post('/api/products/nfe-item-links/sweep?dryRun=1'));
     expect(res.status).toBe(200);
     expect(mocks.runNfeItemLinkSweep).toHaveBeenCalledWith({ companyId: 'company-1', dryRun: true, force: false });

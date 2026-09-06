@@ -209,3 +209,18 @@ OCR O→0** resolve ~10 DOC MED. **S8** (cProd contido em code) foi
 ADESIVO". Itens sem produto Spica (Politec 04257/4322606, veículos,
 telefonia, DOC MED codes internos sem catálogo) permanecem pendentes para
 decisão humana / importação Spica.
+
+## Fora de escopo (SKIPPED_*)
+
+Decisão do operador (2026-09-05):
+
+- **SKIPPED_NON_MEDICAL**: fornecedores não-médicos (autopeças, tintas, telecom,
+  hotelaria, pneus, etc.) — lista de CNPJs em `skip.ts`. Não vinculam ao Spica
+  e **saem da fila** `/cadastro/produtos/vinculos-nfe` por padrão.
+- **SKIPPED_LEGACY**: RCA Saúde (`11352270000188`) — histórico antigo;
+  desconsiderar da fila.
+- **DOC MED** (`66877184000180`): **não** desconsiderar automaticamente —
+  são **8 notas** distintas (2023-01-31 → 2025-05-09), não uma NF isolada.
+- Persistência: `product_registry_id` null + `match_strategy` SKIPPED_*;
+  pendência = `product_registry_id IS NULL AND strategy NOT LIKE 'SKIPPED_%'`.
+
