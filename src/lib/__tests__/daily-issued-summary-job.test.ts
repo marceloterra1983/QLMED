@@ -273,6 +273,16 @@ describe('daily-issued-summary-job', () => {
       acquirePostgresAdvisoryLock: async () => ({ release: async () => undefined }),
       acquirePostgresTransactionAdvisoryLock: async () => undefined,
     }));
+    vi.doMock('@/lib/daily-issued-summary-message', async () => {
+      const actual = await vi.importActual<Record<string, unknown>>('@/lib/daily-issued-summary-message');
+      return {
+        ...actual,
+        buildDailyIssuedSummaryMessages: () => [
+          { jid: 'group@g.us', text: 'Mensagem 1' },
+          { jid: 'group@g.us', text: 'Mensagem 2' },
+        ],
+      };
+    });
     let sendCalls = 0;
     vi.doMock('@/lib/whatsapp-evolution', () => ({
       getEvolutionConfig: () => ({
