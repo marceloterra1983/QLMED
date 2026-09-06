@@ -13,7 +13,8 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
-import { dateGroupItemsVisible, isCollapsibleDateGroup } from '@/lib/list-collapse';
+import { createDateGroupWalker, defaultWalkCollapsedKeys } from '@/lib/list-collapse';
+import { currentMonthItemCount } from '@/lib/nfe-groups';
 import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -330,8 +331,7 @@ export default function CtePage() {
             const g = getDateGroupLabel(inv.issueDate);
             if (g && !groupOrder.includes(g)) groupOrder.push(g);
           }
-          const firstGroup = groupOrder[0];
-          setCollapsedGroups(new Set(groupOrder.filter((g) => isCollapsibleDateGroup(g) && g !== firstGroup)));
+          setCollapsedGroups(new Set(defaultWalkCollapsedKeys(groupOrder)));
           setCollapsedInitialized(true);
         }
 
@@ -542,15 +542,25 @@ export default function CtePage() {
             <EmptyState icon="local_shipping" title="Nenhum CT-e encontrado" />
           </Card>
         ) : (() => {
-          let lastGroup = '';
+          const walk = createDateGroupWalker(collapsedGroups);
+          const currentMonthCount = currentMonthItemCount(invoices.map((inv) => inv.issueDate));
           return invoices.map((invoice) => {
             const group = getDateGroupLabel(invoice.issueDate);
-            const showDivider = group !== lastGroup;
-            lastGroup = group;
+            const tick = walk(invoice.issueDate, group);
             const flow = getFreightFlow(invoice);
             return (
               <React.Fragment key={invoice.id}>
-                {showDivider && group && (
+                {tick.emitParentHeader && (
+                  <DateGroupHeader
+                    groupKey={tick.emitParentHeader.key}
+                    label={tick.emitParentHeader.label}
+                    count={currentMonthCount}
+                    variant="mobile"
+                    collapsed={collapsedGroups}
+                    onToggle={toggleGroup}
+                  />
+                )}
+                {tick.emitGroupDivider && group && (
                   <DateGroupHeader
                     groupKey={group}
                     label={group}
@@ -559,7 +569,7 @@ export default function CtePage() {
                     onToggle={toggleGroup}
                   />
                 )}
-                {dateGroupItemsVisible(group, collapsedGroups) && (
+                {tick.showRow && (
                   <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number}</span>
@@ -645,16 +655,27 @@ export default function CtePage() {
                 </tr>
               ) : (
                 (() => {
-                  let lastGroup = '';
-	                  return invoices.map((invoice) => {
-	                    const group = getDateGroupLabel(invoice.issueDate);
-	                    const showDivider = group !== lastGroup;
-	                    lastGroup = group;
-	                    const manifest = getCteManifestBadge(invoice.status);
-                      const flow = getFreightFlow(invoice);
-	                    return (
-	                      <React.Fragment key={invoice.id}>
-                        {showDivider && (
+                  const walk = createDateGroupWalker(collapsedGroups);
+                  const currentMonthCount = currentMonthItemCount(invoices.map((inv) => inv.issueDate));
+                  return invoices.map((invoice) => {
+                    const group = getDateGroupLabel(invoice.issueDate);
+                    const tick = walk(invoice.issueDate, group);
+                    const manifest = getCteManifestBadge(invoice.status);
+                    const flow = getFreightFlow(invoice);
+                    return (
+                      <React.Fragment key={invoice.id}>
+                        {tick.emitParentHeader && (
+                          <DateGroupHeader
+                            groupKey={tick.emitParentHeader.key}
+                            label={tick.emitParentHeader.label}
+                            count={currentMonthCount}
+                            variant="table"
+                            colSpan={8}
+                            collapsed={collapsedGroups}
+                            onToggle={toggleGroup}
+                          />
+                        )}
+                        {tick.emitGroupDivider && (
                           <DateGroupHeader
                             groupKey={group}
                             label={group}
@@ -664,7 +685,7 @@ export default function CtePage() {
                             onToggle={toggleGroup}
                           />
                         )}
-                        {dateGroupItemsVisible(group, collapsedGroups) && (
+                        {tick.showRow && (
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
                           <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                             <input

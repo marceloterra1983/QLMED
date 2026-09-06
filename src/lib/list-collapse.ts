@@ -1,5 +1,13 @@
 import type { Invoice } from '@/types';
-import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
+import {
+  buildNfeGroups,
+  buildYearMonths,
+  currentMonthYm,
+  monthGroupKey,
+  monthGroupLabel,
+  issueYm,
+  splitNfeGroupsForDisplay,
+} from '@/lib/nfe-groups';
 
 export type CollapseAfterFetchInput = {
   preserve: boolean;
@@ -27,6 +35,13 @@ const STATIC_RELATIVE_DATE_GROUPS = new Set([
 /** Hoje / Esta semana / Semana passada são só divisorias (SPEC-053). */
 export function isCollapsibleDateGroup(keyOrLabel: string): boolean {
   return !STATIC_RELATIVE_DATE_GROUPS.has(keyOrLabel.trim().toLowerCase());
+}
+
+export function isCurrentMonthDateGroup(keyOrLabel: string, now: Date = new Date()): boolean {
+  const n = keyOrLabel.trim().toLowerCase();
+  if (n === 'este mês' || n === 'este mes') return true;
+  const ym = currentMonthYm(now);
+  return n === monthGroupKey(ym).toLowerCase() || n === monthGroupLabel(ym).toLowerCase();
 }
 
 export function dateGroupItemsVisible(
@@ -57,15 +72,81 @@ export function resolveCollapsedGroupsAfterFetch(
   return { collapsed: null, initialized: true };
 }
 
-export function defaultNfeCollapsedKeys(
+/** Chaves de mês que Recolher deve fechar, incluindo o mês atual. */
+export function nfeCollapsibleMonthKeys(
   invoices: Invoice[],
   selectedYear: number | null,
+  now: Date = new Date(),
 ): string[] {
   if (selectedYear !== null) {
     return buildYearMonths(invoices).map((month) => month.key);
   }
-  const groups = buildNfeGroups(invoices);
-  return groups.currentYearMonths.map((month) => month.key);
+  const split = splitNfeGroupsForDisplay(buildNfeGroups(invoices), now);
+  const keys: string[] = [];
+  if (split.currentMonth) keys.push(split.currentMonth.key);
+  for (const month of split.otherMonths) keys.push(month.key);
+  return keys;
+}
+
+export function defaultNfeCollapsedKeys(
+  invoices: Invoice[],
+  selectedYear: number | null,
+  now: Date = new Date(),
+): string[] {
+  const currentKey = monthGroupKey(currentMonthYm(now));
+  return nfeCollapsibleMonthKeys(invoices, selectedYear, now).filter((key) => key !== currentKey);
+}
+
+export function defaultWalkCollapsedKeys(groups: Iterable<string>, now: Date = new Date()): string[] {
+  return [...groups].filter((g) => isCollapsibleDateGroup(g) && !isCurrentMonthDateGroup(g, now));
+}
+
+export type DateGroupWalkTick = {
+  emitParentHeader: { key: string; label: string } | null;
+  emitGroupDivider: boolean;
+  showRow: boolean;
+};
+
+export function createDateGroupWalker(
+  collapsed: ReadonlySet<string>,
+  options: { dateGrouping?: boolean; now?: Date } = {},
+) {
+  const dateGrouping = options.dateGrouping !== false;
+  const now = options.now ?? new Date();
+  let lastGroup = '';
+  let parentEmitted = false;
+  const ym = currentMonthYm(now);
+  const parentKey = monthGroupKey(ym);
+  const parentLabel = monthGroupLabel(ym);
+
+  return (dateStr: string | null | undefined, groupLabel: string): DateGroupWalkTick => {
+    if (!dateGrouping) {
+      const emitGroupDivider = groupLabel !== lastGroup;
+      lastGroup = groupLabel;
+      return {
+        emitParentHeader: null,
+        emitGroupDivider,
+        showRow: dateGroupItemsVisible(groupLabel, collapsed),
+      };
+    }
+
+    const inCurrentMonth = issueYm(dateStr) === ym && ym.length === 7;
+    let emitParentHeader: { key: string; label: string } | null = null;
+    if (inCurrentMonth && !parentEmitted) {
+      emitParentHeader = { key: parentKey, label: parentLabel };
+      parentEmitted = true;
+    }
+
+    const parentOpen = !inCurrentMonth || dateGroupItemsVisible(parentKey, collapsed);
+    const skipEsteMes = groupLabel.trim().toLowerCase() === 'este mês';
+    const emitGroupDivider = parentOpen && groupLabel !== lastGroup && !skipEsteMes;
+    lastGroup = groupLabel;
+    return {
+      emitParentHeader,
+      emitGroupDivider,
+      showRow: parentOpen && dateGroupItemsVisible(groupLabel, collapsed),
+    };
+  };
 }
 
 export function retainExpandedIds(

@@ -11,7 +11,8 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
 import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
-import { dateGroupItemsVisible, isCollapsibleDateGroup } from '@/lib/list-collapse';
+import { createDateGroupWalker, defaultWalkCollapsedKeys } from '@/lib/list-collapse';
+import { currentMonthItemCount } from '@/lib/nfe-groups';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
@@ -127,8 +128,7 @@ export default function NfseReceivedPage() {
       setTotal(data.pagination?.total || 0);
       if (!collapsedInitialized && loaded.length > 0) {
         const groups = Array.from(new Set(loaded.map(inv => getDateGroupLabel(inv.issueDate))));
-        const toCollapse = new Set(groups.filter(isCollapsibleDateGroup));
-        setCollapsedGroups(toCollapse);
+        setCollapsedGroups(new Set(defaultWalkCollapsedKeys(groups)));
         setCollapsedInitialized(true);
       }
     } catch {
@@ -346,14 +346,24 @@ export default function NfseReceivedPage() {
           </Card>
         ) : (
           (() => {
-            let lastGroup = '';
+            const walk = createDateGroupWalker(collapsedGroups);
+            const currentMonthCount = currentMonthItemCount(invoices.map((inv) => inv.issueDate));
             return invoices.map((invoice, idx) => {
               const group = getDateGroupLabel(invoice.issueDate);
-              const showDivider = group !== lastGroup;
-              lastGroup = group;
+              const tick = walk(invoice.issueDate, group);
               return (
                 <React.Fragment key={`m-${invoice.id}-${idx}`}>
-                  {showDivider && group && (
+                  {tick.emitParentHeader && (
+                    <DateGroupHeader
+                      groupKey={tick.emitParentHeader.key}
+                      label={tick.emitParentHeader.label}
+                      count={currentMonthCount}
+                      variant="mobile"
+                      collapsed={collapsedGroups}
+                      onToggle={toggleGroup}
+                    />
+                  )}
+                  {tick.emitGroupDivider && group && (
                     <DateGroupHeader
                       groupKey={group}
                       label={group}
@@ -362,7 +372,7 @@ export default function NfseReceivedPage() {
                       onToggle={toggleGroup}
                     />
                   )}
-                  {dateGroupItemsVisible(group, collapsedGroups) && (
+                  {tick.showRow && (
                     <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number || '-'}</span>
@@ -447,17 +457,28 @@ export default function NfseReceivedPage() {
                 </tr>
               ) : (
                 (() => {
-                  let lastGroup = '';
+                  const walk = createDateGroupWalker(collapsedGroups);
+                  const currentMonthCount = currentMonthItemCount(invoices.map((inv) => inv.issueDate));
                   return invoices.map((invoice) => {
                     const group = getDateGroupLabel(invoice.issueDate);
-                    const showDivider = group !== lastGroup;
-                    lastGroup = group;
+                    const tick = walk(invoice.issueDate, group);
                     const isIssued = invoice.direction === 'issued';
                     const partyName = isIssued ? (invoice.recipientName || 'Tomador não informado') : (invoice.senderName || '-');
                     const partyCnpj = isIssued ? invoice.recipientCnpj : invoice.senderCnpj;
                     return (
                       <React.Fragment key={invoice.id}>
-                        {showDivider && (
+                        {tick.emitParentHeader && (
+                          <DateGroupHeader
+                            groupKey={tick.emitParentHeader.key}
+                            label={tick.emitParentHeader.label}
+                            count={currentMonthCount}
+                            variant="table"
+                            colSpan={7}
+                            collapsed={collapsedGroups}
+                            onToggle={toggleGroup}
+                          />
+                        )}
+                        {tick.emitGroupDivider && (
                           <DateGroupHeader
                             groupKey={group}
                             label={group}
@@ -467,7 +488,7 @@ export default function NfseReceivedPage() {
                             onToggle={toggleGroup}
                           />
                         )}
-                        {dateGroupItemsVisible(group, collapsedGroups) && (
+                        {tick.showRow && (
                         <tr className="hover:bg-slate-50/70 dark:hover:bg-slate-900/20">
                           <td className="px-2 py-3 text-xs tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             {formatDate(invoice.issueDate)}

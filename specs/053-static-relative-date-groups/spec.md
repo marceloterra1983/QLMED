@@ -54,6 +54,14 @@ só o mês recolhe.
 3. **AC-003** — Given um grupo de mês (`mes_YYYY-MM`, `Este mês`,
    `Mês passado` ou rótulo `mês/ano`), when o operador clica no cabeçalho,
    then os itens MUST ocultar-se e o chevron MUST indicar colapsado.
+4. **AC-006** — Given notas no mês calendário atual, when a lista abre no
+   recorte corrente, then o primeiro cabeçalho MUST ser o mês atual
+   (`mes_YYYY-MM`, ex. `Setembro/2026`), colapsável, acima de Hoje / Esta
+   semana. Recolher esse mês MUST ocultar Hoje, Esta semana e o restante
+   do mês. Dias da semana corrente que caem no mês anterior MUST ficar
+   fora desse shell. O mês atual MUST nascer expandido; os demais meses
+   MUST nascer colapsados. Recolher (botão) MUST incluir a chave do mês
+   atual.
 
 ### User Story 2 — Mesma regra em todas as listas (Priority: P1)
 
@@ -87,6 +95,10 @@ continua colapsável.
 - **FR-004**: O cabeçalho visual MUST ser um componente compartilhado,
   para as listas não divergirem.
 - **FR-005**: Recolher/Expandir MUST afetar só grupos colapsáveis.
+- **FR-006**: O mês calendário atual MUST aparecer no topo como grupo
+  colapsável (`mes_YYYY-MM`) sempre que houver item nesse mês. Os buckets
+  relativos do mês atual ficam dentro desse grupo. O load padrão MUST
+  deixar o mês atual expandido.
 
 ## Success criteria
 

@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCurrency, formatAmount, formatDate, getDateGroupLabel } from '@/lib/utils';
-import { isCollapsibleDateGroup } from '@/lib/list-collapse';
+import { defaultWalkCollapsedKeys } from '@/lib/list-collapse';
 import { useRole } from '@/hooks/useRole';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
@@ -167,9 +167,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
           const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
           if (g && !groupOrder.includes(g)) groupOrder.push(g);
         }
-        const firstGroup = groupOrder[0];
-        const toCollapse = new Set(groupOrder.filter((g) => isCollapsibleDateGroup(g) && g !== firstGroup));
-        setCollapsedGroups(toCollapse);
+        setCollapsedGroups(new Set(defaultWalkCollapsedKeys(groupOrder)));
         setCollapsedInitialized(true);
       }
       const cnpjs = Array.from(new Set(loaded.map((d) => cfg.partyCnpj(d)).filter(Boolean))) as string[];

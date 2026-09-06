@@ -8,7 +8,8 @@ import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, getDateGroupLabel } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
-import { dateGroupItemsVisible } from '@/lib/list-collapse';
+import { createDateGroupWalker } from '@/lib/list-collapse';
+import { currentMonthItemCount } from '@/lib/nfe-groups';
 import {
   type Duplicata,
   statusConfig,
@@ -96,16 +97,28 @@ export default function FinanceiroTable({
               </thead>
               <tbody>
                 {(() => {
-                  let lastGroup = '';
+                  const walk = createDateGroupWalker(collapsedGroups);
+                  const currentMonthCount = currentMonthItemCount(duplicatas.map((d) => d.dupVencimento));
                   return duplicatas.map((dup, idx) => {
-                    const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
-                    const showDivider = group !== lastGroup;
-                    lastGroup = group;
+                    const dateStr = dup.dupVencimento + 'T00:00:00';
+                    const group = getDateGroupLabel(dateStr);
+                    const tick = walk(dateStr, group);
                     const cfg = statusConfig[dup.status];
                     const n = getNick(getEntityCnpj(dup), getEntityName(dup), nicknames);
                     return (
                       <React.Fragment key={`${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
-                        {showDivider && (
+                        {tick.emitParentHeader && (
+                          <DateGroupHeader
+                            groupKey={tick.emitParentHeader.key}
+                            label={tick.emitParentHeader.label}
+                            count={currentMonthCount}
+                            variant="table"
+                            colSpan={7}
+                            collapsed={collapsedGroups}
+                            onToggle={onToggleGroup}
+                          />
+                        )}
+                        {tick.emitGroupDivider && (
                           <DateGroupHeader
                             groupKey={group}
                             label={group}
@@ -115,7 +128,7 @@ export default function FinanceiroTable({
                             onToggle={onToggleGroup}
                           />
                         )}
-                        {dateGroupItemsVisible(group, collapsedGroups) && (
+                        {tick.showRow && (
                           <tr
                             className={`group transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 ${dup.status === 'overdue' ? 'bg-red-50/30 dark:bg-red-900/5' : ''}`}
                             onClick={() => onOpenDetails(dup)}
@@ -163,17 +176,28 @@ export default function FinanceiroTable({
                 const g = getDateGroupLabel(d.dupVencimento + 'T00:00:00');
                 groupTotals.set(g, (groupTotals.get(g) || 0) + d.dupValor);
               }
-              let lastGroup = '';
+              const walk = createDateGroupWalker(collapsedGroups);
+              const currentMonthCount = currentMonthItemCount(duplicatas.map((d) => d.dupVencimento));
               return duplicatas.map((dup, idx) => {
-                const group = getDateGroupLabel(dup.dupVencimento + 'T00:00:00');
-                const showDivider = group !== lastGroup;
-                lastGroup = group;
+                const dateStr = dup.dupVencimento + 'T00:00:00';
+                const group = getDateGroupLabel(dateStr);
+                const tick = walk(dateStr, group);
                 const isOverdue = dup.status === 'overdue';
                 const parcelaLabel = formatParcela(dup);
                 const n = getNick(getEntityCnpj(dup), getEntityName(dup), nicknames);
                 return (
                   <React.Fragment key={`m-${dup.invoiceId}-${dup.dupNumero}-${idx}`}>
-                    {showDivider && group && (
+                    {tick.emitParentHeader && (
+                      <DateGroupHeader
+                        groupKey={tick.emitParentHeader.key}
+                        label={tick.emitParentHeader.label}
+                        count={currentMonthCount}
+                        variant="mobile"
+                        collapsed={collapsedGroups}
+                        onToggle={onToggleGroup}
+                      />
+                    )}
+                    {tick.emitGroupDivider && group && (
                       <DateGroupHeader
                         groupKey={group}
                         label={group}
@@ -183,7 +207,7 @@ export default function FinanceiroTable({
                         extra={<span className={`text-xs font-bold ml-auto ${valorColor}`}>{formatAmount(groupTotals.get(group) || 0)}</span>}
                       />
                     )}
-                    {dateGroupItemsVisible(group, collapsedGroups) && (
+                    {tick.showRow && (
                       <div
                         className={`border rounded-xl p-3 cursor-pointer ${
                           isOverdue
