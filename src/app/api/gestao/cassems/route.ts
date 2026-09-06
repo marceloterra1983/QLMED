@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { apiError } from '@/lib/api-error';
 import { getCassemsIngestState, listCassemsAuthorizations } from '@/lib/cassems/store';
 import { formatCassemsMoney, requireCassemsPage, sortCassemsListItems } from '@/lib/cassems/access';
@@ -8,13 +7,6 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('gestao/cassems');
 
 export async function GET(_req: Request) {
-  try {
-    await requireAuth();
-  } catch (error) {
-    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
-
   try {
     const access = await requireCassemsPage();
     if (!access.ok) return access.response;

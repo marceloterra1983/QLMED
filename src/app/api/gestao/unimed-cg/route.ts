@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { apiError } from '@/lib/api-error';
 import { getUnimedCgIngestState, listUnimedCgAuthorizations } from '@/lib/unimed-cg/store';
 import { listUnimedCgDeliveries } from '@/lib/unimed-cg/delivery-store';
@@ -12,13 +11,6 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('gestao/unimed-cg');
 
 export async function GET(_req: Request) {
-  try {
-    await requireAuth();
-  } catch (error) {
-    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
-
   try {
     const access = await requireUnimedCgPage();
     if (!access.ok) return access.response;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
+import { forbiddenResponse } from '@/lib/auth';
 import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getImpcgAuthorization, updateImpcgMissingFields } from '@/lib/impcg/store';
@@ -38,13 +38,6 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    await requireAuth();
-  } catch (error) {
-    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
-
   try {
     const { id } = await params;
     const parsed = idParamSchema.safeParse({ id });
@@ -95,13 +88,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth();
-  } catch (error) {
-    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
-    return unauthorizedResponse();
-  }
-
-  try {
     const { id } = await params;
     const parsedId = idParamSchema.safeParse({ id });
     if (!parsedId.success) return apiValidationError(parsedId.error);
@@ -120,26 +106,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Data inválida' }, { status: 400 });
     }
 
-    let items;
-    if (body.data.items) {
-      items = [];
-      for (const draft of body.data.items) {
-        const parsedItem = parseImpcgItemDraft(draft);
-        if (!parsedItem) {
-          return NextResponse.json({ error: 'Item inválido' }, { status: 400 });
-        }
-        items.push(parsedItem);
-      }
+    const totalAmountCents = body.data.totalAmount
+      ? parseMoneyInputToCents(body.data.totalAmount)
+      : undefined;
+    if (body.data.totalAmount && totalAmountCents === null) {
+      return NextResponse.json({ error: 'Valor total inválido' }, { status: 400 });
     }
 
-    let totalCents;
-    if (body.data.totalAmount !== undefined) {
-      const parsedTotal = parseMoneyInputToCents(body.data.totalAmount);
-      if (parsedTotal === null) {
-        return NextResponse.json({ error: 'Total inválido' }, { status: 400 });
-      }
-      totalCents = parsedTotal;
+    const parsedItems = body.data.items
+      ? body.data.items.map((item) => parseImpcgItemDraft(item))
+      : undefined;
+    if (parsedItems && parsedItems.some((item) => !item)) {
+      return NextResponse.json({ error: 'Itens com formato inválido' }, { status: 400 });
     }
+
+    const validItems = parsedItems
+      ? parsedItems.filter((item): item is NonNullable<typeof item> => Boolean(item))
+      : undefined;
 
     const row = await updateImpcgMissingFields(access.companyId, parsedId.data.id, {
       issuedAt,
@@ -149,8 +132,8 @@ export async function PATCH(
       doctorCrm: body.data.doctorCrm,
       procedureName: body.data.procedureName,
       hospitalName: body.data.hospitalName,
-      totalCents,
-      items,
+      totalAmount: totalAmountCents ?? undefined,
+      items: validItems,
     });
     if (!row) {
       return NextResponse.json({ error: 'Autorização não encontrada' }, { status: 404 });
@@ -175,7 +158,7 @@ export async function PATCH(
       items: row.items,
     });
   } catch (error) {
-    log.error({ err: error }, 'Falha ao completar autorização IMPCG');
+    log.error({ err: error }, 'Falha ao editar autorização IMPCG');
     return apiError(error, 'gestao/impcg/:id');
   }
 }
