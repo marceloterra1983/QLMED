@@ -56,6 +56,7 @@ import {
 } from './parse-email-kinds';
 import { processEmailHtmlKind, shouldUpgradeOrNewer } from './ingest-email-html';
 import { openOpmePortalSession } from './opme-portal';
+import { backfillMissingUnimedCgPatientNames } from './backfill-patient-names';
 import { prismaUnimedCgDeliveryStore } from './delivery-store';
 import { prismaUnimedCgInvoiceDeadlineStore } from './invoice-deadline-store';
 import { prismaUnimedCgPreSolicitationStore } from './pre-solicitation-store';
@@ -497,6 +498,14 @@ export async function runUnimedCgIngest(
   const opmeSession = await openOpmePortalSession();
 
   try {
+    // Existing rows keep existingSource forever — enrich null patientName here.
+    if (opmeSession) {
+      await backfillMissingUnimedCgPatientNames({
+        companyId,
+        fetchBeneficiario: (processId) => opmeSession.fetchBeneficiario(processId),
+      });
+    }
+
     for (const mailbox of UNIMED_CG_MAILBOXES) {
       let messages: ImpcgMailMessage[] = [];
       try {
