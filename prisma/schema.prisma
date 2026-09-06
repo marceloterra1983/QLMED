@@ -1249,7 +1249,7 @@ model UnimedCgProcessReversalSourceMessage {
   whatsappMessageId String?
   createdAt         DateTime                @default(now())
 
-  @@unique([companyId, internetMessageId])
+  @@unique([companyId, internetMessageId], map: "UnimedCgProcessReversalSourceMessage_companyId_internetMess_key")
   @@index([companyId])
   @@index([reversalId])
 }
@@ -1289,7 +1289,7 @@ model UnimedCgPreSolicitationSourceMessage {
   whatsappMessageId    String?
   createdAt            DateTime               @default(now())
 
-  @@unique([companyId, internetMessageId])
+  @@unique([companyId, internetMessageId], map: "UnimedCgPreSolicitationSourceMessage_companyId_internetMess_key")
   @@index([companyId])
   @@index([preSolicitationRefId])
 }
@@ -1327,7 +1327,7 @@ model UnimedCgInvoiceDeadlineSourceMessage {
   whatsappMessageId String?
   createdAt         DateTime                @default(now())
 
-  @@unique([companyId, internetMessageId])
+  @@unique([companyId, internetMessageId], map: "UnimedCgInvoiceDeadlineSourceMessage_companyId_internetMess_key")
   @@index([companyId])
   @@index([deadlineId])
 }

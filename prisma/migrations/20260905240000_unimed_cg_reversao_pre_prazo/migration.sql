@@ -118,7 +118,7 @@ CREATE INDEX "UnimedCgProcessReversalSourceMessage_companyId_idx" ON "UnimedCgPr
 CREATE INDEX "UnimedCgProcessReversalSourceMessage_reversalId_idx" ON "UnimedCgProcessReversalSourceMessage"("reversalId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UnimedCgProcessReversalSourceMessage_companyId_internetMessageId_key" ON "UnimedCgProcessReversalSourceMessage"("companyId", "internetMessageId");
+CREATE UNIQUE INDEX "UnimedCgProcessReversalSourceMessage_companyId_internetMess_key" ON "UnimedCgProcessReversalSourceMessage"("companyId", "internetMessageId");
 
 -- CreateIndex
 CREATE INDEX "UnimedCgPreSolicitation_companyId_receivedAt_idx" ON "UnimedCgPreSolicitation"("companyId", "receivedAt" DESC);
@@ -133,7 +133,7 @@ CREATE INDEX "UnimedCgPreSolicitationSourceMessage_companyId_idx" ON "UnimedCgPr
 CREATE INDEX "UnimedCgPreSolicitationSourceMessage_preSolicitationRefId_idx" ON "UnimedCgPreSolicitationSourceMessage"("preSolicitationRefId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UnimedCgPreSolicitationSourceMessage_companyId_internetMessageId_key" ON "UnimedCgPreSolicitationSourceMessage"("companyId", "internetMessageId");
+CREATE UNIQUE INDEX "UnimedCgPreSolicitationSourceMessage_companyId_internetMess_key" ON "UnimedCgPreSolicitationSourceMessage"("companyId", "internetMessageId");
 
 -- CreateIndex
 CREATE INDEX "UnimedCgInvoiceDeadline_companyId_receivedAt_idx" ON "UnimedCgInvoiceDeadline"("companyId", "receivedAt" DESC);
@@ -148,7 +148,7 @@ CREATE INDEX "UnimedCgInvoiceDeadlineSourceMessage_companyId_idx" ON "UnimedCgIn
 CREATE INDEX "UnimedCgInvoiceDeadlineSourceMessage_deadlineId_idx" ON "UnimedCgInvoiceDeadlineSourceMessage"("deadlineId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UnimedCgInvoiceDeadlineSourceMessage_companyId_internetMessageId_key" ON "UnimedCgInvoiceDeadlineSourceMessage"("companyId", "internetMessageId");
+CREATE UNIQUE INDEX "UnimedCgInvoiceDeadlineSourceMessage_companyId_internetMess_key" ON "UnimedCgInvoiceDeadlineSourceMessage"("companyId", "internetMessageId");
 
 -- AddForeignKey
 ALTER TABLE "UnimedCgProcessReversal" ADD CONSTRAINT "UnimedCgProcessReversal_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE CASCADE ON UPDATE CASCADE;
