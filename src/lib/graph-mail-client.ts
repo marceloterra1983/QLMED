@@ -1,11 +1,13 @@
 import { createLogger } from '@/lib/logger';
-import { IMPCG_MAILBOX_TIMEOUT_MS, IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
+import { IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
 import { assertAllowedHost } from '@/lib/http-allowlist';
 import { GRAPH_ALLOWED_HOSTS } from '@/lib/onedrive-graph';
 import { MAX_PDF_BYTES } from '@/lib/pdf/ocr-limits';
 
 const log = createLogger('graph-mail');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+
+export const DEFAULT_GRAPH_MAILBOX_TIMEOUT_MS = 30_000;
 
 export class GraphMailboxError extends Error {
   readonly status: number;
@@ -17,7 +19,7 @@ export class GraphMailboxError extends Error {
   }
 }
 
-export type ImpcgMailMessage = {
+export type GraphMailMessage = {
   graphMessageId: string;
   internetMessageId: string;
   subject: string;
@@ -25,10 +27,16 @@ export type ImpcgMailMessage = {
   hasAttachments: boolean;
 };
 
-export type ImpcgPdfAttachment = {
+export type GraphPdfAttachment = {
   name: string;
   content: Buffer;
 };
+
+/** @deprecated Use `GraphMailMessage` */
+export type ImpcgMailMessage = GraphMailMessage;
+
+/** @deprecated Use `GraphPdfAttachment` */
+export type ImpcgPdfAttachment = GraphPdfAttachment;
 
 type TokenCache = { value: string; expiresAt: number };
 let tokenCache: TokenCache | null = null;
@@ -72,7 +80,7 @@ export async function getGraphAppOnlyToken(): Promise<string> {
       scope: 'https://graph.microsoft.com/.default',
     }),
     cache: 'no-store',
-    signal: AbortSignal.timeout(IMPCG_MAILBOX_TIMEOUT_MS),
+    signal: AbortSignal.timeout(DEFAULT_GRAPH_MAILBOX_TIMEOUT_MS),
   });
 
   const payload = (await response.json().catch(() => null)) as unknown;
@@ -94,12 +102,15 @@ export async function getGraphAppOnlyToken(): Promise<string> {
 }
 
 /**
- * IMPCG_MAILBOX_TIMEOUT_MS é orçamento de uma requisição, não da caixa inteira:
+ * DEFAULT_GRAPH_MAILBOX_TIMEOUT_MS é orçamento de uma requisição, não da caixa inteira:
  * um deadline compartilhado entre todas as páginas e anexos aborta o histórico
  * completo de uma caixa antiga antes de qualquer mensagem ser processada.
  */
-function perRequestSignal(external?: AbortSignal): AbortSignal {
-  const deadline = AbortSignal.timeout(IMPCG_MAILBOX_TIMEOUT_MS);
+function perRequestSignal(
+  external?: AbortSignal,
+  timeoutMs = DEFAULT_GRAPH_MAILBOX_TIMEOUT_MS,
+): AbortSignal {
+  const deadline = AbortSignal.timeout(timeoutMs);
   return external ? AbortSignal.any([external, deadline]) : deadline;
 }
 
@@ -126,7 +137,7 @@ export async function listMailboxMessagesBySender(
   mailbox: string,
   senderEmail: string,
   options: { signal?: AbortSignal } = {},
-): Promise<ImpcgMailMessage[]> {
+): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
   const select = 'id,subject,receivedDateTime,from,hasAttachments,internetMessageId';
@@ -145,7 +156,7 @@ export async function listMailboxMessagesBySender(
     error?: { message?: string; code?: string };
   };
 
-  const messages: ImpcgMailMessage[] = [];
+  const messages: GraphMailMessage[] = [];
   while (next) {
     const listed = await graphJson<MessageListResponse>(
       accessToken,
@@ -183,9 +194,9 @@ export async function listMailboxMessagesBySenders(
   mailbox: string,
   senderEmails: readonly string[],
   options: { signal?: AbortSignal } = {},
-): Promise<ImpcgMailMessage[]> {
+): Promise<GraphMailMessage[]> {
   const uniqueSenders = [...new Set(senderEmails.map((email) => email.trim()).filter(Boolean))];
-  const byInternetMessageId = new Map<string, ImpcgMailMessage>();
+  const byInternetMessageId = new Map<string, GraphMailMessage>();
   for (const sender of uniqueSenders) {
     const rows = await listMailboxMessagesBySender(mailbox, sender, options);
     for (const row of rows) {
@@ -202,15 +213,15 @@ export async function listMailboxMessagesBySenders(
 export async function listImpcgMailboxMessages(
   mailbox: string,
   options: { signal?: AbortSignal } = {},
-): Promise<ImpcgMailMessage[]> {
+): Promise<GraphMailMessage[]> {
   return listMailboxMessagesBySender(mailbox, IMPCG_SENDER_EMAIL, options);
 }
 
-export async function listImpcgPdfAttachments(
+export async function listGraphPdfAttachments(
   mailbox: string,
   graphMessageId: string,
   signal?: AbortSignal,
-): Promise<ImpcgPdfAttachment[]> {
+): Promise<GraphPdfAttachment[]> {
   const accessToken = await getGraphAppOnlyToken();
   const { status, body } = await graphJson<{
     value?: Array<{
@@ -232,7 +243,7 @@ export async function listImpcgPdfAttachments(
     throw new GraphMailboxError('mailbox_unavailable', status);
   }
 
-  const pdfs: ImpcgPdfAttachment[] = [];
+  const pdfs: GraphPdfAttachment[] = [];
   for (const attachment of body.value ?? []) {
     const isFile = (attachment['@odata.type'] || '').toLowerCase().includes('fileattachment');
     const name = attachment.name || 'anexo.pdf';
@@ -253,6 +264,9 @@ export async function listImpcgPdfAttachments(
   return pdfs;
 }
 
+/** @deprecated Use `listGraphPdfAttachments` */
+export const listImpcgPdfAttachments = listGraphPdfAttachments;
+
 /**
  * Lista mensagens do remetente SEM exigir anexo.
  * Usa `$search="from:email"` + ConsistencyLevel eventual para evitar
@@ -262,7 +276,7 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
   mailbox: string,
   senderEmail: string,
   options: { signal?: AbortSignal } = {},
-): Promise<ImpcgMailMessage[]> {
+): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
   const search = `"from:${senderEmail}"`;

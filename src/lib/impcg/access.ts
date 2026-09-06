@@ -1,9 +1,9 @@
-import { formatCurrency } from '@/lib/money';
+import { formatMoneyDecimalString } from '@/lib/money';
 import { requireFeatureAccess, canWriteRole, type FeatureAccess } from '@/lib/feature-access';
 import { sortOperatorListItems } from '@/lib/operator-sort';
 import { IMPCG_PAGE_PATH } from './constants';
 
-export const formatImpcgMoney = formatCurrency;
+export const formatImpcgMoney = formatMoneyDecimalString;
 export const sortImpcgListItems = sortOperatorListItems;
 
 export function canImpcgSync(role: string): boolean {

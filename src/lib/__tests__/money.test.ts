@@ -6,6 +6,7 @@ import {
   decimalToCents,
   formatCurrency,
   formatMoneyDecimal,
+  formatMoneyDecimalString,
   roundMoney,
   sumMoney,
 } from '@/lib/money';
@@ -38,13 +39,17 @@ describe('money', () => {
     expect(decimalToCents(value)).toBe(1_255_000);
   });
 
-  it('formatCurrency formata de forma polimórfica Decimal, number, string, null e undefined', () => {
-    expect(formatCurrency(new Decimal('123.456'))).toBe('123.46');
-    expect(formatCurrency(123.456)).toBe('123.46');
-    expect(formatCurrency('123.4')).toBe('123.40');
-    expect(formatCurrency('4760')).toBe('4760.00');
-    expect(formatCurrency(null)).toBe('0.00');
-    expect(formatCurrency(undefined)).toBe('0.00');
-    expect(formatCurrency({ toString: () => '99.9' })).toBe('99.90');
+  it('formatMoneyDecimalString formata de forma polimórfica Decimal, number, string, null e undefined', () => {
+    expect(formatMoneyDecimalString(new Decimal('123.456'))).toBe('123.46');
+    expect(formatMoneyDecimalString(123.456)).toBe('123.46');
+    expect(formatMoneyDecimalString('123.4')).toBe('123.40');
+    expect(formatMoneyDecimalString('4760')).toBe('4760.00');
+    expect(formatMoneyDecimalString(null)).toBe('0.00');
+    expect(formatMoneyDecimalString(undefined)).toBe('0.00');
+    expect(formatMoneyDecimalString({ toString: () => '99.9' })).toBe('99.90');
+  });
+
+  it('formatCurrency é alias retrocompatível idêntico a formatMoneyDecimalString', () => {
+    expect(formatCurrency).toBe(formatMoneyDecimalString);
   });
 });

@@ -1,8 +1,8 @@
-import { formatCurrency } from '@/lib/money';
+import { formatMoneyDecimalString } from '@/lib/money';
 import { requireFeatureAccess, canWriteRole, type FeatureAccess } from '@/lib/feature-access';
 import { UNIMED_CG_PAGE_PATH } from './constants';
 
-export const formatUnimedCgMoney = formatCurrency;
+export const formatUnimedCgMoney = formatMoneyDecimalString;
 
 export function sortUnimedCgListItems<T extends { receivedAt: Date | string | null; processId: string }>(
   items: T[],

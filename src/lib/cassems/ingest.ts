@@ -8,9 +8,9 @@ import {
 import {
   GraphMailboxError,
   listMailboxMessagesBySenders,
-  listImpcgPdfAttachments,
-  type ImpcgMailMessage,
-  type ImpcgPdfAttachment,
+  listGraphPdfAttachments,
+  type GraphMailMessage,
+  type GraphPdfAttachment,
 } from '@/lib/graph-mail-client';
 import { acquirePostgresAdvisoryLock, cassemsMailIngestLockKey } from '@/lib/postgres-advisory-lock';
 import {
@@ -44,12 +44,12 @@ import {
 const log = createLogger('cassems/ingest');
 
 export type CassemsMailPort = {
-  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<ImpcgMailMessage[]>;
+  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<GraphMailMessage[]>;
   getPdfAttachments(
     mailbox: string,
     graphMessageId: string,
     signal?: AbortSignal,
-  ): Promise<ImpcgPdfAttachment[]>;
+  ): Promise<GraphPdfAttachment[]>;
 };
 
 export type CassemsDrivePort = {
@@ -168,7 +168,7 @@ function defaultMailPort(): CassemsMailPort {
     listMessages: (mailbox, options) =>
       listMailboxMessagesBySenders(mailbox, CASSEMS_SENDER_EMAILS, options),
     getPdfAttachments: (mailbox, graphMessageId, signal) =>
-      listImpcgPdfAttachments(mailbox, graphMessageId, signal),
+      listGraphPdfAttachments(mailbox, graphMessageId, signal),
   };
 }
 
@@ -285,7 +285,7 @@ export async function runCassemsIngest(
 
   try {
     for (const mailbox of CASSEMS_MAILBOXES) {
-      let messages: ImpcgMailMessage[] = [];
+      let messages: GraphMailMessage[] = [];
       try {
         messages = await resolved.mail.listMessages(mailbox, {});
       } catch (error) {
@@ -327,7 +327,7 @@ export async function runCassemsIngest(
           continue;
         }
 
-        let attachments: ImpcgPdfAttachment[] = [];
+        let attachments: GraphPdfAttachment[] = [];
         try {
           attachments = await resolved.mail.getPdfAttachments(mailbox, message.graphMessageId);
         } catch (error) {

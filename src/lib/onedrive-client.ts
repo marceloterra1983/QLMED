@@ -39,6 +39,12 @@ export type OneDriveItem = {
   };
 };
 
+export function isPdfItem(item: OneDriveItem): boolean {
+  if (item.folder) return false;
+  const name = item.name || '';
+  return name.toLowerCase().endsWith('.pdf') || item.file?.mimeType === 'application/pdf';
+}
+
 type OneDriveChildrenResponse = {
   value?: OneDriveItem[];
   '@odata.nextLink'?: string;

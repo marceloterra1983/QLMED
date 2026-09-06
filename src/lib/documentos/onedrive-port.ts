@@ -2,6 +2,7 @@ import { createLogger } from '@/lib/logger';
 import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
+  isPdfItem,
   listOneDriveChildren,
   moveOneDriveItem,
   type OneDriveItem,
@@ -10,12 +11,6 @@ import { CERTIDAO_ARCHIVE_FOLDER, DOCUMENTOS_ONEDRIVE_ACCOUNT, familyByCategory 
 import type { DocumentosFolderFile, DocumentosFolderPort } from './ingest';
 
 const log = createLogger('documentos/onedrive-port');
-
-function isPdfItem(item: OneDriveItem): boolean {
-  if (item.folder) return false;
-  const name = item.name || '';
-  return name.toLowerCase().endsWith('.pdf') || item.file?.mimeType === 'application/pdf';
-}
 
 function sameFolderName(left: string, right: string): boolean {
   return left.normalize('NFC').trim() === right.normalize('NFC').trim();

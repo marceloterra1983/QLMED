@@ -9,7 +9,7 @@ import {
   GraphMailboxError,
   getMailboxMessageBodyHtml,
   listMailboxMessagesBySenderWithoutAttachments,
-  type ImpcgMailMessage,
+  type GraphMailMessage,
 } from '@/lib/graph-mail-client';
 import { acquirePostgresAdvisoryLock, unimedCgMailIngestLockKey } from '@/lib/postgres-advisory-lock';
 import {
@@ -77,7 +77,7 @@ import {
 const log = createLogger('unimed-cg/ingest');
 
 export type UnimedCgMailPort = {
-  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<ImpcgMailMessage[]>;
+  listMessages(mailbox: string, options?: { signal?: AbortSignal }): Promise<GraphMailMessage[]>;
   getBodyHtml(
     mailbox: string,
     graphMessageId: string,
@@ -521,7 +521,7 @@ export async function runUnimedCgIngest(
     }
 
     for (const mailbox of UNIMED_CG_MAILBOXES) {
-      let messages: ImpcgMailMessage[] = [];
+      let messages: GraphMailMessage[] = [];
       try {
         messages = await resolved.mail.listMessages(mailbox, {});
       } catch (error) {
