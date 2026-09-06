@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { createLogger } from '@/lib/logger';
 import { foldName } from '@/lib/cte-whatsapp-caption';
 import {
@@ -55,6 +56,21 @@ export type BillingInvoiceCandidate = {
   infCpl: string;
 };
 
+
+export type BilledCandidateInvoice = { id: string; number: string };
+
+
+/** matched e ambiguous entram no card PROCESSOS FATURADOS. */
+export function isUnimedCgBilledStatus(status: string | null | undefined): boolean {
+  return status === 'matched' || status === 'ambiguous';
+}
+
+export function serializeBilledCandidates(
+  invoices: BillingInvoiceCandidate[],
+): BilledCandidateInvoice[] {
+  return invoices.map((inv) => ({ id: inv.id, number: inv.number }));
+}
+
 export type MatchDecision =
   | { status: 'matched'; invoice: BillingInvoiceCandidate }
   | { status: 'ambiguous'; invoices: BillingInvoiceCandidate[] }
@@ -89,7 +105,7 @@ export type RunBillingMatchOptions = {
 
 /**
  * Cruza autorizações Unimed CG (com patientName) com NF-e emitidas ao CNPJ Unimed.
- * matched: grava vínculo; ambiguous: status sem invoiceId definitivo.
+ * matched: grava vínculo; ambiguous: status + candidatos (ainda entra em Faturados).
  * Já matched não são reprocessados.
  */
 export async function runUnimedCgBillingMatch(
@@ -147,6 +163,7 @@ export async function runUnimedCgBillingMatch(
           billedMatchStatus: 'ambiguous' satisfies UnimedCgBilledMatchStatus,
           billedInvoiceId: null,
           billedInvoiceNumber: null,
+          billedCandidateInvoices: serializeBilledCandidates(decision.invoices),
           billedMatchedAt: now,
         },
       });
@@ -164,6 +181,7 @@ export async function runUnimedCgBillingMatch(
         billedMatchStatus: 'matched' satisfies UnimedCgBilledMatchStatus,
         billedInvoiceId: decision.invoice.id,
         billedInvoiceNumber: decision.invoice.number,
+        billedCandidateInvoices: Prisma.DbNull,
         billedMatchedAt: now,
       },
     });

@@ -17,3 +17,7 @@
 - Auth: API usa requireUnimedCgPage existente
 - Expand-only migration
 - Domain logic in `src/lib/unimed-cg`
+
+## Emenda PO (2026-09-06)
+
+Ambíguos também entram em PROCESSOS FATURADOS com `billedCandidateInvoices`; filtro de origens inclui matched|ambiguous; ambiguidade = multi-NF por processId.
