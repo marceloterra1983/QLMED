@@ -7,6 +7,7 @@ import { saveXmlToFile } from '@/lib/xml-file-store';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { maybeMatchAfterUnimedNfeIssued } from '@/lib/unimed-cg/billing-match';
 import { buildNfeAccessKey, nextInvoiceNumber } from './access-key';
 import { consultarNfeProtocolo, enviarNfeAutorizacao, isDeniedStat, wrapNfeProc } from './autorizacao-client';
 import { emitenteFromIssuedXml } from './emitente';
@@ -331,6 +332,11 @@ async function resolveSubmittedEmission(
           invoiceId: invoice.id,
         },
       });
+      await maybeMatchAfterUnimedNfeIssued({
+        companyId: ctx.companyId,
+        recipientCnpj: invoice.recipientCnpj,
+        invoiceId: invoice.id,
+      });
       return { status: 'authorized', invoiceId: invoice.id, accessKey };
     }
     return {
@@ -468,6 +474,11 @@ async function finalizeAuthorized(
     },
   });
   log.info({ emissionId: ctx.emissionId, invoiceId, cStat: input.cStat }, 'NF-e autorizada');
+  await maybeMatchAfterUnimedNfeIssued({
+    companyId: ctx.companyId,
+    recipientCnpj: input.dest.cnpj,
+    invoiceId,
+  });
   return { status: 'authorized', invoiceId, accessKey: input.accessKey };
 }
 
