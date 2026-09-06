@@ -30,6 +30,7 @@ export interface Invoice {
   cancelledAt?: string | null;
   createdAt?: string;
   xmlContent?: string;
+  matchedProduct?: string | null;
   company?: { razaoSocial: string; cnpj: string };
 }
 

@@ -284,3 +284,194 @@ export function buildInvoiceSearchConditions(
 
   return andConditions.length > 0 ? { AND: andConditions } : {};
 }
+
+import type { Invoice } from '@/types';
+
+/**
+ * Extracts the product name or code from xmlContent that matches any of the given search tokens.
+ */
+export function extractMatchedProductSnippet(
+  xmlContent: string | null | undefined,
+  tokens: string[],
+): string | null {
+  if (!xmlContent || tokens.length === 0) return null;
+
+  const variants = Array.from(
+    new Set(
+      tokens
+        .flatMap(expandAccentVariants)
+        .map(normalizeForSearch)
+        .filter((t) => t.length >= 2),
+    ),
+  );
+
+  if (variants.length === 0) return null;
+
+  // 1. Search in <xProd>...</xProd>
+  const xProdRegex = /<xProd>([^<]+)<\/xProd>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = xProdRegex.exec(xmlContent)) !== null) {
+    const rawProd = match[1].trim();
+    const normProd = normalizeForSearch(rawProd);
+    for (const v of variants) {
+      if (v.length >= 3 && normProd.includes(v)) {
+        return rawProd;
+      }
+    }
+  }
+
+  // 2. Search in <cProd>...</cProd> (product code)
+  const cProdRegex = /<cProd>([^<]+)<\/cProd>/gi;
+  while ((match = cProdRegex.exec(xmlContent)) !== null) {
+    const rawCode = match[1].trim();
+    const normCode = normalizeForSearch(rawCode);
+    for (const v of variants) {
+      if (v.length >= 2 && normCode.includes(v)) {
+        return `Código: ${rawCode}`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calculates a quantitative relevance score for an invoice relative to parsed search criteria.
+ * Higher score = more relevant (placed at the top of results).
+ */
+export function scoreInvoiceRelevance(
+  invoice: Partial<Invoice>,
+  criteria: ParsedSearchCriteria,
+): number {
+  let score = 0;
+  const rawDigits = criteria.raw.replace(/\D/g, '');
+  const rawNorm = normalizeForSearch(criteria.raw);
+
+  // 1. Exact Access Key match
+  if (criteria.exactAccessKey && invoice.accessKey === criteria.exactAccessKey) {
+    return 3000;
+  }
+
+  // 2. Exact CNPJ or CPF match
+  const cleanRecipientCnpj = (invoice.recipientCnpj || '').replace(/\D/g, '');
+  const cleanSenderCnpj = (invoice.senderCnpj || '').replace(/\D/g, '');
+  if (criteria.exactCnpj) {
+    if (cleanRecipientCnpj === criteria.exactCnpj || cleanSenderCnpj === criteria.exactCnpj) {
+      score += 2500;
+    }
+  }
+  if (criteria.exactCpf) {
+    if (cleanRecipientCnpj === criteria.exactCpf || cleanSenderCnpj === criteria.exactCpf) {
+      score += 2500;
+    }
+  }
+
+  // 3. Invoice Number match (exact number has very high priority)
+  const invNumber = (invoice.number || '').trim();
+  const invNumberClean = invNumber.replace(/^0+/, '');
+  if (rawDigits.length >= 1) {
+    const rawDigitsClean = rawDigits.replace(/^0+/, '');
+    if (invNumber === rawDigits || invNumberClean === rawDigitsClean) {
+      score += 2200; // Exact invoice number!
+    } else if (invNumber.startsWith(rawDigits) || invNumberClean.startsWith(rawDigitsClean)) {
+      score += 900;
+    } else if (invNumber.includes(rawDigits)) {
+      score += 450;
+    }
+  }
+
+  // 4. Monetary value match
+  if (criteria.totalValueAmount !== undefined && typeof invoice.totalValue === 'number') {
+    const diff = Math.abs(invoice.totalValue - criteria.totalValueAmount);
+    if (diff < 0.01) {
+      score += 1800;
+    } else if (diff < 1.0) {
+      score += 600;
+    }
+  }
+
+  // 5. Text fields evaluation
+  const fields = [
+    { text: normalizeForSearch(invoice.recipientName || ''), baseWeight: 400, prefixWeight: 300, exactWeight: 600 },
+    { text: normalizeForSearch(invoice.patientName || ''), baseWeight: 380, prefixWeight: 280, exactWeight: 550 },
+    { text: normalizeForSearch(invoice.doctorName || ''), baseWeight: 320, prefixWeight: 220, exactWeight: 450 },
+    { text: normalizeForSearch(invoice.convenioName || ''), baseWeight: 320, prefixWeight: 220, exactWeight: 450 },
+    { text: normalizeForSearch(invoice.senderName || ''), baseWeight: 150, prefixWeight: 100, exactWeight: 200 },
+  ];
+
+  // Check full raw query against fields (phrase matching)
+  if (rawNorm.length >= 3) {
+    for (const f of fields) {
+      if (!f.text) continue;
+      if (f.text === rawNorm) {
+        score += f.exactWeight * 2;
+      } else if (f.text.startsWith(rawNorm)) {
+        score += f.exactWeight + f.prefixWeight;
+      } else if (f.text.includes(rawNorm)) {
+        score += f.exactWeight;
+      }
+    }
+  }
+
+  // Check individual tokens
+  for (const token of criteria.tokens) {
+    const tokenNorm = normalizeForSearch(token);
+    if (!tokenNorm || tokenNorm.length < 2) continue;
+
+    for (const f of fields) {
+      if (!f.text) continue;
+      if (f.text === tokenNorm) {
+        score += f.exactWeight;
+      } else if (f.text.startsWith(tokenNorm)) {
+        score += f.baseWeight + f.prefixWeight;
+      } else if (f.text.includes(tokenNorm)) {
+        score += f.baseWeight;
+      }
+    }
+  }
+
+  // 6. Matched XML product content
+  if (invoice.xmlContent && criteria.tokens.length > 0) {
+    const product = extractMatchedProductSnippet(invoice.xmlContent, criteria.tokens);
+    if (product) {
+      score += 350;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * Sorts invoices by relevance to the search string, breaking ties by emission date descending.
+ */
+export function sortInvoicesByRelevance<T extends Partial<Invoice>>(
+  invoices: T[],
+  search: string,
+): T[] {
+  if (!search || !search.trim() || invoices.length <= 1) return invoices;
+  const criteria = tokenizeInvoiceSearch(search);
+  if (
+    criteria.tokens.length === 0 &&
+    !criteria.exactAccessKey &&
+    !criteria.exactCnpj &&
+    !criteria.exactCpf &&
+    criteria.totalValueAmount === undefined
+  ) {
+    return invoices;
+  }
+
+  const scored = invoices.map((inv) => ({
+    invoice: inv,
+    score: scoreInvoiceRelevance(inv, criteria),
+    dateMs: inv.issueDate ? new Date(inv.issueDate).getTime() : 0,
+  }));
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return b.dateMs - a.dateMs;
+  });
+
+  return scored.map((s) => s.invoice);
+}
