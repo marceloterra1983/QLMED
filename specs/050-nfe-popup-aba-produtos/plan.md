@@ -1,4 +1,4 @@
-# Plan: SPEC-049 — Popup de NF-e abre na aba Produtos
+# Plan: SPEC-050 — Popup de NF-e abre na aba Produtos
 
 ## Approach
 
