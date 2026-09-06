@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { isUniqueViolation } from '@/lib/prisma-errors';
 import { centsToDecimal, formatMoneyDecimal } from '@/lib/money';
 import type { UnimedCgParseStatus as DomainParseStatus } from './constants';
+import { isUnimedCgBilledStatus } from './billing-match';
+export { isUnimedCgBilledStatus };
 
 export type UnimedCgListItem = {
   id: string;
@@ -20,6 +22,7 @@ export type UnimedCgListItem = {
   billedInvoiceNumber?: string | null;
   billedMatchedAt?: string | null;
   billedMatchStatus?: string | null;
+  billedCandidateInvoices?: Array<{ id: string; number: string }> | null;
 };
 
 export type UnimedCgDetailItem = UnimedCgListItem & {
@@ -50,6 +53,7 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
       billedInvoiceNumber: true,
       billedMatchedAt: true,
       billedMatchStatus: true,
+      billedCandidateInvoices: true,
     },
   });
 
@@ -68,18 +72,36 @@ export async function listUnimedCgAuthorizations(companyId: string): Promise<Uni
     billedInvoiceNumber: row.billedInvoiceNumber,
     billedMatchedAt: row.billedMatchedAt ? row.billedMatchedAt.toISOString() : null,
     billedMatchStatus: row.billedMatchStatus,
+    billedCandidateInvoices: parseBilledCandidates(row.billedCandidateInvoices),
   }));
 }
 
-/** Autorizações com match definitivo (para card PROCESSOS FATURADOS). */
-export async function listUnimedCgBilledAuthorizations(companyId: string): Promise<UnimedCgListItem[]> {
-  const all = await listUnimedCgAuthorizations(companyId);
-  return all.filter((row) => row.billedMatchStatus === 'matched');
+function parseBilledCandidates(
+  value: unknown,
+): Array<{ id: string; number: string }> | null {
+  if (!Array.isArray(value)) return null;
+  const out: Array<{ id: string; number: string }> = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const id = (item as { id?: unknown }).id;
+    const number = (item as { number?: unknown }).number;
+    if (typeof id === 'string' && typeof number === 'string') {
+      out.push({ id, number });
+    }
+  }
+  return out.length ? out : null;
 }
 
+/** Autorizações matched ou ambiguous (card PROCESSOS FATURADOS). */
+export async function listUnimedCgBilledAuthorizations(companyId: string): Promise<UnimedCgListItem[]> {
+  const all = await listUnimedCgAuthorizations(companyId);
+  return all.filter((row) => isUnimedCgBilledStatus(row.billedMatchStatus));
+}
+
+/** processIds em Faturados (matched | ambiguous) — filtrar das seções de origem. */
 export async function listUnimedCgMatchedProcessIds(companyId: string): Promise<Set<string>> {
   const rows = await prisma.unimedCgAuthorization.findMany({
-    where: { companyId, billedMatchStatus: 'matched' },
+    where: { companyId, billedMatchStatus: { in: ['matched', 'ambiguous'] } },
     select: { processId: true },
   });
   return new Set(rows.map((r) => r.processId));
@@ -109,6 +131,7 @@ export async function getUnimedCgAuthorization(
     billedInvoiceNumber: row.billedInvoiceNumber,
     billedMatchedAt: row.billedMatchedAt ? row.billedMatchedAt.toISOString() : null,
     billedMatchStatus: row.billedMatchStatus,
+    billedCandidateInvoices: parseBilledCandidates(row.billedCandidateInvoices),
     oneDriveItemId: row.oneDriveItemId,
     sourceUrl: row.sourceUrl,
   };

@@ -3,6 +3,7 @@ import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth
 import { apiError } from '@/lib/api-error';
 import {
   getUnimedCgIngestState,
+  isUnimedCgBilledStatus,
   listUnimedCgAuthorizations,
   listUnimedCgMatchedProcessIds,
 } from '@/lib/unimed-cg/store';
@@ -38,8 +39,8 @@ export async function GET(_req: Request) {
         listUnimedCgMatchedProcessIds(access.companyId),
       ]);
 
-    const matchedAuths = rows.filter((row) => row.billedMatchStatus === 'matched');
-    const openAuths = rows.filter((row) => row.billedMatchStatus !== 'matched');
+    const matchedAuths = rows.filter((row) => isUnimedCgBilledStatus(row.billedMatchStatus));
+    const openAuths = rows.filter((row) => !isUnimedCgBilledStatus(row.billedMatchStatus));
 
     const billing = sortUnimedCgListItems(openAuths).map((row) => ({
       id: row.id,
@@ -185,6 +186,7 @@ export async function GET(_req: Request) {
         billedInvoiceNumber: row.billedInvoiceNumber ?? null,
         billedMatchedAt: row.billedMatchedAt ?? null,
         billedMatchStatus: row.billedMatchStatus ?? null,
+        billedCandidateInvoices: row.billedCandidateInvoices ?? null,
         related,
       };
     });
