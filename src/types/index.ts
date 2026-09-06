@@ -19,6 +19,8 @@ export interface Invoice {
   senderCity?: string | null;
   recipientCnpj: string | null;
   recipientName: string | null;
+  /** Nome do paciente (infCpl), SPEC-052 */
+  patientName?: string | null;
   totalValue: number;
   status: InvoiceStatus;
   cancelledAt?: string | null;
