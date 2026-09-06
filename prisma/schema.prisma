@@ -344,6 +344,10 @@ model Invoice {
   recipientName         String?
   /// Nome do paciente extraído de infCpl (SPEC-052). Nullable quando ausente.
   patientName           String?
+  /// Convênio extraído de infCpl (SPEC-054). Nullable quando ausente.
+  convenioName          String?
+  /// Médico extraído de infCpl (SPEC-054). Nullable quando ausente.
+  doctorName            String?
   totalValue            Decimal
   status                InvoiceStatus                          @default(received)
   cancelledAt           DateTime?
@@ -377,6 +381,10 @@ model Invoice {
   @@index([companyId, recipientCnpj])
   @@index([patientName])
   @@index([companyId, patientName])
+  @@index([convenioName])
+  @@index([companyId, convenioName])
+  @@index([doctorName])
+  @@index([companyId, doctorName])
 }
 
 /// Preferencia de notificacao de um usuario para um tipo de evento.

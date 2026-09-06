@@ -21,6 +21,10 @@ export interface Invoice {
   recipientName: string | null;
   /** Nome do paciente (infCpl), SPEC-052 */
   patientName?: string | null;
+  /** Convênio (infCpl), SPEC-054 */
+  convenioName?: string | null;
+  /** Médico (infCpl), SPEC-054 */
+  doctorName?: string | null;
   totalValue: number;
   status: InvoiceStatus;
   cancelledAt?: string | null;
