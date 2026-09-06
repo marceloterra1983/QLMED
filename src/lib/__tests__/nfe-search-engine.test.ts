@@ -3,7 +3,6 @@ import {
   buildInvoiceSearchConditions,
   expandAccentVariants,
   extractMatchedProductSnippet,
-  scoreInvoiceRelevance,
   sortInvoicesByRelevance,
   tokenizeInvoiceSearch,
 } from '@/lib/nfe/search-engine';
