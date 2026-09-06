@@ -1,7 +1,6 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { getConfiguredWhatsAppGroup } from '@/lib/notification-outbox';
 import {
   getEvolutionConfig,
   type EvolutionConfig,

@@ -46,4 +46,14 @@ describe('file-response', () => {
     expect(response.headers.get('Content-Length')).toBe(String(buffer.length));
     expect(response.headers.get('Content-Disposition')).toContain('attachment; filename="documento.pdf"');
   });
+
+  it('createStreamFileResponse retorna 404 quando o stream é nulo', async () => {
+    const response = createStreamFileResponse(null, {
+      fileName: 'ausente.pdf',
+    });
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data).toEqual({ error: 'Arquivo não encontrado' });
+  });
 });

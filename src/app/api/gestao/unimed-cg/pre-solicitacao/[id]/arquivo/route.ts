@@ -45,6 +45,9 @@ export async function GET(
       oneDrive.driveId,
       row.oneDriveItemId,
     );
+    if (!content.body) {
+      return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
+    }
 
     log.info(
       { preSolicitationId: row.id, bytes: content.size, durationMs: Date.now() - startedAt },

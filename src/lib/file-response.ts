@@ -31,9 +31,13 @@ export function inlineDisposition(fileName: string, fallbackDefault: string = 'a
  * Cria uma resposta HTTP 200 transmitindo um ReadableStream com cabeçalhos padronizados.
  */
 export function createStreamFileResponse(
-  stream: ReadableStream<unknown> | BodyInit,
+  stream: ReadableStream<unknown> | BodyInit | null,
   options: FileResponseOptions,
 ): NextResponse {
+  if (!stream) {
+    return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
+  }
+
   const contentType = options.contentType ?? 'application/pdf';
   const cacheControl = options.cacheControl ?? 'private, max-age=300';
   const disposition = options.dispositionType === 'attachment'
@@ -51,7 +55,7 @@ export function createStreamFileResponse(
     headers['Content-Length'] = String(options.contentLength);
   }
 
-  return new NextResponse(stream, {
+  return new NextResponse(stream as BodyInit, {
     status: 200,
     headers,
   });
