@@ -11,9 +11,10 @@ const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
-import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
-import { defaultNfeCollapsedKeys, resolveCollapsedGroupsAfterFetch, dateGroupItemsVisible } from '@/lib/list-collapse';
+import { buildNfeGroups, buildYearMonths, splitNfeGroupsForDisplay } from '@/lib/nfe-groups';
+import { defaultNfeCollapsedKeys, nfeCollapsibleMonthKeys, resolveCollapsedGroupsAfterFetch, dateGroupItemsVisible } from '@/lib/list-collapse';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
+import RelativeMonthGroupBody from '@/components/ui/RelativeMonthGroupBody';
 import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -237,6 +238,7 @@ export default function IssuedInvoicesPage() {
   };
 
   const nfeGroups = useMemo(() => buildNfeGroups(invoices), [invoices]);
+  const nfeDisplay = useMemo(() => splitNfeGroupsForDisplay(nfeGroups), [nfeGroups]);
   const yearMonths = useMemo(() => selectedYear !== null ? buildYearMonths(invoices) : [], [invoices, selectedYear]);
 
   const val = (amount: number) => hideValues
@@ -452,12 +454,7 @@ export default function IssuedInvoicesPage() {
         ) : (
           <>
             {(() => {
-              const allKeys: string[] = [];
-              if (selectedYear !== null) {
-                yearMonths.forEach(mg => allKeys.push(mg.key));
-              } else {
-                nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
-              }
+              const allKeys = nfeCollapsibleMonthKeys(invoices, selectedYear);
               return allKeys.length > 0 ? (
                 <div className="flex justify-start gap-1.5 mb-2">
                   <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
@@ -473,25 +470,12 @@ export default function IssuedInvoicesPage() {
                 </React.Fragment>
               ))
             ) : (
-              <>
-                {renderMobileDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
-                {dateGroupItemsVisible('hoje', collapsedGroups) && nfeGroups.hoje.map(renderMobileCard)}
-
-                {renderMobileDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
-                {dateGroupItemsVisible('esta_semana', collapsedGroups) && nfeGroups.estaSemana.map(renderMobileCard)}
-
-                {nfeGroups.semanaPassada.length > 0 && (<>
-                  {renderMobileDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
-                  {dateGroupItemsVisible('semana_passada', collapsedGroups) && nfeGroups.semanaPassada.map(renderMobileCard)}
-                </>)}
-
-                {nfeGroups.currentYearMonths.map(mg => (
-                  <React.Fragment key={mg.key}>
-                    {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-                    {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderMobileCard)}
-                  </React.Fragment>
-                ))}
-              </>
+              <RelativeMonthGroupBody
+                split={nfeDisplay}
+                collapsed={collapsedGroups}
+                renderDivider={renderMobileDivider}
+                renderItem={renderMobileCard}
+              />
             )}
             <div className="flex items-center gap-1 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
@@ -504,12 +488,7 @@ export default function IssuedInvoicesPage() {
       {/* Table (desktop) */}
       <Card padding="none" className="hidden sm:block">
         {!loading && invoices.length > 0 && (() => {
-          const allKeys: string[] = [];
-          if (selectedYear !== null) {
-            yearMonths.forEach(mg => allKeys.push(mg.key));
-          } else {
-            nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
-          }
+          const allKeys = nfeCollapsibleMonthKeys(invoices, selectedYear);
           return allKeys.length > 0 ? (
             <div className="flex justify-start gap-1.5 px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
               <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
@@ -565,25 +544,12 @@ export default function IssuedInvoicesPage() {
                   </React.Fragment>
                 ))
               ) : (
-                <>
-                  {renderGroupDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
-                  {dateGroupItemsVisible('hoje', collapsedGroups) && nfeGroups.hoje.map(renderInvoiceRow)}
-
-                  {renderGroupDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
-                  {dateGroupItemsVisible('esta_semana', collapsedGroups) && nfeGroups.estaSemana.map(renderInvoiceRow)}
-
-                  {nfeGroups.semanaPassada.length > 0 && (<>
-                    {renderGroupDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
-                    {dateGroupItemsVisible('semana_passada', collapsedGroups) && nfeGroups.semanaPassada.map(renderInvoiceRow)}
-                  </>)}
-
-                  {nfeGroups.currentYearMonths.map(mg => (
-                    <React.Fragment key={mg.key}>
-                      {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-                      {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderInvoiceRow)}
-                    </React.Fragment>
-                  ))}
-                </>
+                <RelativeMonthGroupBody
+                  split={nfeDisplay}
+                  collapsed={collapsedGroups}
+                  renderDivider={renderGroupDivider}
+                  renderItem={renderInvoiceRow}
+                />
               )}
             </tbody>
           </table>

@@ -14,6 +14,119 @@ export type NfeHierarchy = {
   previousYears: YearGroup[];
 };
 
+export function currentMonthYm(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${p2(now.getMonth() + 1)}`;
+}
+
+export function monthGroupKey(ym: string): string {
+  return `mes_${ym}`;
+}
+
+export function monthGroupLabel(ym: string): string {
+  const [y, m] = ym.split('-');
+  return `${MONTH_NAMES[parseInt(m, 10) - 1]}/${y}`;
+}
+
+export function issueYm(issueDate: string | null | undefined): string {
+  return (issueDate || '').substring(0, 7);
+}
+
+export type DatedItem = { issueDate?: string | null; totalValue?: number | null };
+
+export type MonthBucket<T> = {
+  key: string;
+  label: string;
+  items: T[];
+  count: number;
+  total: number;
+};
+
+export type RelativeMonthSplit<T> = {
+  currentMonth: Omit<MonthBucket<T>, 'items'> | null;
+  innerHoje: T[];
+  innerHojeTotal: number;
+  innerEstaSemana: T[];
+  innerEstaSemanaTotal: number;
+  innerSemanaPassada: T[];
+  innerSemanaPassadaTotal: number;
+  innerRemainder: T[];
+  outerEstaSemana: T[];
+  outerEstaSemanaTotal: number;
+  outerSemanaPassada: T[];
+  outerSemanaPassadaTotal: number;
+  otherMonths: MonthBucket<T>[];
+};
+
+function totalOf<T extends DatedItem>(items: T[]): number {
+  return items.reduce((s, i) => s + (Number(i.totalValue) || 0), 0);
+}
+
+function inYm<T extends DatedItem>(items: T[], ym: string): T[] {
+  return items.filter((i) => issueYm(i.issueDate) === ym);
+}
+
+export function splitRelativeGroupsByCurrentMonth<T extends DatedItem>(
+  input: {
+    hoje?: T[];
+    estaSemana: T[];
+    semanaPassada: T[];
+    currentYearMonths: Array<{ key: string; label: string; items: T[]; total: number; count: number }>;
+  },
+  now: Date = new Date(),
+): RelativeMonthSplit<T> {
+  const ym = currentMonthYm(now);
+  const key = monthGroupKey(ym);
+  const label = monthGroupLabel(ym);
+  const hoje = input.hoje ?? [];
+  const innerHoje = inYm(hoje, ym);
+  const innerEstaSemana = inYm(input.estaSemana, ym);
+  const outerEstaSemana = input.estaSemana.filter((i) => issueYm(i.issueDate) !== ym);
+  const innerSemanaPassada = inYm(input.semanaPassada, ym);
+  const outerSemanaPassada = input.semanaPassada.filter((i) => issueYm(i.issueDate) !== ym);
+  const remainderMonth = input.currentYearMonths.find((m) => m.key === key) ?? null;
+  const otherMonths = input.currentYearMonths
+    .filter((m) => m.key !== key)
+    .map((m) => ({ key: m.key, label: m.label, items: m.items, count: m.count, total: m.total }));
+  const innerRemainder = remainderMonth?.items ?? [];
+  const count = innerHoje.length + innerEstaSemana.length + innerSemanaPassada.length + innerRemainder.length;
+  const total = totalOf(innerHoje) + totalOf(innerEstaSemana) + totalOf(innerSemanaPassada) + (remainderMonth?.total ?? 0);
+  return {
+    currentMonth: count > 0 ? { key, label, count, total } : null,
+    innerHoje,
+    innerHojeTotal: totalOf(innerHoje),
+    innerEstaSemana,
+    innerEstaSemanaTotal: totalOf(innerEstaSemana),
+    innerSemanaPassada,
+    innerSemanaPassadaTotal: totalOf(innerSemanaPassada),
+    innerRemainder,
+    outerEstaSemana,
+    outerEstaSemanaTotal: totalOf(outerEstaSemana),
+    outerSemanaPassada,
+    outerSemanaPassadaTotal: totalOf(outerSemanaPassada),
+    otherMonths,
+  };
+}
+
+export function splitNfeGroupsForDisplay(h: NfeHierarchy, now: Date = new Date()): RelativeMonthSplit<Invoice> {
+  return splitRelativeGroupsByCurrentMonth({
+    hoje: h.hoje,
+    estaSemana: h.estaSemana,
+    semanaPassada: h.semanaPassada,
+    currentYearMonths: h.currentYearMonths.map((m) => ({
+      key: m.key,
+      label: m.label,
+      items: m.invoices,
+      total: m.total,
+      count: m.count,
+    })),
+  }, now);
+}
+
+export function currentMonthItemCount(dates: Array<string | null | undefined>, now: Date = new Date()): number {
+  const ym = currentMonthYm(now);
+  return dates.filter((d) => issueYm(d) === ym).length;
+}
+
 export function buildNfeGroups(invoices: Invoice[]): NfeHierarchy {
   const now = new Date();
   const dow = now.getDay();

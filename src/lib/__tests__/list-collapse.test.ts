@@ -3,11 +3,15 @@ import type { Invoice } from '@/types';
 import {
   resolveCollapsedGroupsAfterFetch,
   defaultNfeCollapsedKeys,
+  nfeCollapsibleMonthKeys,
   retainExpandedIds,
   nfeProdutoExpandKey,
   isCollapsibleDateGroup,
   dateGroupItemsVisible,
   collapsibleDateGroupKeys,
+  createDateGroupWalker,
+  defaultWalkCollapsedKeys,
+  isCurrentMonthDateGroup,
 } from '@/lib/list-collapse';
 
 function invoice(id: string, issueDate: string): Invoice {
@@ -160,5 +164,87 @@ describe('dateGroupItemsVisible', () => {
 describe('collapsibleDateGroupKeys', () => {
   it('Recolher ignora buckets relativos', () => {
     expect(collapsibleDateGroupKeys(['hoje', 'esta_semana', 'semana_passada', 'mes_2026-08'])).toEqual(['mes_2026-08']);
+  });
+});
+
+
+describe('nfeCollapsibleMonthKeys e defaultNfeCollapsedKeys', () => {
+  it('Recolher inclui o mês atual; o load padrão deixa o mês atual expandido', () => {
+    const now = new Date();
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 12);
+    const rows = [
+      invoice('today', iso(now) + 'T12:00:00'),
+      invoice('month', iso(lastMonth) + 'T12:00:00'),
+    ];
+    const currentKey = `mes_${iso(now).slice(0, 7)}`;
+    const lastKey = `mes_${iso(lastMonth).slice(0, 7)}`;
+    const collapsible = nfeCollapsibleMonthKeys(rows, null, now);
+    expect(collapsible[0]).toBe(currentKey);
+    const collapsed = defaultNfeCollapsedKeys(rows, null, now);
+    expect(collapsed).not.toContain(currentKey);
+    if (lastMonth.getFullYear() === now.getFullYear()) {
+      expect(collapsible).toContain(lastKey);
+      expect(collapsed).toContain(lastKey);
+    }
+  });
+});
+
+describe('isCurrentMonthDateGroup', () => {
+  it('reconhece Este mês e mes_YYYY-MM do calendário atual', () => {
+    const now = new Date(2026, 8, 6);
+    expect(isCurrentMonthDateGroup('Este mês', now)).toBe(true);
+    expect(isCurrentMonthDateGroup('mes_2026-09', now)).toBe(true);
+    expect(isCurrentMonthDateGroup('Setembro/2026', now)).toBe(true);
+    expect(isCurrentMonthDateGroup('mes_2026-08', now)).toBe(false);
+    expect(isCurrentMonthDateGroup('Mês passado', now)).toBe(false);
+  });
+});
+
+describe('defaultWalkCollapsedKeys', () => {
+  it('não colapsa Este mês / mês atual', () => {
+    const now = new Date(2026, 8, 6);
+    expect(defaultWalkCollapsedKeys(['Hoje', 'Esta semana', 'Este mês', 'Mês passado'], now))
+      .toEqual(['Mês passado']);
+  });
+});
+
+describe('createDateGroupWalker', () => {
+  it('emite o mês atual no topo e oculta filhos quando colapsado', () => {
+    const now = new Date(2026, 8, 6, 15, 0, 0);
+    const collapsed = new Set(['mes_2026-09']);
+    const walk = createDateGroupWalker(collapsed, { now });
+    const first = walk('2026-09-06T12:00:00', 'Hoje');
+    expect(first.emitParentHeader).toEqual({ key: 'mes_2026-09', label: 'Setembro/2026' });
+    expect(first.emitGroupDivider).toBe(false);
+    expect(first.showRow).toBe(false);
+    const second = walk('2026-09-02T12:00:00', 'Esta semana');
+    expect(second.emitParentHeader).toBeNull();
+    expect(second.showRow).toBe(false);
+    const outside = walk('2026-08-28T12:00:00', 'Semana passada');
+    expect(outside.emitParentHeader).toBeNull();
+    expect(outside.emitGroupDivider).toBe(true);
+    expect(outside.showRow).toBe(true);
+  });
+
+  it('com mês atual expandido mostra divisorias relativas estáticas dentro', () => {
+    const now = new Date(2026, 8, 6, 15, 0, 0);
+    const walk = createDateGroupWalker(new Set(), { now });
+    const first = walk('2026-09-06T12:00:00', 'Hoje');
+    expect(first.emitParentHeader?.key).toBe('mes_2026-09');
+    expect(first.emitGroupDivider).toBe(true);
+    expect(first.showRow).toBe(true);
+    const inner = walk('2026-09-02T12:00:00', 'Esta semana');
+    expect(inner.emitGroupDivider).toBe(true);
+    expect(inner.showRow).toBe(true);
+  });
+
+  it('agrupamento que não é data (cidade) não emite mês atual', () => {
+    const walk = createDateGroupWalker(new Set(['Campo Grande']), { dateGrouping: false });
+    const tick = walk(null, 'Campo Grande');
+    expect(tick.emitParentHeader).toBeNull();
+    expect(tick.emitGroupDivider).toBe(true);
+    expect(tick.showRow).toBe(false);
   });
 });

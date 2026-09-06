@@ -12,7 +12,9 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
 import { formatDate, formatAmount, FILTER_INPUT_CLS, formatFileSize } from '@/lib/utils';
 import { dateGroupItemsVisible } from '@/lib/list-collapse';
+import { currentMonthYm, monthGroupKey, splitRelativeGroupsByCurrentMonth } from '@/lib/nfe-groups';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
+import RelativeMonthGroupBody from '@/components/ui/RelativeMonthGroupBody';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import SortableTh from '@/components/ui/SortableTh';
@@ -80,6 +82,30 @@ type EntryHierarchy = {
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const p2 = (n: number) => String(n).padStart(2, '0');
+
+
+function splitEntryGroups(groups: EntryHierarchy) {
+  return splitRelativeGroupsByCurrentMonth({
+    estaSemana: groups.estaSemana,
+    semanaPassada: groups.semanaPassada,
+    currentYearMonths: groups.currentYearMonths.map((m) => ({
+      key: m.key,
+      label: m.label,
+      items: m.entries,
+      total: m.total,
+      count: m.count,
+    })),
+  });
+}
+
+function entryCollapsibleMonthKeys(groups: EntryHierarchy, yearMonths: MonthGroup[], selectedYear: number | null): string[] {
+  if (selectedYear !== null) return yearMonths.map((m) => m.key);
+  const split = splitEntryGroups(groups);
+  const keys: string[] = [];
+  if (split.currentMonth) keys.push(split.currentMonth.key);
+  for (const m of split.otherMonths) keys.push(m.key);
+  return keys;
+}
 
 function buildEntryGroups(entries: InvoiceEntry[]): EntryHierarchy {
   const now = new Date();
@@ -282,8 +308,8 @@ export default function EntradaNfePage() {
             setCollapsedGroups(new Set(months.map(m => m.key)));
           } else {
             const groups = buildEntryGroups(loaded);
-            const toCollapse = new Set<string>();
-            for (const mg of groups.currentYearMonths) toCollapse.add(mg.key);
+            const currentKey = monthGroupKey(currentMonthYm());
+            const toCollapse = new Set(entryCollapsibleMonthKeys(groups, [], null).filter((k) => k !== currentKey));
             setCollapsedGroups(toCollapse);
           }
           setCollapsedInitialized(true);
@@ -471,6 +497,7 @@ export default function EntradaNfePage() {
   const activeFilterCount = (search ? 1 : 0) + (dateFrom && dateFrom !== defaultDateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (statusFilter ? 1 : 0);
 
   const entryGroups = useMemo(() => buildEntryGroups(invoices), [invoices]);
+  const entryDisplay = useMemo(() => splitEntryGroups(entryGroups), [entryGroups]);
   const yearMonths = useMemo(() => selectedYear !== null ? buildYearMonths(invoices) : [], [invoices, selectedYear]);
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
@@ -613,22 +640,13 @@ export default function EntradaNfePage() {
       ));
     }
     return (
-      <>
-        {renderGroupDivider('esta_semana', 'Esta semana', entryGroups.estaSemana.length, entryGroups.estaSemanaTotal)}
-        {dateGroupItemsVisible('esta_semana', collapsedGroups) && entryGroups.estaSemana.map(renderInvoiceRow)}
-
-        {entryGroups.semanaPassada.length > 0 && (<>
-          {renderGroupDivider('semana_passada', 'Semana passada', entryGroups.semanaPassada.length, entryGroups.semanaPassadaTotal)}
-          {dateGroupItemsVisible('semana_passada', collapsedGroups) && entryGroups.semanaPassada.map(renderInvoiceRow)}
-        </>)}
-
-        {entryGroups.currentYearMonths.map(mg => (
-          <React.Fragment key={mg.key}>
-            {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-            {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderInvoiceRow)}
-          </React.Fragment>
-        ))}
-      </>
+      <RelativeMonthGroupBody
+        split={entryDisplay}
+        collapsed={collapsedGroups}
+        includeHoje={false}
+        renderDivider={renderGroupDivider}
+        renderItem={renderInvoiceRow}
+      />
     );
   };
 
@@ -642,22 +660,13 @@ export default function EntradaNfePage() {
       ));
     }
     return (
-      <>
-        {renderMobileDivider('esta_semana', 'Esta semana', entryGroups.estaSemana.length, entryGroups.estaSemanaTotal)}
-        {dateGroupItemsVisible('esta_semana', collapsedGroups) && entryGroups.estaSemana.map(renderMobileCard)}
-
-        {entryGroups.semanaPassada.length > 0 && (<>
-          {renderMobileDivider('semana_passada', 'Semana passada', entryGroups.semanaPassada.length, entryGroups.semanaPassadaTotal)}
-          {dateGroupItemsVisible('semana_passada', collapsedGroups) && entryGroups.semanaPassada.map(renderMobileCard)}
-        </>)}
-
-        {entryGroups.currentYearMonths.map(mg => (
-          <React.Fragment key={mg.key}>
-            {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-            {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderMobileCard)}
-          </React.Fragment>
-        ))}
-      </>
+      <RelativeMonthGroupBody
+        split={entryDisplay}
+        collapsed={collapsedGroups}
+        includeHoje={false}
+        renderDivider={renderMobileDivider}
+        renderItem={renderMobileCard}
+      />
     );
   };
 
@@ -1021,12 +1030,7 @@ export default function EntradaNfePage() {
         ) : (
           <>
             {(() => {
-              const allKeys: string[] = [];
-              if (selectedYear !== null) {
-                yearMonths.forEach(mg => allKeys.push(mg.key));
-              } else {
-                entryGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
-              }
+              const allKeys = entryCollapsibleMonthKeys(entryGroups, yearMonths, selectedYear);
               return allKeys.length > 0 ? (
                 <div className="flex justify-start gap-2 mb-2">
                   <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
@@ -1046,12 +1050,7 @@ export default function EntradaNfePage() {
       {/* Desktop Table */}
       <Card padding="none" className="hidden sm:block">
         {!loading && invoices.length > 0 && (() => {
-          const allKeys: string[] = [];
-          if (selectedYear !== null) {
-            yearMonths.forEach(mg => allKeys.push(mg.key));
-          } else {
-            entryGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
-          }
+          const allKeys = entryCollapsibleMonthKeys(entryGroups, yearMonths, selectedYear);
           return allKeys.length > 0 ? (
             <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
               <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>

@@ -9,7 +9,8 @@ import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, formatAmount, formatInt, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
-import { dateGroupItemsVisible } from '@/lib/list-collapse';
+import { createDateGroupWalker } from '@/lib/list-collapse';
+import { currentMonthItemCount } from '@/lib/nfe-groups';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
@@ -426,7 +427,9 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                 </tr>
               ) : (
                 (() => {
-                  let lastGroup = '';
+                  const dateGrouping = !(cfg.showCity && sortBy === 'city');
+                  const walk = createDateGroupWalker(collapsedGroups, { dateGrouping });
+                  const currentMonthCount = currentMonthItemCount(rows.map((r) => r.lastIssueDate));
                   const cityCountsForPage =
                     cfg.showCity && sortBy === 'city'
                       ? rows.reduce((acc, c) => {
@@ -437,11 +440,21 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                       : null;
                   return rows.map((row) => {
                     const group = groupFor(row);
-                    const showDivider = group !== lastGroup;
-                    lastGroup = group;
+                    const tick = walk(row.lastIssueDate, group);
                     return (
                       <React.Fragment key={`${row.cnpj}-${row.name}`}>
-                        {showDivider && (
+                        {tick.emitParentHeader && (
+                          <DateGroupHeader
+                            groupKey={tick.emitParentHeader.key}
+                            label={tick.emitParentHeader.label}
+                            count={currentMonthCount}
+                            variant="table"
+                            colSpan={colSpan}
+                            collapsed={collapsedGroups}
+                            onToggle={toggleGroup}
+                          />
+                        )}
+                        {tick.emitGroupDivider && (
                           <DateGroupHeader
                             groupKey={group}
                             label={group}
@@ -452,7 +465,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                             extra={cityCountsForPage ? <Badge tone="info" dot={false}>{cityCountsForPage.get(group) || 0}</Badge> : null}
                           />
                         )}
-                        {dateGroupItemsVisible(group, collapsedGroups) && (
+                        {tick.showRow && (
                           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                             <td className="px-4 py-3 tabular-nums">
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
@@ -512,18 +525,29 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {(() => {
-                let lastGroup = '';
+                const dateGrouping = !(cfg.showCity && sortBy === 'city');
+                const walk = createDateGroupWalker(collapsedGroups, { dateGrouping });
+                const currentMonthCount = currentMonthItemCount(rows.map((r) => r.lastIssueDate));
                 return rows.map((row) => {
                   const group = groupFor(row);
-                  const showDivider = group !== lastGroup;
-                  lastGroup = group;
+                  const tick = walk(row.lastIssueDate, group);
                   const isCpf = (row.cnpj || '').replace(/\D/g, '').length === 11;
                   const label = row.shortName || (isCpf ? 'PARTICULAR' : null);
                   const digits = (row.cnpj || '').replace(/\D/g, '');
                   const st = cnpjStatus.get(digits);
                   return (
                     <React.Fragment key={`m-${row.cnpj}-${row.name}`}>
-                      {showDivider && (
+                      {tick.emitParentHeader && (
+                        <DateGroupHeader
+                          groupKey={tick.emitParentHeader.key}
+                          label={tick.emitParentHeader.label}
+                          count={currentMonthCount}
+                          variant="mobile"
+                          collapsed={collapsedGroups}
+                          onToggle={toggleGroup}
+                        />
+                      )}
+                      {tick.emitGroupDivider && (
                         <DateGroupHeader
                           groupKey={group}
                           label={group}
@@ -532,7 +556,7 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                           onToggle={toggleGroup}
                         />
                       )}
-                      {dateGroupItemsVisible(group, collapsedGroups) && (
+                      {tick.showRow && (
                         <div className="p-3 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex-1 min-w-0">
