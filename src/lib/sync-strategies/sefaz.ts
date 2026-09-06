@@ -13,6 +13,7 @@ import { beginSyncRun } from '@/lib/postgres-advisory-lock';
 import { applyNfeCancellationOutcome } from '@/lib/nfe-cancellation';
 import { isUniqueViolation } from '@/lib/prisma-errors';
 import { distDfeIsProduction } from '@/lib/nfe-emission/environment';
+import { invoicePatientWriteFields } from '@/lib/nfe/invoice-patient-fields';
 
 const log = createLogger('auto-sync');
 
@@ -176,6 +177,11 @@ export async function syncViaSefaz(
           const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, accessKey);
           const cfop = extractFirstCfop(doc.xml);
 
+          const patientFields = invoicePatientWriteFields({
+            xmlContent: doc.xml,
+            type: parsed.type,
+            direction,
+          });
           const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
             where: { accessKey },
             update: {
@@ -191,6 +197,7 @@ export async function syncViaSefaz(
               totalValue: parsed.totalValue,
               cfop,
               xmlContent: doc.xml,
+              ...patientFields,
             },
             create: {
               companyId,
@@ -208,6 +215,7 @@ export async function syncViaSefaz(
               status: 'received',
               cfop,
               xmlContent: doc.xml,
+              ...patientFields,
             },
           });
           if (isNewInvoice) {
