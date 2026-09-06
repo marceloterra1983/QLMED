@@ -38,8 +38,8 @@ recebidas. O refresh automático da lista NÃO pode fechar o que eu abri.
 1. **AC-001** — Given um grupo aberto pelo usuário, when a lista atualiza em
    silêncio (poll), then esse grupo MUST permanecer aberto.
 2. **AC-002** — Given o primeiro carregamento sem busca, when a lista chega,
-   then os grupos padrão (meses do ano corrente e semana passada) MUST
-   nascer colapsados.
+   then os meses do ano corrente MUST nascer colapsados. Hoje, Esta semana
+   e Semana passada MUST nascer visíveis como divisorias (SPEC-053).
 3. **AC-003** — Given troca de ano, when a lista recarrega, then o colapso
    padrão daquele ano MAY ser reaplicado.
 

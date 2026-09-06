@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatCnpj, formatDate, formatAmount, formatInt, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import DateGroupHeader from '@/components/ui/DateGroupHeader';
+import { dateGroupItemsVisible } from '@/lib/list-collapse';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
@@ -440,19 +442,17 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                     return (
                       <React.Fragment key={`${row.cnpj}-${row.name}`}>
                         {showDivider && (
-                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={colSpan} className="px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
-                              <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
-                                {cityCountsForPage && (
-                                  <Badge tone="info" dot={false}>{cityCountsForPage.get(group) || 0}</Badge>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
+                          <DateGroupHeader
+                            groupKey={group}
+                            label={group}
+                            variant="table"
+                            colSpan={colSpan}
+                            collapsed={collapsedGroups}
+                            onToggle={toggleGroup}
+                            extra={cityCountsForPage ? <Badge tone="info" dot={false}>{cityCountsForPage.get(group) || 0}</Badge> : null}
+                          />
                         )}
-                        {!collapsedGroups.has(group) && (
+                        {dateGroupItemsVisible(group, collapsedGroups) && (
                           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                             <td className="px-4 py-3 tabular-nums">
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}</span>
@@ -524,14 +524,15 @@ export default function ContactListPageClient({ kind }: { kind: ContactListKind 
                   return (
                     <React.Fragment key={`m-${row.cnpj}-${row.name}`}>
                       {showDivider && (
-                        <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                          <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
-                            <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
-                          </div>
-                        </div>
+                        <DateGroupHeader
+                          groupKey={group}
+                          label={group}
+                          variant="mobile"
+                          collapsed={collapsedGroups}
+                          onToggle={toggleGroup}
+                        />
                       )}
-                      {!collapsedGroups.has(group) && (
+                      {dateGroupItemsVisible(group, collapsedGroups) && (
                         <div className="p-3 active:bg-slate-50 dark:active:bg-slate-800/40" onClick={() => { setSelected(row); setIsDetailsOpen(true); }}>
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex-1 min-w-0">

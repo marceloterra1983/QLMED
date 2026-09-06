@@ -12,7 +12,8 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths } from '@/lib/nfe-groups';
-import { defaultNfeCollapsedKeys, resolveCollapsedGroupsAfterFetch } from '@/lib/list-collapse';
+import { defaultNfeCollapsedKeys, resolveCollapsedGroupsAfterFetch, dateGroupItemsVisible } from '@/lib/list-collapse';
+import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -241,15 +242,16 @@ export default function InvoicesPage() {
     : <>{formatAmount(amount)}</>;
 
   const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
-    <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={6} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">· {count} {count === 1 ? 'item' : 'itens'}</span>
-        </div>
-      </td>
-    </tr>
+    <DateGroupHeader
+      key={`hdr-${key}`}
+      groupKey={key}
+      label={label}
+      count={count}
+      variant="table"
+      colSpan={6}
+      collapsed={collapsedGroups}
+      onToggle={toggleGroup}
+    />
   );
 
   const renderInvoiceRow = (invoice: Invoice) => {
@@ -284,14 +286,16 @@ export default function InvoicesPage() {
     );
   };
 
-  const renderMobileDivider = (key: string, label: string, count: number, mtotal: number) => (
-    <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
-        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">· {count} {count === 1 ? 'item' : 'itens'}</span>
-      </div>
-    </div>
+  const renderMobileDivider = (key: string, label: string, count: number, _mtotal: number) => (
+    <DateGroupHeader
+      key={`mhdr-${key}`}
+      groupKey={key}
+      label={label}
+      count={count}
+      variant="mobile"
+      collapsed={collapsedGroups}
+      onToggle={toggleGroup}
+    />
   );
 
   const renderMobileCard = (invoice: Invoice) => {
@@ -412,11 +416,9 @@ export default function InvoicesPage() {
               if (selectedYear !== null) {
                 yearMonths.forEach(mg => allKeys.push(mg.key));
               } else {
-                allKeys.push('hoje', 'esta_semana');
-                if (nfeGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
                 nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
               }
-              return allKeys.length > 1 ? (
+              return allKeys.length > 0 ? (
                 <div className="flex justify-start gap-1.5 mb-2">
                   <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
                   <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
@@ -427,26 +429,26 @@ export default function InvoicesPage() {
               yearMonths.map(mg => (
                 <React.Fragment key={mg.key}>
                   {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-                  {!collapsedGroups.has(mg.key) && mg.invoices.map(renderMobileCard)}
+                  {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderMobileCard)}
                 </React.Fragment>
               ))
             ) : (
               <>
                 {renderMobileDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
-                {!collapsedGroups.has('hoje') && nfeGroups.hoje.map(renderMobileCard)}
+                {dateGroupItemsVisible('hoje', collapsedGroups) && nfeGroups.hoje.map(renderMobileCard)}
 
                 {renderMobileDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
-                {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderMobileCard)}
+                {dateGroupItemsVisible('esta_semana', collapsedGroups) && nfeGroups.estaSemana.map(renderMobileCard)}
 
                 {nfeGroups.semanaPassada.length > 0 && (<>
                   {renderMobileDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
-                  {!collapsedGroups.has('semana_passada') && nfeGroups.semanaPassada.map(renderMobileCard)}
+                  {dateGroupItemsVisible('semana_passada', collapsedGroups) && nfeGroups.semanaPassada.map(renderMobileCard)}
                 </>)}
 
                 {nfeGroups.currentYearMonths.map(mg => (
                   <React.Fragment key={mg.key}>
                     {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-                    {!collapsedGroups.has(mg.key) && mg.invoices.map(renderMobileCard)}
+                    {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderMobileCard)}
                   </React.Fragment>
                 ))}
               </>
@@ -466,11 +468,9 @@ export default function InvoicesPage() {
           if (selectedYear !== null) {
             yearMonths.forEach(mg => allKeys.push(mg.key));
           } else {
-            allKeys.push('hoje', 'esta_semana');
-            if (nfeGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
             nfeGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
           }
-          return allKeys.length > 1 ? (
+          return allKeys.length > 0 ? (
             <div className="flex justify-start gap-1.5 px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
               <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_less</span>Recolher</button>
               <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><span className="material-symbols-outlined text-[13px]">unfold_more</span>Expandir</button>
@@ -519,26 +519,26 @@ export default function InvoicesPage() {
                 yearMonths.map(mg => (
                   <React.Fragment key={mg.key}>
                     {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-                    {!collapsedGroups.has(mg.key) && mg.invoices.map(renderInvoiceRow)}
+                    {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderInvoiceRow)}
                   </React.Fragment>
                 ))
               ) : (
                 <>
                   {renderGroupDivider('hoje', 'Hoje', nfeGroups.hoje.length, nfeGroups.hojeTotal)}
-                  {!collapsedGroups.has('hoje') && nfeGroups.hoje.map(renderInvoiceRow)}
+                  {dateGroupItemsVisible('hoje', collapsedGroups) && nfeGroups.hoje.map(renderInvoiceRow)}
 
                   {renderGroupDivider('esta_semana', 'Esta semana', nfeGroups.estaSemana.length, nfeGroups.estaSemanaTotal)}
-                  {!collapsedGroups.has('esta_semana') && nfeGroups.estaSemana.map(renderInvoiceRow)}
+                  {dateGroupItemsVisible('esta_semana', collapsedGroups) && nfeGroups.estaSemana.map(renderInvoiceRow)}
 
                   {nfeGroups.semanaPassada.length > 0 && (<>
                     {renderGroupDivider('semana_passada', 'Semana passada', nfeGroups.semanaPassada.length, nfeGroups.semanaPassadaTotal)}
-                    {!collapsedGroups.has('semana_passada') && nfeGroups.semanaPassada.map(renderInvoiceRow)}
+                    {dateGroupItemsVisible('semana_passada', collapsedGroups) && nfeGroups.semanaPassada.map(renderInvoiceRow)}
                   </>)}
 
                   {nfeGroups.currentYearMonths.map(mg => (
                     <React.Fragment key={mg.key}>
                       {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-                      {!collapsedGroups.has(mg.key) && mg.invoices.map(renderInvoiceRow)}
+                      {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.invoices.map(renderInvoiceRow)}
                     </React.Fragment>
                   ))}
                 </>

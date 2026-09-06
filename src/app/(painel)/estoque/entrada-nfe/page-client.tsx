@@ -11,6 +11,8 @@ import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
 import { formatDate, formatAmount, FILTER_INPUT_CLS, formatFileSize } from '@/lib/utils';
+import { dateGroupItemsVisible } from '@/lib/list-collapse';
+import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import { useRole } from '@/hooks/useRole';
 import PageHeader from '@/components/PageHeader';
 import SortableTh from '@/components/ui/SortableTh';
@@ -281,7 +283,6 @@ export default function EntradaNfePage() {
           } else {
             const groups = buildEntryGroups(loaded);
             const toCollapse = new Set<string>();
-            if (groups.semanaPassada.length > 0) toCollapse.add('semana_passada');
             for (const mg of groups.currentYearMonths) toCollapse.add(mg.key);
             setCollapsedGroups(toCollapse);
           }
@@ -481,25 +482,30 @@ export default function EntradaNfePage() {
   // --- Render helpers ---
 
   const renderGroupDivider = (key: string, label: string, count: number, _gtotal: number) => (
-    <tr key={`hdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <td colSpan={7} className="px-4 py-3 border-y bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">· {count} {count === 1 ? 'nota' : 'notas'}</span>
-        </div>
-      </td>
-    </tr>
+    <DateGroupHeader
+      key={`hdr-${key}`}
+      groupKey={key}
+      label={label}
+      count={count}
+      countNoun={{ singular: 'nota', plural: 'notas' }}
+      variant="table"
+      colSpan={7}
+      collapsed={collapsedGroups}
+      onToggle={toggleGroup}
+    />
   );
 
   const renderMobileDivider = (key: string, label: string, count: number, _mtotal: number) => (
-    <div key={`mhdr-${key}`} className="cursor-pointer select-none" onClick={() => toggleGroup(key)}>
-      <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent">
-        <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(key) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">· {count} {count === 1 ? 'nota' : 'notas'}</span>
-      </div>
-    </div>
+    <DateGroupHeader
+      key={`mhdr-${key}`}
+      groupKey={key}
+      label={label}
+      count={count}
+      countNoun={{ singular: 'nota', plural: 'notas' }}
+      variant="mobile"
+      collapsed={collapsedGroups}
+      onToggle={toggleGroup}
+    />
   );
 
   const renderInvoiceRow = (inv: InvoiceEntry) => {
@@ -602,24 +608,24 @@ export default function EntradaNfePage() {
       return yearMonths.map(mg => (
         <React.Fragment key={mg.key}>
           {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-          {!collapsedGroups.has(mg.key) && mg.entries.map(renderInvoiceRow)}
+          {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderInvoiceRow)}
         </React.Fragment>
       ));
     }
     return (
       <>
         {renderGroupDivider('esta_semana', 'Esta semana', entryGroups.estaSemana.length, entryGroups.estaSemanaTotal)}
-        {!collapsedGroups.has('esta_semana') && entryGroups.estaSemana.map(renderInvoiceRow)}
+        {dateGroupItemsVisible('esta_semana', collapsedGroups) && entryGroups.estaSemana.map(renderInvoiceRow)}
 
         {entryGroups.semanaPassada.length > 0 && (<>
           {renderGroupDivider('semana_passada', 'Semana passada', entryGroups.semanaPassada.length, entryGroups.semanaPassadaTotal)}
-          {!collapsedGroups.has('semana_passada') && entryGroups.semanaPassada.map(renderInvoiceRow)}
+          {dateGroupItemsVisible('semana_passada', collapsedGroups) && entryGroups.semanaPassada.map(renderInvoiceRow)}
         </>)}
 
         {entryGroups.currentYearMonths.map(mg => (
           <React.Fragment key={mg.key}>
             {renderGroupDivider(mg.key, mg.label, mg.count, mg.total)}
-            {!collapsedGroups.has(mg.key) && mg.entries.map(renderInvoiceRow)}
+            {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderInvoiceRow)}
           </React.Fragment>
         ))}
       </>
@@ -631,24 +637,24 @@ export default function EntradaNfePage() {
       return yearMonths.map(mg => (
         <React.Fragment key={mg.key}>
           {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-          {!collapsedGroups.has(mg.key) && mg.entries.map(renderMobileCard)}
+          {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderMobileCard)}
         </React.Fragment>
       ));
     }
     return (
       <>
         {renderMobileDivider('esta_semana', 'Esta semana', entryGroups.estaSemana.length, entryGroups.estaSemanaTotal)}
-        {!collapsedGroups.has('esta_semana') && entryGroups.estaSemana.map(renderMobileCard)}
+        {dateGroupItemsVisible('esta_semana', collapsedGroups) && entryGroups.estaSemana.map(renderMobileCard)}
 
         {entryGroups.semanaPassada.length > 0 && (<>
           {renderMobileDivider('semana_passada', 'Semana passada', entryGroups.semanaPassada.length, entryGroups.semanaPassadaTotal)}
-          {!collapsedGroups.has('semana_passada') && entryGroups.semanaPassada.map(renderMobileCard)}
+          {dateGroupItemsVisible('semana_passada', collapsedGroups) && entryGroups.semanaPassada.map(renderMobileCard)}
         </>)}
 
         {entryGroups.currentYearMonths.map(mg => (
           <React.Fragment key={mg.key}>
             {renderMobileDivider(mg.key, mg.label, mg.count, mg.total)}
-            {!collapsedGroups.has(mg.key) && mg.entries.map(renderMobileCard)}
+            {dateGroupItemsVisible(mg.key, collapsedGroups) && mg.entries.map(renderMobileCard)}
           </React.Fragment>
         ))}
       </>
@@ -1019,11 +1025,9 @@ export default function EntradaNfePage() {
               if (selectedYear !== null) {
                 yearMonths.forEach(mg => allKeys.push(mg.key));
               } else {
-                allKeys.push('esta_semana');
-                if (entryGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
                 entryGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
               }
-              return allKeys.length > 1 ? (
+              return allKeys.length > 0 ? (
                 <div className="flex justify-start gap-2 mb-2">
                   <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
                   <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>
@@ -1046,11 +1050,9 @@ export default function EntradaNfePage() {
           if (selectedYear !== null) {
             yearMonths.forEach(mg => allKeys.push(mg.key));
           } else {
-            allKeys.push('esta_semana');
-            if (entryGroups.semanaPassada.length > 0) allKeys.push('semana_passada');
             entryGroups.currentYearMonths.forEach(mg => allKeys.push(mg.key));
           }
-          return allKeys.length > 1 ? (
+          return allKeys.length > 0 ? (
             <div className="flex justify-start gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
               <button onClick={() => setCollapsedGroups(new Set(allKeys))} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_less</span>Recolher</button>
               <button onClick={() => setCollapsedGroups(new Set())} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all"><span className="material-symbols-outlined text-[14px]">unfold_more</span>Expandir</button>

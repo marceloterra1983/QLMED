@@ -12,6 +12,8 @@ import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
 import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import DateGroupHeader from '@/components/ui/DateGroupHeader';
+import { dateGroupItemsVisible, isCollapsibleDateGroup } from '@/lib/list-collapse';
 import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
@@ -329,7 +331,7 @@ export default function CtePage() {
             if (g && !groupOrder.includes(g)) groupOrder.push(g);
           }
           const firstGroup = groupOrder[0];
-          setCollapsedGroups(new Set(groupOrder.filter((g) => g !== firstGroup)));
+          setCollapsedGroups(new Set(groupOrder.filter((g) => isCollapsibleDateGroup(g) && g !== firstGroup)));
           setCollapsedInitialized(true);
         }
 
@@ -549,14 +551,15 @@ export default function CtePage() {
             return (
               <React.Fragment key={invoice.id}>
                 {showDivider && group && (
-                  <div className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                    <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-slate-100 via-slate-100/70 to-transparent dark:from-slate-800/70 dark:via-slate-800/40 dark:to-transparent rounded-lg">
-                      <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform duration-200" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{group}</span>
-                    </div>
-                  </div>
+                  <DateGroupHeader
+                    groupKey={group}
+                    label={group}
+                    variant="mobile"
+                    collapsed={collapsedGroups}
+                    onToggle={toggleGroup}
+                  />
                 )}
-                {!collapsedGroups.has(group) && (
+                {dateGroupItemsVisible(group, collapsedGroups) && (
                   <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number}</span>
@@ -652,16 +655,16 @@ export default function CtePage() {
 	                    return (
 	                      <React.Fragment key={invoice.id}>
                         {showDivider && (
-                          <tr className="cursor-pointer select-none" onClick={() => toggleGroup(group)}>
-                            <td colSpan={8} className="px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
-                              <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px] text-slate-500 dark:text-slate-400 transition-transform" style={{ transform: collapsedGroups.has(group) ? 'rotate(-90deg)' : 'rotate(0deg)' }}>expand_more</span>
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{group}</span>
-                              </div>
-                            </td>
-                          </tr>
+                          <DateGroupHeader
+                            groupKey={group}
+                            label={group}
+                            variant="table"
+                            colSpan={8}
+                            collapsed={collapsedGroups}
+                            onToggle={toggleGroup}
+                          />
                         )}
-                        {!collapsedGroups.has(group) && (
+                        {dateGroupItemsVisible(group, collapsedGroups) && (
                         <tr className="group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => openDetails(invoice.id)}>
                           <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                             <input
