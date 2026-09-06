@@ -1138,12 +1138,20 @@ model UnimedCgAuthorization {
   sourceUrl            String?
   parseStatus          UnimedCgParseStatus
   receivedAt           DateTime
+  /// NF-e emitida à Unimed cujo infCpl contém o patientName (SPEC-051).
+  billedInvoiceId      String?
+  billedInvoiceNumber  String?
+  billedMatchedAt      DateTime?
+  /// matched | ambiguous | null
+  billedMatchStatus    String?
   sourceMessages       UnimedCgSourceMessage[]
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
   @@unique([companyId, processId])
   @@index([companyId, receivedAt(sort: Desc)])
+  @@index([companyId, billedMatchStatus])
+  @@index([companyId, billedInvoiceId])
 }
 
 model UnimedCgSourceMessage {

@@ -275,7 +275,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     scheduleDetails: `Ciclo contínuo no timer com heartbeat ativo; ${intervalSeconds(UNIMED_CG_INGEST_INTERVAL_MS)}s (UNIMED_CG_INGEST_INTERVAL_MS)`,
     concurrencyLock: 'Postgres Advisory Lock por empresa (unimedCgMailIngestLockKey) + dedup internetMessageId/processId',
     sourceModule: 'src/lib/unimed-cg/ingest.ts',
-    description: 'Varre e-mails OPME Unimed CG via Microsoft Graph, abre o link Clique aqui, gera PDF, grava no OneDrive e notifica o grupo WhatsApp Evolution.',
+    description: 'Varre e-mails OPME Unimed CG via Microsoft Graph, abre o link Clique aqui, gera PDF, grava no OneDrive e notifica o grupo WhatsApp Evolution. No mesmo tick (catch-up) e após emissão NF-e ao CNPJ 03315918000118, cruza patientName com infCpl para marcar processos faturados.',
     backgroundServiceName: 'unimed-cg-mail-ingest',
     environmentVars: ['QLMED_DISABLE_BACKGROUND_SERVICES', 'UNIMED_CG_WHATSAPP_ENABLED', 'UNIMED_CG_WHATSAPP_GROUP_JID'],
   },

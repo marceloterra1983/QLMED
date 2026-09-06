@@ -69,3 +69,8 @@ export const UNIMED_CG_PARSE_RANK = {
 } as const;
 
 export type UnimedCgParseStatus = keyof typeof UNIMED_CG_PARSE_RANK;
+
+/** CNPJ destinatário Unimed CG (só dígitos) para match de faturamento NF-e. */
+export const UNIMED_CG_BILLING_RECIPIENT_CNPJ = '03315918000118';
+
+export type UnimedCgBilledMatchStatus = 'matched' | 'ambiguous';
