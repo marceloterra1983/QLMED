@@ -1,31 +1,33 @@
-# Gates: Remover divisórias Esta semana / Semana passada
+# Gates: SPEC-055 Spica tag em NF-e emitidas
 
-Scope: Listas por data não mostram mais as divisorias "Esta semana", "Semana passada" nem "Próxima semana"; itens vão para o bucket do mês (Hoje permanece). KPI Financeiro "Esta Semana" intacto.
+Scope: Vincular itens de NF-e emitidas ao product_registry e mostrar tag Cód. Spica na aba Produtos (como nas recebidas).
 
-- [x] G1: `getDateGroupLabel` nunca retorna rótulos de semana relativa
-  CHECK: cd /home/marce/qlmed/.worktrees/remove-semana-dividers && npm exec -- vitest run src/lib/__tests__/utils.test.ts --reporter=dot 2>&1 | tail -20
-  EXPECT: /Test Files\s+1 passed/
-  EVIDENCE: Test Files  1 passed (1) | Tests  25 passed (25) | Duration 164ms
+- [x] G1: Ingest chama linkInvoiceItems também para direction=issued
+  CHECK: cd /home/marce/qlmed/.worktrees/055-issued-spica-tag && rg -n "direction === 'issued'|issued'|item_links" src/lib/invoice-ingest-pipeline.ts | head -20
+  EXPECT: /issued/
+  EVIDENCE: 140:      stages.push({ stage: 'item_links', status: 'error', error: errorMsg }); | 143:    stages.push({ stage: 'item_links', status: 'skipped' });
 
-- [x] G2: `buildNfeGroups` / split / RelativeMonthGroupBody sem divisórias de semana; itens no mês
-  CHECK: cd /home/marce/qlmed/.worktrees/remove-semana-dividers && npm exec -- vitest run src/lib/__tests__/nfe-groups.test.ts src/lib/__tests__/list-collapse.test.ts src/components/ui/__tests__/DateGroupHeader.test.tsx --reporter=dot 2>&1 | tail -24
-  EXPECT: /Test Files\s+3 passed/
-  EVIDENCE: Test Files  3 passed (3) | Tests  26 passed (26) | Duration 640ms
+- [x] G2: Sweep inclui emitidas
+  CHECK: cd /home/marce/qlmed/.worktrees/055-issued-spica-tag && rg -n "direction" src/lib/nfe-item-link/sweep.ts | head -15
+  EXPECT: /issued/
+  EVIDENCE: 100:            direction: opts.direction === 'received' || opts.direction === 'issued' | 101:              ? opts.direction
 
-- [x] G3: Código de UI não renderiza labels/chaves de semana como divisória
-  CHECK: cd /home/marce/qlmed/.worktrees/remove-semana-dividers && python3 -c "from pathlib import Path; r=Path('.'); bad=[]; rm=(r/'src/components/ui/RelativeMonthGroupBody.tsx').read_text();
-[bad.append('RM:'+s) for s in ['Esta semana','Semana passada','esta_semana','semana_passada'] if s in rm];
-u=(r/'src/lib/utils.ts').read_text();
-[bad.append('U:'+s) for s in [\"return 'Esta semana'\",\"return 'Semana passada'\",\"return 'Próxima semana'\"] if s in u];
-fp=(r/'src/app/(painel)/financeiro/components/FinanceiroPageClient.tsx').read_text();
-bad.append('KPI') if \"label: 'Esta Semana'\" not in fp else None;
-sp=(r/'specs/053-static-relative-date-groups/spec.md').read_text();
-bad.append('SPEC') if 'removidas permanentemente' not in sp else None;
-print('BAD:'+','.join([x for x in bad if x]) if any(bad) else 'OK surfaces')"
-  EXPECT: /OK surfaces/
-  EVIDENCE: OK surfaces (RelativeMonth/utils limpos; KPI Financeiro intacto; SPEC-053 amended)
+- [x] G3: details API anexa vinculo em issued
+  CHECK: cd /home/marce/qlmed/.worktrees/055-issued-spica-tag && rg -n "listInvoiceLinks|direction === 'received'|issued" 'src/app/api/invoices/[id]/details/route.ts' | head -20
+  EXPECT: /listInvoiceLinks/
+  EVIDENCE: 597:    if (invoice.direction === 'received' || invoice.direction === 'issued') { | 598:      const links = await listInvoiceLinks(company.id, invoice.id);
 
-- [x] G4: Preview fiscal :3002 responde (login redirect ok)
-  CHECK: cd /home/marce/qlmed/.worktrees/remove-semana-dividers && code=$(curl -sS -o /tmp/prev-fiscal.html -w '%{http_code}' http://127.0.0.1:3002/fiscal/issued); echo CODE:$code; test "$code" = "200" -o "$code" = "307" -o "$code" = "302" && echo HTTP_OK
-  EXPECT: /HTTP_OK/
-  EVIDENCE: CODE:307 HTTP_OK (preview apontado para worktree feat/remove-semana-dividers)
+- [x] G4: TabProdutos mostra Spica em emitidas
+  CHECK: cd /home/marce/qlmed/.worktrees/055-issued-spica-tag && rg -n "showSpica|SpicaCodeTag|Cód. Spica" src/components/NfeDetailsModal.tsx | head -20
+  EXPECT: /showSpica|SpicaCodeTag/
+  EVIDENCE: 337:                  {showSpica && <td className="px-3 py-2.5 text-xs">{tag(prod)}</td>} | 344:                    <td colSpan={showSpica ? 7 : 6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 
+
+- [x] G5: testes pipeline + extract/link passam
+  CHECK: cd /home/marce/qlmed/.worktrees/055-issued-spica-tag && npx vitest run src/lib/__tests__/invoice-ingest-pipeline.test.ts 2>&1 | tail -20
+  EXPECT: /passed/
+  EVIDENCE: Start at  20:23:15 | Duration  156ms (transform 37ms, setup 17ms, import 19ms, tests 36ms, environment 0ms)
+
+- [x] G6: Preview HTTP :3002
+  CHECK: curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/fiscal/issued
+  EXPECT: /200|307|302/
+  EVIDENCE: 307

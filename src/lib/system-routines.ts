@@ -190,7 +190,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     scheduleDetails: 'Cada NF-e recebida ingerida (SEFAZ, NSDocs, upload, XML local) passa pela cascata S1..S6 em updateProductAggregatesForInvoice; varredura completa desde 2021 via POST /api/products/nfe-item-links/sweep (admin) ou scripts/nfe-item-link-sweep.ts.',
     concurrencyLock: 'Postgres Advisory Lock por empresa (nfeItemLinkLockKey); vínculos MANUAL nunca são sobrescritos',
     sourceModule: 'src/lib/nfe-item-link/ (match.ts, store.ts, sweep.ts)',
-    description: 'Relaciona cada item (cProd, EAN, ANVISA, descrição) das notas fiscais recebidas ao código Spica do cadastro de produtos, grava a tag do código identificado e deixa em pendência o que precisa de vínculo manual em /cadastro/produtos/vinculos-nfe.',
+    description: 'Relaciona cada item (cProd, EAN, ANVISA, descrição) das notas fiscais recebidas e emitidas ao código Spica do cadastro de produtos, grava a tag do código identificado e deixa em pendência o que precisa de vínculo manual em /cadastro/produtos/vinculos-nfe.',
   },
   {
     id: 'anvisa-registry-sync',

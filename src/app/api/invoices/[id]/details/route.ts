@@ -591,10 +591,10 @@ export async function GET(
 
     const protNFe = nfeProc?.protNFe?.infProt || {};
 
-    // SPEC-047: em nota recebida, cada item carrega o vínculo ao produto Spica
-    // (ou null = pendente). Nota emitida não tem vínculo (cProd já é o código).
+    // SPEC-047/055: recebida e emitida — cada item carrega o vínculo Spica
+    // (ou null = pendente / ainda não varrido).
     const produtos: NfeProduto[] = parseProdutos(det);
-    if (invoice.direction === 'received') {
+    if (invoice.direction === 'received' || invoice.direction === 'issued') {
       const links = await listInvoiceLinks(company.id, invoice.id);
       const byItem = new Map(links.map((l) => [l.itemNumber, l]));
       for (const prod of produtos) {

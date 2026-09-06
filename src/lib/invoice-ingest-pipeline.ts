@@ -112,8 +112,8 @@ export async function processIngestedInvoice(
     stages.push({ stage: 'duplicatas', status: 'error', error: errorMsg });
   }
 
-  // Etapa 5: Vínculo de itens da nota recebida ao catálogo Spica (SPEC-047)
-  if (opts.direction === 'received') {
+  // Etapa 5: Vínculo de itens ao catálogo Spica (SPEC-047 recebidas + SPEC-055 emitidas)
+  if (opts.direction === 'received' || opts.direction === 'issued') {
     try {
       const stats = await linkInvoiceItems({
         id: opts.invoiceId,

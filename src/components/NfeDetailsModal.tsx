@@ -233,9 +233,10 @@ function TabProdutos({
 }) {
   const produtos = data.produtos || [];
   const rowKey = (prod: NfeProduto, idx: number) => nfeProdutoExpandKey(prod) || `i:${idx}`;
-  const received = data.direction === 'received';
+  // SPEC-047 recebidas + SPEC-055 emitidas: tag Spica na aba Produtos.
+  const showSpica = data.direction === 'received' || data.direction === 'issued';
   const relate = (prod: NfeProduto) => {
-    // Sem linha de vínculo ainda (nota não varrida): vincula pelo grupo fornecedor + cProd.
+    // Sem linha de vínculo ainda (nota não varrida): vincula pelo grupo emitente + cProd.
     const scope: LinkScope = prod.linkId
       ? { linkId: prod.linkId }
       : { supplierCnpj: data.emitente?.cnpj || data.nfe.emitente.cnpj, supplierCode: prod.codigo };
@@ -243,7 +244,7 @@ function TabProdutos({
   };
   const tag = (prod: NfeProduto) => (
     <SpicaCodeTag
-      vinculo={received ? prod.vinculo ?? null : undefined}
+      vinculo={showSpica ? prod.vinculo ?? null : undefined}
       canWrite={canWrite}
       onRelate={() => relate(prod)}
     />
@@ -279,7 +280,7 @@ function TabProdutos({
               </div>
             </button>
             {/* Fora do <button> do cartão: a tag tem o seu próprio botão Relacionar. */}
-            {received && <div className="px-2.5 pb-2">{tag(prod)}</div>}
+            {showSpica && <div className="px-2.5 pb-2">{tag(prod)}</div>}
             {expanded.has(key) && (
               <div className="px-2.5 pb-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-2">
                 <div className="grid grid-cols-2 gap-2 mb-2">
@@ -309,7 +310,7 @@ function TabProdutos({
               <th className="px-3 py-2.5 w-8"></th>
               <th className="px-3 py-2.5 text-left">Num.</th>
               <th className="px-3 py-2.5 text-left">Descrição</th>
-              {received && <th className="px-3 py-2.5 text-left">Cód. Spica</th>}
+              {showSpica && <th className="px-3 py-2.5 text-left">Cód. Spica</th>}
               <th className="px-3 py-2.5 text-right">Qtd.</th>
               <th className="px-3 py-2.5 text-left">Unid.</th>
               <th className="px-3 py-2.5 text-right">Valor</th>
@@ -333,14 +334,14 @@ function TabProdutos({
                   </td>
                   <td className="px-3 py-2.5 text-xs font-mono text-slate-500 dark:text-slate-400">{prod.num}</td>
                   <td className="px-3 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200">{prod.descricao}</td>
-                  {received && <td className="px-3 py-2.5 text-xs">{tag(prod)}</td>}
+                  {showSpica && <td className="px-3 py-2.5 text-xs">{tag(prod)}</td>}
                   <td className="px-3 py-2.5 text-right text-xs tabular-nums text-slate-600 dark:text-slate-300">{prod.quantidade}</td>
                   <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{prod.unidade}</td>
                   <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(prod.valorTotal)}</td>
                 </tr>
                 {expanded.has(key) && (
                   <tr>
-                    <td colSpan={received ? 7 : 6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
+                    <td colSpan={showSpica ? 7 : 6} className="bg-slate-50/50 dark:bg-slate-900/30 px-4 py-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3 mb-4">
                         <Field label="Código" value={prod.codigo} />
                         <Field label="NCM" value={prod.ncm} />
