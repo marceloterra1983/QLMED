@@ -20,6 +20,7 @@ import { signNfeXml } from './xml-sign';
 import { resolveEmissionEnvironment } from './environment';
 import type { SefazEnvironment } from './autorizacao-urls';
 import type { NfeEmissionItem } from './types';
+import { invoicePatientWriteFields } from '@/lib/nfe/invoice-patient-fields';
 
 const log = createLogger('nfe-emission');
 
@@ -442,6 +443,11 @@ async function finalizeAuthorized(
         cfop: input.cfop,
         xmlContent: input.xml,
         companyId: ctx.companyId,
+        ...invoicePatientWriteFields({
+          xmlContent: input.xml,
+          type: 'NFE',
+          direction: 'issued',
+        }),
       },
     });
     invoiceId = created.invoice.id;

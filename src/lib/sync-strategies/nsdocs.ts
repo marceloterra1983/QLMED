@@ -12,6 +12,7 @@ import { prisma } from '../prisma';
 import { createLogger } from '@/lib/logger';
 import { upsertInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { beginSyncRun } from '@/lib/postgres-advisory-lock';
+import { invoicePatientWriteFields } from '@/lib/nfe/invoice-patient-fields';
 
 const log = createLogger('auto-sync');
 
@@ -81,6 +82,11 @@ export async function syncViaNsdocs(
         const mappedStatus = mapSourceStatusToInvoiceStatus(parsed.type, doc.situacao);
         const direction = resolveInvoiceDirection(cnpj, parsed.senderCnpj, parsed.accessKey);
         const cfop = extractFirstCfop(xmlContent);
+        const patientFields = invoicePatientWriteFields({
+          xmlContent,
+          type: parsed.type,
+          direction,
+        });
         const { invoice: result, isNewInvoice } = await upsertInvoiceWithOutbox({
           where: { accessKey: parsed.accessKey },
           update: {
@@ -97,6 +103,7 @@ export async function syncViaNsdocs(
             status: mappedStatus,
             cfop,
             xmlContent,
+            ...patientFields,
           },
           create: {
             companyId,
@@ -114,6 +121,7 @@ export async function syncViaNsdocs(
             status: mappedStatus,
             cfop,
             xmlContent,
+            ...patientFields,
           },
         });
         await applyNfeCancellation({

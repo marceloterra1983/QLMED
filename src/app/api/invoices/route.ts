@@ -196,6 +196,7 @@ export async function GET(req: Request) {
       senderName: true,
       recipientCnpj: true,
       recipientName: true,
+      patientName: true,
       totalValue: true,
       status: true,
       cancelledAt: true,
@@ -280,6 +281,7 @@ export async function GET(req: Request) {
         const fieldConditions: Record<string, unknown>[] = [
           { senderName: { contains: word, mode: 'insensitive' as const } },
           { recipientName: { contains: word, mode: 'insensitive' as const } },
+          { patientName: { contains: word, mode: 'insensitive' as const } },
           { accessKey: { contains: word, mode: 'insensitive' as const } },
           { number: { contains: word, mode: 'insensitive' as const } },
           { senderCnpj: { contains: word, mode: 'insensitive' as const } },

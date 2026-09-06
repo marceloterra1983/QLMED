@@ -361,7 +361,7 @@ export default function IssuedInvoicesPage() {
       <MobileFilterWrapper activeFilterCount={[search, tagFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <Field label="CNPJ / Nome Destinatário" className="lg:col-span-2">
-            <input type="text" placeholder="ex: 00.000.000/0001-91" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
+            <input type="text" placeholder="CNPJ, número ou paciente…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </Field>
           <Field label="Data Início">
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />

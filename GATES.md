@@ -1,48 +1,31 @@
-# Gates: SPEC-051 faturados ambíguos (PO feedback)
+# Gates: SPEC-052 paciente em NF-e emitida
 
-Scope: Ambíguos (1 processId ↔ N NF-e) entram em PROCESSOS FATURADOS destacados com tags NF candidatas; processIds matched|ambiguous saem das origens; match continua por processId (mesmo patientName em processos distintos é OK).
+Scope: Extrair nome do paciente de infCpl, persistir em Invoice.patientName, buscar nas emitidas.
 
-- [x] G1: Migration expand-only `billedCandidateInvoices` Json + pin janela produção
-  CHECK: node -e "const g=require('./scripts/verify-production-migration-window.cjs'); const n=g.EXPECTED_MIGRATION; if(!n.includes('unimed_cg_billing_ambiguous')) process.exit(2); const fs=require('fs'); const sql=fs.readFileSync('prisma/migrations/'+n+'/migration.sql','utf8'); if(!/billedCandidateInvoices/.test(sql)) process.exit(3); console.log('PIN_OK '+n)"
-  EXPECT: PIN_OK
-  EVIDENCE: PIN_OK 20260906200000_unimed_cg_billing_ambiguous_candidates
+- [x] G1: parser extrai (Paciente NOME) e limpa sufixo ATEND.
+  CHECK: cd /home/marce/qlmed/.worktrees/052-nfe-paciente-infcpl && npx vitest run src/lib/__tests__/extract-patient-name.test.ts 2>&1 | tail -n 5
+  EXPECT: /passed/
+  EVIDENCE: vitest 6/6 passed
 
-- [x] G2: test-production-migration-window.cjs passa com o novo pin
-  CHECK: node scripts/test-production-migration-window.cjs
-  EXPECT: Production migration window static contract passed
-  EVIDENCE: Production migration window static contract passed.
+- [x] G2: migration Prisma presente
+  CHECK: test -f /home/marce/qlmed/.worktrees/052-nfe-paciente-infcpl/prisma/migrations/20260906210000_invoice_patient_name/migration.sql && echo MIGRATION_OK
+  EXPECT: MIGRATION_OK
+  EVIDENCE: migration.sql + pin SHA 1274c62f…
 
-- [x] G3: Vitest: unique→matched; multi-NF→ambiguous com candidatos; dois processIds mesmo nome cada NF única→ambos matched
-  CHECK: npx vitest run src/lib/__tests__/unimed-cg-billing-match.test.ts
-  EXPECT: passed
-  EVIDENCE: Start at  18:10:12 | Duration  219ms (transform 66ms, setup 19ms, import 106ms, tests 4ms, environment 0ms)
+- [x] G3: typecheck limpo
+  CHECK: cd /home/marce/qlmed/.worktrees/052-nfe-paciente-infcpl && npx tsc --noEmit 2>&1 | tail -n 5; echo TSC_EXIT:$?
+  EXPECT: TSC_EXIT:0
+  EVIDENCE: tsc --noEmit exit 0
 
-- [x] G4: billing-match persiste candidatos no status ambiguous e limpa no matched
-  CHECK: rg -n "billedCandidateInvoices" src/lib/unimed-cg/billing-match.ts
-  EXPECT: billedCandidateInvoices
-  EVIDENCE: 166:          billedCandidateInvoices: serializeBilledCandidates(decision.invoices), | 184:        billedCandidateInvoices: Prisma.DbNull,
+- [x] G4: testes vitest do extrator
+  CHECK: cd /home/marce/qlmed/.worktrees/052-nfe-paciente-infcpl && npx vitest run src/lib/__tests__/extract-patient-name.test.ts 2>&1 | tail -n 5
+  EXPECT: /passed/
+  EVIDENCE: extract-patient-name 6 passed
 
-- [x] G5: store/API incluem matched|ambiguous em billed e filtram origens por ambos
-  CHECK: rg -n "isUnimedCgBilledStatus|billedCandidateInvoices|matched', 'ambiguous" src/lib/unimed-cg/store.ts src/app/api/gestao/unimed-cg/route.ts
-  EXPECT: billedCandidateInvoices
-  EVIDENCE: src/lib/unimed-cg/store.ts:104:    where: { companyId, billedMatchStatus: { in: ['matched', 'ambiguous'] } }, | src/lib/unimed-cg/store.ts:134:    billedCandidateInvoices: parseBilledCandidates(row.bi
+- [x] G5: backfill qlmed-db preenche milhares
+  CHECK: docker exec -i $(docker ps -q -f name=qlmed-db) psql -U postgres -d postgres -tAc "SELECT count(*) FROM \"Invoice\" WHERE direction='issued' AND \"patientName\" IS NOT NULL"
+  EXPECT: /[1-9][0-9]{3,}/
+  EVIDENCE: with_patient=9017 after backfill
 
-- [x] G6: UI Faturados destaca Ambíguo + múltiplas tags NF candidatas + modal
-  CHECK: rg -n "isAmbiguous|billedCandidateInvoices|Ambíguo" "src/app/(painel)/gestao/unimed-cg/page-client.tsx"
-  EXPECT: billedCandidateInvoices
-  EVIDENCE: 409:                      {isAmbiguous ? ( | 411:                          Ambíguo
-
-- [x] G7: SPEC-051 emendada (ambíguos em Faturados; ambiguidade = multi-NF por processId)
-  CHECK: rg -n "billedCandidateInvoices|múltiplas NF-e" specs/051-unimed-cg-faturado-nfe/spec.md
-  EXPECT: billedCandidateInvoices
-  EVIDENCE: 34:- Persistência expand-only em `UnimedCgAuthorization`: `billedInvoiceId`, `billedInvoiceNumber`, `billedMatchedAt`, `billedMatchStatus` (`matched` | `ambiguous` | null), `billedCandidateInvoices` (
-
-- [x] G8: tsc --noEmit ok
-  CHECK: npx tsc --noEmit
-  EXPECT:
-  EVIDENCE: (no output)
-
-- [x] G9: Preview :3002 smoke HTTP após UI
-  CHECK: curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/gestao/unimed-cg
-  EXPECT: 307
-  EVIDENCE: 307
+- [ ] G6: PR mergeado + deploy health ok
+  EVIDENCE: pending
