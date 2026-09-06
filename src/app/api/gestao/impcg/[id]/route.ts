@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { forbiddenResponse } from '@/lib/auth';
+import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { idParamSchema } from '@/lib/schemas/common';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { getImpcgAuthorization, updateImpcgMissingFields } from '@/lib/impcg/store';
@@ -38,6 +38,13 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  try {
+    await requireAuth();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
   try {
     const { id } = await params;
     const parsed = idParamSchema.safeParse({ id });
@@ -87,6 +94,13 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  try {
+    await requireAuth();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
   try {
     const { id } = await params;
     const parsedId = idParamSchema.safeParse({ id });

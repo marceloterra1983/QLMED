@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { forbiddenResponse, requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { apiError } from '@/lib/api-error';
 import { getImpcgIngestState, listImpcgAuthorizations } from '@/lib/impcg/store';
 import { formatImpcgMoney, requireImpcgPage, sortImpcgListItems } from '@/lib/impcg/access';
@@ -7,6 +8,13 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('gestao/impcg');
 
 export async function GET(_req: Request) {
+  try {
+    await requireAuth();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return forbiddenResponse();
+    return unauthorizedResponse();
+  }
+
   try {
     const access = await requireImpcgPage();
     if (!access.ok) return access.response;
