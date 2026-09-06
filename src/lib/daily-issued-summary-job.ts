@@ -363,6 +363,8 @@ export async function runDailyIssuedSummary(options?: {
   }
 }
 
+let summaryIntervalTimer: NodeJS.Timeout | null = null;
+
 export function startDailyIssuedSummary(): void {
   const disabled =
     process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true' ||
@@ -402,7 +404,15 @@ export function startDailyIssuedSummary(): void {
   };
 
   void tick();
-  setInterval(() => {
+  summaryIntervalTimer = setInterval(() => {
     void tick();
   }, TICK_MS);
+}
+
+export function stopDailyIssuedSummary(): void {
+  if (summaryIntervalTimer) {
+    clearInterval(summaryIntervalTimer);
+    summaryIntervalTimer = null;
+  }
+  log.info('Daily issued summary encerrado graciosamente');
 }

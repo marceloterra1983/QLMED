@@ -416,6 +416,9 @@ export async function notifyRenewals(
   }
 }
 
+let documentosAlertStartupTimer: NodeJS.Timeout | null = null;
+let documentosAlertIntervalTimer: NodeJS.Timeout | null = null;
+
 /** Registrado no bootstrap pela L7; respeita QLMED_DISABLE_BACKGROUND_SERVICES. */
 export function startDocumentosAlert(): void {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
@@ -454,10 +457,23 @@ export function startDocumentosAlert(): void {
     }
   };
 
-  setTimeout(() => {
+  documentosAlertStartupTimer = setTimeout(() => {
+    documentosAlertStartupTimer = null;
     void tick();
-    setInterval(() => {
+    documentosAlertIntervalTimer = setInterval(() => {
       void tick();
     }, DOCUMENTOS_ALERT_TICK_MS);
   }, 8_000);
+}
+
+export function stopDocumentosAlert(): void {
+  if (documentosAlertStartupTimer) {
+    clearTimeout(documentosAlertStartupTimer);
+    documentosAlertStartupTimer = null;
+  }
+  if (documentosAlertIntervalTimer) {
+    clearInterval(documentosAlertIntervalTimer);
+    documentosAlertIntervalTimer = null;
+  }
+  log.info('Documentos alert encerrado graciosamente');
 }

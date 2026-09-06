@@ -528,6 +528,39 @@ export function startLocalXmlSync(): void {
   }
 }
 
+export async function stopLocalXmlSync(): Promise<void> {
+  started = false;
+  if (rescanTimer) {
+    clearInterval(rescanTimer);
+    rescanTimer = null;
+  }
+  if (bootstrapTimer) {
+    clearInterval(bootstrapTimer);
+    bootstrapTimer = null;
+  }
+  if (copyFromSourceTimer) {
+    clearInterval(copyFromSourceTimer);
+    copyFromSourceTimer = null;
+  }
+  if (fullReconcileKickoffTimer) {
+    clearTimeout(fullReconcileKickoffTimer);
+    fullReconcileKickoffTimer = null;
+  }
+  if (fullReconcileIntervalTimer) {
+    clearInterval(fullReconcileIntervalTimer);
+    fullReconcileIntervalTimer = null;
+  }
+  if (rootWatcher) {
+    await rootWatcher.close().catch(() => undefined);
+    rootWatcher = null;
+  }
+  if (latestWatcher) {
+    await latestWatcher.close().catch(() => undefined);
+    latestWatcher = null;
+  }
+  log.info('Local XML sync encerrado graciosamente');
+}
+
 export async function ensureLocalXmlSyncNow(): Promise<void> {
   const hasCopySource = COPY_FROM_SOURCE_ENABLED || COPY_FROM_ONEDRIVE_ENABLED;
   if (!localXmlWatchEnabled && !hasCopySource) return;

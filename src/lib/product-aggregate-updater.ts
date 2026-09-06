@@ -440,12 +440,14 @@ export async function extractAndStoreContactFiscal(
 // ── Daily rebuild scheduling ──
 
 let rebuildScheduled = false;
+let nightlyRebuildTimer: NodeJS.Timeout | null = null;
 
 export function scheduleNightlyRebuild() {
   if (rebuildScheduled) return;
   rebuildScheduled = true;
 
   const scheduleNext = () => {
+    if (!rebuildScheduled) return;
     const now = new Date();
     const target = new Date(now);
     target.setHours(3, 0, 0, 0);
@@ -457,7 +459,9 @@ export function scheduleNightlyRebuild() {
       'Next rebuild scheduled',
     );
 
-    setTimeout(async () => {
+    nightlyRebuildTimer = setTimeout(async () => {
+      nightlyRebuildTimer = null;
+      if (!rebuildScheduled) return;
       try {
         log.info('Starting nightly rebuild');
         const { rebuildProductAggregatesForCompany } = await import('@/lib/product-aggregate-rebuild');
@@ -487,3 +491,12 @@ export function scheduleNightlyRebuild() {
 
   scheduleNext();
 }
+
+export function stopNightlyRebuild(): void {
+  rebuildScheduled = false;
+  if (nightlyRebuildTimer) {
+    clearTimeout(nightlyRebuildTimer);
+    nightlyRebuildTimer = null;
+  }
+}
+

@@ -661,6 +661,9 @@ export async function acknowledgeNotificationDeliveries(
 
 export const OUTBOX_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+let outboxPurgeStartupTimer: NodeJS.Timeout | null = null;
+let outboxPurgeIntervalTimer: NodeJS.Timeout | null = null;
+
 /**
  * Fica registrado como `disabled` no /api/health enquanto não houver janela de
  * retenção configurada: a ausência de purga precisa ser visível, não silenciosa.
@@ -677,15 +680,30 @@ export async function startNotificationOutboxPurge(): Promise<void> {
     markBackgroundServiceHeartbeat('notification-outbox-purge');
     try {
       await purgeNotificationOutbox();
+      const { purgeExpiredOperationalData } = await import('@/lib/data-retention');
+      await purgeExpiredOperationalData();
     } catch (error) {
       markBackgroundServiceError('notification-outbox-purge', error);
     }
   };
 
-  setTimeout(() => {
+  outboxPurgeStartupTimer = setTimeout(() => {
+    outboxPurgeStartupTimer = null;
     void tick();
-    setInterval(() => {
+    outboxPurgeIntervalTimer = setInterval(() => {
       void tick();
     }, OUTBOX_PURGE_INTERVAL_MS);
   }, 20_000);
 }
+
+export function stopNotificationOutboxPurge(): void {
+  if (outboxPurgeStartupTimer) {
+    clearTimeout(outboxPurgeStartupTimer);
+    outboxPurgeStartupTimer = null;
+  }
+  if (outboxPurgeIntervalTimer) {
+    clearInterval(outboxPurgeIntervalTimer);
+    outboxPurgeIntervalTimer = null;
+  }
+}
+
