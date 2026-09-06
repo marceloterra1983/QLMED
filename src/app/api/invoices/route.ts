@@ -4,7 +4,6 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
-import { normalizeForSearch } from '@/lib/utils';
 import { getCfopCodesByTag, getCfopTagByCode } from '@/lib/cfop';
 import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
