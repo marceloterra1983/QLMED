@@ -3,6 +3,7 @@ import { IMPCG_SENDER_EMAIL } from '@/lib/impcg/constants';
 import { assertAllowedHost } from '@/lib/http-allowlist';
 import { GRAPH_ALLOWED_HOSTS } from '@/lib/onedrive-graph';
 import { MAX_PDF_BYTES } from '@/lib/pdf/ocr-limits';
+import { fetchWithResilience } from '@/lib/resilience';
 
 const log = createLogger('graph-mail');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
@@ -124,11 +125,20 @@ async function graphJson<T>(
   const url = /^https?:\/\//i.test(resourcePath)
     ? assertAllowedHost(resourcePath, GRAPH_ALLOWED_HOSTS).toString()
     : `${GRAPH_BASE}${resourcePath}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-    cache: 'no-store',
-    signal,
-  });
+  const response = await fetchWithResilience(
+    url,
+    {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+      cache: 'no-store',
+    },
+    {
+      signal,
+      maxRetries: 3,
+      onRetry: (err, attempt, delayMs) => {
+        log.warn({ attempt, delayMs, err }, 'graph_request_retry');
+      },
+    },
+  );
   const body = (await response.json().catch(() => null)) as T;
   return { status: response.status, body };
 }

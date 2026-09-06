@@ -380,4 +380,15 @@ Valor total com desconto    R$ 10,00
     expect(parsed.totalCents).toBe(476000);
     expect(parsed.items).toHaveLength(2);
   });
+
+  it('anexa trace de extração observável (Trace-as-State)', () => {
+    const parsed = parseOficio(OFICIO_2479325231_TEXT);
+    expect(parsed.trace).toBeDefined();
+    expect(parsed.trace?.textLength).toBe(OFICIO_2479325231_TEXT.length);
+    expect(parsed.trace?.steps.length).toBeGreaterThanOrEqual(7);
+    expect(parsed.trace?.matchedCount).toBeGreaterThanOrEqual(5);
+    const oficioStep = parsed.trace?.steps.find((s) => s.field === 'oficioNumber');
+    expect(oficioStep?.matched).toBe(true);
+    expect(oficioStep?.rawSnippet).toBe('2479325231');
+  });
 });

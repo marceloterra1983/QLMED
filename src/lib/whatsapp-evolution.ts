@@ -1,5 +1,6 @@
 import { createLogger } from '@/lib/logger';
 import { assertAllowedHost } from '@/lib/http-allowlist';
+import { fetchWithResilience } from '@/lib/resilience';
 
 const log = createLogger('whatsapp-evolution');
 
@@ -83,29 +84,38 @@ export async function sendWhatsAppDocument(
     [host],
   );
 
-  const response = await fetch(url, {
-    method: 'POST',
-    // `fetch` segue redirect por omissão, e cabeçalhos personalizados como
-    // `apikey` NÃO são removidos pelo spec num salto entre origens — só
-    // Authorization/Cookie o são. Um 302 levaria a chave E o PDF para outro
-    // host. Aqui um redirect vira erro, não um segundo pedido.
-    redirect: 'error',
-    headers: {
-      apikey: config.apiKey,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetchWithResilience(
+    url,
+    {
+      method: 'POST',
+      // `fetch` segue redirect por omissão, e cabeçalhos personalizados como
+      // `apikey` NÃO são removidos pelo spec num salto entre origens — só
+      // Authorization/Cookie o são. Um 302 levaria a chave E o PDF para outro
+      // host. Aqui um redirect vira erro, não um segundo pedido.
+      redirect: 'error',
+      headers: {
+        apikey: config.apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        number: input.jid,
+        mediatype: 'document',
+        media: input.content.toString('base64'),
+        mimetype: 'application/pdf',
+        fileName: input.fileName,
+        caption: input.caption,
+      }),
+      cache: 'no-store',
     },
-    body: JSON.stringify({
-      number: input.jid,
-      mediatype: 'document',
-      media: input.content.toString('base64'),
-      mimetype: 'application/pdf',
-      fileName: input.fileName,
-      caption: input.caption,
-    }),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-  });
+    {
+      timeoutMs: SEND_TIMEOUT_MS,
+      maxRetries: 3,
+      onRetry: (err, attempt, delayMs) => {
+        log.warn({ attempt, delayMs, err }, 'whatsapp_send_retry');
+      },
+    },
+  );
 
   if (response.status < 200 || response.status >= 300) {
     log.warn({ status: response.status }, 'whatsapp_send_failed');
@@ -140,21 +150,30 @@ export async function sendWhatsAppText(
     [host],
   );
 
-  const response = await fetch(url, {
-    method: 'POST',
-    redirect: 'error',
-    headers: {
-      apikey: config.apiKey,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetchWithResilience(
+    url,
+    {
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        apikey: config.apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        number: input.jid,
+        text: input.text,
+      }),
+      cache: 'no-store',
     },
-    body: JSON.stringify({
-      number: input.jid,
-      text: input.text,
-    }),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-  });
+    {
+      timeoutMs: SEND_TIMEOUT_MS,
+      maxRetries: 3,
+      onRetry: (err, attempt, delayMs) => {
+        log.warn({ attempt, delayMs, err }, 'whatsapp_send_text_retry');
+      },
+    },
+  );
 
   if (response.status < 200 || response.status >= 300) {
     log.warn({ status: response.status }, 'whatsapp_send_text_failed');

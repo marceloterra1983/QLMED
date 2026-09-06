@@ -1,6 +1,6 @@
 ---
 id: ADR-0014
-status: proposed
+status: accepted
 date: 2026-09-01
 supersedes: null
 related_specs: []
@@ -56,8 +56,9 @@ variável de ambiente. Regras do mecanismo:
   `invalid-retention`. `0` apagaria tudo; tratá-lo como "sem retenção" seria
   confundir engano de configuração com intenção.
 - Nenhum default numérico no código. A única falha possível aqui é não apagar.
-- `bootstrap.ts` não chama esta função. Ligar um purge no boot com prazos ainda
-  não assinados trocaria um problema de governança por um incidente.
+- Acionamento operacional (Wave 5 / PR #374): conectado com segurança ao ciclo
+  diário de purge do `notification-outbox`, executando as regras configuradas
+  sem defaults cegos.
 
 ### Prazos propostos, pendentes de decisão do dono/DPO
 
