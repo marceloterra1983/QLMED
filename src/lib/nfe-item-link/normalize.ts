@@ -69,6 +69,8 @@ export function normalizeDescription(raw: string | null | undefined): string {
     .toLowerCase()
     .replace(/posicao:\s*\d+/g, ' ')
     .replace(/\b(lt|lote|val|fab|ser|serie|sn)\s*[:.]\s*\S+/g, ' ')
+    .replace(/\bcodigo\s*ms\s*[:.]\s*\S+/g, ' ')
+    .replace(/\bcnpj\s*[:.]\s*\S+/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -108,4 +110,76 @@ export function normalizeSupplierName(raw: string | null | undefined): string {
     .replace(/\b(ltda|eireli|epp|me|sa|s a|cia|com|comercio|comercial|imp|importacao|exp|exportacao|dist|distribuicao|distribuidora|ind|industria|prod|produtos|medicos|hospitalares|hosp|de|e|do|da|dos|das|repres|representacoes)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Variante OCR comum em cProd de instrumentos: letra O no lugar de zero
+ * (`BBX800O-RK` → `BBX8000RK`). Só O→0 (não o inverso), para não explodir
+ * o espaço de busca.
+ */
+export function ocrLetterOToZero(norm: string): string | null {
+  if (!norm || !/[O]/.test(norm) || !/[0-9]/.test(norm)) return null;
+  // Só O adjacente a dígito (`800O`→`8000`); não toca "MOZ".
+  const out = norm.replace(/(?<=\d)O|O(?=\d)/g, '0');
+  return out === norm ? null : out;
+}
+
+/**
+ * Referências Spica embutidas no xProd quando o cProd é código interno do
+ * fornecedor (LABCOR `207.01` → texto `P-201023A` / `DOKIMOS PLUS-A 25`).
+ * Devolve códigos já normalizados ([A-Z0-9]).
+ */
+export function extractEmbeddedRefs(description: string | null | undefined): string[] {
+  const raw = description || '';
+  if (!raw.trim()) return [];
+  const u = raw.toUpperCase();
+  const out = new Set<string>();
+  let m: RegExpExecArray | null;
+
+  const reDok = /DOKIMOS\s*PLUS\s*-?\s*([AM])\s*-?\s*(\d{2})\s*([AM])?/g;
+  while ((m = reDok.exec(u))) {
+    const line = m[1];
+    const size = m[2];
+    const suffix = m[3] || line;
+    out.add(normalizeSupplierCode(`DOKIMOS PLUS -${line} ${size}${suffix}`));
+  }
+
+  const reP = /P-?2010\s*-?\s*(\d{2})\s*([AM])/g;
+  while ((m = reP.exec(u))) {
+    out.add(normalizeSupplierCode(`P-2010${m[1]}${m[2]}`));
+  }
+
+  const reI = /INSTAR\s*-?\s*(\d{2})/g;
+  while ((m = reI.exec(u))) {
+    out.add(normalizeSupplierCode(`INSTAR-${m[1]}`));
+  }
+
+  const reE = /EAIVP?E?\s*-?\s*TIV\s*-?\s*(\d{2})/g;
+  while ((m = reE.exec(u))) {
+    out.add(normalizeSupplierCode(`EAIVPe-TIV-${m[1]}`));
+  }
+
+  // Catálogo entre parênteses: `BT 712 TOP (04051)`.
+  const rePar = /\(([A-Z0-9][A-Z0-9.\-\/]{3,})\)/g;
+  while ((m = rePar.exec(u))) {
+    const tok = normalizeSupplierCode(m[1]);
+    if (tok.length >= 4) out.add(tok);
+  }
+
+  // Código Spica explícito no texto: `AR-10003`, `AAVLM30` (já coberto por
+  // leading-ref em S5a quando no início). Aqui só padrão letra(s)+hífen+dígitos.
+  const reHyphen = /\b([A-Z]{1,6}-\d{3,6}[A-Z]?)\b/g;
+  while ((m = reHyphen.exec(u))) {
+    out.add(normalizeSupplierCode(m[1]));
+  }
+
+  return [...out].filter((t) => t.length >= 4);
+}
+
+/**
+ * Remove prefixo de referência Spica no início da descrição normalizada
+ * (`ti002 4112 004 parafuso...` → `parafuso...`) para comparação S7.
+ */
+export function stripLeadingCatalogFromDescription(descNorm: string): string {
+  return descNorm.replace(/^[a-z]{1,4}\d+(?:\s+\d+){0,4}\s+/, '').trim();
 }
