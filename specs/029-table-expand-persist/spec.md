@@ -40,8 +40,8 @@ recebidas. O refresh automático da lista NÃO pode fechar o que eu abri.
 2. **AC-002** — Given o primeiro carregamento sem busca, when a lista chega,
    then os meses do ano corrente — exceto o mês calendário atual — MUST
    nascer colapsados. O mês atual MUST nascer expandido no topo (SPEC-053
-   AC-006). Hoje, Esta semana e Semana passada MUST nascer visíveis como
-   divisorias dentro do mês atual quando ele está expandido.
+   AC-006). Hoje MUST nascer visível como divisória dentro do mês atual quando
+   ele está expandido. Divisorias de semana relativa foram removidas (SPEC-053).
 3. **AC-003** — Given troca de ano, when a lista recarrega, then o colapso
    padrão daquele ano MAY ser reaplicado.
 
@@ -66,7 +66,7 @@ entre abas. O produto MUST continuar aberto, identificado por número/código
 - **FR-001**: Fetch periódico (`silent`) MUST NOT alterar o conjunto de
   grupos colapsados.
 - **FR-002**: A identidade do expand MUST ser a chave estável do grupo
-  (`hoje`, `esta_semana`, `semana_passada`, `mes_YYYY-MM`) ou da linha
+  (`hoje`, `mes_YYYY-MM`) ou da linha
   (`num:codigo` do produto), nunca o índice.
 - **FR-003**: Busca digitada pelo usuário MAY expandir todos os grupos
   naquele carregamento explícito; o poll seguinte MUST preservar o que o

@@ -14,54 +14,56 @@ affected_modules:
 
 # Feature Specification: Divisórias relativas estáticas nas listas por data
 
-**Feature Branch**: `fix/static-relative-date-groups`
+**Feature Branch**: `feat/remove-semana-dividers`
 
 **Created**: 2026-09-06
 
-**Status**: Approved
+**Status**: Approved (amended)
 
-**Input**: Na navegação das tabelas, Hoje, Esta semana e Semana passada são
-divisorias colapsáveis. Deixar só os meses colapsáveis; os três buckets
-relativos viram linhas divisorias. Aplicar em todas as tabelas com essa divisão.
+**Input**: Remover permanentemente as divisorias de lista **"Esta semana"** e
+**"Semana passada"** (e o mesmo padrão **"Próxima semana"**). Manter **Hoje**
+como única divisória relativa estática. Itens que estavam nessas semanas
+permanecem na UI sob o grupo do **mês** calendário.
 
 ## Problem
 
-Os buckets relativos (Hoje, Esta semana, Semana passada) ocupam o mesmo
-controle colapsável dos meses. O operador precisa clicar para ver o que
-acabou de acontecer, e o chevron sugere que aqueles períodos são arquivo.
+As divisorias de semana relativa fragmentavam a lista sem ganho operacional.
+O operador já tem o mês atual no topo e Hoje; as semanas só geravam ruído.
 
 ## User Scenarios & Testing
 
-### User Story 1 — Relativos sempre visíveis (Priority: P1)
+### User Story 1 — Sem divisorias de semana (Priority: P1)
 
-Como operador, vejo Hoje, Esta semana e Semana passada como linhas
-divisorias. Não há chevron nem clique. Os itens dessas seções permanecem
-visíveis.
+Como operador, não vejo "Esta semana", "Semana passada" nem "Próxima semana"
+nas listas por data. Itens daqueles períodos aparecem sob o mês (e Hoje, se
+for o dia corrente).
 
-**Why this priority**: é o defeito de UX pedido.
+**Why this priority**: pedido explícito de remoção permanente.
 
-**Independent Test**: Abrir uma lista fiscal com os três buckets e um mês;
-só o mês recolhe.
+**Independent Test**: Abrir emitidas/recebidas/CT-e/NFS-e/entrada/financeiro
+com notas recentes; buscar no DOM/texto as labels de semana — ausentes; notas
+ainda listadas.
 
 **Acceptance Scenarios**:
 
-1. **AC-001** — Given uma lista agrupada por data, when o grupo é `Hoje`,
-   `Esta semana` ou `Semana passada` (ou as chaves `hoje` / `esta_semana` /
-   `semana_passada`), then o cabeçalho MUST ser uma divisória estática:
-   sem ícone de expandir e sem toggle.
-2. **AC-002** — Given esses grupos relativos, when o operador clica em
-   Recolher, then os itens relativos MUST continuar visíveis.
+1. **AC-001** — Given uma lista agrupada por data, when o grupo é `Hoje`
+   (chave `hoje`), then o cabeçalho MUST ser uma divisória estática: sem
+   ícone de expandir e sem toggle.
+2. **AC-002** — Given notas de "esta semana" / "semana passada" (exceto
+   hoje), when a lista renderiza, then MUST NÃO existir cabeçalho
+   `Esta semana` / `Semana passada` / `Próxima semana` (nem chaves
+   `esta_semana` / `semana_passada`). Os itens MUST aparecer sob o mês
+   calendário correspondente (`mes_YYYY-MM` / rótulo mês/ano / `Este mês` /
+   `Mês passado` via `getDateGroupLabel`).
 3. **AC-003** — Given um grupo de mês (`mes_YYYY-MM`, `Este mês`,
    `Mês passado` ou rótulo `mês/ano`), when o operador clica no cabeçalho,
    then os itens MUST ocultar-se e o chevron MUST indicar colapsado.
 4. **AC-006** — Given notas no mês calendário atual, when a lista abre no
    recorte corrente, then o primeiro cabeçalho MUST ser o mês atual
-   (`mes_YYYY-MM`, ex. `Setembro/2026`), colapsável, acima de Hoje / Esta
-   semana. Recolher esse mês MUST ocultar Hoje, Esta semana e o restante
-   do mês. Dias da semana corrente que caem no mês anterior MUST ficar
-   fora desse shell. O mês atual MUST nascer expandido; os demais meses
-   MUST nascer colapsados. Recolher (botão) MUST incluir a chave do mês
-   atual.
+   (`mes_YYYY-MM`), colapsável, acima de Hoje (se houver). Recolher esse mês
+   MUST ocultar Hoje e o restante do mês. O mês atual MUST nascer expandido;
+   os demais meses MUST nascer colapsados. Recolher (botão) MUST incluir a
+   chave do mês atual.
 
 ### User Story 2 — Mesma regra em todas as listas (Priority: P1)
 
@@ -86,23 +88,30 @@ continua colapsável.
 - **FR-001**: A decisão “este grupo é colapsável?” MUST viver num helper
   puro único (`isCollapsibleDateGroup`), consumido por todas as listas
   citadas.
-- **FR-002**: Buckets relativos (`Hoje`, `Esta semana`, `Semana passada`,
-  `Próxima semana` e as chaves `hoje` / `esta_semana` / `semana_passada`)
-  MUST NÃO ser colapsáveis.
+- **FR-002**: Único bucket relativo estático: `Hoje` / `hoje`. Divisorias
+  de semana (`Esta semana`, `Semana passada`, `Próxima semana` e chaves
+  `esta_semana` / `semana_passada`) foram **removidas permanentemente** e
+  MUST NÃO ser renderizadas.
 - **FR-003**: Meses MUST permanecer colapsáveis. O colapso padrão do
-  primeiro load (SPEC-029) MUST aplicar-se só a meses, nunca a
-  `semana_passada`.
+  primeiro load (SPEC-029) MUST aplicar-se só a meses.
 - **FR-004**: O cabeçalho visual MUST ser um componente compartilhado,
   para as listas não divergirem.
 - **FR-005**: Recolher/Expandir MUST afetar só grupos colapsáveis.
 - **FR-006**: O mês calendário atual MUST aparecer no topo como grupo
-  colapsável (`mes_YYYY-MM`) sempre que houver item nesse mês. Os buckets
-  relativos do mês atual ficam dentro desse grupo. O load padrão MUST
-  deixar o mês atual expandido.
+  colapsável (`mes_YYYY-MM`) sempre que houver item nesse mês. Hoje (se
+  houver) fica dentro desse grupo. O load padrão MUST deixar o mês atual
+  expandido.
+- **FR-007**: `getDateGroupLabel` MUST NÃO retornar `Esta semana`,
+  `Semana passada` nem `Próxima semana`; datas nessas janelas usam o
+  rótulo de mês (`Este mês` / `Mês passado` / mês longo).
+- **FR-008**: Fora de escopo: o card KPI Financeiro **"Esta Semana"**
+  (métrica de resumo, não divisória de lista) permanece.
 
 ## Success criteria
 
-- Helper puro coberto por teste unitário (relativos vs mês vs cidade).
+- Helper puro coberto por teste unitário (Hoje vs mês vs cidade).
 - Componente de cabeçalho coberto por teste (chevron ausente em Hoje,
   presente em mês; clique só no mês).
-- SPEC-029 AC-002 alinhado: colapso padrão = meses, não semana passada.
+- Testes de `getDateGroupLabel` / `buildNfeGroups` / walker sem expectativas
+  de labels de semana.
+- SPEC-029 alinhado: colapso padrão = meses; Hoje visível; semanas removidas.

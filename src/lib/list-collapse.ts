@@ -24,15 +24,9 @@ export type CollapseAfterFetchResult = {
 
 const STATIC_RELATIVE_DATE_GROUPS = new Set([
   'hoje',
-  'esta_semana',
-  'esta semana',
-  'semana_passada',
-  'semana passada',
-  'proxima semana',
-  'próxima semana',
 ]);
 
-/** Hoje / Esta semana / Semana passada são só divisorias (SPEC-053). */
+/** Hoje é divisória estática; meses colapsam. Semanas relativas foram removidas (SPEC-053). */
 export function isCollapsibleDateGroup(keyOrLabel: string): boolean {
   return !STATIC_RELATIVE_DATE_GROUPS.has(keyOrLabel.trim().toLowerCase());
 }

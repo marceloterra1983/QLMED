@@ -48,20 +48,20 @@ describe('DateGroupHeader', () => {
     expect(onToggle).toHaveBeenCalledWith('mes_2026-08');
   });
 
-  it('Esta semana no mobile também é estática', () => {
+  it('Hoje no mobile também é estática', () => {
     const onToggle = vi.fn();
     render(
       <DateGroupHeader
-        groupKey="esta_semana"
-        label="Esta semana"
+        groupKey="hoje"
+        label="Hoje"
         count={1}
         variant="mobile"
-        collapsed={new Set(['esta_semana'])}
+        collapsed={new Set(['hoje'])}
         onToggle={onToggle}
       />,
     );
     expect(screen.queryByText('expand_more')).toBeNull();
-    fireEvent.click(screen.getByText('Esta semana'));
+    fireEvent.click(screen.getByText('Hoje'));
     expect(onToggle).not.toHaveBeenCalled();
   });
 });

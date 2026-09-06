@@ -13,8 +13,8 @@ type RelativeMonthGroupBodyProps<T extends DatedItem> = {
 };
 
 /**
- * Mês atual no topo (colapsável) com Hoje / Esta semana / resto do mês dentro.
- * Dias da semana que caem no mês anterior ficam fora do shell.
+ * Mês atual no topo (colapsável) com Hoje (divisória estática) e resto do mês dentro.
+ * Divisorias de semana relativa foram removidas (SPEC-053).
  */
 export default function RelativeMonthGroupBody<T extends DatedItem>({
   split,
@@ -45,39 +45,17 @@ export default function RelativeMonthGroupBody<T extends DatedItem>({
                   {split.innerHoje.map(renderItem)}
                 </>
               )}
-              {split.innerEstaSemana.length > 0 && (
-                <>
-                  {renderDivider('esta_semana', 'Esta semana', split.innerEstaSemana.length, split.innerEstaSemanaTotal)}
-                  {split.innerEstaSemana.map(renderItem)}
-                </>
-              )}
-              {split.innerSemanaPassada.length > 0 && (
-                <>
-                  {renderDivider('semana_passada', 'Semana passada', split.innerSemanaPassada.length, split.innerSemanaPassadaTotal)}
-                  {split.innerSemanaPassada.map(renderItem)}
-                </>
-              )}
               {split.innerRemainder.map(renderItem)}
             </>
           )}
         </>
       ) : (
-        <>
-          {includeHoje && renderDivider('hoje', 'Hoje', 0, 0)}
-          {split.outerEstaSemana.length === 0 && renderDivider('esta_semana', 'Esta semana', 0, 0)}
-        </>
-      )}
-      {split.outerEstaSemana.length > 0 && (
-        <>
-          {renderDivider('esta_semana', 'Esta semana', split.outerEstaSemana.length, split.outerEstaSemanaTotal)}
-          {split.outerEstaSemana.map(renderItem)}
-        </>
-      )}
-      {split.outerSemanaPassada.length > 0 && (
-        <>
-          {renderDivider('semana_passada', 'Semana passada', split.outerSemanaPassada.length, split.outerSemanaPassadaTotal)}
-          {split.outerSemanaPassada.map(renderItem)}
-        </>
+        includeHoje && split.innerHoje.length > 0 ? (
+          <>
+            {renderDivider('hoje', 'Hoje', split.innerHoje.length, split.innerHojeTotal)}
+            {split.innerHoje.map(renderItem)}
+          </>
+        ) : null
       )}
       {split.otherMonths.map((mg) => (
         <React.Fragment key={mg.key}>
