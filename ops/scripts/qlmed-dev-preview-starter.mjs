@@ -28,6 +28,9 @@ const env = {
   NEXTAUTH_URL: 'http://100.83.11.58:3002',
   PORT: '3002',
   HOST: '0.0.0.0',
+  // Preview nunca dispara WhatsApp/jobs de produção (resumo diário etc.).
+  DAILY_SUMMARY_NATIVE: '0',
+  QLMED_DISABLE_BACKGROUND_SERVICES: 'true',
 };
 
 const child = spawn('npx', ['next', 'dev', '-H', '0.0.0.0', '-p', '3002'], {

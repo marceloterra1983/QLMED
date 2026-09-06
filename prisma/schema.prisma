@@ -461,6 +461,16 @@ model NotificationClick {
   @@index([createdAt])
 }
 
+model DailyIssuedSummarySend {
+  /// Data civil America/Campo_Grande (YYYY-MM-DD). Claim único cross-process.
+  dateISO   String    @id @map("date_iso") @db.VarChar(10)
+  claimedAt DateTime  @default(now()) @map("claimed_at")
+  sentAt    DateTime? @map("sent_at")
+  source    String?   @db.VarChar(64)
+
+  @@map("daily_issued_summary_send")
+}
+
 model ProductAggregateRebuildState {
   companyId       String   @id
   company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
