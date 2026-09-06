@@ -11,6 +11,11 @@ import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 import { createLogger } from '@/lib/logger';
 import {
+  buildInvoiceSearchConditions,
+  expandAccentVariants,
+  tokenizeInvoiceSearch,
+} from '@/lib/nfe/search-engine';
+import {
   acquirePostgresTransactionAdvisoryLock,
   productAggregateLockKey,
 } from '@/lib/postgres-advisory-lock';
@@ -247,7 +252,7 @@ export async function GET(req: Request) {
     };
 
     if (search) {
-      const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
+      const criteria = tokenizeInvoiceSearch(search);
 
       // Pre-filter by cfopTag at DB level when both search and cfopTag are active
       const searchWhere: Record<string, unknown> = { ...where };
@@ -263,8 +268,9 @@ export async function GET(req: Request) {
         }
       }
 
-      // Look up nickname CNPJs that match any search word (DB-level nickname support)
-      const nicknameConditions = searchWords.map((word) => ({
+      // Look up nickname CNPJs that match any search word or token variants
+      const nicknameSearchTerms = criteria.tokens.flatMap(expandAccentVariants);
+      const nicknameConditions = nicknameSearchTerms.map((word) => ({
         shortName: { contains: word, mode: 'insensitive' as const },
       }));
       const matchingNicknames = nicknameConditions.length > 0
@@ -278,32 +284,13 @@ export async function GET(req: Request) {
         : [];
       const nicknameCnpjs = matchingNicknames.map((n) => n.cnpj);
 
-      // Build DB-level search: each word must match at least one field (AND logic across words)
-      const andConditions = searchWords.map((word) => {
-        const fieldConditions: Record<string, unknown>[] = [
-          { senderName: { contains: word, mode: 'insensitive' as const } },
-          { recipientName: { contains: word, mode: 'insensitive' as const } },
-          { patientName: { contains: word, mode: 'insensitive' as const } },
-          { convenioName: { contains: word, mode: 'insensitive' as const } },
-          { doctorName: { contains: word, mode: 'insensitive' as const } },
-          { accessKey: { contains: word, mode: 'insensitive' as const } },
-          { number: { contains: word, mode: 'insensitive' as const } },
-          { senderCnpj: { contains: word, mode: 'insensitive' as const } },
-          { recipientCnpj: { contains: word, mode: 'insensitive' as const } },
-        ];
-
-        // Add nickname CNPJ matches to OR conditions
-        if (nicknameCnpjs.length > 0) {
-          fieldConditions.push(
-            { senderCnpj: { in: nicknameCnpjs } },
-            { recipientCnpj: { in: nicknameCnpjs } },
-          );
-        }
-
-        return { OR: fieldConditions };
+      // Build DB-level search with accent variants, unmasked docs, numbers, and xmlContent
+      const searchConditions = buildInvoiceSearchConditions(criteria, {
+        nicknameCnpjs,
+        searchXmlContent: true,
       });
 
-      searchWhere.AND = andConditions;
+      Object.assign(searchWhere, searchConditions);
 
       const [searchInvoices, total] = await Promise.all([
         prisma.invoice.findMany({

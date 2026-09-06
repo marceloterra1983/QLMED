@@ -227,6 +227,12 @@ export default function IssuedInvoicesPage() {
   };
 
   const clearFilters = () => { setSearchInput(''); setSearch(''); setTagFilter(''); selectYear(null); };
+  const hasDateFilter = Boolean(dateFrom || dateTo || selectedYear !== null);
+  const handleSearchAllYears = () => {
+    setDateFrom('');
+    setDateTo('');
+    setSelectedYear(null);
+  };
 
   const getNick = (cnpj: string | null | undefined, name: string | null | undefined) => {
     const full = (name || '').trim() || '-';
@@ -398,8 +404,29 @@ export default function IssuedInvoicesPage() {
       {/* Filters */}
       <MobileFilterWrapper activeFilterCount={[search, tagFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-          <Field label="CNPJ / Nome Destinatário" className="lg:col-span-2">
-            <input type="text" placeholder="CNPJ, número, paciente, convênio ou médico…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
+          <Field label="Buscar NF-e" className="lg:col-span-2">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Número, CNPJ/CPF, paciente, convênio, médico, produto ou valor…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className={`${FILTER_INPUT_CLS} pr-8`}
+              />
+              {searchInput ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearch('');
+                  }}
+                  aria-label="Limpar busca"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              ) : null}
+            </div>
           </Field>
           <Field label="Data Início">
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
@@ -444,7 +471,27 @@ export default function IssuedInvoicesPage() {
         ) : invoices.length === 0 ? (
           <>
             <Card padding="none">
-              <EmptyState icon="output" title="Nenhuma NF-e emitida encontrada" />
+              <EmptyState
+                icon="output"
+                title="Nenhuma NF-e emitida encontrada"
+                hint={
+                  search && hasDateFilter
+                    ? `Nenhum resultado para "${search}" no período filtrado.`
+                    : undefined
+                }
+                action={
+                  search && hasDateFilter ? (
+                    <Button
+                      onClick={handleSearchAllYears}
+                      variant="secondary"
+                      size="sm"
+                      icon="calendar_month"
+                    >
+                      Buscar em todos os anos
+                    </Button>
+                  ) : undefined
+                }
+              />
             </Card>
             <div className="flex items-center gap-1 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">Ano:</span>
@@ -532,7 +579,25 @@ export default function IssuedInvoicesPage() {
                       compact
                       icon="output"
                       title="Nenhuma NF-e emitida encontrada"
-                      action={<Button href="/sistema/upload" icon="cloud_upload" variant="secondary" size="sm">Importar XML</Button>}
+                      hint={
+                        search && hasDateFilter
+                          ? `Nenhum resultado para "${search}" no período filtrado.`
+                          : undefined
+                      }
+                      action={
+                        search && hasDateFilter ? (
+                          <Button
+                            onClick={handleSearchAllYears}
+                            variant="secondary"
+                            size="sm"
+                            icon="calendar_month"
+                          >
+                            Buscar em todos os anos
+                          </Button>
+                        ) : (
+                          <Button href="/sistema/upload" icon="cloud_upload" variant="secondary" size="sm">Importar XML</Button>
+                        )
+                      }
                     />
                   </td>
                 </tr>
