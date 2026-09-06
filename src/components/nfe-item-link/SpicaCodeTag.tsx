@@ -30,7 +30,19 @@ export default function SpicaCodeTag({
   busy?: boolean;
 }) {
   if (vinculo === undefined) return null;
-  if (vinculo) {
+  if (vinculo?.strategy?.startsWith('SKIPPED_')) {
+    const how = STRATEGY_LABEL[vinculo.strategy] || vinculo.strategy;
+    return (
+      <span
+        title={how}
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 shrink-0"
+      >
+        <span className="material-symbols-outlined text-[13px]" aria-hidden="true">block</span>
+        Fora de escopo
+      </span>
+    );
+  }
+  if (vinculo?.productRegistryId) {
     const how = STRATEGY_LABEL[vinculo.strategy || ''] || vinculo.strategy || '';
     return (
       <span

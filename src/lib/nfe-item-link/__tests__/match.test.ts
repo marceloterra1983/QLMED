@@ -136,10 +136,11 @@ describe('cascata S1..S7', () => {
     }), index)).toMatchObject({ productId: 'p-baby', strategy: 'S5', confidence: 0.92 });
   });
 
-  it('S7 contenção de descrição + NCM (RCA parafuso); tamanho diferente não casa', () => {
+  it('S7 contenção de descrição + NCM (distribuidor ortopédico); tamanho diferente não casa', () => {
+    // RCA Saúde é SKIPPED_LEGACY — usa outro CNPJ médico para exercitar S7.
     expect(matchItem(item({
-      supplierCnpj: '11352270000188',
-      supplierName: 'RCA SAUDE COM. E REPRES. EIRELI-ME',
+      supplierCnpj: '15524734000147',
+      supplierName: 'TECHIMPORT TECNOLOGIA EM IMPLANTES ORTOPEDICOS LTDA',
       supplierCode: '14136',
       description: 'PARAFUSO NAO BLOQUEADO AUTOPERFURANTE 01,2 X 04 MM',
       ncm: '90211020',
@@ -147,8 +148,8 @@ describe('cascata S1..S7', () => {
 
     // 02,0 X 05 não pode cair em 01,2 X 04 nem 01,2 X 05 por fuzzy frouxo
     expect(matchItem(item({
-      supplierCnpj: '11352270000188',
-      supplierName: 'RCA SAUDE COM. E REPRES. EIRELI-ME',
+      supplierCnpj: '15524734000147',
+      supplierName: 'TECHIMPORT TECNOLOGIA EM IMPLANTES ORTOPEDICOS LTDA',
       supplierCode: '14342',
       description: 'PARAFUSO NAO BLOQUEADO AR 02,0 X 05 MM',
       ncm: '90211020',

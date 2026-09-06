@@ -875,7 +875,7 @@ model NfeItemProductLink {
   productRegistryId   String?          @map("product_registry_id")
   productRegistry     ProductRegistry? @relation(fields: [productRegistryId], references: [id], onDelete: SetNull)
   matchedCodigo       String?          @map("matched_codigo")
-  /// S1..S7 | MANUAL; null = pendente
+  /// S1..S7 | SKIPPED_* | MANUAL; null = pendente
   matchStrategy       String?          @map("match_strategy")
   matchConfidence     Float?           @map("match_confidence")
   matchedAt           DateTime?        @map("matched_at") @db.Timestamptz

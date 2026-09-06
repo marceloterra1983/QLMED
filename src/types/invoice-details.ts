@@ -73,7 +73,8 @@ export interface NfeInfo {
 /** SPEC-047: vínculo do item de NF-e recebida ao produto Spica (null = pendente). */
 export interface NfeItemVinculo {
   linkId: string;
-  productRegistryId: string;
+  /** null quando strategy é SKIPPED_* (fora de escopo). */
+  productRegistryId: string | null;
   codigo: string | null;
   referencia: string | null;
   descricao: string | null;

@@ -18,6 +18,7 @@ import {
   type RegistryIndex,
   S6_AUTO_MIN_CONFIDENCE,
 } from './match';
+import { isSkippedStrategy } from './skip';
 import { normalizeCnpj, normalizeSupplierCode } from './normalize';
 
 const log = createLogger('nfe-item-link');
@@ -75,13 +76,15 @@ export function rememberDecision(
   memory: LinkMemory,
   supplierCnpj: string,
   supplierCode: string,
-  entry: { productId: string; strategy: MatchStrategy; confidence: number },
+  entry: { productId: string | null; strategy: MatchStrategy; confidence: number },
 ) {
+  if (!entry.productId || isSkippedStrategy(entry.strategy)) return;
   const key = memoryKey(supplierCnpj, supplierCode);
   const current = memory.get(key);
-  if (!current) { memory.set(key, entry); return; }
+  const safe = { productId: entry.productId, strategy: entry.strategy, confidence: entry.confidence };
+  if (!current) { memory.set(key, safe); return; }
   if (current.strategy === 'MANUAL') return;
-  if (entry.strategy === 'MANUAL' || entry.confidence > current.confidence) memory.set(key, entry);
+  if (entry.strategy === 'MANUAL' || entry.confidence > current.confidence) memory.set(key, safe);
 }
 
 export interface InvoiceForLink {
@@ -120,9 +123,8 @@ export async function decideInvoiceItems(
       anvisa: p.anvisa,
       ncm: p.ncm,
     };
-    const decision = input.supplierCode || input.ean || input.anvisa
-      ? matchItem(input, index, memory)
-      : null;
+    // Sempre avalia: SKIPPED_* aplica mesmo sem cProd/EAN/ANVISA.
+    const decision = matchItem(input, index, memory);
     rows.push({ ...input, itemNumber, unit: p.unit === '-' ? null : p.unit, decision });
   });
   return rows;
@@ -134,11 +136,12 @@ export interface LinkWriteStats {
   pending: number;
   writes: number;
   skippedManual: number;
+  skippedOutOfScope: number;
   byStrategy: Record<string, number>;
 }
 
 function emptyStats(): LinkWriteStats {
-  return { items: 0, linked: 0, pending: 0, writes: 0, skippedManual: 0, byStrategy: {} };
+  return { items: 0, linked: 0, pending: 0, writes: 0, skippedManual: 0, skippedOutOfScope: 0, byStrategy: {} };
 }
 
 /**
@@ -165,7 +168,11 @@ export async function writeInvoiceLinks(
   for (const row of rows) {
     const current = byItem.get(row.itemNumber);
     const strategy = row.decision?.strategy ?? null;
-    if (row.decision) {
+    const isSkip = isSkippedStrategy(strategy);
+    if (isSkip) {
+      stats.skippedOutOfScope++;
+      stats.byStrategy[strategy!] = (stats.byStrategy[strategy!] || 0) + 1;
+    } else if (row.decision?.productId) {
       stats.linked++;
       stats.byStrategy[row.decision.strategy] = (stats.byStrategy[row.decision.strategy] || 0) + 1;
     } else {
@@ -180,7 +187,13 @@ export async function writeInvoiceLinks(
     if (unchanged) continue;
     // Já vinculado automaticamente e sem `force`: não reescreve (idempotência
     // barata); com `force` reavalia e pode trocar/limpar.
-    if (current && current.productRegistryId && !opts.force && !row.decision) continue;
+    // SKIPPED_* sem produto novo: mantém o skip (não volta a pendente).
+    if (current && current.productRegistryId && !opts.force && !row.decision?.productId) continue;
+    if (current && isSkippedStrategy(current.matchStrategy) && !opts.force && !row.decision?.productId) {
+      if (isSkip) continue; // já skip, decisão continua skip
+      // decisão null: não “despular” sem force
+      continue;
+    }
 
     stats.writes++;
     if (opts.dryRun) continue;
@@ -229,7 +242,7 @@ export async function linkInvoiceItems(
   const rows = await decideInvoiceItems(invoice, index, memory);
   const stats = await writeInvoiceLinks(invoice, rows, opts);
   for (const row of rows) {
-    if (row.decision && row.decision.strategy !== 'S6') {
+    if (row.decision && row.decision.productId && row.decision.strategy !== 'S6') {
       rememberDecision(memory, row.supplierCnpj, row.supplierCode, row.decision);
     }
   }
@@ -322,7 +335,8 @@ export async function listPendingGroups(params: {
            min(l.id) AS sample_link_id
     FROM nfe_item_product_link l
     JOIN "Invoice" i ON i.id = l.invoice_id
-    WHERE l.company_id = ${params.companyId} AND l.product_registry_id IS NULL ${searchSql}
+    WHERE l.company_id = ${params.companyId} AND l.product_registry_id IS NULL
+      AND (l.match_strategy IS NULL OR l.match_strategy NOT LIKE 'SKIPPED_%') ${searchSql}
     GROUP BY l.supplier_cnpj, l.supplier_code_norm
     ORDER BY item_count DESC, last_issue_date DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -334,7 +348,8 @@ export async function listPendingGroups(params: {
       SELECT count(*) AS n
       FROM nfe_item_product_link l
       JOIN "Invoice" i ON i.id = l.invoice_id
-      WHERE l.company_id = ${params.companyId} AND l.product_registry_id IS NULL ${searchSql}
+      WHERE l.company_id = ${params.companyId} AND l.product_registry_id IS NULL
+      AND (l.match_strategy IS NULL OR l.match_strategy NOT LIKE 'SKIPPED_%') ${searchSql}
       GROUP BY l.supplier_cnpj, l.supplier_code_norm
     ) g
   `);
@@ -357,7 +372,16 @@ export async function listPendingGroups(params: {
 }
 
 export async function countPendingItems(companyId: string): Promise<number> {
-  return prisma.nfeItemProductLink.count({ where: { companyId, productRegistryId: null } });
+  return prisma.nfeItemProductLink.count({
+    where: {
+      companyId,
+      productRegistryId: null,
+      OR: [
+        { matchStrategy: null },
+        { matchStrategy: { notIn: ['SKIPPED_NON_MEDICAL', 'SKIPPED_LEGACY'] } },
+      ],
+    },
+  });
 }
 
 /** Vínculos de uma nota, para a aba Produtos do detalhe. */

@@ -42,6 +42,7 @@ export interface SweepResult {
   pending: number;
   writes: number;
   skippedManual: number;
+  skippedOutOfScope: number;
   byStrategy: Record<string, number>;
   pendingDistinctCodes: number;
   durationMs: number;
@@ -53,13 +54,18 @@ function merge(total: LinkWriteStats, part: LinkWriteStats) {
   total.pending += part.pending;
   total.writes += part.writes;
   total.skippedManual += part.skippedManual;
+  total.skippedOutOfScope += part.skippedOutOfScope;
   for (const [k, v] of Object.entries(part.byStrategy)) total.byStrategy[k] = (total.byStrategy[k] || 0) + v;
 }
 
 function statsFromRows(rows: ItemLinkRow[]): LinkWriteStats {
-  const stats: LinkWriteStats = { items: rows.length, linked: 0, pending: 0, writes: 0, skippedManual: 0, byStrategy: {} };
+  const stats: LinkWriteStats = { items: rows.length, linked: 0, pending: 0, writes: 0, skippedManual: 0, skippedOutOfScope: 0, byStrategy: {} };
   for (const row of rows) {
-    if (row.decision) {
+    const s = row.decision?.strategy;
+    if (s && s.startsWith('SKIPPED_')) {
+      stats.skippedOutOfScope++;
+      stats.byStrategy[s] = (stats.byStrategy[s] || 0) + 1;
+    } else if (row.decision?.productId) {
       stats.linked++;
       stats.byStrategy[row.decision.strategy] = (stats.byStrategy[row.decision.strategy] || 0) + 1;
     } else {
@@ -78,7 +84,7 @@ export async function runNfeItemLinkSweep(opts: SweepOptions): Promise<SweepResu
   try {
     const index = await loadRegistryIndex(opts.companyId, { fresh: true });
     const memory = opts.diagnosticOnly ? new Map() : await loadLinkMemory(opts.companyId);
-    const total: LinkWriteStats = { items: 0, linked: 0, pending: 0, writes: 0, skippedManual: 0, byStrategy: {} };
+    const total: LinkWriteStats = { items: 0, linked: 0, pending: 0, writes: 0, skippedManual: 0, skippedOutOfScope: 0, byStrategy: {} };
     const pendingCodes = new Set<string>();
     let invoices = 0;
     let cursor: string | null = null;
@@ -103,9 +109,9 @@ export async function runNfeItemLinkSweep(opts: SweepOptions): Promise<SweepResu
           : await writeInvoiceLinks(invoice, rows, { dryRun: opts.dryRun, force: opts.force });
         merge(total, stats);
         for (const row of rows) {
-          if (row.decision) {
+          if (row.decision?.productId) {
             if (row.decision.strategy !== 'S6') rememberDecision(memory, row.supplierCnpj, row.supplierCode, row.decision);
-          } else {
+          } else if (!row.decision || !String(row.decision.strategy || '').startsWith('SKIPPED_')) {
             pendingCodes.add(`${row.supplierCnpj}::${row.supplierCode.toUpperCase()}`);
           }
           opts.onRow?.({ ...row, invoiceId: inv.id, invoiceNumber: inv.number, issueDate: inv.issueDate });
