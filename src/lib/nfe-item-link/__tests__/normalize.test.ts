@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractEmbeddedRefs,
   normalizeDescription,
   normalizeEan,
   normalizeSupplierCode,
   normalizeSupplierName,
   numericPrefixVariants,
+  ocrLetterOToZero,
+  stripLeadingCatalogFromDescription,
   stripLeadingZeros,
   trigramSimilarity,
 } from '../normalize';
@@ -68,5 +71,27 @@ describe('normalizeSupplierName', () => {
   it('remove sufixos societários e palavras genéricas', () => {
     expect(normalizeSupplierName('DOC MED COMERCIO IMPORTACAO E EXPORTACAO LTDA')).toBe('doc med');
     expect(normalizeSupplierName('LABCOR LABORATORIOS LTDA')).toBe('labcor laboratorios');
+  });
+});
+
+
+describe('normalize S5b/S7 helpers', () => {
+  it('extractEmbeddedRefs: DOKIMOS / P-2010 / INSTAR / TIV', () => {
+    expect(extractEmbeddedRefs('LABCOR DOKIMOS PLUS-A 25 Codigo MS: x')).toContain('DOKIMOSPLUSA25A');
+    expect(extractEmbeddedRefs('LABCOR P-2010 23A')).toContain('P201023A');
+    expect(extractEmbeddedRefs('INSTAR 21 AORTICO')).toContain('INSTAR21');
+    expect(extractEmbeddedRefs('EAIVPE TIV 23')).toContain('EAIVPETIV23');
+    expect(extractEmbeddedRefs('BT 712 TOP (04051)')).toContain('04051');
+    expect(extractEmbeddedRefs('BABYGRAFT-L 100/3 AR-10003 Codigo MS: x')).toContain('AR10003');
+  });
+
+  it('ocrLetterOToZero só troca O por 0', () => {
+    expect(ocrLetterOToZero('BBX800ORK')).toBe('BBX8000RK');
+    expect(ocrLetterOToZero('MOZ25014')).toBeNull();
+  });
+
+  it('stripLeadingCatalogFromDescription remove prefixo TI', () => {
+    const d = normalizeDescription('TI002.4112.004 - PARAFUSO NAO BLOQUEADO AUTOPERFURANTE 01,2 X 04 MM');
+    expect(stripLeadingCatalogFromDescription(d)).toBe('parafuso nao bloqueado autoperfurante 01 2 x 04 mm');
   });
 });

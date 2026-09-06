@@ -10,6 +10,7 @@ const STRATEGY_LABEL: Record<string, string> = {
   S4: 'registro ANVISA',
   S5: 'descrição/referência no texto',
   S6: 'histórico do fornecedor',
+  S7: 'descrição contida + NCM',
   MANUAL: 'vínculo manual',
 };
 

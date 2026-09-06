@@ -4,6 +4,7 @@
  * Pára na primeira estratégia com candidato ÚNICO; ambíguo = pendente.
  */
 import {
+  extractEmbeddedRefs,
   normalizeAnvisa,
   normalizeCnpj,
   normalizeDescription,
@@ -12,11 +13,13 @@ import {
   normalizeSupplierCode,
   normalizeSupplierName,
   numericPrefixVariants,
+  ocrLetterOToZero,
+  stripLeadingCatalogFromDescription,
   stripLeadingZeros,
   trigramSimilarity,
 } from './normalize';
 
-export type MatchStrategy = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'MANUAL';
+export type MatchStrategy = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'MANUAL';
 
 export interface RegistryProduct {
   id: string;
@@ -63,6 +66,7 @@ export type LinkMemory = Map<string, MemoryEntry>;
 
 interface IndexedProduct extends RegistryProduct {
   descNorm: string;
+  descBody: string;
   supplierNorm: string;
   manufacturerNorm: string;
   ncmNorm: string | null;
@@ -98,9 +102,11 @@ export function buildRegistryIndex(products: RegistryProduct[]): RegistryIndex {
     size: products.length,
   };
   for (const p of products) {
+    const descNorm = normalizeDescription(p.description);
     const indexed: IndexedProduct = {
       ...p,
-      descNorm: normalizeDescription(p.description),
+      descNorm,
+      descBody: stripLeadingCatalogFromDescription(descNorm),
       supplierNorm: normalizeSupplierName(p.defaultSupplier),
       manufacturerNorm: normalizeSupplierName(p.manufacturerShortName),
       ncmNorm: normalizeNcm(p.ncm),
@@ -131,6 +137,60 @@ function decide(index: RegistryIndex, productId: string, strategy: MatchStrategy
 
 export const S5_SIMILARITY_THRESHOLD = 0.85;
 export const S6_AUTO_MIN_CONFIDENCE = 0.9;
+
+/**
+ * S5b: modelos Spica embutidos no xProd (LABCOR DOKIMOS/P-2010/INSTAR/TIV).
+ * Candidato único via code/product_refs normalizado.
+ */
+function matchByEmbeddedRef(item: LinkItemInput, index: RegistryIndex): MatchDecision | null {
+  const refs = extractEmbeddedRefs(item.description);
+  if (refs.length === 0) return null;
+  const hits = new Set<string>();
+  for (const ref of refs) {
+    const list = index.byCodeNorm.get(ref);
+    if (list) for (const id of list) hits.add(id);
+  }
+  if (hits.size !== 1) return null;
+  return decide(index, [...hits][0], 'S5', 0.92);
+}
+
+/**
+ * S7: descrição NF-e contida na descrição Spica (ou vice-versa) após
+ * normalizar e remover prefixo de catálogo Spica, com ratio >= 0,85 e NCM
+ * igual quando ambos têm NCM. Sem fuzzy frouxo — evita parafuso 02,0↔02,3.
+ */
+function matchByDescriptionContainment(item: LinkItemInput, index: RegistryIndex): MatchDecision | null {
+  const dn = normalizeDescription(item.description);
+  if (dn.length < 12) return null;
+  const ncm = normalizeNcm(item.ncm);
+  // NCM obrigatório em S7: sem ele a contenção vira fuzzy frouxo entre famílias.
+  if (!ncm) return null;
+  const supplier = normalizeSupplierName(item.supplierName);
+  const withSupplier: string[] = [];
+  const highRatio: string[] = [];
+  for (const p of index.byId.values()) {
+    if (p.ncmNorm !== ncm) continue;
+    const body = p.descBody || p.descNorm;
+    if (!body || body.length < 12) continue;
+    const shorter = dn.length <= body.length ? dn : body;
+    const longer = dn.length <= body.length ? body : dn;
+    if (!longer.includes(shorter)) continue;
+    const ratio = shorter.length / longer.length;
+    if (ratio < 0.85) continue;
+    const sameSupplier = !!supplier && (
+      (p.supplierNorm && (supplier.includes(p.supplierNorm) || p.supplierNorm.includes(supplier)))
+      || (p.manufacturerNorm && supplier.includes(p.manufacturerNorm))
+    );
+    if (sameSupplier) withSupplier.push(p.id);
+    else if (ratio >= 0.92) highRatio.push(p.id);
+  }
+  // Preferência: mesmo fornecedor/fabricante; senão contenção quase exacta
+  // (distribuidor ≠ fabricante Spica, ex. RCA → Techimport).
+  if (withSupplier.length === 1) return decide(index, withSupplier[0], 'S7', 0.93);
+  if (withSupplier.length > 1) return null;
+  if (highRatio.length === 1) return decide(index, highRatio[0], 'S7', 0.91);
+  return null;
+}
 
 /**
  * S5a: o xProd começa pela referência Spica (`HA60-CARTUCHO...`, `AA10 -DISPOSITIVO`),
@@ -215,8 +275,9 @@ function matchByDescription(item: LinkItemInput, index: RegistryIndex): MatchDec
 }
 
 /**
- * Ordem: S6 (memória MANUAL) → S1 → S2 (exato, sem zeros, sem prefixo) → S3
- * (EAN) → S4 (ANVISA) → S5 (descrição) → S6 (memória automática ≥ 0,9).
+ * Ordem: S6 (memória MANUAL) → S1 → S2 (exato, sem zeros, OCR O→0, sem
+ * prefixo) → S3 (EAN) → S4 (ANVISA) → S5 (ref embutida / leading / trigram)
+ * → S7 (contenção de descrição + NCM) → S6 (memória automática ≥ 0,9).
  * A memória MANUAL vem primeiro porque é decisão humana explícita.
  */
 export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: LinkMemory): MatchDecision | null {
@@ -239,6 +300,12 @@ export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: Li
     if (noZeros) {
       const nz = unique(index.byCodeNormNoZeros.get(noZeros));
       if (nz) return decide(index, nz, 'S2', 0.95);
+    }
+    // OCR: O → 0 em códigos alfanuméricos (`BBX800O-RK` → `BBX8000RK`).
+    const ocr = ocrLetterOToZero(norm);
+    if (ocr) {
+      const ocrHit = unique(index.byCodeNorm.get(ocr));
+      if (ocrHit) return decide(index, ocrHit, 'S2', 0.94);
     }
     if (!index.byCodeNorm.has(norm)) {
       for (const variant of numericPrefixVariants(norm)) {
@@ -263,8 +330,13 @@ export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: Li
     if (s4) return decide(index, s4, 'S4', 0.9);
   }
 
-  const s5 = matchByLeadingReference(item, index) ?? matchByDescription(item, index);
+  const s5 = matchByEmbeddedRef(item, index)
+    ?? matchByLeadingReference(item, index)
+    ?? matchByDescription(item, index);
   if (s5) return s5;
+
+  const s7 = matchByDescriptionContainment(item, index);
+  if (s7) return s7;
 
   if (remembered && remembered.strategy !== 'MANUAL' && remembered.confidence >= S6_AUTO_MIN_CONFIDENCE && index.byId.has(remembered.productId)) {
     return decide(index, remembered.productId, 'S6', Math.min(remembered.confidence, 0.9));

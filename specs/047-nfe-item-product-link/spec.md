@@ -122,9 +122,12 @@ desde 2021 e de cada nota nova, de forma idempotente e determinística.
 - **AC-008**: Cascata pára na primeira estratégia que casa de forma **única**:
   `S6` (memória MANUAL do par CNPJ+`cProd`) → `S1` (`cProd` == `codigo`) →
   `S2` (`cProd` normalizado == `code`/`product_refs`; variantes: sem zeros à
-  esquerda, sem prefixo numérico 1-3 dígitos) → `S3` (EAN válido == `ean`) →
-  `S4` (registro ANVISA do item == `anvisa_code`) → `S5` (mesmo fornecedor,
-  NCM igual e similaridade trigram da descrição ≥ 0,85) → `S6` (memória
+  esquerda, OCR letra O→0, sem prefixo numérico 1-3 dígitos) → `S3` (EAN
+  válido == `ean`) → `S4` (registro ANVISA do item == `anvisa_code`) → `S5`
+  (ref Spica embutida no xProd: DOKIMOS/P-2010/INSTAR/TIV; ou leading ref;
+  ou mesmo fornecedor + NCM + trigram ≥ 0,85) → `S7` (descrição NF contida
+  na descrição Spica após strip do prefixo de catálogo, ratio ≥ 0,85 e NCM
+  igual; sem fuzzy frouxo / sem contenção de cProd puro) → `S6` (memória
   automática com confiança ≥ 0,9). Ambíguo ou abaixo do limiar = pendente.
 - **AC-009**: Segunda execução sem mudanças = 0 escritas de vínculo.
 - **AC-010**: Nova nota recebida ingerida por qualquer canal (SEFAZ, NSDocs,
@@ -195,3 +198,14 @@ desde 2021 e de cada nota nova, de forma idempotente e determinística.
 - **SC-002**: 0 vínculos automáticos com ambiguidade (todo automático tem
   candidato único).
 - **SC-003**: Vitest, `tsc --noEmit`, `lint`, `docs:validate` verdes.
+
+## Evolução pós-PR #352 (pendências)
+
+Diagnóstico em produção (2026-09-05): 959 pendentes. Regras novas medidas
+sem ambiguidade: **S5b** (modelo no xProd) resolve ~303 LABCOR; **S7**
+(contenção de descrição) resolve ~113 RCA + dezenas DOC MED/outros; **S2
+OCR O→0** resolve ~10 DOC MED. **S8** (cProd contido em code) foi
+**rejeitada**: `207.01` ⊂ `2070` vinculava bioprótese LABCOR a "CAMPO
+ADESIVO". Itens sem produto Spica (Politec 04257/4322606, veículos,
+telefonia, DOC MED codes internos sem catálogo) permanecem pendentes para
+decisão humana / importação Spica.
