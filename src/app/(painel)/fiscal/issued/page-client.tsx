@@ -118,8 +118,8 @@ export default function IssuedInvoicesPage() {
   }, []);
 
   const handleExport = () => {
-    const headers = ['Numero', 'Chave', 'Destinatario', 'Paciente', 'Data', 'Valor', 'Status'];
-    const rows = invoices.map(inv => [inv.number, inv.accessKey, inv.recipientName, inv.patientName ?? '', formatDate(inv.issueDate), inv.totalValue, inv.status]);
+    const headers = ['Numero', 'Chave', 'Destinatario', 'Convenio', 'Paciente', 'Medico', 'Data', 'Valor', 'Status'];
+    const rows = invoices.map(inv => [inv.number, inv.accessKey, inv.recipientName, inv.convenioName ?? '', inv.patientName ?? '', inv.doctorName ?? '', formatDate(inv.issueDate), inv.totalValue, inv.status]);
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -283,8 +283,18 @@ export default function IssuedInvoicesPage() {
           {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><div className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</div><div className="text-xs text-slate-500 dark:text-slate-400">{n.full}</div></>) : (<span className="text-sm font-bold text-slate-900 dark:text-white">{n.display}</span>); })()}
         </td>
         <td className="px-2 py-3">
-          {invoice.patientName ? (
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{invoice.patientName}</span>
+          {(invoice.convenioName || invoice.patientName || invoice.doctorName) ? (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              {invoice.convenioName ? (
+                <span className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">{invoice.convenioName}</span>
+              ) : null}
+              {invoice.patientName ? (
+                <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{invoice.patientName}</span>
+              ) : null}
+              {invoice.doctorName ? (
+                <span className="truncate text-xs leading-tight text-slate-500 dark:text-slate-400">{invoice.doctorName}</span>
+              ) : null}
+            </div>
           ) : (
             <span className="text-xs text-slate-500 dark:text-slate-400">—</span>
           )}
@@ -326,10 +336,20 @@ export default function IssuedInvoicesPage() {
           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{getNick(invoice.recipientCnpj, invoice.recipientName).display}</p>
           <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 ml-2">{formatTime(invoice.issueDate)}</span>
         </div>
-        {invoice.patientName ? (
-          <p className="text-xs text-slate-600 dark:text-slate-300 truncate mb-1">
-            <span className="font-semibold text-slate-500 dark:text-slate-400">Paciente:</span> {invoice.patientName}
-          </p>
+        {(invoice.convenioName || invoice.patientName || invoice.doctorName) ? (
+          <div className="mb-1 min-w-0 space-y-0.5">
+            {invoice.convenioName ? (
+              <p className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">{invoice.convenioName}</p>
+            ) : null}
+            {invoice.patientName ? (
+              <p className="truncate text-xs text-slate-700 dark:text-slate-200">
+                <span className="font-semibold text-slate-500 dark:text-slate-400">Paciente:</span> {invoice.patientName}
+              </p>
+            ) : null}
+            {invoice.doctorName ? (
+              <p className="truncate text-xs leading-tight text-slate-500 dark:text-slate-400">{invoice.doctorName}</p>
+            ) : null}
+          </div>
         ) : null}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
@@ -377,7 +397,7 @@ export default function IssuedInvoicesPage() {
       <MobileFilterWrapper activeFilterCount={[search, tagFilter, dateFrom, dateTo].filter(Boolean).length}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <Field label="CNPJ / Nome Destinatário" className="lg:col-span-2">
-            <input type="text" placeholder="CNPJ, número ou paciente…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
+            <input type="text" placeholder="CNPJ, número, paciente, convênio ou médico…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={FILTER_INPUT_CLS} />
           </Field>
           <Field label="Data Início">
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={FILTER_INPUT_CLS} />
@@ -522,7 +542,7 @@ export default function IssuedInvoicesPage() {
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-2 py-1.5 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-2 py-1.5"><Skeleton className="h-4 w-28" /></td>
+                    <td className="px-2 py-1.5"><Skeleton className="h-3 w-20" /><Skeleton className="h-4 w-28 mt-1" /><Skeleton className="h-3 w-24 mt-1" /></td>
                     <td className="px-2 py-1.5"><Skeleton className="h-4 w-16 mx-auto" /></td>
                   </tr>
                 ))
