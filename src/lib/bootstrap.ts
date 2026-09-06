@@ -24,6 +24,10 @@ backgroundSupervisor
       const { startAutoSync } = await import('./sync-scheduler');
       startAutoSync();
     },
+    stop: async () => {
+      const { stopAutoSync } = await import('./sync-scheduler');
+      stopAutoSync();
+    },
   })
   .register({
     name: 'local-xml-sync',
@@ -33,6 +37,10 @@ backgroundSupervisor
       const { startLocalXmlSync } = await import('./local-xml-sync');
       startLocalXmlSync();
     },
+    stop: async () => {
+      const { stopLocalXmlSync } = await import('./local-xml-sync');
+      await stopLocalXmlSync();
+    },
   })
   .register({
     name: 'impcg-mail-ingest',
@@ -40,7 +48,11 @@ backgroundSupervisor
     delayMs: 14_000,
     start: async () => {
       const { startImpcgMailIngest } = await import('./impcg/ingest');
-      startImpcgMailIngest();
+      await startImpcgMailIngest();
+    },
+    stop: async () => {
+      const { stopImpcgMailIngest } = await import('./impcg/ingest');
+      stopImpcgMailIngest();
     },
   })
   .register({
@@ -49,7 +61,11 @@ backgroundSupervisor
     delayMs: 16_000,
     start: async () => {
       const { startCassemsMailIngest } = await import('./cassems/ingest');
-      startCassemsMailIngest();
+      await startCassemsMailIngest();
+    },
+    stop: async () => {
+      const { stopCassemsMailIngest } = await import('./cassems/ingest');
+      stopCassemsMailIngest();
     },
   })
   .register({
@@ -58,7 +74,11 @@ backgroundSupervisor
     delayMs: 10_000,
     start: async () => {
       const { startUnimedCgMailIngest } = await import('./unimed-cg/ingest');
-      startUnimedCgMailIngest();
+      await startUnimedCgMailIngest();
+    },
+    stop: async () => {
+      const { stopUnimedCgMailIngest } = await import('./unimed-cg/ingest');
+      stopUnimedCgMailIngest();
     },
   })
   .register({
@@ -69,6 +89,10 @@ backgroundSupervisor
       const { startDocumentosIngest } = await import('./documentos/ingest');
       startDocumentosIngest();
     },
+    stop: async () => {
+      const { stopDocumentosIngest } = await import('./documentos/ingest');
+      stopDocumentosIngest();
+    },
   })
   .register({
     name: 'documentos-alert',
@@ -77,6 +101,10 @@ backgroundSupervisor
     start: async () => {
       const { startDocumentosAlert } = await import('./documentos/alerts');
       startDocumentosAlert();
+    },
+    stop: async () => {
+      const { stopDocumentosAlert } = await import('./documentos/alerts');
+      stopDocumentosAlert();
     },
   })
   .register({
@@ -87,15 +115,35 @@ backgroundSupervisor
       const { startDailyIssuedSummary } = await import('./daily-issued-summary-job');
       startDailyIssuedSummary();
     },
+    stop: async () => {
+      const { stopDailyIssuedSummary } = await import('./daily-issued-summary-job');
+      stopDailyIssuedSummary();
+    },
   })
   .register({
     name: 'notification-outbox-purge',
-    description: 'Purga periódica de eventos antigos do Transactional Outbox',
+    description: 'Purga periódica de eventos antigos do Transactional Outbox e dados operacionais',
     delayMs: 18_000,
     start: async () => {
       const { startNotificationOutboxPurge } = await import('./notification-outbox');
-      startNotificationOutboxPurge();
+      await startNotificationOutboxPurge();
+    },
+    stop: async () => {
+      const { stopNotificationOutboxPurge } = await import('./notification-outbox');
+      stopNotificationOutboxPurge();
     },
   });
 
 backgroundSupervisor.startAll();
+
+if (typeof process !== 'undefined' && typeof process.once === 'function') {
+  const handleShutdown = async () => {
+    try {
+      await backgroundSupervisor.stopAll();
+    } catch {
+      // safe shutdown
+    }
+  };
+  process.once('SIGTERM', () => void handleShutdown());
+  process.once('SIGINT', () => void handleShutdown());
+}

@@ -33,6 +33,7 @@
     "cte:pfx:test": "node ./scripts/test-cte-sync-pfx.cjs",
     "db:generate": "prisma generate",
     "test": "vitest run",
+    "test:invariants": "vitest run src/lib/__tests__/automacoes-no-fabricated-data.test.ts src/lib/__tests__/acl-company-scope.test.ts src/lib/__tests__/acl-default-deny.test.ts src/lib/__tests__/audit-l8-financeiro-decimal.test.ts src/lib/__tests__/database-config.test.ts src/lib/__tests__/docker-secret-policy.test.ts",
     "test:integration": "RUN_DB_INTEGRATION_TESTS=1 QLMED_DISABLE_BACKGROUND_SERVICES=true vitest run src/lib/__tests__/*.integration.test.ts",
     "test:watch": "vitest"
   },

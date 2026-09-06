@@ -50,6 +50,19 @@ export async function GET(req: Request) {
               companyId: company.id,
               invoiceId: { in: invoiceIds },
             },
+            select: {
+              invoiceId: true,
+              vbc: true,
+              vicms: true,
+              vpis: true,
+              vcofins: true,
+              vipi: true,
+              vfrete: true,
+              vtottrib: true,
+              vfcp: true,
+              vicmsSt: true,
+              vdesc: true,
+            },
           });
 
     let totalIcms = 0;

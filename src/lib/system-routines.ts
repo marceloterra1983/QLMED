@@ -340,7 +340,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
   },
   {
     id: 'notification-outbox-purge',
-    name: 'Purga e Retenção do Outbox de Notificações',
+    name: 'Purga e Retenção do Outbox e Dados Operacionais',
     category: 'notificacoes',
     categoryLabel: 'Notificações & Mensageria',
     triggerType: 'background_service',
@@ -349,9 +349,16 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     scheduleDetails: 'Ciclo diário executado a cada 86.400 segundos',
     concurrencyLock: 'Exclusão transacional em lote baseada em janela de dias configurada',
     sourceModule: 'src/lib/notification-outbox.ts (purgeNotificationOutbox)',
-    description: 'Limpa registros de notificações antigas já entregues com sucesso ou descartadas que excederam a política de retenção em dias.',
+    description: 'Limpa registros de notificações antigas já entregues com sucesso e dados operacionais expirados (AccessLog, NotificationClick, SyncLog, caches) conforme políticas de retenção.',
     backgroundServiceName: 'notification-outbox-purge',
-    environmentVars: ['NOTIFICATION_OUTBOX_RETENTION_DAYS'],
+    environmentVars: [
+      'NOTIFICATION_OUTBOX_RETENTION_DAYS',
+      'QLMED_RETENTION_ACCESS_LOG_DAYS',
+      'QLMED_RETENTION_NOTIFICATION_CLICK_DAYS',
+      'QLMED_RETENTION_SYNC_LOG_DAYS',
+      'QLMED_RETENTION_CNPJ_CACHE_DAYS',
+      'QLMED_RETENTION_NCM_CACHE_DAYS',
+    ],
   },
   {
     id: 'evolution-session-watchdog',

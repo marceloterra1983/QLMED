@@ -600,6 +600,9 @@ export async function runImpcgIngest(
   }
 }
 
+let impcgStartupTimer: NodeJS.Timeout | null = null;
+let impcgIntervalTimer: NodeJS.Timeout | null = null;
+
 export async function startImpcgMailIngest(): Promise<void> {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
   markBackgroundServiceStarted('impcg-mail-ingest', { enabled: !disabled, heartbeatIntervalMs: IMPCG_INGEST_INTERVAL_MS });
@@ -617,10 +620,23 @@ export async function startImpcgMailIngest(): Promise<void> {
     }
   };
 
-  setTimeout(() => {
+  impcgStartupTimer = setTimeout(() => {
+    impcgStartupTimer = null;
     void tick();
-    setInterval(() => {
+    impcgIntervalTimer = setInterval(() => {
       void tick();
     }, IMPCG_INGEST_INTERVAL_MS);
   }, 5_000);
+}
+
+export function stopImpcgMailIngest(): void {
+  if (impcgStartupTimer) {
+    clearTimeout(impcgStartupTimer);
+    impcgStartupTimer = null;
+  }
+  if (impcgIntervalTimer) {
+    clearInterval(impcgIntervalTimer);
+    impcgIntervalTimer = null;
+  }
+  log.info('IMPCG mail ingest encerrado graciosamente');
 }

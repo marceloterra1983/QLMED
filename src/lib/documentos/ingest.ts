@@ -714,6 +714,9 @@ export async function runDocumentosIngest(
   }
 }
 
+let documentosIngestStartupTimer: NodeJS.Timeout | null = null;
+let documentosIngestIntervalTimer: NodeJS.Timeout | null = null;
+
 /** Registrado no bootstrap pela L4; respeita QLMED_DISABLE_BACKGROUND_SERVICES. */
 export function startDocumentosIngest(): void {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
@@ -741,10 +744,23 @@ export function startDocumentosIngest(): void {
     }
   };
 
-  setTimeout(() => {
+  documentosIngestStartupTimer = setTimeout(() => {
+    documentosIngestStartupTimer = null;
     void tick();
-    setInterval(() => {
+    documentosIngestIntervalTimer = setInterval(() => {
       void tick();
     }, DOCUMENTOS_INGEST_INTERVAL_MS);
   }, 5_000);
+}
+
+export function stopDocumentosIngest(): void {
+  if (documentosIngestStartupTimer) {
+    clearTimeout(documentosIngestStartupTimer);
+    documentosIngestStartupTimer = null;
+  }
+  if (documentosIngestIntervalTimer) {
+    clearInterval(documentosIngestIntervalTimer);
+    documentosIngestIntervalTimer = null;
+  }
+  log.info('Documentos ingest encerrado graciosamente');
 }

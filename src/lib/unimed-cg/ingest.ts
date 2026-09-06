@@ -1208,6 +1208,9 @@ export async function runUnimedCgIngest(
   }
 }
 
+let unimedStartupTimer: NodeJS.Timeout | null = null;
+let unimedIntervalTimer: NodeJS.Timeout | null = null;
+
 export async function startUnimedCgMailIngest(): Promise<void> {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
   markBackgroundServiceStarted('unimed-cg-mail-ingest', {
@@ -1231,10 +1234,23 @@ export async function startUnimedCgMailIngest(): Promise<void> {
     }
   };
 
-  setTimeout(() => {
+  unimedStartupTimer = setTimeout(() => {
+    unimedStartupTimer = null;
     void tick();
-    setInterval(() => {
+    unimedIntervalTimer = setInterval(() => {
       void tick();
     }, UNIMED_CG_INGEST_INTERVAL_MS);
   }, 10_000);
+}
+
+export function stopUnimedCgMailIngest(): void {
+  if (unimedStartupTimer) {
+    clearTimeout(unimedStartupTimer);
+    unimedStartupTimer = null;
+  }
+  if (unimedIntervalTimer) {
+    clearInterval(unimedIntervalTimer);
+    unimedIntervalTimer = null;
+  }
+  log.info('Unimed-CG mail ingest encerrado graciosamente');
 }

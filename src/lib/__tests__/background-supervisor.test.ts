@@ -101,4 +101,46 @@ describe('background-supervisor', () => {
 
     expect(start).not.toHaveBeenCalled();
   });
+
+  it('calls stop callback on started services when stopAll() is executed', async () => {
+    const start = vi.fn();
+    const stop = vi.fn();
+
+    supervisor.register({
+      name: 'daily-issued-summary',
+      description: 'Summary',
+      delayMs: 1_000,
+      start,
+      stop,
+    });
+
+    supervisor.startAll();
+    await vi.advanceTimersByTimeAsync(1_500);
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+
+    await supervisor.stopAll();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles errors in stop callbacks gracefully without throwing', async () => {
+    const start = vi.fn();
+    const stopFailing = vi.fn().mockRejectedValue(new Error('Stop failed'));
+
+    supervisor.register({
+      name: 'auto-sync',
+      description: 'Auto Sync',
+      delayMs: 500,
+      start,
+      stop: stopFailing,
+    });
+
+    supervisor.startAll();
+    await vi.advanceTimersByTimeAsync(600);
+
+    expect(start).toHaveBeenCalledTimes(1);
+    await expect(supervisor.stopAll()).resolves.not.toThrow();
+    expect(stopFailing).toHaveBeenCalledTimes(1);
+  });
 });

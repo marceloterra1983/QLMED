@@ -519,6 +519,9 @@ export async function runCassemsIngest(
   }
 }
 
+let cassemsStartupTimer: NodeJS.Timeout | null = null;
+let cassemsIntervalTimer: NodeJS.Timeout | null = null;
+
 export async function startCassemsMailIngest(): Promise<void> {
   const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true';
   markBackgroundServiceStarted('cassems-mail-ingest', { enabled: !disabled, heartbeatIntervalMs: CASSEMS_INGEST_INTERVAL_MS });
@@ -536,10 +539,23 @@ export async function startCassemsMailIngest(): Promise<void> {
     }
   };
 
-  setTimeout(() => {
+  cassemsStartupTimer = setTimeout(() => {
+    cassemsStartupTimer = null;
     void tick();
-    setInterval(() => {
+    cassemsIntervalTimer = setInterval(() => {
       void tick();
     }, CASSEMS_INGEST_INTERVAL_MS);
   }, 6_000);
+}
+
+export function stopCassemsMailIngest(): void {
+  if (cassemsStartupTimer) {
+    clearTimeout(cassemsStartupTimer);
+    cassemsStartupTimer = null;
+  }
+  if (cassemsIntervalTimer) {
+    clearInterval(cassemsIntervalTimer);
+    cassemsIntervalTimer = null;
+  }
+  log.info('CASSEMS mail ingest encerrado graciosamente');
 }

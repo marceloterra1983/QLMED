@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { scheduleNightlyRebuild } from './product-aggregate-updater';
+import { scheduleNightlyRebuild, stopNightlyRebuild } from './product-aggregate-updater';
 import { createLogger } from '@/lib/logger';
 import { syncViaSefaz } from './sync-strategies/sefaz';
 import { syncViaNsdocs } from './sync-strategies/nsdocs';
@@ -198,6 +198,9 @@ export async function getSefazCooldown(companyId: string, now = new Date()): Pro
   };
 }
 
+let checkIntervalTimer: NodeJS.Timeout | null = null;
+let startupTimeoutTimer: NodeJS.Timeout | null = null;
+
 export function startAutoSync() {
   if (started) return;
   started = true;
@@ -209,10 +212,26 @@ export function startAutoSync() {
   scheduleNightlyRebuild();
 
   // Sync de startup após 30s (catch-up de período offline)
-  setTimeout(async () => {
+  startupTimeoutTimer = setTimeout(async () => {
+    startupTimeoutTimer = null;
     await runStartupSync();
-    setInterval(checkAndSync, CHECK_INTERVAL_MS);
+    if (!started) return;
+    checkIntervalTimer = setInterval(checkAndSync, CHECK_INTERVAL_MS);
   }, 30_000);
+}
+
+export function stopAutoSync(): void {
+  started = false;
+  if (startupTimeoutTimer) {
+    clearTimeout(startupTimeoutTimer);
+    startupTimeoutTimer = null;
+  }
+  if (checkIntervalTimer) {
+    clearInterval(checkIntervalTimer);
+    checkIntervalTimer = null;
+  }
+  stopNightlyRebuild();
+  log.info('Scheduler auto-sync encerrado graciosamente');
 }
 
 /**

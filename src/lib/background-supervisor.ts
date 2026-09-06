@@ -61,9 +61,10 @@ export class BackgroundSupervisor {
         try {
           markBackgroundServiceStarted(name);
           log.info({ service: name, delayMs: spec.delayMs }, 'Iniciando rotina de background');
-          await spec.start();
           this.startedServices.add(name);
+          await spec.start();
         } catch (err) {
+          this.startedServices.delete(name);
           const errMsg = err instanceof Error ? err.message : String(err);
           markBackgroundServiceError(name, errMsg);
           log.error({ service: name, err }, 'Falha ao iniciar rotina de background');
