@@ -571,7 +571,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
   const [data, setData] = useState<NfeDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('nfe');
+  const [activeTab, setActiveTab] = useState('produtos');
   const [expandedProdutos, setExpandedProdutos] = useState<Set<string>>(new Set());
   const [relateTarget, setRelateTarget] = useState<RelateTarget | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
@@ -620,7 +620,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
 
   useEffect(() => {
     if (!isOpen) return;
-    setActiveTab(initialTab || 'nfe');
+    setActiveTab(initialTab || 'produtos');
   }, [isOpen, invoiceId, initialTab]);
 
   if (!isOpen || !invoiceId) return null;

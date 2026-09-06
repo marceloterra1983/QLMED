@@ -83,7 +83,7 @@ export default function IssuedInvoicesPage() {
   };
 
   const openModal = (id: string) => { setSelectedInvoiceId(id); setIsModalOpen(true); };
-  const openDetails = (id: string) => { setDetailsInvoiceId(id); setDetailsInitialTab(undefined); setIsDetailsOpen(true); };
+  const openDetails = (id: string) => { setDetailsInvoiceId(id); setDetailsInitialTab('produtos'); setIsDetailsOpen(true); };
   const openProducts = (id: string) => { setDetailsInvoiceId(id); setDetailsInitialTab('produtos'); setIsDetailsOpen(true); };
 
   useEffect(() => {
