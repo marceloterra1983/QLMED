@@ -18,7 +18,7 @@ type DateGroupHeaderProps = {
 /**
  * Cabeçalho de grupo por data nas listas.
  *
- * Hoje / Esta semana / Semana passada são só divisorias (SPEC-053).
+ * Hoje é divisória estática (SPEC-053). Semanas relativas foram removidas.
  * Meses (e grupos que não são bucket relativo) continuam colapsáveis.
  */
 export default function DateGroupHeader({

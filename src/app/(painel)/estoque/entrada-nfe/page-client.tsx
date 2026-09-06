@@ -81,7 +81,6 @@ type EntryHierarchy = {
 };
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const p2 = (n: number) => String(n).padStart(2, '0');
 
 
 function splitEntryGroups(groups: EntryHierarchy) {
@@ -108,23 +107,12 @@ function entryCollapsibleMonthKeys(groups: EntryHierarchy, yearMonths: MonthGrou
 }
 
 function buildEntryGroups(entries: InvoiceEntry[]): EntryHierarchy {
-  const now = new Date();
-  const dow = now.getDay();
-  const dfm = dow === 0 ? 6 : dow - 1;
-  const ws = new Date(now); ws.setDate(now.getDate() - dfm);
-  const we = new Date(ws); we.setDate(ws.getDate() + 6);
-  const pwe = new Date(ws); pwe.setDate(ws.getDate() - 1);
-  const pws = new Date(pwe); pws.setDate(pwe.getDate() - 6);
-  const ts = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-  const [wsS, weS, pwsS, pweS] = [ts(ws), ts(we), ts(pws), ts(pwe)];
-  const es: InvoiceEntry[] = [], sp: InvoiceEntry[] = [];
   const mm = new Map<string, InvoiceEntry[]>();
   for (const inv of entries) {
-    const d = (inv.issueDate || '').substring(0, 10);
-    const mo = d.substring(0, 7);
-    if (d >= wsS && d <= weS) es.push(inv);
-    else if (d >= pwsS && d <= pweS) sp.push(inv);
-    else { if (!mm.has(mo)) mm.set(mo, []); mm.get(mo)!.push(inv); }
+    const mo = (inv.issueDate || '').substring(0, 7);
+    if (!mo) continue;
+    if (!mm.has(mo)) mm.set(mo, []);
+    mm.get(mo)!.push(inv);
   }
   const toMG = (mo: string, invs: InvoiceEntry[]): MonthGroup => {
     const [y, m] = mo.split('-');
@@ -132,8 +120,9 @@ function buildEntryGroups(entries: InvoiceEntry[]): EntryHierarchy {
   };
   const cym = Array.from(mm.keys()).sort((a, b) => b.localeCompare(a)).map(m => toMG(m, mm.get(m)!));
   return {
-    estaSemana: es, estaSemanaTotal: es.reduce((s, i) => s + (i.totalValue || 0), 0),
-    semanaPassada: sp, semanaPassadaTotal: sp.reduce((s, i) => s + (i.totalValue || 0), 0),
+    // Semanas relativas removidas — tudo no bucket do mês.
+    estaSemana: [], estaSemanaTotal: 0,
+    semanaPassada: [], semanaPassadaTotal: 0,
     currentYearMonths: cym,
   };
 }

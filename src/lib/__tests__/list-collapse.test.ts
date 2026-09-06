@@ -33,7 +33,7 @@ function invoice(id: string, issueDate: string): Invoice {
 }
 
 describe('resolveCollapsedGroupsAfterFetch', () => {
-  const defaults = ['semana_passada', 'mes_2026-01', 'mes_2026-02'];
+  const defaults = ['mes_2026-01', 'mes_2026-02'];
 
   it('primeiro load aplica colapso padrão e marca init', () => {
     const result = resolveCollapsedGroupsAfterFetch({
@@ -97,7 +97,7 @@ describe('defaultNfeCollapsedKeys', () => {
     expect(keys).toEqual(['mes_2024-03', 'mes_2024-01']);
   });
 
-  it('sem recorte de ano não colapsa hoje/esta_semana/semana_passada', () => {
+  it('sem recorte de ano não colapsa hoje; só meses', () => {
     const now = new Date();
     const iso = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -135,12 +135,15 @@ describe('nfeProdutoExpandKey', () => {
 });
 
 describe('isCollapsibleDateGroup', () => {
-  it('recusa buckets relativos por chave e por rótulo', () => {
-    for (const value of [
-      'hoje', 'Hoje', 'esta_semana', 'Esta semana',
-      'semana_passada', 'Semana passada', 'Próxima semana',
-    ]) {
+  it('recusa só Hoje como divisória estática', () => {
+    for (const value of ['hoje', 'Hoje']) {
       expect(isCollapsibleDateGroup(value)).toBe(false);
+    }
+  });
+
+  it('rótulos de semana relativa (removidos) não são especiais — meses/outros colapsam', () => {
+    for (const value of ['esta_semana', 'Esta semana', 'semana_passada', 'Semana passada', 'Próxima semana']) {
+      expect(isCollapsibleDateGroup(value)).toBe(true);
     }
   });
 
@@ -152,18 +155,16 @@ describe('isCollapsibleDateGroup', () => {
 });
 
 describe('dateGroupItemsVisible', () => {
-  it('relativos continuam visíveis mesmo se estiverem no Set colapsado', () => {
-    const collapsed = new Set(['hoje', 'esta_semana', 'semana_passada', 'mes_2026-08']);
+  it('Hoje continua visível mesmo se estiver no Set colapsado', () => {
+    const collapsed = new Set(['hoje', 'mes_2026-08']);
     expect(dateGroupItemsVisible('hoje', collapsed)).toBe(true);
-    expect(dateGroupItemsVisible('Esta semana', collapsed)).toBe(true);
-    expect(dateGroupItemsVisible('semana_passada', collapsed)).toBe(true);
     expect(dateGroupItemsVisible('mes_2026-08', collapsed)).toBe(false);
   });
 });
 
 describe('collapsibleDateGroupKeys', () => {
-  it('Recolher ignora buckets relativos', () => {
-    expect(collapsibleDateGroupKeys(['hoje', 'esta_semana', 'semana_passada', 'mes_2026-08'])).toEqual(['mes_2026-08']);
+  it('Recolher ignora Hoje', () => {
+    expect(collapsibleDateGroupKeys(['hoje', 'mes_2026-08'])).toEqual(['mes_2026-08']);
   });
 });
 
@@ -205,7 +206,7 @@ describe('isCurrentMonthDateGroup', () => {
 describe('defaultWalkCollapsedKeys', () => {
   it('não colapsa Este mês / mês atual', () => {
     const now = new Date(2026, 8, 6);
-    expect(defaultWalkCollapsedKeys(['Hoje', 'Esta semana', 'Este mês', 'Mês passado'], now))
+    expect(defaultWalkCollapsedKeys(['Hoje', 'Este mês', 'Mês passado'], now))
       .toEqual(['Mês passado']);
   });
 });
@@ -219,24 +220,24 @@ describe('createDateGroupWalker', () => {
     expect(first.emitParentHeader).toEqual({ key: 'mes_2026-09', label: 'Setembro/2026' });
     expect(first.emitGroupDivider).toBe(false);
     expect(first.showRow).toBe(false);
-    const second = walk('2026-09-02T12:00:00', 'Esta semana');
+    const second = walk('2026-09-02T12:00:00', 'Este mês');
     expect(second.emitParentHeader).toBeNull();
     expect(second.showRow).toBe(false);
-    const outside = walk('2026-08-28T12:00:00', 'Semana passada');
+    const outside = walk('2026-08-28T12:00:00', 'Mês passado');
     expect(outside.emitParentHeader).toBeNull();
     expect(outside.emitGroupDivider).toBe(true);
     expect(outside.showRow).toBe(true);
   });
 
-  it('com mês atual expandido mostra divisorias relativas estáticas dentro', () => {
+  it('com mês atual expandido mostra Hoje; Este mês não vira divisória extra', () => {
     const now = new Date(2026, 8, 6, 15, 0, 0);
     const walk = createDateGroupWalker(new Set(), { now });
     const first = walk('2026-09-06T12:00:00', 'Hoje');
     expect(first.emitParentHeader?.key).toBe('mes_2026-09');
     expect(first.emitGroupDivider).toBe(true);
     expect(first.showRow).toBe(true);
-    const inner = walk('2026-09-02T12:00:00', 'Esta semana');
-    expect(inner.emitGroupDivider).toBe(true);
+    const inner = walk('2026-09-02T12:00:00', 'Este mês');
+    expect(inner.emitGroupDivider).toBe(false);
     expect(inner.showRow).toBe(true);
   });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  getDateGroupLabel,
   cleanString,
   ensureArray,
   toNumber,
@@ -162,5 +163,36 @@ describe('formatDateTimeSeconds / formatQuantity', () => {
     expect(formatQuantity(3)).toBe('3');
     expect(formatQuantity(0.12345)).toBe('0,1235');
     expect(formatQuantity(2.5, 0)).toBe('3');
+  });
+});
+
+
+describe('getDateGroupLabel', () => {
+  it('mantém Hoje e nunca devolve rótulos de semana relativa', () => {
+    const now = new Date();
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00:00`;
+    expect(getDateGroupLabel(iso(now))).toBe('Hoje');
+
+    const midWeek = new Date(now);
+    // outro dia no mesmo mês (não hoje)
+    if (now.getDate() === 1) midWeek.setDate(2);
+    else midWeek.setDate(1);
+    const midLabel = getDateGroupLabel(iso(midWeek));
+    expect(midLabel).not.toMatch(/semana/i);
+    expect(['Este mês', 'Mês passado']).toContain(midLabel);
+
+    const lastWeek = new Date(now);
+    lastWeek.setDate(now.getDate() - 8);
+    const lastLabel = getDateGroupLabel(iso(lastWeek));
+    expect(lastLabel).not.toMatch(/semana/i);
+
+    const nextWeek = new Date(now);
+    nextWeek.setDate(now.getDate() + 8);
+    const nextLabel = getDateGroupLabel(iso(nextWeek));
+    expect(nextLabel).not.toMatch(/semana/i);
+    expect(nextLabel).not.toBe('Esta semana');
+    expect(nextLabel).not.toBe('Semana passada');
+    expect(nextLabel).not.toBe('Próxima semana');
   });
 });

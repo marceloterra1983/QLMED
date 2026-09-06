@@ -83,24 +83,8 @@ export function getDateGroupLabel(dateStr: string): string {
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.floor((today.getTime() - day.getTime()) / 86400000);
 
+  // Só "Hoje" como bucket relativo; semanas relativas foram removidas (SPEC-053).
   if (diffDays === 0) return 'Hoje';
-
-  const dow = today.getDay() || 7;
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - dow + 1);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 7);
-
-  if (day >= startOfWeek && day < endOfWeek && diffDays !== 0) return 'Esta semana';
-
-  const startOfLastWeek = new Date(startOfWeek);
-  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-  if (day >= startOfLastWeek && day < startOfWeek) return 'Semana passada';
-
-  const startOfNextWeek = new Date(endOfWeek);
-  const endOfNextWeek = new Date(startOfNextWeek);
-  endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
-  if (day >= startOfNextWeek && day < endOfNextWeek) return 'Próxima semana';
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
