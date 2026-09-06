@@ -23,7 +23,8 @@ export interface FileResponseOptions {
  * e codificação UTF-8 compatível com navegadores modernos (RFC 5987).
  */
 export function inlineDisposition(fileName: string, fallbackDefault: string = 'arquivo.pdf'): string {
-  const fallback = fileName.replace(/[\\/\r\n"]/g, '_').trim() || fallbackDefault;
+  const sanitized = fileName.replace(/[\\/\r\n"]/g, '_').trim();
+  const fallback = !sanitized || /^_+$/.test(sanitized) ? fallbackDefault : sanitized;
   return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
@@ -40,8 +41,10 @@ export function createStreamFileResponse(
 
   const contentType = options.contentType ?? 'application/pdf';
   const cacheControl = options.cacheControl ?? 'private, max-age=300';
+  const safeName = options.fileName.replace(/[\\/\r\n"]/g, '_').trim();
+  const fallbackName = !safeName || /^_+$/.test(safeName) ? 'arquivo.pdf' : safeName;
   const disposition = options.dispositionType === 'attachment'
-    ? `attachment; filename="${options.fileName.replace(/[\\/\r\n"]/g, '_').trim() || 'arquivo.pdf'}"; filename*=UTF-8''${encodeURIComponent(options.fileName)}`
+    ? `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(options.fileName)}`
     : inlineDisposition(options.fileName);
 
   const headers: Record<string, string> = {

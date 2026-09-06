@@ -87,8 +87,9 @@ export type DocumentosAlertDeps = {
 export function resolveDocumentosWhatsAppTarget(
   config?: EvolutionConfig | null,
 ): DocumentosWhatsAppTarget | null {
+  if (!isDocumentosWhatsAppEnabled()) return null;
   return resolveOperatorWhatsAppTarget({
-    isEnabled: isDocumentosWhatsAppEnabled(),
+    isEnabled: true,
     groupRaw: getDocumentosWhatsAppGroupRaw(),
     config: config === undefined ? getEvolutionConfig() : config,
   });
