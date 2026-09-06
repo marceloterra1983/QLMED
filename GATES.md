@@ -7,10 +7,10 @@ Scope: Marcar autorizações Unimed CG como faturadas cruzando patientName com i
   EXPECT: PIN_OK
   EVIDENCE: PIN_OK 20260906180000_unimed_cg_billing_match
 
-- [ ] G2: test-production-migration-window.cjs passa com o novo pin
+- [x] G2: test-production-migration-window.cjs passa com o novo pin
   CHECK: node scripts/test-production-migration-window.cjs
   EXPECT: Production migration window static contract passed
-  EVIDENCE: pending
+  EVIDENCE: Production migration window static contract passed.
 
 - [x] G3: Vitest do matcher (extractInfCpl, nome, ambíguo, CNPJ)
   CHECK: npx vitest run src/lib/__tests__/unimed-cg-billing-match.test.ts
@@ -47,10 +47,10 @@ Scope: Marcar autorizações Unimed CG como faturadas cruzando patientName com i
   EXPECT: 
   EVIDENCE: (no output)
 
-- [ ] G10: Preview :3002 smoke HTTP após UI
+- [x] G10: Preview :3002 smoke HTTP após UI
   CHECK: bash -c 'code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/gestao/unimed-cg); echo "SMOKE_$code"; case "$code" in 200|302|307|401|403) exit 0;; *) exit 1;; esac'
   EXPECT: SMOKE_
-  EVIDENCE: pending
+  EVIDENCE: SMOKE_307
 
 - [x] G11: system-routines documenta match de faturamento Unimed CG
   CHECK: rg -n "faturad|billing.match|infCpl|03315918" src/lib/system-routines.ts
