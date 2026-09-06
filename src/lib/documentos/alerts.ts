@@ -1,12 +1,15 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
-import { getConfiguredWhatsAppGroup } from '@/lib/notification-outbox';
 import {
   getEvolutionConfig,
-  sendWhatsAppDocument,
   type EvolutionConfig,
 } from '@/lib/whatsapp-evolution';
+import {
+  resolveOperatorWhatsAppTarget,
+  type OperatorWhatsAppPort,
+  type OperatorWhatsAppTarget,
+} from '@/lib/operator-whatsapp-notify';
 import {
   markBackgroundServiceError,
   markBackgroundServiceHeartbeat,
@@ -43,19 +46,8 @@ import {
 const log = createLogger('documentos/alerts');
 const SAO_PAULO = 'America/Sao_Paulo';
 
-export type DocumentosWhatsAppPort = {
-  sendDocument(input: {
-    jid: string;
-    fileName: string;
-    content: Buffer;
-    caption: string;
-  }): Promise<{ messageId: string | null }>;
-};
-
-export type DocumentosWhatsAppTarget = {
-  jid: string;
-  port: DocumentosWhatsAppPort;
-};
+export type DocumentosWhatsAppPort = OperatorWhatsAppPort;
+export type DocumentosWhatsAppTarget = OperatorWhatsAppTarget;
 
 type AlertDoc = {
   id: string;
@@ -96,17 +88,11 @@ export function resolveDocumentosWhatsAppTarget(
   config?: EvolutionConfig | null,
 ): DocumentosWhatsAppTarget | null {
   if (!isDocumentosWhatsAppEnabled()) return null;
-  const jid = getConfiguredWhatsAppGroup(getDocumentosWhatsAppGroupRaw());
-  if (!jid) return null;
-  const resolved = config === undefined ? getEvolutionConfig() : config;
-  if (!resolved) return null;
-
-  return {
-    jid,
-    port: {
-      sendDocument: (input) => sendWhatsAppDocument(input, resolved),
-    },
-  };
+  return resolveOperatorWhatsAppTarget({
+    isEnabled: true,
+    groupRaw: getDocumentosWhatsAppGroupRaw(),
+    config: config === undefined ? getEvolutionConfig() : config,
+  });
 }
 
 function prazoPhrase(days: number): string {

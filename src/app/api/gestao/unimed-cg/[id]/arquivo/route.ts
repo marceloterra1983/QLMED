@@ -6,16 +6,12 @@ import { getUnimedCgAuthorization } from '@/lib/unimed-cg/store';
 import { UNIMED_CG_ONEDRIVE_ACCOUNT } from '@/lib/unimed-cg/constants';
 import { openOneDriveItemContent } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
+import { createStreamFileResponse } from '@/lib/file-response';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
 import { requireUnimedCgPage } from '@/lib/unimed-cg/access';
 
 const log = createLogger('gestao/unimed-cg/:id/arquivo');
-
-function inlineDisposition(fileName: string): string {
-  const fallback = fileName.replace(/[\\/\r\n"]/g, '_') || 'autorizacao.pdf';
-  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 export async function GET(
   _req: Request,
@@ -55,6 +51,9 @@ export async function GET(
       connection.driveId,
       row.oneDriveItemId,
     );
+    if (!content.body) {
+      return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
+    }
 
     log.info(
       { authorizationId: row.id, bytes: content.size, durationMs: Date.now() - startedAt },
@@ -71,13 +70,10 @@ export async function GET(
       })
       .catch((err) => log.warn({ err, authorizationId: row.id }, 'AccessLog unimed-cg pdf write failed'));
 
-    return new Response(content.body, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': inlineDisposition(row.fileName),
-        'Cache-Control': 'private, no-store',
-        ...(content.size !== null ? { 'Content-Length': String(content.size) } : {}),
-      },
+    return createStreamFileResponse(content.body, {
+      fileName: row.fileName,
+      contentLength: content.size,
+      cacheControl: 'private, no-store',
     });
   } catch (error) {
     log.error({ err: error }, 'Falha ao servir PDF Unimed CG');
