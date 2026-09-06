@@ -8,103 +8,94 @@ export {};
  *      and QLMED_DISABLE_BACKGROUND_SERVICES is not 'true'
  *   2. sync-scheduler and local-xml-sync share the single PrismaClient from prisma.ts
  *   3. No circular dependency: prisma.ts ➜ (dynamic) bootstrap.ts ➜ sync-scheduler / local-xml-sync ➜ prisma.ts
+ *
+ * Registra todas as rotinas em segundo plano no BackgroundSupervisor para
+ * supervisão coordenada, atraso escalonado (staggered) e parada graciosa.
  */
 
-import { createLogger } from '@/lib/logger';
+import { backgroundSupervisor } from '@/lib/background-supervisor';
 
-const log = createLogger('bootstrap');
+backgroundSupervisor
+  .register({
+    name: 'auto-sync',
+    description: 'Sincronização SEFAZ / NSDocs / Receita NFS-e',
+    delayMs: 10_000,
+    start: async () => {
+      const { startAutoSync } = await import('./sync-scheduler');
+      startAutoSync();
+    },
+  })
+  .register({
+    name: 'local-xml-sync',
+    description: 'Sincronização contínua de XML e backup local/OneDrive',
+    delayMs: 12_000,
+    start: async () => {
+      const { startLocalXmlSync } = await import('./local-xml-sync');
+      startLocalXmlSync();
+    },
+  })
+  .register({
+    name: 'impcg-mail-ingest',
+    description: 'Ingestão de e-mails e ofícios IMPCG',
+    delayMs: 14_000,
+    start: async () => {
+      const { startImpcgMailIngest } = await import('./impcg/ingest');
+      startImpcgMailIngest();
+    },
+  })
+  .register({
+    name: 'cassems-mail-ingest',
+    description: 'Ingestão de e-mails e ofícios CASSEMS',
+    delayMs: 16_000,
+    start: async () => {
+      const { startCassemsMailIngest } = await import('./cassems/ingest');
+      startCassemsMailIngest();
+    },
+  })
+  .register({
+    name: 'unimed-cg-mail-ingest',
+    description: 'Ingestão de e-mails e autorizações Unimed Campo Grande',
+    delayMs: 10_000,
+    start: async () => {
+      const { startUnimedCgMailIngest } = await import('./unimed-cg/ingest');
+      startUnimedCgMailIngest();
+    },
+  })
+  .register({
+    name: 'documentos-ingest',
+    description: 'Varredura e ingestão de certidões e documentos',
+    delayMs: 20_000,
+    start: async () => {
+      const { startDocumentosIngest } = await import('./documentos/ingest');
+      startDocumentosIngest();
+    },
+  })
+  .register({
+    name: 'documentos-alert',
+    description: 'Verificação periódica de vencimento de certidões e alerta WhatsApp',
+    delayMs: 22_000,
+    start: async () => {
+      const { startDocumentosAlert } = await import('./documentos/alerts');
+      startDocumentosAlert();
+    },
+  })
+  .register({
+    name: 'daily-issued-summary',
+    description: 'Resumo diário nativo às 18h de notas emitidas',
+    delayMs: 24_000,
+    start: async () => {
+      const { startDailyIssuedSummary } = await import('./daily-issued-summary-job');
+      startDailyIssuedSummary();
+    },
+  })
+  .register({
+    name: 'notification-outbox-purge',
+    description: 'Purga periódica de eventos antigos do Transactional Outbox',
+    delayMs: 18_000,
+    start: async () => {
+      const { startNotificationOutboxPurge } = await import('./notification-outbox');
+      startNotificationOutboxPurge();
+    },
+  });
 
-const globalForBootstrap = globalThis as unknown as {
-  __autoSyncStarted?: boolean;
-  __localXmlSyncStarted?: boolean;
-  __impcgIngestStarted?: boolean;
-  __cassemsIngestStarted?: boolean;
-  __unimedCgIngestStarted?: boolean;
-  __documentosIngestStarted?: boolean;
-  __documentosAlertStarted?: boolean;
-  __dailyIssuedSummaryStarted?: boolean;
-  __outboxPurgeStarted?: boolean;
-};
-
-if (!globalForBootstrap.__autoSyncStarted) {
-  globalForBootstrap.__autoSyncStarted = true;
-  setTimeout(() => {
-    import('./sync-scheduler')
-      .then((m) => m.startAutoSync())
-      .catch((err) => log.error({ err }, 'AutoSync falha ao iniciar'));
-  }, 10_000);
-}
-
-if (!globalForBootstrap.__localXmlSyncStarted) {
-  globalForBootstrap.__localXmlSyncStarted = true;
-  setTimeout(() => {
-    import('./local-xml-sync')
-      .then((m) => m.startLocalXmlSync())
-      .catch((err) => log.error({ err }, 'LocalXmlSync falha ao iniciar'));
-  }, 12_000);
-}
-
-if (!globalForBootstrap.__impcgIngestStarted) {
-  globalForBootstrap.__impcgIngestStarted = true;
-  setTimeout(() => {
-    import('./impcg/ingest')
-      .then((m) => m.startImpcgMailIngest())
-      .catch((err) => log.error({ err }, 'ImpcgMailIngest falha ao iniciar'));
-  }, 14_000);
-}
-
-if (!globalForBootstrap.__cassemsIngestStarted) {
-  globalForBootstrap.__cassemsIngestStarted = true;
-  setTimeout(() => {
-    import('./cassems/ingest')
-      .then((m) => m.startCassemsMailIngest())
-      .catch((err) => log.error({ err }, 'CassemsMailIngest falha ao iniciar'));
-  }, 16_000);
-}
-
-
-if (!globalForBootstrap.__unimedCgIngestStarted) {
-  globalForBootstrap.__unimedCgIngestStarted = true;
-  setTimeout(() => {
-    import('./unimed-cg/ingest')
-      .then((m) => m.startUnimedCgMailIngest())
-      .catch((err) => log.error({ err }, 'UnimedCgMailIngest falha ao iniciar'));
-  }, 10_000);
-}
-
-if (!globalForBootstrap.__documentosIngestStarted) {
-  globalForBootstrap.__documentosIngestStarted = true;
-  setTimeout(() => {
-    import('./documentos/ingest')
-      .then((m) => m.startDocumentosIngest())
-      .catch((err) => log.error({ err }, 'DocumentosIngest falha ao iniciar'));
-  }, 20_000);
-}
-
-if (!globalForBootstrap.__documentosAlertStarted) {
-  globalForBootstrap.__documentosAlertStarted = true;
-  setTimeout(() => {
-    import('./documentos/alerts')
-      .then((m) => m.startDocumentosAlert())
-      .catch((err) => log.error({ err }, 'DocumentosAlert falha ao iniciar'));
-  }, 22_000);
-}
-
-
-if (!globalForBootstrap.__dailyIssuedSummaryStarted) {
-  globalForBootstrap.__dailyIssuedSummaryStarted = true;
-  setTimeout(() => {
-    import('./daily-issued-summary-job')
-      .then((m) => m.startDailyIssuedSummary())
-      .catch((err) => log.error({ err }, 'DailyIssuedSummary falha ao iniciar'));
-  }, 24_000);
-}
-
-if (!globalForBootstrap.__outboxPurgeStarted) {
-  globalForBootstrap.__outboxPurgeStarted = true;
-  setTimeout(() => {
-    import('./notification-outbox')
-      .then((m) => m.startNotificationOutboxPurge())
-      .catch((err) => log.error({ err }, 'NotificationOutboxPurge falha ao iniciar'));
-  }, 18_000);
-}
+backgroundSupervisor.startAll();

@@ -13,19 +13,17 @@ import { extractAllTaxData } from '@/lib/parse-invoice-tax';
 import { upsertTaxTotals, upsertItemTaxes } from '@/lib/invoice-tax-store';
 import { extractPartyFiscalData } from '@/lib/parse-invoice-xml';
 import { upsertContactFiscal } from '@/lib/contact-fiscal-store';
-import { extractAndStoreDuplicatas } from '@/lib/invoice-duplicata-store';
 import { acquirePostgresAdvisoryLock, type PostgresAdvisoryLock } from '@/lib/postgres-advisory-lock';
-import { linkInvoiceItems } from '@/lib/nfe-item-link/store';
 import { productAggregateLockKey } from '@/lib/postgres-advisory-lock';
 import type { Prisma } from '@prisma/client';
 
 const log = createLogger('product-aggregate-updater');
 
 /**
- * Update product aggregates for a single invoice after it's been upserted.
- * Lightweight incremental update — processes only products in this invoice.
+ * Update product aggregates strictly for a single invoice (incremental).
+ * Focuses purely on product metrics and inventory aggregates.
  */
-export async function updateProductAggregatesForInvoice(opts: {
+export async function updateProductAggregatesOnly(opts: {
   companyId: string;
   invoiceId: string;
   xmlContent: string;
@@ -76,43 +74,32 @@ export async function updateProductAggregatesForInvoice(opts: {
         });
       }
     }
-
-    await extractAndStoreTaxData(opts.invoiceId, opts.companyId, opts.xmlContent);
-    await extractAndStoreContactFiscal(opts.invoiceId, opts.companyId, opts.xmlContent);
-    await extractAndStoreDuplicatas(opts.invoiceId, opts.companyId, opts.xmlContent);
-    if (opts.direction === 'received') {
-      await linkReceivedItems(opts);
-    }
   } finally {
     await aggregateLock?.release();
   }
 }
 
 /**
- * SPEC-047: cada item da nota recebida tenta vincular-se a um produto Spica
- * (cascata S1..S6). Falha aqui não pode derrubar a ingestão da nota.
+ * @deprecated Use `processIngestedInvoice` from `@/lib/invoice-ingest-pipeline`.
+ * Maintained as an alias for backwards compatibility across callers and tests.
  */
-async function linkReceivedItems(opts: {
+export async function updateProductAggregatesForInvoice(opts: {
   companyId: string;
   invoiceId: string;
   xmlContent: string;
-  senderCnpj: string | null;
+  updateAggregates?: boolean;
+  direction: 'received' | 'issued';
+  issueDate: Date | null;
   senderName: string | null;
-}) {
-  try {
-    const stats = await linkInvoiceItems({
-      id: opts.invoiceId,
-      companyId: opts.companyId,
-      senderCnpj: opts.senderCnpj || '',
-      senderName: opts.senderName,
-      xmlContent: opts.xmlContent,
-    });
-    if (stats.writes > 0) {
-      log.info({ invoiceId: opts.invoiceId, linked: stats.linked, pending: stats.pending, writes: stats.writes }, 'nfe item links');
-    }
-  } catch (error) {
-    log.warn({ invoiceId: opts.invoiceId, error: error instanceof Error ? error.message : String(error) }, 'nfe item link failed');
-  }
+  senderCnpj: string | null;
+  recipientName: string | null;
+  recipientCnpj: string | null;
+  invoiceNumber: string | null;
+  ignoreRebuildCutoff?: boolean;
+  aggregateLockHeld?: boolean;
+}): Promise<void> {
+  const { processIngestedInvoice } = await import('@/lib/invoice-ingest-pipeline');
+  await processIngestedInvoice(opts);
 }
 
 function mergeProductLines(products: ProductFromXml[]): ProductFromXml[] {
@@ -158,7 +145,7 @@ function pickIfNewerOrFirst<T>(
   return (oldVal ?? newVal) as T;
 }
 
-async function extractAndStoreTaxData(
+export async function extractAndStoreTaxData(
   invoiceId: string,
   companyId: string,
   xmlContent: string,
@@ -410,7 +397,7 @@ async function updateSaleDate(
   }
 }
 
-async function extractAndStoreContactFiscal(
+export async function extractAndStoreContactFiscal(
   invoiceId: string,
   companyId: string,
   xmlContent: string,

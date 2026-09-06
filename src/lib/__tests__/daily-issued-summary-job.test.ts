@@ -223,4 +223,85 @@ describe('daily-issued-summary-job', () => {
     expect(second.status).toBe('already_sent');
     expect(send).toHaveBeenCalledTimes(1);
   });
+
+  it('isDailySummarySent detects database claim without disk file', async () => {
+    vi.doMock('@/lib/prisma', () => ({
+      default: {
+        dailyIssuedSummarySend: {
+          findUnique: async () => ({ sentAt: new Date() }),
+        },
+      },
+    }));
+    const mod = await import('@/lib/daily-issued-summary-job');
+    mod.__resetDailySummarySentMemory();
+    // disk is clean, but DB has sent claim
+    expect(mod.readSentDateFromDisk('2026-09-05')).toBe(false);
+    expect(await mod.isDailySummarySent('2026-09-05')).toBe(true);
+  });
+
+  it('preserves claim on partial send error to prevent duplicate spam', async () => {
+    let markDbSentCalled = false;
+    let releaseDbClaimCalled = false;
+    vi.doMock('@/lib/single-company', () => ({
+      getSingleCompany: async () => ({ id: 'c1', cnpj: 'x' }),
+    }));
+    vi.doMock('@/lib/prisma', () => ({
+      default: {
+        invoice: {
+          findMany: async () => [
+            { number: '1', totalValue: 100, cfop: '5102', cancelledAt: null, recipientCnpj: '1', recipientName: 'A' },
+            { number: '2', totalValue: 200, cfop: '5102', cancelledAt: null, recipientCnpj: '2', recipientName: 'B' },
+          ],
+        },
+        contactNickname: { findMany: async () => [] },
+        dailyIssuedSummarySend: {
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => { markDbSentCalled = true; return {}; },
+          deleteMany: async () => { releaseDbClaimCalled = true; return { count: 0 }; },
+        },
+        $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+          fn({
+            dailyIssuedSummarySend: {
+              findUnique: async () => null,
+              create: async () => ({}),
+            },
+          }),
+      },
+    }));
+    vi.doMock('@/lib/postgres-advisory-lock', () => ({
+      acquirePostgresAdvisoryLock: async () => ({ release: async () => undefined }),
+      acquirePostgresTransactionAdvisoryLock: async () => undefined,
+    }));
+    vi.doMock('@/lib/daily-issued-summary-message', async () => {
+      const actual = await vi.importActual<Record<string, unknown>>('@/lib/daily-issued-summary-message');
+      return {
+        ...actual,
+        buildDailyIssuedSummaryMessages: () => [
+          { jid: 'group@g.us', text: 'Mensagem 1' },
+          { jid: 'group@g.us', text: 'Mensagem 2' },
+        ],
+      };
+    });
+    let sendCalls = 0;
+    vi.doMock('@/lib/whatsapp-evolution', () => ({
+      getEvolutionConfig: () => ({
+        baseUrl: 'https://evolution.qlmed.com.br',
+        instance: 'qlmed',
+        apiKey: 'k',
+      }),
+      sendWhatsAppText: vi.fn(async () => {
+        sendCalls += 1;
+        if (sendCalls > 1) throw new Error('Simulated network timeout on second message');
+      }),
+    }));
+    const mod = await import('@/lib/daily-issued-summary-job');
+    mod.__resetDailySummarySentMemory();
+    const result = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:00:00.000Z') });
+    expect(result.status).toBe('error');
+    expect(result.sent).toBeGreaterThanOrEqual(1);
+    // Deve preservar o claim no banco (markDbSent) e NÃO liberar (releaseDbClaim) para evitar spam
+    expect(markDbSentCalled).toBe(true);
+    expect(releaseDbClaimCalled).toBe(false);
+  });
 });

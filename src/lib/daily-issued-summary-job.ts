@@ -76,7 +76,24 @@ export function wasAlreadySentOnDisk(dateISO: string): boolean {
   return false;
 }
 
-/** @deprecated use wasAlreadySentOnDisk — kept for tests/catch-up local */
+/**
+ * Consulta de envio canônica: verifica claim no Postgres primeiro, com
+ * fallback gracioso para cache de disco e memória.
+ */
+export async function isDailySummarySent(dateISO: string): Promise<boolean> {
+  if (lastSentDate === dateISO) return true;
+  try {
+    if (await hasDbSentClaim(dateISO)) {
+      lastSentDate = dateISO;
+      return true;
+    }
+  } catch {
+    // fallback para disco em caso de falha de conexão com o banco
+  }
+  return wasAlreadySentOnDisk(dateISO);
+}
+
+/** @deprecated use isDailySummarySent ou wasAlreadySentOnDisk — mantido para compatibilidade */
 export function wasAlreadySent(dateISO: string): boolean {
   return wasAlreadySentOnDisk(dateISO);
 }
@@ -194,19 +211,8 @@ export async function runDailyIssuedSummary(options?: {
     };
   }
 
-  if (!dryRun && wasAlreadySentOnDisk(dateISO)) {
-    return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent-disk' };
-  }
-
-  if (!dryRun) {
-    try {
-      if (await hasDbSentClaim(dateISO)) {
-        markSentOnDisk(dateISO);
-        return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent-db' };
-      }
-    } catch (err) {
-      log.warn({ err }, 'daily_summary_db_claim_read_failed');
-    }
+  if (!dryRun && (await isDailySummarySent(dateISO))) {
+    return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent' };
   }
 
   const company = await getSingleCompany();
@@ -311,6 +317,7 @@ export async function runDailyIssuedSummary(options?: {
   }
 
   let claimed = false;
+  let sent = 0;
   try {
     if (wasAlreadySentOnDisk(dateISO) || (await hasDbSentClaim(dateISO))) {
       markSentOnDisk(dateISO);
@@ -323,7 +330,6 @@ export async function runDailyIssuedSummary(options?: {
       return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'claim-lost' };
     }
 
-    let sent = 0;
     for (const msg of messages) {
       await sendWhatsAppText({ jid: msg.jid, text: msg.text }, config);
       sent += 1;
@@ -333,17 +339,21 @@ export async function runDailyIssuedSummary(options?: {
     log.info({ date: dateISO, sent }, 'daily_summary_sent');
     return { status: 'sent', date: dateISO, messages, sent };
   } catch (err) {
-    if (claimed) {
+    if (claimed && sent === 0) {
       await releaseDbClaim(dateISO).catch((releaseErr) => {
         log.warn({ err: releaseErr, date: dateISO }, 'daily_summary_claim_release_failed');
       });
+    } else if (claimed && sent > 0) {
+      await markDbSent(dateISO).catch(() => undefined);
+      markSentOnDisk(dateISO);
+      log.warn({ date: dateISO, sent }, 'daily_summary_partial_send_claim_preserved');
     }
     log.error({ err, date: dateISO }, 'daily_summary_send_failed');
     return {
       status: 'error',
       date: dateISO,
       messages,
-      sent: 0,
+      sent,
       reason: err instanceof Error ? err.message : 'send-failed',
     };
   } finally {
