@@ -77,22 +77,27 @@ function calculateBackoff(
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  const activeSignal = signal;
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      return reject(signal.reason ?? new Error('Aborted'));
+    if (activeSignal.aborted) {
+      return reject(activeSignal.reason ?? new Error('Aborted'));
     }
     const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
+      activeSignal.removeEventListener('abort', onAbort);
       resolve();
     }, ms);
 
     const onAbort = () => {
       clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-      reject(signal.reason ?? new Error('Aborted'));
+      activeSignal.removeEventListener('abort', onAbort);
+      reject(activeSignal.reason ?? new Error('Aborted'));
     };
 
-    signal?.addEventListener('abort', onAbort, { once: true });
+    activeSignal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
