@@ -47,7 +47,8 @@ write_status() {
 
 already_sent_today() {
   local want_date=$1
-  if [[ -f "$state_root/sent-${want_date}" ]]; then
+  # Job nativo grava sent_YYYY-MM-DD; versões antigas do catch-up usavam sent-.
+  if [[ -f "$state_root/sent_${want_date}" || -f "$state_root/sent-${want_date}" ]]; then
     return 0
   fi
   if [[ -f "$state_root/status" ]] && grep -q "^sent_date=${want_date}$" "$state_root/status"; then
@@ -131,8 +132,8 @@ if (( dry_run == 1 )); then
 fi
 
 if already_sent_today "$cg_date" || grep -qE '"status"[[:space:]]*:[[:space:]]*"(sent|already_sent)"' /tmp/qlmed-daily-summary-catchup.body 2>/dev/null; then
-  printf '%s\n' "$cg_date" >"$state_root/sent-${cg_date}"
-  chmod 0600 "$state_root/sent-${cg_date}" || true
+  printf '%s\n' "$cg_date" >"$state_root/sent_${cg_date}"
+  chmod 0600 "$state_root/sent_${cg_date}" || true
   log "OK catchup-sent date=$cg_date"
   write_status "result=ok" "reason=catchup-sent" "cg_date=$cg_date" "sent_date=$cg_date"
   exit 0
