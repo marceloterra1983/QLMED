@@ -11,6 +11,8 @@ describe('daily-issued-summary-job', () => {
     stateDir = mkdtempSync(join(tmpdir(), 'daily-sum-'));
     process.env.DAILY_SUMMARY_STATE_DIR = stateDir;
     process.env.DAILY_SUMMARY_NATIVE = '1';
+    process.env.DAILY_SUMMARY_ALLOW_SEND = '1';
+    process.env.NEXTAUTH_URL = 'https://app.qlmed.com.br';
     delete process.env.DAILY_SUMMARY_DRY_RUN;
     process.env.NOTIFICATION_WHATSAPP_GROUP = '120363411914746947@g.us';
     process.env.EVO_API_URL = 'https://evolution.qlmed.com.br';
@@ -21,6 +23,7 @@ describe('daily-issued-summary-job', () => {
   afterEach(() => {
     rmSync(stateDir, { recursive: true, force: true });
     delete process.env.DAILY_SUMMARY_STATE_DIR;
+    delete process.env.DAILY_SUMMARY_ALLOW_SEND;
   });
 
   it('campoGrandeDayUtcBounds spans 24h', async () => {
@@ -35,6 +38,24 @@ describe('daily-issued-summary-job', () => {
     mod.__resetDailySummarySentMemory();
     const r = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:00:00.000Z') });
     expect(r.status).toBe('disabled');
+  });
+
+  it('refuses preview NEXTAUTH_URL without ALLOW_SEND', async () => {
+    delete process.env.DAILY_SUMMARY_ALLOW_SEND;
+    process.env.NEXTAUTH_URL = 'http://100.83.11.58:3002';
+    const mod = await import('@/lib/daily-issued-summary-job');
+    expect(mod.isDailySummarySenderAllowed()).toBe(false);
+    mod.__resetDailySummarySentMemory();
+    const r = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:00:00.000Z') });
+    expect(r.status).toBe('skipped');
+    expect(r.reason).toBe('sender-not-production');
+  });
+
+  it('allows production NEXTAUTH_URL', async () => {
+    delete process.env.DAILY_SUMMARY_ALLOW_SEND;
+    process.env.NEXTAUTH_URL = 'https://app.qlmed.com.br';
+    const mod = await import('@/lib/daily-issued-summary-job');
+    expect(mod.isDailySummarySenderAllowed()).toBe(true);
   });
 
   it('dry-run builds messages without sending', async () => {
@@ -57,10 +78,18 @@ describe('daily-issued-summary-job', () => {
           ],
         },
         contactNickname: { findMany: async () => [] },
+        dailyIssuedSummarySend: {
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          deleteMany: async () => ({ count: 0 }),
+        },
+        $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({}),
       },
     }));
     vi.doMock('@/lib/postgres-advisory-lock', () => ({
       acquirePostgresAdvisoryLock: async () => ({ release: async () => undefined }),
+      acquirePostgresTransactionAdvisoryLock: async () => undefined,
     }));
     const send = vi.fn();
     vi.doMock('@/lib/whatsapp-evolution', () => ({
@@ -89,5 +118,109 @@ describe('daily-issued-summary-job', () => {
     mod.markSentOnDisk('2026-09-05');
     expect(mod.readSentDateFromDisk('2026-09-05')).toBe(true);
     expect(existsSync(join(stateDir, 'sent_2026-09-05'))).toBe(true);
+  });
+
+  it('skips send when advisory lock not acquired', async () => {
+    vi.doMock('@/lib/single-company', () => ({
+      getSingleCompany: async () => ({ id: 'c1', cnpj: 'x' }),
+    }));
+    vi.doMock('@/lib/prisma', () => ({
+      default: {
+        invoice: { findMany: async () => [] },
+        contactNickname: { findMany: async () => [] },
+        dailyIssuedSummarySend: {
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          deleteMany: async () => ({ count: 0 }),
+        },
+        $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+          fn({
+            dailyIssuedSummarySend: {
+              findUnique: async () => null,
+              create: async () => ({}),
+            },
+          }),
+      },
+    }));
+    vi.doMock('@/lib/postgres-advisory-lock', () => ({
+      acquirePostgresAdvisoryLock: async () => null,
+      acquirePostgresTransactionAdvisoryLock: async () => undefined,
+    }));
+    const send = vi.fn();
+    vi.doMock('@/lib/whatsapp-evolution', () => ({
+      getEvolutionConfig: () => ({
+        baseUrl: 'https://evolution.qlmed.com.br',
+        instance: 'qlmed',
+        apiKey: 'k',
+      }),
+      sendWhatsAppText: send,
+    }));
+    const mod = await import('@/lib/daily-issued-summary-job');
+    mod.__resetDailySummarySentMemory();
+    const r = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:00:00.000Z') });
+    expect(r.status).toBe('skipped');
+    expect(r.reason).toBe('lock_not_acquired');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('second claim loses — already_sent without WhatsApp', async () => {
+    let claimed = false;
+    vi.doMock('@/lib/single-company', () => ({
+      getSingleCompany: async () => ({ id: 'c1', cnpj: 'x' }),
+    }));
+    vi.doMock('@/lib/prisma', () => ({
+      default: {
+        invoice: { findMany: async () => [] },
+        contactNickname: { findMany: async () => [] },
+        dailyIssuedSummarySend: {
+          findUnique: async () => (claimed ? { sentAt: new Date() } : null),
+          create: async () => {
+            if (claimed) throw Object.assign(new Error('unique'), { code: 'P2002' });
+            claimed = true;
+            return {};
+          },
+          update: async () => ({}),
+          deleteMany: async () => ({ count: 0 }),
+        },
+        $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+          fn({
+            dailyIssuedSummarySend: {
+              findUnique: async () => (claimed ? { dateISO: '2026-09-05' } : null),
+              create: async () => {
+                if (claimed) return null;
+                claimed = true;
+                return {};
+              },
+            },
+          }),
+      },
+    }));
+    vi.doMock('@/lib/postgres-advisory-lock', () => ({
+      acquirePostgresAdvisoryLock: async () => ({ release: async () => undefined }),
+      acquirePostgresTransactionAdvisoryLock: async () => undefined,
+    }));
+    const send = vi.fn(async () => undefined);
+    vi.doMock('@/lib/whatsapp-evolution', () => ({
+      getEvolutionConfig: () => ({
+        baseUrl: 'https://evolution.qlmed.com.br',
+        instance: 'qlmed',
+        apiKey: 'k',
+      }),
+      sendWhatsAppText: send,
+    }));
+    const mod = await import('@/lib/daily-issued-summary-job');
+    mod.__resetDailySummarySentMemory();
+    const first = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:00:00.000Z') });
+    expect(first.status).toBe('sent');
+    expect(send).toHaveBeenCalledTimes(1);
+    mod.__resetDailySummarySentMemory();
+    // clear disk so second pass hits DB claim
+    rmSync(stateDir, { recursive: true, force: true });
+    stateDir = mkdtempSync(join(tmpdir(), 'daily-sum-'));
+    process.env.DAILY_SUMMARY_STATE_DIR = stateDir;
+    const second = await mod.runDailyIssuedSummary({ now: new Date('2026-09-05T22:05:00.000Z') });
+    expect(second.status).toBe('already_sent');
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

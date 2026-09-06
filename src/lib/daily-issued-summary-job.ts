@@ -5,7 +5,10 @@ import { createLogger } from '@/lib/logger';
 import { getSingleCompany } from '@/lib/single-company';
 import { getConfiguredWhatsAppGroup } from '@/lib/notification-outbox';
 import { getEvolutionConfig, sendWhatsAppText } from '@/lib/whatsapp-evolution';
-import { acquirePostgresAdvisoryLock } from '@/lib/postgres-advisory-lock';
+import {
+  acquirePostgresAdvisoryLock,
+  acquirePostgresTransactionAdvisoryLock,
+} from '@/lib/postgres-advisory-lock';
 import {
   buildDailyIssuedSummaryMessages,
   campoGrandeDayUtcBounds,
@@ -21,6 +24,7 @@ const log = createLogger('daily-issued-summary');
 
 const TICK_MS = 60_000;
 const LOCK_KEY = 'daily-issued-summary';
+const PROD_APP_ORIGIN = 'https://app.qlmed.com.br';
 
 let lastSentDate: string | null = null;
 
@@ -63,7 +67,7 @@ export function markSentOnDisk(dateISO: string): void {
   }
 }
 
-export function wasAlreadySent(dateISO: string): boolean {
+export function wasAlreadySentOnDisk(dateISO: string): boolean {
   if (lastSentDate === dateISO) return true;
   if (readSentDateFromDisk(dateISO)) {
     lastSentDate = dateISO;
@@ -72,9 +76,30 @@ export function wasAlreadySent(dateISO: string): boolean {
   return false;
 }
 
+/** @deprecated use wasAlreadySentOnDisk — kept for tests/catch-up local */
+export function wasAlreadySent(dateISO: string): boolean {
+  return wasAlreadySentOnDisk(dateISO);
+}
+
 /** Test helper — reset in-process idempotency. */
 export function __resetDailySummarySentMemory(): void {
   lastSentDate = null;
+}
+
+/**
+ * Só produção pública pode enviar WhatsApp do resumo.
+ * Preview (:3002) e dev herdam Evolution de app.env — sem este gate, duplicam.
+ * Override explícito: DAILY_SUMMARY_ALLOW_SEND=1|0.
+ */
+export function isDailySummarySenderAllowed(): boolean {
+  const allow = (process.env.DAILY_SUMMARY_ALLOW_SEND ?? '').trim();
+  if (allow === '0') return false;
+  if (allow === '1') return true;
+  const base = (process.env.NEXTAUTH_URL || process.env.QLMED_APP_URL || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .toLowerCase();
+  return base === PROD_APP_ORIGIN;
 }
 
 function resolveRecipients(): string[] {
@@ -100,6 +125,49 @@ export type DailyIssuedSummaryResult = {
   reason?: string;
 };
 
+export async function hasDbSentClaim(dateISO: string): Promise<boolean> {
+  const row = await prisma.dailyIssuedSummarySend.findUnique({
+    where: { dateISO },
+    select: { sentAt: true },
+  });
+  return Boolean(row?.sentAt);
+}
+
+/**
+ * Claim atómico: só um processo no cluster (prod+preview+catch-up) ganha o dia.
+ * Retorna false se já existir claim (enviado ou em curso).
+ */
+export async function tryClaimDailySummarySend(
+  dateISO: string,
+  source: string,
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    await acquirePostgresTransactionAdvisoryLock(tx, `${LOCK_KEY}:${dateISO}`);
+    const existing = await tx.dailyIssuedSummarySend.findUnique({
+      where: { dateISO },
+      select: { dateISO: true },
+    });
+    if (existing) return false;
+    await tx.dailyIssuedSummarySend.create({
+      data: { dateISO, source, claimedAt: new Date() },
+    });
+    return true;
+  });
+}
+
+export async function markDbSent(dateISO: string): Promise<void> {
+  await prisma.dailyIssuedSummarySend.update({
+    where: { dateISO },
+    data: { sentAt: new Date() },
+  });
+}
+
+export async function releaseDbClaim(dateISO: string): Promise<void> {
+  await prisma.dailyIssuedSummarySend.deleteMany({
+    where: { dateISO, sentAt: null },
+  });
+}
+
 export async function runDailyIssuedSummary(options?: {
   now?: Date;
   dryRun?: boolean;
@@ -112,8 +180,33 @@ export async function runDailyIssuedSummary(options?: {
     return { status: 'disabled', date: dateISO, messages: [], sent: 0, reason: 'DAILY_SUMMARY_NATIVE=0' };
   }
 
-  if (wasAlreadySent(dateISO) && !dryRun) {
-    return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent' };
+  if (!dryRun && !isDailySummarySenderAllowed()) {
+    log.warn(
+      { nextAuthUrl: process.env.NEXTAUTH_URL, date: dateISO },
+      'daily_summary_sender_refused',
+    );
+    return {
+      status: 'skipped',
+      date: dateISO,
+      messages: [],
+      sent: 0,
+      reason: 'sender-not-production',
+    };
+  }
+
+  if (!dryRun && wasAlreadySentOnDisk(dateISO)) {
+    return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent-disk' };
+  }
+
+  if (!dryRun) {
+    try {
+      if (await hasDbSentClaim(dateISO)) {
+        markSentOnDisk(dateISO);
+        return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent-db' };
+      }
+    } catch (err) {
+      log.warn({ err }, 'daily_summary_db_claim_read_failed');
+    }
   }
 
   const company = await getSingleCompany();
@@ -157,7 +250,7 @@ export async function runDailyIssuedSummary(options?: {
   const nicknames: Record<string, string> = {};
   for (const row of nickRows) nicknames[row.cnpj] = row.shortName;
 
-  const appBaseUrl = (process.env.NEXTAUTH_URL || process.env.QLMED_APP_URL || 'https://app.qlmed.com.br').replace(
+  const appBaseUrl = (process.env.NEXTAUTH_URL || process.env.QLMED_APP_URL || PROD_APP_ORIGIN).replace(
     /\/+$/,
     '',
   );
@@ -198,11 +291,36 @@ export async function runDailyIssuedSummary(options?: {
     lock = await acquirePostgresAdvisoryLock(LOCK_KEY, { wait: false });
   } catch (err) {
     log.warn({ err }, 'daily_summary_lock_unavailable');
+    return {
+      status: 'skipped',
+      date: dateISO,
+      messages,
+      sent: 0,
+      reason: 'lock_unavailable',
+    };
   }
 
+  if (!lock) {
+    return {
+      status: 'skipped',
+      date: dateISO,
+      messages,
+      sent: 0,
+      reason: 'lock_not_acquired',
+    };
+  }
+
+  let claimed = false;
   try {
-    if (wasAlreadySent(dateISO)) {
+    if (wasAlreadySentOnDisk(dateISO) || (await hasDbSentClaim(dateISO))) {
+      markSentOnDisk(dateISO);
       return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'idempotent' };
+    }
+
+    claimed = await tryClaimDailySummarySend(dateISO, 'native');
+    if (!claimed) {
+      markSentOnDisk(dateISO);
+      return { status: 'already_sent', date: dateISO, messages: [], sent: 0, reason: 'claim-lost' };
     }
 
     let sent = 0;
@@ -210,10 +328,16 @@ export async function runDailyIssuedSummary(options?: {
       await sendWhatsAppText({ jid: msg.jid, text: msg.text }, config);
       sent += 1;
     }
+    await markDbSent(dateISO);
     markSentOnDisk(dateISO);
     log.info({ date: dateISO, sent }, 'daily_summary_sent');
     return { status: 'sent', date: dateISO, messages, sent };
   } catch (err) {
+    if (claimed) {
+      await releaseDbClaim(dateISO).catch((releaseErr) => {
+        log.warn({ err: releaseErr, date: dateISO }, 'daily_summary_claim_release_failed');
+      });
+    }
     log.error({ err, date: dateISO }, 'daily_summary_send_failed');
     return {
       status: 'error',
@@ -230,12 +354,20 @@ export async function runDailyIssuedSummary(options?: {
 }
 
 export function startDailyIssuedSummary(): void {
-  const disabled = process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true' || !isNativeEnabled();
+  const disabled =
+    process.env.QLMED_DISABLE_BACKGROUND_SERVICES === 'true' ||
+    !isNativeEnabled() ||
+    !isDailySummarySenderAllowed();
   markBackgroundServiceStarted('daily-issued-summary', {
     enabled: !disabled,
     heartbeatIntervalMs: TICK_MS,
   });
-  if (disabled) return;
+  if (disabled) {
+    if (!isDailySummarySenderAllowed()) {
+      log.info({ nextAuthUrl: process.env.NEXTAUTH_URL }, 'daily_summary_tick_disabled_non_prod');
+    }
+    return;
+  }
 
   const tick = async () => {
     markBackgroundServiceHeartbeat('daily-issued-summary');
@@ -244,7 +376,15 @@ export function startDailyIssuedSummary(): void {
       const { dateISO, hour } = getCampoGrandeDateParts(now);
       // Após 18h CG: envia se ainda não mandou (cobre deploy/reboot depois do horário).
       if (hour < 18) return;
-      if (wasAlreadySent(dateISO)) return;
+      if (wasAlreadySentOnDisk(dateISO)) return;
+      try {
+        if (await hasDbSentClaim(dateISO)) {
+          markSentOnDisk(dateISO);
+          return;
+        }
+      } catch {
+        /* read fail → tenta run, que também checa */
+      }
       await runDailyIssuedSummary({ now });
     } catch (err) {
       log.error({ err }, 'daily_summary_tick_failed');

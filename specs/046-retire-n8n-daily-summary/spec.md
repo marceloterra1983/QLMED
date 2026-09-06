@@ -77,7 +77,9 @@ nativo e não lista n8n-stuck-watchdog. Compose de deploy não sobe
 2. **AC-002** — Cabeçalho só vendas; linhas não-venda com `(CONSIG.)`.
 3. **AC-003** — Destino = `getConfiguredWhatsAppGroup()` (ou
    `DAILY_SUMMARY_WHATSAPP_GROUP_JID` se `@g.us` válido).
-4. **AC-004** — Idempotência por data CG (não reenvia no mesmo dia).
+4. **AC-004** — Idempotência por data CG **no Postgres** (`daily_issued_summary_send`)
+   + marcador local; advisory lock fail-closed. Preview/dev **não enviam**
+   (só `NEXTAUTH_URL=https://app.qlmed.com.br`, ou `DAILY_SUMMARY_ALLOW_SEND=1`).
 5. **AC-005** — Catch-up chama `/api/system/daily-issued-summary`, não n8n.
 6. **AC-006** — `qlmedGlobalErr01` não é portado.
 7. **AC-007** — SPEC-011 retired; Automações/UI n8n removidas da navegação.
@@ -93,6 +95,9 @@ nativo e não lista n8n-stuck-watchdog. Compose de deploy não sobe
 - **FR-003**: `runDailyIssuedSummary` orquestra query + nicknames + envio.
 - **FR-004**: `startDailyIssuedSummary` no bootstrap.
 - **FR-005**: Catálogo Rotinas actualizado; `n8n-stuck-watchdog` removido.
+- **FR-006**: Claim atómico Postgres por `dateISO`; preview com
+  `DAILY_SUMMARY_NATIVE=0` + `QLMED_DISABLE_BACKGROUND_SERVICES=true`.
+- **FR-007**: Gate prod-only via `isDailySummarySenderAllowed()`.
 
 ## Out of scope
 

@@ -31,6 +31,7 @@ const EXPECTED_MIGRATIONS = [
   { name: '20260905220000_nfe_item_product_link', sha256: 'e80113d3f558d73fdd392661bb9e13e3bdf9da059b616594c9d1559ef32a443a' },
   { name: '20260905230000_unimed_cg_entrega', sha256: '1cd41ae51f92cab8527b644f4a2547e3565768a9a5f5caf48c9ea10aa840f048' },
   { name: '20260905240000_unimed_cg_reversao_pre_prazo', sha256: '98b6d75462307ed689106050e21d36e408b0967610c847dc8f95af8b514e9ab9' },
+  { name: '20260906150000_daily_issued_summary_send', sha256: '81895daa34a567ce9f59694cba642da3a3c79e03ebb4c705f49c2738a98e952a' },
 ];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
