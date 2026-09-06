@@ -115,7 +115,7 @@ describe('background-supervisor', () => {
     });
 
     supervisor.startAll();
-    vi.advanceTimersByTime(1_500);
+    await vi.advanceTimersByTimeAsync(1_500);
 
     expect(start).toHaveBeenCalledTimes(1);
     expect(stop).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('background-supervisor', () => {
     });
 
     supervisor.startAll();
-    vi.advanceTimersByTime(600);
+    await vi.advanceTimersByTimeAsync(600);
 
     expect(start).toHaveBeenCalledTimes(1);
     await expect(supervisor.stopAll()).resolves.not.toThrow();

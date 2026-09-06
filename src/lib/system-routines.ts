@@ -348,7 +348,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     frequency: 'A cada 24 horas',
     scheduleDetails: 'Ciclo diário executado a cada 86.400 segundos',
     concurrencyLock: 'Exclusão transacional em lote baseada em janela de dias configurada',
-    sourceModule: 'src/lib/notification-outbox.ts (purgeNotificationOutbox / purgeExpiredOperationalData)',
+    sourceModule: 'src/lib/notification-outbox.ts (purgeNotificationOutbox)',
     description: 'Limpa registros de notificações antigas já entregues com sucesso e dados operacionais expirados (AccessLog, NotificationClick, SyncLog, caches) conforme políticas de retenção.',
     backgroundServiceName: 'notification-outbox-purge',
     environmentVars: [
