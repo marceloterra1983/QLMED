@@ -6,7 +6,7 @@ describe('invoice-ingest-pipeline', () => {
   });
 
   it('executes all pipeline stages for received invoice', async () => {
-    const updateAggregatesOnly = vi.fn(async () => undefined);
+    const updateProductAggregatesOnly = vi.fn(async () => undefined);
     const extractAndStoreTaxData = vi.fn(async () => undefined);
     const extractAndStoreContactFiscal = vi.fn(async () => undefined);
     const extractAndStoreDuplicatas = vi.fn(async () => undefined);
@@ -41,7 +41,7 @@ describe('invoice-ingest-pipeline', () => {
 
     expect(result.success).toBe(true);
     expect(result.invoiceId).toBe('inv-1');
-    expect(updateAggregatesOnly).toHaveBeenCalledTimes(1);
+    expect(updateProductAggregatesOnly).toHaveBeenCalledTimes(1);
     expect(extractAndStoreTaxData).toHaveBeenCalledWith('inv-1', 'comp-1', '<nfeProc></nfeProc>');
     expect(extractAndStoreContactFiscal).toHaveBeenCalledWith('inv-1', 'comp-1', '<nfeProc></nfeProc>');
     expect(extractAndStoreDuplicatas).toHaveBeenCalledWith('inv-1', 'comp-1', '<nfeProc></nfeProc>');
