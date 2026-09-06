@@ -32,7 +32,7 @@ export type OperatorWhatsAppPort = {
     jid: string;
     fileName: string;
     content: Buffer;
-    caption?: string;
+    caption: string;
   }): Promise<{ messageId: string | null }>;
 };
 
