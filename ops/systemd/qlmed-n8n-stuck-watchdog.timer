@@ -1,3 +1,4 @@
+# RETIRED 2026-09-06 — qlmed-n8n removida do host. Não instalar.
 [Unit]
 Description=Run QLMED n8n stuck watchdog every two minutes
 
