@@ -5,7 +5,6 @@ import {
   isPdfItem,
   listOneDriveChildren,
   moveOneDriveItem,
-  type OneDriveItem,
 } from '@/lib/onedrive-client';
 import { CERTIDAO_ARCHIVE_FOLDER, DOCUMENTOS_ONEDRIVE_ACCOUNT, familyByCategory } from './constants';
 import type { DocumentosFolderFile, DocumentosFolderPort } from './ingest';

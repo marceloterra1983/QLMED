@@ -53,11 +53,9 @@ describe('createOneDriveFolderPort Deep Module', () => {
     vi.mocked(resolveAccountOneDrive).mockResolvedValue({
       accessToken: 'token-123',
       driveId: 'drive-abc',
-      accountEmail: 'faturamento@qlmed.com.br',
     });
     vi.mocked(ensureOneDriveFolder).mockResolvedValue({
       id: 'folder-id-xyz',
-      name: 'IMPCG',
     });
     vi.mocked(listOneDriveChildren).mockResolvedValue([
       { id: 'item-1', name: 'oficio-1.pdf', lastModifiedDateTime: '2026-09-01T10:00:00.000Z' },
@@ -98,11 +96,9 @@ describe('createOneDriveFolderPort Deep Module', () => {
     vi.mocked(resolveAccountOneDrive).mockResolvedValue({
       accessToken: 'token-123',
       driveId: 'drive-abc',
-      accountEmail: 'faturamento@qlmed.com.br',
     });
     vi.mocked(ensureOneDriveFolder).mockResolvedValue({
       id: 'folder-id-xyz',
-      name: 'CASSEMS',
     });
     const fakeBuffer = Buffer.from('%PDF-1.4 test content');
     vi.mocked(downloadOneDriveItemContent).mockResolvedValue(fakeBuffer);
