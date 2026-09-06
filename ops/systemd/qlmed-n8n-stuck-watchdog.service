@@ -1,3 +1,4 @@
+# RETIRED 2026-09-06 — qlmed-n8n removida do host. Não instalar.
 [Unit]
 OnFailure=qlmed-n8n-stuck-watchdog-alert.service
 Description=QLMED n8n stuck execution watchdog
