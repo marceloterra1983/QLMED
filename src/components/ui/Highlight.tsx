@@ -13,18 +13,17 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Renders text with matched search terms highlighted using an accessible,
- * high-contrast <mark> tag. Supports Portuguese accent variants and multi-word queries.
- */
-export default function Highlight({ text, query, className }: HighlightProps) {
-  if (!text) return null;
-  if (!query || !query.trim()) return <span className={className}>{text}</span>;
+export const regexPatternCache = new Map<string, RegExp | null>();
 
-  const criteria = tokenizeInvoiceSearch(query);
-  const words = criteria.tokens.length > 0 ? criteria.tokens : [query.trim()];
+export function getCompiledPattern(query: string | null | undefined): RegExp | null {
+  if (!query) return null;
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+  const cached = regexPatternCache.get(trimmed);
+  if (cached !== undefined) return cached;
 
-  // Expand accent variants for all words (e.g. sao -> [sao, são])
+  const criteria = tokenizeInvoiceSearch(trimmed);
+  const words = criteria.tokens.length > 0 ? criteria.tokens : [trimmed];
   const variants = Array.from(
     new Set(
       words
@@ -33,10 +32,11 @@ export default function Highlight({ text, query, className }: HighlightProps) {
     ),
   );
 
-  // If query had digits (e.g. invoice number or CNPJ), include raw & unpadded digits
-  const rawDigits = query.replace(/\D/g, '');
-  if (rawDigits.length >= 2 && !variants.includes(rawDigits)) {
-    variants.push(rawDigits);
+  const rawDigits = trimmed.replace(/\D/g, '');
+  if (rawDigits.length >= 2) {
+    if (!variants.includes(rawDigits)) {
+      variants.push(rawDigits);
+    }
     const unpadded = rawDigits.replace(/^0+/, '');
     if (unpadded.length >= 2 && !variants.includes(unpadded)) {
       variants.push(unpadded);
@@ -44,14 +44,32 @@ export default function Highlight({ text, query, className }: HighlightProps) {
   }
 
   if (variants.length === 0) {
-    return <span className={className}>{text}</span>;
+    regexPatternCache.set(trimmed, null);
+    return null;
   }
 
-  // Sort by length descending so longer words match before sub-parts
   variants.sort((a, b) => b.length - a.length);
+  // Cap cache size to avoid memory leak
+  if (regexPatternCache.size > 50) regexPatternCache.clear();
 
   const pattern = new RegExp(`(${variants.map(escapeRegExp).join('|')})`, 'gi');
-  const parts = text.split(pattern);
+  regexPatternCache.set(trimmed, pattern);
+  return pattern;
+}
+
+/**
+ * Renders text with matched search terms highlighted using an accessible,
+ * high-contrast <mark> tag. Supports Portuguese accent variants and multi-word queries.
+ */
+export default function Highlight({ text, query, className }: HighlightProps) {
+  if (!text) return null;
+
+  const pattern = getCompiledPattern(query);
+  if (!pattern) return <span className={className}>{text}</span>;
+
+  // Use pattern.source to create isolated instance with zero regex compilation overhead
+  const localRe = new RegExp(pattern.source, 'gi');
+  const parts = text.split(localRe);
 
   return (
     <span className={className}>
