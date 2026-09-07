@@ -81,7 +81,7 @@ export const saidaMaterialSaldosQuerySchema = z.object({
   q: z.string().optional(),
   locationType: z.enum(['CD', 'CUSTOMER']).optional(),
   locationCnpj: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(2000).optional(),
+  limit: z.coerce.number().int().min(0).max(20000).optional(),
 });
 
 /**
@@ -107,4 +107,18 @@ export const saidaMaterialChecklistSchema = z.object({
     quantity: z.coerce.number().positive(),
   })).min(1).max(200),
   mode: z.enum(['checklist', 'avulsa_movimento']),
+});
+
+
+/**
+ * Query GET /api/estoque/controle/catalogo
+ */
+export const estoqueCatalogoQuerySchema = z.object({
+  q: z.string().optional(),
+  locationType: z.enum(['CD', 'CUSTOMER', 'ALL']).optional(),
+  validity: z.enum(['vencido', 'd30', 'd90', 'ok', 'sem_validade', 'ALL']).optional(),
+  includeZero: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v !== 'false' && v !== '0'),
 });

@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     let balances = await listStockBalances(company.id, {
       q: parsed.data.q,
       locationType,
-      limit: parsed.data.limit ?? 2000,
+      limit: parsed.data.limit ?? 0,
     });
 
     balances = balances.filter((b) => b.quantity > 0);
@@ -54,6 +54,7 @@ export async function GET(req: Request) {
             description: true,
             productType: true,
             productSubtype: true,
+            productSubgroup: true,
             manufacturerShortName: true,
             anvisaManufacturer: true,
             shortName: true,
@@ -75,6 +76,7 @@ export async function GET(req: Request) {
         description: p?.description ?? b.productName ?? null,
         productType: p?.productType ?? null,
         productSubtype: p?.productSubtype ?? null,
+        productSubgroup: p?.productSubgroup ?? null,
         manufacturer: p?.manufacturerShortName || p?.anvisaManufacturer || null,
       };
     });

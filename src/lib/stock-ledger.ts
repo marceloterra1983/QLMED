@@ -7,6 +7,15 @@ import prisma from '@/lib/prisma';
 import { getCfopTagByCode } from '@/lib/cfop';
 import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
+import {
+  FISCAL_STOCK_KINDS,
+  STOCK_LEDGER_CUTOFF,
+  classifyReceivedStockCfop,
+  isOnOrAfterStockCutoff,
+  resolveReceivedProductCodigo,
+} from '@/lib/stock-ledger-cutoff';
+
+export { STOCK_LEDGER_CUTOFF, isOnOrAfterStockCutoff, classifyReceivedStockCfop, resolveReceivedProductCodigo };
 
 const log = createLogger('stock-ledger');
 
@@ -237,6 +246,7 @@ export async function listStockBalances(
     return a.productCodigo.localeCompare(b.productCodigo);
   });
 
+  if (opts.limit === 0) return balances;
   return balances.slice(0, opts.limit ?? 500);
 }
 
@@ -485,6 +495,127 @@ export async function recordManualMovement(input: {
   ]);
 }
 
+export async function loadReceivedProductMaps(companyId: string): Promise<{
+  registryByCode: Map<string, string>;
+}> {
+  const registries = await prisma.productRegistry.findMany({
+    where: { companyId },
+    select: { codigo: true, code: true },
+  });
+  const registryByCode = new Map<string, string>();
+  for (const r of registries) {
+    const codigo = (r.codigo || r.code || '').trim();
+    if (!codigo) continue;
+    if (r.codigo?.trim()) registryByCode.set(r.codigo.trim(), r.codigo.trim());
+    if (r.code?.trim()) registryByCode.set(r.code.trim(), codigo);
+  }
+  return { registryByCode };
+}
+
+export async function recordMovementsFromReceivedInvoice(input: {
+  companyId: string;
+  invoiceId: string;
+  xmlContent: string;
+  cfop: string | null;
+  senderCnpj: string | null;
+  senderName: string | null;
+  issueDate: Date;
+  createdBy?: string | null;
+  registryByCode?: Map<string, string>;
+}): Promise<number> {
+  if (!isOnOrAfterStockCutoff(input.issueDate)) return 0;
+  const products = await extractProductsFromXml(input.xmlContent);
+  if (products.length === 0) return 0;
+
+  const links = await prisma.nfeItemProductLink.findMany({
+    where: { companyId: input.companyId, invoiceId: input.invoiceId },
+    select: { itemNumber: true, supplierCode: true, matchedCodigo: true },
+  });
+
+  const linkByItem = new Map<number, string>();
+  const linkBySupplier = new Map<string, string>();
+  for (const l of links) {
+    if (l.matchedCodigo?.trim()) {
+      linkByItem.set(l.itemNumber, l.matchedCodigo.trim());
+      if (l.supplierCode) linkBySupplier.set(l.supplierCode.trim(), l.matchedCodigo.trim());
+    }
+  }
+  const registryByCode = input.registryByCode ?? (await loadReceivedProductMaps(input.companyId)).registryByCode;
+
+  const header = classifyReceivedStockCfop(input.cfop || products[0]?.cfop);
+  const senderCnpj = input.senderCnpj;
+  const rows: StockMovementInput[] = [];
+
+  for (let i = 0; i < products.length; i++) {
+    const p = products[i];
+    const supplierCode = (p.code || '').trim();
+    const codigo = resolveReceivedProductCodigo({
+      supplierCode,
+      itemNumber: p.nItem ?? i + 1,
+      linkByItem,
+      linkBySupplier,
+      registryByCode,
+    });
+    if (!codigo) continue;
+    const batches =
+      p.batches && p.batches.length > 0
+        ? p.batches.map((b) => ({
+            lot: b.lot,
+            lotExpiry: b.expiry,
+            lotSerial: b.serial,
+            quantity: b.quantity != null && b.quantity > 0 ? b.quantity : Number(p.quantity) || 0,
+          }))
+        : [{ lot: '', lotExpiry: null as string | null, lotSerial: null as string | null, quantity: Number(p.quantity) || 0 }];
+
+    for (let bi = 0; bi < batches.length; bi++) {
+      const b = batches[bi];
+      if (b.quantity <= 0) continue;
+      const base = {
+        companyId: input.companyId,
+        productCodigo: codigo,
+        productName: p.description,
+        lot: b.lot,
+        lotExpiry: b.lotExpiry,
+        lotSerial: b.lotSerial,
+        quantity: b.quantity,
+        invoiceId: input.invoiceId,
+        createdBy: input.createdBy,
+        occurredAt: input.issueDate,
+      };
+      if (header.isReturn) {
+        const groupId = `xfer-recv:${input.invoiceId}:${i}:${bi}`;
+        rows.push({
+          ...base,
+          direction: 'OUT',
+          locationType: STOCK_LOCATION_CUSTOMER,
+          locationCnpj: senderCnpj,
+          locationName: input.senderName,
+          kind: 'RETORNO_CONSIG',
+          idempotencyKey: `received:${input.invoiceId}:item${i}:b${bi}:out`,
+          transferGroupId: groupId,
+        });
+        rows.push({
+          ...base,
+          direction: 'IN',
+          locationType: STOCK_LOCATION_CD,
+          kind: 'RETORNO_CONSIG',
+          idempotencyKey: `received:${input.invoiceId}:item${i}:b${bi}:in`,
+          transferGroupId: groupId,
+        });
+      } else {
+        rows.push({
+          ...base,
+          direction: 'IN',
+          locationType: STOCK_LOCATION_CD,
+          kind: 'ENTRADA_NFE',
+          idempotencyKey: `received:${input.invoiceId}:item${i}:b${bi}`,
+        });
+      }
+    }
+  }
+  return recordStockMovements(rows);
+}
+
 export async function backfillStockLedger(
   companyId: string,
   createdBy?: string | null,
@@ -492,17 +623,42 @@ export async function backfillStockLedger(
   let entries = 0;
   let issued = 0;
 
-  const stockEntries = await prisma.stockEntry.findMany({
-    where: { companyId, status: { in: ['registered', 'partial'] } },
-    select: { invoiceId: true, registeredAt: true, issueDate: true },
+  await prisma.stockMovement.deleteMany({
+    where: { companyId, kind: { in: [...FISCAL_STOCK_KINDS] } },
   });
-  for (const se of stockEntries) {
-    entries += await recordMovementsFromEntryItems(
+
+  const receivedInvoices = await prisma.invoice.findMany({
+    where: {
       companyId,
-      se.invoiceId,
-      se.registeredAt ?? se.issueDate ?? new Date(),
+      type: 'NFE',
+      direction: 'received',
+      cancelledAt: null,
+      xmlContent: { not: '' },
+      issueDate: { gte: STOCK_LEDGER_CUTOFF },
+    },
+    select: {
+      id: true,
+      xmlContent: true,
+      cfop: true,
+      senderCnpj: true,
+      senderName: true,
+      issueDate: true,
+    },
+  });
+  const { registryByCode } = await loadReceivedProductMaps(companyId);
+  for (const inv of receivedInvoices) {
+    if (!inv.xmlContent) continue;
+    entries += await recordMovementsFromReceivedInvoice({
+      companyId,
+      invoiceId: inv.id,
+      xmlContent: inv.xmlContent,
+      cfop: inv.cfop,
+      senderCnpj: inv.senderCnpj,
+      senderName: inv.senderName,
+      issueDate: inv.issueDate,
       createdBy,
-    );
+      registryByCode,
+    });
   }
 
   const issuedInvoices = await prisma.invoice.findMany({
@@ -512,6 +668,7 @@ export async function backfillStockLedger(
       direction: 'issued',
       cancelledAt: null,
       xmlContent: { not: '' },
+      issueDate: { gte: STOCK_LEDGER_CUTOFF },
     },
     select: {
       id: true,
@@ -524,6 +681,7 @@ export async function backfillStockLedger(
   });
   for (const inv of issuedInvoices) {
     if (!inv.xmlContent) continue;
+    if (!isOnOrAfterStockCutoff(inv.issueDate)) continue;
     issued += await recordMovementsFromIssuedInvoice({
       companyId,
       invoiceId: inv.id,

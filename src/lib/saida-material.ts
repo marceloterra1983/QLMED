@@ -51,6 +51,7 @@ export interface BalanceLike {
   productName: string | null;
   productType?: string | null;
   productSubtype?: string | null;
+  productSubgroup?: string | null;
   manufacturer?: string | null;
   description?: string | null;
   lot: string;
