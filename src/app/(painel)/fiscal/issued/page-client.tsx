@@ -60,6 +60,7 @@ export default function IssuedInvoicesPage() {
   const nicknamesRef = useRef<Map<string, string>>(new Map());
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hideValues, setHideValues] = useState(false);
+  const watermarkEtagRef = useRef<string | null>(null);
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
   const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
@@ -97,17 +98,50 @@ export default function IssuedInvoicesPage() {
   }, [searchInput]);
 
   useEffect(() => {
+    watermarkEtagRef.current = null;
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      loadInvoices({ silent: true });
+    watermarkEtagRef.current = null;
+    const timer = setInterval(async () => {
+      // If user is searching or viewing a single year, query watermark for that slice
+      const query = new URLSearchParams();
+      if (dateFrom) query.set('dateFrom', dateFrom);
+      if (dateTo) query.set('dateTo', dateTo);
+      query.set('type', 'NFE');
+      query.set('direction', 'issued');
+
+      try {
+        const headers: HeadersInit = {};
+        if (watermarkEtagRef.current) {
+          headers['If-None-Match'] = watermarkEtagRef.current;
+        }
+        const res = await fetch(`/api/invoices/watermark?${query.toString()}`, {
+          cache: 'no-store',
+          headers,
+        });
+
+        if (res.status === 304) {
+          // Unchanged - zero bandwidth, zero re-render!
+          return;
+        }
+
+        if (res.ok) {
+          watermarkEtagRef.current = res.headers.get('etag');
+          const data = await res.json();
+          if (data.changed) {
+            loadInvoices({ silent: true });
+          }
+        }
+      } catch {
+        // Silent catch on poll
+      }
     }, AUTO_REFRESH_MS);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     const cy = new Date().getFullYear();
