@@ -13,17 +13,27 @@ import Spinner from '@/components/ui/Spinner';
 import { FILTER_INPUT_CLS } from '@/lib/utils';
 import { DEFAULT_IND_PRES, DEFAULT_SERIES, isSemPagamentoCfop } from '@/lib/nfe-emission/issued-defaults';
 import { getSaidaOperation } from '@/lib/nfe-emission/operations';
+import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
+import {
+  mergeCatalogWithBalances,
+  type StockCatalogProduct,
+} from '@/lib/stock-catalog';
+import type { StockBalanceRow } from '@/lib/stock-ledger';
 import {
   SAIDA_MATERIAL_TABS,
   clampCartQty,
   defaultCfopForTab,
-  groupBalancesByCatalog,
   lotKey,
   tabRequiresCustomer,
   tabUsesCdStock,
   type BalanceLike,
   type SaidaMaterialTab,
 } from '@/lib/saida-material';
+import StockProductTreeTable, {
+  collapseAllStock,
+  expandAllStock,
+} from '../controle/components/StockProductTreeTable';
+import ProductStockDetailModal from '../controle/components/ProductStockDetailModal';
 
 type Cliente = { cnpj: string; name: string };
 
@@ -53,6 +63,57 @@ type ProductFiscal = {
   codigo: string | null;
 };
 
+
+function SaidaLotPicker({
+  product,
+  cart,
+  setQty,
+  toggleLot,
+}: {
+  product: StockCatalogProduct;
+  cart: Record<string, CartLine>;
+  setQty: (b: BalanceLike, raw: number) => void;
+  toggleLot: (b: BalanceLike, checked: boolean) => void;
+}) {
+  return (
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+      {product.lots.filter((l) => l.quantity > 0).map((lot) => {
+        const key = lotKey(lot.productCodigo, lot.lot, lot.lotExpiry);
+        const selected = cart[key];
+        return (
+          <li key={key} className="px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(selected)}
+              onChange={(e) => toggleLot(lot, e.target.checked)}
+              aria-label={`Selecionar lote ${lot.lot || 'sem lote'} de ${product.productName}`}
+              className="rounded border-slate-200 dark:border-slate-700"
+            />
+            <span className="min-w-[7rem]">
+              Lote <strong>{lot.lot || '—'}</strong>
+            </span>
+            <span className="text-slate-500 dark:text-slate-400 text-xs">
+              Val. {lot.lotExpiry || 'sem validade'}
+            </span>
+            <span className="text-xs">Disp. {lot.quantity}</span>
+            <input
+              type="number"
+              min={0}
+              max={lot.quantity}
+              step="any"
+              className={`${FILTER_INPUT_CLS} w-24 ml-auto`}
+              value={selected?.quantity ?? ''}
+              disabled={!selected}
+              onChange={(e) => setQty(lot, Number(e.target.value))}
+              aria-label={`Quantidade lote ${lot.lot || 'sem lote'}`}
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function SaidaMaterialPage() {
   const router = useRouter();
   const [tab, setTab] = useState<SaidaMaterialTab>('consignado');
@@ -74,6 +135,9 @@ export default function SaidaMaterialPage() {
   const [busy, setBusy] = useState(false);
   const [avulsaMovimento, setAvulsaMovimento] = useState(false);
   const [avulsaClienteDraft, setAvulsaClienteDraft] = useState('');
+  const [viewMode, setViewMode] = useState<CardViewMode>('popup');
+  const [selected, setSelected] = useState<StockCatalogProduct | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const needsCustomer = tabRequiresCustomer(tab);
   const usesCd = tabUsesCdStock(tab);
@@ -128,6 +192,7 @@ export default function SaidaMaterialPage() {
   useEffect(() => {
     setCart({});
     setAvulsaMovimento(false);
+    setSelected(null);
     if (tab === 'material_usado') {
       /* keep cliente */
     } else if (!needsCustomer) {
@@ -135,7 +200,30 @@ export default function SaidaMaterialPage() {
     }
   }, [tab, needsCustomer]);
 
-  const groups = useMemo(() => groupBalancesByCatalog(balances), [balances]);
+  const catalogProducts = useMemo(() => {
+    const seen = new Set<string>();
+    const catalog = [];
+    for (const b of balances) {
+      if (seen.has(b.productCodigo)) continue;
+      seen.add(b.productCodigo);
+      catalog.push({
+        codigo: b.productCodigo,
+        code: null,
+        description: b.description || b.productName || b.productCodigo,
+        productType: b.productType ?? null,
+        productSubtype: b.productSubtype ?? null,
+        productSubgroup: b.productSubgroup ?? null,
+        manufacturerShortName: b.manufacturer ?? null,
+        anvisaManufacturer: null,
+        shortName: b.productName,
+      });
+    }
+    return mergeCatalogWithBalances(catalog, balances as StockBalanceRow[], { includeZero: false });
+  }, [balances]);
+
+  useEffect(() => {
+    setCollapsed(expandAllStock(catalogProducts));
+  }, [catalogProducts]);
 
   const cartLines = useMemo(() => Object.values(cart).filter((l) => l.quantity > 0), [cart]);
   const cartCount = cartLines.length;
@@ -407,15 +495,20 @@ export default function SaidaMaterialPage() {
       )}
 
       {showStock && (
-        <Field label="Buscar produto / lote">
-          <input
-            className={FILTER_INPUT_CLS}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Código, descrição ou lote"
-            aria-label="Filtrar produtos"
-          />
-        </Field>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[16rem]">
+            <Field label="Buscar produto / lote">
+              <input
+                className={FILTER_INPUT_CLS}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Código, descrição ou lote"
+                aria-label="Filtrar produtos"
+              />
+            </Field>
+          </div>
+          <CardViewModeToggle mode={viewMode} onChange={setViewMode} />
+        </div>
       )}
 
       {!showStock && (
@@ -428,68 +521,43 @@ export default function SaidaMaterialPage() {
         </div>
       )}
 
-      {showStock && !loading && groups.length === 0 && (
-        <EmptyState icon="inventory_2" title="Nenhum saldo disponível" hint="Ajuste o filtro ou confira o Controle de estoque." />
+      {showStock && !loading && (
+        <StockProductTreeTable
+          products={catalogProducts}
+          collapsed={collapsed}
+          onToggle={(key) => {
+            setCollapsed((prev) => {
+              const next = new Set(prev);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              return next;
+            });
+          }}
+          onCollapseAll={() => setCollapsed(collapseAllStock(catalogProducts))}
+          onExpandAll={() => setCollapsed(expandAllStock(catalogProducts))}
+          onOpenProduct={(p) => {
+            if (viewMode === 'expand') {
+              setSelected((cur) => (cur?.productCodigo === p.productCodigo ? null : p));
+              return;
+            }
+            setSelected(p);
+          }}
+          expandedCodigo={viewMode === 'expand' ? selected?.productCodigo : null}
+          renderExpanded={(p) => <SaidaLotPicker product={p} cart={cart} setQty={setQty} toggleLot={toggleLot} />}
+          emptyHint="Ajuste o filtro ou confira o Controle de estoque."
+        />
       )}
 
-      {showStock && !loading && groups.map((g) => (
-        <section key={`${g.productType}|${g.productSubtype}`} className="space-y-2">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {g.productType}
-            <span className="text-slate-500 dark:text-slate-400 font-medium"> / {g.productSubtype}</span>
-          </h3>
-          <div className="space-y-2">
-            {g.products.map((p) => (
-              <div
-                key={p.productCodigo}
-                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 overflow-hidden"
-              >
-                <div className="px-3 py-2 flex flex-wrap items-center gap-2 border-b border-slate-100 dark:border-slate-800">
-                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{p.productName}</span>
-                  <Badge>{p.productCodigo}</Badge>
-                  {p.manufacturer ? <span className="text-xs text-slate-500">{p.manufacturer}</span> : null}
-                  <span className="ml-auto text-xs font-medium text-slate-500">Saldo {p.totalQty}</span>
-                </div>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {p.lots.map((lot) => {
-                    const key = lotKey(lot.productCodigo, lot.lot, lot.lotExpiry);
-                    const selected = cart[key];
-                    return (
-                      <li key={key} className="px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(selected)}
-                          onChange={(e) => toggleLot(lot, e.target.checked)}
-                          aria-label={`Selecionar lote ${lot.lot || 'sem lote'} de ${p.productName}`}
-                          className="rounded border-slate-200 dark:border-slate-700"
-                        />
-                        <span className="min-w-[7rem]">
-                          Lote <strong>{lot.lot || '—'}</strong>
-                        </span>
-                        <span className="text-slate-500 text-xs">
-                          Val. {lot.lotExpiry || 'sem validade'}
-                        </span>
-                        <span className="text-xs">Disp. {lot.quantity}</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={lot.quantity}
-                          step="any"
-                          className={`${FILTER_INPUT_CLS} w-24 ml-auto`}
-                          value={selected?.quantity ?? ''}
-                          disabled={!selected}
-                          onChange={(e) => setQty(lot, Number(e.target.value))}
-                          aria-label={`Quantidade lote ${lot.lot || 'sem lote'}`}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+      {viewMode === 'popup' && selected && (
+        <ProductStockDetailModal
+          product={selected}
+          isOpen
+          onClose={() => setSelected(null)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          lotActions={(p) => <SaidaLotPicker product={p} cart={cart} setQty={setQty} toggleLot={toggleLot} />}
+        />
+      )}
 
       {cartCount > 0 && (
         <div className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 dark:border-slate-700 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur px-4 py-3">

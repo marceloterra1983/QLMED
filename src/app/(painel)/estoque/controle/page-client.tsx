@@ -1,85 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
 import Field from '@/components/ui/Field';
-import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
 import { useRole } from '@/hooks/useRole';
-import { FILTER_INPUT_CLS, formatDate } from '@/lib/utils';
-import type { BadgeTone } from '@/components/ui/Badge';
+import { FILTER_INPUT_CLS } from '@/lib/utils';
+import { filterStockProducts, type StockCatalogProduct } from '@/lib/stock-catalog';
 import type { ValidityBand } from '@/lib/stock-ledger';
-
-type BalanceRow = {
-  productCodigo: string;
-  productName: string | null;
-  lot: string;
-  lotExpiry: string | null;
-  locationType: 'CD' | 'CUSTOMER';
-  locationCnpj: string | null;
-  locationName: string | null;
-  quantity: number;
-  validityBand: ValidityBand;
-  daysToExpiry: number | null;
-};
-
-type MovementRow = {
-  id: string;
-  productCodigo: string;
-  productName: string | null;
-  lot: string;
-  lotExpiry: string | null;
-  quantity: number;
-  direction: 'IN' | 'OUT';
-  locationType: string;
-  locationName: string | null;
-  kind: string;
-  reason: string | null;
-  occurredAt: string;
-};
-
-const VALIDITY_LABEL: Record<ValidityBand, string> = {
-  vencido: 'Vencido',
-  d30: '≤ 30 dias',
-  d90: '≤ 90 dias',
-  ok: 'OK',
-  sem_validade: 'Sem validade',
-};
-
-const VALIDITY_TONE: Record<ValidityBand, BadgeTone> = {
-  vencido: 'danger',
-  d30: 'warning',
-  d90: 'info',
-  ok: 'success',
-  sem_validade: 'neutral',
-};
-
-const KIND_LABEL: Record<string, string> = {
-  ENTRADA_NFE: 'Entrada NF-e',
-  SAIDA_NFE: 'Saída NF-e',
-  REMESSA_CONSIG: 'Remessa consignação',
-  RETORNO_CONSIG: 'Retorno consignação',
-  PERDA_VALIDADE: 'Perda validade',
-  AJUSTE: 'Ajuste',
-  SAIDA_AVULSA: 'Saída avulsa',
-};
-
-type Tab = 'saldos' | 'movimentos';
+import StockProductTreeTable, {
+  collapseAllStock,
+  expandAllStock,
+} from './components/StockProductTreeTable';
+import ProductStockDetailModal, { StockLotsKardex } from './components/ProductStockDetailModal';
 
 export default function ControleEstoquePage() {
   const { canWrite } = useRole();
-  const [tab, setTab] = useState<Tab>('saldos');
   const [q, setQ] = useState('');
   const [locationType, setLocationType] = useState<'ALL' | 'CD' | 'CUSTOMER'>('ALL');
   const [validity, setValidity] = useState<'ALL' | ValidityBand>('ALL');
-  const [balances, setBalances] = useState<BalanceRow[]>([]);
-  const [movements, setMovements] = useState<MovementRow[]>([]);
+  const [products, setProducts] = useState<StockCatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<CardViewMode>('popup');
+  const [selected, setSelected] = useState<StockCatalogProduct | null>(null);
   const [ajusteOpen, setAjusteOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillConfirmOpen, setBackfillConfirmOpen] = useState(false);
@@ -96,45 +45,38 @@ export default function ControleEstoquePage() {
     reason: '',
   });
 
-  const loadSaldos = useCallback(async () => {
+  const loadCatalogo = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (q.trim()) params.set('q', q.trim());
-      if (locationType !== 'ALL') params.set('locationType', locationType);
-      if (validity !== 'ALL') params.set('validity', validity);
-      const res = await fetch(`/api/estoque/controle/saldos?${params}`);
-      if (!res.ok) throw new Error('falha saldos');
+      const res = await fetch('/api/estoque/controle/catalogo?includeZero=true');
+      if (!res.ok) throw new Error('falha catalogo');
       const data = await res.json();
-      setBalances(data.balances ?? []);
+      const rows = (data.products ?? []) as StockCatalogProduct[];
+      setProducts(rows);
+      setCollapsed(expandAllStock(rows));
     } catch {
-      toast.error('Não foi possível carregar os saldos');
+      toast.error('Não foi possível carregar o catálogo de estoque');
     } finally {
       setLoading(false);
     }
-  }, [q, locationType, validity]);
-
-  const loadMovimentos = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (q.trim()) params.set('productCodigo', q.trim());
-      params.set('limit', '100');
-      const res = await fetch(`/api/estoque/controle/movimentos?${params}`);
-      if (!res.ok) throw new Error('falha movimentos');
-      const data = await res.json();
-      setMovements(data.movements ?? []);
-    } catch {
-      toast.error('Não foi possível carregar os movimentos');
-    } finally {
-      setLoading(false);
-    }
-  }, [q]);
+  }, []);
 
   useEffect(() => {
-    if (tab === 'saldos') void loadSaldos();
-    else void loadMovimentos();
-  }, [tab, loadSaldos, loadMovimentos]);
+    void loadCatalogo();
+  }, [loadCatalogo]);
+
+  const visible = useMemo(
+    () => filterStockProducts(products, { q, locationType, validity }),
+    [products, q, locationType, validity],
+  );
+
+  function openProduct(p: StockCatalogProduct) {
+    if (viewMode === 'expand') {
+      setSelected((cur) => (cur?.productCodigo === p.productCodigo ? null : p));
+      return;
+    }
+    setSelected(p);
+  }
 
   async function submitAjuste() {
     try {
@@ -161,8 +103,7 @@ export default function ControleEstoquePage() {
       }
       toast.success('Movimento registrado');
       setAjusteOpen(false);
-      if (tab === 'saldos') await loadSaldos();
-      else await loadMovimentos();
+      await loadCatalogo();
     } catch {
       toast.error('Erro ao registrar ajuste');
     }
@@ -179,7 +120,7 @@ export default function ControleEstoquePage() {
         return;
       }
       toast.success(`Backfill: ${data.entries ?? 0} entradas, ${data.issued ?? 0} emitidas`);
-      await loadSaldos();
+      await loadCatalogo();
     } catch {
       toast.error('Erro no backfill');
     } finally {
@@ -192,7 +133,7 @@ export default function ControleEstoquePage() {
       <PageHeader
         icon="warehouse"
         title="Controle de Estoque"
-        subtitle="Saldos por lote e localização (CD / consignado)"
+        subtitle="Catálogo com saldo CD / consignado, lotes e validade"
         actions={
           canWrite ? (
             <div className="flex items-center gap-2 flex-wrap">
@@ -207,127 +148,71 @@ export default function ControleEstoquePage() {
         }
       />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant={tab === 'saldos' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('saldos')}>
-          Saldos
-        </Button>
-        <Button variant={tab === 'movimentos' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('movimentos')}>
-          Movimentos
-        </Button>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <Field label="Busca">
           <input
             className={FILTER_INPUT_CLS}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Código, nome ou lote"
+            placeholder="Código, nome, fabricante ou lote"
           />
         </Field>
-        {tab === 'saldos' && (
-          <>
-            <Field label="Local">
-              <select className={FILTER_INPUT_CLS} value={locationType} onChange={(e) => setLocationType(e.target.value as typeof locationType)}>
-                <option value="ALL">Todos</option>
-                <option value="CD">CD</option>
-                <option value="CUSTOMER">Consignado</option>
-              </select>
-            </Field>
-            <Field label="Validade">
-              <select className={FILTER_INPUT_CLS} value={validity} onChange={(e) => setValidity(e.target.value as typeof validity)}>
-                <option value="ALL">Todas</option>
-                <option value="vencido">Vencido</option>
-                <option value="d30">≤ 30 dias</option>
-                <option value="d90">≤ 90 dias</option>
-                <option value="ok">OK</option>
-                <option value="sem_validade">Sem validade</option>
-              </select>
-            </Field>
-          </>
-        )}
+        <Field label="Local">
+          <select className={FILTER_INPUT_CLS} value={locationType} onChange={(e) => setLocationType(e.target.value as typeof locationType)}>
+            <option value="ALL">Todos</option>
+            <option value="CD">CD</option>
+            <option value="CUSTOMER">Consignado</option>
+          </select>
+        </Field>
+        <Field label="Validade">
+          <select className={FILTER_INPUT_CLS} value={validity} onChange={(e) => setValidity(e.target.value as typeof validity)}>
+            <option value="ALL">Todas</option>
+            <option value="vencido">Vencido</option>
+            <option value="d30">≤ 30 dias</option>
+            <option value="d90">≤ 90 dias</option>
+            <option value="ok">OK</option>
+            <option value="sem_validade">Sem validade</option>
+          </select>
+        </Field>
+        <div className="flex items-end">
+          <CardViewModeToggle mode={viewMode} onChange={setViewMode} />
+        </div>
       </div>
 
       <div className="mt-4">
         {loading ? (
           <div className="flex justify-center py-12"><Spinner label="Carregando estoque" /></div>
-        ) : tab === 'saldos' ? (
-          balances.length === 0 ? (
-            <EmptyState icon="warehouse" title="Nenhum saldo encontrado" hint="Ajuste os filtros ou rode o backfill" />
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 text-left text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2">Produto</th>
-                    <th className="px-3 py-2">Lote</th>
-                    <th className="px-3 py-2">Validade</th>
-                    <th className="px-3 py-2">Local</th>
-                    <th className="px-3 py-2 text-right">Qtd</th>
-                    <th className="px-3 py-2">Faixa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balances.map((b) => (
-                    <tr key={[b.productCodigo, b.lot, b.lotExpiry, b.locationType, b.locationCnpj].join('|')} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="px-3 py-2">
-                        <div className="font-medium text-slate-900 dark:text-white">{b.productCodigo}</div>
-                        <div className="text-xs text-slate-500 truncate max-w-[240px]">{b.productName}</div>
-                      </td>
-                      <td className="px-3 py-2">{b.lot || '—'}</td>
-                      <td className="px-3 py-2">{b.lotExpiry ? formatDate(b.lotExpiry) : '—'}</td>
-                      <td className="px-3 py-2">
-                        {b.locationType === 'CD' ? 'CD' : (b.locationName || b.locationCnpj || 'Consignado')}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold">{b.quantity}</td>
-                      <td className="px-3 py-2">
-                        <Badge tone={VALIDITY_TONE[b.validityBand]}>
-                          {VALIDITY_LABEL[b.validityBand]}
-                          {b.daysToExpiry != null ? ` (${b.daysToExpiry}d)` : ''}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : movements.length === 0 ? (
-          <EmptyState icon="swap_horiz" title="Nenhum movimento" hint="Registre entradas ou use Perda/Ajuste" />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Produto</th>
-                  <th className="px-3 py-2">Lote</th>
-                  <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Dir.</th>
-                  <th className="px-3 py-2 text-right">Qtd</th>
-                  <th className="px-3 py-2">Local</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map((m) => (
-                  <tr key={m.id} className="border-t border-slate-100 dark:border-slate-800">
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDate(m.occurredAt)}</td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{m.productCodigo}</div>
-                      <div className="text-xs text-slate-500 truncate max-w-[200px]">{m.productName}</div>
-                    </td>
-                    <td className="px-3 py-2">{m.lot || '—'}</td>
-                    <td className="px-3 py-2">{KIND_LABEL[m.kind] || m.kind}</td>
-                    <td className="px-3 py-2">{m.direction}</td>
-                    <td className="px-3 py-2 text-right font-semibold">{m.quantity}</td>
-                    <td className="px-3 py-2">{m.locationType === 'CD' ? 'CD' : (m.locationName || 'Consignado')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <StockProductTreeTable
+            products={visible}
+            collapsed={collapsed}
+            onToggle={(key) => {
+              setCollapsed((prev) => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key);
+                else next.add(key);
+                return next;
+              });
+            }}
+            onCollapseAll={() => setCollapsed(collapseAllStock(visible))}
+            onExpandAll={() => setCollapsed(expandAllStock(visible))}
+            onOpenProduct={openProduct}
+            expandedCodigo={viewMode === 'expand' ? selected?.productCodigo : null}
+            renderExpanded={(p) => <StockLotsKardex product={p} />}
+            emptyHint="Ajuste os filtros ou rode o backfill a partir de 01/01/2021"
+          />
         )}
       </div>
+
+      {viewMode === 'popup' && (
+        <ProductStockDetailModal
+          product={selected}
+          isOpen={Boolean(selected)}
+          onClose={() => setSelected(null)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+      )}
 
       <Modal
         isOpen={ajusteOpen}
@@ -341,63 +226,64 @@ export default function ControleEstoquePage() {
           </div>
         }
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Código do produto" className="sm:col-span-2">
+        <div className="space-y-3">
+          <Field label="Código do produto">
             <input className={FILTER_INPUT_CLS} value={form.productCodigo} onChange={(e) => setForm({ ...form, productCodigo: e.target.value })} />
           </Field>
-          <Field label="Lote">
-            <input className={FILTER_INPUT_CLS} value={form.lot} onChange={(e) => setForm({ ...form, lot: e.target.value })} />
-          </Field>
-          <Field label="Validade">
-            <input className={FILTER_INPUT_CLS} type="date" value={form.lotExpiry} onChange={(e) => setForm({ ...form, lotExpiry: e.target.value })} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Lote">
+              <input className={FILTER_INPUT_CLS} value={form.lot} onChange={(e) => setForm({ ...form, lot: e.target.value })} />
+            </Field>
+            <Field label="Validade">
+              <input className={FILTER_INPUT_CLS} value={form.lotExpiry} onChange={(e) => setForm({ ...form, lotExpiry: e.target.value })} placeholder="AAAA-MM-DD" />
+            </Field>
+          </div>
           <Field label="Quantidade">
-            <input className={FILTER_INPUT_CLS} type="number" min="0.001" step="any" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
+            <input className={FILTER_INPUT_CLS} type="number" min="0" step="any" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
           </Field>
           <Field label="Tipo">
-            <select className={FILTER_INPUT_CLS} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as typeof form.kind, direction: e.target.value === 'PERDA_VALIDADE' ? 'OUT' : form.direction })}>
+            <select className={FILTER_INPUT_CLS} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as typeof form.kind })}>
               <option value="PERDA_VALIDADE">Perda por validade</option>
               <option value="AJUSTE">Ajuste</option>
             </select>
           </Field>
           {form.kind === 'AJUSTE' && (
             <Field label="Direção">
-              <select className={FILTER_INPUT_CLS} value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value as 'IN' | 'OUT' })}>
+              <select className={FILTER_INPUT_CLS} value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value as typeof form.direction })}>
                 <option value="OUT">Saída</option>
                 <option value="IN">Entrada</option>
               </select>
             </Field>
           )}
           <Field label="Local">
-            <select className={FILTER_INPUT_CLS} value={form.locationType} onChange={(e) => setForm({ ...form, locationType: e.target.value as 'CD' | 'CUSTOMER' })}>
+            <select className={FILTER_INPUT_CLS} value={form.locationType} onChange={(e) => setForm({ ...form, locationType: e.target.value as typeof form.locationType })}>
               <option value="CD">CD</option>
               <option value="CUSTOMER">Consignado</option>
             </select>
           </Field>
           {form.locationType === 'CUSTOMER' && (
             <>
-              <Field label="CNPJ local">
+              <Field label="CNPJ do cliente">
                 <input className={FILTER_INPUT_CLS} value={form.locationCnpj} onChange={(e) => setForm({ ...form, locationCnpj: e.target.value })} />
               </Field>
-              <Field label="Nome local">
+              <Field label="Nome do cliente">
                 <input className={FILTER_INPUT_CLS} value={form.locationName} onChange={(e) => setForm({ ...form, locationName: e.target.value })} />
               </Field>
             </>
           )}
-          <Field label="Motivo" className="sm:col-span-2">
-            <input className={FILTER_INPUT_CLS} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Obrigatório" />
+          <Field label="Motivo">
+            <input className={FILTER_INPUT_CLS} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
           </Field>
         </div>
       </Modal>
+
       <ConfirmDialog
         isOpen={backfillConfirmOpen}
         onClose={() => setBackfillConfirmOpen(false)}
         onConfirm={() => void runBackfill()}
-        title="Backfill do ledger"
-        message="Reprocessar entradas e NF-e emitidas no ledger? Operação idempotente."
-        confirmLabel="Executar backfill"
-        confirmVariant="primary"
-        loading={backfilling}
+        title="Recalcular estoque"
+        message="Apaga movimentos fiscais e reconstrói entradas e saídas a partir de 01/01/2021. Ajustes manuais são preservados."
+        confirmLabel="Recalcular"
       />
     </>
   );

@@ -1,48 +1,33 @@
-# Gates: SPEC-057 Saída Material
+# Gates: SPEC-058 Visão em Árvore e Correção do Saldo de Estoque
 
-Scope: Página e APIs de Saída Material (4 abas), nav Estoque ordenada, checklist Prisma, CFOP defaults, preview HTTP.
+Scope: Correção do ledger de estoque com corte 2021 + árvore de produtos e popup/expand em Controle e Saída Material.
 
-- [x] G1: Spec SPEC-057 existe com REQ/AC
-  CHECK: test -f specs/057-saida-material/spec.md && rg -q "SPEC-057|REQ-001|AC-001" specs/057-saida-material/spec.md && echo SPEC_OK
-  EXPECT: SPEC_OK
-  EVIDENCE: SPEC_OK
+- [ ] G1: Spec SPEC-058 e documentação válidas
+  CHECK: test -f specs/058-estoque-tree-view/spec.md && npm run docs:validate
+  EXPECT: Documentation validation passed
+  EVIDENCE: pending
 
-- [x] G2: Design note existe
-  CHECK: test -f docs/superpowers/specs/2026-09-07-saida-material-design.md && echo DESIGN_OK
-  EXPECT: DESIGN_OK
-  EVIDENCE: DESIGN_OK
-
-- [x] G3: Ordem nav Estoque Entrada → Controle → Saída Material
-  CHECK: npx vitest run src/lib/__tests__/navigation.test.ts -t "Estoque: Entrada" --reporter=dot 2>&1 | tail -5
+- [ ] G2: Suporte a corte de data e entradas XML no backfill do ledger
+  CHECK: npx vitest run src/lib/__tests__/stock-ledger-backfill.test.ts --reporter=dot 2>&1 | tail -5
   EXPECT: passed
-  EVIDENCE:       Tests  1 passed | 15 skipped (16) |    Start at  12:41:42 |    Duration  181ms (transform 42ms, setup 21ms, import 37ms, tests 3ms, environment 0ms)
+  EVIDENCE: pending
 
-- [x] G4: Página /estoque/saida-material existe
-  CHECK: test -f 'src/app/(painel)/estoque/saida-material/page-client.tsx' && rg -q "Saída Material" 'src/app/(painel)/estoque/saida-material/page-client.tsx' && echo PAGE_OK
-  EXPECT: PAGE_OK
-  EVIDENCE: PAGE_OK
+- [ ] G3: Hierarquia de produtos e lotes modal funcionando no Controle
+  CHECK: test -f src/app/\(painel\)/estoque/controle/components/ProductStockDetailModal.tsx && test -f src/app/\(painel\)/estoque/controle/components/StockProductTreeTable.tsx
+  EXPECT: /./
+  EVIDENCE: pending
 
-- [x] G5: Migration StockExitChecklist pinada
-  CHECK: test -f prisma/migrations/20260907140000_stock_exit_checklist/migration.sql && rg -q "20260907140000_stock_exit_checklist" scripts/verify-production-migration-window.cjs && node scripts/test-production-migration-window.cjs && echo MIG_OK
-  EXPECT: MIG_OK
-  EVIDENCE: Production migration window static contract passed. | MIG_OK
+- [ ] G4: Verificação de UI tokens e sem diálogos nativos
+  CHECK: npm run ui:verify && npm run ui:dialogs
+  EXPECT: ok   nativo: 0 violações
+  EVIDENCE: pending
 
-- [x] G6: Testes unitários saida-material + navigation
-  CHECK: npx vitest run src/lib/__tests__/saida-material.test.ts src/lib/__tests__/navigation.test.ts --reporter=dot 2>&1 | tail -5
-  EXPECT: passed
-  EVIDENCE: Test Files 2 passed (2); Tests 21 passed (21)
+- [ ] G5: Typecheck TypeScript limpo
+  CHECK: npx tsc --noEmit 2>&1 | tail -3
+  EXPECT: /./
+  EVIDENCE: pending
 
-- [x] G7: tsc limpo
-  CHECK: npx tsc --noEmit && echo TSC_OK
-  EXPECT: TSC_OK
-  EVIDENCE: TSC_OK
-
-- [x] G8: ui:dialogs + docs:validate
-  CHECK: npm run ui:dialogs && npm run docs:validate && echo UI_DOCS_OK
-  EXPECT: UI_DOCS_OK
-  EVIDENCE: Documentation validation passed (243 Markdown files, 72 IDs). | UI_DOCS_OK
-
-- [x] G9: Preview HTTP /estoque/saida-material
-  CHECK: code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/estoque/saida-material); echo "HTTP_$code"; echo "$code" | grep -Eq '^(200|302|307)$' && echo PREVIEW_OK
-  EXPECT: PREVIEW_OK
-  EVIDENCE: HTTP_307 | PREVIEW_OK
+- [ ] G6: Smoke preview HTTP
+  CHECK: curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/estoque/controle
+  EXPECT: /^(200|307|302)$/
+  EVIDENCE: pending
