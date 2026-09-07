@@ -390,7 +390,7 @@ model Invoice {
   @@index([recipientName])
   @@index([companyId, recipientName])
   @@index([companyId, type, direction, cfop, issueDate])
-  @@index([companyId, type, direction, updatedAt(sort: Desc)])
+  @@index([companyId, type, direction, updatedAt(sort: Desc)], map: "Invoice_company_type_dir_updated_idx")
 }
 
 /// Preferencia de notificacao de um usuario para um tipo de evento.
