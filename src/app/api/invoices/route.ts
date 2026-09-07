@@ -281,10 +281,10 @@ export async function GET(req: Request) {
         : [];
       const nicknameCnpjs = matchingNicknames.map((n) => n.cnpj);
 
-      // Build DB-level search with accent variants, unmasked docs, numbers, and xmlContent
+      // Build DB-level search with accent variants, unmasked docs, and numbers (no xmlContent TOAST scan)
       const searchConditions = buildInvoiceSearchConditions(criteria, {
         nicknameCnpjs,
-        searchXmlContent: true,
+        searchXmlContent: false,
       });
 
       Object.assign(searchWhere, searchConditions);
