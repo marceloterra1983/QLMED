@@ -28,7 +28,6 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import SortableTh from '@/components/ui/SortableTh';
 import Highlight from '@/components/ui/Highlight';
-import { sortInvoicesByRelevance } from '@/lib/nfe/search-engine';
 
 const AUTO_REFRESH_MS = 30_000;
 
@@ -175,12 +174,11 @@ export default function IssuedInvoicesPage() {
     if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({ page: '1', limit: '5000' });
-      if (search) {
-        params.set('search', search);
-      } else {
-        if (dateFrom) params.set('dateFrom', dateFrom);
-        if (dateTo) params.set('dateTo', dateTo);
-      }
+      if (search) params.set('search', search);
+      // Datas sempre aplicadas quando preenchidas — busca não anula o período
+      // (só "Buscar em todos os anos" limpa dateFrom/dateTo).
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       if (tagFilter) params.set('cfopTag', tagFilter);
       params.set('type', 'NFE');
       params.set('direction', 'issued');
@@ -191,8 +189,7 @@ export default function IssuedInvoicesPage() {
       if (res.ok) {
         const data = await res.json();
         const loaded: Invoice[] = data.invoices || [];
-        const processed = search ? sortInvoicesByRelevance(loaded, search) : loaded;
-        setInvoices(processed);
+        setInvoices(loaded);
         setTotal(data.pagination?.total || 0);
         if (loaded.length > 0) {
           const collapse = resolveCollapsedGroupsAfterFetch({
@@ -532,7 +529,7 @@ export default function IssuedInvoicesPage() {
               <>
                 <div className="flex items-center gap-2 px-1 py-1.5 text-xs text-slate-500 dark:text-slate-400">
                   <span className="material-symbols-outlined text-[14px]">search</span>
-                  <span>{invoices.length} resultado(s) para &ldquo;<span className="font-bold text-slate-700 dark:text-slate-200">{search}</span>&rdquo; em todos os anos</span>
+                  <span>{invoices.length} resultado(s) para &ldquo;<span className="font-bold text-slate-700 dark:text-slate-200">{search}</span>&rdquo;{hasDateFilter ? ' no período' : ' em todos os anos'}</span>
                 </div>
                 {invoices.map(renderMobileCard)}
               </>
@@ -586,7 +583,7 @@ export default function IssuedInvoicesPage() {
         {search && !loading && invoices.length > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
             <span className="material-symbols-outlined text-[14px]">search</span>
-            <span>{invoices.length} resultado(s) para &ldquo;<span className="font-bold text-slate-700 dark:text-slate-200">{search}</span>&rdquo; em todos os anos, ordenados por relevância</span>
+            <span>{invoices.length} resultado(s) para &ldquo;<span className="font-bold text-slate-700 dark:text-slate-200">{search}</span>&rdquo;{hasDateFilter ? ' no período' : ' em todos os anos'}, por emissão</span>
           </div>
         )}
         <div className="overflow-x-auto">
