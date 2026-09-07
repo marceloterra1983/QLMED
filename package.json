@@ -84,7 +84,7 @@
     "postcss": "8.5.28",
     "tailwindcss": "^3.4.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "overrides": {
     "deepmerge-ts": "8.0.1",
