@@ -31,8 +31,9 @@ export const PAGE_GROUPS: PageGroup[] = [
   {
     section: 'Estoque',
     pages: [
-      { label: 'Controle', path: '/estoque/controle' },
       { label: 'Entrada NF-e', path: '/estoque/entrada-nfe' },
+      { label: 'Controle', path: '/estoque/controle' },
+      { label: 'Saída Material', path: '/estoque/saida-material' },
     ],
   },
   {
@@ -103,7 +104,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   { prefix: '/api/documentos', pages: ['/cadastro/documentos'] },
   { prefix: '/api/companies', pages: ['/sistema/settings'] },
   // Estoque
-  { prefix: '/api/estoque',   pages: ['/estoque/controle', '/estoque/entrada-nfe'] },
+  { prefix: '/api/estoque',   pages: ['/estoque/controle', '/estoque/entrada-nfe', '/estoque/saida-material'] },
   // Financeiro
   { prefix: '/api/financeiro',pages: ['/financeiro/contas-pagar', '/financeiro/contas-receber'] },
   // Gestão

@@ -53,6 +53,10 @@ const EXPECTED_MIGRATIONS = [
   {
     name: '20260907120000_stock_movement',
     sha256: '8e5c7265573ce6669932c0339d3f792f13250412eed984a85124d9b92a14a304',
+  },
+  {
+    name: '20260907140000_stock_exit_checklist',
+    sha256: 'b83904bd40d27a3d6375bb39a6c27fcac85d0a6ac1a61bcc209c10b1dc2773ce',
   }];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
@@ -64,7 +68,7 @@ const EXPECTED_SET_DIGEST = crypto.createHash('sha256')
 const TABLES = [
   'invoice_tax_totals', 'invoice_item_tax', 'contact_fiscal',
   'invoice_duplicata', 'ncm_cache', 'product_registry', 'stock_entry',
-  'nfe_entry_item', 'stock_movement', 'product_settings_catalog', 'cnpj_cache',
+  'nfe_entry_item', 'stock_movement', 'stock_exit_checklist', 'product_settings_catalog', 'cnpj_cache',
   'cnpj_monitoring',
 ];
 

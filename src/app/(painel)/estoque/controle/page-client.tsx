@@ -66,6 +66,7 @@ const KIND_LABEL: Record<string, string> = {
   RETORNO_CONSIG: 'Retorno consignação',
   PERDA_VALIDADE: 'Perda validade',
   AJUSTE: 'Ajuste',
+  SAIDA_AVULSA: 'Saída avulsa',
 };
 
 type Tab = 'saldos' | 'movimentos';

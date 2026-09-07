@@ -5,7 +5,7 @@ import Badge from '@/components/ui/Badge';
 import Field from '@/components/ui/Field';
 import Button from '@/components/ui/Button';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import {useRouter, useSearchParams} from 'next/navigation';
 import { toast } from 'sonner';
 import { FILTER_INPUT_CLS, formatAmount, formatCnpj } from '@/lib/utils';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
@@ -168,7 +168,9 @@ export default function EmitirNfePage() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
+  const searchParams = useSearchParams();
   const [emissionId, setEmissionId] = useState<string | null>(null);
+  const [draftHydrated, setDraftHydrated] = useState(false);
   const [sefazMotivo, setSefazMotivo] = useState<string | null>(null);
 
   const op = operations.find((o) => o.cfop === cfop);
@@ -187,6 +189,57 @@ export default function EmitirNfePage() {
       setIndPag(DEFAULT_INDPAG_VENDA);
     }
   }, [cfop]);
+
+
+  useEffect(() => {
+    const id = searchParams.get('emissionId') || searchParams.get('id');
+    if (!id || draftHydrated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/nfe-emissions/${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error('Rascunho não encontrado');
+        const data = await res.json();
+        const em = data.emission;
+        if (!em || cancelled) return;
+        const payload = em.payload || {};
+        setEmissionId(em.id);
+        setCfop(payload.cfop || em.cfop || '5102');
+        if (payload.destCnpj) {
+          setDest({ cnpj: payload.destCnpj, name: payload.destName || em.destName || payload.destCnpj });
+        }
+        if (Array.isArray(payload.items)) {
+          setItems(payload.items.map((item: Line) => ({
+            ...item,
+            vDesc: item.vDesc || '0.00',
+          })));
+        }
+        if (payload.finNFe) setFinNFe(payload.finNFe);
+        if (payload.indFinal) setIndFinal(payload.indFinal);
+        if (payload.modFrete) setModFrete(payload.modFrete);
+        if (payload.vFrete) setVFrete(payload.vFrete);
+        if (payload.vSeg) setVSeg(payload.vSeg);
+        if (payload.vOutro) setVOutro(payload.vOutro);
+        if (payload.transporta?.xNome) setTranspNome(payload.transporta.xNome);
+        if (payload.transporta?.cnpj) setTranspCnpj(payload.transporta.cnpj);
+        if (payload.transporta?.UF) setTranspUf(payload.transporta.UF);
+        if (payload.volume?.qVol) setQVol(payload.volume.qVol);
+        if (payload.volume?.esp) setEsp(payload.volume.esp);
+        if (payload.volume?.pesoB) setPesoB(payload.volume.pesoB);
+        if (payload.volume?.pesoL) setPesoL(payload.volume.pesoL);
+        if (payload.pag?.indPag) setIndPag(payload.pag.indPag);
+        if (payload.pag?.tPag) setTPag(payload.pag.tPag);
+        if (payload.infCpl != null) setInfCpl(payload.infCpl);
+        if (payload.infAdFisco != null) setInfAdFisco(payload.infAdFisco);
+        setDraftHydrated(true);
+        toast.success('Rascunho carregado');
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : 'Falha ao carregar rascunho');
+        setDraftHydrated(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchParams, draftHydrated]);
 
   useEffect(() => {
     fetch('/api/nfe-emissions/catalog')

@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const gate = require('./verify-production-migration-window.cjs');
 
-assert.equal(gate.TABLES.length, 12);
+assert.equal(gate.TABLES.length, 13);
 assert.ok(gate.EXPECTED_MIGRATIONS.length >= 8, 'o conjunto pinado tem a âncora + as 7 da remediação');
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905210000_unimed_cg_autorizacoes'),
@@ -61,7 +61,7 @@ assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905220000_nfe_item_product_link'),
   'SPEC-047 nfe_item_product_link deve estar pinada',
 );
-assert.equal(gate.EXPECTED_MIGRATION, '20260907120000_stock_movement');
+assert.equal(gate.EXPECTED_MIGRATION, '20260907140000_stock_exit_checklist');
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260906180000_unimed_cg_billing_match'),
   'SPEC-051 billing match migration must be pinned',
@@ -89,6 +89,10 @@ assert.ok(
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260907120000_stock_movement'),
   'pin inclui stock_movement (SPEC-056)',
+);
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260907140000_stock_exit_checklist'),
+  'pin inclui stock_exit_checklist (SPEC-057)',
 );
 assert.equal(gate.migrationState(['20260906150000_daily_issued_summary_send']), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).

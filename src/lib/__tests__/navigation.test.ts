@@ -106,5 +106,16 @@ describe('navigation ACL helpers', () => {
       expect(canAccessApi('viewer', ['/cadastro/produtos'], '/api/anvisa/validate')).toBe(true);
       expect(canAccessApi('viewer', ['/fiscal/invoices'], '/api/anvisa/validate')).toBe(false);
     });
+
+    it('Estoque: Entrada NF-e, Controle, Saída Material (SPEC-057)', () => {
+      expect(PAGE_GROUPS.find((g) => g.section === 'Estoque')?.pages.map((p) => p.path)).toEqual([
+        '/estoque/entrada-nfe',
+        '/estoque/controle',
+        '/estoque/saida-material',
+      ]);
+      expect(requiredPagesForApi('/api/estoque')).toContain('/estoque/saida-material');
+      expect(requiredPagesForApi('/api/estoque/saida-material/saldos')).toContain('/estoque/saida-material');
+      expect(VALID_PAGE_PATHS.has('/estoque/saida-material')).toBe(true);
+    });
   });
 });

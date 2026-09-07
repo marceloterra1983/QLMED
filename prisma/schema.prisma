@@ -195,6 +195,7 @@ model Company {
   stockEntries          StockEntry[]
   nfeEntryItems         NfeEntryItem[]
   stockMovements        StockMovement[]
+  stockExitChecklists   StockExitChecklist[]
   nfeItemProductLinks   NfeItemProductLink[]
   productSettings       ProductSettingsCatalog[]
   cnpjMonitorings       CnpjMonitoring[]
@@ -912,7 +913,7 @@ model StockMovement {
   /// CNPJ do cliente quando locationType=CUSTOMER
   locationCnpj       String?   @map("location_cnpj")
   locationName       String?   @map("location_name")
-  /// ENTRADA_NFE | SAIDA_NFE | REMESSA_CONSIG | RETORNO_CONSIG | PERDA_VALIDADE | AJUSTE
+  /// ENTRADA_NFE | SAIDA_NFE | REMESSA_CONSIG | RETORNO_CONSIG | PERDA_VALIDADE | AJUSTE | SAIDA_AVULSA
   kind               String
   invoiceId          String?   @map("invoice_id")
   invoice            Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
@@ -931,6 +932,26 @@ model StockMovement {
   @@index([invoiceId])
   @@map("stock_movement")
 }
+
+// SPEC-057: checklist / saída avulsa append-only
+model StockExitChecklist {
+  id           String   @id @default(cuid())
+  companyId    String   @map("company_id")
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// consignado | saida_avulsa | venda_direta | material_usado
+  tab          String
+  customerCnpj String?  @map("customer_cnpj")
+  customerName String?  @map("customer_name")
+  items        Json
+  /// CHECKLIST | SAIDA_AVULSA
+  kind         String
+  createdBy    String?  @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([companyId, createdAt])
+  @@map("stock_exit_checklist")
+}
+
 
 // SPEC-047: vínculo item de NF-e recebida → produto Spica. Uma linha por item
 // (company, invoice, nItem). MANUAL nunca é sobrescrito pela varredura; a
