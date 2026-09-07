@@ -9,6 +9,7 @@ import Field from '@/components/ui/Field';
 import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
 import Modal from '@/components/ui/Modal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useRole } from '@/hooks/useRole';
 import { FILTER_INPUT_CLS, formatDate } from '@/lib/utils';
 import type { BadgeTone } from '@/components/ui/Badge';
@@ -80,6 +81,7 @@ export default function ControleEstoquePage() {
   const [loading, setLoading] = useState(false);
   const [ajusteOpen, setAjusteOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [backfillConfirmOpen, setBackfillConfirmOpen] = useState(false);
   const [form, setForm] = useState({
     productCodigo: '',
     lot: '',
@@ -166,7 +168,7 @@ export default function ControleEstoquePage() {
   }
 
   async function runBackfill() {
-    if (!confirm('Reprocessar entradas e NF-e emitidas no ledger? Operação idempotente.')) return;
+    setBackfillConfirmOpen(false);
     setBackfilling(true);
     try {
       const res = await fetch('/api/estoque/controle/backfill', { method: 'POST' });
@@ -196,7 +198,7 @@ export default function ControleEstoquePage() {
               <Button variant="secondary" onClick={() => setAjusteOpen(true)}>
                 Perda / Ajuste
               </Button>
-              <Button variant="secondary" loading={backfilling} onClick={() => void runBackfill()}>
+              <Button variant="secondary" loading={backfilling} onClick={() => setBackfillConfirmOpen(true)}>
                 Backfill
               </Button>
             </div>
@@ -386,6 +388,16 @@ export default function ControleEstoquePage() {
           </Field>
         </div>
       </Modal>
+      <ConfirmDialog
+        isOpen={backfillConfirmOpen}
+        onClose={() => setBackfillConfirmOpen(false)}
+        onConfirm={() => void runBackfill()}
+        title="Backfill do ledger"
+        message="Reprocessar entradas e NF-e emitidas no ledger? Operação idempotente."
+        confirmLabel="Executar backfill"
+        confirmVariant="primary"
+        loading={backfilling}
+      />
     </>
   );
 }
