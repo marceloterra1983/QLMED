@@ -11,7 +11,21 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   const connectionString = getCanonicalDatabaseUrl();
-  const adapter = new PrismaPg(connectionString);
+  const adapter = new PrismaPg(
+    {
+      connectionString,
+      max: 8,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000,
+      keepAlive: true,
+      application_name: 'qlmed-web',
+    },
+    {
+      onPoolError: (err) => {
+        log.error({ err }, 'Prisma PostgreSQL pool error');
+      },
+    }
+  );
   return new PrismaClient({ adapter });
 }
 
