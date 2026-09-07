@@ -249,7 +249,8 @@ export function buildInvoiceSearchConditions(
         { accessKey: { contains: variant, mode: 'insensitive' } },
       );
 
-      if (searchXmlContent && variant.length >= 3) {
+      const isPureDigits = /^\d+$/.test(variant);
+      if (searchXmlContent && !isPureDigits && variant.length >= 3) {
         fieldConditions.push({
           xmlContent: { contains: variant, mode: 'insensitive' },
         });

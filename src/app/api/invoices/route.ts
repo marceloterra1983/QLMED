@@ -156,11 +156,9 @@ export async function GET(req: Request) {
     const { dateFrom, dateTo } = params;
 
     if (direction === 'issued' && (type === '' || type === 'NFE')) {
-      try {
-        await ensureLocalXmlSyncNow();
-      } catch (syncError) {
+      void ensureLocalXmlSyncNow().catch((syncError) => {
         log.error({ err: syncError }, '[Invoices] Falha ao forçar sync local de XML');
-      }
+      });
     }
 
     const where: Record<string, unknown> = { companyId: company.id };
@@ -291,16 +289,18 @@ export async function GET(req: Request) {
 
       Object.assign(searchWhere, searchConditions);
 
-      const [searchInvoices, total] = await Promise.all([
-        prisma.invoice.findMany({
-          where: searchWhere,
-          select: selectFields,
-          orderBy: { [orderByField]: orderByDir },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        prisma.invoice.count({ where: searchWhere }),
-      ]);
+      const searchInvoices = await prisma.invoice.findMany({
+        where: searchWhere,
+        select: selectFields,
+        orderBy: { [orderByField]: orderByDir },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      const total =
+        page === 1 && searchInvoices.length < limit
+          ? searchInvoices.length
+          : await prisma.invoice.count({ where: searchWhere });
 
       const invoicesWithExtra = await attachExtraFieldsForInvoices(searchInvoices);
 
@@ -324,16 +324,19 @@ export async function GET(req: Request) {
       }
     }
 
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        where,
-        select: selectFields,
-        orderBy: { [orderByField]: orderByDir },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.invoice.count({ where }),
-    ]);
+    const invoices = await prisma.invoice.findMany({
+      where,
+      select: selectFields,
+      orderBy: { [orderByField]: orderByDir },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    const total =
+      page === 1 && invoices.length < limit
+        ? invoices.length
+        : await prisma.invoice.count({ where });
+
     const invoicesWithExtra = await attachExtraFieldsForInvoices(invoices);
 
     return NextResponse.json({

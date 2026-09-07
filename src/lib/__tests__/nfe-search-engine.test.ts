@@ -129,6 +129,18 @@ describe('nfe search-engine', () => {
       const xmlMatch = saoOr.find((item) => 'xmlContent' in item);
       expect(xmlMatch).toBeDefined();
     });
+
+    it('skips xmlContent search for pure numeric tokens to avoid expensive table scans', () => {
+      const criteria = tokenizeInvoiceSearch('65053');
+      const conditions = buildInvoiceSearchConditions(criteria, { searchXmlContent: true }) as {
+        AND: Array<{ OR: Record<string, unknown>[] }>;
+      };
+
+      expect(conditions.AND).toBeDefined();
+      const numOr = conditions.AND[0].OR;
+      const xmlMatch = numOr.find((item) => 'xmlContent' in item);
+      expect(xmlMatch).toBeUndefined();
+    });
   });
 
   describe('extractMatchedProductSnippet', () => {

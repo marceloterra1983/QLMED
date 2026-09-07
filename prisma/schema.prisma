@@ -385,6 +385,11 @@ model Invoice {
   @@index([companyId, convenioName])
   @@index([doctorName])
   @@index([companyId, doctorName])
+  @@index([number])
+  @@index([companyId, number])
+  @@index([recipientName])
+  @@index([companyId, recipientName])
+  @@index([companyId, type, direction, cfop, issueDate])
 }
 
 /// Preferencia de notificacao de um usuario para um tipo de evento.

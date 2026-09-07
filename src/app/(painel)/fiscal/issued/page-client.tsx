@@ -57,6 +57,8 @@ export default function IssuedInvoicesPage() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [nicknames, setNicknames] = useState<Map<string, string>>(new Map());
+  const nicknamesRef = useRef<Map<string, string>>(new Map());
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [hideValues, setHideValues] = useState(false);
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
@@ -171,6 +173,12 @@ export default function IssuedInvoicesPage() {
 
   async function loadInvoices(options?: { silent?: boolean }) {
     const silent = options?.silent ?? false;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({ page: '1', limit: '5000' });
@@ -185,7 +193,7 @@ export default function IssuedInvoicesPage() {
       params.set('sort', sortBy);
       params.set('order', sortOrder);
 
-      const res = await fetch(`/api/invoices?${params}`);
+      const res = await fetch(`/api/invoices?${params}`, { signal: controller.signal });
       if (res.ok) {
         const data = await res.json();
         const loaded: Invoice[] = data.invoices || [];
@@ -201,15 +209,33 @@ export default function IssuedInvoicesPage() {
           if (collapse.collapsed) setCollapsedGroups(collapse.collapsed);
           collapsedInitializedRef.current = collapse.initialized;
         }
-        const cnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter((c): c is string => Boolean(c))));
-        if (cnpjs.length > 0) {
-          const p = new URLSearchParams(); cnpjs.forEach((c) => p.append('cnpjs', c));
-          const nr = await fetch(`/api/contacts/nickname/batch?${p}`);
-          if (nr.ok) { const nd = await nr.json(); setNicknames(new Map(Object.entries(nd.nicknames || {}))); }
-        } else { setNicknames(new Map()); }
+        const allCnpjs = Array.from(new Set(loaded.map((inv) => inv.recipientCnpj).filter((c): c is string => Boolean(c))));
+        const missingCnpjs = allCnpjs.filter((c) => !nicknamesRef.current.has(c));
+        if (missingCnpjs.length > 0) {
+          const p = new URLSearchParams(); missingCnpjs.forEach((c) => p.append('cnpjs', c));
+          const nr = await fetch(`/api/contacts/nickname/batch?${p}`, { signal: controller.signal });
+          if (nr.ok) {
+            const nd = await nr.json();
+            setNicknames((prev) => {
+              const next = new Map(prev);
+              for (const [cnpj, nick] of Object.entries(nd.nicknames || {})) {
+                next.set(cnpj, nick as string);
+              }
+              nicknamesRef.current = next;
+              return next;
+            });
+          }
+        }
       } else if (!silent) { toast.error('Erro ao carregar notas emitidas'); }
-    } catch { if (!silent) toast.error('Erro ao carregar notas emitidas'); }
-    finally { if (!silent) setLoading(false); }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      if (!silent) toast.error('Erro ao carregar notas emitidas');
+    }
+    finally {
+      if (abortControllerRef.current === controller) {
+        if (!silent) setLoading(false);
+      }
+    }
   }
 
   const handleSort = (field: string) => {
