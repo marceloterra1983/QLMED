@@ -194,6 +194,7 @@ model Company {
   productRegistries     ProductRegistry[]
   stockEntries          StockEntry[]
   nfeEntryItems         NfeEntryItem[]
+  stockMovements        StockMovement[]
   nfeItemProductLinks   NfeItemProductLink[]
   productSettings       ProductSettingsCatalog[]
   cnpjMonitorings       CnpjMonitoring[]
@@ -362,6 +363,7 @@ model Invoice {
   itemTaxes             InvoiceItemTax[]
   duplicatas            InvoiceDuplicata[]
   stockEntries          StockEntry[]
+  stockMovements        StockMovement[]
   nfeEntryItems         NfeEntryItem[]
   nfeItemProductLinks   NfeItemProductLink[]
   sourcedContactFiscals ContactFiscal[]
@@ -886,6 +888,48 @@ model NfeEntryItem {
   @@index([companyId, codigoInterno])
   @@index([invoiceId])
   @@map("nfe_entry_item")
+}
+
+
+// SPEC-056: ledger imutável de estoque (saldo = soma por produto+lote+local).
+model StockMovement {
+  id                 String    @id @default(cuid())
+  companyId          String    @map("company_id")
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Código interno / cProd canônico do produto
+  productCodigo      String    @map("product_codigo")
+  productName        String?   @map("product_name")
+  productRegistryId  String?   @map("product_registry_id")
+  lot                String    @default("")
+  lotExpiry          String?   @map("lot_expiry")
+  lotSerial          String?   @map("lot_serial")
+  /// Quantidade sempre positiva
+  quantity           Float
+  /// IN | OUT
+  direction          String
+  /// CD | CUSTOMER
+  locationType       String    @map("location_type")
+  /// CNPJ do cliente quando locationType=CUSTOMER
+  locationCnpj       String?   @map("location_cnpj")
+  locationName       String?   @map("location_name")
+  /// ENTRADA_NFE | SAIDA_NFE | REMESSA_CONSIG | RETORNO_CONSIG | PERDA_VALIDADE | AJUSTE
+  kind               String
+  invoiceId          String?   @map("invoice_id")
+  invoice            Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  nfeEntryItemId     Int?      @map("nfe_entry_item_id")
+  reason             String?
+  createdBy          String?   @map("created_by")
+  occurredAt         DateTime  @map("occurred_at") @db.Timestamptz
+  /// Chave única anti-duplicata (backfill / hooks)
+  idempotencyKey     String    @unique @map("idempotency_key")
+  transferGroupId    String?   @map("transfer_group_id")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([companyId, productCodigo])
+  @@index([companyId, locationType, locationCnpj])
+  @@index([companyId, occurredAt])
+  @@index([invoiceId])
+  @@map("stock_movement")
 }
 
 // SPEC-047: vínculo item de NF-e recebida → produto Spica. Uma linha por item

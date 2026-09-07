@@ -50,7 +50,10 @@ const EXPECTED_MIGRATIONS = [
     name: '20260907030000_invoice_watermark_idx',
     sha256: '4c673265556a0c1d7a676c9ba085a023df10c7a13cc8f4a56da9f1049173cd7c',
   },
-];
+  {
+    name: '20260907120000_stock_movement',
+    sha256: '8e5c7265573ce6669932c0339d3f792f13250412eed984a85124d9b92a14a304',
+  }];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
 const EXPECTED_SQL_SHA256 = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].sha256;
@@ -61,7 +64,7 @@ const EXPECTED_SET_DIGEST = crypto.createHash('sha256')
 const TABLES = [
   'invoice_tax_totals', 'invoice_item_tax', 'contact_fiscal',
   'invoice_duplicata', 'ncm_cache', 'product_registry', 'stock_entry',
-  'nfe_entry_item', 'product_settings_catalog', 'cnpj_cache',
+  'nfe_entry_item', 'stock_movement', 'product_settings_catalog', 'cnpj_cache',
   'cnpj_monitoring',
 ];
 
