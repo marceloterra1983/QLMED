@@ -61,6 +61,10 @@ export default function IssuedInvoicesPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [hideValues, setHideValues] = useState(false);
   const watermarkEtagRef = useRef<string | null>(null);
+  const loadInvoicesRef = useRef(loadInvoices);
+  useEffect(() => {
+    loadInvoicesRef.current = loadInvoices;
+  });
 
   const isVendaTag = (tag?: string | null) => tag === 'Venda';
   const getTagClasses = (tag?: string | null, highlighted?: boolean) => {
@@ -98,7 +102,6 @@ export default function IssuedInvoicesPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    watermarkEtagRef.current = null;
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
@@ -132,7 +135,7 @@ export default function IssuedInvoicesPage() {
           watermarkEtagRef.current = res.headers.get('etag');
           const data = await res.json();
           if (data.changed) {
-            loadInvoices({ silent: true });
+            loadInvoicesRef.current({ silent: true });
           }
         }
       } catch {
@@ -140,7 +143,6 @@ export default function IssuedInvoicesPage() {
       }
     }, AUTO_REFRESH_MS);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo]);
 
   useEffect(() => {
