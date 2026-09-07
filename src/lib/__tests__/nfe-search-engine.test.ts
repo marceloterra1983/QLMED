@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildInvoiceSearchConditions,
   expandAccentVariants,
+  extractMatchedProductSnippet,
+  sortInvoicesByRelevance,
   tokenizeInvoiceSearch,
 } from '@/lib/nfe/search-engine';
 
@@ -126,6 +128,84 @@ describe('nfe search-engine', () => {
       // Should include xmlContent for product searches
       const xmlMatch = saoOr.find((item) => 'xmlContent' in item);
       expect(xmlMatch).toBeDefined();
+    });
+  });
+
+  describe('extractMatchedProductSnippet', () => {
+    it('extracts product from xProd tag when token matches', () => {
+      const xml = '<nfeProc><NFe><infNFe><det><prod><cProd>102</cProd><xProd>CATETER BALAO CORONARIO 3.0X15MM</xProd></prod></det></infNFe></NFe></nfeProc>';
+      const snippet = extractMatchedProductSnippet(xml, ['cateter']);
+      expect(snippet).toBe('CATETER BALAO CORONARIO 3.0X15MM');
+    });
+
+    it('extracts code from cProd tag when code matches', () => {
+      const xml = '<nfeProc><NFe><infNFe><det><prod><cProd>SPICA-2024</cProd><xProd>VALVULA AORTICA</xProd></prod></det></infNFe></NFe></nfeProc>';
+      const snippet = extractMatchedProductSnippet(xml, ['SPICA']);
+      expect(snippet).toBe('Código: SPICA-2024');
+    });
+
+    it('returns null when no product matches', () => {
+      const xml = '<det><prod><xProd>FIO GUIA</xProd></prod></det>';
+      const snippet = extractMatchedProductSnippet(xml, ['stent']);
+      expect(snippet).toBeNull();
+    });
+  });
+
+  describe('scoreInvoiceRelevance & sortInvoicesByRelevance', () => {
+    it('ranks exact invoice number higher than substring or key match', () => {
+      const invExact = {
+        id: '1',
+        number: '65053',
+        accessKey: '50260807832309000197550020000650531004640320',
+        recipientName: 'CLINICA XYZ',
+        issueDate: '2024-01-01T10:00:00.000Z',
+      };
+      const invSubstring = {
+        id: '2',
+        number: '12345',
+        accessKey: '50260807832309000197550020000650531004640320',
+        recipientName: 'OUTRO CLIENTE',
+        issueDate: '2026-05-01T10:00:00.000Z',
+      };
+
+      const sorted = sortInvoicesByRelevance([invSubstring, invExact], '65053');
+      expect(sorted[0].id).toBe('1'); // Exact number wins even though id 2 is newer
+    });
+
+    it('ranks prefix matches on recipient higher than loose substrings', () => {
+      const invPrefix = {
+        id: '1',
+        number: '100',
+        recipientName: 'UNIMED CAMPO GRANDE',
+        issueDate: '2025-01-01',
+      };
+      const invContains = {
+        id: '2',
+        number: '200',
+        recipientName: 'HOSPITAL REGIONAL DA UNIMED',
+        issueDate: '2025-01-01',
+      };
+
+      const sorted = sortInvoicesByRelevance([invContains, invPrefix], 'Unimed');
+      expect(sorted[0].id).toBe('1');
+    });
+
+    it('ranks cross-year invoices seamlessly by relevance and breaks ties with date', () => {
+      const inv2024Exact = {
+        id: 'old-exact',
+        number: '7788',
+        recipientName: 'MARCOS VINICIUS',
+        issueDate: '2024-02-10T12:00:00.000Z',
+      };
+      const inv2026Partial = {
+        id: 'new-partial',
+        number: '9999',
+        recipientName: 'VINICIUS ALBUQUERQUE',
+        issueDate: '2026-06-10T12:00:00.000Z',
+      };
+
+      const sorted = sortInvoicesByRelevance([inv2026Partial, inv2024Exact], 'Marcos Vinicius');
+      expect(sorted[0].id).toBe('old-exact');
     });
   });
 });
