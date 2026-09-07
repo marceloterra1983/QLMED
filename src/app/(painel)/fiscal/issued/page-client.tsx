@@ -132,10 +132,11 @@ export default function IssuedInvoicesPage() {
         }
 
         if (res.ok) {
-          watermarkEtagRef.current = res.headers.get('etag');
+          const newEtag = res.headers.get('etag');
           const data = await res.json();
           if (data.changed) {
-            loadInvoicesRef.current({ silent: true });
+            await loadInvoicesRef.current({ silent: true });
+            watermarkEtagRef.current = newEtag;
           }
         }
       } catch {

@@ -15,6 +15,13 @@ function escapeRegExp(str: string): string {
 
 export const regexPatternCache = new Map<string, RegExp | null>();
 
+function setCache(key: string, pattern: RegExp | null): void {
+  if (regexPatternCache.size >= 50) {
+    regexPatternCache.clear();
+  }
+  regexPatternCache.set(key, pattern);
+}
+
 export function getCompiledPattern(query: string | null | undefined): RegExp | null {
   if (!query) return null;
   const trimmed = query.trim();
@@ -44,16 +51,14 @@ export function getCompiledPattern(query: string | null | undefined): RegExp | n
   }
 
   if (variants.length === 0) {
-    regexPatternCache.set(trimmed, null);
+    setCache(trimmed, null);
     return null;
   }
 
   variants.sort((a, b) => b.length - a.length);
-  // Cap cache size to avoid memory leak
-  if (regexPatternCache.size > 50) regexPatternCache.clear();
 
   const pattern = new RegExp(`(${variants.map(escapeRegExp).join('|')})`, 'gi');
-  regexPatternCache.set(trimmed, pattern);
+  setCache(trimmed, pattern);
   return pattern;
 }
 
@@ -67,9 +72,7 @@ export default function Highlight({ text, query, className }: HighlightProps) {
   const pattern = getCompiledPattern(query);
   if (!pattern) return <span className={className}>{text}</span>;
 
-  // Use pattern.source to create isolated instance with zero regex compilation overhead
-  const localRe = new RegExp(pattern.source, 'gi');
-  const parts = text.split(localRe);
+  const parts = text.split(pattern);
 
   return (
     <span className={className}>
