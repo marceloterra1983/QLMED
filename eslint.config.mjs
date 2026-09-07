@@ -20,6 +20,10 @@ const eslintConfig = [
       'n8n/**',
       'scripts/**',
       '.planning/**',
+      // Agent tools keep sibling worktrees inside the checkout; their files are
+      // the same source in another branch and must not fail this lint run.
+      '.kilo/**',
+      '.kilocode/**',
     ],
   },
   ...compat.extends('next/core-web-vitals'),
