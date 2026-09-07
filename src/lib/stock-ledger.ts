@@ -21,7 +21,8 @@ export type StockMovementKind =
   | 'REMESSA_CONSIG'
   | 'RETORNO_CONSIG'
   | 'PERDA_VALIDADE'
-  | 'AJUSTE';
+  | 'AJUSTE'
+  | 'SAIDA_AVULSA';
 
 export type ValidityBand = 'vencido' | 'd30' | 'd90' | 'ok' | 'sem_validade';
 

@@ -21,6 +21,7 @@ const LIST_PAGES = [
   'src/app/(painel)/cadastro/anvisa/page-client.tsx',
   'src/app/(painel)/estoque/entrada-nfe/page-client.tsx',
   'src/app/(painel)/estoque/controle/page-client.tsx',
+  'src/app/(painel)/estoque/saida-material/page-client.tsx',
   'src/app/(painel)/financeiro/components/FinanceiroPageClient.tsx',
   'src/app/(painel)/gestao/impcg/page-client.tsx',
   'src/app/(painel)/gestao/cassems/page-client.tsx',

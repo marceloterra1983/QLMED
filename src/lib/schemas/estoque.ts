@@ -72,3 +72,39 @@ export const estoqueMovimentosQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 
+
+
+/**
+ * Query GET /api/estoque/saida-material/saldos
+ */
+export const saidaMaterialSaldosQuerySchema = z.object({
+  q: z.string().optional(),
+  locationType: z.enum(['CD', 'CUSTOMER']).optional(),
+  locationCnpj: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(2000).optional(),
+});
+
+/**
+ * Query GET /api/estoque/saida-material/clientes
+ */
+export const saidaMaterialClientesQuerySchema = z.object({
+  q: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+/**
+ * POST /api/estoque/saida-material/checklist
+ */
+export const saidaMaterialChecklistSchema = z.object({
+  tab: z.enum(['consignado', 'saida_avulsa', 'venda_direta', 'material_usado']),
+  customerCnpj: z.string().nullable().optional(),
+  customerName: z.string().nullable().optional(),
+  items: z.array(z.object({
+    productCodigo: z.string().min(1),
+    productName: z.string().nullable().optional(),
+    lot: z.string().default(''),
+    lotExpiry: z.string().nullable().optional(),
+    quantity: z.coerce.number().positive(),
+  })).min(1).max(200),
+  mode: z.enum(['checklist', 'avulsa_movimento']),
+});

@@ -17,6 +17,7 @@ export async function GET(req: Request) {
               OR: [
                 { description: { contains: search, mode: 'insensitive' } },
                 { code: { contains: search, mode: 'insensitive' } },
+                { codigo: { contains: search, mode: 'insensitive' } },
                 { shortName: { contains: search, mode: 'insensitive' } },
               ],
             }
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
       select: {
         id: true,
         code: true,
+        codigo: true,
         description: true,
         ncm: true,
         unit: true,

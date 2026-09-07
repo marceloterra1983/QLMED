@@ -2,6 +2,7 @@ import { getCfopTagByCode } from '@/lib/cfop';
 
 const NATUREZA_BY_CFOP: Record<string, string> = {
   '5102': 'Venda merc.adq. ou recb. terc.',
+  '5114': 'Venda de bem recebido em consignacao',
   '6102': 'Venda fora do estado',
   '6108': 'Venda Destinada a Nao Contribu',
   '5917': 'Remessa de consignacao',
@@ -33,7 +34,7 @@ const NATUREZA_BY_TAG: Record<string, string> = {
 };
 
 const EMISSION_CFOPS = [
-  '5102', '5405', '5551', '6101', '6102', '6108',
+  '5102', '5114', '5405', '5551', '6101', '6102', '6108', '6114',
   '5908', '5909', '5910', '5911', '5912', '5917', '5949', '5554',
   '6202', '6554', '6555', '6908', '6912', '6913', '6915', '6917', '6918', '6949',
   '7202',
