@@ -294,7 +294,17 @@ export default function IssuedInvoicesPage() {
           <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>
         </td>
         <td className="px-2 py-3">
-          {(() => { const n = getNick(invoice.recipientCnpj, invoice.recipientName); return n.full ? (<><Highlight text={n.display} query={search} className="text-sm font-bold text-slate-900 dark:text-white" /><Highlight text={n.full} query={search} className="text-xs text-slate-500 dark:text-slate-400" /></>) : (<Highlight text={n.display} query={search} className="text-sm font-bold text-slate-900 dark:text-white" />); })()}
+          {(() => {
+            const n = getNick(invoice.recipientCnpj, invoice.recipientName);
+            return n.full ? (
+              <>
+                <Highlight text={n.display} query={search} className="block text-sm font-bold text-slate-900 dark:text-white" />
+                <Highlight text={n.full} query={search} className="block text-xs text-slate-500 dark:text-slate-400" />
+              </>
+            ) : (
+              <Highlight text={n.display} query={search} className="text-sm font-bold text-slate-900 dark:text-white" />
+            );
+          })()}
         </td>
         <td className="px-2 py-3">
           {(invoice.convenioName || invoice.patientName || invoice.doctorName) ? (
