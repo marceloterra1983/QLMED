@@ -436,7 +436,7 @@ export default function SaidaMaterialPage() {
         <section key={`${g.productType}|${g.productSubtype}`} className="space-y-2">
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
             {g.productType}
-            <span className="text-slate-400 font-medium"> / {g.productSubtype}</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium"> / {g.productSubtype}</span>
           </h3>
           <div className="space-y-2">
             {g.products.map((p) => (
@@ -461,7 +461,7 @@ export default function SaidaMaterialPage() {
                           checked={Boolean(selected)}
                           onChange={(e) => toggleLot(lot, e.target.checked)}
                           aria-label={`Selecionar lote ${lot.lot || 'sem lote'} de ${p.productName}`}
-                          className="rounded border-slate-300"
+                          className="rounded border-slate-200 dark:border-slate-700"
                         />
                         <span className="min-w-[7rem]">
                           Lote <strong>{lot.lot || '—'}</strong>
