@@ -17,7 +17,9 @@ export default defineConfig({
     // O runner self-hosted mantém um checkout completo do QLMED em
     // actions-runner-qlmed-prod/_work/; sem este exclude o vitest coleta
     // aquela cópia e reporta falhas que não pertencem a este working tree.
-    exclude: [...configDefaults.exclude, 'actions-runner-qlmed-prod/**'],
+    // O mesmo vale para worktrees irmãos criados por agent tools dentro do
+    // checkout (ex.: .kilo/worktrees/) — duplicam a suíte e mascaram o resultado.
+    exclude: [...configDefaults.exclude, 'actions-runner-qlmed-prod/**', '.kilo/**', '.kilocode/**'],
   },
   resolve: {
     alias: {
