@@ -34,3 +34,41 @@ export const entradaNfeCloneBatchSchema = z.object({
   lotExpiry: z.string().nullable().optional(),
   lotQuantity: z.coerce.number().nullable().optional(),
 });
+
+/**
+ * Schema para POST /api/estoque/controle/ajuste
+ * Perda por validade ou ajuste manual de saldo.
+ */
+export const estoqueAjusteSchema = z.object({
+  productCodigo: z.string().min(1, 'productCodigo e obrigatorio'),
+  productName: z.string().nullable().optional(),
+  lot: z.string().default(''),
+  lotExpiry: z.string().nullable().optional(),
+  quantity: z.coerce.number().positive('quantity deve ser positiva'),
+  kind: z.enum(['PERDA_VALIDADE', 'AJUSTE']),
+  direction: z.enum(['IN', 'OUT']),
+  locationType: z.enum(['CD', 'CUSTOMER']),
+  locationCnpj: z.string().nullable().optional(),
+  locationName: z.string().nullable().optional(),
+  reason: z.string().min(1, 'reason e obrigatorio'),
+});
+
+/**
+ * Query params GET /api/estoque/controle/saldos
+ */
+export const estoqueSaldosQuerySchema = z.object({
+  q: z.string().optional(),
+  locationType: z.enum(['CD', 'CUSTOMER', 'ALL']).optional(),
+  validity: z.enum(['vencido', 'd30', 'd90', 'ok', 'sem_validade', 'ALL']).optional(),
+  limit: z.coerce.number().int().positive().max(2000).optional(),
+});
+
+/**
+ * Query params GET /api/estoque/controle/movimentos
+ */
+export const estoqueMovimentosQuerySchema = z.object({
+  productCodigo: z.string().optional(),
+  lot: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(500).optional(),
+});
+

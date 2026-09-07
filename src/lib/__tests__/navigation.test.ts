@@ -71,6 +71,8 @@ describe('navigation ACL helpers', () => {
       expect(requiredPagesForApi('/api/users')).toContain('/sistema/usuarios');
       expect(requiredPagesForApi('/api/users/123')).toContain('/sistema/usuarios');
       expect(requiredPagesForApi('/api/estoque/entrada')).toContain('/estoque/entrada-nfe');
+      expect(requiredPagesForApi('/api/estoque/controle')).toContain('/estoque/controle');
+      expect(requiredPagesForApi('/api/estoque/controle')).toContain('/estoque/entrada-nfe');
     });
 
     it('every mapped page appears in VALID_PAGE_PATHS', () => {

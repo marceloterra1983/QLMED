@@ -21,6 +21,7 @@ import { resolveEmissionEnvironment } from './environment';
 import type { SefazEnvironment } from './autorizacao-urls';
 import type { NfeEmissionItem } from './types';
 import { invoicePatientWriteFields } from '@/lib/nfe/invoice-patient-fields';
+import { recordMovementsFromIssuedInvoice } from '@/lib/stock-ledger';
 
 const log = createLogger('nfe-emission');
 
@@ -480,6 +481,19 @@ async function finalizeAuthorized(
     },
   });
   log.info({ emissionId: ctx.emissionId, invoiceId, cStat: input.cStat }, 'NF-e autorizada');
+  try {
+    await recordMovementsFromIssuedInvoice({
+      companyId: ctx.companyId,
+      invoiceId,
+      xmlContent: input.xml,
+      cfop: input.cfop,
+      recipientCnpj: input.dest.cnpj,
+      recipientName: input.dest.xNome,
+      issueDate: input.issueDate,
+    });
+  } catch (err) {
+    log.error({ err, invoiceId, emissionId: ctx.emissionId }, 'Falha ao gravar movimentos de estoque na NF-e emitida');
+  }
   await maybeMatchAfterUnimedNfeIssued({
     companyId: ctx.companyId,
     recipientCnpj: input.dest.cnpj,

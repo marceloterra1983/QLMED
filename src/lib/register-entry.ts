@@ -7,6 +7,10 @@ import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { upsertStockEntry, updateStockEntryFiscalTotals, insertNfeEntryItems, NfeEntryItemInput } from '@/lib/stock-entry-store';
 import { extractTaxTotals, extractItemTaxes, extractEmitterLocation } from '@/lib/parse-invoice-tax';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
+import { recordMovementsFromEntryItems } from '@/lib/stock-ledger';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('register-entry');
 
 export interface LotOverride {
   lot: string;
@@ -237,6 +241,13 @@ export async function registerInvoiceEntry(
   }
 
   await insertNfeEntryItems(entry.id, nfeItems);
+
+  // SPEC-056: ledger append-only (idempotente por nfeEntryItem.id).
+  try {
+    await recordMovementsFromEntryItems(companyId, invoiceId, new Date(), userId);
+  } catch (err) {
+    log.error({ err, invoiceId, companyId }, 'Falha ao gravar movimentos de estoque na entrada');
+  }
 
   return { entryId: entry.id, totalItems, matchedItems };
 }

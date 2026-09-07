@@ -19,6 +19,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
   '/cadastro/anvisa': { label: 'ANVISA', icon: 'medication' },
   '/cadastro/documentos': { label: 'Documentos', icon: 'verified' },
+  '/estoque/controle': { label: 'Controle', icon: 'warehouse' },
   '/estoque/entrada-nfe': { label: 'Entrada NF-e', icon: 'inventory' },
   '/fiscal/invoices': { label: 'NF-e Recebidas', icon: 'receipt_long' },
   '/fiscal/issued': { label: 'NF-e Emitidas', icon: 'output' },
@@ -88,6 +89,7 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
     {
       section: 'Estoque',
       items: [
+        { label: 'Controle', icon: 'warehouse', href: '/estoque/controle' },
         { label: 'Entrada NF-e', icon: 'inventory', href: '/estoque/entrada-nfe' },
       ],
     },
