@@ -4,6 +4,7 @@ import { UF_TO_CODE } from '@/lib/constants';
 import { acquirePostgresTransactionAdvisoryLock } from '@/lib/postgres-advisory-lock';
 import { createInvoiceWithOutbox } from '@/lib/notification-outbox';
 import { saveXmlToFile } from '@/lib/xml-file-store';
+import { persistAuthorizedDanfePdf } from './persist-danfe';
 import { updateProductAggregatesForInvoice } from '@/lib/product-aggregate-updater';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
@@ -485,6 +486,12 @@ async function finalizeAuthorized(
   // Escrita de ficheiro é idempotente; roda também no retry para não deixar
   // o backup em XML faltando quando a primeira tentativa morreu aqui.
   await saveXmlToFile(ctx.companyId, input.accessKey, 'NFE', input.xml, input.issueDate);
+  await persistAuthorizedDanfePdf({
+    companyId: ctx.companyId,
+    invoiceNumber: input.number,
+    xml: input.xml,
+    issueDate: input.issueDate,
+  });
 
   await prisma.invoiceEmission.update({
     where: { id: ctx.emissionId },

@@ -26,8 +26,8 @@ export function fmtCep(v: string): string {
 
 export function fmtFone(v: string): string {
   const d = (v || '').replace(/\D/g, '');
-  if (d.length === 10) return `(${d.slice(0, 2)})${d.slice(2, 6)}-${d.slice(6)}`;
-  if (d.length === 11) return `(${d.slice(0, 2)})${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   return v || '';
 }
 
@@ -55,9 +55,22 @@ export function fmtDate(v: string): string {
   try { return new Date(v).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return v; }
 }
 
+/** Data do XML sem converter fuso — SPICA imprime o relógio do ISO. */
+export function fmtDateIso(v: string): string {
+  const m = (v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return fmtDate(v);
+}
+
 export function fmtTime(v: string): string {
   if (!v) return '';
   try { return new Date(v).toLocaleTimeString('pt-BR'); } catch { return ''; }
+}
+
+export function fmtTimeIso(v: string): string {
+  const m = (v || '').match(/T(\d{2}:\d{2}:\d{2})/);
+  if (m) return m[1];
+  return fmtTime(v);
 }
 
 export function fmtDateTime(v: string): string {
@@ -84,6 +97,19 @@ export function modFreteCode(m: string): string {
     '3': '3 - REMETENTE',
     '4': '4 - DESTINATARIO',
     '9': '9 - SEM FRETE',
+  };
+  return map[m] || m || '';
+}
+
+/** Rótulos curtos do DANFE SPICA. */
+export function modFreteDanfe(m: string): string {
+  const map: Record<string, string> = {
+    '0': '0 - Rem.',
+    '1': '1 - Dest.',
+    '2': '2 - Terc.',
+    '3': '3 - Rem.',
+    '4': '4 - Dest.',
+    '9': '9 - Sem Frete',
   };
   return map[m] || m || '';
 }
