@@ -17,7 +17,7 @@ import forge from 'node-forge';
 import { describe, expect, it } from 'vitest';
 import { buildNfeAccessKey } from '@/lib/nfe-emission/access-key';
 import { buildUnsignedNfeXml } from '@/lib/nfe-emission/xml-builder';
-import { signNfeXml } from '@/lib/nfe-emission/xml-sign';
+import { signNfeXml, signedInfoToSign } from '@/lib/nfe-emission/xml-sign';
 import type { NfeEmissionDraft } from '@/lib/nfe-emission/types';
 
 /** Descrição com os quatro caracteres que a C14N trata de forma diferente. */
@@ -156,5 +156,28 @@ describe('QLMED-FISCAL-006 — o digest cobre a forma canônica C14N 1.0', () =>
     expect(signed).toContain(
       '<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>',
     );
+  });
+
+  it('SignatureValue verifica contra SignedInfo C14N (xmlns + empty expand), não contra o /> embutido', () => {
+    const pems = testKeyAndCert();
+    const signed = signNfeXml(buildUnsignedNfeXml(draftComAspa()), pems.key, pems.cert);
+    const embed = signed.match(/<SignedInfo>[\s\S]*<\/SignedInfo>/)![0];
+    expect(embed).toContain('/>');
+    expect(embed).not.toContain(' xmlns=');
+
+    const canon = signedInfoToSign(embed);
+    expect(canon).toContain('xmlns="http://www.w3.org/2000/09/xmldsig#"');
+    expect(canon).toContain('></CanonicalizationMethod>');
+    expect(canon).not.toContain('/>');
+
+    const sigB64 = signed.match(/<SignatureValue>([^<]*)<\/SignatureValue>/)![1];
+    const publicKey = forge.pki.certificateFromPem(pems.cert).publicKey as forge.pki.rsa.PublicKey;
+    const mdOk = forge.md.sha1.create();
+    mdOk.update(canon, 'utf8');
+    expect(publicKey.verify(mdOk.digest().bytes(), forge.util.decode64(sigB64))).toBe(true);
+
+    const mdBad = forge.md.sha1.create();
+    mdBad.update(embed.replace('<SignedInfo>', '<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">'), 'utf8');
+    expect(publicKey.verify(mdBad.digest().bytes(), forge.util.decode64(sigB64))).toBe(false);
   });
 });

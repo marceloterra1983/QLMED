@@ -44,6 +44,16 @@ const KNOWN: Record<
     hints: ['Ajuste a numeração da série ou recupere o protocolo da nota anterior.'],
     severity: 'warning',
   },
+  '297': {
+    title: 'Assinatura difere do calculado',
+    summary:
+      'A SEFAZ recalculou o SignedInfo (C14N 1.0) e a SignatureValue não bate. Quase sempre o XML foi assinado na forma compacta (`/>`) em vez da forma canônica (`<tag></tag>`).',
+    hints: [
+      'O digest do infNFe pode estar correto — 297 é a assinatura do SignedInfo, não o cStat 280.',
+      'Reenvie depois da correção de C14N; não altere o XML após assinar.',
+    ],
+    severity: 'danger',
+  },
   '225': {
     title: 'Falha no Schema XML do lote',
     summary: 'O envelope/lote enviado à autorização falhou no schema.',

@@ -10,6 +10,7 @@ import {
   DEFAULT_PIS_CST,
   defaultPagFor,
   isPisNaoTributado,
+  isSemPagamentoCfop,
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 import { buildRastroXml } from './rastro';
@@ -101,12 +102,13 @@ function aliquot4(value: string): string {
   return new Decimal(value).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
 }
 
-function itemPisCofins(item: NfeEmissionItem, vBc: string): {
+function itemPisCofins(item: NfeEmissionItem, vBc: string, cfop: string): {
   xml: string;
   vPis: number;
   vCofins: number;
 } {
-  const cstPis = item.cstPis || DEFAULT_PIS_CST;
+  // 65082 (doação 5910 autorizada): PIS/COFINS NT CST 08, sem alíquota.
+  const cstPis = item.cstPis || (isSemPagamentoCfop(cfop) ? '08' : DEFAULT_PIS_CST);
   const cstCofins = item.cstCofins || cstPis;
   if (isPisNaoTributado(cstPis)) {
     return {
@@ -131,7 +133,7 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: strin
   const vDescAmt = item.vDesc && Number(item.vDesc) > 0 ? money(item.vDesc) : '';
   const vDesc = vDescAmt ? `<vDesc>${vDescAmt}</vDesc>` : '';
   const vBc = money(new Decimal(vProd).minus(vDescAmt || 0).toNumber());
-  const pis = itemPisCofins(item, vBc);
+  const pis = itemPisCofins(item, vBc, item.cfop);
   const ean = item.ean && item.ean !== 'SEM GTIN' ? esc(item.ean) : 'SEM GTIN';
   const cest = item.cest ? `<CEST>${esc(item.cest)}</CEST>` : '';
   // Grupo <med>: no XSD 4.00, se existir, cProdANVISA e vPMC são 1-1.
@@ -158,11 +160,22 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: strin
 
 function transpXml(draft: NfeEmissionDraft): string {
   const mod = draft.modFrete || DEFAULT_MOD_FRETE;
-  const t = draft.transporta;
+  let t = draft.transporta;
+  if (t?.xNome && !t.cnpj) {
+    const e = draft.emit;
+    t = {
+      ...t,
+      cnpj: e.cnpj,
+      ie: t.ie || e.ie,
+      xEnder: t.xEnder || `${e.ender.xLgr},${e.ender.nro}`,
+      xMun: t.xMun || e.ender.xMun,
+      UF: t.UF || e.ender.UF,
+    };
+  }
   const transporta = t?.xNome
     ? `<transporta>${t.cnpj ? `<CNPJ>${esc(t.cnpj.replace(/\D/g, ''))}</CNPJ>` : ''}<xNome>${esc(t.xNome)}</xNome>${t.ie ? `<IE>${esc(t.ie)}</IE>` : ''}${t.xEnder ? `<xEnder>${esc(t.xEnder)}</xEnder>` : ''}${t.xMun ? `<xMun>${esc(t.xMun)}</xMun>` : ''}${t.UF ? `<UF>${esc(t.UF)}</UF>` : ''}</transporta>`
     : '';
-  const v = draft.volume;
+  const v = draft.volume || (t?.xNome ? { qVol: '1', esp: 'Material Medico' } : undefined);
   const vol = v && (v.qVol || v.esp || v.pesoB)
     ? `<vol>${v.qVol ? `<qVol>${esc(v.qVol)}</qVol>` : ''}${v.esp ? `<esp>${esc(v.esp)}</esp>` : ''}${v.marca ? `<marca>${esc(v.marca)}</marca>` : ''}${v.pesoL ? `<pesoL>${qty(v.pesoL)}</pesoL>` : ''}${v.pesoB ? `<pesoB>${qty(v.pesoB)}</pesoB>` : ''}</vol>`
     : '';
@@ -179,7 +192,9 @@ function resolvedPag(draft: NfeEmissionDraft, vNf: string): { tPag: string; indP
 
 function pagXml(draft: NfeEmissionDraft, vNf: string): string {
   const { tPag, indPag, vPag } = resolvedPag(draft, vNf);
-  return `<pag><detPag><indPag>${indPag}</indPag><tPag>${esc(tPag)}</tPag><vPag>${vPag}</vPag></detPag></pag>`;
+  // Notas autorizadas de remessa/doação (65082, 65229) omitem indPag em tPag 90.
+  const ind = tPag === '90' ? '' : `<indPag>${indPag}</indPag>`;
+  return `<pag><detPag>${ind}<tPag>${esc(tPag)}</tPag><vPag>${vPag}</vPag></detPag></pag>`;
 }
 
 function isoDate(date: Date, plusDays = 0): string {

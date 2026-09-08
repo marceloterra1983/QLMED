@@ -9,6 +9,26 @@ import forge from 'node-forge';
  */
 const NAO_CANONICO = /&(?!(?:amp|lt|gt|#xD);)/;
 
+const XMLDSIG_NS = 'http://www.w3.org/2000/09/xmldsig#';
+
+/**
+ * C14N 1.0 §3.1: elemento vazio serializa como par start/end, nunca `/>`.
+ * O Joinner assina essa forma; o arquivo pode continuar com `/>` (o parse
+ * da SEFAZ volta ao par). Assinar o `/>` produz cStat 297.
+ */
+export function c14nEmptyElements(xml: string): string {
+  return xml.replace(/<([A-Za-z][\w.-]*)(\s[^>]*)?\/>/g, '<$1$2></$1>');
+}
+
+/** SignedInfo na forma que a C14N inclusiva recalcula (xmlns + empty expand). */
+export function signedInfoToSign(signedInfoEmbed: string): string {
+  const withNs = signedInfoEmbed.replace(
+    '<SignedInfo>',
+    `<SignedInfo xmlns="${XMLDSIG_NS}">`,
+  );
+  return c14nEmptyElements(withNs);
+}
+
 function extractInfNfe(unsignedNfe: string): string {
   const match = unsignedNfe.match(/<infNFe\b[\s\S]*<\/infNFe>/);
   if (!match) throw new Error('infNFe ausente no XML');
@@ -60,22 +80,23 @@ function certCleanBase64(certPem: string): string {
  * canonicalizador aqui: o XML é gerado por xml-builder.ts já nessa forma, e
  * extractInfNfe recusa a assinatura se os bytes não a satisfizerem.
  *
- * O SignedInfo é assinado COM `xmlns` explícito e embutido SEM ele — de
- * propósito. Na C14N 1.0 (não exclusiva) o SignedInfo dentro do documento herda
- * o namespace de <Signature>, e o canonicalizador o renderiza de volta no start
- * tag, chegando aos mesmos bytes que assinamos.
+ * O SignedInfo embutido vem SEM xmlns e COM `/>` (serialização do Joinner).
+ * A C14N 1.0 inclusiva devolve o xmlns e expande vazios para `<tag></tag>`.
+ * Assinamos essa forma canônica; assinar o `/>` gerava cStat 297.
  */
 export function signNfeXml(unsignedNfe: string, keyPem: string, certPem: string): string {
   const infNfe = extractInfNfe(unsignedNfe);
   const digest = sha1Base64(infNfe);
   const idMatch = infNfe.match(/Id="(NFe\d{44})"/);
   if (!idMatch) throw new Error('Id da infNFe inválido');
-  const signedInfo = `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#${idMatch[1]}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>${digest}</DigestValue></Reference></SignedInfo>`;
+  const signedInfoEmbed = `<SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#${idMatch[1]}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>${digest}</DigestValue></Reference></SignedInfo>`;
+  // Assina a forma C14N, embute a forma compacta (`/>`) — o mesmo par do Joinner.
+  const signedInfoCanon = signedInfoToSign(signedInfoEmbed);
   const privateKey = forge.pki.privateKeyFromPem(keyPem);
   const md = forge.md.sha1.create();
-  md.update(signedInfo, 'utf8');
+  md.update(signedInfoCanon, 'utf8');
   const signatureValue = forge.util.encode64(privateKey.sign(md));
-  const signature = `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">${signedInfo.replace(' xmlns="http://www.w3.org/2000/09/xmldsig#"', '')}<SignatureValue>${signatureValue}</SignatureValue><KeyInfo><X509Data><X509Certificate>${certCleanBase64(certPem)}</X509Certificate></X509Data></KeyInfo></Signature>`;
+  const signature = `<Signature xmlns="${XMLDSIG_NS}">${signedInfoEmbed}<SignatureValue>${signatureValue}</SignatureValue><KeyInfo><X509Data><X509Certificate>${certCleanBase64(certPem)}</X509Certificate></X509Data></KeyInfo></Signature>`;
   if (!unsignedNfe.includes('</NFe>')) throw new Error('NFe malformada');
   return unsignedNfe.replace('</NFe>', `${signature}</NFe>`);
 }
