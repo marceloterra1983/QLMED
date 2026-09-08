@@ -12,7 +12,8 @@ import {
   mergeCatalogWithBalances,
   stockLineKey,
 } from '@/lib/stock-catalog';
-import type { StockBalanceRow } from '@/lib/stock-ledger';
+import { keepStockBalanceQuantity, type StockBalanceRow } from '@/lib/stock-ledger';
+import { resolveEntradaNfeSearchHits } from '@/lib/stock-entrada-search';
 
 describe('SPEC-058 corte temporal', () => {
   it('cutoff é 01/01/2021 UTC', () => {
@@ -103,11 +104,12 @@ function lot(
   qty: number,
   loc: 'CD' | 'CUSTOMER' = 'CD',
   band: StockBalanceRow['validityBand'] = 'ok',
+  lotName = 'L1',
 ): StockBalanceRow {
   return {
     productCodigo: codigo,
     productName: codigo,
-    lot: 'L1',
+    lot: lotName,
     lotExpiry: '2027-01-01',
     locationType: loc,
     locationCnpj: loc === 'CUSTOMER' ? '123' : null,
@@ -248,5 +250,76 @@ describe('computeImpliedOpenings', () => {
     expect(rows).toEqual([
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 6 },
     ]);
+  });
+});
+
+describe('SPEC-060 lote zerado visível', () => {
+  it('keepStockBalanceQuantity descarta ~0 por padrão e mantém com includeZero', () => {
+    expect(keepStockBalanceQuantity(0)).toBe(false);
+    expect(keepStockBalanceQuantity(1e-12)).toBe(false);
+    expect(keepStockBalanceQuantity(1)).toBe(true);
+    expect(keepStockBalanceQuantity(-2)).toBe(true);
+    expect(keepStockBalanceQuantity(0, true)).toBe(true);
+    expect(keepStockBalanceQuantity(1e-12, true)).toBe(true);
+  });
+
+  it('busca 26C52 no catálogo acha 002626 mesmo com lote zerado', () => {
+    const catalog = [
+      {
+        codigo: '002626',
+        code: 'REF-2626',
+        description: 'Produto 002626',
+        productType: 'Cardio',
+        productSubtype: 'Stents',
+        productSubgroup: null,
+        manufacturerShortName: 'ACME',
+        anvisaManufacturer: null,
+        shortName: 'Prod 002626',
+      },
+    ];
+    const rows = mergeCatalogWithBalances(
+      catalog,
+      [lot('002626', 0, 'CD', 'ok', '26C52')],
+      { includeZero: true },
+    );
+    const found = filterStockProducts(rows, { q: '26c52' });
+    expect(found.map((p) => p.productCodigo)).toEqual(['002626']);
+    expect(found[0].lots.some((l) => l.lot === '26C52' && l.quantity === 0)).toBe(true);
+  });
+
+  it('Saída Material omite produto cujo único lote está zerado', () => {
+    const catalog = [
+      {
+        codigo: '002626',
+        code: null,
+        description: 'Produto 002626',
+        productType: 'Cardio',
+        productSubtype: 'Stents',
+        productSubgroup: null,
+        manufacturerShortName: null,
+        anvisaManufacturer: null,
+        shortName: null,
+      },
+    ];
+    const rows = mergeCatalogWithBalances(
+      catalog,
+      [lot('002626', 0, 'CD', 'ok', '26C52')],
+      { includeZero: false },
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it('Entrada NF-e só cai no lote quando emitente/número não casam', () => {
+    const invoices = [
+      { id: 'inv-65260', number: '65260' },
+      { id: 'inv-other', number: '100' },
+    ];
+    expect(
+      resolveEntradaNfeSearchHits([{ id: 'inv-other', number: '100' }], invoices, ['inv-65260']),
+    ).toEqual([{ id: 'inv-other', number: '100' }]);
+    expect(resolveEntradaNfeSearchHits([], invoices, ['inv-65260'])).toEqual([
+      { id: 'inv-65260', number: '65260' },
+    ]);
+    expect(resolveEntradaNfeSearchHits([], invoices, [])).toEqual([]);
   });
 });

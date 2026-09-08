@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       q: parsed.data.q,
       locationType,
       limit: parsed.data.limit ?? 0,
+      includeZero: false,
     });
 
     balances = balances.filter((b) => b.quantity > 0);

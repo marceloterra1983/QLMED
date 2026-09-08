@@ -56,14 +56,27 @@ export async function GET(req: Request) {
         occurredAt: true,
         createdAt: true,
         createdBy: true,
+        invoice: {
+          select: {
+            number: true,
+            series: true,
+            direction: true,
+          },
+        },
       },
     });
 
     return NextResponse.json({
-      movements: movements.map((m) => ({
-        ...m,
-        quantity: Number(m.quantity),
-      })),
+      movements: movements.map((m) => {
+        const { invoice, ...rest } = m;
+        return {
+          ...rest,
+          quantity: Number(m.quantity),
+          invoiceNumber: invoice?.number ?? null,
+          invoiceSeries: invoice?.series ?? null,
+          invoiceDirection: invoice?.direction ?? null,
+        };
+      }),
     });
   } catch (error) {
     return apiError(error, 'estoque/controle/movimentos');

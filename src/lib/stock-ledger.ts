@@ -181,6 +181,11 @@ export async function recordStockMovements(rows: StockMovementInput[]): Promise<
   return result.count;
 }
 
+/** SPEC-060: saldo ~0 some do picker; Controle pede includeZero para lote consumido. */
+export function keepStockBalanceQuantity(quantity: number, includeZero = false): boolean {
+  return includeZero || Math.abs(quantity) > 1e-9;
+}
+
 export async function listStockBalances(
   companyId: string,
   opts: {
@@ -188,6 +193,7 @@ export async function listStockBalances(
     locationType?: StockLocationType | 'ALL';
     validity?: ValidityBand | 'ALL';
     limit?: number;
+    includeZero?: boolean;
   } = {},
 ): Promise<StockBalanceRow[]> {
   const rows = await prisma.stockMovement.findMany({
@@ -239,8 +245,9 @@ export async function listStockBalances(
     if (!agg.locationName && r.locationName) agg.locationName = r.locationName;
   }
 
+  const includeZero = opts.includeZero === true;
   let balances = Array.from(map.values())
-    .filter((b) => Math.abs(b.quantity) > 1e-9)
+    .filter((b) => keepStockBalanceQuantity(b.quantity, includeZero))
     .map((b) => ({
       ...b,
       quantity: Math.round(b.quantity * 1000) / 1000,
