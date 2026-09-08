@@ -137,6 +137,9 @@ import RowActions from '@/components/ui/RowActions';
 ### Filtros de listagem
 Use `FILTER_INPUT_CLS` de `@/lib/utils` (py-2.5). Não copiar a string. Não unificar com `DETAIL_INPUT_CLS` de produtos (`rounded-xl` / `bg-white`).
 
+- **Padrão A (catálogo em memória)** — Controle, Saída Material, Produtos em árvore: barra inline (`Field` + `FILTER_INPUT_CLS`), sem Card e sem `MobileFilterWrapper`. Filtro no keystroke. Busca inclui linha/grupo/subgrupo.
+- **Padrão B (lista paginada)** — NF-e, CT-e, contatos: `MobileFilterWrapper` + `FILTER_INPUT_CLS`. Debounce ou Aplicar.
+
 ### Page layout pattern
 ```tsx
 export default function SectionPage() {
@@ -162,7 +165,7 @@ export default function SectionPage() {
 
 ## Rules
 1. **Language**: All UI text in Portuguese (pt-BR)
-2. **Responsive**: Mobile-first, use `MobileFilterWrapper` for filter sections
+2. **Responsive**: Mobile-first. Padrão B usa `MobileFilterWrapper`; padrão A (catálogo em memória) fica sempre visível, como Controle.
 3. **Virtual scrolling**: Use `@tanstack/react-virtual` for lists with 100+ items
 4. **No component libraries**: Do NOT install shadcn/ui, Radix, Material UI, etc.
 5. **Buttons**: Always include hover state, transition, and appropriate size (`text-sm` + `px-4 py-2`)

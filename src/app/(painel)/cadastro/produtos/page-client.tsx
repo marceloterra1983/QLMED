@@ -14,6 +14,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import SettingsModal from './SettingsModal';
 import type { ProductRow, ProductsHierarchyCounts, ProductsSummary, ProductsResponse, SortField } from './types';
 import type { HierOptions } from './components/product-utils';
+import { filterProductRows } from './components/product-utils';
 import ProductFilters from './components/ProductFilters';
 import ProductDetailModal from './components/ProductDetailModal';
 import BulkEditModal from './components/BulkEditModal';
@@ -74,7 +75,26 @@ export default function ProdutosPage() {
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  const filtered = products;
+  const serverSearch = isTreeView ? '' : debouncedSearch;
+  const serverType = isTreeView ? '' : typeFilter;
+  const serverSubtype = isTreeView ? '' : subtypeFilter;
+  const serverSubgroup = isTreeView ? '' : subgroupFilter;
+  const serverLineStatus = isTreeView ? 'all' : lineStatusFilter;
+
+  const filtered = useMemo(
+    () => (isTreeView
+      ? filterProductRows(products, {
+          search,
+          typeFilter,
+          subtypeFilter,
+          subgroupFilter,
+          lineStatus: lineStatusFilter,
+        })
+      : products),
+    [isTreeView, products, search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter],
+  );
+  const treeFilterActive = Boolean(search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter !== 'all');
+
 
   // --- action states ---
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -199,9 +219,9 @@ export default function ProdutosPage() {
       setPagination(isTreeView ? { ...pg, limit: PAGE_SIZE } : pg);
       setExportLimitedAt(data.exportLimited ? pg.limit : 0);
       setMeta(data.meta || null);
-      // Sempre iniciar recolhido; busca expande (até FULL_EXPAND_LIMIT).
+      // Árvore: catálogo inteiro e filtro local. Flat: busca do servidor expande.
       setCollapsedGroups(
-        debouncedSearch.trim()
+        serverSearch.trim()
           ? expandCollapseKeys(data.products || [], sortBy)
           : allCollapseKeys(data.products || [], sortBy),
       );
@@ -210,7 +230,7 @@ export default function ProdutosPage() {
       const params = new URLSearchParams({
         sort: serverSortField,
         order: sortOrder,
-        lineStatus: lineStatusFilter,
+        lineStatus: serverLineStatus,
       });
       if (isTreeView) {
         params.set('exportAll', 'true');
@@ -218,10 +238,10 @@ export default function ProdutosPage() {
         params.set('page', String(pagination.page));
         params.set('limit', String(pagination.limit));
       }
-      if (debouncedSearch) params.set('search', debouncedSearch);
-      if (typeFilter) params.set('productType', typeFilter);
-      if (subtypeFilter) params.set('productSubtype', subtypeFilter);
-      if (subgroupFilter) params.set('productSubgroup', subgroupFilter);
+      if (serverSearch) params.set('search', serverSearch);
+      if (serverType) params.set('productType', serverType);
+      if (serverSubtype) params.set('productSubtype', serverSubtype);
+      if (serverSubgroup) params.set('productSubgroup', serverSubgroup);
       const res = await fetch(`/api/products/list?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Falha ao carregar produtos');
       const data = (await res.json()) as ProductsResponse & { needsRebuild?: boolean };
@@ -247,11 +267,11 @@ export default function ProdutosPage() {
       // Requisição abortada por outra mais nova não pode apagar o loading dela.
       if (fetchAbortRef.current === controller) setLoading(false);
     }
-  }, [serverSortField, sortBy, isTreeView, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter, pagination.page, pagination.limit]);
+  }, [serverSortField, sortBy, isTreeView, sortOrder, serverLineStatus, serverSearch, serverType, serverSubtype, serverSubgroup, pagination.page, pagination.limit]);
 
   useEffect(() => {
     setPagination((current) => current.page === 1 ? current : { ...current, page: 1 });
-  }, [serverSortField, sortOrder, lineStatusFilter, debouncedSearch, typeFilter, subtypeFilter, subgroupFilter]);
+  }, [serverSortField, sortOrder, serverLineStatus, serverSearch, serverType, serverSubtype, serverSubgroup]);
 
   useEffect(() => { loadProducts(); loadSettingsHierarchy(); }, [loadProducts]);
 
@@ -363,8 +383,8 @@ export default function ProdutosPage() {
         lineStatusFilter={lineStatusFilter} setLineStatusFilter={setLineStatusFilter}
         setCollapsedGroups={setCollapsedGroups}
         hierOptions={hierOptions}
-        catalogTotal={pagination.total}
-        pageSize={products.length}
+        catalogTotal={isTreeView ? filtered.length : pagination.total}
+        pageSize={isTreeView ? filtered.length : products.length}
       />
 
       {exportLimitedAt > 0 && (
@@ -385,7 +405,7 @@ export default function ProdutosPage() {
         loading={loading}
         isRebuilding={isRebuilding}
         summary={summary}
-        hierarchyCounts={hierarchyCounts}
+        hierarchyCounts={isTreeView && treeFilterActive ? null : hierarchyCounts}
         sortBy={sortBy}
         sortOrder={sortOrder}
         search={search}

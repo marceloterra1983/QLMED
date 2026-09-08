@@ -127,4 +127,36 @@ describe('GET /api/products/list — Product visibility without aggregate barrie
     expect(orFields).toContain('description');
     expect(orFields).toContain('code');
   });
+
+  it('searches productType, productSubtype and productSubgroup so group names match', async () => {
+    mocks.findFirst.mockResolvedValue({ id: 'existing-with-agg' });
+    mocks.count.mockResolvedValue(1);
+    mocks.findMany.mockResolvedValue([
+      {
+        productKey: 'prod-group',
+        codigo: '007950',
+        code: 'SDTS001',
+        description: 'ESTABILIZADOR DE TECIDO DESCARTAVEL',
+        productType: 'CARDIACA',
+        productSubtype: 'ALEXIS',
+        unit: 'UN',
+        outOfLine: false,
+        aggComputedAt: null,
+        aggSearchText: null,
+      },
+    ]);
+
+    const req = new Request('http://localhost/api/products/list?page=1&limit=50&search=alexis');
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+
+    const findManyWhere = mocks.findMany.mock.calls[0][0].where;
+    const searchClause = findManyWhere.AND.find((c: { OR?: unknown }) => c.OR);
+    const orFields = searchClause.OR.map((o: Record<string, unknown>) => Object.keys(o)[0]);
+    expect(orFields).toEqual(expect.arrayContaining([
+      'productType',
+      'productSubtype',
+      'productSubgroup',
+    ]));
+  });
 });

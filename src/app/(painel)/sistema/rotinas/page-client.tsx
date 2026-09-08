@@ -7,7 +7,7 @@ import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import Section from '@/components/ui/Section';
-import { formatTime } from '@/lib/utils';
+import { formatTime, FILTER_INPUT_CLS } from '@/lib/utils';
 import {
   ROUTINE_CATEGORIES,
   ROUTINE_PAGE_SECTION_META,
@@ -255,7 +255,7 @@ export default function RotinasPageClient() {
               placeholder="Buscar por rotina, módulo, lock ou descrição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400"
+              className={`${FILTER_INPUT_CLS} pl-9`}
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -263,7 +263,7 @@ export default function RotinasPageClient() {
               aria-label="Filtrar por categoria"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as FilterCategory)}
-              className="text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-slate-200"
+              className={FILTER_INPUT_CLS}
             >
               <option value="all">Todas as Categorias</option>
               {Object.entries(ROUTINE_CATEGORIES).map(([key, cat]) => (
@@ -276,7 +276,7 @@ export default function RotinasPageClient() {
               aria-label="Filtrar por tipo de gatilho"
               value={selectedTrigger}
               onChange={(e) => setSelectedTrigger(e.target.value as FilterTrigger)}
-              className="text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-slate-200"
+              className={FILTER_INPUT_CLS}
             >
               <option value="all">Todos os Gatilhos</option>
               <option value="background_service">Background Service (Contínuo)</option>

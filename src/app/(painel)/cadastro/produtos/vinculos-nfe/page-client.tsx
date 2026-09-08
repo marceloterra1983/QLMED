@@ -9,7 +9,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
 import ProductLinkPicker, { type LinkScope } from '@/components/nfe-item-link/ProductLinkPicker';
 import { useRole } from '@/hooks/useRole';
-import { formatCnpj, formatDate } from '@/lib/utils';
+import { formatCnpj, formatDate, FILTER_INPUT_CLS } from '@/lib/utils';
 
 interface PendingGroup {
   supplierCnpj: string;
@@ -112,7 +112,7 @@ export default function VinculosNfePage() {
             onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
             placeholder="Fornecedor, CNPJ, código ou descrição"
             aria-label="Buscar pendências"
-            className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 text-sm"
+            className={`${FILTER_INPUT_CLS} pl-9`}
           />
         </div>
         {data && (

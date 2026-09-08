@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatQuantity as libFormatQuantity, formatDateShort, formatCurrency } from '@/lib/utils';
+import type { ProductRow } from '../types';
 
 export function normalizeSearch(s: string) {
   return s
@@ -84,4 +85,43 @@ export interface HierOptions {
   groupsFor: (line: string) => string[];
   subgroupsFor: (line: string, group: string) => string[];
   subgroupsForGroup: (group: string) => string[];
+}
+
+
+export function filterProductRows(
+  products: ProductRow[],
+  opts: {
+    search?: string;
+    typeFilter?: string;
+    subtypeFilter?: string;
+    subgroupFilter?: string;
+    lineStatus?: 'active' | 'outOfLine' | 'all';
+  } = {},
+): ProductRow[] {
+  const q = normalizeSearch(opts.search ?? '');
+  return products.filter((p) => {
+    if (opts.typeFilter && (p.productType || '') !== opts.typeFilter) return false;
+    if (opts.subtypeFilter && (p.productSubtype || '') !== opts.subtypeFilter) return false;
+    if (opts.subgroupFilter && (p.productSubgroup || '') !== opts.subgroupFilter) return false;
+    if (opts.lineStatus === 'active' && p.outOfLine) return false;
+    if (opts.lineStatus === 'outOfLine' && !p.outOfLine) return false;
+    if (!q) return true;
+    const hay = [
+      p.codigo,
+      p.code,
+      p.description,
+      p.ncm,
+      p.anvisa,
+      p.lastSupplierName,
+      p.manufacturerShortName,
+      p.shortName,
+      p.defaultSupplier,
+      p.productType,
+      p.productSubtype,
+      p.productSubgroup,
+    ]
+      .filter((v): v is string => Boolean(v && String(v).trim()))
+      .map((v) => normalizeSearch(v));
+    return hay.some((field) => field.includes(q));
+  });
 }
