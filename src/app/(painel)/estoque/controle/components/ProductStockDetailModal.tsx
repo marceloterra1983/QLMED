@@ -35,6 +35,8 @@ const KIND_LABEL: Record<string, string> = {
   PERDA_VALIDADE: 'Perda validade',
   AJUSTE: 'Ajuste',
   SAIDA_AVULSA: 'Saída avulsa',
+  SALDO_INICIAL: 'Saldo inicial',
+  ESTORNO_CANCELAGEM: 'Estorno (NF-e cancelada)',
 };
 
 type MovementRow = {

@@ -242,9 +242,13 @@ export async function registerInvoiceEntry(
 
   await insertNfeEntryItems(entry.id, nfeItems);
 
-  // SPEC-056: ledger append-only (idempotente por nfeEntryItem.id).
+  // SPEC-056: ledger append-only. replaceExisting: o re-registro recria os
+  // nfeEntryItem (ids novos), então os movimentos da geração anterior precisam
+  // sair antes — sem isso cada re-registro duplicava a entrada no saldo.
   try {
-    await recordMovementsFromEntryItems(companyId, invoiceId, new Date(), userId);
+    await recordMovementsFromEntryItems(companyId, invoiceId, new Date(), userId, {
+      replaceExisting: true,
+    });
   } catch (err) {
     log.error({ err, invoiceId, companyId }, 'Falha ao gravar movimentos de estoque na entrada');
   }

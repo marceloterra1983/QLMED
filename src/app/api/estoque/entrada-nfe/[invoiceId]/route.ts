@@ -3,10 +3,37 @@ import { requireAuth, requireEditor, unauthorizedResponse, forbiddenResponse } f
 import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { extractProductsFromXml } from '@/lib/product-aggregation';
-import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch } from '@/lib/stock-entry-store';
+import { getNfeEntryItemsByInvoice, updateNfeEntryItemLot, cloneNfeEntryItemBatch, deleteNfeEntryItemBatch, type NfeEntryItemRow } from '@/lib/stock-entry-store';
+import { syncEntryItemMovement } from '@/lib/stock-ledger';
+import { createLogger } from '@/lib/logger';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { entradaNfeUpdateLotSchema, entradaNfeCloneBatchSchema } from '@/lib/schemas/estoque';
+
+const log = createLogger('estoque/entrada-nfe/:invoiceId');
+
+/**
+ * BUG-002 (família): o ledger espelha os nfeEntryItem; qualquer edição de item
+ * (PATCH de lote, clone, exclusão) precisa ser espelhada, senão o saldo fica
+ * divergente até um backfill. As store functions devolvem linhas snake_case
+ * (NfeEntryItemRow); o ledger consome o formato camelCase.
+ */
+function rowToLedgerItem(row: NfeEntryItemRow) {
+  return {
+    id: row.id,
+    itemNumber: row.item_number,
+    codigoInterno: row.codigo_interno,
+    supplierCode: row.supplier_code,
+    productName: row.product_name,
+    supplierDescription: row.supplier_description,
+    registryId: row.registry_id,
+    lot: row.lot,
+    lotExpiry: row.lot_expiry,
+    lotSerial: row.lot_serial,
+    quantity: row.quantity,
+    lotQuantity: row.lot_quantity,
+  };
+}
 
 
 export async function GET(req: Request, { params }: { params: Promise<{ invoiceId: string }> }) {
@@ -257,6 +284,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ invoic
       return NextResponse.json({ error: 'Item não encontrado' }, { status: 404 });
     }
 
+    // Espelha a edição no ledger (mesma chave entrada-item:${id}; upserta).
+    try {
+      await syncEntryItemMovement(company.id, invoiceId, rowToLedgerItem(updated));
+    } catch (err) {
+      log.error({ err, invoiceId, itemId }, 'Falha ao espelhar edição de lote no ledger');
+    }
+
     return NextResponse.json({ item: updated });
   } catch (error) {
     return apiError(error, 'estoque/entrada-nfe/:invoiceId');
@@ -292,6 +326,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ invoice
       return NextResponse.json({ error: 'Item de origem não encontrado' }, { status: 404 });
     }
 
+    // Novo lote ⇒ novo movimento ENTRADA_NFE com a chave do item recém-criado.
+    try {
+      await syncEntryItemMovement(company.id, invoiceId, rowToLedgerItem(created));
+    } catch (err) {
+      log.error({ err, invoiceId, sourceItemId }, 'Falha ao espelhar clone de lote no ledger');
+    }
+
     return NextResponse.json({ item: created }, { status: 201 });
   } catch (error) {
     return apiError(error, 'estoque/entrada-nfe/:invoiceId');
@@ -322,6 +363,19 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ invoi
 
     if (!deleted) {
       return NextResponse.json({ error: 'Não é possível excluir (último lote do item ou não encontrado)' }, { status: 400 });
+    }
+
+    // Lote removido ⇒ movimento correspondente sai do ledger (chave do id
+    // apagado; qty<=0 no sync significa remover).
+    try {
+      await syncEntryItemMovement(company.id, invoiceId, {
+        id: Number(batchRowId),
+        itemNumber: 0,
+        quantity: 0,
+        lotQuantity: 0,
+      });
+    } catch (err) {
+      log.error({ err, invoiceId, batchRowId }, 'Falha ao remover movimento do lote excluído');
     }
 
     return NextResponse.json({ success: true });
