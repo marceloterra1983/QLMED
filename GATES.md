@@ -1,36 +1,43 @@
-# Gates: 065 NF-e emissão lote CD + layout
+# Gates: 068 DANFE layout SPICA
 
-Scope: Corrigir dropdown de lote CD vazio (match code/codigo) e relayout dos campos de lote em linha própria na Nova NF-e.
+Scope: O app gera DANFE (HTML/PDF) no leiaute do SPICA (gabarito NF-e 65248), com Code 128C e persistência após autorização.
 
-- [x] G1: Helper puro casa TP00971 (code) com ledger cujo productCodigo é codigo interno distinto
-  CHECK: npm test -- --run src/lib/__tests__/nfe-emission-stock-lot-match.test.ts
+- [x] G1: Spec 068 com IDs de requisito
+  CHECK: test -f specs/068-danfe-layout-spica/spec.md && rg -n "FR-068" specs/068-danfe-layout-spica/spec.md
+  EXPECT: FR-068
+  EVIDENCE: 54:- **FR-068-04**: Grade de produtos MUST ter as colunas do SPICA, inclusive | 56:- **FR-068-05**: `finalizeAuthorized` MUST tentar gravar o PDF via
+
+- [x] G2: Code 128C da chave 44 dígitos tem 277 módulos
+  CHECK: npm test -- --run src/lib/__tests__/code128.test.ts
   EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  15:11:31 | Duration  123ms (transform 28ms, setup 16ms, import 23ms, tests 3ms, environment 0ms)
+  EVIDENCE: Start at  16:36:38 | Duration  127ms (transform 27ms, setup 17ms, import 20ms, tests 3ms, environment 0ms)
 
-- [x] G2: tsc --noEmit sem erro
+- [x] G3: HTML do DNA 65248 contém canhoto, protocolo cru, datas ISO, colunas V.AP.TRB e barcode
+  CHECK: npm test -- --run src/lib/__tests__/danfe-spica-layout.test.ts
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  16:36:38 | Duration  201ms (transform 64ms, setup 18ms, import 71ms, tests 17ms, environment 0ms)
+
+- [x] G4: tsc --noEmit sem erro
   CHECK: npx tsc --noEmit && echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK
 
-- [x] G3: API filtra lotes por identidade ampla (code OR codigo OR productCodigo, case-insensitive)
-  CHECK: rg -n "filterStockLotsForProduct|expandStockLotProductKeys" src/lib/nfe-emission/stock-lot-match.ts src/app/api/nfe-emissions/stock-lots/route.ts
-  EXPECT: filterStockLotsForProduct
-  EVIDENCE: src/lib/nfe-emission/stock-lot-match.ts:47:export function filterStockLotsForProduct<T extends { productCodigo: string; quantity?: number }>( | src/lib/nfe-emission/stock-lot-match.ts:53:  const keys 
+- [x] G5: Persistência do DANFE após autorização (sem falhar a NF-e)
+  CHECK: rg -n "persistAuthorizedDanfePdf" src/lib/nfe-emission/authorize.ts src/lib/nfe-emission/persist-danfe.ts src/lib/__tests__/nfe-emission-authorize-atomic.test.ts
+  EXPECT: persistAuthorizedDanfePdf
+  EVIDENCE: src/lib/nfe-emission/authorize.ts:7:import { persistAuthorizedDanfePdf } from './persist-danfe'; | src/lib/nfe-emission/authorize.ts:489:  await persistAuthorizedDanfePdf({
 
-- [x] G4: Empty state do dropdown é "Nenhum lote no CD" (não select em branco)
-  CHECK: rg -n "Nenhum lote no CD" src/app/\(painel\)/fiscal/issued/nova/EmissionLotFields.tsx
-  EXPECT: Nenhum lote no CD
-  EVIDENCE: 36:      ? 'Nenhum lote no CD'
+- [x] G6: Autorização atômica continua verde com o mock do DANFE
+  CHECK: npm test -- --run src/lib/__tests__/nfe-emission-authorize-atomic.test.ts
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  16:36:51 | Duration  931ms (transform 182ms, setup 18ms, import 54ms, tests 774ms, environment 0ms)
 
-- [x] G5: Campos de lote em segunda <tr> com colSpan, fora da célula Produto
-  CHECK: rg -n "colSpan|EmissionLotFields" src/app/\(painel\)/fiscal/issued/nova/page-client.tsx
-  EXPECT: colSpan={8}
-  EVIDENCE: 777:                            <EmissionLotFields | 790:                            <td colSpan={8} className="px-3 py-3">
+- [x] G7: docs:validate aceita SPEC-068
+  CHECK: npm run docs:validate
+  EXPECT: Documentation validation passed
+  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (255 Markdown files, 82 IDs).
 
-- [x] G6: Spec 065 com IDs de requisito para match + layout
-  CHECK: test -f specs/065-nfe-emissao-lote-layout/spec.md && rg -n "FR-0|AC-0" specs/065-nfe-emissao-lote-layout/spec.md
-  EXPECT: FR-0
-  EVIDENCE: 41:- **AC-003**: `EmissionLotFields` contém `Nenhum lote no CD`; `page-client` renderiza `EmissionLotFields` numa `<tr>` com `colSpan`. | 42:- **AC-004**: `npx tsc --noEmit` passa.
-
-- [x] G7: Preview smoke da linha de itens Nova NF-e (layout + rota stock-lots)
-  EVIDENCE: preview cwd=065-nfe-emissao-lote-layout; GET :3002/fiscal/issued/nova=307 login; GET stock-lots unauth=401; Next Ready 1.7s. DB: TP00971 code≠codigo 002626; ledger productCodigo=002626; lotes 25G15,18J33,25K27.
+- [x] G8: PDF gerado do XML 65248 contém os mesmos textos âncora do SPICA
+  CHECK: test -f /tmp/danfe-qlmed-65248.txt && rg -n "TRANSPORTE PROPRIO|VALOR DA NOTA|150260040795876|002626|Ped. Vda" /tmp/danfe-qlmed-65248.txt
+  EXPECT: TRANSPORTE PROPRIO
+  EVIDENCE: 45:002626      TP00971 - TRANSDUTOR DE PRESSAO C/ TORNEIRA VALVULADA                                          90183999           040    5910       UN      4,0000       120,0000          480,00        

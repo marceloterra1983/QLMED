@@ -151,6 +151,7 @@ vi.mock('@/lib/notification-outbox', () => ({
   }),
 }));
 vi.mock('@/lib/xml-file-store', () => ({ saveXmlToFile: vi.fn(async () => undefined) }));
+vi.mock('@/lib/nfe-emission/persist-danfe', () => ({ persistAuthorizedDanfePdf: vi.fn(async () => null) }));
 vi.mock('@/lib/product-aggregate-updater', () => ({
   updateProductAggregatesForInvoice: vi.fn(async () => undefined),
 }));

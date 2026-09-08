@@ -32,6 +32,7 @@ export interface DanfeProduct {
   vIPI: string;
   pICMS: string;
   pIPI: string;
+  vTotTrib: string;
   infAdProd: string;
 }
 
