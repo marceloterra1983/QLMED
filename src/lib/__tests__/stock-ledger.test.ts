@@ -27,6 +27,22 @@ describe('parseLotExpiry', () => {
     expect(parseLotExpiry('')).toBeNull();
     expect(parseLotExpiry('   ')).toBeNull();
   });
+
+  // BUG-004: `new Date(Date.UTC(2026, 12, 1))` rolava para jan/2027 e
+  // `2026-02-30` virava 02/mar — faixa de validade errada em silêncio.
+  it('rejeita datas calendário-inválidas (rollover silencioso)', () => {
+    expect(parseLotExpiry('2026-13-01')).toBeNull();
+    expect(parseLotExpiry('2026-00-10')).toBeNull();
+    expect(parseLotExpiry('2026-02-30')).toBeNull();
+    expect(parseLotExpiry('20260230')).toBeNull();
+    expect(parseLotExpiry('31/02/2026')).toBeNull();
+    expect(parseLotExpiry('15/13/2026')).toBeNull();
+  });
+
+  it('aceita 29/02 em ano bissexto e rejeita em ano comum', () => {
+    expect(parseLotExpiry('2024-02-29')?.toISOString().slice(0, 10)).toBe('2024-02-29');
+    expect(parseLotExpiry('2025-02-29')).toBeNull();
+  });
 });
 
 describe('validityBand / daysToExpiry', () => {
@@ -90,5 +106,17 @@ describe('classifyIssuedStockCfop', () => {
       from: 'CUSTOMER',
       to: null,
     });
+  });
+
+  // BUG-003: 5116/6116 (terceiros) e 5117/6117 (produção) = venda do bem
+  // remetido anteriormente em consignação — também sai do CUSTOMER, não do CD.
+  it('5116/6117 → SAIDA a partir do CUSTOMER (venda de consignado)', () => {
+    for (const cfop of ['5116', '6116', '5117', '6117']) {
+      expect(classifyIssuedStockCfop(cfop)).toEqual({
+        kind: 'SAIDA_NFE',
+        from: 'CUSTOMER',
+        to: null,
+      });
+    }
   });
 });

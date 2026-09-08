@@ -41,7 +41,8 @@ export type StockMovementKind =
   | 'PERDA_VALIDADE'
   | 'AJUSTE'
   | 'SAIDA_AVULSA'
-  | 'SALDO_INICIAL';
+  | 'SALDO_INICIAL'
+  | 'ESTORNO_CANCELAGEM';
 
 export type ValidityBand = 'vencido' | 'd30' | 'd90' | 'ok' | 'sem_validade';
 
@@ -91,17 +92,36 @@ function normalizeCnpj(cnpj?: string | null): string | null {
   return digits.length ? digits : null;
 }
 
+/** Dia válido no mês (com ano bissexto) — rejeita 2026-13-01, 2026-02-30 etc. */
+function isValidYmd(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12 || day < 1) return false;
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
 /** Parseia validade comum em NF-e (YYYY-MM-DD, YYYYMMDD, DD/MM/YYYY). */
 export function parseLotExpiry(raw?: string | null): Date | null {
   if (!raw) return null;
   const s = raw.trim();
   if (!s) return null;
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (m) {
+    // Sem esta checagem `new Date(Date.UTC(2026, 12, 1))` rolava para
+    // jan/2027 e a faixa de validade ficava errada em silêncio.
+    if (!isValidYmd(+m[1], +m[2], +m[3])) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  }
   m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (m) {
+    if (!isValidYmd(+m[1], +m[2], +m[3])) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  }
   m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+  if (m) {
+    if (!isValidYmd(+m[3], +m[2], +m[1])) return null;
+    return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+  }
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -290,12 +310,69 @@ export async function allocateLotsFefo(
   return out;
 }
 
+/** Monta a linha de movimento ENTRADA_NFE a partir de um nfeEntryItem. */
+function entryItemToMovementRow(
+  companyId: string,
+  invoiceId: string,
+  item: {
+    id: number;
+    itemNumber: number;
+    codigoInterno?: string | null;
+    supplierCode?: string | null;
+    productName?: string | null;
+    supplierDescription?: string | null;
+    registryId?: string | null;
+    lot?: string | null;
+    lotExpiry?: string | null;
+    lotSerial?: string | null;
+    quantity?: number | string | null;
+    lotQuantity?: number | string | null;
+  },
+  input: { occurredAt: Date; createdBy?: string | null; idempotencyKey?: string },
+): StockMovementInput {
+  const qty = Number(item.lotQuantity ?? item.quantity ?? 0);
+  const codigo = (item.codigoInterno || item.supplierCode || `ITEM-${item.itemNumber}`).trim();
+  return {
+    companyId,
+    productCodigo: codigo,
+    productName: item.productName || item.supplierDescription,
+    productRegistryId: item.registryId,
+    lot: item.lot,
+    lotExpiry: item.lotExpiry,
+    lotSerial: item.lotSerial,
+    quantity: qty,
+    direction: 'IN',
+    locationType: STOCK_LOCATION_CD,
+    kind: 'ENTRADA_NFE',
+    invoiceId,
+    nfeEntryItemId: item.id,
+    createdBy: input.createdBy,
+    occurredAt: input.occurredAt,
+    idempotencyKey: input.idempotencyKey ?? `entrada-item:${item.id}`,
+  };
+}
+
 export async function recordMovementsFromEntryItems(
   companyId: string,
   invoiceId: string,
   occurredAt: Date,
   createdBy?: string | null,
+  opts: { replaceExisting?: boolean } = {},
 ): Promise<number> {
+  if (opts.replaceExisting) {
+    // BUG-002: re-registro recria os nfeEntryItem (deleteMany + insert) e o id
+    // autoincrement muda — a chave `entrada-item:${id}` antiga nunca colidia e
+    // cada re-registro duplicava a ENTRADA_NFE no saldo. Substituir a geração
+    // anterior espelha exatamente a semântica do insertNfeEntryItems.
+    await prisma.stockMovement.deleteMany({
+      where: {
+        companyId,
+        invoiceId,
+        kind: 'ENTRADA_NFE',
+        idempotencyKey: { startsWith: 'entrada-item:' },
+      },
+    });
+  }
   const items = await prisma.nfeEntryItem.findMany({
     where: { companyId, invoiceId },
   });
@@ -303,27 +380,55 @@ export async function recordMovementsFromEntryItems(
   for (const item of items) {
     const qty = Number(item.lotQuantity ?? item.quantity ?? 0);
     if (qty <= 0) continue;
-    const codigo = (item.codigoInterno || item.supplierCode || `ITEM-${item.itemNumber}`).trim();
-    rows.push({
-      companyId,
-      productCodigo: codigo,
-      productName: item.productName || item.supplierDescription,
-      productRegistryId: item.registryId,
-      lot: item.lot,
-      lotExpiry: item.lotExpiry,
-      lotSerial: item.lotSerial,
-      quantity: qty,
-      direction: 'IN',
-      locationType: STOCK_LOCATION_CD,
-      kind: 'ENTRADA_NFE',
-      invoiceId,
-      nfeEntryItemId: item.id,
-      createdBy,
-      occurredAt,
-      idempotencyKey: `entrada-item:${item.id}`,
-    });
+    rows.push(entryItemToMovementRow(companyId, invoiceId, item, { occurredAt, createdBy }));
   }
   return recordStockMovements(rows);
+}
+
+/**
+ * Espelha no ledger um único nfeEntryItem após edição (PATCH de lote, clone de
+ * lote, exclusão de lote). Upsert pela chave canônica `entrada-item:${id}`;
+ * quantidade ≤ 0 remove o movimento. Preserva occurredAt/createdBy originais
+ * quando o movimento já existia.
+ */
+export async function syncEntryItemMovement(
+  companyId: string,
+  invoiceId: string,
+  item: Parameters<typeof entryItemToMovementRow>[2],
+): Promise<'created' | 'updated' | 'removed' | 'noop'> {
+  const key = `entrada-item:${item.id}`;
+  const qty = Number(item.lotQuantity ?? item.quantity ?? 0);
+  const existing = await prisma.stockMovement.findFirst({
+    where: { companyId, idempotencyKey: key },
+    select: { id: true, occurredAt: true, createdBy: true },
+  });
+
+  if (qty <= 0) {
+    if (!existing) return 'noop';
+    await prisma.stockMovement.delete({ where: { id: existing.id } });
+    return 'removed';
+  }
+
+  if (existing) {
+    await prisma.stockMovement.update({
+      where: { id: existing.id },
+      data: {
+        productCodigo: (item.codigoInterno || item.supplierCode || `ITEM-${item.itemNumber}`).trim(),
+        productName: item.productName || item.supplierDescription || null,
+        productRegistryId: item.registryId ?? null,
+        lot: item.lot ?? '',
+        lotExpiry: item.lotExpiry ?? null,
+        lotSerial: item.lotSerial ?? null,
+        quantity: qty,
+      },
+    });
+    return 'updated';
+  }
+
+  await recordStockMovements([
+    entryItemToMovementRow(companyId, invoiceId, item, { occurredAt: new Date() }),
+  ]);
+  return 'created';
 }
 
 export function classifyIssuedStockCfop(cfop: string | null | undefined): {
@@ -333,7 +438,15 @@ export function classifyIssuedStockCfop(cfop: string | null | undefined): {
 } {
   const tag = getCfopTagByCode(cfop) ?? '';
   const code = (cfop ?? '').trim();
-  if (['5114', '6114', '5115', '6115', '5113', '6113', '5111', '6111', '5112', '6112'].includes(code)) {
+  // REQ-007 (SPEC-056): 511x/611x = venda a partir do consignado (consumido no
+  // cliente). Inclui 5116/6116 (terceiros) e 5117/6117 (produção) — venda do
+  // bem remetido anteriormente em consignação também sai do CUSTOMER, não do CD.
+  if (
+    [
+      '5111', '6111', '5112', '6112', '5113', '6113', '5114', '6114', '5115', '6115',
+      '5116', '6116', '5117', '6117',
+    ].includes(code)
+  ) {
     return { kind: 'SAIDA_NFE', from: STOCK_LOCATION_CUSTOMER, to: null };
   }
   if (tag === 'Consignação' || code === '5917' || code === '6917') {
