@@ -3,12 +3,25 @@
 export const DEFAULT_SERIES = '2';
 export const DEFAULT_MOD_FRETE = '0';
 export const DEFAULT_IND_PRES = '9';
+/** NT 2020.006: sem intermediador (site/canal próprio). Marketplace = '1'. */
+export const DEFAULT_IND_INTERMED = '0';
+export const IND_PRES_REQUIRES_INTERMED = ['2', '3', '4', '9'] as const;
 export const DEFAULT_TPAG_VENDA = '15';
 export const DEFAULT_INDPAG_VENDA = '1';
 export const DEFAULT_PIS_CST = '01';
 export const DEFAULT_PIS_ALIQUOTA = '0.6500';
 export const DEFAULT_COFINS_ALIQUOTA = '3.0000';
 export const DEFAULT_ICMS_CST_ISENTO = '40';
+
+/** IBS/CBS 2026 (NT 2025.002 + LC 214/2025 art. 131). DNA: NF-e 65248. */
+export const IBS_CST = '200';
+export const IBS_CCLASS_TRIB = '200030';
+export const IBS_P_UF = '0.10';
+export const IBS_P_MUN = '0.00';
+export const IBS_P_CBS = '0.90';
+export const IBS_P_RED = '60.00';
+export const JOINNER_CNPJ = '73008138000100';
+export const EMIT_FONE = '6733263520';
 
 export const INF_AD_FISCO_SINIEF =
   'Procedimento autorizado pelo Ajuste SINIEF 02/24';
@@ -71,4 +84,8 @@ export function defaultInfCpl(cfop: string, current?: string): string | undefine
 export function defaultInfAdFisco(cfop: string, current?: string): string | undefined {
   if (current?.trim()) return current;
   return isVendaCfop(cfop) ? INF_AD_FISCO_SINIEF : undefined;
+}
+
+export function requiresIndIntermed(indPres: string, tpNf = '1', finNFe = '1'): boolean {
+  return tpNf === '1' && finNFe === '1' && (IND_PRES_REQUIRES_INTERMED as readonly string[]).includes(indPres);
 }

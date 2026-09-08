@@ -17,6 +17,7 @@ import { defaultInfAdFisco, defaultInfCpl, DEFAULT_IND_PRES } from './issued-def
 import { nfeEmissionPayloadSchema } from './schema';
 import { buildUnsignedNfeXml, draftDocumentTotal } from './xml-builder';
 import { signNfeXml } from './xml-sign';
+import { assertNfePreflight, isNfePreflightError } from './preflight';
 import { resolveEmissionEnvironment } from './environment';
 import type { SefazEnvironment } from './autorizacao-urls';
 import type { NfeEmissionItem } from './types';
@@ -121,7 +122,9 @@ export async function authorizeInvoiceEmission(
   const issueDate = new Date();
   const op = getSaidaOperation(payload.cfop);
   const extras = { vFrete: payload.vFrete, vSeg: payload.vSeg, vOutro: payload.vOutro };
-  const numbered = await prisma.$transaction(async (tx) => {
+  let numbered;
+  try {
+  numbered = await prisma.$transaction(async (tx) => {
     await acquirePostgresTransactionAdvisoryLock(tx, nfeEmissionLockKey(companyId));
     // Compare-and-swap: só sai de draft/rejected uma vez. Sem isto, duas
     // requisições concorrentes numeravam N e N+1 e enviavam duas NF-e para o
@@ -181,6 +184,7 @@ export async function authorizeInvoiceEmission(
       infCpl: defaultInfCpl(payload.cfop, payload.infCpl),
       infAdFisco: defaultInfAdFisco(payload.cfop, payload.infAdFisco),
     });
+    assertNfePreflight(unsigned);
     const signed = signNfeXml(unsigned, pems.key, pems.cert);
     await tx.invoiceEmission.update({
       where: { id: emission.id },
@@ -195,6 +199,16 @@ export async function authorizeInvoiceEmission(
     });
     return { number, accessKey, signed };
   });
+  } catch (error) {
+    if (isNfePreflightError(error)) {
+      await prisma.invoiceEmission.update({
+        where: { id: emission.id },
+        data: { sefazStat: error.primaryStat, sefazMotivo: error.message },
+      });
+      return { status: 'rejected' as const, cStat: error.primaryStat, xMotivo: error.message };
+    }
+    throw error;
+  }
 
   if (!numbered) {
     // Outra requisição ganhou o CAS. Nunca enviar por cima dela.

@@ -191,6 +191,7 @@ describe('nfe xml builder', () => {
     const xml = buildUnsignedNfeXml(sampleDraft({
       natureza: 'Doacao',
       cfop: '5910',
+      indPres: '9',
       emit: { ...base.emit, crt: '3' },
       dest: { ...base.dest, indIEDest: '9' },
       items: [{ ...base.items[0], cfop: '5910', anvisa: '10216839008' }],
@@ -207,6 +208,57 @@ describe('nfe xml builder', () => {
     expect(xml).toContain('<CNPJ>12345678000199</CNPJ>');
     expect(xml).toContain('<qVol>1</qVol>');
     expect(xml).toContain('<esp>Material Medico</esp>');
+    expect(xml).toContain('<indPres>9</indPres><indIntermed>0</indIntermed>');
+    expect(xml).toContain('<IBSCBS>');
+    expect(xml).toContain('<cClassTrib>200030</cClassTrib>');
+    expect(xml).toContain('<vItem>');
+    expect(xml).toContain('<vNFTot>');
+    expect(xml).toContain('<vFCPUFDest>0.00</vFCPUFDest>');
+  });
+
+  it('DNA SPICA 65248: doação 4x120 = IBS 0.19 / CBS 1.73, sem Joinner', () => {
+    const base = sampleDraft();
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      natureza: 'Doacao',
+      cfop: '5910',
+      series: '2',
+      number: '65248',
+      finNFe: '1',
+      indFinal: '1',
+      indPres: '9',
+      tpAmb: '1',
+      emit: { ...base.emit, crt: '3', xFant: 'QL MED' },
+      dest: { ...base.dest, indIEDest: '9', ie: null },
+      items: [{
+        ...base.items[0],
+        cProd: '002626',
+        xProd: 'TP00971 - TRANSDUTOR DE PRESSAO C/ TORNEIRA VALVULADA',
+        ncm: '90183999',
+        cfop: '5910',
+        qCom: '4',
+        vUnCom: '120',
+        anvisa: '10216839008',
+        lot: '26C52',
+        lotFab: '2026-03-30',
+        lotExpiry: '2031-03-30',
+      }],
+      pag: { tPag: '90', indPag: '1', vPag: '0.00' },
+      transporta: { xNome: 'TRANSPORTE PROPRIO' },
+    }));
+    expect(xml).toContain('<indPres>9</indPres><indIntermed>0</indIntermed>');
+    expect(xml).toContain('<CST>200</CST>');
+    expect(xml).toContain('<cClassTrib>200030</cClassTrib>');
+    expect(xml).toContain('<vBC>480.00</vBC>');
+    expect(xml).toContain('<vIBSUF>0.19</vIBSUF>');
+    expect(xml).toContain('<vCBS>1.73</vCBS>');
+    expect(xml).toContain('<vItem>480.00</vItem>');
+    expect(xml).toContain('<vNFTot>480.00</vNFTot>');
+    expect(xml).toContain('<infAdProd>(Lote 26C52)        (RVS 10216839008)</infAdProd>');
+    expect(xml).toContain('<xPais>BRASIL</xPais>');
+    expect(xml).toContain('<fone>6733263520</fone>');
+    expect(xml).not.toContain('73008138000100');
+    expect(xml).not.toContain('<indPag>');
+    expect(xml).not.toContain('<med>');
   });
 
   it('inclui infRespTec do QLMED (cStat 972) com CNPJ do emitente, sem Joinner', () => {

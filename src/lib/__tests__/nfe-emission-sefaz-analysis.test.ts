@@ -46,4 +46,15 @@ describe('analyzeSefazRejection (SPEC-062)', () => {
     expect(a.code).toBe('972');
     expect(a.title.toLowerCase()).toMatch(/t[eé]cnico|respons/);
   });
+
+  it('434 aponta intermediador', () => {
+    const a = analyzeSefazRejection({
+      status: 'rejected',
+      sefazStat: '434',
+      sefazMotivo: 'Rejeicao: NF-e sem indicativo do intermediador',
+    });
+    expect(a.code).toBe('434');
+    expect(a.severity).toBe('danger');
+    expect(a.title.toLowerCase()).toMatch(/intermediador/);
+  });
 });

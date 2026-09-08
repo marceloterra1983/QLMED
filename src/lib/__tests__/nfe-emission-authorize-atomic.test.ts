@@ -179,6 +179,12 @@ vi.mock('@/lib/nfe-emission/xml-builder', () => ({
   draftTotalValue: () => 10,
 }));
 vi.mock('@/lib/nfe-emission/xml-sign', () => ({ signNfeXml: () => '<NFe signed="1"/>' }));
+vi.mock('@/lib/nfe-emission/preflight', () => ({
+  assertNfePreflight: () => undefined,
+  collectNfePreflightIssues: () => [],
+  isNfePreflightError: () => false,
+  NfePreflightError: class NfePreflightError extends Error {},
+}));
 
 async function loadAuthorize() {
   const mod = await import('@/lib/nfe-emission/authorize');
