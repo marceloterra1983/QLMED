@@ -33,7 +33,7 @@ export function getFiscalPeriodRange(
   if (period === 'month') {
     return {
       startDate: new Date(Date.UTC(year, month - 1, 1)),
-      endDate: new Date(Date.UTC(year, month, 0, 23, 59, 59)),
+      endDate: new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)),
     };
   }
 
@@ -41,13 +41,13 @@ export function getFiscalPeriodRange(
     const quarter = Math.ceil(month / 3);
     return {
       startDate: new Date(Date.UTC(year, (quarter - 1) * 3, 1)),
-      endDate: new Date(Date.UTC(year, quarter * 3, 0, 23, 59, 59)),
+      endDate: new Date(Date.UTC(year, quarter * 3, 0, 23, 59, 59, 999)),
     };
   }
 
   return {
     startDate: new Date(Date.UTC(year, 0, 1)),
-    endDate: new Date(Date.UTC(year, 11, 31, 23, 59, 59)),
+    endDate: new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)),
   };
 }
 
