@@ -20,6 +20,14 @@ describe('web push payload', () => {
     expect(() => assertSafePushPayload(payload)).not.toThrow();
   });
 
+  it('formats the invoice number with a thousands separator', () => {
+    const payload = buildInvoicePushPayload(
+      { type: 'NFE', number: '65254', senderName: 'Hospital Exemplo' },
+      'delivery-2',
+    );
+    expect(payload.body).toBe('Hospital Exemplo • nº 65.254');
+  });
+
   it('rejects a payload that leaks an access key or XML', () => {
     expect(() => assertSafePushPayload({
       title: 'QLMED',

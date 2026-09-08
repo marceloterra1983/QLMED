@@ -123,9 +123,9 @@ describe('lista fiscal de NF-e recebidas — render', () => {
     // A tabela de desktop é a superfície canônica da lista.
     const table = await screen.findByRole('table');
     await waitFor(() => {
-      expect(within(table).getAllByText('000123').length).toBeGreaterThan(0);
+      expect(within(table).getAllByText('123').length).toBeGreaterThan(0);
     });
-    expect(within(table).getAllByText('000124').length).toBeGreaterThan(0);
+    expect(within(table).getAllByText('124').length).toBeGreaterThan(0);
     expect(within(table).getAllByText(/FORNECEDOR ALFA/).length).toBeGreaterThan(0);
   });
 

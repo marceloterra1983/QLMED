@@ -9,7 +9,7 @@ import ListCount from '@/components/ui/ListCount';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
-import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import { formatCnpj, formatAmount, formatDate, formatTime, getDateGroupLabel, FILTER_INPUT_CLS, formatInvoiceNumber } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import { createDateGroupWalker, defaultWalkCollapsedKeys } from '@/lib/list-collapse';
 import { currentMonthItemCount } from '@/lib/nfe-groups';
@@ -375,7 +375,7 @@ export default function NfseReceivedPage() {
                   {tick.showRow && (
                     <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number || '-'}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{formatInvoiceNumber(invoice.number)}</span>
                         <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
                       </div>
                       <div className="flex items-center justify-between mb-1">
@@ -494,7 +494,7 @@ export default function NfseReceivedPage() {
                             {formatDate(invoice.issueDate)}
                           </td>
                           <td className="px-2 py-3 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                            {invoice.number || '-'}
+                            {formatInvoiceNumber(invoice.number)}
                           </td>
                           <td className="px-2 py-3 text-xs text-right font-semibold tabular-nums text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {val(invoice.totalValue)}

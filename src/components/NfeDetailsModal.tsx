@@ -12,7 +12,7 @@ import type { NfeDetails, NfeProduto, NfeInfAdicionais, TransporteVolume, FormaP
 import { nfeProdutoExpandKey, retainExpandedIds } from '@/lib/list-collapse';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
-import { formatAmount, formatDateTimeSeconds } from '@/lib/utils';
+import { formatAmount, formatDateTimeSeconds, formatInvoiceNumber } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import SpicaCodeTag from '@/components/nfe-item-link/SpicaCodeTag';
 import ProductLinkPicker, { type LinkScope } from '@/components/nfe-item-link/ProductLinkPicker';
@@ -103,7 +103,7 @@ function TabNfe({ data }: { data: NfeDetails }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={nfe.modelo} />
           <Field label="Série" value={nfe.serie} />
-          <Field label="Número" value={nfe.numero} />
+          <Field label="Número" value={formatInvoiceNumber(nfe.numero)} />
           <Field label="Data Emissão" value={formatDateBr(nfe.dataEmissao)} />
           <Field label="Data Saída/Entrada" value={formatDateBr(nfe.dataSaidaEntrada)} />
           <Field label="Valor Total" value={formatMoney(nfe.valorTotal)} />
@@ -696,7 +696,7 @@ export default function NfeDetailsModal({ isOpen, onClose, invoiceId, initialTab
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                  {data ? `NF-e ${data.number}` : 'Detalhes da NF-e'}
+                  {data ? `NF-e ${formatInvoiceNumber(data.number)}` : 'Detalhes da NF-e'}
                 </h3>
                 {data?.series && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">Série {data.series}</span>

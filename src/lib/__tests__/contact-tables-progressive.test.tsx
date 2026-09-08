@@ -110,4 +110,27 @@ describe('G2 — Progressive table display for large invoice collections', () =>
     expect(html).not.toContain('Mostrar mais');
     expect(html).not.toContain('Mostrar todas');
   });
+
+  it('formats invoice numbers with a thousands separator', () => {
+    const invoices: ContactInvoice[] = [{
+      id: 'inv-fmt',
+      number: '65254',
+      series: '1',
+      issueDate: '2026-08-01T10:00:00Z',
+      totalValue: 100,
+      status: 'received',
+      accessKey: '352608000000000000005500100000652541000000010',
+      cfopTag: 'Venda',
+    }];
+    const html = renderToStaticMarkup(
+      <InvoiceTable
+        invoices={invoices}
+        installmentsMap={new Map()}
+        emptyLabel="Nenhuma nota encontrada"
+        {...dummyHandlers}
+      />
+    );
+    expect(html).toContain('65.254');
+    expect(html).not.toContain('>65254<');
+  });
 });

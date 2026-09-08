@@ -5,7 +5,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import { formatDate, formatAmount, formatCnpj } from '@/lib/utils';
+import { formatDate, formatAmount, formatCnpj, formatInvoiceNumber } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 
@@ -447,7 +447,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
     <Modal
       isOpen
       onClose={fecharSePossivel}
-      title={`Lotes — NF-e ${invoice?.number || "..."}`}
+      title={`Lotes — NF-e ${invoice?.number ? formatInvoiceNumber(invoice.number) : "..."}`}
       surface="card"
       width="sm:max-w-5xl"
       height="sm:h-auto sm:max-h-[90vh]"
@@ -457,7 +457,7 @@ export default function LotEditModal({ isOpen, onClose, invoiceId, canWrite, onS
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                Lotes — NF-e {invoice?.number || '...'}
+                Lotes — NF-e {invoice?.number ? formatInvoiceNumber(invoice.number) : '...'}
               </h3>
               {invoice && (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500">

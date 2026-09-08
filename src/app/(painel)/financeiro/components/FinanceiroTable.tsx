@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
-import { formatAmount, getDateGroupLabel } from '@/lib/utils';
+import { formatAmount, getDateGroupLabel, formatInvoiceNumber } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import { createDateGroupWalker } from '@/lib/list-collapse';
 import { currentMonthItemCount } from '@/lib/nfe-groups';
@@ -139,7 +139,7 @@ export default function FinanceiroTable({
                               {dup.status === 'due_soon' && <div className="text-xs text-orange-500">em {dup.diasParaVencer}d</div>}
                             </td>
                             <td className="px-3 py-3 tabular-nums whitespace-nowrap">
-                              <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{dup.nfNumero}</span>
+                              <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{formatInvoiceNumber(dup.nfNumero)}</span>
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                               <span className={`text-sm font-bold font-mono ${valorColor}`}>{formatAmount(dup.dupValor)}</span>
@@ -217,7 +217,7 @@ export default function FinanceiroTable({
                         onClick={() => onOpenDetails(dup)}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">{dup.nfNumero}</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">{formatInvoiceNumber(dup.nfNumero)}</span>
                           <span className={`text-xs font-bold ${isOverdue ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{formatVencimento(dup.dupVencimento)}</span>
                         </div>
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{n.display}</p>

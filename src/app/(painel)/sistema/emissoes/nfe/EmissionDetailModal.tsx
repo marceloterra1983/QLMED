@@ -2,7 +2,7 @@
 
 import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
-import { formatAmount, formatCnpj, formatDateTime } from '@/lib/utils';
+import { formatAmount, formatCnpj, formatDateTime, formatInvoiceNumber } from '@/lib/utils';
 import { analyzeSefazRejection } from '@/lib/nfe-emission/sefaz-analysis';
 
 export type EmissionListItem = {
@@ -71,7 +71,7 @@ export default function EmissionDetailModal({ emission, isOpen, onClose }: Props
       onClose={onClose}
       title={
         emission.number
-          ? `NF-e ${emission.series}/${emission.number}`
+          ? `NF-e ${emission.series}/${formatInvoiceNumber(emission.number)}`
           : `Rascunho série ${emission.series}`
       }
       subtitle={emission.destName}

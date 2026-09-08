@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import prisma from '@/lib/prisma';
 import { createLogger } from '@/lib/logger';
+import { formatInvoiceNumber } from '@/lib/utils';
 
 const log = createLogger('web-push');
 
@@ -42,7 +43,7 @@ export function buildInvoicePushPayload(
   const isNfe = invoice.type === 'NFE';
   const title = isNfe ? 'QLMED — nova NF-e' : 'QLMED — novo CT-e';
   const sender = invoice.senderName?.trim() || 'Emitente';
-  const number = invoice.number?.trim() || '-';
+  const number = formatInvoiceNumber(invoice.number);
   return {
     title,
     body: `${sender} • nº ${number}`,

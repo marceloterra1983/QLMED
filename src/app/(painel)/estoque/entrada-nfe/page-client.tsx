@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import Modal from '@/components/ui/Modal';
-import { formatDate, formatAmount, FILTER_INPUT_CLS, formatFileSize } from '@/lib/utils';
+import { formatDate, formatAmount, FILTER_INPUT_CLS, formatFileSize, formatInvoiceNumber } from '@/lib/utils';
 import { dateGroupItemsVisible } from '@/lib/list-collapse';
 import { currentMonthYm, monthGroupKey, splitRelativeGroupsByCurrentMonth } from '@/lib/nfe-groups';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
@@ -539,7 +539,7 @@ export default function EntradaNfePage() {
             <span className="text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{inv.issueDate ? formatDate(inv.issueDate) : '-'}</span>
           </td>
           <td className="px-2 py-3 tabular-nums">
-            <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">{inv.number || '-'}</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">{formatInvoiceNumber(inv.number)}</span>
           </td>
           <td className="px-2 py-3 text-right tabular-nums">
             <span className="text-sm font-bold font-mono text-slate-900 dark:text-white whitespace-nowrap">{inv.totalValue != null ? formatAmount(inv.totalValue) : '-'}</span>
@@ -591,7 +591,7 @@ export default function EntradaNfePage() {
               <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ${badge.classes}`}>{badge.label}</span>
               <span className="text-xs font-bold text-slate-900 dark:text-white">
                 {inv.issueDate ? formatDate(inv.issueDate) : '-'}
-                <span className="text-slate-500 dark:text-slate-400 font-normal ml-2">#{inv.number || '-'}</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal ml-2">#{formatInvoiceNumber(inv.number)}</span>
               </span>
             </div>
             <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
