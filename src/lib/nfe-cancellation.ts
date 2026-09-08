@@ -1,5 +1,6 @@
 import { parseXmlSafe } from '@/lib/safe-xml-parser';
 import { prisma } from '@/lib/prisma';
+import { recordCancellationEstorno } from '@/lib/stock-ledger-estorno';
 import { issuedCancelTagLabel } from '@/lib/nfe-cancellation-label';
 
 export { issuedCancelTagLabel };
@@ -151,6 +152,31 @@ type ApplyNfeCancellationInput = {
  * nota homónima de qualquer empresa. Sendo obrigatório, o compilador obriga
  * cada chamador a decidir o escopo em vez de esquecê-lo.
  */
+/**
+ * BUG-001: cancelar nota reverte o ledger via movimentos compensatórios
+ * append-only (ESTORNO_CANCELAGEM). Falha aqui não pode derrubar o desfecho do
+ * sync — mesmo contrato dos hooks do ledger — e a reentrega do evento re-tenta:
+ * a chave `estorno:${movement.id}` é estável, então o reprocesso é idempotente
+ * e auto-cura estornos que falharam antes do fix.
+ */
+async function voidEstorno(companyId: string, accessKey: string, cancelledAt: Date): Promise<void> {
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: { companyId, accessKey, type: 'NFE' },
+      select: { id: true },
+    });
+    for (const inv of invoices) {
+      await recordCancellationEstorno(companyId, inv.id, cancelledAt);
+    }
+  } catch (err) {
+    console.warn('[nfe-cancellation] estorno de estoque do cancelamento falhou', {
+      err: err instanceof Error ? err.message : String(err),
+      companyId,
+      accessKey,
+    });
+  }
+}
+
 export async function applyNfeCancellationOutcome(
   input: ApplyNfeCancellationInput,
 ): Promise<NfeCancellationOutcome> {
@@ -162,10 +188,19 @@ export async function applyNfeCancellationOutcome(
     where: { companyId: input.companyId, accessKey, cancelledAt: null },
     data: { cancelledAt: hit.cancelledAt },
   });
-  if (result.count > 0) return 'applied';
+  if (result.count > 0) {
+    await voidEstorno(input.companyId, accessKey, hit.cancelledAt);
+    return 'applied';
+  }
 
   const exists = await prisma.invoice.count({ where: { companyId: input.companyId, accessKey } });
-  return exists > 0 ? 'applied' : 'lost';
+  if (exists > 0) {
+    // Já cancelada: reentrega idempotente não trava o cursor — e re-tenta o
+    // estorno (idempotente pela chave estável) para auto-curar falhas antigas.
+    await voidEstorno(input.companyId, accessKey, hit.cancelledAt);
+    return 'applied';
+  }
+  return 'lost';
 }
 
 /**

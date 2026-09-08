@@ -4,15 +4,21 @@ import { issuedCancelTagLabel } from '../nfe-cancellation-label';
 
 const CHAVE = '35241012345678000199550010000012341123456789';
 
-const { updateMany, count } = vi.hoisted(() => ({
+const { updateMany, count, findMany: invoiceFindMany, recordCancellationEstorno } = vi.hoisted(() => ({
   updateMany: vi.fn(),
   count: vi.fn(),
+  findMany: vi.fn().mockResolvedValue([]),
+  recordCancellationEstorno: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    invoice: { updateMany, count },
+    invoice: { updateMany, count, findMany: invoiceFindMany },
   },
+}));
+
+vi.mock('@/lib/stock-ledger-estorno', () => ({
+  recordCancellationEstorno,
 }));
 
 function procEvento(tpEvento: string, cStat: string | null, dhReg = '2026-08-20T14:30:00-03:00'): string {
@@ -212,6 +218,38 @@ describe('applyNfeCancellationOutcome', () => {
   beforeEach(() => {
     updateMany.mockReset();
     count.mockReset();
+    invoiceFindMany.mockReset().mockResolvedValue([]);
+    recordCancellationEstorno.mockReset().mockResolvedValue(0);
+  });
+
+  it("estorna o estoque quando a nota é marcada cancelada agora", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    invoiceFindMany.mockResolvedValue([{ id: 'inv-1' }, { id: 'inv-2' }]);
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('applied');
+    expect(recordCancellationEstorno).toHaveBeenCalledTimes(2);
+    expect(recordCancellationEstorno).toHaveBeenCalledWith('company-1', 'inv-1', expect.any(Date));
+    expect(recordCancellationEstorno).toHaveBeenCalledWith('company-1', 'inv-2', expect.any(Date));
+  });
+
+  it("re-tenta o estorno na reentrega de nota já cancelada (auto-cura idempotente)", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    count.mockResolvedValue(1);
+    invoiceFindMany.mockResolvedValue([{ id: 'inv-1' }]);
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('applied');
+    expect(recordCancellationEstorno).toHaveBeenCalledTimes(1);
+  });
+
+  it("não estorna quando o cancelamento é 'lost' (nota não está na base)", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    count.mockResolvedValue(0);
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('lost');
+    expect(recordCancellationEstorno).not.toHaveBeenCalled();
+  });
+
+  it("falha do estorno não derruba o desfecho 'applied'", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    invoiceFindMany.mockRejectedValue(new Error('db down'));
+    await expect(applyNfeCancellationOutcome({ companyId: 'company-1', xml: procEvento('110111', '135') })).resolves.toBe('applied');
   });
 
   it("'applied' quando a nota é marcada agora", async () => {
