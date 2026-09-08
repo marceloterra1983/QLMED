@@ -56,7 +56,7 @@ export default function EmissoesHubPageClient() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           href="/sistema/emissoes/nfe"
-          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+          className="block rounded-xl"
         >
           <Card className="h-full transition-colors hover:border-primary/40 hover:bg-slate-50/80 dark:hover:bg-slate-900/40">
             <div className="flex items-start gap-3">
@@ -68,7 +68,7 @@ export default function EmissoesHubPageClient() {
                   <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     Notas Fiscais
                   </h2>
-                  <span className="material-symbols-outlined text-slate-400 text-lg">
+                  <span className="material-symbols-outlined text-slate-500 text-lg">
                     chevron_right
                   </span>
                 </div>
