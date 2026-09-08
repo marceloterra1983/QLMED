@@ -8,9 +8,12 @@ import {
 import {
   GraphMailboxError,
   getMailboxMessageBodyHtml,
+  listGraphPdfAttachments,
   listMailboxMessagesBySenderWithoutAttachments,
   type GraphMailMessage,
+  type GraphPdfAttachment,
 } from '@/lib/graph-mail-client';
+import { extractPdfText } from '@/lib/pdf/extract-text';
 import { acquirePostgresAdvisoryLock, unimedCgMailIngestLockKey } from '@/lib/postgres-advisory-lock';
 import {
   markBackgroundServiceError,
@@ -26,6 +29,7 @@ import {
   UNIMED_CG_MAILBOXES,
   UNIMED_CG_ONEDRIVE_FOLDER,
   UNIMED_CG_OPME_HOSTS,
+  UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN,
   UNIMED_CG_SENDER_EMAIL,
 } from './constants';
 import { resolveUnimedCgOneDrive } from './onedrive';
@@ -63,6 +67,11 @@ import { prismaUnimedCgInvoiceDeadlineStore } from './invoice-deadline-store';
 import { prismaUnimedCgPreSolicitationStore } from './pre-solicitation-store';
 import { prismaUnimedCgReversalStore } from './reversal-store';
 import { prismaUnimedCgStore } from './store';
+import { prismaUnimedCgPurchaseOrderStore } from './purchase-order-store';
+import {
+  ingestUnimedCgPurchaseOrders,
+  type UnimedCgPurchaseOrderStorePort,
+} from './ingest-purchase-order';
 import {
   isWithinUnimedCgNotifyWindow,
   notifyUnimedCgAuthorization,
@@ -83,6 +92,15 @@ export type UnimedCgMailPort = {
     graphMessageId: string,
     options?: { signal?: AbortSignal },
   ): Promise<{ contentType: string; content: string }>;
+  listPurchaseOrderMessages?(
+    mailbox: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<GraphMailMessage[]>;
+  getPdfAttachments?(
+    mailbox: string,
+    graphMessageId: string,
+    signal?: AbortSignal,
+  ): Promise<GraphPdfAttachment[]>;
 };
 
 export type UnimedCgDrivePort = {
@@ -347,6 +365,8 @@ export type UnimedCgIngestDeps = {
   reversalStore: UnimedCgReversalStorePort;
   preSolicitationStore: UnimedCgPreSolicitationStorePort;
   invoiceDeadlineStore: UnimedCgInvoiceDeadlineStorePort;
+  purchaseOrderStore?: UnimedCgPurchaseOrderStorePort;
+  extractPurchaseOrderText?: (pdf: Buffer) => Promise<string>;
   whatsapp?: UnimedCgWhatsAppTarget | null;
 };
 
@@ -369,6 +389,14 @@ function defaultMailPort(): UnimedCgMailPort {
       listMailboxMessagesBySenderWithoutAttachments(mailbox, UNIMED_CG_SENDER_EMAIL, options),
     getBodyHtml: (mailbox, graphMessageId, options) =>
       getMailboxMessageBodyHtml(mailbox, graphMessageId, options),
+    listPurchaseOrderMessages: (mailbox, options) =>
+      listMailboxMessagesBySenderWithoutAttachments(
+        mailbox,
+        UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN,
+        options,
+      ),
+    getPdfAttachments: (mailbox, graphMessageId, signal) =>
+      listGraphPdfAttachments(mailbox, graphMessageId, signal),
   };
 }
 
@@ -430,6 +458,8 @@ export async function createDefaultUnimedCgDeps(companyId: string): Promise<Unim
     reversalStore: prismaUnimedCgReversalStore,
     preSolicitationStore: prismaUnimedCgPreSolicitationStore,
     invoiceDeadlineStore: prismaUnimedCgInvoiceDeadlineStore,
+    purchaseOrderStore: prismaUnimedCgPurchaseOrderStore,
+    extractPurchaseOrderText: (pdf) => extractPdfText(pdf, { prefix: 'unimed-cg-oc' }),
   };
 }
 
@@ -469,6 +499,10 @@ export async function runUnimedCgIngest(
     reversalStore: options.reversalStore ?? prismaUnimedCgReversalStore,
     preSolicitationStore: options.preSolicitationStore ?? prismaUnimedCgPreSolicitationStore,
     invoiceDeadlineStore: options.invoiceDeadlineStore ?? prismaUnimedCgInvoiceDeadlineStore,
+    purchaseOrderStore: options.purchaseOrderStore ?? prismaUnimedCgPurchaseOrderStore,
+    extractPurchaseOrderText:
+      options.extractPurchaseOrderText
+      ?? ((pdf) => extractPdfText(pdf, { prefix: 'unimed-cg-oc' })),
     whatsapp: options.whatsapp !== undefined ? options.whatsapp : resolveUnimedCgWhatsAppTarget(),
   };
 
@@ -1178,6 +1212,42 @@ export async function runUnimedCgIngest(
         processed += 1;
         await notifyWhatsApp(pdf);
       }
+    }
+
+
+    const poMail = resolved.mail.listPurchaseOrderMessages && resolved.mail.getPdfAttachments
+      ? {
+          listPurchaseOrderMessages: resolved.mail.listPurchaseOrderMessages.bind(resolved.mail),
+          getPdfAttachments: resolved.mail.getPdfAttachments.bind(resolved.mail),
+        }
+      : null;
+    if (poMail && resolved.purchaseOrderStore) {
+      const counters = {
+        processed: 0,
+        skipped: 0,
+        failedUploads: 0,
+        failedPersists: 0,
+        errors,
+      };
+      await ingestUnimedCgPurchaseOrders({
+        companyId,
+        mail: poMail,
+        uploadPdf: (args) => resolved.drive.uploadPdf(args),
+        deletePdf: resolved.drive.deletePdf
+          ? (itemId) => resolved.drive.deletePdf!(itemId)
+          : undefined,
+        store: resolved.purchaseOrderStore,
+        extractText: resolved.extractPurchaseOrderText
+          ?? ((pdf) => extractPdfText(pdf, { prefix: 'unimed-cg-oc' })),
+        sanitizeError,
+        collectOrphanUpload,
+        counters,
+        logWarn: (msg) => log.warn(msg),
+      });
+      processed += counters.processed;
+      skipped += counters.skipped;
+      failedUploads += counters.failedUploads;
+      failedPersists += counters.failedPersists;
     }
 
     const now = new Date();
