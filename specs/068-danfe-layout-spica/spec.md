@@ -34,7 +34,7 @@ impostos do SPICA, coluna V.AP.TRB e o protocolo no formato cru.
 ## Non-Goals
 
 - DANFE Simplificado Tipo 2 (NT 2026.003).
-- Upload OneDrive do PDF (o sync existente já lê `/BACKUP_QL MED/NFE/Danfes`).
+- Upload OneDrive do PDF — supersedido por SPEC-071.
 - Copiar a arte raster do cabeçalho SPICA; o bloco emitente é gerado do XML.
 - Alterar DACTE/NFS-e.
 
