@@ -36,4 +36,14 @@ describe('analyzeSefazRejection (SPEC-062)', () => {
     expect(a.title.toLowerCase()).toMatch(/assinatura/);
     expect(a.hints.some((h) => /C14N|SignedInfo|280/i.test(h))).toBe(true);
   });
+
+  it('972 aponta infRespTec', () => {
+    const a = analyzeSefazRejection({
+      status: 'rejected',
+      sefazStat: '972',
+      sefazMotivo: 'Rejeicao: Obrigatoria as informacoes do responsavel tecnico',
+    });
+    expect(a.code).toBe('972');
+    expect(a.title.toLowerCase()).toMatch(/t[eé]cnico|respons/);
+  });
 });

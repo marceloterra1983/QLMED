@@ -11,6 +11,7 @@ import {
   defaultPagFor,
   isPisNaoTributado,
   isSemPagamentoCfop,
+  INF_RESP_TEC,
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 import { buildRastroXml } from './rastro';
@@ -219,6 +220,12 @@ function infAdicXml(draft: NfeEmissionDraft): string {
   return `<infAdic>${fisco}${cpl}</infAdic>`;
 }
 
+function infRespTecXml(draft: NfeEmissionDraft): string {
+  const cnpj = draft.emit.cnpj.replace(/\D/g, '');
+  const { xContato, email, fone } = INF_RESP_TEC;
+  return `<infRespTec><CNPJ>${esc(cnpj)}</CNPJ><xContato>${esc(xContato)}</xContato><email>${esc(email)}</email><fone>${esc(fone)}</fone></infRespTec>`;
+}
+
 export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   if (draft.items.length === 0) throw new Error('A nota precisa de pelo menos um item');
   const cUf = UF_TO_CODE[draft.emit.ender.UF];
@@ -240,6 +247,6 @@ export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   const vPis = money(sumMoney(dets.map((row) => row.vPis)));
   const vCofins = money(sumMoney(dets.map((row) => row.vCofins)));
   const finNFe = draft.finNFe || '1';
-  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets.map((row) => row.xml).join('')}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>${vPis}</vPIS><vCOFINS>${vCofins}</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${cobrXml(draft, vNf)}${pagXml(draft, vNf)}${infAdicXml(draft)}</infNFe>`;
+  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets.map((row) => row.xml).join('')}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>${vPis}</vPIS><vCOFINS>${vCofins}</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${cobrXml(draft, vNf)}${pagXml(draft, vNf)}${infAdicXml(draft)}${infRespTecXml(draft)}</infNFe>`;
   return `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">${infNFe}</NFe>`;
 }

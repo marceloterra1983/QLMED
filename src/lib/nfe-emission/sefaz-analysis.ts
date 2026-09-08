@@ -60,6 +60,15 @@ const KNOWN: Record<
     hints: ['Verifique o empacotamento SOAP/NFeAutorizacao4 e a assinatura.'],
     severity: 'danger',
   },
+  '972': {
+    title: 'Responsável técnico obrigatório',
+    summary: 'A SEFAZ-MS exige o grupo infRespTec (CNPJ, contato, e-mail e telefone do emissor do software).',
+    hints: [
+      'O grupo vai ao final da infNFe, depois de infAdic.',
+      'Não use o CNPJ da software house antiga (Joinner).',
+    ],
+    severity: 'danger',
+  },
   '656': {
     title: 'Consumo indevido',
     summary: 'A SEFAZ bloqueou temporariamente consultas excessivas (cStat 656).',
