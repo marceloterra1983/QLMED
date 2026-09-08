@@ -35,6 +35,7 @@ export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
   '/relatorios/valvulas-importadas': { label: 'Válvulas Mecânicas Corcym', icon: 'bar_chart' },
   '/sistema/sync': { label: 'Sincronizar', icon: 'cloud_sync' },
   '/sistema/errors': { label: 'Erros', icon: 'warning' },
+  '/sistema/emissoes': { label: 'Emissões', icon: 'receipt_long' },
   '/sistema/upload': { label: 'Upload XML', icon: 'cloud_upload' },
   '/sistema/settings': { label: 'Configurações', icon: 'settings' },
   '/sistema/rotinas': { label: 'Rotinas', icon: 'schedule' },
@@ -131,6 +132,7 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
       items: [
         { label: 'Sincronizar', icon: 'cloud_sync', href: '/sistema/sync' },
         { label: 'Erros', icon: 'warning', href: '/sistema/errors' },
+        { label: 'Emissões', icon: 'receipt_long', href: '/sistema/emissoes' },
         { label: 'Upload XML', icon: 'cloud_upload', href: '/sistema/upload' },
         { label: 'Configurações', icon: 'settings', href: '/sistema/settings' },
         { label: 'Rotinas', icon: 'schedule', href: '/sistema/rotinas' },

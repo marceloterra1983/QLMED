@@ -62,6 +62,7 @@ export const PAGE_GROUPS: PageGroup[] = [
     pages: [
       { label: 'Sincronizar', path: '/sistema/sync' },
       { label: 'Erros', path: '/sistema/errors' },
+      { label: 'Emissões', path: '/sistema/emissoes' },
       { label: 'Upload XML', path: '/sistema/upload' },
       { label: 'Rotinas', path: '/sistema/rotinas' },
       { label: 'Configurações', path: '/sistema/settings' },
@@ -89,7 +90,7 @@ export const VALID_PAGE_PATHS = new Set(ALL_PAGES.map((p) => p.path));
 const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   // Fiscal
   { prefix: '/api/invoices', pages: ['/fiscal/invoices', '/fiscal/dashboard', '/fiscal/cte', '/fiscal/issued', '/fiscal/nfse-recebidas'] },
-  { prefix: '/api/nfe-emissions', pages: ['/fiscal/issued'] },
+  { prefix: '/api/nfe-emissions', pages: ['/fiscal/issued', '/sistema/emissoes'] },
   { prefix: '/api/fiscal',   pages: ['/fiscal/dashboard', '/fiscal/invoices', '/fiscal/cte', '/fiscal/issued', '/fiscal/nfse-recebidas'] },
   { prefix: '/api/cte',      pages: ['/fiscal/cte'] },
   { prefix: '/api/dashboard',pages: ['/fiscal/dashboard'] },
@@ -135,6 +136,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
 const PANEL_PAGE_ALIASES: Record<string, string> = {
   '/cadastro/anvisa': '/cadastro/produtos',
   '/sistema/companies': '/sistema/settings',
+  '/sistema/emissoes/nfe': '/sistema/emissoes',
 };
 
 /**
