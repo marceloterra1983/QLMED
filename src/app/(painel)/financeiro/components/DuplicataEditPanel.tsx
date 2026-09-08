@@ -3,7 +3,7 @@
 import React from 'react';
 import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
-import { formatAmount, formatCnpj, formatDate } from '@/lib/utils';
+import { formatAmount, formatCnpj, formatDate, formatInvoiceNumber } from '@/lib/utils';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import Button from '@/components/ui/Button';
 import {
@@ -105,7 +105,7 @@ export default function DuplicataEditPanel({
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                  Duplicatas — NF-e {invoiceHeader?.number || selectedDuplicata?.nfNumero}
+                  Duplicatas — NF-e {formatInvoiceNumber(invoiceHeader?.number || selectedDuplicata?.nfNumero)}
                 </h3>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {n.display}
@@ -158,7 +158,7 @@ export default function DuplicataEditPanel({
                 <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Número da NF-e</p>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {invoiceHeader?.number || selectedDuplicata?.nfNumero}
+                    {formatInvoiceNumber(invoiceHeader?.number || selectedDuplicata?.nfNumero)}
                   </p>
                   <button
                     onClick={() => onOpenInvoice((invoiceHeader?.id || selectedDuplicata?.invoiceId || ''))}

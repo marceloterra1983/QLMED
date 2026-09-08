@@ -8,7 +8,7 @@ import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
-import { formatAmount } from '@/lib/utils';
+import { formatAmount, formatInvoiceNumber } from '@/lib/utils';
 import type { ProductRow } from '../types';
 import { formatQuantity, formatDate } from './product-utils';
 
@@ -179,7 +179,7 @@ export default function HistoryModal({ product, onClose, onOpenInvoice }: Histor
                       {visibleRows.map((h, i) => (
                         <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                           <td className="px-3 py-2 tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(h.issueDate)}</td>
-                          <td className="px-3 py-2"><button onClick={() => onOpenInvoice(h.invoiceId)} className="text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 hover:underline font-mono font-medium transition-colors">{h.invoiceNumber || '-'}</button></td>
+                          <td className="px-3 py-2"><button onClick={() => onOpenInvoice(h.invoiceId)} className="text-primary dark:text-blue-400 hover:text-primary-dark dark:hover:text-blue-300 hover:underline font-mono font-medium transition-colors">{formatInvoiceNumber(h.invoiceNumber)}</button></td>
                           <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatQuantity(h.quantity)}</td>
                           <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">{formatAmount(h.unitPrice)}</td>
                           <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-white tabular-nums">{formatAmount(h.totalValue)}</td>

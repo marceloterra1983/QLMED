@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import EmptyState from '@/components/ui/EmptyState';
-import { formatDate, formatInt } from '@/lib/utils';
+import { formatDate, formatInt, formatInvoiceNumber } from '@/lib/utils';
 import { formatQuantity, formatPrice } from '@/lib/modal-helpers';
 import { thCls, tdCls } from './contact-detail-utils';
 import type { ContactPriceRow, ContactMeta, PriceSortKey, SortDirection } from './contact-detail-types';
@@ -120,7 +120,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <span>Qtd: {formatQuantity(row.totalQuantity)}</span>
-                  <span>{row.lastInvoiceNumber || '-'} {row.lastIssueDate ? formatDate(row.lastIssueDate) : ''}</span>
+                  <span>{formatInvoiceNumber(row.lastInvoiceNumber)} {row.lastIssueDate ? formatDate(row.lastIssueDate) : ''}</span>
                 </div>
               </div>
             ))}
@@ -151,7 +151,7 @@ export default function PriceTableSection({ priceTable, meta, sortAccentColor = 
                     </td>
                     <td className={`${tdCls} tabular-nums`}>
                       <div className="text-xs text-slate-600 dark:text-slate-300">
-                        {row.lastInvoiceNumber || '-'}
+                        {formatInvoiceNumber(row.lastInvoiceNumber)}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">
                         {row.lastIssueDate ? formatDate(row.lastIssueDate) : '-'}

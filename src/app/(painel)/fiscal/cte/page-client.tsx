@@ -11,7 +11,7 @@ const CteDetailsModal = dynamic(() => import('@/components/CteDetailsModal'), { 
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/types';
-import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount, getDateGroupLabel, FILTER_INPUT_CLS, formatInvoiceNumber } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import { createDateGroupWalker, defaultWalkCollapsedKeys } from '@/lib/list-collapse';
 import { currentMonthItemCount } from '@/lib/nfe-groups';
@@ -572,7 +572,7 @@ export default function CtePage() {
                 {tick.showRow && (
                   <Card padding="sm" onClick={() => openDetails(invoice.id)} className="cursor-pointer">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatInvoiceNumber(invoice.number)}</span>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{formatDate(invoice.issueDate)}</span>
                     </div>
                     <div className="flex items-center justify-between mb-0.5">
@@ -693,7 +693,7 @@ export default function CtePage() {
                               type="checkbox"
                               checked={selected.has(invoice.id)}
                               onChange={() => toggleSelect(invoice.id)}
-                              aria-label={`Selecionar CT-e ${invoice.number}`}
+                              aria-label={`Selecionar CT-e ${formatInvoiceNumber(invoice.number)}`}
                             />
                           </td>
                           <td className="px-2 py-3 tabular-nums whitespace-nowrap">
@@ -701,7 +701,7 @@ export default function CtePage() {
                             <div className="text-xs text-slate-500 dark:text-slate-400">{formatTime(invoice.issueDate)}</div>
                           </td>
                           <td className="px-2 py-3 tabular-nums whitespace-nowrap">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{invoice.number}</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatInvoiceNumber(invoice.number)}</span>
                           </td>
 	                          <td className="px-2 py-3 text-right tabular-nums whitespace-nowrap">
 	                            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">{val(invoice.totalValue)}</span>

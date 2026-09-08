@@ -7,7 +7,7 @@ import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
 import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
 import Spinner from '@/components/ui/Spinner';
 import NfeDetailsModal from '@/components/NfeDetailsModal';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatInvoiceNumber } from '@/lib/utils';
 import type { StockCatalogProduct } from '@/lib/stock-catalog';
 import type { ValidityBand } from '@/lib/stock-ledger';
 import type { BadgeTone } from '@/components/ui/Badge';
@@ -197,7 +197,7 @@ export function StockLotsKardex({
                       className="text-xs font-semibold text-primary dark:text-blue-400 underline underline-offset-2"
                       onClick={() => setNfeInvoiceId(m.invoiceId)}
                     >
-                      NF {m.invoiceNumber}
+                      NF {formatInvoiceNumber(m.invoiceNumber)}
                     </button>
                   ) : null}
                   <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">

@@ -11,7 +11,7 @@ import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
 import { embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
-import { formatCnpj, formatDocumentDate, formatDateTime } from '@/lib/utils';
+import { formatCnpj, formatDocumentDate, formatDateTime, formatInvoiceNumber } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
 import dynamic from 'next/dynamic';
 
@@ -177,12 +177,12 @@ function NfYellowTag({
   return (
     <button
       type="button"
-      title={`Abrir NF-e ${number}`}
+      title={`Abrir NF-e ${formatInvoiceNumber(number)}`}
       onClick={onClick}
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/70 dark:border-amber-700/60 hover:bg-amber-200/80 dark:hover:bg-amber-900/60"
     >
       <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
-      NF {number}
+      NF {formatInvoiceNumber(number)}
     </button>
   );
 }

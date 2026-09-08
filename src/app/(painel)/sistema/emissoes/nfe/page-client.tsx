@@ -8,7 +8,7 @@ import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
-import { formatAmount, formatCnpj, formatDateTime } from '@/lib/utils';
+import { formatAmount, formatCnpj, formatDateTime, formatInvoiceNumber } from '@/lib/utils';
 import EmissionDetailModal, { type EmissionListItem } from './EmissionDetailModal';
 
 type StatusFilter = 'all' | 'rejected' | 'authorized' | 'draft' | 'submitted';
@@ -149,7 +149,7 @@ export default function EmissoesNfePageClient() {
                         <Badge tone={badge.tone}>{badge.label}</Badge>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
-                        {row.number ? `${row.series}/${row.number}` : `S${row.series} —`}
+                        {row.number ? `${row.series}/${formatInvoiceNumber(row.number)}` : `S${row.series} —`}
                       </td>
                       <td className="max-w-[14rem] truncate px-4 py-3" title={row.destName}>
                         <div className="truncate font-medium text-slate-900 dark:text-white">
