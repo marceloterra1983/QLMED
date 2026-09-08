@@ -21,7 +21,11 @@ export async function listCatalogStock(
         shortName: true,
       },
     }),
-    listStockBalances(companyId, { locationType: 'ALL', limit: 0 }),
+    listStockBalances(companyId, {
+      locationType: 'ALL',
+      limit: 0,
+      includeZero: opts.includeZero ?? true,
+    }),
   ]);
   return mergeCatalogWithBalances(catalog, balances, {
     includeZero: opts.includeZero ?? true,

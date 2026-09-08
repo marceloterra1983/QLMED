@@ -7,6 +7,7 @@ import { getStockEntriesByInvoiceIds, getNfePendencyCounts } from '@/lib/stock-e
 import { registerInvoiceEntry, LotOverride } from '@/lib/register-entry';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { entradaNfeSchema } from '@/lib/schemas/estoque';
+import { resolveEntradaNfeSearchHits } from '@/lib/stock-entrada-search';
 
 
 export async function GET(req: Request) {
@@ -68,10 +69,10 @@ export async function GET(req: Request) {
       take: 5000,
     });
 
-    // Text search
+    // Text search; SPEC-060: se não casar emitente/número, tenta lote no ledger.
     if (search) {
       const searchWords = normalizeForSearch(search).split(/\s+/).filter(Boolean);
-      invoices = invoices.filter((inv) => {
+      const textMatches = invoices.filter((inv) => {
         const fields = [
           inv.senderName || '',
           inv.number || '',
@@ -80,6 +81,22 @@ export async function GET(req: Request) {
         ];
         return flexMatchAll(fields, searchWords);
       });
+      let lotInvoiceIds: string[] = [];
+      if (textMatches.length === 0) {
+        const lotHits = await prisma.stockMovement.findMany({
+          where: {
+            companyId: company.id,
+            lot: { equals: search, mode: 'insensitive' },
+            invoiceId: { not: null },
+          },
+          select: { invoiceId: true },
+          distinct: ['invoiceId'],
+        });
+        lotInvoiceIds = lotHits
+          .map((row) => row.invoiceId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+      }
+      invoices = resolveEntradaNfeSearchHits(textMatches, invoices, lotInvoiceIds);
     }
 
     // Get stock entry status for all invoices
