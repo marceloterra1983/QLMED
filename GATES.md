@@ -1,41 +1,28 @@
-# Gates: 070 filtros de listagem
+# Gates: OC Unimed CG — GTPlan
 
-Scope: Produtos alinha ao padrão Controle (barra inline + FILTER_INPUT_CLS + busca na hierarquia + filtro instantâneo na árvore); demais listagens usam o token canônico; spec 070 documenta o padrão A/B.
+Scope: ingerir confirmações `no-reply@gtplan.net` no card ORDEM DE COMPRA junto com o SOULMV.
 
-- [x] G1: Spec 070 com IDs de requisito
-  CHECK: test -f specs/070-filtros-listagem/spec.md && rg -n "FR-070" specs/070-filtros-listagem/spec.md
-  EXPECT: FR-070
-  EVIDENCE: 54:- **FR-070-04**: Na visão em árvore, digitar na busca MUST filtrar o catálogo já carregado sem novo `search=` na API. | 55:- **FR-070-05**: Contas a pagar/receber, Rotinas e Vínculos NF MUST usar `
-
-- [x] G2: API de produtos busca também linha/grupo/subgrupo
-  CHECK: npm test -- --run src/lib/__tests__/products-list-visibility.test.ts
+- [x] G1: parser GTPlan 186184 extrai OC, CNPJ faturar, prazo, item, qtd, unitário e total
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "186184" --reporter=dot
   EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  17:12:17 | Duration  252ms (transform 72ms, setup 17ms, import 140ms, tests 9ms, environment 0ms)
+  EVIDENCE: Start at  17:46:33 | Duration  138ms (transform 39ms, setup 17ms, import 35ms, tests 4ms, environment 0ms)
 
-- [x] G3: filterProductRows casa hierarquia (caso ALEXIS)
-  CHECK: npm test -- --run src/app/\(painel\)/cadastro/produtos/components/__tests__/product-filters.test.ts
+- [x] G2: ingestão persiste confirmação GTPlan e ignora assunto sem OC
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-ingest.test.ts --reporter=dot
   EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  17:12:18 | Duration  144ms (transform 34ms, setup 20ms, import 28ms, tests 3ms, environment 0ms)
+  EVIDENCE: Start at  17:46:34 | Duration  506ms (transform 253ms, setup 17ms, import 23ms, tests 388ms, environment 0ms)
 
-- [x] G4: ProductFilters usa FILTER_INPUT_CLS e não MobileFilterWrapper
-  CHECK: rg -n "FILTER_INPUT_CLS" src/app/\(painel\)/cadastro/produtos/components/ProductFilters.tsx && ! rg -q "MobileFilterWrapper" src/app/\(painel\)/cadastro/produtos/components/ProductFilters.tsx && echo FILTERS_INLINE_OK
-  EXPECT: FILTERS_INLINE_OK
-  EVIDENCE: 111:              className={`${FILTER_INPUT_CLS} w-auto px-2`} | FILTERS_INLINE_OK
+- [x] G3: listing usa SOULMV + `no-reply@gtplan.net`
+  CHECK: rg -n "UNIMED_CG_ORDEM_COMPRA_SENDERS|no-reply@gtplan.net" src/lib/unimed-cg/ingest.ts src/lib/unimed-cg/constants.ts
+  EXPECT: no-reply@gtplan.net
+  EVIDENCE: src/lib/unimed-cg/ingest.ts:32:  UNIMED_CG_ORDEM_COMPRA_SENDERS, | src/lib/unimed-cg/ingest.ts:389:  for (const sender of UNIMED_CG_ORDEM_COMPRA_SENDERS) {
 
-- [x] G5: Token FILTER_INPUT_CLS nas listagens que ainda copiavam py-2
-  CHECK: rg -l "FILTER_INPUT_CLS" src/app/\(painel\)/financeiro/components/FinanceiroPageClient.tsx src/app/\(painel\)/sistema/rotinas/page-client.tsx src/app/\(painel\)/cadastro/produtos/vinculos-nfe/page-client.tsx | wc -l
-  EXPECT: 3
-  EVIDENCE: 3
-
-- [x] G6: docs:validate aceita SPEC-070
-  CHECK: npm run docs:validate
-  EXPECT: Documentation validation passed
-  EVIDENCE: > node ./scripts/validate-docs.mjs | Documentation validation passed (258 Markdown files, 84 IDs).
-
-- [x] G7: tsc --noEmit sem erro
+- [x] G4: `npx tsc --noEmit`
   CHECK: npx tsc --noEmit && echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK
 
-- [x] G8: Preview Produtos — busca alexis inclui item só pelo grupo
-  EVIDENCE: preview :3002 cwd=070-filtros-listagem; busca "alexis" → 3 no cadastro + CARDIACA 3; expandir mostra ESTABILIZADOR DE TECIDO DESCARTÁVEL (casa pelo grupo ALEXIS) além dos dois retratores.
+- [x] G5: fixture SOULMV 188246 continua verde
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "188246" --reporter=dot
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  17:46:37 | Duration  159ms (transform 53ms, setup 20ms, import 47ms, tests 4ms, environment 0ms)

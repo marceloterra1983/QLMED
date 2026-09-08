@@ -6,9 +6,12 @@ import {
   sendWhatsAppDocument,
   type EvolutionConfig,
 } from '@/lib/whatsapp-evolution';
+import { formatCnpj } from '@/lib/utils';
 import {
   UNIMED_CG_NOTIFY_MAX_AGE_MS,
+  getUnimedCgOcWhatsAppGroupRaw,
   getUnimedCgWhatsAppGroupRaw,
+  isUnimedCgOcWhatsAppEnabled,
   isUnimedCgWhatsAppEnabled,
 } from './constants';
 
@@ -274,6 +277,100 @@ export async function notifyUnimedCgInvoiceDeadline(input: {
         err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
       },
       'unimed_cg_prazo_nf_whatsapp_failed',
+    );
+    return { sent: false, messageId: null };
+  }
+}
+
+export function resolveUnimedCgOcWhatsAppTarget(
+  config: EvolutionConfig | null = getEvolutionConfig(),
+): UnimedCgWhatsAppTarget | null {
+  if (!isUnimedCgOcWhatsAppEnabled()) return null;
+  const jid = getConfiguredWhatsAppGroup(getUnimedCgOcWhatsAppGroupRaw());
+  if (!jid) return null;
+  if (!config) return null;
+
+  return {
+    jid,
+    port: {
+      sendDocument: (input) => sendWhatsAppDocument(input, config),
+    },
+  };
+}
+
+export type UnimedCgPurchaseOrderNotifyItem = {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  lineTotal: string;
+};
+
+export type UnimedCgPurchaseOrderNotifyFields = {
+  orderNumber: string;
+  items: UnimedCgPurchaseOrderNotifyItem[];
+  totalAmount: string;
+  billingCnpj: string | null;
+  paymentTerms: string | null;
+};
+
+function formatBrlFromDecimalString(value: string): string {
+  const formatted = new Decimal(value || 0)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+    .toFixed(2);
+  const [reais, frac] = formatted.split('.');
+  return `${reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${frac}`;
+}
+
+const MAX_OC_CAPTION_ITEMS = 6;
+
+export function buildUnimedCgPurchaseOrderWhatsAppCaption(
+  fields: UnimedCgPurchaseOrderNotifyFields,
+): string {
+  const lines = [`Ordem de compra Unimed CG — ${fields.orderNumber}`];
+  const items = fields.items.slice(0, MAX_OC_CAPTION_ITEMS);
+  if (items.length === 0) {
+    lines.push('Produto: não identificado');
+  } else {
+    for (const item of items) {
+      lines.push(`Produto: ${item.description.trim() || 'não identificado'}`);
+      lines.push(`Qtd: ${item.quantity}`);
+      lines.push(`Valor unitário: R$ ${formatBrlFromDecimalString(item.unitPrice)}`);
+      lines.push(`Valor total: R$ ${formatBrlFromDecimalString(item.lineTotal)}`);
+    }
+    const extra = fields.items.length - items.length;
+    if (extra > 0) lines.push(`e mais ${extra} item(ns)`);
+  }
+  if (items.length !== 1) {
+    lines.push(`Valor total da OC: R$ ${formatBrlFromDecimalString(fields.totalAmount)}`);
+  }
+  const digits = (fields.billingCnpj ?? '').replace(/\D/g, '');
+  lines.push(`CNPJ faturar: ${digits.length === 14 ? formatCnpj(digits) : (fields.billingCnpj?.trim() || 'não identificado')}`);
+  lines.push(`Prazo: ${fields.paymentTerms?.trim() || 'não identificado'}`);
+  return lines.join('\n');
+}
+
+export async function notifyUnimedCgPurchaseOrder(input: {
+  target: UnimedCgWhatsAppTarget;
+  fields: UnimedCgPurchaseOrderNotifyFields;
+  fileName: string;
+  content: Buffer;
+}): Promise<NotifyResult> {
+  try {
+    const { messageId } = await input.target.port.sendDocument({
+      jid: input.target.jid,
+      fileName: input.fileName,
+      content: input.content,
+      caption: buildUnimedCgPurchaseOrderWhatsAppCaption(input.fields),
+    });
+    log.info({ orderNumber: input.fields.orderNumber }, 'unimed_cg_oc_whatsapp_sent');
+    return { sent: true, messageId };
+  } catch (error) {
+    log.warn(
+      {
+        orderNumber: input.fields.orderNumber,
+        err: error instanceof Error ? error.message.slice(0, 200) : 'envio',
+      },
+      'unimed_cg_oc_whatsapp_failed',
     );
     return { sent: false, messageId: null };
   }

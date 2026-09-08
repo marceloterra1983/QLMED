@@ -1,0 +1,74 @@
+                                                                     Número da ordem: 186184
+                                                                     Data Emissão: 16/06/2026
+                                                                     Valor Total: R$ 56.000, 00
+                                                                     Modalidade: Cotação (IDC:662441)
+                                                                     Fornecedor: ql med (CNPJ:07.832.309/0001-97)
+                                                                     Cód. do Fornecedor: 436
+                                                                     Frete: CIF
+
+
+Unidade: Unimed CG
+
+
+
+ Dados Faturamento                                                     Dados Da Entrega
+
+ CNPJ: 03315918000541                                                   CNPJ: 03.315.918/0005-41
+ IE: NULL                                                               Endereço: Av. Ministro João Arinos, 6323 Lote C52, Jardim
+ Endereço: AV MATO GROSSO, 4.566                                        Noroeste - Campo Grande/MS - 79045005
+ Depósito: 1 - central de suprimentos -
+ 01
+ Cond. Pagamento: 30 dias (cód.7)                                      Contato
+
+                                                                        Nome: Genival Oliveira
+                                                                        E-mail: genival.oliveira@unimedcg.coop.br
+                                                                        Telefone: 06733892620
+
+
+
+
+Cod       Desc. (Marca)                      Qtd.       Un.         Vl Unit    Vl Ipi     Valor       Entregas
+Item                                                                                      Total
+
+88271     dispositivo de autotransfusao      20         UNIDAD      R$         R$ 0, 00   R$          28/06/26
+          225ml - cell saver xtra sorin                 E           2.800,                56.000,
+          (SORING)                                                  000000                000000
+
+
+ Termos e Condições:
+
+ Observações
+
+ Prezado Fornecedor!
+
+ Segue a ordem de compra gerada no sistema GTPlan.
+ Orientamos o envio do XML da nota para nfe@gtplan.com.br, permitindo o acompanhamento do follow-up e status de faturamento.
+
+ Caso haja indisponibilidade de entrega por falta do item, por favor, entre em contato com o time de Compras pelo e-mail:
+ central.compras@unimedcg.coop.br.
+
+ Horário de recebimento:
+
+ Segunda a sexta-feira, das 07h00 às 12h00 e das 13h00 às 16h00.
+
+
+
+ Importante:
+
+ 1º - Não aceitamos produtos com validade inferior a 12 meses.
+
+ 2º - Enviar os DADOS BANCÁRIOS, para pagamento, descritos no campo “informações complementares” de todas as notas fiscais
+ emitidas contra nosso CNPJ.
+
+ 3º - NÃO ENVIAR BOLETOS!
+
+ 4º - Faturar as notas fiscais conforme Ordem de Compra recebida, quantidades e valores divergentes do que consta na Ordem de
+ Compra recebida motivará a recusa no ato da entrega dos produtos. (mesmo que por questões de centavos)
+
+
+
+ Qualquer dúvida, estamos à disposição!
+
+ Atenciosamente,
+Unimed Campo Grande
+

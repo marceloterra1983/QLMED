@@ -14,6 +14,11 @@ const FIXTURE = readFileSync(
   'utf8',
 );
 
+const GTPLAN = readFileSync(
+  resolve(__dirname, 'fixtures/unimed-cg-oc-186184-gtplan.txt'),
+  'utf8',
+);
+
 describe('unimed-cg ordem de compra parse', () => {
   it('reconhece assunto de OC no singular e no plural', () => {
     expect(isUnimedCgPurchaseOrderSubject(
@@ -22,6 +27,12 @@ describe('unimed-cg ordem de compra parse', () => {
     expect(isUnimedCgPurchaseOrderSubject('ORDEM DE COMPRA 12')).toBe(true);
     expect(isUnimedCgPurchaseOrderSubject('[ID 1] [OPME] autorização de faturamento do processo')).toBe(false);
     expect(extractOrderNumberFromSubject('Ordem de compras 188246 - QL MED')).toBe('188246');
+    expect(isUnimedCgPurchaseOrderSubject(
+      'Confirmação da Ordem de compra 186184 - QL MED - MATERIAIS HOSPITALARES LTDA',
+    )).toBe(true);
+    expect(extractOrderNumberFromSubject(
+      'Confirmação da Ordem de compra 186184 - QL MED - MATERIAIS HOSPITALARES LTDA',
+    )).toBe('186184');
   });
 
   it('converte números SOULMV sem float', () => {
@@ -53,5 +64,26 @@ describe('unimed-cg ordem de compra parse', () => {
 
   it('buildPurchaseOrderFileName', () => {
     expect(buildPurchaseOrderFileName('188246')).toBe('UNIMED-CG-OC 188246.pdf');
+  });
+
+  it('extrai OC 186184 do fixture GTPlan', () => {
+    const parsed = parsePurchaseOrderText(GTPLAN, '186184');
+    expect(parsed.orderNumber).toBe('186184');
+    expect(parsed.orderDate?.toISOString().startsWith('2026-06-16')).toBe(true);
+    expect(parsed.billingCnpj).toBe('03315918000541');
+    expect(parsed.paymentTerms).toMatch(/30\s*dias/i);
+    expect(parsed.paymentTermsCode).toBe('7');
+    expect(parsed.supplierCnpj).toBe('07832309000197');
+    expect(parsed.totalAmount).toBe('56000.00');
+    expect(parsed.parseStatus).toBe('ok');
+    expect(parsed.items).toHaveLength(1);
+    const item = parsed.items[0];
+    expect(item?.productCode).toBe('88271');
+    expect(item?.description).toMatch(/dispositivo de autotransfusao/i);
+    expect(item?.description).toMatch(/cell saver/i);
+    expect(item?.unit).toBe('UNIDADE');
+    expect(item?.quantity).toBe('20');
+    expect(item?.unitPrice).toBe('2800.00');
+    expect(item?.lineTotal).toBe('56000.00');
   });
 });

@@ -60,6 +60,14 @@ export const UNIMED_CG_PRAZO_NF_SUBJECT_RE =
  */
 export const UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN = 'unimedcg.coop.br';
 
+/** Confirmação GTPlan (PDF unimedcg_{oc}.pdf), distinto do SOULMV @unimedcg.coop.br. */
+export const UNIMED_CG_ORDEM_COMPRA_GTPLAN_SENDER = 'no-reply@gtplan.net';
+
+export const UNIMED_CG_ORDEM_COMPRA_SENDERS = [
+  UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN,
+  UNIMED_CG_ORDEM_COMPRA_GTPLAN_SENDER,
+] as const;
+
 export const UNIMED_CG_ORDEM_COMPRA_SUBJECT_RE = /ordem\s+de\s+compras?/i;
 
 export function isUnimedCgWhatsAppEnabled(): boolean {
@@ -68,6 +76,15 @@ export function isUnimedCgWhatsAppEnabled(): boolean {
 
 export function getUnimedCgWhatsAppGroupRaw(): string | null {
   return process.env.UNIMED_CG_WHATSAPP_GROUP_JID ?? null;
+}
+
+/** Canal só da OC. Não reutiliza o grupo/flag das autorizações OPME. */
+export function isUnimedCgOcWhatsAppEnabled(): boolean {
+  return (process.env.UNIMED_CG_OC_WHATSAPP_ENABLED ?? '').toLowerCase() === 'true';
+}
+
+export function getUnimedCgOcWhatsAppGroupRaw(): string | null {
+  return process.env.UNIMED_CG_OC_WHATSAPP_GROUP_JID ?? null;
 }
 
 export const UNIMED_CG_PARSE_RANK = {

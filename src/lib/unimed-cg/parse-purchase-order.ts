@@ -1,4 +1,5 @@
 import { UNIMED_CG_ORDEM_COMPRA_SUBJECT_RE, type UnimedCgParseStatus } from './constants';
+import { isGtplanPurchaseOrderText, parseGtplanPurchaseOrder } from './parse-purchase-order-gtplan';
 
 export type ParsedUnimedCgPurchaseOrderItem = {
   productCode: string | null;
@@ -178,6 +179,9 @@ export function parsePurchaseOrderText(
   text: string,
   subjectOrderNumber: string | null = null,
 ): ParsedUnimedCgPurchaseOrder {
+  if (isGtplanPurchaseOrderText(text)) {
+    return parseGtplanPurchaseOrder(text, subjectOrderNumber);
+  }
   const orderFromPdf = labeled(text, /Ord\.\s*Compra:\s*(\d+)/i);
   const orderNumber = orderFromPdf || subjectOrderNumber || '';
   const requestNumber = labeled(text, /Solicita[cç][aã]o:\s*(\d+)/i);

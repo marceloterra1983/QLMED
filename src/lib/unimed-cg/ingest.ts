@@ -29,7 +29,7 @@ import {
   UNIMED_CG_MAILBOXES,
   UNIMED_CG_ONEDRIVE_FOLDER,
   UNIMED_CG_OPME_HOSTS,
-  UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN,
+  UNIMED_CG_ORDEM_COMPRA_SENDERS,
   UNIMED_CG_SENDER_EMAIL,
 } from './constants';
 import { resolveUnimedCgOneDrive } from './onedrive';
@@ -378,6 +378,31 @@ function sanitizeError(message: string): string {
     .slice(0, 500);
 }
 
+
+async function listUnimedCgPurchaseOrderMessages(
+  mailbox: string,
+  options?: { signal?: AbortSignal },
+): Promise<GraphMailMessage[]> {
+  const seen = new Set<string>();
+  const messages: GraphMailMessage[] = [];
+  let lastError: unknown = null;
+  for (const sender of UNIMED_CG_ORDEM_COMPRA_SENDERS) {
+    try {
+      const rows = await listMailboxMessagesBySenderWithoutAttachments(mailbox, sender, options);
+      for (const row of rows) {
+        if (seen.has(row.internetMessageId)) continue;
+        seen.add(row.internetMessageId);
+        messages.push(row);
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (messages.length === 0 && lastError) throw lastError;
+  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
+  return messages;
+}
+
 function mailboxLabel(upn: string): string {
   const local = upn.split('@')[0]?.trim();
   return local || 'caixa';
@@ -390,11 +415,7 @@ function defaultMailPort(): UnimedCgMailPort {
     getBodyHtml: (mailbox, graphMessageId, options) =>
       getMailboxMessageBodyHtml(mailbox, graphMessageId, options),
     listPurchaseOrderMessages: (mailbox, options) =>
-      listMailboxMessagesBySenderWithoutAttachments(
-        mailbox,
-        UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN,
-        options,
-      ),
+      listUnimedCgPurchaseOrderMessages(mailbox, options),
     getPdfAttachments: (mailbox, graphMessageId, signal) =>
       listGraphPdfAttachments(mailbox, graphMessageId, signal),
   };
