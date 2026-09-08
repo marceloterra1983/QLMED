@@ -53,3 +53,75 @@ export const FISCAL_STOCK_KINDS = [
   'REMESSA_CONSIG',
   'RETORNO_CONSIG',
 ] as const;
+
+export const OPENING_STOCK_KIND = 'SALDO_INICIAL' as const;
+
+export type ImpliedOpeningEvent = {
+  productCodigo: string;
+  lot: string;
+  lotExpiry: string | null;
+  locationType: string;
+  locationCnpj: string | null;
+  signedQty: number;
+  occurredAt: Date | string;
+};
+
+export type ImpliedOpeningRow = {
+  productCodigo: string;
+  lot: string;
+  lotExpiry: string | null;
+  locationType: string;
+  locationCnpj: string | null;
+  quantity: number;
+};
+
+function openingKey(e: Pick<ImpliedOpeningEvent, 'productCodigo' | 'lot' | 'lotExpiry' | 'locationType' | 'locationCnpj'>): string {
+  return [e.productCodigo, e.lot, e.lotExpiry ?? '', e.locationType, e.locationCnpj ?? ''].join('|');
+}
+
+/**
+ * Saldo de abertura no corte = déficit atual do lote/local.
+ * Cobre venda 2021+ sem compra no XML (estoque que já existia em 01/01/2021).
+ */
+export function computeImpliedOpenings(events: ImpliedOpeningEvent[]): ImpliedOpeningRow[] {
+  type Acc = {
+    productCodigo: string;
+    lot: string;
+    lotExpiry: string | null;
+    locationType: string;
+    locationCnpj: string | null;
+    run: number;
+  };
+  const byKey = new Map<string, Acc>();
+  for (const e of events) {
+    if (!e.productCodigo.trim() || e.signedQty === 0) continue;
+    const key = openingKey(e);
+    let acc = byKey.get(key);
+    if (!acc) {
+      acc = {
+        productCodigo: e.productCodigo,
+        lot: e.lot,
+        lotExpiry: e.lotExpiry,
+        locationType: e.locationType,
+        locationCnpj: e.locationCnpj,
+        run: 0,
+      };
+      byKey.set(key, acc);
+    }
+    acc.run += e.signedQty;
+  }
+  const out: ImpliedOpeningRow[] = [];
+  for (const acc of byKey.values()) {
+    if (acc.run < -1e-9) {
+      out.push({
+        productCodigo: acc.productCodigo,
+        lot: acc.lot,
+        lotExpiry: acc.lotExpiry,
+        locationType: acc.locationType,
+        locationCnpj: acc.locationCnpj,
+        quantity: Math.round(-acc.run * 1000) / 1000,
+      });
+    }
+  }
+  return out;
+}

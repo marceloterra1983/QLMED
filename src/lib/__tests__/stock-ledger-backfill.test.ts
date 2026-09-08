@@ -4,6 +4,7 @@ import {
   classifyReceivedStockCfop,
   isOnOrAfterStockCutoff,
   resolveReceivedProductCodigo,
+  computeImpliedOpenings,
 } from '@/lib/stock-ledger-cutoff';
 import {
   buildStockProductTree,
@@ -192,5 +193,46 @@ describe('mergeCatalogWithBalances + árvore', () => {
     expect(onlyD30.map((p) => p.productCodigo)).toEqual(['A1']);
     const search = filterStockProducts(rows, { q: 'guia' });
     expect(search.map((p) => p.productCodigo)).toEqual(['B1']);
+  });
+});
+
+
+describe('computeImpliedOpenings', () => {
+  const t0 = new Date('2021-02-01T00:00:00.000Z');
+  const t1 = new Date('2021-03-01T00:00:00.000Z');
+
+  it('abre o déficit quando só há saída', () => {
+    const rows = computeImpliedOpenings([
+      { productCodigo: '002014', lot: 'L1', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -92, occurredAt: t0 },
+    ]);
+    expect(rows).toEqual([
+      { productCodigo: '002014', lot: 'L1', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 92 },
+    ]);
+  });
+
+  it('não abre saldo se compra cobre a venda', () => {
+    const rows = computeImpliedOpenings([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: 10, occurredAt: t0 },
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -8, occurredAt: t1 },
+    ]);
+    expect(rows).toEqual([]);
+  });
+
+  it('não abre se o saldo final ficou positivo mesmo com déficit no meio', () => {
+    const rows = computeImpliedOpenings([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -5, occurredAt: t0 },
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: 20, occurredAt: t1 },
+    ]);
+    expect(rows).toEqual([]);
+  });
+
+  it('abre o déficit final, não só o primeiro movimento', () => {
+    const rows = computeImpliedOpenings([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -4, occurredAt: t0 },
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -3, occurredAt: t1 },
+    ]);
+    expect(rows).toEqual([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 7 },
+    ]);
   });
 });
