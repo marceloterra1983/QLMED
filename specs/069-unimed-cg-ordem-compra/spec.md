@@ -29,10 +29,11 @@ O operador precisa ver as OCs recebidas no mesmo lugar das autorizações: card 
 
 ## Decisões fechadas
 
-- Remetente: qualquer endereço `@unimedcg.coop.br` (domínio, não um único funcionário)
+- Remetente SOULMV: qualquer endereço `@unimedcg.coop.br`
+- Remetente GTPlan: `no-reply@gtplan.net` (assunto "Confirmação da Ordem de compra")
 - Assunto: contém `ordem de compra` ou `ordem de compras` (acentos opcionais)
 - Caixas: as mesmas do SPEC-045 (`marcelo@qlmed.com.br`, `flavio@qlmed.com.br`)
-- Fonte: primeiro PDF anexo; texto via motor `pdf/extract-text` (pdftotext / OCR)
+- Fonte: primeiro PDF anexo; SOULMV (`Ord. Compra`) ou GTPlan (`Número da ordem` / `unimedcg_{n}.pdf`)
 - CNPJ de faturamento: o CNPJ do **comprador** no PDF (não o CNPJ/CPF do fornecedor QL MED)
 - Prazo: `Desc. Condição de Pgto.` (ex.: `30 DIAS`)
 - OneDrive: pasta `UNIMED-CG`; nome `UNIMED-CG-OC {orderNumber}.pdf`
@@ -61,7 +62,8 @@ Como sistema, ao receber e-mail do domínio Unimed CG com assunto de ordem de co
 - FR-006: `GET /api/gestao/unimed-cg` inclui `purchaseOrders`; detalhe e arquivo em `/api/gestao/unimed-cg/ordem-compra/[id]`.
 - FR-007: Página `/gestao/unimed-cg` com Section **ORDEM DE COMPRA**, tabela, empty state e modal com itens + PDF.
 - FR-008: Pin da migration em `verify-production-migration-window` + teste da janela.
-- FR-009: Testes do parser (fixture OC 188246) e do ingest (dedup).
+- FR-009: Testes do parser (fixture OC 188246 SOULMV + 186184 GTPlan) e do ingest (dedup).
+- FR-010: No mesmo tick, varrer também `no-reply@gtplan.net`; falha de um remetente não derruba o outro.
 
 ## Acceptance Criteria
 
@@ -70,6 +72,7 @@ Como sistema, ao receber e-mail do domínio Unimed CG com assunto de ordem de co
 - AC-003: E-mail OPME existente continua a ser classificado e persistido como antes.
 - AC-004: Operador autenticado vê o card ORDEM DE COMPRA; sem ACL da página a API recusa.
 - AC-005: E-mail do domínio sem assunto de OC é ignorado; e-mail sem PDF anexo é ignorado.
+- AC-006: Fixture GTPlan 186184 extrai número 186184, CNPJ `03315918000541`, prazo `30 dias`, item 88271 qtd 20 unitário 2.800,00 total 56.000,00.
 
 ## Roles / ownership
 

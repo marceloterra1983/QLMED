@@ -1,38 +1,28 @@
-# Gates: número da NF com ponto (pt-BR)
+# Gates: OC Unimed CG — GTPlan
 
-Scope: Exibir todo número de nota fiscal (NF-e, NFS-e, CT-e) como 65.254 em vez de 65254, sem alterar persistência, CSV, chave de acesso ou DANFE oficial.
+Scope: ingerir confirmações `no-reply@gtplan.net` no card ORDEM DE COMPRA junto com o SOULMV.
 
-- [x] G1: Helper formata 65254 → 65.254 e cobre bordas
-  CHECK: npx vitest run src/lib/__tests__/utils.test.ts --reporter=verbose
-  EXPECT: formatInvoiceNumber agrupa milhar
-  EVIDENCE: vitest — "formatInvoiceNumber agrupa milhar sem pad de 9 dígitos"; Test Files 1 passed
+- [x] G1: parser GTPlan 186184 extrai OC, CNPJ faturar, prazo, item, qtd, unitário e total
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "186184" --reporter=dot
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  17:46:33 | Duration  138ms (transform 39ms, setup 17ms, import 35ms, tests 4ms, environment 0ms)
 
-- [x] G2: Highlight encontra 65.053 a partir da busca 65053
-  CHECK: npx vitest run src/components/ui/__tests__/Highlight.test.tsx --reporter=verbose
-  EXPECT: thousand-separated invoice numbers
-  EVIDENCE: vitest — "highlights thousand-separated invoice numbers from a digit query"; Test Files 1 passed
+- [x] G2: ingestão persiste confirmação GTPlan e ignora assunto sem OC
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-ingest.test.ts --reporter=dot
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  17:46:34 | Duration  506ms (transform 253ms, setup 17ms, import 23ms, tests 388ms, environment 0ms)
 
-- [x] G3: Caption WhatsApp e push usam o mesmo formato
-  CHECK: npx vitest run src/lib/__tests__/cte-whatsapp-caption.test.ts src/lib/__tests__/web-push.test.ts --reporter=dot
-  EXPECT: Test Files  2 passed
-  EVIDENCE: Test Files 2 passed (2); Tests 21 passed (21)
+- [x] G3: listing usa SOULMV + `no-reply@gtplan.net`
+  CHECK: rg -n "UNIMED_CG_ORDEM_COMPRA_SENDERS|no-reply@gtplan.net" src/lib/unimed-cg/ingest.ts src/lib/unimed-cg/constants.ts
+  EXPECT: no-reply@gtplan.net
+  EVIDENCE: src/lib/unimed-cg/ingest.ts:32:  UNIMED_CG_ORDEM_COMPRA_SENDERS, | src/lib/unimed-cg/ingest.ts:389:  for (const sender of UNIMED_CG_ORDEM_COMPRA_SENDERS) {
 
-- [x] G4: Telas de lista/modal importam o helper
-  CHECK: python3 -c "from pathlib import Path; roots=[Path('src/app'),Path('src/components')]; files=[]; [files.extend(p.rglob('*.tsx')) for p in roots]; need=['invoices/page-client.tsx','issued/page-client.tsx','cte/page-client.tsx','nfse-recebidas/page-client.tsx','entrada-nfe/page-client.tsx','FinanceiroTable.tsx','NfeDetailsModal.tsx','CteDetailsModal.tsx','NfseDetailsModal.tsx','InvoiceListSection.tsx']; missing=[n for n in need if not any(n in str(f) and 'formatInvoiceNumber' in f.read_text(encoding='utf-8') for f in files)]; print('OK' if not missing else 'MISSING '+','.join(missing)); raise SystemExit(1 if missing else 0)"
-  EXPECT: OK
-  EVIDENCE: python check printed OK
-
-- [x] G5: Typecheck
+- [x] G4: `npx tsc --noEmit`
   CHECK: npx tsc --noEmit && echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK
 
-- [x] G6: docs:validate
-  CHECK: npm run docs:validate
-  EXPECT: Documentation validation passed
-  EVIDENCE: Documentation validation passed (262 Markdown files, 86 IDs)
-
-- [x] G7: Preview :3002 responde após apontar o tip
-  CHECK: curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/
-  EXPECT: /^(200|307|308)$/
-  EVIDENCE: HTTP 307; browser emitidas/recebidas e modal "NF-e 65.254"
+- [x] G5: fixture SOULMV 188246 continua verde
+  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "188246" --reporter=dot
+  EXPECT: Test Files  1 passed
+  EVIDENCE: Start at  17:46:37 | Duration  159ms (transform 53ms, setup 20ms, import 47ms, tests 4ms, environment 0ms)

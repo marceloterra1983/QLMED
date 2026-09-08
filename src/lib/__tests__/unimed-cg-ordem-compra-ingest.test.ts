@@ -183,4 +183,29 @@ describe('unimed-cg ordem de compra ingest', () => {
     expect(result.processed).toBe(0);
     expect(memory.orders).toHaveLength(0);
   });
+
+  it('persiste confirmação GTPlan no-reply@gtplan.net', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const gtplan = readFileSync(
+      resolve(__dirname, 'fixtures/unimed-cg-oc-186184-gtplan.txt'),
+      'utf8',
+    );
+    const { runUnimedCgIngest } = await import('@/lib/unimed-cg/ingest');
+    const d = deps();
+    d.extractPurchaseOrderText = async () => gtplan;
+    d.mail.listPurchaseOrderMessages = async (mailbox: string) => {
+      if (!mailbox.startsWith('marcelo@')) return [];
+      return [{
+        graphMessageId: 'graph-gtplan-1',
+        internetMessageId: '<oc-186184@gtplan.net>',
+        subject: 'Confirmação da Ordem de compra 186184 - QL MED - MATERIAIS HOSPITALARES LTDA',
+        receivedAt: new Date('2026-06-16T21:20:00Z'),
+        hasAttachments: true,
+      }];
+    };
+    const result = await runUnimedCgIngest('co1', d);
+    expect(result.processed).toBe(1);
+    expect(memory.orders[0]?.orderNumber).toBe('186184');
+  });
 });

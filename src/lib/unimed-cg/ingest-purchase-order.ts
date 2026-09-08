@@ -8,6 +8,11 @@ import {
   parsePurchaseOrderText,
   type ParsedUnimedCgPurchaseOrder,
 } from './parse-purchase-order';
+import {
+  isWithinUnimedCgNotifyWindow,
+  notifyUnimedCgPurchaseOrder,
+  type UnimedCgWhatsAppTarget,
+} from './whatsapp-notify';
 
 export type UnimedCgPurchaseOrderRow = {
   id: string;
@@ -44,7 +49,7 @@ export type UnimedCgPurchaseOrderStorePort = {
   findSourceByInternetMessageId(
     companyId: string,
     internetMessageId: string,
-  ): Promise<{ id: string; purchaseOrderId: string | null } | null>;
+  ): Promise<{ id: string; purchaseOrderId: string | null; whatsappSentAt?: Date | null } | null>;
   findByOrderNumber(companyId: string, orderNumber: string): Promise<UnimedCgPurchaseOrderRow | null>;
   persistConfirmed(input: PersistPurchaseOrderArgs): Promise<{ id: string }>;
   persistUpgrade(input: PersistPurchaseOrderArgs & { purchaseOrderId: string }): Promise<void>;
@@ -56,6 +61,11 @@ export type UnimedCgPurchaseOrderStorePort = {
     internetMessageId: string;
     receivedAt: Date;
   }): Promise<void>;
+  markWhatsAppSent?(
+    companyId: string,
+    internetMessageId: string,
+    messageId: string | null,
+  ): Promise<void>;
 };
 
 export type UnimedCgPurchaseOrderMailPort = {
@@ -78,6 +88,21 @@ type Counters = {
   errors: string[];
 };
 
+function notifyFields(parsed: ParsedUnimedCgPurchaseOrder) {
+  return {
+    orderNumber: parsed.orderNumber,
+    items: parsed.items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+    })),
+    totalAmount: parsed.totalAmount,
+    billingCnpj: parsed.billingCnpj,
+    paymentTerms: parsed.paymentTerms,
+  };
+}
+
 export async function ingestUnimedCgPurchaseOrders(input: {
   companyId: string;
   mail: UnimedCgPurchaseOrderMailPort;
@@ -89,7 +114,39 @@ export async function ingestUnimedCgPurchaseOrders(input: {
   collectOrphanUpload: (itemId: string, referencedItemId: string | null) => Promise<void>;
   counters: Counters;
   logWarn: (msg: string) => void;
+  whatsapp?: UnimedCgWhatsAppTarget | null;
 }): Promise<void> {
+  const notifyAttempted = new Set<string>();
+
+  const notifyWhatsApp = async (args: {
+    internetMessageId: string;
+    receivedAt: Date;
+    fileName: string;
+    content: Buffer;
+    parsed: ParsedUnimedCgPurchaseOrder;
+  }) => {
+    if (!input.whatsapp || !input.store.markWhatsAppSent) return;
+    if (!isWithinUnimedCgNotifyWindow(args.receivedAt)) return;
+    if (notifyAttempted.has(args.internetMessageId)) return;
+    notifyAttempted.add(args.internetMessageId);
+
+    const result = await notifyUnimedCgPurchaseOrder({
+      target: input.whatsapp,
+      fields: notifyFields(args.parsed),
+      fileName: args.fileName,
+      content: args.content,
+    });
+    if (!result.sent) {
+      input.counters.errors.push('aviso WhatsApp falhou');
+      return;
+    }
+    await input.store.markWhatsAppSent(
+      input.companyId,
+      args.internetMessageId,
+      result.messageId,
+    );
+  };
+
   for (const mailbox of UNIMED_CG_MAILBOXES) {
     let messages: GraphMailMessage[] = [];
     try {
@@ -112,7 +169,15 @@ export async function ingestUnimedCgPurchaseOrders(input: {
         input.companyId,
         message.internetMessageId,
       );
-      if (existingSource) {
+      const retryNotification = Boolean(
+        existingSource
+        && !existingSource.whatsappSentAt
+        && input.whatsapp
+        && input.store.markWhatsAppSent
+        && !notifyAttempted.has(message.internetMessageId)
+        && isWithinUnimedCgNotifyWindow(message.receivedAt),
+      );
+      if (existingSource && !retryNotification) {
         input.counters.skipped += 1;
         continue;
       }
@@ -152,6 +217,20 @@ export async function ingestUnimedCgPurchaseOrders(input: {
         continue;
       }
 
+      const fileName = buildPurchaseOrderFileName(parsed.orderNumber);
+
+      if (existingSource) {
+        await notifyWhatsApp({
+          internetMessageId: message.internetMessageId,
+          receivedAt: message.receivedAt,
+          fileName,
+          content: pdf.content,
+          parsed,
+        });
+        input.counters.skipped += 1;
+        continue;
+      }
+
       const existing = await input.store.findByOrderNumber(input.companyId, parsed.orderNumber);
       const upgrades = existing ? shouldUpgrade(existing.parseStatus, parsed.parseStatus) : false;
       if (existing && !upgrades) {
@@ -175,7 +254,6 @@ export async function ingestUnimedCgPurchaseOrders(input: {
         continue;
       }
 
-      const fileName = buildPurchaseOrderFileName(parsed.orderNumber);
       let itemId: string;
       try {
         const uploaded = await input.uploadPdf({ fileName, content: pdf.content });
@@ -230,6 +308,13 @@ export async function ingestUnimedCgPurchaseOrders(input: {
       }
 
       input.counters.processed += 1;
+      await notifyWhatsApp({
+        internetMessageId: message.internetMessageId,
+        receivedAt: message.receivedAt,
+        fileName,
+        content: pdf.content,
+        parsed,
+      });
     }
   }
 }
