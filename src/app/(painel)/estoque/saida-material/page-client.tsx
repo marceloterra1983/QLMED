@@ -315,6 +315,8 @@ export default function SaidaMaterialPage() {
           anvisa: p?.anvisaCode ?? null,
           orig: p?.fiscalOrigem ?? '0',
           csosn: p?.fiscalSitTributaria ?? '102',
+          lot: line.lot || null,
+          lotExpiry: line.lotExpiry,
         };
       });
 

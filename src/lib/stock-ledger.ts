@@ -472,6 +472,51 @@ export function classifyIssuedStockCfop(cfop: string | null | undefined): {
   return { kind: 'SAIDA_NFE', from: STOCK_LOCATION_CD, to: null };
 }
 
+
+export type IssuedItemBatch = {
+  lot: string;
+  lotExpiry: string | null;
+  quantity: number;
+};
+
+export type PreferredIssuedLot = {
+  cProd: string;
+  lot: string;
+  lotExpiry?: string | null;
+  quantity?: number;
+};
+
+/**
+ * Lote explícito (payload ou <rastro>) ganha de FEFO. Sem lote, quantity
+ * segue o item para o allocateLotsFefo.
+ */
+export function resolveIssuedItemBatches(input: {
+  xmlBatches: Array<{ lot?: string | null; expiry?: string | null; quantity?: number | null }>;
+  preferred?: PreferredIssuedLot | null;
+  itemQuantity: number;
+}): IssuedItemBatch[] {
+  const preferredLot = String(input.preferred?.lot || '').trim();
+  if (preferredLot) {
+    const qty = input.preferred?.quantity != null && input.preferred.quantity > 0
+      ? input.preferred.quantity
+      : input.itemQuantity;
+    return [{
+      lot: preferredLot,
+      lotExpiry: input.preferred?.lotExpiry?.trim() || null,
+      quantity: qty,
+    }];
+  }
+  const fromXml = input.xmlBatches
+    .filter((b) => String(b.lot || '').trim())
+    .map((b) => ({
+      lot: String(b.lot).trim(),
+      lotExpiry: b.expiry?.trim() || null,
+      quantity: b.quantity != null && b.quantity > 0 ? b.quantity : input.itemQuantity,
+    }));
+  if (fromXml.length > 0) return fromXml;
+  return [{ lot: '', lotExpiry: null, quantity: input.itemQuantity }];
+}
+
 export async function recordMovementsFromIssuedInvoice(input: {
   companyId: string;
   invoiceId: string;
@@ -481,6 +526,7 @@ export async function recordMovementsFromIssuedInvoice(input: {
   recipientName: string | null;
   issueDate: Date;
   createdBy?: string | null;
+  preferredLots?: PreferredIssuedLot[];
 }): Promise<number> {
   const products = await extractProductsFromXml(input.xmlContent);
   const header = classifyIssuedStockCfop(input.cfop || products[0]?.cfop);
@@ -490,14 +536,14 @@ export async function recordMovementsFromIssuedInvoice(input: {
   for (let i = 0; i < products.length; i++) {
     const p = products[i];
     const codigo = (p.code || `ITEM-${i + 1}`).trim();
-    const batches =
-      p.batches && p.batches.length > 0
-        ? p.batches.map((b) => ({
-            lot: b.lot,
-            lotExpiry: b.expiry,
-            quantity: b.quantity != null && b.quantity > 0 ? b.quantity : Number(p.quantity) || 0,
-          }))
-        : [{ lot: '', lotExpiry: null as string | null, quantity: Number(p.quantity) || 0 }];
+    const preferred = (input.preferredLots || []).find(
+      (row) => row.cProd === codigo || row.cProd === (p.code || '').trim(),
+    );
+    const batches = resolveIssuedItemBatches({
+      xmlBatches: p.batches || [],
+      preferred,
+      itemQuantity: Number(p.quantity) || 0,
+    });
 
     for (let bi = 0; bi < batches.length; bi++) {
       const b = batches[bi];

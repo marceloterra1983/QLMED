@@ -43,6 +43,8 @@ const payload = {
     uCom: 'UN',
     qCom: '1',
     vUnCom: '10.00',
+    lot: 'LOTE-TEST',
+    lotExpiry: '2027-02-11',
   }],
 };
 

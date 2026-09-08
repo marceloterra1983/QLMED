@@ -13,6 +13,7 @@ import {
   isSemPagamentoCfop,
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
+import { buildRastroXml } from './rastro';
 
 /**
  * Escape de NÓ DE TEXTO na forma canônica C14N 1.0 (§2.3 Text Nodes): só `&`,
@@ -144,8 +145,14 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: strin
   const med = anvisa && vPmc
     ? `<med><cProdANVISA>${esc(anvisa)}</cProdANVISA><vPMC>${vPmc}</vPMC></med>`
     : '';
+  const rastro = buildRastroXml({
+    lot: item.lot,
+    lotExpiry: item.lotExpiry,
+    lotFab: item.lotFab,
+    qCom: item.qCom,
+  });
   return {
-    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}</imposto></det>`,
+    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${rastro}${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}</imposto></det>`,
     vPis: pis.vPis,
     vCofins: pis.vCofins,
   };
