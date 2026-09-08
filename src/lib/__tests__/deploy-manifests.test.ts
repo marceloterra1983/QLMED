@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 /**
  * Portões dos manifestos de implantação (auditoria b177b07).
@@ -65,7 +65,7 @@ const COMPOSE_FILES = [
  */
 describe('QLMED-OPS-001 — os composes são YAML válido e bem formados', () => {
   it.each(COMPOSE_FILES)('%s carrega e declara serviços', (file) => {
-    const parsed = yaml.load(read(file)) as Record<string, unknown> | undefined;
+    const parsed = load(read(file)) as Record<string, unknown> | undefined;
     expect(parsed, `${file} não é YAML válido`).toBeTruthy();
 
     const services = parsed?.services as Record<string, Record<string, unknown>> | undefined;
@@ -82,14 +82,16 @@ describe('QLMED-OPS-001 — os composes são YAML válido e bem formados', () =>
   });
 
   it('reprova YAML inválido e compose sem serviço (controlo positivo)', () => {
-    expect(() => yaml.load('services:\n  app:\n   - bad\n  : :')).toThrow();
+    // js-yaml 5 aceita `  : :` como chave/valor nulos; o controlo precisa de
+    // um erro de parse real (coleção flow sem fecho).
+    expect(() => load('services:\n  app: [')).toThrow();
 
-    const noServices = yaml.load('volumes:\n  pgdata: {}\n') as Record<string, unknown>;
+    const noServices = load('volumes:\n  pgdata: {}\n') as Record<string, unknown>;
     expect(noServices.services).toBeUndefined();
   });
 
   it('production declara os serviços que o deploy espera', () => {
-    const parsed = yaml.load(read('production/docker-compose.yml')) as {
+    const parsed = load(read('production/docker-compose.yml')) as {
       services: Record<string, unknown>;
     };
     // `deploy-production.yml` constrói e sobe `qlmed-app` pelo nome.
@@ -250,7 +252,7 @@ describe('QLMED-OPS-005 — migrações novas são expand-only', () => {
  */
 describe('REAUD-B-12 — bancos de produção com no-new-privileges e cap_drop', () => {
   type Service = { security_opt?: string[]; cap_drop?: string[]; cap_add?: string[] };
-  const services = (yaml.load(read('production/docker-compose.yml')) as { services: Record<string, Service> })
+  const services = (load(read('production/docker-compose.yml')) as { services: Record<string, Service> })
     .services;
 
   it.each(['qlmed-db'])('%s não ganha privilégio e larga todas as capabilities', (name) => {
@@ -263,7 +265,7 @@ describe('REAUD-B-12 — bancos de produção com no-new-privileges e cap_drop',
   });
 
   it('reprova um banco sintético sem cap_drop (controlo positivo)', () => {
-    const naked = yaml.load('services:\n  db:\n    image: postgres:18-alpine\n') as {
+    const naked = load('services:\n  db:\n    image: postgres:18-alpine\n') as {
       services: Record<string, Service>;
     };
     expect(naked.services.db.cap_drop).toBeUndefined();
