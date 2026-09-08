@@ -154,6 +154,12 @@ export default function EmitirNfePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Line[]>([]);
   const [stockLots, setStockLots] = useState<Record<string, StockLotOption[]>>({});
+  const [stockLotErrors, setStockLotErrors] = useState<Record<string, string>>({});
+  const [stockLotsLoading, setStockLotsLoading] = useState(false);
+  const itemLotKeys = useMemo(
+    () => items.map((i) => `${i.productId}\t${i.cProd}`).join('\n'),
+    [items],
+  );
   const [openItem, setOpenItem] = useState<number | null>(null);
   const [modFrete, setModFrete] = useState(DEFAULT_MOD_FRETE);
   const [vFrete, setVFrete] = useState('0.00');
@@ -179,28 +185,49 @@ export default function EmitirNfePage() {
   const [sefazMotivo, setSefazMotivo] = useState<string | null>(null);
 
   useEffect(() => {
-    const codes = [...new Set(items.map((i) => i.cProd).filter(Boolean))];
-    if (codes.length === 0) return;
+    const unique = [...new Map(
+      itemLotKeys.split('\n').filter(Boolean).map((line) => {
+        const [productId, codigo] = line.split('\t');
+        return [`${productId}|${codigo}`, { productId, codigo }];
+      }),
+    ).values()];
+    if (unique.length === 0) return;
     let cancelled = false;
+    setStockLotsLoading(true);
     void Promise.all(
-      codes.map(async (codigo) => {
-        const res = await fetch(`/api/nfe-emissions/stock-lots?codigo=${encodeURIComponent(codigo)}`);
-        if (!res.ok) return { codigo, lots: [] as StockLotOption[] };
+      unique.map(async ({ codigo, productId }) => {
+        const qs = new URLSearchParams();
+        if (codigo) qs.set('codigo', codigo);
+        if (productId) qs.set('productId', productId);
+        const res = await fetch(`/api/nfe-emissions/stock-lots?${qs}`);
+        if (!res.ok) {
+          return { codigo, lots: [] as StockLotOption[], error: 'Não foi possível carregar lotes' };
+        }
         const data = await res.json();
-        return { codigo, lots: (data.lots || []) as StockLotOption[] };
+        return { codigo, lots: (data.lots || []) as StockLotOption[], error: '' };
       }),
     ).then((rows) => {
       if (cancelled) return;
       setStockLots((prev) => {
         const next = { ...prev };
-        for (const row of rows) next[row.codigo] = row.lots;
+        for (const row of rows) if (row.codigo) next[row.codigo] = row.lots;
         return next;
       });
+      setStockLotErrors((prev) => {
+        const next = { ...prev };
+        for (const row of rows) if (row.codigo) {
+          if (row.error) next[row.codigo] = row.error;
+          else delete next[row.codigo];
+        }
+        return next;
+      });
+    }).finally(() => {
+      if (!cancelled) setStockLotsLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [itemLotKeys]);
 
   const op = operations.find((o) => o.cfop === cfop);
   const { featured: featuredOps, rest: restOps } = useMemo(
@@ -719,13 +746,6 @@ export default function EmitirNfePage() {
                               {item.cest ? ` · CEST ${item.cest}` : ''}
                               {item.lot ? ` · Lote ${item.lot}` : ''}
                             </div>
-                            <EmissionLotFields
-                              lot={item.lot}
-                              lotExpiry={item.lotExpiry}
-                              lots={stockLots[item.cProd] || []}
-                              required={isRemessaConsignacaoCfop(cfop)}
-                              onChange={(patch) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ...patch } : r))}
-                            />
                           </td>
                           <td className="pr-2 pt-2">
                             <input aria-label={`NCM do item `} value={item.ncm} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ncm: e.target.value.replace(/\D/g, '').slice(0, 8) } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
@@ -750,6 +770,19 @@ export default function EmitirNfePage() {
                             <button type="button" onClick={() => setItems((rows) => rows.filter((_, i) => i !== idx))} className="text-xs text-rose-600 font-bold">
                               Remover
                             </button>
+                          </td>
+                        </tr>
+                        <tr className="border-slate-100 dark:border-slate-800">
+                          <td colSpan={8} className="pb-3 pt-1">
+                            <EmissionLotFields
+                              lot={item.lot}
+                              lotExpiry={item.lotExpiry}
+                              lots={stockLots[item.cProd] || []}
+                              loading={stockLotsLoading}
+                              loadError={stockLotErrors[item.cProd] || null}
+                              required={isRemessaConsignacaoCfop(cfop)}
+                              onChange={(patch) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ...patch } : r))}
+                            />
                           </td>
                         </tr>
                         {openItem === idx && (

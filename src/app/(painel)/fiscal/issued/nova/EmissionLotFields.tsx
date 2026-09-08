@@ -14,6 +14,7 @@ type Props = {
   lotExpiry?: string | null;
   lots: StockLotOption[];
   loading?: boolean;
+  loadError?: string | null;
   required?: boolean;
   onChange: (patch: { lot?: string | null; lotExpiry?: string | null }) => void;
 };
@@ -23,13 +24,20 @@ export default function EmissionLotFields({
   lotExpiry,
   lots,
   loading,
+  loadError,
   required,
   onChange,
 }: Props) {
   const selected = lots.find((l) => l.lot === lot && (l.lotExpiry || '') === (lotExpiry || ''));
+  const empty = !loading && lots.length === 0;
+  const placeholder = loading
+    ? 'Carregando lotes…'
+    : empty
+      ? 'Nenhum lote no CD'
+      : 'Selecionar lote';
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
-      <Field label={required ? 'Lote (obrigatório)' : 'Lote em estoque'}>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Field label={required ? 'Lote (obrigatório)' : 'Lote em estoque'} error={loadError || undefined}>
         <select
           aria-label="Selecionar lote do estoque"
           value={lot && lots.some((l) => l.lot === lot) ? lot : lot ? '__manual__' : ''}
@@ -45,7 +53,7 @@ export default function EmissionLotFields({
           }}
           className={FILTER_INPUT_CLS}
         >
-          <option value="">{loading ? 'Carregando lotes…' : 'Selecionar lote'}</option>
+          <option value="">{placeholder}</option>
           {lots.map((l) => (
             <option key={`${l.lot}|${l.lotExpiry || ''}`} value={l.lot}>
               {l.lot || 'sem lote'} · val. {l.lotExpiry || '—'} · disp. {l.quantity}
