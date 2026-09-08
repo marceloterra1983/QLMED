@@ -39,6 +39,8 @@ export type NfeEmissionItem = {
   ean?: string | null;
   cest?: string | null;
   anvisa?: string | null;
+  /** Preço máximo ao consumidor — obrigatório no XSD se <med> existir. */
+  vPmc?: string | null;
   orig?: string | null;
   csosn?: string | null;
   cstIcms?: string | null;
