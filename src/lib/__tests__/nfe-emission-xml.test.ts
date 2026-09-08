@@ -165,4 +165,27 @@ describe('nfe xml builder', () => {
     expect(signed).toContain('<DigestValue>');
     expect(signed).toContain('</NFe>');
   });
+
+  it('doação 5910 segue o XML 65082: PISNT 08, sem med incompleto, sem indPag, transporte do emitente', () => {
+    const base = sampleDraft();
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      natureza: 'Doacao',
+      cfop: '5910',
+      emit: { ...base.emit, crt: '3' },
+      dest: { ...base.dest, indIEDest: '9' },
+      items: [{ ...base.items[0], cfop: '5910', anvisa: '10216839008' }],
+      pag: { tPag: '90', indPag: '1', vPag: '0.00' },
+      transporta: { xNome: 'TRANSPORTE PROPRIO' },
+    }));
+    expect(xml).toContain('<PISNT>');
+    expect(xml).toContain('<CST>08</CST>');
+    expect(xml).not.toContain('<PISAliq>');
+    expect(xml).not.toContain('<cProdANVISA>');
+    expect(xml).not.toContain('<med>');
+    expect(xml).toContain('<tPag>90</tPag>');
+    expect(xml).not.toContain('<indPag>');
+    expect(xml).toContain('<CNPJ>12345678000199</CNPJ>');
+    expect(xml).toContain('<qVol>1</qVol>');
+    expect(xml).toContain('<esp>Material Medico</esp>');
+  });
 });

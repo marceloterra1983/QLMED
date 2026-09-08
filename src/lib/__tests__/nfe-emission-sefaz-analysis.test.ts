@@ -24,4 +24,16 @@ describe('analyzeSefazRejection (SPEC-062)', () => {
     const a = analyzeSefazRejection({ status: 'authorized', sefazStat: '100' });
     expect(a.severity).toBe('success');
   });
+
+  it('297 aponta assinatura/C14N do SignedInfo', () => {
+    const a = analyzeSefazRejection({
+      status: 'rejected',
+      sefazStat: '297',
+      sefazMotivo: 'Rejeicao: Assinatura difere do calculado',
+    });
+    expect(a.code).toBe('297');
+    expect(a.severity).toBe('danger');
+    expect(a.title.toLowerCase()).toMatch(/assinatura/);
+    expect(a.hints.some((h) => /C14N|SignedInfo|280/i.test(h))).toBe(true);
+  });
 });
