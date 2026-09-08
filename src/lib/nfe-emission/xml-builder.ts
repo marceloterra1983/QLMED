@@ -133,8 +133,14 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: strin
   const pis = itemPisCofins(item, vBc);
   const ean = item.ean && item.ean !== 'SEM GTIN' ? esc(item.ean) : 'SEM GTIN';
   const cest = item.cest ? `<CEST>${esc(item.cest)}</CEST>` : '';
-  const med = item.anvisa
-    ? `<med><cProdANVISA>${esc(item.anvisa)}</cProdANVISA></med>`
+  // Grupo <med>: no XSD 4.00, se existir, cProdANVISA e vPMC são 1-1.
+  // ANVISA sozinho (dispositivo médico sem PMC) → omitir; evita rejeição 215.
+  const anvisa = item.anvisa?.trim();
+  const vPmc = item.vPmc != null && String(item.vPmc).trim() !== ''
+    ? money(item.vPmc)
+    : '';
+  const med = anvisa && vPmc
+    ? `<med><cProdANVISA>${esc(anvisa)}</cProdANVISA><vPMC>${vPmc}</vPMC></med>`
     : '';
   return {
     xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}</imposto></det>`,

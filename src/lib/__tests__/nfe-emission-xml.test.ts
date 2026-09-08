@@ -65,16 +65,25 @@ function sampleDraft(over: Partial<NfeEmissionDraft> = {}): NfeEmissionDraft {
 }
 
 describe('nfe xml builder', () => {
-  it('inclui dest, itens, CFOP e ANVISA; total half-up', () => {
+  it('inclui dest, itens, CFOP; total half-up; ANVISA sem vPmc omite <med>', () => {
     expect(draftTotalValue(sampleDraft().items)).toBe('20.01');
     const xml = buildUnsignedNfeXml(sampleDraft());
     expect(xml).toContain('<CNPJ>98765432000188</CNPJ>');
     expect(xml).toContain('<CFOP>5102</CFOP>');
-    expect(xml).toContain('<cProdANVISA>8012345</cProdANVISA>');
+    // Só anvisa sem PMC: grupo med incompleto → rejeição 215; omitir.
+    expect(xml).not.toContain('<med>');
+    expect(xml).not.toContain('<cProdANVISA>');
     expect(xml).toContain('NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO');
     expect(xml).toContain('<vNF>20.01</vNF>');
     expect(xml).toContain('<mod>55</mod>');
     expect(xml).toContain('<modFrete>9</modFrete>');
+  });
+
+  it('ANVISA + vPmc gera <med> completo (cProdANVISA e vPMC)', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      items: sampleDraft().items.map((item) => ({ ...item, anvisa: '10216839008', vPmc: '115.00' })),
+    }));
+    expect(xml).toContain('<med><cProdANVISA>10216839008</cProdANVISA><vPMC>115.00</vPMC></med>');
   });
 
   it('CRT 3 segue o DNA das emitidas: CST 40, PIS 01 0,65/3, boleto e CIF', () => {
