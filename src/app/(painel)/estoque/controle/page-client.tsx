@@ -119,7 +119,7 @@ export default function ControleEstoquePage() {
         toast.error(data.error || 'Falha no backfill');
         return;
       }
-      toast.success(`Backfill: ${data.entries ?? 0} entradas, ${data.issued ?? 0} emitidas`);
+      toast.success(`Backfill: ${data.entries ?? 0} entradas, ${data.issued ?? 0} emitidas, ${data.openings ?? 0} aberturas`);
       await loadCatalogo();
     } catch {
       toast.error('Erro no backfill');
@@ -282,7 +282,7 @@ export default function ControleEstoquePage() {
         onClose={() => setBackfillConfirmOpen(false)}
         onConfirm={() => void runBackfill()}
         title="Recalcular estoque"
-        message="Apaga movimentos fiscais e reconstrói entradas e saídas a partir de 01/01/2021. Ajustes manuais são preservados."
+        message="Reconstrói entradas e saídas a partir de 01/01/2021 e lança saldo de abertura onde o histórico de compra não cobre a venda. Ajustes manuais são preservados. Pode levar vários minutos."
         confirmLabel="Recalcular"
       />
     </>

@@ -9,13 +9,22 @@ import { extractProductsFromXml } from '@/lib/product-aggregation';
 import { createLogger } from '@/lib/logger';
 import {
   FISCAL_STOCK_KINDS,
+  OPENING_STOCK_KIND,
   STOCK_LEDGER_CUTOFF,
   classifyReceivedStockCfop,
+  computeImpliedOpenings,
   isOnOrAfterStockCutoff,
   resolveReceivedProductCodigo,
 } from '@/lib/stock-ledger-cutoff';
 
-export { STOCK_LEDGER_CUTOFF, isOnOrAfterStockCutoff, classifyReceivedStockCfop, resolveReceivedProductCodigo };
+export {
+  STOCK_LEDGER_CUTOFF,
+  isOnOrAfterStockCutoff,
+  classifyReceivedStockCfop,
+  resolveReceivedProductCodigo,
+  computeImpliedOpenings,
+  OPENING_STOCK_KIND,
+};
 
 const log = createLogger('stock-ledger');
 
@@ -31,7 +40,8 @@ export type StockMovementKind =
   | 'RETORNO_CONSIG'
   | 'PERDA_VALIDADE'
   | 'AJUSTE'
-  | 'SAIDA_AVULSA';
+  | 'SAIDA_AVULSA'
+  | 'SALDO_INICIAL';
 
 export type ValidityBand = 'vencido' | 'd30' | 'd90' | 'ok' | 'sem_validade';
 
@@ -616,15 +626,75 @@ export async function recordMovementsFromReceivedInvoice(input: {
   return recordStockMovements(rows);
 }
 
+export async function seedImpliedOpenings(
+  companyId: string,
+  createdBy?: string | null,
+): Promise<number> {
+  await prisma.stockMovement.deleteMany({
+    where: { companyId, kind: OPENING_STOCK_KIND },
+  });
+  const rows = await prisma.stockMovement.findMany({
+    where: { companyId, kind: { not: OPENING_STOCK_KIND } },
+    select: {
+      productCodigo: true,
+      lot: true,
+      lotExpiry: true,
+      locationType: true,
+      locationCnpj: true,
+      quantity: true,
+      direction: true,
+      occurredAt: true,
+    },
+  });
+  const openings = computeImpliedOpenings(
+    rows.map((r) => ({
+      productCodigo: r.productCodigo,
+      lot: r.lot,
+      lotExpiry: r.lotExpiry,
+      locationType: r.locationType,
+      locationCnpj: r.locationCnpj,
+      signedQty: r.direction === 'IN' ? Number(r.quantity) : -Number(r.quantity),
+      occurredAt: r.occurredAt,
+    })),
+  );
+  const inserted = await recordStockMovements(
+    openings.map((o) => ({
+      companyId,
+      productCodigo: o.productCodigo,
+      lot: o.lot,
+      lotExpiry: o.lotExpiry,
+      quantity: o.quantity,
+      direction: 'IN' as const,
+      locationType: o.locationType as StockLocationType,
+      locationCnpj: o.locationCnpj,
+      kind: OPENING_STOCK_KIND,
+      reason: 'Saldo de abertura no corte 01/01/2021',
+      createdBy,
+      occurredAt: STOCK_LEDGER_CUTOFF,
+      idempotencyKey: `opening:2021:${companyId}:${o.productCodigo}:${o.lot}:${o.lotExpiry ?? ''}:${o.locationType}:${o.locationCnpj ?? ''}`,
+    })),
+  );
+  if (inserted > 0) log.info({ companyId, openings: inserted }, 'saldo inicial no corte');
+  return inserted;
+}
+
 export async function backfillStockLedger(
   companyId: string,
   createdBy?: string | null,
-): Promise<{ entries: number; issued: number }> {
+): Promise<{ entries: number; issued: number; openings: number }> {
   let entries = 0;
   let issued = 0;
 
+  // Não apaga o ledger fiscal inteiro: um POST HTTP que estoura timeout
+  // deixava só as compras. Só limpa pré-corte e reabre o saldo inicial.
   await prisma.stockMovement.deleteMany({
-    where: { companyId, kind: { in: [...FISCAL_STOCK_KINDS] } },
+    where: {
+      companyId,
+      OR: [
+        { kind: { in: [...FISCAL_STOCK_KINDS] }, occurredAt: { lt: STOCK_LEDGER_CUTOFF } },
+        { kind: OPENING_STOCK_KIND },
+      ],
+    },
   });
 
   const receivedInvoices = await prisma.invoice.findMany({
@@ -694,5 +764,6 @@ export async function backfillStockLedger(
     });
   }
 
-  return { entries, issued };
+  const openings = await seedImpliedOpenings(companyId, createdBy);
+  return { entries, issued, openings };
 }
