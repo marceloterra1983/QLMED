@@ -53,7 +53,13 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
 .danfe-box .entry-exit .box { width: 16px; height: 14px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
 .danfe-box .nf-num { font-size: 11px; font-weight: bold; margin: 2px 0; }
 .danfe-box .nf-serie, .danfe-box .nf-page { font-size: 8px; }
-.folha-counter::after { content: "1 de " attr(data-total); }
+/* Fallback 1 de N só na tela. Unscoped ganhava do @media print (mesma especificidade). */
+@media screen {
+  .folha-counter::after { content: "1 de " attr(data-total); }
+}
+@media print {
+  .folha-counter::after { content: counter(page) " de " attr(data-total); }
+}
 
 .key-area { font-size: 7px; }
 .key-area .barcode-wrap { text-align: center; margin: 0 0 2px; }
