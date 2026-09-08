@@ -208,4 +208,15 @@ describe('nfe xml builder', () => {
     expect(xml).toContain('<qVol>1</qVol>');
     expect(xml).toContain('<esp>Material Medico</esp>');
   });
+
+  it('inclui infRespTec do QLMED (cStat 972) com CNPJ do emitente, sem Joinner', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft());
+    expect(xml).toContain('<infRespTec>');
+    expect(xml).toContain('<CNPJ>12345678000199</CNPJ>');
+    expect(xml).toContain('<xContato>Marcelo</xContato>');
+    expect(xml).toContain('<email>marcelo@qlmed.com.br</email>');
+    expect(xml).toContain('<fone>6733263520</fone>');
+    expect(xml).not.toContain('73008138000100');
+    expect(xml.indexOf('<infRespTec>')).toBeGreaterThan(xml.indexOf('</infAdic>') > -1 ? xml.indexOf('</infAdic>') : xml.indexOf('</pag>'));
+  });
 });

@@ -13,6 +13,14 @@ export const DEFAULT_ICMS_CST_ISENTO = '40';
 export const INF_AD_FISCO_SINIEF =
   'Procedimento autorizado pelo Ajuste SINIEF 02/24';
 
+/** Responsável técnico do emissor QLMED (NT 2018.005). Não usar dados da Joinner.
+ *  fone = telefone do emitente nas NF-e série 2 autorizadas. */
+export const INF_RESP_TEC = {
+  xContato: 'Marcelo',
+  email: 'marcelo@qlmed.com.br',
+  fone: '6733263520',
+} as const;
+
 export const INF_CPL_ICMS_CONV_199 =
   'Isento ICMS Conv.1/99 Prorrog.ate 31/12/2026 pelo Conv 78/2025 de 08 de julho de 2025';
 
