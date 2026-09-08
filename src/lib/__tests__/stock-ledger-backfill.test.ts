@@ -218,21 +218,35 @@ describe('computeImpliedOpenings', () => {
     expect(rows).toEqual([]);
   });
 
-  it('não abre se o saldo final ficou positivo mesmo com déficit no meio', () => {
+  it('abre o pico de déficit mesmo quando o saldo final fica positivo (AC-001: pico ≠ saldo final)', () => {
     const rows = computeImpliedOpenings([
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -5, occurredAt: t0 },
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: 20, occurredAt: t1 },
     ]);
-    expect(rows).toEqual([]);
+    expect(rows).toEqual([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 5 },
+    ]);
   });
 
-  it('abre o déficit final, não só o primeiro movimento', () => {
+  it('abre o pico acumulado, não só o primeiro movimento', () => {
     const rows = computeImpliedOpenings([
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -4, occurredAt: t0 },
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -3, occurredAt: t1 },
     ]);
     expect(rows).toEqual([
       { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 7 },
+    ]);
+  });
+
+  it('pico é o mínimo acumulado, não a soma dos déficits', () => {
+    const rows = computeImpliedOpenings([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -5, occurredAt: t0 },
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: 3, occurredAt: t1 },
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, signedQty: -4, occurredAt: t1 },
+    ]);
+    // acumulados: -5, -2, -6 → pico 6
+    expect(rows).toEqual([
+      { productCodigo: 'A', lot: '', lotExpiry: null, locationType: 'CD', locationCnpj: null, quantity: 6 },
     ]);
   });
 });

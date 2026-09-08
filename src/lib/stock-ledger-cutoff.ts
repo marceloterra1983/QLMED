@@ -80,8 +80,13 @@ function openingKey(e: Pick<ImpliedOpeningEvent, 'productCodigo' | 'lot' | 'lotE
 }
 
 /**
- * Saldo de abertura no corte = déficit atual do lote/local.
- * Cobre venda 2021+ sem compra no XML (estoque que já existia em 01/01/2021).
+ * Saldo de abertura no corte = pico de déficit cronológico do lote/local
+ * (SPEC-059 REQ-001): o menor saldo acumulado ao longo do tempo, para que o
+ * saldo modelado nunca fique negativo em nenhum instante. O acumulado final
+ * não basta — compra posterior pode tê-lo coberto deixando déficit no meio.
+ *
+ * `events` deve estar em ordem cronológica (o seed ordena por occurredAt;
+ * empates IN/OUT no mesmo instante são resolvidos OUT primeiro no seed).
  */
 export function computeImpliedOpenings(events: ImpliedOpeningEvent[]): ImpliedOpeningRow[] {
   type Acc = {
@@ -91,6 +96,7 @@ export function computeImpliedOpenings(events: ImpliedOpeningEvent[]): ImpliedOp
     locationType: string;
     locationCnpj: string | null;
     run: number;
+    minRun: number;
   };
   const byKey = new Map<string, Acc>();
   for (const e of events) {
@@ -105,21 +111,23 @@ export function computeImpliedOpenings(events: ImpliedOpeningEvent[]): ImpliedOp
         locationType: e.locationType,
         locationCnpj: e.locationCnpj,
         run: 0,
+        minRun: 0,
       };
       byKey.set(key, acc);
     }
     acc.run += e.signedQty;
+    if (acc.run < acc.minRun) acc.minRun = acc.run;
   }
   const out: ImpliedOpeningRow[] = [];
   for (const acc of byKey.values()) {
-    if (acc.run < -1e-9) {
+    if (acc.minRun < -1e-9) {
       out.push({
         productCodigo: acc.productCodigo,
         lot: acc.lot,
         lotExpiry: acc.lotExpiry,
         locationType: acc.locationType,
         locationCnpj: acc.locationCnpj,
-        quantity: Math.round(-acc.run * 1000) / 1000,
+        quantity: Math.round(-acc.minRun * 1000) / 1000,
       });
     }
   }

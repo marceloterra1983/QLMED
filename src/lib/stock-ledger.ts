@@ -748,6 +748,9 @@ export async function seedImpliedOpenings(
   });
   const rows = await prisma.stockMovement.findMany({
     where: { companyId, kind: { not: OPENING_STOCK_KIND } },
+    // O pico de déficit é sensível à ordem: cronológico, com OUT antes de IN
+    // no mesmo instante — o empate mais conservador para a abertura.
+    orderBy: [{ occurredAt: 'asc' }, { direction: 'desc' }],
     select: {
       productCodigo: true,
       lot: true,
