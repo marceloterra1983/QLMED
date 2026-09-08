@@ -6,7 +6,14 @@ body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #e9e9
   body { background: #fff; }
   .page { width: 100%; margin: 0; padding: 3mm; box-shadow: none; }
   @page { size: A4 portrait; margin: 4mm; }
+  .folha-counter::after { content: counter(page) " de " attr(data-total); }
 }
+
+table.danfe-sheet { width: 100%; border-collapse: collapse; }
+table.danfe-sheet > thead { display: table-header-group; }
+table.danfe-sheet > tfoot { display: table-footer-group; }
+table.danfe-sheet > tbody { display: table-row-group; }
+table.danfe-sheet > * > tr > td.sheet-cell { border: 0; padding: 0; }
 
 table.danfe { width: 100%; border-collapse: collapse; margin-top: -1px; }
 table.danfe td, table.danfe th { border: 1px solid #000; padding: 1px 3px; vertical-align: top; font-size: 8px; }
@@ -21,9 +28,23 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
 .canhoto-line { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
 
 .emit-block { display: flex; align-items: flex-start; gap: 6px; }
-.emit-logo { flex: 0 0 52px; }
-.emit-text { font-size: 8px; line-height: 1.25; font-weight: 700; }
-.emit-name { font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+.emit-logo { flex: 0 0 56px; }
+.emit-text {
+  font-family: "Arial Narrow", Arial, Helvetica, sans-serif;
+  font-size: 8px;
+  line-height: 1.1;
+  font-weight: 800;
+  font-stretch: condensed;
+  letter-spacing: -0.02em;
+}
+.emit-name {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1px;
+}
 
 .danfe-box { text-align: center; padding: 2px 4px; }
 .danfe-box .danfe-title { font-size: 13px; font-weight: bold; letter-spacing: 1px; }
@@ -32,6 +53,7 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
 .danfe-box .entry-exit .box { width: 16px; height: 14px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
 .danfe-box .nf-num { font-size: 11px; font-weight: bold; margin: 2px 0; }
 .danfe-box .nf-serie, .danfe-box .nf-page { font-size: 8px; }
+.folha-counter::after { content: "1 de " attr(data-total); }
 
 .key-area { font-size: 7px; }
 .key-area .barcode-wrap { text-align: center; margin: 0 0 2px; }
@@ -42,12 +64,16 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
 .nfe-badge { font-size: 13px; font-weight: bold; text-align: center; }
 
 table.prods { width: 100%; border-collapse: collapse; margin-top: -1px; min-height: 72mm; }
+table.prods thead { display: table-header-group; }
 table.prods td, table.prods th { border: 1px solid #000; padding: 1px 2px; font-size: 6.5px; vertical-align: top; }
 table.prods th { font-size: 5.5px; font-weight: bold; text-transform: uppercase; text-align: center; padding: 2px 1px; }
 table.prods td.right { text-align: right; }
 table.prods td.center { text-align: center; }
 table.prods .prod-desc { font-size: 6.5px; font-weight: 600; }
 table.prods .prod-info { font-size: 6px; color: #333; }
+
+table.dados-adicionais { min-height: 24mm; }
+table.dados-adicionais tr:last-child td { height: 24mm; vertical-align: top; }
 
 .inf-cpl { font-size: 7px; line-height: 1.35; margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
 .footer-line { font-size: 7px; display: flex; justify-content: space-between; padding: 3px 0; margin-top: 2mm; color: #555; }

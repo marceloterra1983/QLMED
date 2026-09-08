@@ -91,7 +91,13 @@ describe('DANFE leiaute SPICA 65248', () => {
     expect(html).toContain('PRODUTOS/SERVI');
     expect(html).toContain('INDICADA ABAIXO');
     expect(html).toContain('VALOR DA NOTA');
-    expect(html).toContain('FOLHA: 1 de 1');
+    expect(html).toContain('FOLHA:');
+    expect(html).toContain('folha-counter');
+    expect(html).toContain('data-total="1"');
+    expect(html).toContain('danfe-sheet');
+    expect(html).toContain('DADOS ADICIONAIS');
+    expect(html).toContain('QL MED MAT. HOSP. LTDA');
+    expect(html).toContain('Ql Med Materiais Hospitalares Ltda.');
     expect(html).toContain('5026 0907 8323 0900 0197 5500 2000 0652 4810 0464 0325');
     expect(html).toContain('150260040795876 - 2026-09-08T14:41:03-04:00');
     expect(html).toContain('08/09/2026');
