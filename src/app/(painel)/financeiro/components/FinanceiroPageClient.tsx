@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import { formatCurrency, formatAmount, formatDate, getDateGroupLabel } from '@/lib/utils';
+import { formatCurrency, formatAmount, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import { defaultWalkCollapsedKeys } from '@/lib/list-collapse';
 import { useRole } from '@/hooks/useRole';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
@@ -438,13 +438,13 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={cfg.searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none transition-all"
+                className={`${FILTER_INPUT_CLS} pl-10`}
               />
             </div>
             <select
               aria-label="Status"              value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+              className={FILTER_INPUT_CLS}
             >
               <option value="">Todos os status</option>
               <option value="overdue">Vencidas</option>

@@ -24,7 +24,7 @@ describe('produtos groups collapsed-by-default contract', () => {
     const afterFetch = pageClient.slice(fetchIdx, fetchIdx + 320);
     expect(afterFetch).toContain('allCollapseKeys');
     expect(afterFetch).toContain('allCollapseKeys(data.products');
-    expect(afterFetch).toContain('debouncedSearch.trim()');
+    expect(afterFetch).toContain('serverSearch.trim()');
   });
 
   it('nao reaplica auto-collapse por sort/filteredLen', () => {
@@ -70,9 +70,9 @@ describe('produtos groups collapsed-by-default contract', () => {
 
   it('lista usa hierarchyCounts da API e total do cadastro (nao so a pagina)', () => {
     expect(pageClient).toContain('setHierarchyCounts');
-    expect(pageClient).toContain('hierarchyCounts={hierarchyCounts}');
-    expect(pageClient).toContain('catalogTotal={pagination.total}');
-    expect(pageClient).toMatch(/produtos no cadastro/);
+    expect(pageClient).toContain('hierarchyCounts={isTreeView && treeFilterActive ? null : hierarchyCounts}');
+    expect(pageClient).toContain('catalogTotal={isTreeView ? filtered.length : pagination.total}');
+    expect(pageClient).toContain('filterProductRows');
     const listRoute = readFileSync(
       join(process.cwd(), 'src/app/api/products/list/route.ts'),
       'utf8',

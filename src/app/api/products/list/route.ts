@@ -89,6 +89,12 @@ export async function GET(req: Request) {
         { description: { contains: normalizedSearch, mode: 'insensitive' } },
         { code: { contains: normalizedSearch, mode: 'insensitive' } },
         { codigo: { contains: normalizedSearch, mode: 'insensitive' } },
+        { productType: { contains: normalizedSearch, mode: 'insensitive' } },
+        { productSubtype: { contains: normalizedSearch, mode: 'insensitive' } },
+        { productSubgroup: { contains: normalizedSearch, mode: 'insensitive' } },
+        { manufacturerShortName: { contains: normalizedSearch, mode: 'insensitive' } },
+        { ncm: { contains: normalizedSearch, mode: 'insensitive' } },
+        { anvisaCode: { contains: normalizedSearch, mode: 'insensitive' } },
       ];
       if (hasAggregates) {
         searchConditions.unshift({ aggSearchText: { contains: normalizedSearch } });
