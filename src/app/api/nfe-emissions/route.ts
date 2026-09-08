@@ -36,8 +36,11 @@ export async function GET() {
         destCnpj: true,
         destName: true,
         totalValue: true,
+        sefazStat: true,
         sefazMotivo: true,
+        accessKey: true,
         invoiceId: true,
+        createdAt: true,
         updatedAt: true,
       },
     });

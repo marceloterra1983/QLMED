@@ -86,6 +86,15 @@ describe('navigation ACL helpers', () => {
     });
 
 
+
+    it('emissoes NF-e API is gated by /sistema/emissoes or /fiscal/issued (SPEC-062)', () => {
+      expect(requiredPagesForApi('/api/nfe-emissions')).toEqual(['/fiscal/issued', '/sistema/emissoes']);
+      expect(canAccessApi('viewer', ['/sistema/emissoes'], '/api/nfe-emissions')).toBe(true);
+      expect(canAccessApi('viewer', ['/fiscal/issued'], '/api/nfe-emissions')).toBe(true);
+      expect(canAccessApi('viewer', ['/sistema/sync'], '/api/nfe-emissions')).toBe(false);
+      expect(VALID_PAGE_PATHS.has('/sistema/emissoes')).toBe(true);
+    });
+
     it('rotinas API is gated by /sistema/rotinas page', () => {
       expect(requiredPagesForApi('/api/sistema/rotinas')).toEqual(['/sistema/rotinas']);
       expect(canAccessApi('viewer', ['/sistema/rotinas'], '/api/sistema/rotinas')).toBe(true);

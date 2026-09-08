@@ -32,6 +32,8 @@ const LIST_PAGES = [
   'src/app/(painel)/sistema/errors/page-client.tsx',
   'src/app/(painel)/sistema/companies/page-client.tsx',
   'src/app/(painel)/sistema/automacoes/page-client.tsx',
+  'src/app/(painel)/sistema/emissoes/page-client.tsx',
+  'src/app/(painel)/sistema/emissoes/nfe/page-client.tsx',
   'src/app/(painel)/sistema/rotinas/page-client.tsx',
 ] as const;
 
