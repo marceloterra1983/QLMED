@@ -7,25 +7,25 @@ describe('getFiscalPeriodRange', () => {
   it('mês cobre do dia 1 ao último dia do mês', () => {
     const { startDate, endDate } = getFiscalPeriodRange('month', 2026, 2);
     expect(iso(startDate)).toBe('2026-02-01T00:00:00.000Z');
-    expect(iso(endDate)).toBe('2026-02-28T23:59:59.000Z');
+    expect(iso(endDate)).toBe('2026-02-28T23:59:59.999Z');
   });
 
   it('mês respeita ano bissexto', () => {
     const { endDate } = getFiscalPeriodRange('month', 2028, 2);
-    expect(iso(endDate)).toBe('2028-02-29T23:59:59.000Z');
+    expect(iso(endDate)).toBe('2028-02-29T23:59:59.999Z');
   });
 
   it('ano cobre 1º de janeiro a 31 de dezembro', () => {
     const { startDate, endDate } = getFiscalPeriodRange('year', 2026, 7);
     expect(iso(startDate)).toBe('2026-01-01T00:00:00.000Z');
-    expect(iso(endDate)).toBe('2026-12-31T23:59:59.000Z');
+    expect(iso(endDate)).toBe('2026-12-31T23:59:59.999Z');
   });
 
   it.each([
-    [1, '2026-01-01T00:00:00.000Z', '2026-03-31T23:59:59.000Z'],
-    [4, '2026-04-01T00:00:00.000Z', '2026-06-30T23:59:59.000Z'],
-    [7, '2026-07-01T00:00:00.000Z', '2026-09-30T23:59:59.000Z'],
-    [10, '2026-10-01T00:00:00.000Z', '2026-12-31T23:59:59.000Z'],
+    [1, '2026-01-01T00:00:00.000Z', '2026-03-31T23:59:59.999Z'],
+    [4, '2026-04-01T00:00:00.000Z', '2026-06-30T23:59:59.999Z'],
+    [7, '2026-07-01T00:00:00.000Z', '2026-09-30T23:59:59.999Z'],
+    [10, '2026-10-01T00:00:00.000Z', '2026-12-31T23:59:59.999Z'],
   ])('trimestre ancorado no mês %i cobre o trimestre inteiro', (month, start, end) => {
     const range = getFiscalPeriodRange('quarter', 2026, month);
     expect(iso(range.startDate)).toBe(start);
