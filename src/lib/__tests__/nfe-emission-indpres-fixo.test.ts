@@ -107,6 +107,7 @@ describe('emissão manual: indPres fixo 9 (não presencial — outros)', () => {
     };
     const xml = buildUnsignedNfeXml(draft);
     expect(xml).toContain('<indPres>9</indPres>');
+    expect(xml).toContain('<indIntermed>0</indIntermed>');
     expect(xml).not.toContain('<indPres>1</indPres>');
   });
 });

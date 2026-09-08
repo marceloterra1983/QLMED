@@ -60,6 +60,22 @@ const KNOWN: Record<
     hints: ['Verifique o empacotamento SOAP/NFeAutorizacao4 e a assinatura.'],
     severity: 'danger',
   },
+  '434': {
+    title: 'Sem indicativo do intermediador',
+    summary:
+      'indPres 2/3/4/9 em NF-e normal de saída exige <indIntermed> (NT 2020.006). Canal próprio = 0.',
+    hints: [
+      'QLMED não usa marketplace: indIntermed=0, sem infIntermed.',
+      'Não troque indPres só para escapar da tag — a presença tem de ser a real.',
+    ],
+    severity: 'danger',
+  },
+  '435': {
+    title: 'Indicativo do intermediador indevido',
+    summary: 'indIntermed só cabe quando indPres é 2, 3, 4 ou 9.',
+    hints: ['Remova indIntermed e infIntermed nesta operação.'],
+    severity: 'danger',
+  },
   '972': {
     title: 'Responsável técnico obrigatório',
     summary: 'A SEFAZ-MS exige o grupo infRespTec (CNPJ, contato, e-mail e telefone do emissor do software).',

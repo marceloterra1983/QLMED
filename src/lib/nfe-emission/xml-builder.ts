@@ -5,16 +5,20 @@ import { idDestFromUfs } from './operations';
 import {
   DEFAULT_COFINS_ALIQUOTA,
   DEFAULT_ICMS_CST_ISENTO,
+  DEFAULT_IND_INTERMED,
   DEFAULT_MOD_FRETE,
   DEFAULT_PIS_ALIQUOTA,
   DEFAULT_PIS_CST,
+  EMIT_FONE,
   defaultPagFor,
   isPisNaoTributado,
   isSemPagamentoCfop,
   INF_RESP_TEC,
+  requiresIndIntermed,
 } from './issued-defaults';
 import type { NfeEmissionDraft, NfeEmissionItem } from './types';
 import { buildRastroXml } from './rastro';
+import { computeIbsItem, ibsCbsItemXml, ibsCbsTotXml, type IbsItem } from './xml-ibscbs';
 
 /**
  * Escape de NÓ DE TEXTO na forma canônica C14N 1.0 (§2.3 Text Nodes): só `&`,
@@ -78,9 +82,28 @@ function isoOffset(date: Date): string {
   return `${local.toISOString().slice(0, 19)}${sign}${pad(hours)}:${pad(mins)}`;
 }
 
-function enderXml(tag: 'enderEmit' | 'enderDest', ender: NfeEmissionDraft['emit']['ender']): string {
+function enderXml(
+  tag: 'enderEmit' | 'enderDest',
+  ender: NfeEmissionDraft['emit']['ender'],
+  fone?: string,
+): string {
   const cpl = ender.xCpl ? `<xCpl>${esc(ender.xCpl)}</xCpl>` : '';
-  return `<${tag}><xLgr>${esc(ender.xLgr)}</xLgr><nro>${esc(ender.nro)}</nro>${cpl}<xBairro>${esc(ender.xBairro)}</xBairro><cMun>${esc(ender.cMun)}</cMun><xMun>${esc(ender.xMun)}</xMun><UF>${esc(ender.UF)}</UF><CEP>${esc(ender.CEP.replace(/\D/g, ''))}</CEP><cPais>1058</cPais><xPais>Brasil</xPais></${tag}>`;
+  const foneXml = fone ? `<fone>${esc(fone.replace(/\D/g, ''))}</fone>` : '';
+  return `<${tag}><xLgr>${esc(ender.xLgr)}</xLgr><nro>${esc(ender.nro)}</nro>${cpl}<xBairro>${esc(ender.xBairro)}</xBairro><cMun>${esc(ender.cMun)}</cMun><xMun>${esc(ender.xMun)}</xMun><UF>${esc(ender.UF)}</UF><CEP>${esc(ender.CEP.replace(/\D/g, ''))}</CEP><cPais>1058</cPais><xPais>BRASIL</xPais>${foneXml}</${tag}>`;
+}
+
+function ideIntermedXml(indPres: string, finNFe: string): string {
+  return requiresIndIntermed(indPres, '1', finNFe)
+    ? `<indIntermed>${DEFAULT_IND_INTERMED}</indIntermed>`
+    : '';
+}
+
+function infAdProdXml(item: NfeEmissionItem): string {
+  const parts: string[] = [];
+  if (item.lot?.trim()) parts.push(`(Lote ${item.lot.trim()})`);
+  if (item.anvisa?.trim()) parts.push(`(RVS ${item.anvisa.trim()})`);
+  if (parts.length === 0) return '';
+  return `<infAdProd>${esc(parts.join('        '))}</infAdProd>`;
 }
 
 function icmsXml(item: NfeEmissionItem, crt: string, vProd: string): string {
@@ -129,12 +152,19 @@ function itemPisCofins(item: NfeEmissionItem, vBc: string, cfop: string): {
   };
 }
 
-function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: string; vPis: number; vCofins: number } {
+function detXml(item: NfeEmissionItem, nItem: number, crt: string): {
+  xml: string;
+  vPis: number;
+  vCofins: number;
+  ibs: IbsItem;
+  vItem: string;
+} {
   const vProd = money(new Decimal(item.qCom).mul(item.vUnCom).toNumber());
   const vDescAmt = item.vDesc && Number(item.vDesc) > 0 ? money(item.vDesc) : '';
   const vDesc = vDescAmt ? `<vDesc>${vDescAmt}</vDesc>` : '';
   const vBc = money(new Decimal(vProd).minus(vDescAmt || 0).toNumber());
   const pis = itemPisCofins(item, vBc, item.cfop);
+  const ibs = computeIbsItem(vBc);
   const ean = item.ean && item.ean !== 'SEM GTIN' ? esc(item.ean) : 'SEM GTIN';
   const cest = item.cest ? `<CEST>${esc(item.cest)}</CEST>` : '';
   // Grupo <med>: no XSD 4.00, se existir, cProdANVISA e vPMC são 1-1.
@@ -153,9 +183,11 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): { xml: strin
     qCom: item.qCom,
   });
   return {
-    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${rastro}${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}</imposto></det>`,
+    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${rastro}${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}${ibsCbsItemXml(ibs)}</imposto>${infAdProdXml(item)}<vItem>${vBc}</vItem></det>`,
     vPis: pis.vPis,
     vCofins: pis.vCofins,
+    ibs,
+    vItem: vBc,
   };
 }
 
@@ -247,6 +279,7 @@ export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   const vPis = money(sumMoney(dets.map((row) => row.vPis)));
   const vCofins = money(sumMoney(dets.map((row) => row.vCofins)));
   const finNFe = draft.finNFe || '1';
-  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres><procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets.map((row) => row.xml).join('')}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>${vPis}</vPIS><vCOFINS>${vCofins}</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot></total>${transpXml(draft)}${cobrXml(draft, vNf)}${pagXml(draft, vNf)}${infAdicXml(draft)}${infRespTecXml(draft)}</infNFe>`;
+  const ibsTot = ibsCbsTotXml(dets.map((row) => row.ibs));
+  const infNFe = `<infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe${draft.accessKey}" versao="4.00"><ide><cUF>${cUf}</cUF><cNF>${draft.accessKey.slice(35, 43)}</cNF><natOp>${esc(draft.natureza)}</natOp><mod>55</mod><serie>${Number(draft.series)}</serie><nNF>${Number(draft.number)}</nNF><dhEmi>${dhEmi}</dhEmi><dhSaiEnt>${dhEmi}</dhSaiEnt><tpNF>1</tpNF><idDest>${idDestFromUfs(draft.emit.ender.UF, draft.dest.ender.UF)}</idDest><cMunFG>${esc(draft.emit.ender.cMun)}</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${draft.accessKey.slice(-1)}</cDV><tpAmb>${draft.tpAmb}</tpAmb><finNFe>${finNFe}</finNFe><indFinal>${draft.indFinal}</indFinal><indPres>${esc(draft.indPres)}</indPres>${ideIntermedXml(draft.indPres, finNFe)}<procEmi>0</procEmi><verProc>QLMED</verProc></ide><emit><CNPJ>${esc(draft.emit.cnpj)}</CNPJ><xNome>${esc(draft.emit.xNome)}</xNome>${draft.emit.xFant ? `<xFant>${esc(draft.emit.xFant)}</xFant>` : ''}${enderXml('enderEmit', draft.emit.ender, EMIT_FONE)}<IE>${esc(draft.emit.ie.replace(/\D/g, ''))}</IE><CRT>${esc(draft.emit.crt)}</CRT></emit><dest><CNPJ>${esc(draft.dest.cnpj)}</CNPJ><xNome>${esc(destNome)}</xNome>${enderXml('enderDest', draft.dest.ender)}<indIEDest>${draft.dest.indIEDest}</indIEDest>${destIe}</dest>${dets.map((row) => row.xml).join('')}<total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCPUFDest>0.00</vFCPUFDest><vICMSUFDest>0.00</vICMSUFDest><vICMSUFRemet>0.00</vICMSUFRemet><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>${money(vProd)}</vProd><vFrete>${vFrete}</vFrete><vSeg>${vSeg}</vSeg><vDesc>${money(vDesc)}</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>${vPis}</vPIS><vCOFINS>${vCofins}</vCOFINS><vOutro>${vOutro}</vOutro><vNF>${vNf}</vNF></ICMSTot>${ibsTot}<vNFTot>${vNf}</vNFTot></total>${transpXml(draft)}${cobrXml(draft, vNf)}${pagXml(draft, vNf)}${infAdicXml(draft)}${infRespTecXml(draft)}</infNFe>`;
   return `<NFe xmlns="http://www.portalfiscal.inf.br/nfe">${infNFe}</NFe>`;
 }
