@@ -10,6 +10,7 @@ import {
 import { listUnimedCgDeliveries } from '@/lib/unimed-cg/delivery-store';
 import { listUnimedCgInvoiceDeadlines } from '@/lib/unimed-cg/invoice-deadline-store';
 import { listUnimedCgPreSolicitations } from '@/lib/unimed-cg/pre-solicitation-store';
+import { listUnimedCgPurchaseOrders } from '@/lib/unimed-cg/purchase-order-store';
 import { listUnimedCgReversals } from '@/lib/unimed-cg/reversal-store';
 import { formatUnimedCgMoney, requireUnimedCgPage, sortUnimedCgListItems } from '@/lib/unimed-cg/access';
 import { createLogger } from '@/lib/logger';
@@ -28,13 +29,14 @@ export async function GET(_req: Request) {
     const access = await requireUnimedCgPage();
     if (!access.ok) return access.response;
 
-    const [rows, deliveryRows, reversalRows, preRows, prazoRows, ingest, matchedProcessIds] =
+    const [rows, deliveryRows, reversalRows, preRows, prazoRows, purchaseOrders, ingest, matchedProcessIds] =
       await Promise.all([
         listUnimedCgAuthorizations(access.companyId),
         listUnimedCgDeliveries(access.companyId),
         listUnimedCgReversals(access.companyId),
         listUnimedCgPreSolicitations(access.companyId),
         listUnimedCgInvoiceDeadlines(access.companyId),
+        listUnimedCgPurchaseOrders(access.companyId),
         getUnimedCgIngestState(access.companyId),
         listUnimedCgMatchedProcessIds(access.companyId),
       ]);
@@ -201,6 +203,7 @@ export async function GET(_req: Request) {
       preSolicitations,
       invoiceDeadlines,
       billed,
+      purchaseOrders,
     });
   } catch (error) {
     log.error({ err: error }, 'Falha ao listar autorizações Unimed CG');

@@ -11,7 +11,7 @@ import Modal from '@/components/ui/Modal';
 import Skeleton from '@/components/ui/Skeleton';
 import { Decimal } from '@prisma/client-runtime-utils';
 import { embeddedPdfViewerSrc } from '@/lib/embedded-pdf-src';
-import { formatDocumentDate, formatDateTime } from '@/lib/utils';
+import { formatCnpj, formatDocumentDate, formatDateTime } from '@/lib/utils';
 import PageHeader from '@/components/PageHeader';
 import dynamic from 'next/dynamic';
 
@@ -110,6 +110,35 @@ type InvoiceDeadlineItem = {
   parseStatus: ParseStatus;
 };
 
+type PurchaseOrderItemRow = {
+  productCode: string | null;
+  description: string;
+  unit: string | null;
+  quantity: string;
+  unitPrice: string;
+  lineTotal: string;
+};
+
+type PurchaseOrderItem = {
+  id: string;
+  orderNumber: string;
+  orderDate: string | null;
+  billingCnpj: string | null;
+  paymentTerms: string | null;
+  totalAmount: string;
+  itemCount: number;
+  firstProduct: string | null;
+  firstQuantity: string | null;
+  firstUnitPrice: string | null;
+  receivedAt: string;
+  fileName: string;
+  parseStatus: ParseStatus;
+  requestNumber?: string | null;
+  buyerName?: string | null;
+  supplierName?: string | null;
+  items?: PurchaseOrderItemRow[];
+};
+
 type ListPayload = {
   lastCollectedAt: string | null;
   lastError: string | null;
@@ -120,9 +149,10 @@ type ListPayload = {
   preSolicitations: PreSolicitationItem[];
   invoiceDeadlines: InvoiceDeadlineItem[];
   billed: BilledItem[];
+  purchaseOrders: PurchaseOrderItem[];
 };
 
-type PdfKind = 'billing' | 'delivery' | 'reversal' | 'pre' | 'prazo';
+type PdfKind = 'billing' | 'delivery' | 'reversal' | 'pre' | 'prazo' | 'oc';
 
 function relatedPdfKind(kind: BilledRelatedItem['kind']): PdfKind {
   switch (kind) {
@@ -206,6 +236,8 @@ function detailUrl(kind: PdfKind, id: string): string {
       return `/api/gestao/unimed-cg/pre-solicitacao/${id}`;
     case 'prazo':
       return `/api/gestao/unimed-cg/prazo-nf/${id}`;
+    case 'oc':
+      return `/api/gestao/unimed-cg/ordem-compra/${id}`;
   }
 }
 
@@ -223,6 +255,7 @@ export default function UnimedCgPageClient() {
   const [reversalDetail, setReversalDetail] = useState<ReversalItem | null>(null);
   const [preDetail, setPreDetail] = useState<PreSolicitationItem | null>(null);
   const [prazoDetail, setPrazoDetail] = useState<InvoiceDeadlineItem | null>(null);
+  const [ocDetail, setOcDetail] = useState<PurchaseOrderItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [invoiceModalId, setInvoiceModalId] = useState<string | null>(null);
 
@@ -254,6 +287,7 @@ export default function UnimedCgPageClient() {
       setReversalDetail(null);
       setPreDetail(null);
       setPrazoDetail(null);
+      setOcDetail(null);
       return;
     }
     let cancelled = false;
@@ -270,6 +304,7 @@ export default function UnimedCgPageClient() {
         setReversalDetail(selected.kind === 'reversal' ? (payload as ReversalItem) : null);
         setPreDetail(selected.kind === 'pre' ? (payload as PreSolicitationItem) : null);
         setPrazoDetail(selected.kind === 'prazo' ? (payload as InvoiceDeadlineItem) : null);
+        setOcDetail(selected.kind === 'oc' ? (payload as PurchaseOrderItem) : null);
       })
       .catch(() => {
         if (!cancelled) toast.error('Erro ao abrir o registro');
@@ -315,6 +350,7 @@ export default function UnimedCgPageClient() {
   const preSolicitations = data?.preSolicitations ?? [];
   const invoiceDeadlines = data?.invoiceDeadlines ?? [];
   const billed = data?.billed ?? [];
+  const purchaseOrders = data?.purchaseOrders ?? [];
 
   const modalTitle = (() => {
     if (selected?.kind === 'billing' && billingDetail) {
@@ -331,6 +367,9 @@ export default function UnimedCgPageClient() {
     }
     if (selected?.kind === 'prazo' && prazoDetail) {
       return `Processo ${prazoDetail.processId} (prazo NF)`;
+    }
+    if (selected?.kind === 'oc' && ocDetail) {
+      return `Ordem de compra ${ocDetail.orderNumber}`;
     }
     return selected ? 'Unimed CG' : '';
   })();
@@ -371,6 +410,94 @@ export default function UnimedCgPageClient() {
 
       {!loading && (
         <>
+
+          <Section
+            icon="shopping_cart"
+            tone="emerald"
+            title={`ORDEM DE COMPRA (${purchaseOrders.length})`}
+            defaultOpen
+          >
+            {purchaseOrders.length === 0 ? (
+              <EmptyState icon="shopping_cart" title="Nenhuma ordem de compra Unimed CG." />
+            ) : (
+              <div className="overflow-x-auto -mx-4 -mb-4">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">OC</th>
+                      <th className="px-4 py-3 font-semibold">Data</th>
+                      <th className="px-4 py-3 font-semibold">Produto</th>
+                      <th className="px-4 py-3 font-semibold text-right">Qtd</th>
+                      <th className="px-4 py-3 font-semibold text-right">Vl. unit.</th>
+                      <th className="px-4 py-3 font-semibold text-right">Vl. total</th>
+                      <th className="px-4 py-3 font-semibold">CNPJ faturar</th>
+                      <th className="px-4 py-3 font-semibold">Prazo</th>
+                      <th className="px-4 py-3 font-semibold">Recebido em</th>
+                      <th className="px-4 py-3 font-semibold">PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {purchaseOrders.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 cursor-pointer"
+                        onClick={() => setSelected({ kind: 'oc', id: item.id })}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          <span className="inline-flex items-center gap-2">
+                            {item.orderNumber}
+                            <ParseBadge status={item.parseStatus} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDocumentDate(item.orderDate)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-200 max-w-[260px]">
+                          <div className="truncate">{item.firstProduct ?? '—'}</div>
+                          {item.itemCount > 1 ? (
+                            <div className="text-xs text-slate-500">+{item.itemCount - 1} item(ns)</div>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-200">
+                          {item.firstQuantity ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-200">
+                          {item.firstUnitPrice ? formatBrl(item.firstUnitPrice) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-900 dark:text-white">
+                          {formatBrl(item.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          {item.billingCnpj ? formatCnpj(item.billingCnpj) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {item.paymentTerms ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.receivedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            icon="picture_as_pdf"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected({ kind: 'oc', id: item.id });
+                            }}
+                          >
+                            Ver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
           <Section
             icon="paid"
             tone="amber"
@@ -968,6 +1095,62 @@ export default function UnimedCgPageClient() {
             </dl>
             <iframe
               title={`PDF prazo NF processo ${prazoDetail.processId}`}
+              className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
+              src={pdfSrc}
+            />
+          </div>
+        )}
+
+        {!detailLoading && ocDetail && selected?.kind === 'oc' && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-slate-500">Ordem de compra</dt>
+                <dd className="font-medium">{ocDetail.orderNumber}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Data</dt>
+                <dd>{formatDocumentDate(ocDetail.orderDate)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">CNPJ faturamento</dt>
+                <dd>{ocDetail.billingCnpj ? formatCnpj(ocDetail.billingCnpj) : '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Prazo de pagamento</dt>
+                <dd>{ocDetail.paymentTerms ?? '—'}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-500">Comprador</dt>
+                <dd>{ocDetail.buyerName ?? '—'}</dd>
+              </div>
+            </dl>
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Produto</th>
+                    <th className="px-3 py-2 font-semibold text-right">Qtd</th>
+                    <th className="px-3 py-2 font-semibold text-right">Vl. unit.</th>
+                    <th className="px-3 py-2 font-semibold text-right">Vl. total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {(ocDetail.items ?? []).map((line, idx) => (
+                    <tr key={`${line.productCode ?? 'p'}-${idx}`}>
+                      <td className="px-3 py-2 text-slate-800 dark:text-slate-100">
+                        {line.productCode ? `${line.productCode} — ${line.description}` : line.description}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{line.quantity}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatBrl(line.unitPrice)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatBrl(line.lineTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <iframe
+              title={`PDF ordem de compra ${ocDetail.orderNumber}`}
               className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100"
               src={pdfSrc}
             />

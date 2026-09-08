@@ -1,0 +1,66 @@
+1 - HOSPITAL UNIMED                                                                                          Página:            1 /1
+SOULMV - Sistema de Compras                                                                              Emitido por:      JAIRO.OLIVEIRA
+Relatório de Ordem de Compra                                                                                     Em:       04/09/2026 15:25
+ Ord. Compra: 188246              Solicitação: 143041                                 Solic:27115207-CENTRAL SUPRIMEN
+ Nº Processo:                                                               Dt Ord. Compra: 04/09/2026
+      Fornecedor:         436 QL MED                            - QL MED MATERIAIS HOSPITALARES LTDA
+      CNPJ/CPF: 07.832.309/0001-97                       Insc Est.: 283379189
+        Endereço: R. DR. SALOMAO NAHAS                                          Nr.: 44         Compl.:
+           Bairro: CHACARA CACHOEIRA II                 Cep: 79040044
+          Cidade: CAMPO GRANDE                           UF: MS      Conta: - Agência: - Banco:
+       Contato(s): FLAVIO
+   Celular : 9297-9412 - FLAVIO
+   Cod Gp : 8047
+   Telefone Comercial : (67) 3326-3520 - FLAVIO/JO
+
+    Comprador: UNIMED CAMPO GRANDE MS COOPERATIVA DE TRABALHO MEDICO
+     Endereço: AVENIDA MATO GROSSO                  Nº 4566  CNPJ: 03.315.918/0005-41
+        Cidade: CAMPO GRANDE                                Insc. Est.:
+         Bairro: CARANDA BOSQUE                             Fone/Fax: 33186666 -
+   Responsável: JAIRO DE OLIVEIRA TEIXEIRA                       CEP: 79031001                                               UF: MS
+
+ Sr. Fornecedor:   Instruções de faturamento e entrega:
+                   Os Produtos em desacordo com a Ordem de Compra serão DEVOLVIDAS;
+                   Colocar LOTE e VALIDADE dos Produtos na Nota Fiscal;
+                   NÃO ENVIAR PRODUTOS COM DATA DE VALIDADE INFERIOR A 12 meses;
+
+                   ***Atenção*** VERIFICAR CONDIÇÃO DE PAGAMENTO ACORDADA NA ORDEM DE COMPRA
+ Obs:___________________________________________________________________________________________
+
+   Cód. Condição de Pgto.: 7             Desc. Condição de Pgto.: 30 DIAS
+       Período p/ Entrega:   11/09/2026 à 13/09/2026                  1 - REAL
+                  % Desc:0,00          Vl Desc: 0,00         Vl ICMS:0,00                    Vl Desc. Comercial: 0,00
+
+
+
+Produto                      Fabricante   Lote          Qt. Cons. Unidade      Qtd Compr.    Vl.Unit.    Vl Desc. %Des         Vl IMP    Vl Total
+78811 - EXTENSOR DE                                               UNIDADE         50,0000   42,0000       0,0000    0,00      0,0000    2.100,00
+BOMBA - REF. SM-PL-
+12P120RF-MP
+Detalhamento:
+
+
+
+                                                           Total dos Produtos(+):                                           2.100,00
+                             Valor Total do Frete( C.I.F. ), Não Incluso na Nota:                                               0,00
+                                                           Valor Total do Imposto:                                              0,00
+                                                          Valor dos Descontos( -):                                              0,00
+                                                                  Valor Outros (+):                                             0,00
+                                                     Valor Desconto Comercial (-):                                              0,00
+                                                                   Valor Total (=):                                         2.100,00
+
+
+          COMPRADOR                       APROVADOR                           DIRETOR                     NIVEL 2
+
+
+           Data                             Data                               Data                        Data
+
+
+
+                                                                                                                                        SUPRI-01-283
+
+
+
+
+                                                   HOSPITAL UNIMED - CAMPO GRANDE / MS
+

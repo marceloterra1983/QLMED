@@ -54,6 +54,14 @@ export const UNIMED_CG_PRE_SOLICITACAO_SUBJECT_RE =
 export const UNIMED_CG_PRAZO_NF_SUBJECT_RE =
   /\[ID\s+(\d+)\]\s*\[OPME\][\s\S]*prazo\s+para\s+lan[cç]amento\s+da\s+Nota\s+Fiscal/i;
 
+/**
+ * Assunto OC SOULMV: "Ordem de compra(s) 188246 - ..."
+ * Remetente: qualquer *@unimedcg.coop.br (não o portal OPME).
+ */
+export const UNIMED_CG_ORDEM_COMPRA_SENDER_DOMAIN = 'unimedcg.coop.br';
+
+export const UNIMED_CG_ORDEM_COMPRA_SUBJECT_RE = /ordem\s+de\s+compras?/i;
+
 export function isUnimedCgWhatsAppEnabled(): boolean {
   return (process.env.UNIMED_CG_WHATSAPP_ENABLED ?? '').toLowerCase() === 'true';
 }

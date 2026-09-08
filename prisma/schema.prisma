@@ -184,6 +184,9 @@ model Company {
   unimedCgPreSolicitationSourceMessages UnimedCgPreSolicitationSourceMessage[]
   unimedCgInvoiceDeadlines UnimedCgInvoiceDeadline[]
   unimedCgInvoiceDeadlineSourceMessages UnimedCgInvoiceDeadlineSourceMessage[]
+  unimedCgPurchaseOrders UnimedCgPurchaseOrder[]
+  unimedCgPurchaseOrderItems UnimedCgPurchaseOrderItem[]
+  unimedCgPurchaseOrderSourceMessages UnimedCgPurchaseOrderSourceMessage[]
   documents             CompanyDocument[]
   documentIngestState   CompanyDocumentIngestState?
   invoiceEmissions      InvoiceEmission[]
@@ -1433,6 +1436,71 @@ model UnimedCgInvoiceDeadlineSourceMessage {
   @@unique([companyId, internetMessageId], map: "UnimedCgInvoiceDeadlineSourceMessage_companyId_internetMess_key")
   @@index([companyId])
   @@index([deadlineId])
+}
+
+
+model UnimedCgPurchaseOrder {
+  id                 String                             @id @default(cuid())
+  companyId          String
+  company            Company                            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderNumber        String
+  requestNumber      String?
+  orderDate          DateTime?
+  billingCnpj        String?
+  buyerName          String?
+  paymentTerms       String?
+  paymentTermsCode   String?
+  deliveryFrom       DateTime?
+  deliveryTo         DateTime?
+  supplierName       String?
+  supplierCnpj       String?
+  totalAmount        Decimal
+  oneDriveItemId     String
+  fileName           String
+  parseStatus        UnimedCgParseStatus
+  receivedAt         DateTime
+  items              UnimedCgPurchaseOrderItem[]
+  sourceMessages     UnimedCgPurchaseOrderSourceMessage[]
+  createdAt          DateTime                           @default(now())
+  updatedAt          DateTime                           @updatedAt
+
+  @@unique([companyId, orderNumber])
+  @@index([companyId, receivedAt(sort: Desc)])
+}
+
+model UnimedCgPurchaseOrderItem {
+  id               String                @id @default(cuid())
+  purchaseOrderId  String
+  purchaseOrder    UnimedCgPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lineNumber       Int
+  productCode      String?
+  description      String
+  unit             String?
+  quantity         Decimal
+  unitPrice        Decimal
+  lineTotal        Decimal
+
+  @@index([purchaseOrderId, lineNumber])
+  @@index([companyId])
+}
+
+model UnimedCgPurchaseOrderSourceMessage {
+  id                String                 @id @default(cuid())
+  companyId         String
+  company           Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  purchaseOrderId   String?
+  purchaseOrder     UnimedCgPurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  mailbox           String
+  graphMessageId    String
+  internetMessageId String
+  receivedAt        DateTime
+  createdAt         DateTime               @default(now())
+
+  @@unique([companyId, internetMessageId], map: "UnimedCgPurchaseOrderSourceMessage_companyId_internetMess_key")
+  @@index([companyId])
+  @@index([purchaseOrderId])
 }
 
 enum CompanyDocumentKind {
