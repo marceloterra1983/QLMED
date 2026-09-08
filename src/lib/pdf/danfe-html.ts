@@ -6,6 +6,7 @@ import {
 import { PDF_CSS } from './pdf-css';
 import { buildCode128Svg } from './code128';
 import { DANFE_LOGO_SVG } from './danfe-logo';
+import { splitProductsForPages } from './danfe-paginate';
 
 const QL_MED_CNPJ_DIGITS = '07832309000197';
 const QL_MED_LETTERHEAD = 'QL MED MAT. HOSP. LTDA';
@@ -15,8 +16,8 @@ function emitenteLetterheadName(d: DanfeData): string {
   return digits === QL_MED_CNPJ_DIGITS ? QL_MED_LETTERHEAD : d.emitNome;
 }
 
-function resolveTotalPages(opts?: { totalPages?: number }): number {
-  const n = Math.floor(Number(opts?.totalPages ?? 1));
+function resolvePageCount(opts?: { pageCount?: number }): number {
+  const n = Math.floor(Number(opts?.pageCount ?? 1));
   return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
@@ -53,7 +54,7 @@ function buildCanhoto(d: DanfeData): string {
 </div>`;
 }
 
-function buildHeader(d: DanfeData, totalPages: number): string {
+function buildHeader(d: DanfeData, page: number, totalPages: number): string {
   const chave = (d.chNFe || '').replace(/\D/g, '');
   const barcode = chave.length === 44 ? buildCode128Svg(chave, 26) : '';
   const prot = d.nProt ? `${esc(d.nProt)} - ${esc(d.dhRecbto)}` : '';
@@ -83,7 +84,7 @@ function buildHeader(d: DanfeData, totalPages: number): string {
       </div>
       <div class="nf-num">N&ordm; ${fmtNfNum(d.nNF)}</div>
       <div class="nf-serie">S&Eacute;RIE : ${esc(d.serie)}</div>
-      <div class="nf-page">FOLHA: <span class="folha-counter" data-total="${totalPages}"></span></div>
+      <div class="nf-page">FOLHA: ${page} de ${totalPages}</div>
     </td>
     <td style="width:38%; padding:3px 5px;" class="key-area">
       <div class="barcode-wrap">${barcode}</div>
@@ -306,30 +307,27 @@ function buildAdditional(d: DanfeData): string {
 </table>`;
 }
 
-export function buildDanfeHtml(d: DanfeData, autoPrint: boolean, opts?: { totalPages?: number }): string {
-  const totalPages = resolveTotalPages(opts);
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>DANFE - NF-e ${fmtNfNum(d.nNF)}</title>
-  <style>${PDF_CSS}</style>
-</head>
-<body>
+function buildSheet(
+  d: DanfeData,
+  page: number,
+  totalPages: number,
+  includeFrontMatter: boolean,
+): string {
+  return `
   <div class="page">
     <table class="danfe-sheet">
       <thead>
         <tr><td class="sheet-cell">
           ${buildCanhoto(d)}
-          ${buildHeader(d, totalPages)}
+          ${buildHeader(d, page, totalPages)}
         </td></tr>
       </thead>
       <tbody>
         <tr><td class="sheet-cell">
-          ${buildDest(d)}
+          ${includeFrontMatter ? `${buildDest(d)}
           ${buildFatura(d)}
           ${buildImpostos(d)}
-          ${buildTransporte(d)}
+          ${buildTransporte(d)}` : ''}
           ${buildProducts(d)}
         </td></tr>
       </tbody>
@@ -339,7 +337,29 @@ export function buildDanfeHtml(d: DanfeData, autoPrint: boolean, opts?: { totalP
         </td></tr>
       </tfoot>
     </table>
-  </div>
+  </div>`;
+}
+
+export function buildDanfeHtml(
+  d: DanfeData,
+  autoPrint: boolean,
+  opts?: { pageCount?: number },
+): string {
+  const pageCount = resolvePageCount(opts);
+  const sheets = pageCount <= 1
+    ? [buildSheet(d, 1, 1, true)]
+    : splitProductsForPages(d.products, pageCount).map((chunk, idx) =>
+        buildSheet({ ...d, products: chunk }, idx + 1, pageCount, idx === 0),
+      );
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>DANFE - NF-e ${fmtNfNum(d.nNF)}</title>
+  <style>${PDF_CSS}</style>
+</head>
+<body>
+  ${sheets.join('\n')}
   ${autoPrint ? '<script>window.addEventListener("load", function() { window.print(); });</script>' : ''}
 </body>
 </html>`;

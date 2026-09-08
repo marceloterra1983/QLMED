@@ -2,6 +2,7 @@ export const PDF_CSS = `
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #e9e9e9; }
 .page { width: 210mm; margin: 6mm auto; background: #fff; padding: 3mm; }
+.page + .page { break-before: page; page-break-before: always; }
 @media print {
   body { background: #fff; }
   .page { width: 100%; margin: 0; padding: 3mm; box-shadow: none; }

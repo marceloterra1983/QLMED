@@ -17,8 +17,8 @@ const DANFE_PDF_OPTIONS = {
  * Grava o DANFE no backup local após autorização. Falha de render não
  * pode desfazer a NF-e — o XML já está na SEFAZ.
  *
- * Duas passadas quando o primeiro PDF tem mais de uma página: o total
- * entra em `data-total` para o CSS da FOLHA X de Y.
+ * Duas passadas quando o primeiro PDF tem mais de uma página: a segunda
+ * emite uma `.page` por folha com FOLHA X de Y literal.
  */
 export async function persistAuthorizedDanfePdf(input: {
   companyId: string;
@@ -30,11 +30,11 @@ export async function persistAuthorizedDanfePdf(input: {
     const parsed = await parseXml(input.xml);
     const data = extractDanfeData(parsed);
     if (!data.nNF) return null;
-    let html = buildDanfeHtml(data, false, { totalPages: 1 });
+    let html = buildDanfeHtml(data, false, { pageCount: 1 });
     let pdf = await renderHtmlToPdf(html, DANFE_PDF_OPTIONS);
     const pages = countPdfPages(pdf);
     if (pages > 1) {
-      html = buildDanfeHtml(data, false, { totalPages: pages });
+      html = buildDanfeHtml(data, false, { pageCount: pages });
       pdf = await renderHtmlToPdf(html, DANFE_PDF_OPTIONS);
     }
     const filePath = await saveIssuedPdfToFile(input.companyId, input.invoiceNumber, pdf, input.issueDate);

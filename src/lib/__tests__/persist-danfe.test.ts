@@ -41,7 +41,7 @@ describe('persistAuthorizedDanfePdf', () => {
     })).resolves.toBeNull();
   });
 
-  it('re-renderiza com data-total quando o primeiro PDF tem 2 páginas', async () => {
+  it('re-renderiza com pageCount quando o primeiro PDF tem 2 páginas', async () => {
     const twoPagePdf = Buffer.from(
       '%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count 2 /Kids [2 0 R 3 0 R] >>\nendobj\n',
       'latin1',
@@ -60,7 +60,9 @@ describe('persistAuthorizedDanfePdf', () => {
     expect(result?.filePath).toBe('/tmp/Danfe_NF000065248.pdf');
     expect(renderHtmlToPdf).toHaveBeenCalledTimes(2);
     const secondHtml = String(renderHtmlToPdf.mock.calls.at(1)?.at(0) ?? '');
-    expect(secondHtml).toContain('data-total="2"');
+    expect(secondHtml).toContain('FOLHA: 1 de 2');
+    expect(secondHtml).toContain('FOLHA: 2 de 2');
+    expect((secondHtml.match(/class="page"/g) || []).length).toBe(2);
     expect(saveIssuedPdfToFile).toHaveBeenCalledOnce();
   });
 });
