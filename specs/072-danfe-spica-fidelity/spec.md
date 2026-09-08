@@ -36,8 +36,8 @@ página 2; o requisito do operador (este spec) é o contrário.
 1. Logo QL em SVG inline (círculo/Q, veneziana, L, rabicho) — sem `data:`.
 2. Cabeçalho (canhoto + emitente + caixa DANFE) repetido em cada página via
    `thead` da tabela-folha (`table-header-group`).
-3. `FOLHA: X de Y` com `X` via `counter(page)` na impressão e `Y` via
-   `data-total` após segunda passada de render quando houver >1 página.
+3. `FOLHA: X de Y` em texto literal em cada `.page`. `counter(page)` não é
+   fonte da numeração (Chrome não incrementa em elementos in-flow no `page.pdf()`).
 4. DADOS ADICIONAIS no `tfoot` de **todas** as páginas (requisito do
    operador; o PDF 65210 original não imprime esse bloco na página 2).
 
@@ -70,13 +70,16 @@ página 2; o requisito do operador (este spec) é o contrário.
   `table.danfe-sheet` com `thead` (canhoto+header), `tbody` (dest/fatura/
   impostos/transporte/produtos) e `tfoot` (dados adicionais), para o
   Chromium repetir cabeçalho e rodapé em cada página de impressão.
-- **FR-072-04**: A caixa DANFE MUST conter `FOLHA:` e um
-  `.folha-counter[data-total]` com o total de páginas. Default
-  `totalPages = 1`. Em `@media print`, o `::after` usa `counter(page)`.
+- **FR-072-04**: A caixa DANFE MUST imprimir `FOLHA: X de Y` como texto
+  literal em cada `.page` (X 1-based, Y = `pageCount`). Default
+  `pageCount = 1` → uma folha `FOLHA: 1 de 1`. `counter(page)` NÃO é
+  fonte da numeração: o Chrome não incrementa o counter em elementos
+  in-flow durante `page.pdf()`.
 - **FR-072-05**: `persistAuthorizedDanfePdf` MUST renderizar com
-  `totalPages: 1`, contar páginas do buffer (`countPdfPages`), e se
-  `pages > 1` renderizar de novo com esse total antes de gravar. Falha
-  de render continua engolida (`return null`).
+  `pageCount: 1`, contar páginas do buffer (`countPdfPages`), e se
+  `pages > 1` renderizar de novo com `pageCount: pages` (uma `.page`
+  por folha, produtos fatiados) antes de gravar. Falha de render
+  continua engolida (`return null`).
 - **FR-072-06**: DADOS ADICIONAIS MUST aparecer no rodapé de cada página,
   inclusive página 2+ (override do operador sobre o original 65210).
 
@@ -84,17 +87,18 @@ página 2; o requisito do operador (este spec) é o contrário.
 
 - **AC-001**: Fixture CNPJ `07832309000197` → HTML do emitente contém
   `QL MED MAT. HOSP. LTDA`; canhoto contém `Ql Med Materiais Hospitalares Ltda.`.
-- **AC-002**: HTML default contém `FOLHA:`, `folha-counter`, `data-total="1"`,
-  `danfe-sheet` e `DADOS ADICIONAIS`. Sem `data:`.
-- **AC-003**: `buildDanfeHtml(d, false, { totalPages: 2 })` emite
-  `data-total="2"`, um `thead` de folha com canhoto e um `tfoot` com
-  DADOS ADICIONAIS mesmo com 20 produtos.
+- **AC-002**: HTML default contém `FOLHA: 1 de 1`, `danfe-sheet` e
+  `DADOS ADICIONAIS`. Sem `data:`.
+- **AC-003**: `buildDanfeHtml(d, false, { pageCount: 2 })` emite
+  `FOLHA: 1 de 2` e `FOLHA: 2 de 2`, um `thead` (canhoto+header) e um
+  `tfoot` (DADOS ADICIONAIS) em cada `.page`, mesmo com 20 produtos.
 - **AC-004**: `countPdfPages` em buffer latin1 de 2 páginas devolve 2;
   buffer sem páginas devolve 1; nunca lança.
 - **AC-005**: Persist de 1 página chama `renderHtmlToPdf` uma vez; primeiro
-  buffer com 2 páginas chama duas vezes e o segundo HTML tem `data-total="2"`.
-- **AC-006**: em `@media print`, `.folha-counter::after` usa `counter(page)`;
-  o texto `1 de` só vale em `@media screen`.
+  buffer com 2 páginas chama duas vezes e o segundo HTML tem
+  `FOLHA: 1 de 2` e `FOLHA: 2 de 2`.
+- **AC-006**: `FOLHA: X de Y` é texto literal por `.page`. `counter(page)`
+  não é fonte da numeração (Chrome não incrementa em in-flow no `page.pdf()`).
 
 ## Prior Art
 
