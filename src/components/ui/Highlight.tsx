@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { expandAccentVariants, tokenizeInvoiceSearch } from '@/lib/nfe/search-engine';
+import { formatInvoiceNumber } from '@/lib/utils';
 
 interface HighlightProps {
   text: string | null | undefined;
@@ -47,6 +48,10 @@ export function getCompiledPattern(query: string | null | undefined): RegExp | n
     const unpadded = rawDigits.replace(/^0+/, '');
     if (unpadded.length >= 2 && !variants.includes(unpadded)) {
       variants.push(unpadded);
+    }
+    const formatted = formatInvoiceNumber(rawDigits);
+    if (formatted.length >= 2 && !variants.includes(formatted)) {
+      variants.push(formatted);
     }
   }
 

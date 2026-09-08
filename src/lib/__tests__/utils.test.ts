@@ -11,6 +11,7 @@ import {
   formatCurrencyShort,
   FILTER_INPUT_CLS,
   formatInt,
+  formatInvoiceNumber,
   formatPercent,
   formatDateTimeSeconds,
   formatQuantity,
@@ -142,6 +143,18 @@ describe('formatInt / formatPercent', () => {
     expect(formatInt(3850)).toBe('3.850');
     expect(formatInt(0)).toBe('0');
     expect(formatInt(1234.6)).toBe('1.235');
+  });
+
+  it('formatInvoiceNumber agrupa milhar sem pad de 9 dígitos', () => {
+    expect(formatInvoiceNumber(65254)).toBe('65.254');
+    expect(formatInvoiceNumber('65254')).toBe('65.254');
+    expect(formatInvoiceNumber('65.254')).toBe('65.254');
+    expect(formatInvoiceNumber('00065254')).toBe('65.254');
+    expect(formatInvoiceNumber(123)).toBe('123');
+    expect(formatInvoiceNumber('0')).toBe('0');
+    expect(formatInvoiceNumber(null)).toBe('-');
+    expect(formatInvoiceNumber('')).toBe('-');
+    expect(formatInvoiceNumber('-')).toBe('-');
   });
 
   it('formatPercent usa casas fixas e sinal só no positivo', () => {

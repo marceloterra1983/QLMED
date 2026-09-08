@@ -1,3 +1,4 @@
+import { formatInvoiceNumber } from '@/lib/utils';
 import {
   extractCteRecebedorCnpj,
   extractCteRecebedorName,
@@ -200,7 +201,7 @@ export function buildNfeWhatsappCaption(input: {
   return [
     'NF-e Recebida',
     '',
-    `Número: ${input.number || '-'}`,
+    `Número: ${formatInvoiceNumber(input.number)}`,
     name,
     formatCaptionBrl(input.totalValue),
   ].join('\n');

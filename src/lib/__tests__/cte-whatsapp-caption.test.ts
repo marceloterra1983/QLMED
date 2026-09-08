@@ -250,7 +250,7 @@ describe('decorateClaimInvoice', () => {
 
     expect(decorated).not.toHaveProperty('xmlContent');
     expect(decorated.whatsappCaption).toBe(
-      'NF-e Recebida\n\nNúmero: 39400\nPolitec Importacao e Comercio Ltda\nR$ 60.895,80',
+      'NF-e Recebida\n\nNúmero: 39.400\nPolitec Importacao e Comercio Ltda\nR$ 60.895,80',
     );
     expect(decorated.whatsappCaption).not.toContain('Chave');
     expect(decorated.whatsappCaption).not.toContain(ACCESS_KEY);

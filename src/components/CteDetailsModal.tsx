@@ -10,7 +10,7 @@ import { Field } from '@/components/ui/InvoiceDetailHelpers';
 import type { CteDetails, CteComponente, CargaMedida, CteNfeRef, CteNfRef, CteOutroRef } from '@/types/invoice-details';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
-import { formatAmount, formatDateTimeSeconds } from '@/lib/utils';
+import { formatAmount, formatDateTimeSeconds, formatInvoiceNumber } from '@/lib/utils';
 
 interface CteDetailsModalProps {
   isOpen: boolean;
@@ -59,7 +59,7 @@ function TabCte({ data }: { data: CteDetails }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
           <Field label="Modelo" value={cte.modelo} />
           <Field label="Série" value={cte.serie} />
-          <Field label="Número" value={cte.numero} />
+          <Field label="Número" value={formatInvoiceNumber(cte.numero)} />
           <Field label="Data Emissão" value={formatDateBr(cte.dataEmissao)} />
           <Field label="CFOP" value={cte.cfop} />
           <Field label="Natureza da Operação" value={cte.natOp} />
@@ -294,7 +294,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
               <div key={`m-${i}`} className="rounded-lg ring-1 ring-slate-200/50 dark:ring-slate-800/50 px-2.5 py-2">
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Nº {n.numero || '-'}</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Nº {formatInvoiceNumber(n.numero)}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">Série {n.serie || '-'}</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{formatMoney(n.valorTotal)}</span>
@@ -318,7 +318,7 @@ function TabDocumentos({ data }: { data: CteDetails }) {
                 {docs.nfRefs.map((n: CteNfRef, i: number) => (
                   <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{n.serie || '-'}</td>
-                    <td className="px-3 py-2.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{n.numero || '-'}</td>
+                    <td className="px-3 py-2.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{formatInvoiceNumber(n.numero)}</td>
                     <td className="px-3 py-2.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">{n.dataEmissao || '-'}</td>
                     <td className="px-3 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(n.valorTotal)}</td>
                   </tr>
@@ -519,7 +519,7 @@ export default function CteDetailsModal({ isOpen, onClose, invoiceId }: CteDetai
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                  {data ? `CT-e ${data.number}` : 'Detalhes do CT-e'}
+                  {data ? `CT-e ${formatInvoiceNumber(data.number)}` : 'Detalhes do CT-e'}
                 </h3>
                 {data?.series && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">Série {data.series}</span>

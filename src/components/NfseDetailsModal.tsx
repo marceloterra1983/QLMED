@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/InvoiceDetailHelpers';
 import type { NfseDetails } from '@/types/invoice-details';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
-import { formatAmount, formatDateTimeSeconds } from '@/lib/utils';
+import { formatAmount, formatDateTimeSeconds, formatInvoiceNumber } from '@/lib/utils';
 
 interface NfseDetailsModalProps {
   isOpen: boolean;
@@ -50,7 +50,7 @@ function TabNfse({ data }: { data: NfseDetails }) {
     <div className="space-y-4">
       <Section title="Dados da NFS-e" icon="receipt_long">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 sm:gap-x-6 gap-y-2 sm:gap-y-3">
-          <Field label="Número" value={n.numero} />
+          <Field label="Número" value={formatInvoiceNumber(n.numero)} />
           <Field label="Data de Emissão" value={formatDateBr(n.dataEmissao)} />
           {n.dataProcessamento && <Field label="Data Processamento" value={formatDateBr(n.dataProcessamento)} />}
           {n.codigoVerificacao && <Field label="Código de Verificação" value={n.codigoVerificacao} />}
@@ -197,7 +197,7 @@ export default function NfseDetailsModal({ isOpen, onClose, invoiceId }: NfseDet
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                  {data ? `NFS-e ${data.number}` : 'Detalhes da NFS-e'}
+                  {data ? `NFS-e ${formatInvoiceNumber(data.number)}` : 'Detalhes da NFS-e'}
                 </h3>
               </div>
             </div>

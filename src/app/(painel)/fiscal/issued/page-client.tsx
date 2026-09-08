@@ -10,7 +10,7 @@ const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsMod
 const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS } from '@/lib/utils';
+import { formatDate, formatTime, formatAmount, FILTER_INPUT_CLS, formatInvoiceNumber } from '@/lib/utils';
 import { buildNfeGroups, buildYearMonths, splitNfeGroupsForDisplay } from '@/lib/nfe-groups';
 import { defaultNfeCollapsedKeys, nfeCollapsibleMonthKeys, resolveCollapsedGroupsAfterFetch, dateGroupItemsVisible } from '@/lib/list-collapse';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
@@ -337,7 +337,7 @@ export default function IssuedInvoicesPage() {
     return (
       <tr key={invoice.id} className={`group transition-colors cursor-pointer ${highlightRow ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`} onClick={() => openDetails(invoice.id)}>
         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-          <input className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} aria-label={`Selecionar NF-e ${invoice.number}`} />
+          <input className="rounded border-slate-200 text-primary dark:text-blue-400 bg-white dark:bg-slate-800 dark:border-slate-700 w-4 h-4 cursor-pointer" type="checkbox" checked={selected.has(invoice.id)} onChange={() => toggleSelect(invoice.id)} aria-label={`Selecionar NF-e ${formatInvoiceNumber(invoice.number)}`} />
         </td>
         <td className="px-2 py-3 tabular-nums whitespace-nowrap">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(invoice.issueDate)}</div>
@@ -345,7 +345,7 @@ export default function IssuedInvoicesPage() {
         </td>
         <td className="px-2 py-3 tabular-nums whitespace-nowrap">
           <div className="flex flex-col">
-            <Highlight text={invoice.number} query={search} className="text-sm font-bold text-slate-900 dark:text-white" />
+            <Highlight text={formatInvoiceNumber(invoice.number)} query={search} className="text-sm font-bold text-slate-900 dark:text-white" />
             {cfopTag && <span className={`mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag}</span>}
             {cancelTag && <span className="mt-1 inline-flex w-fit items-center px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">{cancelTag}</span>}
           </div>
@@ -416,7 +416,7 @@ export default function IssuedInvoicesPage() {
       <div key={invoice.id} onClick={() => openProducts(invoice.id)} className={`border rounded-xl p-3 cursor-pointer ${highlightRow ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/25 dark:border-amber-900/60' : 'bg-white dark:bg-card-dark border-slate-200 dark:border-slate-800'}`}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold text-slate-900 dark:text-white">
-            <Highlight text={invoice.number} query={search} />
+            <Highlight text={formatInvoiceNumber(invoice.number)} query={search} />
             {cfopTag && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ml-1.5 align-middle ${getTagClasses(cfopTag, highlightRow)}`}>{cfopTag === 'Consignação' ? 'Consig.' : cfopTag}</span>}
             {cancelTag && <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wide ml-1.5 align-middle bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100">{cancelTag}</span>}
           </span>

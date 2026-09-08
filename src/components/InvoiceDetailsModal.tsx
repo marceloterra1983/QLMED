@@ -5,6 +5,7 @@ import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import { formatInvoiceNumber } from '@/lib/utils';
 
 interface InvoiceDetailsModalProps {
   isOpen: boolean;
@@ -259,7 +260,7 @@ export default function InvoiceDetailsModal({ isOpen, onClose, invoiceId }: Invo
               </div>
               <div className="min-w-0">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                  {meta?.number ? `${theme.label} ${meta.number}` : 'Visualizar Documento'}
+                  {meta?.number ? `${theme.label} ${formatInvoiceNumber(meta.number)}` : 'Visualizar Documento'}
                 </h3>
                 <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
                   {view === 'danfe' ? theme.pdfLabel : 'XML'}

@@ -134,6 +134,20 @@ export function formatInt(n: number): string {
   return Math.round(n).toLocaleString('pt-BR');
 }
 
+/**
+ * Número de NF-e / NFS-e / CT-e na UI: 65254 → "65.254".
+ * Persistência, CSV e DANFE oficial ficam sem este agrupamento.
+ */
+export function formatInvoiceNumber(value: string | number | null | undefined): string {
+  if (value == null) return '-';
+  const raw = String(value).trim();
+  if (!raw) return '-';
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return raw;
+  const unpadded = digits.replace(/^0+(?=\d)/, '');
+  return unpadded.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 /** Percentual com casas fixas e sinal opcional ("+12,5%", "3,00%"). */
 export function formatPercent(v: number, digits = 2, sign = false): string {
   const txt = v.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });

@@ -24,6 +24,12 @@ describe('Highlight', () => {
     expect(out).toContain('>65053</mark>');
   });
 
+  it('highlights thousand-separated invoice numbers from a digit query', () => {
+    const out = html(<Highlight text="65.053" query="65053" />);
+    expect(out).toContain('<mark');
+    expect(out).toContain('>65.053</mark>');
+  });
+
   it('highlights multi-word search queries', () => {
     const out = html(<Highlight text="Dra. Maria Cristina da Silva" query="Maria Silva" />);
     expect(out).toContain('>Maria</mark>');
