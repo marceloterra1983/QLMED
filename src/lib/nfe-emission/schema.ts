@@ -20,6 +20,9 @@ const itemSchema = z.object({
   cest: z.string().max(7).nullable().optional(),
   anvisa: z.string().max(20).nullable().optional(),
   vPmc: money2.nullable().optional(),
+  lot: z.string().max(20).nullable().optional(),
+  lotExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  lotFab: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   // Só dígitos: são códigos da tabela fiscal. Sem isto, `max(n)` deixava passar
   // `<` e `&`, que entram no infNFe assinado e fazem o nosso SHA-1 divergir do
   // que a SEFAZ recalcula sobre a forma canónica C14N.

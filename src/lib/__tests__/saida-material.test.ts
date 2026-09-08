@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   clampCartQty,
@@ -80,5 +82,16 @@ describe('SPEC-057 saida-material helpers', () => {
     const a = groups[0].products.find((p) => p.productCodigo === 'A1')!;
     expect(a.totalQty).toBe(3);
     expect(a.lots).toHaveLength(2);
+  });
+});
+
+describe('SPEC-063 saida-material → emissão', () => {
+  it('emitNfe envia lote do carrinho', () => {
+    const src = readFileSync(
+      resolve(process.cwd(), 'src/app/(painel)/estoque/saida-material/page-client.tsx'),
+      'utf8',
+    );
+    expect(src).toContain('lot: line.lot');
+    expect(src).toContain('lotExpiry: line.lotExpiry');
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyIssuedStockCfop,
+  resolveIssuedItemBatches,
   daysToExpiry,
   parseLotExpiry,
   validityBand,
@@ -118,5 +119,29 @@ describe('classifyIssuedStockCfop', () => {
         to: null,
       });
     }
+  });
+});
+
+describe('SPEC-063 resolveIssuedItemBatches', () => {
+  it('lote preferido ganha do XML e do FEFO', () => {
+    expect(resolveIssuedItemBatches({
+      xmlBatches: [{ lot: 'XML', expiry: '2028-01-01', quantity: 3 }],
+      preferred: { cProd: 'A', lot: 'CART', lotExpiry: '2027-06-01', quantity: 2 },
+      itemQuantity: 9,
+    })).toEqual([{ lot: 'CART', lotExpiry: '2027-06-01', quantity: 2 }]);
+  });
+
+  it('sem preferido usa rastro do XML', () => {
+    expect(resolveIssuedItemBatches({
+      xmlBatches: [{ lot: 'XML', expiry: '2028-01-01', quantity: 3 }],
+      itemQuantity: 9,
+    })).toEqual([{ lot: 'XML', lotExpiry: '2028-01-01', quantity: 3 }]);
+  });
+
+  it('sem lote deixa vazio para FEFO', () => {
+    expect(resolveIssuedItemBatches({
+      xmlBatches: [],
+      itemQuantity: 4,
+    })).toEqual([{ lot: '', lotExpiry: null, quantity: 4 }]);
   });
 });
