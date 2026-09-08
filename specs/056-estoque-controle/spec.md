@@ -79,3 +79,9 @@ Hoje só existe Entrada NF-e com lotes em `nfe_entry_item`. Não há ledger de m
 ## Out of scope
 
 Multi-filial, bloqueio hard de vencido, FEFO obrigatório, serialização UDI, inventário cíclico completo.
+
+## Amendment 2026-09-07 (bugfix stock-ledger)
+
+- **REQ-007 (ampliado)**: venda do bem remetido anteriormente em consignação também sai do CUSTOMER — CFOPs 5116/6116 (terceiros) e 5117/6117 (produção) juntam-se ao 5114/6114 já previsto. FEFO segue debitando o cliente, não o CD.
+- **REQ-004 (ampliado)**: novo kind `ESTORNO_CANCELAGEM` — movimento compensatório append-only gravado quando a NF-e é cancelada (direção invertida, mesma localização/lote, `idempotencyKey = estorno:{movement.id}`, `occurredAt = cancelledAt`). O backfill não o apaga: é recriável pela reentrega do evento de cancelamento (auto-cura).
+- **REQ-008/009 (esclarecido)**: o re-registro de entrada recria os `nfeEntryItem` com ids novos; para manter a idempotência real, os movimentos `entrada-item:*` da invoice são substituídos (delete + recriação) a cada registro — o ledger espelha a geração vigente de itens, inclusive edições de lote (PATCH/clone/exclusão via `syncEntryItemMovement`).
