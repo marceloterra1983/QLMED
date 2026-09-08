@@ -315,6 +315,7 @@ export async function uploadOneDriveFile(
   folderPath: string,
   fileName: string,
   content: Buffer,
+  contentType = 'application/pdf',
 ): Promise<{ id: string; name: string }> {
   const encodedDriveId = encodeURIComponent(driveId);
   const remotePath = `${folderPath.replace(/\/$/, '')}/${fileName}`.replace(/^\/+/, '');
@@ -324,7 +325,7 @@ export async function uploadOneDriveFile(
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/pdf',
+        'Content-Type': contentType,
       },
       body: new Uint8Array(content),
       cache: 'no-store',
