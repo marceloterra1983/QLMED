@@ -22,6 +22,7 @@ import type { SefazEnvironment } from './autorizacao-urls';
 import type { NfeEmissionItem } from './types';
 import { invoicePatientWriteFields } from '@/lib/nfe/invoice-patient-fields';
 import { recordMovementsFromIssuedInvoice } from '@/lib/stock-ledger';
+import { assertConsignacaoLots, preferredLotsFromItems } from './rastro';
 
 const log = createLogger('nfe-emission');
 
@@ -68,6 +69,7 @@ export async function authorizeInvoiceEmission(
   }
 
   const payload = nfeEmissionPayloadSchema.parse(emission.payload);
+  assertConsignacaoLots(payload.cfop, payload.items);
   const destCnpj = payload.destCnpj;
   const customers = await listCustomerCnpjs(companyId);
   const destParts = await loadDestinatarioParts(companyId, destCnpj);
@@ -482,6 +484,11 @@ async function finalizeAuthorized(
   });
   log.info({ emissionId: ctx.emissionId, invoiceId, cStat: input.cStat }, 'NF-e autorizada');
   try {
+    const emissionRow = await prisma.invoiceEmission.findFirst({
+      where: { id: ctx.emissionId, companyId: ctx.companyId },
+      select: { payload: true },
+    });
+    const parsedPayload = nfeEmissionPayloadSchema.safeParse(emissionRow?.payload);
     await recordMovementsFromIssuedInvoice({
       companyId: ctx.companyId,
       invoiceId,
@@ -490,6 +497,7 @@ async function finalizeAuthorized(
       recipientCnpj: input.dest.cnpj,
       recipientName: input.dest.xNome,
       issueDate: input.issueDate,
+      preferredLots: parsedPayload.success ? preferredLotsFromItems(parsedPayload.data.items) : [],
     });
   } catch (err) {
     log.error({ err, invoiceId, emissionId: ctx.emissionId }, 'Falha ao gravar movimentos de estoque na NF-e emitida');

@@ -86,6 +86,26 @@ describe('nfe xml builder', () => {
     expect(xml).toContain('<med><cProdANVISA>10216839008</cProdANVISA><vPMC>115.00</vPMC></med>');
   });
 
+  it('item com lote e validade gera <rastro> completo', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      items: sampleDraft().items.map((item) => ({
+        ...item,
+        anvisa: undefined,
+        lot: '2402120084',
+        lotExpiry: '2027-02-11',
+      })),
+    }));
+    expect(xml).toContain('<rastro><nLote>2402120084</nLote><qLote>2.000</qLote><dFab>2024-02-12</dFab><dVal>2027-02-11</dVal></rastro>');
+  });
+
+  it('item sem lote não gera <rastro>', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      items: sampleDraft().items.map((item) => ({ ...item, anvisa: undefined })),
+    }));
+    expect(xml).not.toContain('<rastro>');
+  });
+
+
   it('CRT 3 segue o DNA das emitidas: CST 40, PIS 01 0,65/3, boleto e CIF', () => {
     const xml = buildUnsignedNfeXml(sampleDraft({
       natureza: 'Venda merc.adq. ou recb. terc.',

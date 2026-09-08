@@ -28,6 +28,8 @@ import {
   isSemPagamentoCfop,
 } from '@/lib/nfe-emission/issued-defaults';
 import { splitSaidaOperationsForDropdown } from '@/lib/nfe-emission/operations';
+import { isRemessaConsignacaoCfop } from '@/lib/nfe-emission/rastro';
+import EmissionLotFields, { type StockLotOption } from './EmissionLotFields';
 import { recipientDisplayName } from '@/lib/nfe-emission/recipient-display-name';
 import {
   NFE_FORM_STEPS,
@@ -79,6 +81,8 @@ type Line = {
   anvisa?: string | null;
   orig?: string | null;
   csosn?: string | null;
+  lot?: string | null;
+  lotExpiry?: string | null;
 };
 
 const STEP_NAV: { id: NfeFormStep; icon: string }[] = [
@@ -149,6 +153,7 @@ export default function EmitirNfePage() {
   const [productQuery, setProductQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Line[]>([]);
+  const [stockLots, setStockLots] = useState<Record<string, StockLotOption[]>>({});
   const [openItem, setOpenItem] = useState<number | null>(null);
   const [modFrete, setModFrete] = useState(DEFAULT_MOD_FRETE);
   const [vFrete, setVFrete] = useState('0.00');
@@ -172,6 +177,30 @@ export default function EmitirNfePage() {
   const [emissionId, setEmissionId] = useState<string | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [sefazMotivo, setSefazMotivo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const codes = [...new Set(items.map((i) => i.cProd).filter(Boolean))];
+    if (codes.length === 0) return;
+    let cancelled = false;
+    void Promise.all(
+      codes.map(async (codigo) => {
+        const res = await fetch(`/api/nfe-emissions/stock-lots?codigo=${encodeURIComponent(codigo)}`);
+        if (!res.ok) return { codigo, lots: [] as StockLotOption[] };
+        const data = await res.json();
+        return { codigo, lots: (data.lots || []) as StockLotOption[] };
+      }),
+    ).then((rows) => {
+      if (cancelled) return;
+      setStockLots((prev) => {
+        const next = { ...prev };
+        for (const row of rows) next[row.codigo] = row.lots;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   const op = operations.find((o) => o.cfop === cfop);
   const { featured: featuredOps, rest: restOps } = useMemo(
@@ -344,6 +373,9 @@ export default function EmitirNfePage() {
     if (items.length === 0) list.push('Inclua ao menos um item');
     if (items.some((i) => i.ncm.length !== 8)) list.push('Todo item precisa de NCM com 8 dígitos');
     if (items.some((i) => Number(i.qCom) <= 0 || Number(i.vUnCom) < 0)) list.push('Quantidade e valor unitário inválidos');
+    if (isRemessaConsignacaoCfop(cfop) && items.some((i) => !String(i.lot || '').trim())) {
+      list.push('Consignação exige lote de estoque em cada item');
+    }
     if (modFrete !== '9' && !transpNome.trim()) list.push('Informe a transportadora ou use “sem transporte”');
     if (tPag !== '90' && vNf <= 0) list.push('Pagamento informado exige valor da nota maior que zero');
     if (certExpired) list.push('Certificado A1 vencido');
@@ -418,6 +450,8 @@ export default function EmitirNfePage() {
         anvisa: i.anvisa,
         orig: i.orig,
         csosn: i.csosn,
+        lot: i.lot || undefined,
+        lotExpiry: i.lotExpiry || undefined,
       })),
     };
   }
@@ -683,7 +717,15 @@ export default function EmitirNfePage() {
                               {item.cProd}
                               {item.anvisa ? ` · ANVISA ${item.anvisa}` : ''}
                               {item.cest ? ` · CEST ${item.cest}` : ''}
+                              {item.lot ? ` · Lote ${item.lot}` : ''}
                             </div>
+                            <EmissionLotFields
+                              lot={item.lot}
+                              lotExpiry={item.lotExpiry}
+                              lots={stockLots[item.cProd] || []}
+                              required={isRemessaConsignacaoCfop(cfop)}
+                              onChange={(patch) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ...patch } : r))}
+                            />
                           </td>
                           <td className="pr-2 pt-2">
                             <input aria-label={`NCM do item `} value={item.ncm} onChange={(e) => setItems((rows) => rows.map((r, i) => i === idx ? { ...r, ncm: e.target.value.replace(/\D/g, '').slice(0, 8) } : r))} className={`${FILTER_INPUT_CLS} w-24`} />
