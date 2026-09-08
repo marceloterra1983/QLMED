@@ -93,6 +93,8 @@ página 2; o requisito do operador (este spec) é o contrário.
   buffer sem páginas devolve 1; nunca lança.
 - **AC-005**: Persist de 1 página chama `renderHtmlToPdf` uma vez; primeiro
   buffer com 2 páginas chama duas vezes e o segundo HTML tem `data-total="2"`.
+- **AC-006**: em `@media print`, `.folha-counter::after` usa `counter(page)`;
+  o texto `1 de` só vale em `@media screen`.
 
 ## Prior Art
 
