@@ -25,7 +25,7 @@ export async function persistAuthorizedDanfePdf(input: {
   invoiceNumber: string;
   xml: string;
   issueDate: Date | string | null;
-}): Promise<string | null> {
+}): Promise<{ filePath: string; buffer: Buffer } | null> {
   try {
     const parsed = await parseXml(input.xml);
     const data = extractDanfeData(parsed);
@@ -37,7 +37,9 @@ export async function persistAuthorizedDanfePdf(input: {
       html = buildDanfeHtml(data, false, { totalPages: pages });
       pdf = await renderHtmlToPdf(html, DANFE_PDF_OPTIONS);
     }
-    return saveIssuedPdfToFile(input.companyId, input.invoiceNumber, pdf, input.issueDate);
+    const filePath = await saveIssuedPdfToFile(input.companyId, input.invoiceNumber, pdf, input.issueDate);
+    if (!filePath) return null;
+    return { filePath, buffer: pdf };
   } catch (err) {
     log.error({ err, invoiceNumber: input.invoiceNumber }, 'Falha ao gravar DANFE PDF');
     return null;

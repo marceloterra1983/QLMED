@@ -19,13 +19,14 @@ describe('persistAuthorizedDanfePdf', () => {
 
   it('grava PDF a partir do XML autorizado', async () => {
     const xml = '<nfeProc><NFe><infNFe><ide><nNF>65248</nNF><serie>2</serie></ide></infNFe></NFe></nfeProc>';
-    const path = await persistAuthorizedDanfePdf({
+    const result = await persistAuthorizedDanfePdf({
       companyId: 'co1',
       invoiceNumber: '65248',
       xml,
       issueDate: '2026-09-08',
     });
-    expect(path).toBe('/tmp/Danfe_NF000065248.pdf');
+    expect(result?.filePath).toBe('/tmp/Danfe_NF000065248.pdf');
+    expect(result?.buffer).toBeInstanceOf(Buffer);
     expect(renderHtmlToPdf).toHaveBeenCalledOnce();
     expect(saveIssuedPdfToFile).toHaveBeenCalledWith('co1', '65248', expect.any(Buffer), '2026-09-08');
   });
@@ -49,14 +50,14 @@ describe('persistAuthorizedDanfePdf', () => {
       .mockResolvedValueOnce(twoPagePdf)
       .mockResolvedValueOnce(Buffer.from('%PDF-1.4'));
 
-    const path = await persistAuthorizedDanfePdf({
+    const result = await persistAuthorizedDanfePdf({
       companyId: 'co1',
       invoiceNumber: '65210',
       xml: '<nfeProc><NFe><infNFe><ide><nNF>65210</nNF><serie>2</serie></ide></infNFe></NFe></nfeProc>',
       issueDate: '2026-09-08',
     });
 
-    expect(path).toBe('/tmp/Danfe_NF000065248.pdf');
+    expect(result?.filePath).toBe('/tmp/Danfe_NF000065248.pdf');
     expect(renderHtmlToPdf).toHaveBeenCalledTimes(2);
     const secondHtml = String(renderHtmlToPdf.mock.calls.at(1)?.at(0) ?? '');
     expect(secondHtml).toContain('data-total="2"');
