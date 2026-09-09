@@ -6,7 +6,7 @@ import { renderHtmlToPdf } from '@/lib/pdf/render';
 import { createLogger } from '@/lib/logger';
 import type { PdfInvoiceView } from '@/lib/pdf/pdf-types';
 import { parseXml, getPdfFilename } from '@/lib/pdf/pdf-utils';
-import { extractDanfeData, buildDanfeHtml, buildFallbackHtml } from '@/lib/pdf/danfe-generator';
+import { extractDanfeData, buildDanfeHtml, buildReceivedDanfeHtml, buildFallbackHtml } from '@/lib/pdf/danfe-generator';
 import { extractCteData, buildCteDataFromInvoice, buildCteHtml } from '@/lib/pdf/dacte-generator';
 import { extractNfseData, buildNfseHtml } from '@/lib/pdf/nfse-generator';
 
@@ -39,29 +39,35 @@ export async function GET(
     const autoPrint = url.searchParams.get('print') === 'true';
     const download = url.searchParams.get('download') === 'true';
 
-    const originalIssuedPdf = await getOriginalIssuedPdf({
-      companyId: invoice.companyId,
-      type: invoice.type,
-      direction: invoice.direction,
-      number: invoice.number,
-      issueDate: invoice.issueDate,
-    });
-
-    if (originalIssuedPdf) {
-      const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);
-      const dispositionType = download ? 'attachment' : 'inline';
-
-      return new Response(new Uint8Array(originalIssuedPdf.buffer), {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `${dispositionType}; filename="${originalIssuedPdf.filename}"; filename*=UTF-8''${encodedFilename}`,
-          'Cache-Control': autoPrint
-            ? 'no-store, no-cache, must-revalidate, max-age=0'
-            : 'private, max-age=300',
-          Pragma: 'no-cache',
-          Expires: '0',
-        },
+    // NF-e com XML: gera DANFE no app (logo vetorial limpo). PDF original
+    // do OneDrive fica disponível com ?source=original (carimbo antigo pixelado).
+    const wantOriginalPdf = url.searchParams.get('source') === 'original';
+    const canGenerateNfeDanfe = Boolean(invoice.xmlContent && invoice.type === 'NFE');
+    if (wantOriginalPdf || !canGenerateNfeDanfe) {
+      const originalIssuedPdf = await getOriginalIssuedPdf({
+        companyId: invoice.companyId,
+        type: invoice.type,
+        direction: invoice.direction,
+        number: invoice.number,
+        issueDate: invoice.issueDate,
       });
+
+      if (originalIssuedPdf) {
+        const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);
+        const dispositionType = download ? 'attachment' : 'inline';
+
+        return new Response(new Uint8Array(originalIssuedPdf.buffer), {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `${dispositionType}; filename="${originalIssuedPdf.filename}"; filename*=UTF-8''${encodedFilename}`,
+            'Cache-Control': autoPrint
+              ? 'no-store, no-cache, must-revalidate, max-age=0'
+              : 'private, max-age=300',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        });
+      }
     }
 
     let html: string;
@@ -70,7 +76,11 @@ export async function GET(
       if (invoice.xmlContent && invoice.type === 'NFE') {
         const parsed = await parseXml(invoice.xmlContent);
         const data = extractDanfeData(parsed);
-        html = buildDanfeHtml(data, autoPrint);
+        if (invoice.direction === 'received') {
+          html = buildReceivedDanfeHtml(data, autoPrint);
+        } else {
+          html = buildDanfeHtml(data, autoPrint);
+        }
       } else if (invoice.xmlContent && invoice.type === 'CTE') {
         const parsed = await parseXml(invoice.xmlContent);
         const data = extractCteData(parsed, invoice as PdfInvoiceView);
@@ -109,7 +119,9 @@ export async function GET(
       const pdfBuffer = await renderHtmlToPdf(html, {
         format: 'A4',
         printBackground: true,
-        margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' },
+        margin: invoice.direction === 'received'
+          ? { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' }
+          : { top: '4mm', right: '4mm', bottom: '4mm', left: '4mm' },
       });
 
       return new Response(pdfBuffer, {
