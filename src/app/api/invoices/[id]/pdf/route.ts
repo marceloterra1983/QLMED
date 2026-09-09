@@ -6,7 +6,7 @@ import { renderHtmlToPdf } from '@/lib/pdf/render';
 import { createLogger } from '@/lib/logger';
 import type { PdfInvoiceView } from '@/lib/pdf/pdf-types';
 import { parseXml, getPdfFilename } from '@/lib/pdf/pdf-utils';
-import { extractDanfeData, buildDanfeHtml, buildFallbackHtml } from '@/lib/pdf/danfe-generator';
+import { extractDanfeData, buildDanfeHtml, buildReceivedDanfeHtml, buildFallbackHtml } from '@/lib/pdf/danfe-generator';
 import { extractCteData, buildCteDataFromInvoice, buildCteHtml } from '@/lib/pdf/dacte-generator';
 import { extractNfseData, buildNfseHtml } from '@/lib/pdf/nfse-generator';
 
@@ -70,7 +70,11 @@ export async function GET(
       if (invoice.xmlContent && invoice.type === 'NFE') {
         const parsed = await parseXml(invoice.xmlContent);
         const data = extractDanfeData(parsed);
-        html = buildDanfeHtml(data, autoPrint);
+        if (invoice.direction === 'received') {
+          html = buildReceivedDanfeHtml(data, autoPrint);
+        } else {
+          html = buildDanfeHtml(data, autoPrint);
+        }
       } else if (invoice.xmlContent && invoice.type === 'CTE') {
         const parsed = await parseXml(invoice.xmlContent);
         const data = extractCteData(parsed, invoice as PdfInvoiceView);
@@ -109,7 +113,9 @@ export async function GET(
       const pdfBuffer = await renderHtmlToPdf(html, {
         format: 'A4',
         printBackground: true,
-        margin: { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' },
+        margin: invoice.direction === 'received'
+          ? { top: '5mm', right: '5mm', bottom: '5mm', left: '5mm' }
+          : { top: '4mm', right: '4mm', bottom: '4mm', left: '4mm' },
       });
 
       return new Response(pdfBuffer, {

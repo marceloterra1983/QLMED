@@ -1,9 +1,27 @@
-import type { PdfInvoiceView } from './pdf-types';
+import type { DanfeData, PdfInvoiceView } from './pdf-types';
 import { esc, fmtCnpj, fmtKey, fmtDate, fmtCurrency, getPdfFilename } from './pdf-utils';
 import { PDF_CSS } from './pdf-css';
+import { buildDanfeHtml as buildIssuedDanfeHtml } from './danfe-html';
+import { buildReceivedDanfeHtml } from './danfe-received-html';
 
 export { extractDanfeData } from './danfe-extract';
-export { buildDanfeHtml } from './danfe-html';
+export { buildIssuedDanfeHtml, buildReceivedDanfeHtml };
+
+export interface BuildDanfeOptions {
+  pageCount?: number;
+  direction?: 'issued' | 'received';
+}
+
+export function buildDanfeHtml(
+  data: DanfeData,
+  autoPrint: boolean = false,
+  options?: BuildDanfeOptions,
+): string {
+  if (options?.direction === 'received') {
+    return buildReceivedDanfeHtml(data, autoPrint);
+  }
+  return buildIssuedDanfeHtml(data, autoPrint, options);
+}
 
 // ==================== Fallback for non-NFe ====================
 

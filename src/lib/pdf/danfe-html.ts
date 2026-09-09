@@ -75,7 +75,6 @@ function buildHeader(d: DanfeData, page: number, totalPages: number): string {
         </div>
       </div>`
     : `<div class="emit-block">
-        ${DANFE_LOGO_SVG}
         <div class="emit-text">
           <div class="emit-name">${esc(emitenteLetterheadName(d))}</div>
           <div>${esc(d.emitEnd)}</div>
@@ -395,3 +394,6 @@ export function buildDanfeHtml(
 </body>
 </html>`;
 }
+
+export const buildIssuedDanfeHtml = buildDanfeHtml;
+
