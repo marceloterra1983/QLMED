@@ -39,29 +39,35 @@ export async function GET(
     const autoPrint = url.searchParams.get('print') === 'true';
     const download = url.searchParams.get('download') === 'true';
 
-    const originalIssuedPdf = await getOriginalIssuedPdf({
-      companyId: invoice.companyId,
-      type: invoice.type,
-      direction: invoice.direction,
-      number: invoice.number,
-      issueDate: invoice.issueDate,
-    });
-
-    if (originalIssuedPdf) {
-      const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);
-      const dispositionType = download ? 'attachment' : 'inline';
-
-      return new Response(new Uint8Array(originalIssuedPdf.buffer), {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `${dispositionType}; filename="${originalIssuedPdf.filename}"; filename*=UTF-8''${encodedFilename}`,
-          'Cache-Control': autoPrint
-            ? 'no-store, no-cache, must-revalidate, max-age=0'
-            : 'private, max-age=300',
-          Pragma: 'no-cache',
-          Expires: '0',
-        },
+    // NF-e com XML: gera DANFE no app (logo vetorial limpo). PDF original
+    // do OneDrive fica disponível com ?source=original (carimbo antigo pixelado).
+    const wantOriginalPdf = url.searchParams.get('source') === 'original';
+    const canGenerateNfeDanfe = Boolean(invoice.xmlContent && invoice.type === 'NFE');
+    if (wantOriginalPdf || !canGenerateNfeDanfe) {
+      const originalIssuedPdf = await getOriginalIssuedPdf({
+        companyId: invoice.companyId,
+        type: invoice.type,
+        direction: invoice.direction,
+        number: invoice.number,
+        issueDate: invoice.issueDate,
       });
+
+      if (originalIssuedPdf) {
+        const encodedFilename = encodeURIComponent(originalIssuedPdf.filename);
+        const dispositionType = download ? 'attachment' : 'inline';
+
+        return new Response(new Uint8Array(originalIssuedPdf.buffer), {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `${dispositionType}; filename="${originalIssuedPdf.filename}"; filename*=UTF-8''${encodedFilename}`,
+            'Cache-Control': autoPrint
+              ? 'no-store, no-cache, must-revalidate, max-age=0'
+              : 'private, max-age=300',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        });
+      }
     }
 
     let html: string;

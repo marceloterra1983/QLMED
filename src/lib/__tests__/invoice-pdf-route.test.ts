@@ -119,4 +119,57 @@ describe('GET /api/invoices/[id]/pdf — separação de leiaute entrada x saída
     expect(html).toContain('canhoto-spacer');
     expect(html).toContain('QL MED MAT. HOSP. LTDA');
   });
+
+  it('ignora DANFE original quando a NF-e emitida tem XML (logo vetorial)', async () => {
+    mocks.getOriginalIssuedPdf.mockResolvedValue({
+      buffer: Buffer.from('%PDF-1.4 original'),
+      filename: 'Danfe_NF000065254.pdf',
+    });
+    mocks.invoiceFindFirst.mockResolvedValue({
+      id: 'inv-iss-2',
+      companyId: 'comp-1',
+      type: 'NFE',
+      direction: 'issued',
+      number: '65254',
+      series: '2',
+      xmlContent: SAMPLE_XML.replaceAll('Fornecedor de Entrada Ltda', 'Ql Med Materiais Hospitalares Ltda.').replaceAll('12345678000199', '07832309000197'),
+      issueDate: new Date('2026-09-08'),
+      totalValue: 100,
+      company: { razaoSocial: 'QL MED', cnpj: '07832309000197' },
+    });
+
+    const req = new Request('http://localhost:3000/api/invoices/inv-iss-2/pdf');
+    const res = await GET(req, { params: Promise.resolve({ id: 'inv-iss-2' }) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).not.toContain('application/pdf');
+    const html = await res.text();
+    expect(html).toContain('emit-logo');
+    expect(html).toContain('ql-danfe-disc');
+    expect(mocks.getOriginalIssuedPdf).not.toHaveBeenCalled();
+  });
+
+  it('serve PDF original quando source=original mesmo com XML', async () => {
+    mocks.getOriginalIssuedPdf.mockResolvedValue({
+      buffer: Buffer.from('%PDF-1.4 original'),
+      filename: 'Danfe_NF000065254.pdf',
+    });
+    mocks.invoiceFindFirst.mockResolvedValue({
+      id: 'inv-iss-3',
+      companyId: 'comp-1',
+      type: 'NFE',
+      direction: 'issued',
+      number: '65254',
+      series: '2',
+      xmlContent: SAMPLE_XML.replaceAll('12345678000199', '07832309000197'),
+      issueDate: new Date('2026-09-08'),
+      totalValue: 100,
+      company: { razaoSocial: 'QL MED', cnpj: '07832309000197' },
+    });
+
+    const req = new Request('http://localhost:3000/api/invoices/inv-iss-3/pdf?source=original');
+    const res = await GET(req, { params: Promise.resolve({ id: 'inv-iss-3' }) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toContain('application/pdf');
+    expect(mocks.getOriginalIssuedPdf).toHaveBeenCalledOnce();
+  });
 });
