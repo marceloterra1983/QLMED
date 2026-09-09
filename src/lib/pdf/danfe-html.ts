@@ -52,7 +52,7 @@ function buildCanhoto(d: DanfeData): string {
       </td>
     </tr>
   </table>
-  <div class="canhoto-spacer"></div>
+  <div class="canhoto-line"></div>
 </div>`;
 }
 
@@ -62,26 +62,31 @@ function buildHeader(d: DanfeData, page: number, totalPages: number): string {
   const prot = d.nProt ? `${esc(d.nProt)} - ${esc(d.dhRecbto)}` : '';
   const isQlMed = (d.emitCnpj || '').replace(/\D/g, '') === QL_MED_CNPJ_DIGITS;
 
+  const emitStreet = isQlMed ? 'R. Dr. Salomão Nahas, Nº 44' : d.emitEnd;
+  const emitName = emitenteLetterheadName(d);
+
   const emitContent = isQlMed
     ? `<div class="emit-block">
-        ${DANFE_LOGO_SVG}
-        <div class="sr-only">
-          <div class="emit-name">${esc(emitenteLetterheadName(d))}</div>
-          <div>${esc(d.emitEnd)}</div>
-          <div>Bairro: ${esc(d.emitBairro)}</div>
-          <div>${esc(d.emitMun)} - ${esc(d.emitUF)}</div>
-          <div>CEP: ${fmtCep(d.emitCEP)}</div>
-          <div>FONE: ${fmtFone(d.emitFone)}</div>
+        <div class="emit-logo-wrap">
+          ${DANFE_LOGO_SVG}
+        </div>
+        <div class="emit-text">
+          <div class="emit-name">${esc(emitName)}</div>
+          <div class="emit-line">${esc(emitStreet)}</div>
+          <div class="emit-line">Bairro: ${esc(d.emitBairro)}</div>
+          <div class="emit-line">${esc(d.emitMun)} - ${esc(d.emitUF)}</div>
+          <div class="emit-line">CEP: ${fmtCep(d.emitCEP)}</div>
+          <div class="emit-line">FONE: ${fmtFone(d.emitFone)}</div>
         </div>
       </div>`
     : `<div class="emit-block">
         <div class="emit-text">
-          <div class="emit-name">${esc(emitenteLetterheadName(d))}</div>
-          <div>${esc(d.emitEnd)}</div>
-          <div>Bairro: ${esc(d.emitBairro)}</div>
-          <div>${esc(d.emitMun)} - ${esc(d.emitUF)}</div>
-          <div>CEP: ${fmtCep(d.emitCEP)}</div>
-          <div>FONE: ${fmtFone(d.emitFone)}</div>
+          <div class="emit-name">${esc(emitName)}</div>
+          <div class="emit-line">${esc(emitStreet)}</div>
+          <div class="emit-line">Bairro: ${esc(d.emitBairro)}</div>
+          <div class="emit-line">${esc(d.emitMun)} - ${esc(d.emitUF)}</div>
+          <div class="emit-line">CEP: ${fmtCep(d.emitCEP)}</div>
+          <div class="emit-line">FONE: ${fmtFone(d.emitFone)}</div>
         </div>
       </div>`;
 

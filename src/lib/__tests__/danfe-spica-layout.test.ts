@@ -116,11 +116,19 @@ describe('DANFE leiaute SPICA 65248', () => {
     expect(html).not.toContain('S&Eacute;RIE: 002');
 
     // Fidelidade do canhoto e cabeçalho Spica 65248
-    expect(html).toContain('canhoto-spacer');
+    expect(html).toContain('canhoto-line');
     expect(html).toContain('entry-exit-spica');
     expect(html).toContain('width:41.2%');
     expect(html).toContain('width:15.8%');
     expect(html).toContain('width:43.0%');
+    expect(html).toContain('emit-logo-wrap');
+    expect(html).toContain('emit-line');
+    expect(html).toContain('R. Dr. Salomão Nahas, Nº 44');
+    expect(html).toContain('Bairro: Cachoeira II');
+    expect(html).toContain('Campo Grande - MS');
+    expect(html).toContain('CEP: 79040-044');
+    expect(html).toContain('FONE: (67) 3326-3520');
+    expect(html).not.toContain('sr-only');
     expect(html).toContain('prods-filler');
   });
 

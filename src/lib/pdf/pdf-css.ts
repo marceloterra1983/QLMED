@@ -25,30 +25,34 @@ table.danfe .center { text-align: center; }
 table.danfe .right { text-align: right; }
 table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform: uppercase; padding: 1px 4px; }
 
-.canhoto-wrapper { margin-bottom: 1.5mm; }
-.canhoto-spacer { height: 2.5mm; }
-.canhoto-line { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
+.canhoto-wrapper { margin-bottom: 1mm; }
+.canhoto-spacer { height: 1mm; }
+.canhoto-line { border-bottom: 1px dashed #000; margin: 1.5mm 0 1mm; }
 
-.emit-block { display: flex; align-items: flex-start; gap: 6px; }
-.emit-spica { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 32mm; }
-.emit-spica .emit-logo { width: 100%; max-height: 33mm; height: auto; display: block; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.emit-logo { flex: 0 0 56px; }
+.emit-block { display: flex; align-items: center; gap: 5px; min-height: 28mm; }
+.emit-logo-wrap { flex: 0 0 28.5mm; width: 28.5mm; max-width: 28.5mm; display: flex; align-items: center; justify-content: center; }
+.emit-logo-wrap .emit-logo { width: 100%; height: auto; max-height: 27mm; display: block; }
 .emit-text {
+  flex: 1;
   font-family: "Arial Narrow", Arial, Helvetica, sans-serif;
   font-size: 8px;
-  line-height: 1.1;
+  line-height: 1.15;
   font-weight: 800;
   font-stretch: condensed;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .emit-name {
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  margin-bottom: 1px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5px;
+}
+.emit-line {
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .danfe-box { text-align: center; padding: 2px 3px; }

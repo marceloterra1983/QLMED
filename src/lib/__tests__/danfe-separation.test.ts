@@ -165,7 +165,7 @@ describe('Separação de geradores DANFE: entrada (received) vs saída (issued)'
     expect(htmlIssued).toContain('danfe-sheet');
     expect(htmlIssued).toContain('prods-filler');
     expect(htmlIssued).toContain('entry-exit-spica');
-    expect(htmlIssued).toContain('canhoto-spacer');
+    expect(htmlIssued).toContain('canhoto-line');
     expect(htmlIssued).toContain('QL MED MAT. HOSP. LTDA');
     expect(directIssued).toBe(htmlIssued);
   });
