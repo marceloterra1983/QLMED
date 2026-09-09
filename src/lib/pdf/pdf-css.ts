@@ -26,9 +26,13 @@ table.danfe .right { text-align: right; }
 table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform: uppercase; padding: 1px 4px; }
 
 .canhoto-wrapper { margin-bottom: 1.5mm; }
+.canhoto-spacer { height: 2.5mm; }
 .canhoto-line { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
 
 .emit-block { display: flex; align-items: flex-start; gap: 6px; }
+.emit-spica { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 32mm; }
+.emit-spica .emit-logo { width: 100%; max-height: 33mm; height: auto; display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .emit-logo { flex: 0 0 56px; }
 .emit-text {
   font-family: "Arial Narrow", Arial, Helvetica, sans-serif;
@@ -47,13 +51,16 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
   margin-bottom: 1px;
 }
 
-.danfe-box { text-align: center; padding: 2px 4px; }
-.danfe-box .danfe-title { font-size: 13px; font-weight: bold; letter-spacing: 1px; }
-.danfe-box .danfe-sub { font-size: 7px; line-height: 1.25; }
+.danfe-box { text-align: center; padding: 2px 3px; }
+.danfe-box .danfe-title { font-size: 14px; font-weight: bold; letter-spacing: 0.5px; }
+.danfe-box .danfe-sub { font-size: 6.5px; line-height: 1.2; }
 .danfe-box .entry-exit { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 3px 0; font-size: 7px; }
 .danfe-box .entry-exit .box { width: 16px; height: 14px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
-.danfe-box .nf-num { font-size: 11px; font-weight: bold; margin: 2px 0; }
-.danfe-box .nf-serie, .danfe-box .nf-page { font-size: 8px; }
+.danfe-box .entry-exit-spica { display: flex; justify-content: center; align-items: center; gap: 5px; margin: 2px 0; }
+.danfe-box .entry-exit-spica .ee-text { font-size: 6.5px; font-weight: bold; line-height: 1.15; text-align: left; }
+.danfe-box .entry-exit-spica .ee-box { width: 16px; height: 16px; border: 1.5px solid #000; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+.danfe-box .nf-num { font-size: 10.5px; font-weight: bold; margin: 1px 0; }
+.danfe-box .nf-serie, .danfe-box .nf-page { font-size: 8px; font-weight: bold; }
 /* Fallback 1 de N só na tela. Unscoped ganhava do @media print (mesma especificidade). */
 @media screen {
   .folha-counter::after { content: "1 de " attr(data-total); }
@@ -63,14 +70,15 @@ table.danfe .section-title { font-size: 6.5px; font-weight: bold; text-transform
 }
 
 .key-area { font-size: 7px; }
-.key-area .barcode-wrap { text-align: center; margin: 0 0 2px; }
-.key-area .barcode { max-width: 100%; height: 26px; }
-.key-area .key-value { font-family: 'Courier New', monospace; font-size: 7.2px; font-weight: bold; letter-spacing: 0; white-space: nowrap; }
-.key-area .consulta { font-size: 6px; color: #333; margin-top: 3px; line-height: 1.25; }
+.key-area .barcode-wrap { text-align: center; margin: 0 0 1px; }
+.key-area .barcode { max-width: 100%; height: 24px; }
+.key-area .key-sub-box { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1px 2px; margin: 1px 0 2px; }
+.key-area .key-value { font-family: Arial, Helvetica, sans-serif; font-size: 7.8px; font-weight: bold; letter-spacing: 0.2px; text-align: center; white-space: nowrap; margin-top: 1px; }
+.key-area .consulta { font-size: 5.5px; color: #222; text-align: center; line-height: 1.2; margin-top: 1px; }
 
 .nfe-badge { font-size: 13px; font-weight: bold; text-align: center; }
 
-table.prods { width: 100%; border-collapse: collapse; margin-top: -1px; min-height: 72mm; }
+table.prods { width: 100%; border-collapse: collapse; margin-top: -1px; min-height: 115mm; }
 table.prods thead { display: table-header-group; }
 table.prods td, table.prods th { border: 1px solid #000; padding: 1px 2px; font-size: 6.5px; vertical-align: top; }
 table.prods th { font-size: 5.5px; font-weight: bold; text-transform: uppercase; text-align: center; padding: 2px 1px; }
@@ -78,9 +86,10 @@ table.prods td.right { text-align: right; }
 table.prods td.center { text-align: center; }
 table.prods .prod-desc { font-size: 6.5px; font-weight: 600; }
 table.prods .prod-info { font-size: 6px; color: #333; }
+table.prods tr.prods-filler td { height: 95mm; border-top: 0; }
 
-table.dados-adicionais { min-height: 24mm; }
-table.dados-adicionais tr:last-child td { height: 24mm; vertical-align: top; }
+table.dados-adicionais { min-height: 28mm; }
+table.dados-adicionais tr:last-child td { height: 28mm; vertical-align: top; }
 
 .inf-cpl { font-size: 7px; line-height: 1.35; margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
 .footer-line { font-size: 7px; display: flex; justify-content: space-between; padding: 3px 0; margin-top: 2mm; color: #555; }

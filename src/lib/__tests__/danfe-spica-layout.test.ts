@@ -114,5 +114,26 @@ describe('DANFE leiaute SPICA 65248', () => {
     expect(html).not.toContain('data:');
     expect(html).not.toContain('QLMED - Sistema');
     expect(html).not.toContain('S&Eacute;RIE: 002');
+
+    // Fidelidade do canhoto e cabeçalho Spica 65248
+    expect(html).toContain('canhoto-spacer');
+    expect(html).toContain('entry-exit-spica');
+    expect(html).toContain('width:41.2%');
+    expect(html).toContain('width:15.8%');
+    expect(html).toContain('width:43.0%');
+    expect(html).toContain('prods-filler');
+  });
+
+  it('renderiza NF 65254 com fidelidade ao modelo Spica 65248', async () => {
+    const xml65254 = `<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00"><NFe><infNFe Id="NFe50260907832309000197550020000652541658056263" versao="4.00"><ide><natOp>Doacao</natOp><serie>2</serie><nNF>65254</nNF><dhEmi>2026-09-08T19:12:43-04:00</dhEmi><dhSaiEnt>2026-09-08T19:12:43-04:00</dhSaiEnt><tpNF>1</tpNF></ide><emit><CNPJ>07832309000197</CNPJ><xNome>Ql Med Materiais Hospitalares Ltda.</xNome><enderEmit><xLgr>Rua Dr. Salomao Nahas</xLgr><nro>44</nro><xBairro>Cachoeira II</xBairro><xMun>Campo Grande</xMun><UF>MS</UF><CEP>79040044</CEP><fone>6733263520</fone></enderEmit><IE>283379189</IE></emit><dest><CNPJ>19080416000195</CNPJ><xNome>Procat Intervencoes Cardiovasculares</xNome><enderDest><xLgr>Rua Hilda Bergo Duarte</xLgr><nro>81</nro><xBairro>Jardim Caramuru</xBairro><xMun>Dourados</xMun><UF>MS</UF><CEP>79806020</CEP></enderDest></dest><det nItem="1"><prod><cProd>TP00971</cProd><xProd>TRANSDUTOR DE PRESSÃO C/ TORNEIRA VALVULADA</xProd><NCM>90189010</NCM><CFOP>5910</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>120.00</vUnCom><vProd>120.00</vProd></prod><imposto><ICMS><ICMS40><orig>0</orig><CST>40</CST></ICMS40></ICMS></imposto><infAdProd>(Lote 18H03)        (RVS 10216839008)</infAdProd></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vBCST>0.00</vBCST><vST>0.00</vST><vProd>120.00</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vOutro>0.00</vOutro><vIPI>0.00</vIPI><vNF>120.00</vNF></ICMSTot></total><transp><modFrete>3</modFrete><transporta><CNPJ>07832309000197</CNPJ><xNome>TRANSPORTE PROPRIO</xNome><IE>283379189</IE><xEnder>Rua Dr. Salomao Nahas,44</xEnder><xMun>Campo Grande</xMun><UF>MS</UF></transporta><vol><qVol>1</qVol><esp>Material Medico</esp></vol></transp><infAdic><infAdFisco>Procedimento autorizado pelo Ajuste SINIEF 02/24</infAdFisco><infCpl>Isento ICMS Conv.1/99 Prorrog.ate 31/12/2026 pelo Conv 78/2025 de 08 de julho de 2025</infCpl></infAdic></infNFe></NFe><protNFe versao="4.00"><infProt><chNFe>50260907832309000197550020000652541658056263</chNFe><dhRecbto>2026-09-08T15:12:43-04:00</dhRecbto><nProt>150260040806829</nProt></infProt></protNFe></nfeProc>`;
+    const data = extractDanfeData(await parseXml(xml65254));
+    const html = buildDanfeHtml(data, false);
+    expect(html).toContain('000.065.254');
+    expect(html).toContain('TP00971');
+    expect(html).toContain('120,00');
+    expect(html).toContain('emit-logo');
+    expect(html).toContain('Isento ICMS Conv.1/99');
+    expect(html).toContain('Procedimento autorizado pelo Ajuste SINIEF 02/24');
+    expect(html).not.toContain('data:');
   });
 });
