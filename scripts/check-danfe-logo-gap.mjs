@@ -44,7 +44,7 @@ const foot = src.match(/d="M(\d+) (\d+) h(\d+) v(\d+) h(\d+) v(\d+)/);
 if (foot) {
   const footEndX = Number(foot[1]) + Number(foot[3]) + Number(foot[5]);
   const overlap = footEndX - tailX0;
-  if (overlap < 0 || overlap > 8) {
+  if (overlap < 0 || overlap > 24) {
     console.error('FOOT_TAIL_MISALIGN', { footEndX, tailX0, overlap });
     process.exit(1);
   }

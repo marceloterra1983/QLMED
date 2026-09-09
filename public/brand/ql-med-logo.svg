@@ -6,21 +6,22 @@
     </clipPath>
     <mask id="ql-cut-l" maskUnits="userSpaceOnUse">
       <rect x="0" y="0" width="560" height="512" fill="#fff"/>
-      <path fill="#000" d="M224 92 h78 v236 h70 v78 H224 Z"/>
+      <path fill="#000" d="M218 72 h84 v240 h110 v68 H218 Z"/>
     </mask>
   </defs>
   <g clip-path="url(#ql-disc)" mask="url(#ql-cut-l)">
     <g fill="#000">
-      <rect x="40" y="56" width="416" height="12.5"/>
-      <rect x="40" y="81" width="416" height="12.5"/>
-      <rect x="40" y="106" width="416" height="12.5"/>
-      <rect x="40" y="131" width="416" height="12.5"/>
-      <rect x="40" y="156" width="416" height="12.5"/>
-      <rect x="40" y="181" width="416" height="12.5"/>
-      <rect x="40" y="206" width="416" height="12.5"/>
-      <rect x="40" y="231" width="416" height="12.5"/>
+      <rect x="40" y="56" width="416" height="11"/>
+      <rect x="40" y="78" width="416" height="11"/>
+      <rect x="40" y="100" width="416" height="11"/>
+      <rect x="40" y="122" width="416" height="11"/>
+      <rect x="40" y="144" width="416" height="11"/>
+      <rect x="40" y="166" width="416" height="11"/>
+      <rect x="40" y="188" width="416" height="11"/>
+      <rect x="40" y="210" width="416" height="11"/>
+      <rect x="40" y="232" width="416" height="11"/>
     </g>
-    <rect x="40" y="256" width="416" height="220" fill="#000"/>
+    <rect x="40" y="241" width="416" height="235" fill="#000"/>
   </g>
-  <path fill="#000" d="M370 328 H520 V406 H370 Z"/>
+  <path fill="#000" d="M392 312 H518 V380 H392 Z"/>
 </svg>
