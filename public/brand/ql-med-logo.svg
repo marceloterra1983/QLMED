@@ -6,7 +6,7 @@
     </clipPath>
     <mask id="ql-cut-l" maskUnits="userSpaceOnUse">
       <rect x="0" y="0" width="560" height="512" fill="#fff"/>
-      <path fill="#000" d="M224 92 h78 v236 h108 v78 H224 Z"/>
+      <path fill="#000" d="M224 92 h78 v236 h70 v78 H224 Z"/>
     </mask>
   </defs>
   <g clip-path="url(#ql-disc)" mask="url(#ql-cut-l)">
@@ -22,5 +22,5 @@
     </g>
     <rect x="40" y="256" width="416" height="220" fill="#000"/>
   </g>
-  <path fill="#000" d="M400 332 H520 V416 H400 Z"/>
+  <path fill="#000" d="M370 328 H520 V406 H370 Z"/>
 </svg>
