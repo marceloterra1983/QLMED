@@ -215,6 +215,22 @@ function fakeTarget(
   };
 }
 
+function fakeMail(
+  mails: Array<{ to: string | string[]; subject: string; text: string; attachments?: unknown }>,
+) {
+  return {
+    async sendMail(mail: {
+      to: string | string[];
+      subject: string;
+      text: string;
+      attachments?: unknown;
+    }) {
+      mails.push(mail);
+      return { messageId: 'mail-1' };
+    },
+  };
+}
+
 describe('SPEC-042 L7 — notifyRenewals (FR-011 / AC-008)', () => {
   beforeEach(() => {
     memory.docs.length = 0;
@@ -226,21 +242,51 @@ describe('SPEC-042 L7 — notifyRenewals (FR-011 / AC-008)', () => {
 
   it('vigente 2026-10-12 substituído por 2026-12-12 → 1 envio e renewalNotifiedAt gravado', async () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const { DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS } = await import('@/lib/documentos/share-email');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+    const mails: Array<{ to: string | string[]; subject: string; text: string; attachments?: unknown }> = [];
     const target = fakeTarget(sent);
+    const mailTransport = fakeMail(mails);
 
-    await runDocumentosIngest(COMPANY, fakePort([OLD]), NOW, { target });
+    await runDocumentosIngest(COMPANY, fakePort([OLD]), NOW, { target, mailTransport });
     expect(sent).toHaveLength(0);
+    expect(mails).toHaveLength(0);
 
-    const second = await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, { target });
+    const second = await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, {
+      target,
+      mailTransport,
+    });
     expect(second.renewals).toHaveLength(1);
     expect(sent).toHaveLength(1);
     expect(sent[0]?.fileName).toBe(NEW.name);
     expect(sent[0]?.content.equals(PDF)).toBe(true);
     expect(sent[0]?.caption).toContain('renovada — válida até 12/12/2026');
+    expect(mails).toHaveLength(1);
+    expect(mails[0]?.to).toEqual([...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS]);
+    expect(mails[0]?.subject).toContain('12/12/2026');
+    expect(mails[0]?.text).toContain('renovada — válida até 12/12/2026');
 
     const created = memory.docs.find((row) => row.oneDriveItemId === NEW.itemId);
     expect(created?.renewalNotifiedAt).toBeInstanceOf(Date);
+  });
+
+  it('WhatsApp desligado: ainda envia e-mail de renovação', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const { DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS } = await import('@/lib/documentos/share-email');
+    const mails: Array<{ to: string | string[]; subject: string; text: string }> = [];
+    const mailTransport = fakeMail(mails);
+
+    await runDocumentosIngest(COMPANY, fakePort([OLD]), NOW, {
+      target: null,
+      mailTransport,
+    });
+    const second = await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, {
+      target: null,
+      mailTransport,
+    });
+    expect(second.renewals).toHaveLength(1);
+    expect(mails).toHaveLength(1);
+    expect(mails[0]?.to).toEqual([...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS]);
   });
 
   it('reexecução → 0 envios', async () => {
@@ -248,11 +294,15 @@ describe('SPEC-042 L7 — notifyRenewals (FR-011 / AC-008)', () => {
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
     const target = fakeTarget(sent);
 
-    await runDocumentosIngest(COMPANY, fakePort([OLD]), NOW, { target });
-    await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, { target });
+    const mailTransport = fakeMail([]);
+    await runDocumentosIngest(COMPANY, fakePort([OLD]), NOW, { target, mailTransport });
+    await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, { target, mailTransport });
     expect(sent).toHaveLength(1);
 
-    const third = await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, { target });
+    const third = await runDocumentosIngest(COMPANY, fakePort([OLD, NEW]), NOW, {
+      target,
+      mailTransport,
+    });
     expect(third.renewals).toHaveLength(0);
     expect(sent).toHaveLength(1);
   });
@@ -261,7 +311,10 @@ describe('SPEC-042 L7 — notifyRenewals (FR-011 / AC-008)', () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
 
-    const first = await runDocumentosIngest(COMPANY, fakePort([NEW]), NOW, { target: fakeTarget(sent) });
+    const first = await runDocumentosIngest(COMPANY, fakePort([NEW]), NOW, {
+      target: fakeTarget(sent),
+      mailTransport: fakeMail([]),
+    });
     expect(first.renewals).toHaveLength(0);
     expect(sent).toHaveLength(0);
     expect(memory.docs[0]?.renewalNotifiedAt).toBeNull();

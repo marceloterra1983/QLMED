@@ -12,6 +12,7 @@ import {
   uploadFolderPath,
   type Kind,
 } from './constants';
+import { afterDocumentosUpload } from './after-upload';
 
 export type DocumentosUploadKind = Exclude<Kind, 'outro'>;
 
@@ -123,6 +124,13 @@ export async function uploadDocumentosPdf(input: {
         validUntilSource: 'manual',
       },
       select: { id: true, kind: true, fileName: true, oneDriveItemId: true },
+    });
+
+    await afterDocumentosUpload({
+      companyId: input.companyId,
+      kind: input.kind,
+      documentId: row.id,
+      validUntilYmd: input.validUntil,
     });
 
     return {

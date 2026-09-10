@@ -38,6 +38,11 @@ import {
 } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import {
+  DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS,
+  shareDocumentByEmail,
+  type MailTransport,
+} from './share-email';
+import {
   sanitizeError,
   type DocumentosFolderPort,
   type RenewalEvent,
@@ -77,6 +82,7 @@ export type DocumentosAlertDeps = {
   port?: DocumentosFolderPort;
   target?: DocumentosWhatsAppTarget | null;
   prisma?: AlertPrisma;
+  mailTransport?: MailTransport;
 };
 
 /**
@@ -353,8 +359,6 @@ export async function notifyRenewals(
 ): Promise<void> {
   if (events.length === 0) return;
   const target = resolveTarget(deps);
-  if (!target) return;
-
   const db = dbOf(deps);
   const port = deps?.port ?? (await createDocumentosFolderPort(events[0].companyId));
 
@@ -387,7 +391,7 @@ export async function notifyRenewals(
       continue;
     }
 
-    // JOB-005: grave renewalNotifiedAt ANTES de chamar a Evolution.
+    // JOB-005: grave renewalNotifiedAt ANTES dos envios.
     // Um reinício entre o envio e a escrita duplicaria o aviso.
     await db.companyDocument.update({
       where: { id: row.id },
@@ -395,12 +399,40 @@ export async function notifyRenewals(
     });
     row.renewalNotifiedAt = new Date();
 
+    const caption = buildRenewalCaption(row, event.validUntil);
+
+    try {
+      await shareDocumentByEmail(
+        {
+          recipients: [...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS],
+          fileName: row.fileName,
+          pdf: content,
+          kindLabel: labelForKind(row.kind),
+          validUntil: event.validUntil,
+          note: caption,
+        },
+        { transport: deps?.mailTransport },
+      );
+      log.info({ documentId: row.id, kind: event.kind }, 'documentos_renewal_email_sent');
+    } catch (error) {
+      log.warn(
+        {
+          documentId: row.id,
+          kind: event.kind,
+          err: sanitizeError(error instanceof Error ? error.message : 'email'),
+        },
+        'documentos_renewal_email_failed',
+      );
+    }
+
+    if (!target) continue;
+
     try {
       await target.port.sendDocument({
         jid: target.jid,
         fileName: row.fileName,
         content,
-        caption: buildRenewalCaption(row, event.validUntil),
+        caption,
       });
       log.info({ documentId: row.id, kind: event.kind }, 'documentos_renewal_sent');
     } catch (error) {

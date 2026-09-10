@@ -14,6 +14,14 @@ export const DOCUMENTOS_SHARE_RECIPIENTS = [
   { email: 'joseroberto@qlmed.com.br', label: 'José Roberto' },
 ] as const;
 
+/** Destinatários do aviso automático de renovação (FR-011) — equipe operacional. */
+export const DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS = [
+  'marcelo@qlmed.com.br',
+  'daniele@qlmed.com.br',
+  'flavio@qlmed.com.br',
+  'joseroberto@qlmed.com.br',
+] as const;
+
 export type DocumentosShareRecipient = (typeof DOCUMENTOS_SHARE_RECIPIENTS)[number];
 
 export type ShareResult = { sent: string[]; messageId: string | null };
