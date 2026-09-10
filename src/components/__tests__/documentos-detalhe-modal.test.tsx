@@ -65,6 +65,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         canWrite
         onView={vi.fn()}
         onShare={vi.fn()}
+        onWhatsApp={vi.fn()}
         onUpdate={vi.fn()}
         onStartEdit={vi.fn()}
       />,
@@ -95,6 +96,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         canWrite
         onView={vi.fn()}
         onShare={vi.fn()}
+        onWhatsApp={vi.fn()}
         onUpdate={vi.fn()}
         onStartEdit={vi.fn()}
       />,
@@ -112,6 +114,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         canWrite
         onView={vi.fn()}
         onShare={vi.fn()}
+        onWhatsApp={vi.fn()}
         onUpdate={vi.fn()}
         onStartEdit={vi.fn()}
       />,
@@ -135,6 +138,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         canWrite
         onView={vi.fn()}
         onShare={vi.fn()}
+        onWhatsApp={vi.fn()}
         onUpdate={vi.fn()}
         onStartEdit={vi.fn()}
       />,
@@ -154,6 +158,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         canWrite
         onView={onView}
         onShare={vi.fn()}
+        onWhatsApp={vi.fn()}
         onUpdate={onUpdate}
         onStartEdit={vi.fn()}
       />,
@@ -162,5 +167,28 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
     expect(onUpdate).toHaveBeenCalledWith(row);
     fireEvent.click(screen.getByRole('button', { name: 'Ver' }));
     expect(onView).toHaveBeenCalledWith(row);
+  });
+
+  it('tem botão WhatsApp distinto de Compartilhar', () => {
+    const onWhatsApp = vi.fn();
+    const onShare = vi.fn();
+    const row = certidaoRow();
+    render(
+      <DocumentoDetalheModal
+        isOpen
+        onClose={vi.fn()}
+        row={row}
+        canWrite
+        onView={vi.fn()}
+        onShare={onShare}
+        onWhatsApp={onWhatsApp}
+        onUpdate={vi.fn()}
+        onStartEdit={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'WhatsApp' }));
+    expect(onWhatsApp).toHaveBeenCalledWith(row);
+    expect(onShare).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Compartilhar' })).toBeTruthy();
   });
 });

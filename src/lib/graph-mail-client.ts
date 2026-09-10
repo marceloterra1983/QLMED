@@ -317,11 +317,11 @@ export const listImpcgPdfAttachments = listGraphPdfAttachments;
 export async function listMailboxMessagesBySenderWithoutAttachments(
   mailbox: string,
   senderEmail: string,
-  options: { signal?: AbortSignal; maxPages?: number } = {},
+  options: { signal?: AbortSignal; maxPages?: number; search?: string } = {},
 ): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
-  const search = `"from:${senderEmail}"`;
+  const search = options.search ?? `"from:${senderEmail}"`;
   let next: string | null =
     `/users/${encodeURIComponent(mailbox)}/messages?$select=${select}&$search=${encodeURIComponent(search)}&$top=50`;
 
@@ -392,6 +392,18 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
     throw new GraphMailboxTruncatedError(messages, pages);
   }
   return messages;
+}
+
+/**
+ * `$search` KQL + ConsistencyLevel eventual. Usado para varrer cartas sem
+ * filtrar por remetente (FR-044).
+ */
+export async function listMailboxMessagesBySearch(
+  mailbox: string,
+  search: string,
+  options: { signal?: AbortSignal; maxPages?: number } = {},
+): Promise<GraphMailMessage[]> {
+  return listMailboxMessagesBySenderWithoutAttachments(mailbox, '', { ...options, search });
 }
 
 export type MailboxMessageBody = {

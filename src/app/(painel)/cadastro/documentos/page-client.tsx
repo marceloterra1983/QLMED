@@ -23,6 +23,7 @@ import { formatDateTime, formatInt } from '@/lib/utils';
 import CertidaoPdfModal from './components/CertidaoPdfModal';
 import DocumentoDetalheModal from './components/DocumentoDetalheModal';
 import DocumentoShareModal from './components/DocumentoShareModal';
+import DocumentoWhatsAppModal from './components/DocumentoWhatsAppModal';
 import DocumentoUpdateModal from './components/DocumentoUpdateModal';
 import DocumentosFamilyTable from './components/DocumentosFamilyTable';
 
@@ -83,6 +84,8 @@ export default function DocumentosPageClient() {
   const [detailRow, setDetailRow] = useState<DocumentosRow | null>(null);
   const [updateRow, setUpdateRow] = useState<DocumentosRow | null>(null);
   const [shareRow, setShareRow] = useState<DocumentosRow | null>(null);
+  const [whatsAppRow, setWhatsAppRow] = useState<DocumentosRow | null>(null);
+  const [scanningMail, setScanningMail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (opts?: { quiet?: boolean }) => {
@@ -148,6 +151,33 @@ export default function DocumentosPageClient() {
       toast.error('Erro de rede ao atualizar');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleScanCartasEmail() {
+    setScanningMail(true);
+    try {
+      const res = await fetch('/api/documentos/cartas-email', { method: 'POST' });
+      if (res.status === 409) {
+        toast.error('já em andamento');
+        return;
+      }
+      const payload: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(apiErrorMessage(payload, 'Não foi possível varrer o e-mail agora'));
+        return;
+      }
+      const result = payload as {
+        mail?: { scanned?: number; imported?: number; skipped?: number };
+      };
+      toast.success(
+        `Cartas no e-mail: ${formatInt(result.mail?.imported ?? 0)} novas, ${formatInt(result.mail?.scanned ?? 0)} anexos lidos`,
+      );
+      await load({ quiet: true });
+    } catch {
+      toast.error('Erro de rede ao varrer o e-mail');
+    } finally {
+      setScanningMail(false);
     }
   }
 
@@ -286,6 +316,10 @@ export default function DocumentosPageClient() {
       if (!row.id) return;
       setShareRow(row);
     },
+    onWhatsApp: (row: DocumentosRow) => {
+      if (!row.id) return;
+      setWhatsAppRow(row);
+    },
   };
 
   return (
@@ -308,6 +342,15 @@ export default function DocumentosPageClient() {
                   Preencher emissões
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleScanCartasEmail()}
+                loading={scanningMail}
+                icon="mail"
+              >
+                Buscar cartas no e-mail
+              </Button>
               <Button type="button" onClick={() => void handleSync()} loading={syncing} icon="sync">
                 Atualizar do OneDrive
               </Button>
@@ -410,6 +453,10 @@ export default function DocumentosPageClient() {
           if (!row.id) return;
           setShareRow(row);
         }}
+        onWhatsApp={(row) => {
+          if (!row.id) return;
+          setWhatsAppRow(row);
+        }}
         onUpdate={(row) => {
           setDetailRow(null);
           setEditingId(null);
@@ -439,6 +486,13 @@ export default function DocumentosPageClient() {
         documentId={shareRow?.id ?? ''}
         title={shareRow?.label ?? 'Documento'}
         recipients={data?.shareRecipients ?? []}
+      />
+
+      <DocumentoWhatsAppModal
+        isOpen={whatsAppRow != null && whatsAppRow.id != null}
+        onClose={() => setWhatsAppRow(null)}
+        documentId={whatsAppRow?.id ?? ''}
+        title={whatsAppRow?.label ?? 'Documento'}
       />
 
       <CertidaoPdfModal

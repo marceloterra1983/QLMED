@@ -717,6 +717,36 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(memory.docs[0]?.validUntilSource).toBeNull();
   });
 
+  it('carta prefere validade do PDF ao nome do ficheiro', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    pdfValidity.readValidityFromPdf.mockResolvedValue({
+      validUntil: '2027-03-01',
+      emitidoEm: '2026-03-01',
+      confidence: 'alta',
+      matchedLabel: 'Prazo',
+      textChars: 40,
+    });
+    await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: '7 - CARTA COMERCIALIZAÇÃO',
+          file: {
+            itemId: 'od-carta-pdf',
+            name: 'Carta Comercialização TECHIMPORT 15.08.24.pdf',
+            size: 2048,
+            lastModifiedAt: NOW,
+          },
+        },
+      ]),
+      NOW,
+    );
+    expect(ymd(memory.docs[0]?.validUntil ?? null)).toBe('2027-03-01');
+    expect(memory.docs[0]?.validUntilSource).toBe('pdf');
+    expect(ymd(memory.docs[0]?.emitidoEm ?? null)).toBe('2026-03-01');
+    expect(pdfValidity.readValidityFromPdf).toHaveBeenCalled();
+  });
+
   it('Cartão CNPJ grava a data do nome; vigente é 31.08.26; sem renovação', async () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
     const { buildDocumentosListing } = await import('@/lib/documentos/list');

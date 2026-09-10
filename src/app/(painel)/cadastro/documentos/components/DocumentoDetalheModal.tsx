@@ -15,6 +15,7 @@ export type DocumentoDetalheModalProps = {
   canWrite: boolean;
   onView: (row: DocumentosRow) => void;
   onShare: (row: DocumentosRow) => void;
+  onWhatsApp: (row: DocumentosRow) => void;
   onUpdate: (row: DocumentosRow) => void;
   onStartEdit: (row: DocumentosRow) => void;
 };
@@ -65,6 +66,7 @@ export default function DocumentoDetalheModal({
   canWrite,
   onView,
   onShare,
+  onWhatsApp,
   onUpdate,
   onStartEdit,
 }: DocumentoDetalheModalProps) {
@@ -160,6 +162,18 @@ export default function DocumentoDetalheModal({
             className="sm:w-auto"
           >
             Compartilhar
+          </Button>
+        ) : null}
+        {canWrite && hasFile && row.id ? (
+          <Button
+            type="button"
+            variant="secondary"
+            icon="chat"
+            onClick={() => onWhatsApp(row)}
+            block
+            className="sm:w-auto"
+          >
+            WhatsApp
           </Button>
         ) : null}
         {canUpdate ? (

@@ -110,6 +110,12 @@ export type DocumentosIngestResult = {
   renewals: RenewalEvent[];
   arquivados: number;
   skippedFamilies: DocumentosCategory[];
+  cartaMail?: {
+    scanned: number;
+    imported: number;
+    skipped: number;
+    failed: number;
+  } | null;
 };
 
 /** Outra ingestão já detém o advisory lock desta empresa. Rotas respondem 409. */
@@ -180,7 +186,8 @@ async function resolveIngestValidity(opts: {
     return { validUntil: null, validUntilSource: null, emitidoEm: null };
   }
   const fromName = extractValidUntil(opts.fileName);
-  if (fromName) {
+  const preferPdf = opts.kind === 'carta_comercializacao';
+  if (fromName && !preferPdf) {
     return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
   }
   try {
@@ -192,9 +199,15 @@ async function resolveIngestValidity(opts: {
     if (pdf.validUntil) {
       return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf', emitidoEm };
     }
+    if (fromName) {
+      return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm };
+    }
     return { validUntil: null, validUntilSource: null, emitidoEm };
   } catch {
-    // PDF ilegível ou download falhou: linha fica Sem data; o ciclo segue.
+    // PDF ilegível ou download falhou: linha fica Sem data (ou o nome, se houver).
+  }
+  if (fromName) {
+    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
   }
   return { validUntil: null, validUntilSource: null, emitidoEm: null };
 }
@@ -683,7 +696,20 @@ export async function runDocumentosIngest(
 
   try {
     const folderPort = port ?? (await enhancePort(companyId, await createDocumentosFolderPort(companyId)));
+    let cartaMail: DocumentosIngestResult['cartaMail'] = null;
+    if (!port) {
+      try {
+        const { scanCartaMailboxes } = await import('./carta-mail');
+        cartaMail = await scanCartaMailboxes(companyId);
+      } catch (error) {
+        log.warn(
+          { err: sanitizeError(error instanceof Error ? error.message : 'carta-mail') },
+          'documentos_carta_mail_failed',
+        );
+      }
+    }
     const result = await ingestCompany(companyId, folderPort, now);
+    result.cartaMail = cartaMail;
     if (result.renewals.length > 0) {
       try {
         const { notifyRenewals } = await import('./alerts');

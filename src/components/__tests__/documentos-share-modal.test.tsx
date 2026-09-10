@@ -50,14 +50,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('DocumentoShareModal (SPEC-042 L12)', () => {
-  it('lista os rótulos da allowlist e não oferece e-mail livre', () => {
+describe('DocumentoShareModal (SPEC-042 L12/L15)', () => {
+  it('lista os rótulos da allowlist e oferece e-mail livre', () => {
     renderModal();
     for (const recipient of RECIPIENTS) {
       expect(screen.getByText(recipient.label)).toBeTruthy();
     }
-    expect(screen.queryByRole('textbox', { name: /e-mail/i })).toBeNull();
-    expect(screen.queryByPlaceholderText(/e-mail/i)).toBeNull();
+    expect(screen.getByRole('textbox', { name: /outro e-mail/i })).toBeTruthy();
   });
 
   it('não envia com zero destinatários', () => {
@@ -85,6 +84,54 @@ describe('DocumentoShareModal (SPEC-042 L12)', () => {
     expect(vi.mocked(fetch)).toHaveBeenCalledWith(
       '/api/documentos/doc-federal/compartilhar',
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('e-mail livre sozinho habilita o envio', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ sent: ['compras@hospital.com.br'] })),
+    );
+    renderModal();
+    fireEvent.change(screen.getByRole('textbox', { name: /outro e-mail/i }), {
+      target: { value: 'compras@hospital.com.br' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Enviado para 1 destinatário');
+    });
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/documentos/doc-federal/compartilhar',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          recipients: ['compras@hospital.com.br'],
+        }),
+      }),
+    );
+  });
+
+  it('e-mail livre sozinho habilita o envio', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ sent: ['compras@hospital.com.br'] })),
+    );
+    renderModal();
+    fireEvent.change(screen.getByRole('textbox', { name: /outro e-mail/i }), {
+      target: { value: 'compras@hospital.com.br' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Enviado para 1 destinatário');
+    });
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/documentos/doc-federal/compartilhar',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          recipients: ['compras@hospital.com.br'],
+        }),
+      }),
     );
   });
 

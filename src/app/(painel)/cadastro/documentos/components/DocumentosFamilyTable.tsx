@@ -136,6 +136,7 @@ export type DocumentosFamilyTableProps = {
   onOpenDetail: (row: DocumentosRow) => void;
   onUpdate: (row: DocumentosRow) => void;
   onShare: (row: DocumentosRow) => void;
+  onWhatsApp: (row: DocumentosRow) => void;
   layout?: 'validity' | 'yearFolders';
 };
 
@@ -155,6 +156,7 @@ export default function DocumentosFamilyTable({
   onOpenDetail,
   onUpdate,
   onShare,
+  onWhatsApp,
   layout = 'validity',
 }: DocumentosFamilyTableProps) {
   function isEditingRow(row: DocumentosRow): boolean {
@@ -213,6 +215,7 @@ export default function DocumentosFamilyTable({
       });
       if (canWrite) {
         menu.push({ label: 'Compartilhar', icon: 'share', onSelect: () => onShare(row) });
+        menu.push({ label: 'WhatsApp', icon: 'chat', onSelect: () => onWhatsApp(row) });
       }
       menu.push({
         label: 'Baixar',

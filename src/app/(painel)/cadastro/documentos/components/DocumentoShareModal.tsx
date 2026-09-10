@@ -21,6 +21,13 @@ function apiErrorMessage(payload: unknown, fallback: string): string {
   return typeof error === 'string' && error.trim() ? error : fallback;
 }
 
+function splitExtraEmails(raw: string): string[] {
+  return raw
+    .split(/[,;\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function DocumentoShareModal({
   isOpen,
   onClose,
@@ -29,6 +36,7 @@ export default function DocumentoShareModal({
   recipients,
 }: DocumentoShareModalProps) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [extraEmail, setExtraEmail] = useState('');
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
@@ -38,6 +46,7 @@ export default function DocumentoShareModal({
   useEffect(() => {
     if (isOpen) return;
     setSelected([]);
+    setExtraEmail('');
     setNote('');
     setSending(false);
     // sendingRef NÃO é limpo aqui: o POST pode estar em curso e zerá-lo
@@ -54,7 +63,9 @@ export default function DocumentoShareModal({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (sendingRef.current || selected.length === 0) return;
+    const extras = splitExtraEmails(extraEmail);
+    const recipients = [...selected, ...extras];
+    if (sendingRef.current || recipients.length === 0) return;
     sendingRef.current = true;
     setSending(true);
     const mine = seqRef.current;
@@ -64,7 +75,7 @@ export default function DocumentoShareModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          recipients: selected,
+          recipients,
           note: trimmed ? trimmed : undefined,
         }),
       });
@@ -74,7 +85,7 @@ export default function DocumentoShareModal({
         return;
       }
       const sent = (payload as { sent?: unknown } | null)?.sent;
-      const n = Array.isArray(sent) ? sent.length : selected.length;
+      const n = Array.isArray(sent) ? sent.length : recipients.length;
       toast.success(n === 1 ? 'Enviado para 1 destinatário' : `Enviado para ${n} destinatários`);
       if (seqRef.current === mine) onClose();
     } catch {
@@ -85,7 +96,8 @@ export default function DocumentoShareModal({
     }
   }
 
-  const canSend = selected.length > 0 && !sending;
+  const extras = splitExtraEmails(extraEmail);
+  const canSend = (selected.length > 0 || extras.length > 0) && !sending;
 
   return (
     <Modal
@@ -111,6 +123,18 @@ export default function DocumentoShareModal({
             </label>
           ))}
         </fieldset>
+        <Field label="Outro e-mail" hint="Opcional. Um ou mais, separados por vírgula.">
+          <input
+            type="text"
+            inputMode="email"
+            autoComplete="email"
+            className={FIELD_CONTROL_CLS}
+            placeholder="ex.: compras@hospital.com.br"
+            aria-label="Outro e-mail"
+            value={extraEmail}
+            onChange={(event) => setExtraEmail(event.target.value)}
+          />
+        </Field>
         <Field label="Observação" hint="Opcional">
           <textarea
             className={`${FIELD_CONTROL_CLS} h-24 py-2`}
