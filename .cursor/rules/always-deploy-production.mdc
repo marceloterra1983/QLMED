@@ -26,10 +26,17 @@ Não invente outra porta nem outro Next. Detalhes: rule
 
 1. Espere o CI `ci.yml` **push/main** verde no SHA de 40 caracteres de `origin/main`.
 2. Garanta env necessário sem imprimir `.env` (ex.: VAPID para Web Push).
-3. `gh workflow run deploy-production.yml --ref main -f confirm_production=DEPLOY -f revision=<SHA>`.
-4. Se o environment `production` pedir aprovação, aprove (`gh` / `current_user_can_approve`).
+3. Despache com `bash scripts/deploy-production.sh <SHA>` (usa
+   `QLMED_DEPLOY_GH_TOKEN`). **Não** use o `gh` default do Cloud Agent —
+   o token da GitHub App Cursor só tem `actions:read` e devolve 403 em
+   `workflow_dispatch`.
+4. Se o environment `production` pedir aprovação, aprove (`GH_TOKEN=$QLMED_DEPLOY_GH_TOKEN gh …` / `current_user_can_approve`).
 5. Espere o workflow terminar verde. Health: `http://127.0.0.1:13000/api/health` com o SHA novo.
 6. Informe a URL do deploy e o SHA. Não cole segredo.
+
+Se `QLMED_DEPLOY_GH_TOKEN` estiver ausente: peça o secret no environment
+Cloud (PAT fine-grained, Actions=RW no QLMED) e **não** declare o deploy
+feito.
 
 Se a tarefa criou migration Prisma, o **mesmo PR** tem de atualizar
 `scripts/verify-production-migration-window.cjs` (`EXPECTED_MIGRATION` + SHA do

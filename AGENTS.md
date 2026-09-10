@@ -165,9 +165,11 @@ pelo host é `127.0.0.1:5432`, publicado pelo serviço `qlmed-db`.
 ### Deploy e migração de schema
 
 Deploy **não** roda no push. Push para `main` roda o `QLMED CI` e para aí;
-publicar exige `workflow_dispatch` manual de `deploy-production.yml`, com
-`confirm_production=DEPLOY` e o SHA de 40 caracteres do tip de `origin/main`
-que já tem CI verde. Migrações seguem expand/contract — rollback de imagem
+publicar exige `workflow_dispatch` de `deploy-production.yml`, com
+  `confirm_production=DEPLOY` e o SHA de 40 caracteres do tip de `origin/main`
+  que já tem CI verde. Cloud Agents: `bash scripts/deploy-production.sh <SHA>`
+  (requer secret `QLMED_DEPLOY_GH_TOKEN`; o token Cursor App não tem
+  `actions:write`). Migrações seguem expand/contract — rollback de imagem
 **não** desfaz migração aplicada, por isso migração nova é expand-only
 (portão em `src/lib/__tests__/deploy-manifests.test.ts`). Procedimento completo
 na skill `qlmed-deploy` (`.claude/skills/qlmed-deploy/SKILL.md`) e em
