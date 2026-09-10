@@ -7,6 +7,7 @@ import {
 } from '@/lib/onedrive-client';
 import {
   GraphMailboxError,
+  GraphMailboxTruncatedError,
   listImpcgMailboxMessages,
   listImpcgPdfAttachments,
   type ImpcgMailMessage,
@@ -371,13 +372,19 @@ export async function runImpcgIngest(
         messages = await resolved.mail.listMessages(mailbox, {});
       } catch (error) {
         const label = mailboxLabel(mailbox);
-        failedMailboxes.push(label);
-        const status = error instanceof GraphMailboxError ? error.status : 0;
-        errors.push(status === 403
-          ? `leitura de caixa falhou (${status})`
-          : sanitizeError(error instanceof Error ? error.message : 'falha na caixa'));
-        log.warn({ mailbox: label, status: status || undefined }, 'impcg_mailbox_failed');
-        continue;
+        if (error instanceof GraphMailboxTruncatedError) {
+          messages = error.messages;
+          errors.push('leitura de caixa truncada (maxPages)');
+          log.warn({ mailbox: label, pages: error.pages }, 'impcg_mailbox_truncated');
+        } else {
+          failedMailboxes.push(label);
+          const status = error instanceof GraphMailboxError ? error.status : 0;
+          errors.push(status === 403
+            ? `leitura de caixa falhou (${status})`
+            : sanitizeError(error instanceof Error ? error.message : 'falha na caixa'));
+          log.warn({ mailbox: label, status: status || undefined }, 'impcg_mailbox_failed');
+          continue;
+        }
       }
 
       for (const message of messages) {

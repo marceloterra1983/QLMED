@@ -5,49 +5,24 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
+import { getFiscalPeriodRangeFromDate } from '@/lib/fiscal-period';
 
 
 const dashboardQuerySchema = z.object({
   period: z.enum(['month', 'quarter', 'year']).default('month'),
 });
 
-function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-
-function startOfQuarter(date: Date): Date {
-  const q = Math.floor(date.getMonth() / 3) * 3;
-  return new Date(date.getFullYear(), q, 1);
-}
-
-function endOfQuarter(date: Date): Date {
-  const q = Math.floor(date.getMonth() / 3) * 3 + 2;
-  return new Date(date.getFullYear(), q + 1, 0, 23, 59, 59, 999);
-}
-
-function startOfYear(date: Date): Date {
-  return new Date(date.getFullYear(), 0, 1);
-}
-
-function endOfYear(date: Date): Date {
-  return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
-}
-
 function formatPeriodLabel(now: Date, period: string): string {
   switch (period) {
     case 'quarter': {
-      const q = Math.ceil((now.getMonth() + 1) / 3);
-      return `${q}° Trimestre ${now.getFullYear()}`;
+      const q = Math.ceil((now.getUTCMonth() + 1) / 3);
+      return `${q}° Trimestre ${now.getUTCFullYear()}`;
     }
     case 'year':
-      return String(now.getFullYear());
+      return String(now.getUTCFullYear());
     default: {
-      const monthName = now.toLocaleDateString('pt-BR', { month: 'long' });
-      return `${monthName} de ${now.getFullYear()}`;
+      const monthName = now.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
+      return `${monthName} de ${now.getUTCFullYear()}`;
     }
   }
 }
@@ -69,23 +44,7 @@ export async function GET(request: NextRequest) {
     const { period } = parsed.data;
 
     const now = new Date();
-    let dateFrom: Date;
-    let dateTo: Date;
-
-    switch (period) {
-      case 'quarter':
-        dateFrom = startOfQuarter(now);
-        dateTo = endOfQuarter(now);
-        break;
-      case 'year':
-        dateFrom = startOfYear(now);
-        dateTo = endOfYear(now);
-        break;
-      default:
-        dateFrom = startOfMonth(now);
-        dateTo = endOfMonth(now);
-        break;
-    }
+    const { startDate: dateFrom, endDate: dateTo } = getFiscalPeriodRangeFromDate(now, period);
 
     const periodFilter = {
       companyId,

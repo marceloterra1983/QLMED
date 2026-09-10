@@ -20,6 +20,19 @@ export class GraphMailboxError extends Error {
   }
 }
 
+/** Cap de páginas atingido: a lista em `messages` é parcial e o caller deve processá-la e assinalar truncagem. */
+export class GraphMailboxTruncatedError extends GraphMailboxError {
+  readonly messages: GraphMailMessage[];
+  readonly pages: number;
+
+  constructor(messages: GraphMailMessage[], pages: number) {
+    super('mailbox_truncated', 0);
+    this.name = 'GraphMailboxTruncatedError';
+    this.messages = messages;
+    this.pages = pages;
+  }
+}
+
 export type GraphMailMessage = {
   graphMessageId: string;
   internetMessageId: string;
@@ -142,11 +155,10 @@ async function graphJson<T>(
   const body = (await response.json().catch(() => null)) as T;
   return { status: response.status, body };
 }
-
 export async function listMailboxMessagesBySender(
   mailbox: string,
   senderEmail: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
@@ -167,7 +179,12 @@ export async function listMailboxMessagesBySender(
   };
 
   const messages: GraphMailMessage[] = [];
-  while (next) {
+  // SPEC-056: sem cap, um @odata.nextLink malformado/loopante ou um mailbox
+  // com história enorme gerava um array in-memory sem limite.
+  const maxPages = options.maxPages ?? 100;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    pages++;
     const listed = await graphJson<MessageListResponse>(
       accessToken,
       next,
@@ -193,10 +210,15 @@ export async function listMailboxMessagesBySender(
         hasAttachments: Boolean(row.hasAttachments),
       });
     }
+
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
   }
 
   messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
+  if (next) {
+    log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
+    throw new GraphMailboxTruncatedError(messages, pages);
+  }
   return messages;
 }
 
@@ -207,17 +229,27 @@ export async function listMailboxMessagesBySenders(
 ): Promise<GraphMailMessage[]> {
   const uniqueSenders = [...new Set(senderEmails.map((email) => email.trim()).filter(Boolean))];
   const byInternetMessageId = new Map<string, GraphMailMessage>();
+  let truncated: GraphMailboxTruncatedError | null = null;
   for (const sender of uniqueSenders) {
-    const rows = await listMailboxMessagesBySender(mailbox, sender, options);
+    let rows: GraphMailMessage[];
+    try {
+      rows = await listMailboxMessagesBySender(mailbox, sender, options);
+    } catch (error) {
+      if (!(error instanceof GraphMailboxTruncatedError)) throw error;
+      truncated = error;
+      rows = error.messages;
+    }
     for (const row of rows) {
       if (!byInternetMessageId.has(row.internetMessageId)) {
         byInternetMessageId.set(row.internetMessageId, row);
       }
     }
   }
-  return [...byInternetMessageId.values()].sort(
+  const merged = [...byInternetMessageId.values()].sort(
     (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime(),
   );
+  if (truncated) throw new GraphMailboxTruncatedError(merged, truncated.pages);
+  return merged;
 }
 
 export async function listImpcgMailboxMessages(
@@ -285,7 +317,7 @@ export const listImpcgPdfAttachments = listGraphPdfAttachments;
 export async function listMailboxMessagesBySenderWithoutAttachments(
   mailbox: string,
   senderEmail: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
@@ -304,21 +336,32 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
     '@odata.nextLink'?: string;
     error?: { message?: string; code?: string };
   };
-
   const messages: ImpcgMailMessage[] = [];
-  while (next) {
+  const maxPages = options.maxPages ?? 100;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    pages++;
     const url = /^https?:\/\//i.test(next)
       ? assertAllowedHost(next, GRAPH_ALLOWED_HOSTS).toString()
       : `${GRAPH_BASE}${next}`;
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-        ConsistencyLevel: 'eventual',
+    const response = await fetchWithResilience(
+      url,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          ConsistencyLevel: 'eventual',
+        },
+        cache: 'no-store',
       },
-      cache: 'no-store',
-      signal: perRequestSignal(options.signal),
-    });
+      {
+        signal: perRequestSignal(options.signal),
+        maxRetries: 3,
+        onRetry: (err, attempt, delayMs) => {
+          log.warn({ attempt, delayMs, err }, 'graph_request_retry');
+        },
+      },
+    );
     const body = (await response.json().catch(() => null)) as MessageListResponse;
     const status = response.status;
 
@@ -339,10 +382,15 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
         hasAttachments: Boolean(row.hasAttachments),
       });
     }
+
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
   }
 
   messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
+  if (next) {
+    log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
+    throw new GraphMailboxTruncatedError(messages, pages);
+  }
   return messages;
 }
 

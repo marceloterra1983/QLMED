@@ -4,6 +4,52 @@ import type { NFeDet, NFeMed, NFeProd, NFeRastro } from '@/types/nfe-xml';
 import { extractAnvisa } from './anvisa';
 import type { ProductBatch, ProductFromXml } from './units';
 
+function fillEqualShare<T extends { quantity: number | null }>(targets: T[], total: number): void {
+  const n = targets.length;
+  if (n === 0) return;
+  if (n === 1) {
+    targets[0].quantity = total;
+    return;
+  }
+  let remaining = total;
+  for (let i = 0; i < n; i++) {
+    if (i === n - 1) {
+      targets[i].quantity = remaining > 0 ? remaining : 0;
+      return;
+    }
+    const share = Number.isInteger(total) ? Math.floor(total / n) : total / n;
+    targets[i].quantity = share;
+    remaining -= share;
+  }
+}
+
+/** Mutates `lots` in place: fill missing quantities from `totalQty`. Zero — not null — when there is no remainder. */
+export function allocateLotQuantities<T extends { quantity: number | null }>(
+  lots: T[],
+  totalQty: number,
+): T[] {
+  if (!(totalQty > 0) || lots.length === 0) return lots;
+
+  const explicit = lots.filter((b) => b.quantity && b.quantity > 0);
+  if (explicit.length === 0) {
+    fillEqualShare(lots, totalQty);
+    return lots;
+  }
+
+  if (explicit.length < lots.length) {
+    const explicitSum = explicit.reduce((acc, b) => acc + (b.quantity ?? 0), 0);
+    const rest = totalQty - explicitSum;
+    const missing = lots.filter((b) => !b.quantity || b.quantity <= 0);
+    if (missing.length === 0) return lots;
+    if (rest > 0) {
+      fillEqualShare(missing, rest);
+    } else {
+      for (const m of missing) m.quantity = 0;
+    }
+  }
+  return lots;
+}
+
 function extractBatches(det: NFeDet, prod: NFeProd): ProductBatch[] {
   const batches: ProductBatch[] = [];
   const seenLots = new Set<string>();
@@ -24,7 +70,8 @@ function extractBatches(det: NFeDet, prod: NFeProd): ProductBatch[] {
 
   // 2. Fallback: <med> block (older format)
   if (batches.length === 0) {
-    for (const m of ensureArray<NFeMed>(det?.med).concat(ensureArray<NFeMed>(prod?.med))) {
+    const meds = ensureArray<NFeMed>(det?.med).concat(ensureArray<NFeMed>(prod?.med));
+    for (const m of meds) {
       const lot = cleanString(m?.nLote) || cleanString(m?.nLot);
       if (!lot || seenLots.has(lot)) continue;
       seenLots.add(lot);
@@ -80,6 +127,7 @@ function extractBatches(det: NFeDet, prod: NFeProd): ProductBatch[] {
     }
   }
 
+  allocateLotQuantities(batches, toNumber(prod?.qCom) || 0);
   return batches;
 }
 

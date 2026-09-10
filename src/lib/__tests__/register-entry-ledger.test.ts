@@ -9,8 +9,8 @@ const mocks = vi.hoisted(() => ({
   movementDelete: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  default: {
+vi.mock('@/lib/prisma', () => {
+  const client = {
     stockMovement: {
       deleteMany: mocks.movementDeleteMany,
       createMany: mocks.movementCreateMany,
@@ -21,8 +21,14 @@ vi.mock('@/lib/prisma', () => ({
     nfeEntryItem: {
       findMany: mocks.itemFindMany,
     },
-  },
-}));
+  };
+  return {
+    default: {
+      ...client,
+      $transaction: (fn: (tx: typeof client) => unknown) => fn(client),
+    },
+  };
+});
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),

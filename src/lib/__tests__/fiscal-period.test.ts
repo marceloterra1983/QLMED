@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFiscalPeriodRange, fiscalPeriodQuerySchema } from '@/lib/fiscal-period';
+import { getFiscalPeriodRange, getFiscalPeriodRangeFromDate, fiscalPeriodQuerySchema } from '@/lib/fiscal-period';
 
 const iso = (d: Date) => d.toISOString();
 
@@ -37,6 +37,13 @@ describe('getFiscalPeriodRange', () => {
     const jun = getFiscalPeriodRange('quarter', 2026, 6);
     expect(iso(abr.startDate)).toBe(iso(jun.startDate));
     expect(iso(abr.endDate)).toBe(iso(jun.endDate));
+  });
+
+  it('FromDate usa UTC, não o fuso do processo', () => {
+    const d = new Date('2026-04-01T01:00:00.000Z');
+    const { startDate, endDate } = getFiscalPeriodRangeFromDate(d, 'quarter');
+    expect(iso(startDate)).toBe('2026-04-01T00:00:00.000Z');
+    expect(iso(endDate)).toBe('2026-06-30T23:59:59.999Z');
   });
 
   it('trimestre não é o ano inteiro — o defeito que motivou a extração', () => {
