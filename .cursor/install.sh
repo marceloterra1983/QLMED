@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Cloud Agent — repository bootstrap for QLMED local dev.
 #
-# Idempotent: safe to re-run. Installs system deps (PostgreSQL 16, iproute2),
-# project deps, generates the Prisma client, applies migrations and writes a
-# gitignored local dev .env with random dev-only secrets. Real production
-# secrets NEVER live here — they belong in the Secrets panel / .env.enc.
+# Idempotent: safe to re-run. Sets up the QLMED dev stack (PostgreSQL, deps,
+# Prisma, local .env) and mirrors the maintainer's local developer toolchain
+# (graphify, Perplexity/TestSprite/Cline CLIs, ripgrep, tesseract, etc.) so a
+# Cloud Agent session behaves like the local workstation.
+#
+# Real production secrets NEVER live here — they belong in the Cursor Secrets
+# panel / .env.enc. This script only writes dev-only random secrets.
 #
 # Layer split (see env-setup skill): durable repo setup lives here; the
 # PostgreSQL daemon is (re)started every boot by start.sh; the Next.js dev
@@ -17,27 +20,56 @@ REPO_ROOT="$(pwd)"
 DB_PASSWORD="qlmed_dev_local"
 DB_URL="postgresql://postgres:${DB_PASSWORD}@127.0.0.1:5432/postgres?schema=public"
 
-echo "==> [1/5] System packages (PostgreSQL, iproute2)"
-if ! command -v psql >/dev/null 2>&1 || ! command -v ss >/dev/null 2>&1; then
+# Pinned versions mirroring the local workstation (npm -g / uv tool).
+GRAPHIFY_VERSION="0.9.51"
+NPM_GLOBAL_PKGS=(
+  "@openai/codex-security@0.1.8"
+  "@testsprite/testsprite-cli@0.5.0"
+  "cline@3.0.61"
+  "markdownlint-cli@0.48.0"
+  "perplexity-user-mcp@0.8.60"
+  "perplexity-web-api-mcp@0.11.0"
+)
+
+# ---------------------------------------------------------------------------
+echo "==> [1/7] System packages"
+# PostgreSQL + iproute2 (ss, used by the dev-server port guard) plus the CLI
+# tooling mirrored from the workstation: search (ripgrep), JSON (jq), shell
+# lint (shellcheck), sqlite, PDF utils + OCR (poppler/tesseract, incl. pt),
+# file watching (inotify-tools) and a virtual X server (xvfb) required by the
+# Perplexity MCP (`xvfb-run perplexity-user-mcp`).
+APT_PKGS=(
+  postgresql postgresql-client iproute2
+  ripgrep jq shellcheck sqlite3 poppler-utils
+  tesseract-ocr tesseract-ocr-por
+  unzip zip inotify-tools xvfb
+)
+missing_apt=0
+for pkg in "${APT_PKGS[@]}"; do
+  dpkg -s "$pkg" >/dev/null 2>&1 || missing_apt=1
+done
+if [ "$missing_apt" -eq 1 ]; then
   sudo apt-get update -qq
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql postgresql-client iproute2
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${APT_PKGS[@]}"
 fi
 
-echo "==> [2/5] Start PostgreSQL cluster (idempotent)"
+# ---------------------------------------------------------------------------
+echo "==> [2/7] Start PostgreSQL cluster (idempotent)"
 if ! sudo pg_lsclusters 2>/dev/null | awk 'NR>1 {print $4}' | grep -q online; then
   sudo pg_ctlcluster 16 main start || true
 fi
-# Wait for the socket to accept connections.
 for _ in $(seq 1 20); do
   if sudo -u postgres pg_isready -q 2>/dev/null; then break; fi
   sleep 1
 done
 sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '${DB_PASSWORD}';" >/dev/null
 
-echo "==> [3/5] Node dependencies (npm ci)"
+# ---------------------------------------------------------------------------
+echo "==> [3/7] Node dependencies (npm ci)"
 npm ci
 
-echo "==> [4/5] Local dev .env (only if missing)"
+# ---------------------------------------------------------------------------
+echo "==> [4/7] Local dev .env (only if missing)"
 if [ ! -f "${REPO_ROOT}/.env" ]; then
   umask 077
   cat > "${REPO_ROOT}/.env" <<EOF
@@ -57,9 +89,59 @@ else
   echo "    .env already present — left untouched"
 fi
 
-echo "==> [5/5] Prisma client + migrations"
+# ---------------------------------------------------------------------------
+echo "==> [5/7] Prisma client + migrations"
 set -a; . "${REPO_ROOT}/.env"; set +a
 npx prisma generate
 npx prisma migrate deploy
 
-echo "==> install.sh done. Canonical DB: postgres @ 127.0.0.1:5432"
+# ---------------------------------------------------------------------------
+echo "==> [6/7] Developer toolchain (mirror of local workstation)"
+
+# npm global CLIs into a user-writable prefix (the sandbox default prefix is
+# root-owned). Mirrors the local ~/.local/lib/npm-global setup.
+NPM_PREFIX="${HOME}/.npm-global"
+npm config set prefix "${NPM_PREFIX}" >/dev/null
+export PATH="${NPM_PREFIX}/bin:${PATH}"
+echo "    npm global CLIs -> ${NPM_PREFIX}"
+npm install -g "${NPM_GLOBAL_PKGS[@]}"
+
+# uv (Astral) provides `uv`/`uvx` (needed by the serena MCP) and installs the
+# graphify Python CLI. Installer drops binaries in ~/.local/bin.
+if ! command -v uv >/dev/null 2>&1; then
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+export PATH="${HOME}/.local/bin:${PATH}"
+
+# graphify knowledge-graph CLI. Official PyPI package is `graphifyy` (double-y);
+# the [sql] extra lets it index the Prisma migration SQL. Command stays `graphify`.
+echo "    graphify (graphifyy[sql]==${GRAPHIFY_VERSION})"
+uv tool install --force "graphifyy[sql]==${GRAPHIFY_VERSION}"
+
+# Build the (gitignored) knowledge graph so `graphify query` works immediately.
+# AST-only, no API cost. Best-effort: never fail the whole install on this.
+if command -v graphify >/dev/null 2>&1; then
+  echo "    building graphify-out/ (AST-only)"
+  graphify update . >/dev/null 2>&1 || echo "    graphify update skipped (non-fatal)"
+fi
+
+# ---------------------------------------------------------------------------
+echo "==> [7/7] Persist toolchain PATH for future shells/terminals"
+BASHRC="${HOME}/.bashrc"
+MARKER="# >>> qlmed cloud toolchain PATH >>>"
+if ! grep -qF "${MARKER}" "${BASHRC}" 2>/dev/null; then
+  {
+    echo ""
+    echo "${MARKER}"
+    echo 'export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"'
+    echo "# <<< qlmed cloud toolchain PATH <<<"
+  } >> "${BASHRC}"
+  echo "    appended PATH exports to ${BASHRC}"
+else
+  echo "    PATH exports already present in ${BASHRC}"
+fi
+
+echo "==> install.sh done."
+echo "    DB: postgres @ 127.0.0.1:5432 | graphify: $(command -v graphify || echo n/a)"
+echo "    MCP servers (Perplexity/TestSprite/serena) are wired in Cursor MCP"
+echo "    settings; their tokens go in the Secrets panel, never in the repo."
