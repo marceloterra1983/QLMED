@@ -224,6 +224,9 @@ npm run publish:server
 # 2. esperar o QLMED CI ficar verde para esse SHA
 
 # 3. despachar o deploy, com o SHA completo de 40 caracteres
+# Cloud Agent / automação: use o script (QLMED_DEPLOY_GH_TOKEN).
+bash scripts/deploy-production.sh <FULL_40_CHAR_SHA>
+# Equivalente manual (PAT/usuário com actions:write):
 gh workflow run deploy-production.yml \
   --ref main \
   -f confirm_production=DEPLOY \
