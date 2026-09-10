@@ -1,0 +1,11 @@
+{
+  "name": "QLMED — Cloud Agent dev",
+  "install": "bash ./.cursor/install.sh",
+  "start": "bash ./.cursor/start.sh",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "bash ./.cursor/run-dev.sh"
+    }
+  ]
+}
