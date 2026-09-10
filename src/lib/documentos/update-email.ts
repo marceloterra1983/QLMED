@@ -5,6 +5,7 @@ import { cartaLabelFromFileName } from './classify';
 import { familyForKind, labelForKind } from './constants';
 import {
   loadDocumentosListing,
+  rowsForFamily,
   type DocumentosListing,
   type DocumentosRow,
 } from './list';
@@ -21,6 +22,7 @@ import {
 import { createDocumentosFolderPort } from './onedrive-port';
 import { sanitizeError, type DocumentosFolderPort } from './ingest';
 import { toYmd } from './validity';
+import { DOCUMENTOS_FAMILIES } from './families';
 
 const log = createLogger('documentos/update-email');
 
@@ -36,14 +38,7 @@ export type NotifyDocumentUpdateEmailInput = {
 };
 
 function flattenListing(listing: DocumentosListing): DocumentosRow[] {
-  return [
-    ...listing.certidoes,
-    ...listing.sanitaria,
-    ...listing.cartas,
-    ...listing.societario,
-    ...listing.basicos,
-    ...listing.balancos,
-  ];
+  return DOCUMENTOS_FAMILIES.flatMap((family) => rowsForFamily(listing, family.category));
 }
 
 export function listingToSummaryRows(listing: DocumentosListing): DocumentosSummaryRow[] {
