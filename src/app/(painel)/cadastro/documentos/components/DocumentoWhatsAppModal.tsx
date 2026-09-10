@@ -6,11 +6,14 @@ import Button from '@/components/ui/Button';
 import Field, { FIELD_CONTROL_CLS } from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
 
+type WhatsAppRecipient = { phone: string; label: string };
+
 type DocumentoWhatsAppModalProps = {
   isOpen: boolean;
   onClose: () => void;
   documentId: string;
   title: string;
+  recipients: readonly WhatsAppRecipient[];
 };
 
 function apiErrorMessage(payload: unknown, fallback: string): string {
@@ -18,13 +21,22 @@ function apiErrorMessage(payload: unknown, fallback: string): string {
   return typeof error === 'string' && error.trim() ? error : fallback;
 }
 
+function splitExtraPhones(raw: string): string[] {
+  return raw
+    .split(/[,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function DocumentoWhatsAppModal({
   isOpen,
   onClose,
   documentId,
   title,
+  recipients,
 }: DocumentoWhatsAppModalProps) {
-  const [phone, setPhone] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [extraPhone, setExtraPhone] = useState('');
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
@@ -32,15 +44,24 @@ export default function DocumentoWhatsAppModal({
 
   useEffect(() => {
     if (isOpen) return;
-    setPhone('');
+    setSelected([]);
+    setExtraPhone('');
     setNote('');
     setSending(false);
     seqRef.current += 1;
   }, [isOpen]);
 
+  function toggle(phone: string) {
+    setSelected((current) =>
+      current.includes(phone) ? current.filter((item) => item !== phone) : [...current, phone],
+    );
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (sendingRef.current || phone.replace(/\D/g, '').length < 10) return;
+    const extras = splitExtraPhones(extraPhone);
+    const phones = [...selected, ...extras];
+    if (sendingRef.current || phones.length === 0) return;
     sendingRef.current = true;
     setSending(true);
     const mine = seqRef.current;
@@ -50,7 +71,7 @@ export default function DocumentoWhatsAppModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone,
+          phones,
           note: trimmed ? trimmed : undefined,
         }),
       });
@@ -59,7 +80,11 @@ export default function DocumentoWhatsAppModal({
         toast.error(apiErrorMessage(payload, 'Não foi possível enviar pelo WhatsApp'));
         return;
       }
-      toast.success('Enviado pelo WhatsApp');
+      const sent = (payload as { sent?: unknown } | null)?.sent;
+      const n = Array.isArray(sent) ? sent.length : phones.length;
+      toast.success(
+        n === 1 ? 'Enviado para 1 destinatário no WhatsApp' : `Enviado para ${n} destinatários no WhatsApp`,
+      );
       if (seqRef.current === mine) onClose();
     } catch {
       toast.error('Erro de rede ao enviar pelo WhatsApp');
@@ -69,7 +94,8 @@ export default function DocumentoWhatsAppModal({
     }
   }
 
-  const canSend = phone.replace(/\D/g, '').length >= 10 && !sending;
+  const extras = splitExtraPhones(extraPhone);
+  const canSend = (selected.length > 0 || extras.length > 0) && !sending;
 
   return (
     <Modal
@@ -80,15 +106,34 @@ export default function DocumentoWhatsAppModal({
       footer={null}
     >
       <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
-        <Field label="Telefone" hint="Com DDD. Ex.: 67 99999-9999" required>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Destinatários
+          </legend>
+          {recipients.map((recipient) => (
+            <label
+              key={recipient.phone}
+              className="flex items-center gap-2 text-sm text-slate-800 dark:text-slate-200"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(recipient.phone)}
+                onChange={() => toggle(recipient.phone)}
+              />
+              {recipient.label}
+            </label>
+          ))}
+        </fieldset>
+        <Field label="Outro número" hint="Opcional. Com DDD. Um ou mais, separados por vírgula.">
           <input
             type="tel"
             inputMode="tel"
             autoComplete="tel"
             className={FIELD_CONTROL_CLS}
             placeholder="67 99999-9999"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            aria-label="Outro número"
+            value={extraPhone}
+            onChange={(event) => setExtraPhone(event.target.value)}
           />
         </Field>
         <Field label="Observação" hint="Opcional">

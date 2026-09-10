@@ -375,12 +375,14 @@ falhar de forma visível, não chutar.
   destinatários por pedido, e envia o PDF em anexo como já fazia. Continua a
   exigir editor+ e a página Documentos — não é relay anónimo.
 - **FR-043**: Existe um botão **WhatsApp** próprio (menu da linha e popup de
-  gestão), distinto de "Compartilhar". Abre `DocumentoWhatsAppModal` com
-  telefone (Brasil) e observação opcional. Envio a
-  `POST /api/documentos/{id}/compartilhar-whatsapp` via `sendWhatsAppDocument`.
-  Número inválido → 400; Evolution desligada → 503 com mensagem clara; sem
-  fallback para o grupo fiscal. Legenda contém tipo e validade, nunca o PDF
-  em log.
+  gestão), distinto de "Compartilhar". Abre `DocumentoWhatsAppModal` com a
+  allowlist operacional (Marcelo, Daniele, Flavio, José Roberto — números
+  pré-cadastrados), checkboxes multi-seleção, campo **Outro número** (um ou
+  mais, Brasil) e observação opcional. Envio a
+  `POST /api/documentos/{id}/compartilhar-whatsapp` com `phones[]` (máx. 10)
+  via `sendWhatsAppDocument` por destinatário. Número inválido → 400;
+  Evolution desligada → 503 com mensagem clara; sem fallback para o grupo
+  fiscal. Legenda contém tipo e validade, nunca o PDF em log.
 - **FR-044**: Editor+ dispara `POST /api/documentos/cartas-email` (e a
   ingestão de produção, quando a porta é a real) varre as caixas
   `joseroberto@qlmed.com.br`, `marcelo@qlmed.com.br`, `flavio@qlmed.com.br`
@@ -530,9 +532,11 @@ falhar de forma visível, não chutar.
 - **AC-032** (FR-042): e-mail `compras@hospital.com.br` é aceite e entra em
   `to`; `nao-e-email` e lista vazia → 400 e `sendMail` não corre. Mais de 10
   destinatários → 400.
-- **AC-033** (FR-043): `67999999999` normaliza para `5567999999999`;
-  `abc` → 400 e Evolution não é chamada. Botão "WhatsApp" existe no popup de
-  gestão e é distinto de "Compartilhar".
+- **AC-033** (FR-043): allowlist `Marcelo` resolve para o JID do número
+  pré-cadastrado; `67999999999` (livre) normaliza para `5567999999999`;
+  `abc` → 400 e Evolution não é chamada; mais de 10 → 400. Modal lista os
+  rótulos pré-cadastrados e o campo "Outro número". Botão "WhatsApp" existe
+  no popup de gestão e é distinto de "Compartilhar".
 - **AC-034** (FR-044): anexo `Carta Comercialização TECHIMPORT.pdf` é
   importado; `DANFE 123.pdf` e carta cujo nome já está na pasta são saltados.
 - **AC-035** (FR-045): `válida por 12 meses a contar da emissão` +

@@ -8,6 +8,7 @@ import {
   type DocumentosCategory,
 } from './constants';
 import { DOCUMENTOS_SHARE_RECIPIENTS } from './share-email';
+import { DOCUMENTOS_WHATSAPP_RECIPIENTS } from './share-whatsapp';
 import { automacaoOf, balancoYearFromName, type DocumentosAutomacao, type DocumentosFamily } from './families';
 import { daysRemaining, selectVigente, statusFor, todayInSaoPaulo, toYmd } from './validity';
 
@@ -30,6 +31,7 @@ export type DocumentosRow = {
 };
 
 export type DocumentosShareRecipientOption = { email: string; label: string };
+export type DocumentosWhatsAppRecipientOption = { phone: string; label: string };
 
 export type DocumentosListing = {
   certidoes: DocumentosRow[];
@@ -40,6 +42,7 @@ export type DocumentosListing = {
   balancos: DocumentosRow[];
   ingest: { lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null };
   shareRecipients: DocumentosShareRecipientOption[];
+  whatsappRecipients: DocumentosWhatsAppRecipientOption[];
 };
 
 export type DocumentosListSource = {
@@ -284,6 +287,7 @@ export function buildDocumentosListing(
       lastErrorAt: erroAindaAtual(ingest) ? toIso(ingest?.lastErrorAt) : null,
     },
     shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
+    whatsappRecipients: DOCUMENTOS_WHATSAPP_RECIPIENTS.map(({ phone, label }) => ({ phone, label })),
   };
 }
 
