@@ -128,12 +128,17 @@ describe('AUTH-002 — validação ANVISA filtra por empresa', () => {
   it('só reescreve linhas da empresa do chamador ao sincronizar', async () => {
     mocks.registryFindFirst.mockResolvedValue(null);
     mocks.fetchAnvisaData.mockResolvedValue({
-      nomeProduto: 'Produto',
-      nomeEmpresa: 'Titular',
-      situacaoRegistro: 'Válido',
-      vencimentoRegistro: null,
-      classeRisco: null,
-      processoRegistro: null,
+      found: true,
+      error: null,
+      data: {
+        nomeProduto: 'Produto',
+        nomeEmpresa: 'Titular',
+        situacaoRegistro: 'Válido',
+        vencimentoRegistro: null,
+        classeRisco: null,
+        processoRegistro: null,
+        dataset: 'saude',
+      },
     });
     mocks.registryFindMany.mockResolvedValue([]);
 
@@ -142,6 +147,24 @@ describe('AUTH-002 — validação ANVISA filtra por empresa', () => {
 
     expect(mocks.registryFindMany).toHaveBeenCalledTimes(1);
     expect(mocks.registryFindMany.mock.calls[0][0].where.companyId).toBe(COMPANY.id);
+  });
+});
+
+describe('ANVISA validate — falha vs notFound', () => {
+  it('falha de consulta ANVISA não grava anvisaSyncedAt', async () => {
+    mocks.registryFindFirst.mockResolvedValue(null);
+    mocks.fetchAnvisaData.mockResolvedValue({
+      found: false,
+      data: null,
+      error: 'HTTP 500',
+    });
+
+    const { GET } = await import('@/app/api/anvisa/validate/route');
+    const res = await GET(
+      new NextRequest('http://localhost/api/anvisa/validate?code=12345678901'),
+    );
+    expect(res.status).toBe(502);
+    expect(mocks.registryUpdate).not.toHaveBeenCalled();
   });
 });
 

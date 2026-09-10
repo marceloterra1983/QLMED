@@ -142,11 +142,10 @@ async function graphJson<T>(
   const body = (await response.json().catch(() => null)) as T;
   return { status: response.status, body };
 }
-
 export async function listMailboxMessagesBySender(
   mailbox: string,
   senderEmail: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
@@ -167,7 +166,12 @@ export async function listMailboxMessagesBySender(
   };
 
   const messages: GraphMailMessage[] = [];
-  while (next) {
+  // SPEC-056: sem cap, um @odata.nextLink malformado/loopante ou um mailbox
+  // com história enorme gerava um array in-memory sem limite.
+  const maxPages = options.maxPages ?? 100;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    pages++;
     const listed = await graphJson<MessageListResponse>(
       accessToken,
       next,
@@ -193,7 +197,12 @@ export async function listMailboxMessagesBySender(
         hasAttachments: Boolean(row.hasAttachments),
       });
     }
+
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
+  }
+
+  if (next) {
+    log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
   }
 
   messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
@@ -285,7 +294,7 @@ export const listImpcgPdfAttachments = listGraphPdfAttachments;
 export async function listMailboxMessagesBySenderWithoutAttachments(
   mailbox: string,
   senderEmail: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GraphMailMessage[]> {
   const accessToken = await getGraphAppOnlyToken();
   const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
@@ -304,21 +313,32 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
     '@odata.nextLink'?: string;
     error?: { message?: string; code?: string };
   };
-
   const messages: ImpcgMailMessage[] = [];
-  while (next) {
+  const maxPages = options.maxPages ?? 100;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    pages++;
     const url = /^https?:\/\//i.test(next)
       ? assertAllowedHost(next, GRAPH_ALLOWED_HOSTS).toString()
       : `${GRAPH_BASE}${next}`;
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-        ConsistencyLevel: 'eventual',
+    const response = await fetchWithResilience(
+      url,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          ConsistencyLevel: 'eventual',
+        },
+        cache: 'no-store',
       },
-      cache: 'no-store',
-      signal: perRequestSignal(options.signal),
-    });
+      {
+        signal: perRequestSignal(options.signal),
+        maxRetries: 3,
+        onRetry: (err, attempt, delayMs) => {
+          log.warn({ attempt, delayMs, err }, 'graph_request_retry');
+        },
+      },
+    );
     const body = (await response.json().catch(() => null)) as MessageListResponse;
     const status = response.status;
 
@@ -339,7 +359,12 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
         hasAttachments: Boolean(row.hasAttachments),
       });
     }
+
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
+  }
+
+  if (next) {
+    log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
   }
 
   messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());

@@ -31,6 +31,12 @@ const globalForNcm = globalThis as unknown as {
 
 // Short in-memory TTL (10 min) to avoid repeated DB reads within same request burst
 const MEMORY_TTL_MS = 10 * 60 * 1000;
+// SPEC-056: falha de rede/timeout na BrasilAPI é indistinguível de "NCM não
+// existe" (ambos devolvem null). Antes o null era cacheado pelo TTL cheio
+// (10 min), então um blip tornava a classify silenciosa por 10 min. Cacheamos
+// nulos por um TTL curto (30 s) para evitar retry em loop e permitir retry
+// rápido.
+const NULL_TTL_MS = 30_000;
 
 function getMemoryCache(): Map<string, { result: NcmResult | null; at: number }> {
   if (!globalForNcm.ncmMemoryCache) globalForNcm.ncmMemoryCache = new Map();
@@ -291,16 +297,19 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
   // Check in-memory cache first (avoids DB hit for repeated lookups)
   const mem = getMemoryCache();
   const cached = mem.get(digits);
-  if (cached && Date.now() - cached.at < MEMORY_TTL_MS) {
-    return cached.result;
+  const now = Date.now();
+  // SPEC-056: resultados null (falha de rede OU "não existe") têm TTL curto
+  // (NULL_TTL_MS) para permitir retry rápido; resultados válidos têm TTL longo.
+  if (cached) {
+    const ttl = cached.result === null ? NULL_TTL_MS : MEMORY_TTL_MS;
+    if (now - cached.at < ttl) return cached.result;
+    mem.delete(digits);
   }
-  // Clean expired entry
-  if (cached) mem.delete(digits);
 
   // Check DB cache
   const dbResult = await getFromDb(digits);
   if (dbResult && dbResult.hierarchy.length > 0) {
-    mem.set(digits, { result: dbResult, at: Date.now() });
+    mem.set(digits, { result: dbResult, at: now });
     return dbResult;
   }
 
@@ -308,7 +317,7 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
   const hierarchy = await buildHierarchy(digits);
 
   if (hierarchy.length === 0) {
-    mem.set(digits, { result: null, at: Date.now() });
+    mem.set(digits, { result: null, at: now });
     return null;
   }
 
@@ -324,7 +333,7 @@ export async function lookupNcm(code: string): Promise<NcmResult | null> {
   // Save complete result to DB
   await saveToDb(digits, last.descricao, parentCodeFor(digits), fullDescription, hierarchy);
 
-  mem.set(digits, { result, at: Date.now() });
+  mem.set(digits, { result, at: now });
   return result;
 }
 

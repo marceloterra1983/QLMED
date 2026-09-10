@@ -58,7 +58,7 @@ Hoje só existe Entrada NF-e com lotes em `nfe_entry_item`. Não há ledger de m
 ## Requirements
 
 - **REQ-001**: Menu Estoque inclui **Controle** → `/estoque/controle`; ACL e `API_PREFIX_TO_PAGES` cobrem `/api/estoque/controle`.
-- **REQ-002**: Ledger append-only `stock_movement` (Prisma migration); saldo derivado por produto+lote+validade+localização.
+- **REQ-002**: Ledger append-only `stock_movement` (Prisma migration); saldo derivado por produto+lote+validade+localização. Exceção: movimentos `ENTRADA_NFE` de uma `invoiceId` são regravados em transação no re-registo da entrada (substituição da projeção, não histórico de correção).
 - **REQ-003**: Localização: `CD` ou `CUSTOMER:{cnpj}` (consignado).
 - **REQ-004**: Tipos: `ENTRADA_NFE`, `SAIDA_NFE`, `REMESSA_CONSIG`, `RETORNO_CONSIG`, `PERDA_VALIDADE`, `AJUSTE`.
 - **REQ-005**: Operador escolhe lote na avulsa; FEFO só ordena/alerta na UI.

@@ -146,7 +146,10 @@ export function daysToExpiry(expiry?: string | null, now = new Date()): number |
   return Math.floor((startExp - startToday) / 86_400_000);
 }
 
-export async function recordStockMovements(rows: StockMovementInput[]): Promise<number> {
+export async function recordStockMovements(
+  rows: StockMovementInput[],
+  db: { stockMovement: { createMany: typeof prisma.stockMovement.createMany } } = prisma,
+): Promise<number> {
   if (rows.length === 0) return 0;
   const data = rows
     .filter((r) => r.quantity > 0 && r.productCodigo.trim())
@@ -174,7 +177,7 @@ export async function recordStockMovements(rows: StockMovementInput[]): Promise<
       transferGroupId: r.transferGroupId ?? null,
     }));
   if (data.length === 0) return 0;
-  const result = await prisma.stockMovement.createMany({
+  const result = await db.stockMovement.createMany({
     data,
     skipDuplicates: true,
   });
@@ -366,12 +369,34 @@ export async function recordMovementsFromEntryItems(
   createdBy?: string | null,
   opts: { replaceExisting?: boolean } = {},
 ): Promise<number> {
-  if (opts.replaceExisting) {
-    // BUG-002: re-registro recria os nfeEntryItem (deleteMany + insert) e o id
-    // autoincrement muda — a chave `entrada-item:${id}` antiga nunca colidia e
-    // cada re-registro duplicava a ENTRADA_NFE no saldo. Substituir a geração
-    // anterior espelha exatamente a semântica do insertNfeEntryItems.
-    await prisma.stockMovement.deleteMany({
+  const loadAndMap = async (
+    db: {
+      nfeEntryItem: { findMany: typeof prisma.nfeEntryItem.findMany };
+      stockMovement: { createMany: typeof prisma.stockMovement.createMany };
+    },
+  ) => {
+    const items = await db.nfeEntryItem.findMany({
+      where: { companyId, invoiceId },
+    });
+    const rows: StockMovementInput[] = [];
+    for (const item of items) {
+      const qty = Number(item.lotQuantity ?? item.quantity ?? 0);
+      if (qty <= 0) continue;
+      rows.push(entryItemToMovementRow(companyId, invoiceId, item, { occurredAt, createdBy }));
+    }
+    return recordStockMovements(rows, db);
+  };
+
+  if (!opts.replaceExisting) {
+    return loadAndMap(prisma);
+  }
+
+  // BUG-002: re-registro recria os nfeEntryItem (ids novos). A chave
+  // `entrada-item:${id}` da geração anterior não colide — apagar e regravar
+  // na mesma transação espelha insertNfeEntryItems sem deixar o saldo a 0
+  // se o createMany falhar a meio.
+  return prisma.$transaction(async (tx) => {
+    await tx.stockMovement.deleteMany({
       where: {
         companyId,
         invoiceId,
@@ -379,17 +404,8 @@ export async function recordMovementsFromEntryItems(
         idempotencyKey: { startsWith: 'entrada-item:' },
       },
     });
-  }
-  const items = await prisma.nfeEntryItem.findMany({
-    where: { companyId, invoiceId },
+    return loadAndMap(tx);
   });
-  const rows: StockMovementInput[] = [];
-  for (const item of items) {
-    const qty = Number(item.lotQuantity ?? item.quantity ?? 0);
-    if (qty <= 0) continue;
-    rows.push(entryItemToMovementRow(companyId, invoiceId, item, { occurredAt, createdBy }));
-  }
-  return recordStockMovements(rows);
 }
 
 /**
@@ -511,7 +527,7 @@ export function resolveIssuedItemBatches(input: {
     .map((b) => ({
       lot: String(b.lot).trim(),
       lotExpiry: b.expiry?.trim() || null,
-      quantity: b.quantity != null && b.quantity > 0 ? b.quantity : input.itemQuantity,
+      quantity: b.quantity != null ? b.quantity : input.itemQuantity,
     }));
   if (fromXml.length > 0) return fromXml;
   return [{ lot: '', lotExpiry: null, quantity: input.itemQuantity }];
@@ -700,6 +716,16 @@ export async function recordMovementsFromReceivedInvoice(input: {
   registryByCode?: Map<string, string>;
 }): Promise<number> {
   if (!isOnOrAfterStockCutoff(input.issueDate)) return 0;
+  const alreadyRegistered = await prisma.stockMovement.findFirst({
+    where: {
+      companyId: input.companyId,
+      invoiceId: input.invoiceId,
+      kind: 'ENTRADA_NFE',
+      idempotencyKey: { startsWith: 'entrada-item:' },
+    },
+    select: { id: true },
+  });
+  if (alreadyRegistered) return 0;
   const products = await extractProductsFromXml(input.xmlContent);
   if (products.length === 0) return 0;
 
@@ -739,7 +765,7 @@ export async function recordMovementsFromReceivedInvoice(input: {
             lot: b.lot,
             lotExpiry: b.expiry,
             lotSerial: b.serial,
-            quantity: b.quantity != null && b.quantity > 0 ? b.quantity : Number(p.quantity) || 0,
+            quantity: b.quantity != null ? b.quantity : Number(p.quantity) || 0,
           }))
         : [{ lot: '', lotExpiry: null as string | null, lotSerial: null as string | null, quantity: Number(p.quantity) || 0 }];
 

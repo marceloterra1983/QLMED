@@ -51,6 +51,14 @@ export function getFiscalPeriodRange(
   };
 }
 
+/** Period bounds from a timestamp, using UTC year/month so TZ of the process cannot shift the quarter. */
+export function getFiscalPeriodRangeFromDate(
+  date: Date,
+  period: FiscalPeriod,
+): { startDate: Date; endDate: Date } {
+  return getFiscalPeriodRange(period, date.getUTCFullYear(), date.getUTCMonth() + 1);
+}
+
 /** NF-e no conjunto vs quantas têm invoice_tax_totals. Período vazio = 0, não all-time. */
 export function nfeTaxCoverage(
   invoices: { id: string; type: string }[],

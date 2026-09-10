@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { forbiddenResponse, requireEditor, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { getProductRegistryWithAnvisa, getProductRegistryByKeys, updateRegistryAnvisaData } from '@/lib/product-registry-store';
-import { fetchAnvisaData, type AnvisaRegistryData } from '@/lib/anvisa-api';
+import { fetchAnvisaData, type AnvisaQueryResult } from '@/lib/anvisa-api';
 import { apiValidationError } from '@/lib/api-error';
 import { anvisaSyncRegistrySchema } from '@/lib/schemas/product';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('anvisa/sync-registry');
 
 const DELAY_MS = 300; // between requests to avoid rate-limiting
 
@@ -60,15 +63,22 @@ export async function POST(req: Request) {
 
     if (i > 0) await sleep(DELAY_MS);
 
-    let data: AnvisaRegistryData | null = null;
+    let result: AnvisaQueryResult;
     try {
-      data = await fetchAnvisaData(code);
-    } catch {
+      result = await fetchAnvisaData(code);
+    } catch (err) {
       failed += affectedRows.length;
+      log.error({ err, code }, 'ANVISA: exceção inesperada na consulta');
       continue;
     }
 
-    if (!data) {
+    if (!result.found) {
+      if (result.error) {
+        failed += affectedRows.length;
+        log.warn({ code, err: result.error }, 'ANVISA: falha de consulta — não marcando como inexistente');
+        continue;
+      }
+
       notFound += affectedRows.length;
       // Still update synced_at so we don't keep retrying unknowns
       for (const row of affectedRows) {
@@ -86,6 +96,8 @@ export async function POST(req: Request) {
       }
       continue;
     }
+
+    const data = result.data;
 
     for (const row of affectedRows) {
       try {

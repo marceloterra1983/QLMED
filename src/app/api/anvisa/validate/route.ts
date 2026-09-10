@@ -74,9 +74,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const data = await fetchAnvisaData(code);
+    const result = await fetchAnvisaData(code);
 
-    if (!data) {
+    if (result.error) {
+      return NextResponse.json({ error: 'Erro ao consultar ANVISA' }, { status: 502 });
+    }
+
+    if (!result.found) {
       return NextResponse.json({
         registration: code,
         productName: null,
@@ -90,6 +94,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const data = result.data;
     const matches = await prisma.productRegistry.findMany({
       where: { companyId: company.id, anvisaCode: code },
       select: {

@@ -14,7 +14,7 @@ export {
   type ProductFromXml,
 } from './units';
 
-export { extractProductsFromXml, computeSearchText } from './xml-products';
+export { extractProductsFromXml, computeSearchText, allocateLotQuantities } from './xml-products';
 
 export {
   aggregateProductsFromInvoices,

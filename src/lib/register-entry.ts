@@ -3,7 +3,7 @@
  * Used by POST /api/estoque/entrada-nfe and POST /api/estoque/import-e509.
  */
 import prisma from '@/lib/prisma';
-import { extractProductsFromXml } from '@/lib/product-aggregation';
+import { allocateLotQuantities, extractProductsFromXml } from '@/lib/product-aggregation';
 import { upsertStockEntry, updateStockEntryFiscalTotals, insertNfeEntryItems, NfeEntryItemInput } from '@/lib/stock-entry-store';
 import { extractTaxTotals, extractItemTaxes, extractEmitterLocation } from '@/lib/parse-invoice-tax';
 import { normalizeCode, stripNonAlnum } from '@/lib/code-utils';
@@ -206,18 +206,23 @@ export async function registerInvoiceEntry(
     const overrideLots = lotOverrides?.get(itemNumber);
 
     if (overrideLots && overrideLots.length > 0) {
-      // Use lot data provided by the user (edited before registration)
-      for (const ov of overrideLots) {
+      const allocated = allocateLotQuantities(
+        overrideLots.map((ov) => ({ ...ov, quantity: ov.quantity ?? null })),
+        Number(baseItem.quantity ?? 0),
+      );
+      for (const ov of allocated) {
         nfeItems.push({
           ...baseItem,
           lot: ov.lot || null,
           lotSerial: null,
-          lotQuantity: ov.quantity ?? (baseItem.quantity === 1 ? 1 : null),
+          lotQuantity: ov.quantity,
           lotFabrication: null,
           lotExpiry: ov.expiry || null,
         });
       }
     } else if (prod.batches && prod.batches.length > 0) {
+      // A repartição da quantidade do item pelos lotes sem qLote já é feita
+      // em extractBatches (SPEC-056); aqui só respeitamos os valores.
       for (const batch of prod.batches) {
         nfeItems.push({
           ...baseItem,
