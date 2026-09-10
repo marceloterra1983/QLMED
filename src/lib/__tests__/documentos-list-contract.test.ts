@@ -302,47 +302,73 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
     expect(cnpj?.status).toEqual({ key: 'nao_vence', label: 'não vence' });
   });
 
-  it('balanços: uma linha por ano, DESC, sem prazo', () => {
+  it('balanços: grupos por ano DESC com documentos e folderWebUrl', () => {
     const listing = buildDocumentosListing(
       [
         {
-          id: 'b-2024',
+          id: 'b-folder-2024',
           kind: 'balanco_anual',
           category: 'balanco',
           fileName: 'BALANÇO 2024',
+          folderName: 'BALANÇO 2024',
           validUntil: null,
           validUntilSource: null,
           removedAt: null,
           webUrl: 'https://onedrive.example/2024',
         },
         {
-          id: 'b-2026',
+          id: 'b-2024-dre',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          fileName: 'DRE 2024.pdf',
+          folderName: 'BALANÇO 2024',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+          webUrl: 'https://onedrive.example/2024/dre',
+        },
+        {
+          id: 'b-folder-2026',
           kind: 'balanco_anual',
           category: 'balanco',
           fileName: 'BALANÇO 2026',
+          folderName: 'BALANÇO 2026',
           validUntil: null,
           validUntilSource: null,
           removedAt: null,
           webUrl: 'https://onedrive.example/2026',
         },
         {
-          id: 'b-2025',
+          id: 'b-2026-bp',
           kind: 'balanco_anual',
           category: 'balanco',
-          fileName: 'BALANÇO 2025',
+          fileName: 'BP 2026.pdf',
+          folderName: 'BALANÇO 2026',
           validUntil: null,
           validUntilSource: null,
           removedAt: null,
-          webUrl: 'https://onedrive.example/2025',
+          webUrl: null,
+        },
+        {
+          id: 'b-2025-doc',
+          kind: 'balanco_anual',
+          category: 'balanco',
+          fileName: 'Balanço 2025.pdf',
+          folderName: 'BALANÇO 2025',
+          validUntil: null,
+          validUntilSource: null,
+          removedAt: null,
+          webUrl: null,
         },
       ],
       null,
       NOW,
     );
-    expect(listing.balancos.map((row) => row.label)).toEqual(['2026', '2025', '2024']);
-    expect(listing.balancos.every((row) => row.daysRemaining == null)).toBe(true);
-    expect(listing.balancos.every((row) => row.validUntil == null)).toBe(true);
-    expect(listing.balancos[0]?.webUrl).toBe('https://onedrive.example/2026');
+    expect(listing.balancos.map((group) => group.year)).toEqual([2026, 2025, 2024]);
+    expect(listing.balancos[0]?.folderWebUrl).toBe('https://onedrive.example/2026');
+    expect(listing.balancos[0]?.documents.map((row) => row.label)).toEqual(['BP 2026']);
+    expect(listing.balancos.every((group) => group.documents.every((row) => row.expira === false))).toBe(true);
+    expect(listing.balancos.every((group) => group.documents.every((row) => row.daysRemaining == null))).toBe(true);
   });
 
   it('lista devolve emitidoEm e nunca lastModifiedAt como emissão', () => {

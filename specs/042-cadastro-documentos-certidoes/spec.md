@@ -223,9 +223,11 @@ falhar de forma visível, não chutar.
 - **FR-020**: A família `carta` é conjunto aberto: uma linha por ficheiro
   (fabricante extraído do nome), pasta
   `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Ordenação por dias
-  restantes, sem data no fim. A ingestão **lê o PDF** (FR-045) e grava
-  `validUntilSource='pdf'` quando encontra validade; data no nome só entra
-  se o PDF não declarar prazo. Sem data → "Sem data" e **não alerta**.
+  restantes, sem data no fim. Cartas com `daysRemaining < 0` ficam num
+  separador colapsável **Cartas vencidas** (recolhido por omissão); as
+  demais na tabela principal do card. A ingestão **lê o PDF** (FR-045) e
+  grava `validUntilSource='pdf'` quando encontra validade; data no nome só
+  entra se o PDF não declarar prazo. Sem data → "Sem data" e **não alerta**.
   Lápis continua a gravar `manual`. Não se inventa data. A pasta `Vencidas`
   (criada se faltar sob a raiz da família) serve para arquivo.
 - **FR-021**: Limiares de alerta são por família, não globais:
@@ -261,17 +263,23 @@ falhar de forma visível, não chutar.
   / 31.08.26). A ingestão só lê PDF (`.docx` não entra).
 
 - **FR-026**: Família `balanco`, pasta
-  `1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS`, scan `yearFolders`. A unidade é
-  a subpasta `BALANÇO YYYY` (uma linha por ano, `kind: balanco_anual`,
-  `oneDriveItemId` da pasta, `validUntil` nulo). Subpasta que não casa é
-  ignorada. Ficheiro solto `BALANÇO YYYY.zip` (ou `.pdf`) no raiz só cria
-  linha se o ano ainda não tem pasta. Ruído (`ECF`, `Faturamento`, `.xls`)
-  é ignorado. Não se lê o ZIP nem o conteúdo da pasta. Card **Balanços**
-  recolhido, colunas **Ano** e ação **Abrir no OneDrive** (nova aba). Sem
-  coluna de prazo, sem Ver, sem upload, sem lápis de validade.
+  `1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS`, scan `yearFolders`. A ingestão
+  enumera cada subpasta `BALANÇO YYYY` e grava **os PDFs dentro** (`kind:
+  balanco_anual`, `folderName` = nome da pasta, `validUntil` nulo, `expira:
+  false`). Subpasta que não casa é ignorada. Ficheiro solto `BALANÇO
+  YYYY.zip` (ou `.pdf`) no raiz só entra se o ano ainda não tem pasta. Ruído
+  (`ECF`, `Faturamento`, `.xls`) é ignorado. A listagem devolve `balancos`
+  como grupos `{ year, folderWebUrl, documents[] }` (anos DESC). Card
+  **Balanços** recolhido; cada ano é um separador colapsável (recolhido) que
+  abre a lista de documentos com as mesmas ações do Contrato social (Ver,
+  Imprimir, Baixar, Compartilhar, WhatsApp, popup de gestão; "não vence").
+  Sem upload, sem lápis de validade. `folderWebUrl` (quando conhecido) abre a
+  pasta do ano no OneDrive a partir do cabeçalho do ano.
 
 - **FR-027**: `CompanyDocument.webUrl` (nullable) é persistido na ingestão
-  de todas as famílias. Balanço usa-o para abrir a pasta no OneDrive.
+  de todas as famílias. No balanço, o `webUrl` do PDF é o do ficheiro; o
+  `folderWebUrl` do grupo (URL da pasta do ano, quando a ingestão a viu) abre
+  a pasta no OneDrive a partir do cabeçalho do ano.
 
 - **FR-028**: Classificação por nome (sem acento, sem caixa). Societário:
   `CONSTITUICAO`+`ALTERACAO` → consolidado; `ALTERACAO` → alteração;
@@ -299,10 +307,11 @@ falhar de forma visível, não chutar.
 - **FR-031**: A linha inteira (rato, Enter e Espaço; `role="button"` +
   `tabIndex={0}`) abre `DocumentoDetalheModal`, o painel de gestão. Clique em
   acção, no kebab ou num link da linha **não** abre o modal (`stopPropagation`
-  nos controlos). Família `balanco`: a linha abre a pasta no OneDrive e **não**
-  tem modal de gestão nem de atualização. O `DocumentoUpdateModal` abre só
-  pelo botão **Atualizar arquivo** dentro do popup de gestão (família
-  `certidao`, editor+).
+  nos controlos). Família `balanco`: a linha do documento comporta-se como
+  societário (popup de gestão; sem modal de atualização). O cabeçalho do ano
+  só expande/recolhe (e, se houver `folderWebUrl`, o link abre a pasta). O
+  `DocumentoUpdateModal` abre só pelo botão **Atualizar arquivo** dentro do
+  popup de gestão (família `certidao`, editor+).
 
 - **FR-032**: O modal de atualização segue quatro etapas: anexar (arrastar ou
   clicar; só `.pdf`, ≤ 5 MB, recusa no cliente); ler (`POST /api/documentos/analisar`,
@@ -315,8 +324,10 @@ falhar de forma visível, não chutar.
 - **FR-033**: Acções de linha via `RowActionsBase`: inline `receipt_long`
   "Ver documento" e `print` "Imprimir" (`hideOnMobile`); menu Compartilhar
   (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`), Editar
-  validade (`edit`). Balanço: só `folder_open` "Abrir pasta no OneDrive", sem
-  kebab. O lápis sai da linha.
+  validade (`edit`). Balanço (documento PDF): mesmas ações do societário
+  (Ver/Imprimir/Baixar/Compartilhar/WhatsApp), sem Atualizar arquivo e sem
+  Editar validade (`expira: false`). Cabeçalho do ano: `folder_open` opcional
+  quando há `folderWebUrl`. O lápis sai da linha.
 
 - **FR-034**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
   `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo) **e** um campo para escrever e-mail
@@ -490,13 +501,14 @@ falhar de forma visível, não chutar.
   a linha mostra 31.08.26; `kindExpires('cartao_cnpj') === false`;
   `thresholds` da família vazios. Controlo negativo: `expira: true` no
   Cartão CNPJ faz o teste "documentos básicos não alertam" falhar.
-- **AC-020** (FR-026): ingestão de pastas 2024/2025/2026 + zip 2026
-  duplicado + zip 2013 sem pasta + ruído → 4 linhas (uma por ano).
-  Controlo negativo: listar ficheiros em vez de subpastas faz o teste
-  "uma linha por ano" falhar.
-- **AC-021** (FR-026/027): o card Balanços não tem colunas "Válida até" /
-  "Dias restantes" nem botão Ver; a ação é um link `webUrl` "Abrir pasta no
-  OneDrive" com `target=_blank` `rel=noopener noreferrer`.
+- **AC-020** (FR-026): ingestão de pastas 2024/2025/2026 com PDFs dentro +
+  zip 2026 duplicado (ignorado) + zip 2013 sem pasta + ruído → PDFs das
+  pastas + o zip 2013; pastas sem PDF não criam linha de documento. Controlo
+  negativo: gravar só a pasta (sem `listPdfs` do ano) faz o teste "PDFs
+  dentro de pastas de ano" falhar.
+- **AC-021** (FR-026/027): o card Balanços agrupa por ano (colapsável,
+  recolhido); cada documento tem Ver e "não vence" como societário; o
+  cabeçalho do ano pode ter link `folderWebUrl` "Abrir pasta no OneDrive".
 - **AC-022** (FR-029): após ingestão com Contrato Social presente, um ciclo
   em que `listPdfs` da pasta societário lança `pasta não encontrada` devolve
   `skippedFamilies=['societario']`, mantém `removedAt` nulo no contrato e

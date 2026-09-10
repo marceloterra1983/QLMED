@@ -1,13 +1,13 @@
 'use client';
 
-import type { KeyboardEvent, SyntheticEvent } from 'react';
+import { useId, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { FIELD_CONTROL_CLS } from '@/components/ui/Field';
 import { RowActionsBase, type RowAction } from '@/components/ui/RowActions';
 import { formatDocumentDate, formatInt } from '@/lib/utils';
 import type { DocumentosAutomacao } from '@/lib/documentos/families';
-import type { DocumentosRow } from '@/lib/documentos/list';
+import type { DocumentosBalancoYear, DocumentosRow } from '@/lib/documentos/list';
 
 /** Destaque de dias restantes: uma semana ou menos (inclui vence hoje e vencida). */
 export const CERTIDAO_DIAS_DESTAQUE = 7;
@@ -116,8 +116,59 @@ function printArquivo(id: string) {
   window.open(arquivoUrl(id), '_blank', 'noopener,noreferrer');
 }
 
-function openFolder(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+function isPdfRow(row: DocumentosRow): boolean {
+  return Boolean(row.fileName && /\.pdf$/i.test(row.fileName));
+}
+
+function splitExpired(rows: DocumentosRow[]): { active: DocumentosRow[]; expired: DocumentosRow[] } {
+  const active: DocumentosRow[] = [];
+  const expired: DocumentosRow[] = [];
+  for (const row of rows) {
+    if (row.daysRemaining != null && row.daysRemaining < 0) expired.push(row);
+    else active.push(row);
+  }
+  return { active, expired };
+}
+
+function CollapsibleSeparator({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const bodyId = useId();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-slate-200 dark:border-slate-800">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span
+          className={`material-symbols-outlined text-[18px] text-slate-500 transition-transform ${
+            open ? 'rotate-90' : ''
+          }`}
+          aria-hidden="true"
+        >
+          chevron_right
+        </span>
+        <span>
+          {title} ({formatInt(count)})
+        </span>
+      </button>
+      <div id={bodyId} hidden={!open}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export type DocumentosFamilyTableProps = {
@@ -137,10 +188,15 @@ export type DocumentosFamilyTableProps = {
   onUpdate: (row: DocumentosRow) => void;
   onShare: (row: DocumentosRow) => void;
   onWhatsApp: (row: DocumentosRow) => void;
-  layout?: 'validity' | 'yearFolders';
+  /** Cartas: esconde vencidas num separador colapsável (recolhido). */
+  collapseExpired?: boolean;
 };
 
-export default function DocumentosFamilyTable({
+type TableBodyProps = Omit<DocumentosFamilyTableProps, 'collapseExpired'> & {
+  showValidityColumns: boolean;
+};
+
+function DocumentosTableBody({
   caption,
   columnLabel,
   rows,
@@ -157,62 +213,42 @@ export default function DocumentosFamilyTable({
   onUpdate,
   onShare,
   onWhatsApp,
-  layout = 'validity',
-}: DocumentosFamilyTableProps) {
+  showValidityColumns,
+}: TableBodyProps) {
   function isEditingRow(row: DocumentosRow): boolean {
     return canWrite && row.id !== null && editingId === row.id;
   }
 
   function canUpdateRow(row: DocumentosRow): boolean {
-    return canWrite && layout !== 'yearFolders' && row.category === 'certidao';
+    return canWrite && row.category === 'certidao';
   }
 
   function rowActivateLabel(row: DocumentosRow): string | null {
-    if (layout === 'yearFolders') {
-      return row.webUrl ? `Abrir pasta ${row.label} no OneDrive` : null;
-    }
     if (isEditingRow(row)) return null;
     return `Abrir gestão de ${row.label}`;
   }
 
   function activateRow(row: DocumentosRow) {
-    if (layout === 'yearFolders') {
-      if (row.webUrl) openFolder(row.webUrl);
-      return;
-    }
     if (isEditingRow(row)) return;
     onOpenDetail(row);
   }
 
   function rowActions(row: DocumentosRow) {
-    if (layout === 'yearFolders') {
-      if (!row.webUrl) return null;
-      return (
-        <a
-          href={row.webUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={INLINE_ICON_BTN}
-          title="Abrir pasta no OneDrive"
-          aria-label="Abrir pasta no OneDrive"
-        >
-          <span className="material-symbols-outlined text-[18px] sm:text-[16px]">folder_open</span>
-        </a>
-      );
-    }
-
     const hasFile = Boolean(row.id && row.fileName);
+    const canView = hasFile && isPdfRow(row);
     const inline: RowAction[] = [];
     const menu: RowAction[] = [];
 
     if (hasFile && row.id && row.fileName) {
-      inline.push({ label: 'Ver documento', icon: 'receipt_long', onSelect: () => onView(row) });
-      inline.push({
-        label: 'Imprimir',
-        icon: 'print',
-        onSelect: () => printArquivo(row.id!),
-        hideOnMobile: true,
-      });
+      if (canView) {
+        inline.push({ label: 'Ver documento', icon: 'receipt_long', onSelect: () => onView(row) });
+        inline.push({
+          label: 'Imprimir',
+          icon: 'print',
+          onSelect: () => printArquivo(row.id!),
+          hideOnMobile: true,
+        });
+      }
       if (canWrite) {
         menu.push({ label: 'Compartilhar', icon: 'share', onSelect: () => onShare(row) });
         menu.push({ label: 'WhatsApp', icon: 'chat', onSelect: () => onWhatsApp(row) });
@@ -296,18 +332,18 @@ export default function DocumentosFamilyTable({
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
             <th className={CELL}>{columnLabel}</th>
-            {layout === 'yearFolders' ? null : (
+            {showValidityColumns ? (
               <>
                 <th className={CELL}>Válida até</th>
                 <th className={CELL}>Dias restantes</th>
               </>
-            )}
+            ) : null}
             <th className={CELL}>Ações</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
-            const key = row.id ?? `${row.category}:${row.kind}`;
+            const key = row.id ?? `${row.category}:${row.kind}:${row.label}`;
             const activateLabel = rowActivateLabel(row);
             const clickable = activateLabel != null;
             return (
@@ -334,7 +370,7 @@ export default function DocumentosFamilyTable({
                 <td className={CELL}>
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                 </td>
-                {layout === 'yearFolders' ? null : (
+                {showValidityColumns ? (
                   <>
                     <td
                       className={`${CELL} text-sm whitespace-nowrap`}
@@ -363,7 +399,7 @@ export default function DocumentosFamilyTable({
                       <DaysCell row={row} />
                     </td>
                   </>
-                )}
+                ) : null}
                 <td
                   className={`${CELL} whitespace-nowrap`}
                   onClick={stopRowEvent}
@@ -376,6 +412,113 @@ export default function DocumentosFamilyTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+export default function DocumentosFamilyTable({
+  caption,
+  columnLabel,
+  rows,
+  collapseExpired = false,
+  ...rest
+}: DocumentosFamilyTableProps) {
+  const showValidityColumns = true;
+
+  if (!collapseExpired) {
+    return (
+      <DocumentosTableBody
+        caption={caption}
+        columnLabel={columnLabel}
+        rows={rows}
+        showValidityColumns={showValidityColumns}
+        {...rest}
+      />
+    );
+  }
+
+  const { active, expired } = splitExpired(rows);
+  return (
+    <div>
+      <DocumentosTableBody
+        caption={caption}
+        columnLabel={columnLabel}
+        rows={active}
+        showValidityColumns={showValidityColumns}
+        {...rest}
+      />
+      {expired.length > 0 ? (
+        <CollapsibleSeparator title="Cartas vencidas" count={expired.length} defaultOpen={false}>
+          <DocumentosTableBody
+            caption={`${caption} — vencidas`}
+            columnLabel={columnLabel}
+            rows={expired}
+            showValidityColumns={showValidityColumns}
+            {...rest}
+          />
+        </CollapsibleSeparator>
+      ) : null}
+    </div>
+  );
+}
+
+export type DocumentosBalancoGroupsProps = {
+  groups: DocumentosBalancoYear[];
+  canWrite: boolean;
+  editingId: string | null;
+  editDraft: string;
+  saving: boolean;
+  onEditDraft: (value: string) => void;
+  onStartEdit: (row: DocumentosRow) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onView: (row: DocumentosRow) => void;
+  onOpenDetail: (row: DocumentosRow) => void;
+  onUpdate: (row: DocumentosRow) => void;
+  onShare: (row: DocumentosRow) => void;
+  onWhatsApp: (row: DocumentosRow) => void;
+};
+
+export function DocumentosBalancoGroups({ groups, ...tableProps }: DocumentosBalancoGroupsProps) {
+  if (groups.length === 0) {
+    return (
+      <p className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">Nenhum balanço encontrado.</p>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+      {groups.map((group) => (
+        <CollapsibleSeparator
+          key={group.year}
+          title={String(group.year)}
+          count={group.documents.length}
+          defaultOpen={false}
+        >
+          <div className="px-3 pb-2 flex justify-end">
+            {group.folderWebUrl ? (
+              <a
+                href={group.folderWebUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${INLINE_ICON_BTN} inline-flex items-center gap-1 text-sm`}
+                title="Abrir pasta no OneDrive"
+                aria-label={`Abrir pasta ${group.year} no OneDrive`}
+              >
+                <span className="material-symbols-outlined text-[18px]">folder_open</span>
+                <span className="font-medium">Abrir pasta no OneDrive</span>
+              </a>
+            ) : null}
+          </div>
+          <DocumentosTableBody
+            caption={`Balanços ${group.year}`}
+            columnLabel="Documento"
+            rows={group.documents}
+            showValidityColumns
+            {...tableProps}
+          />
+        </CollapsibleSeparator>
+      ))}
     </div>
   );
 }
