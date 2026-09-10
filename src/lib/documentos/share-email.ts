@@ -24,6 +24,11 @@ export const DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS = [
 
 export type DocumentosShareRecipient = (typeof DOCUMENTOS_SHARE_RECIPIENTS)[number];
 
+/** Teto por pedido: editor autenticado ainda não pode virar spammer. */
+export const DOCUMENTOS_SHARE_MAX_RECIPIENTS = 10;
+
+const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/;
+
 export type ShareResult = { sent: string[]; messageId: string | null };
 
 export type MailTransport = {
@@ -52,13 +57,21 @@ const ALLOWED_BY_EMAIL = new Map<string, string>(
 );
 
 /**
- * Aceita e-mails da allowlist (qualquer caixa) ou índices `"0"`… da constante.
- * Qualquer outro valor recusa o pedido inteiro — não envia só os válidos.
+ * Aceita índices `"0"`… da allowlist, e-mails da lista, e e-mail escrito à
+ * mão (FR-042). Formato inválido ou mais de 10 recusa o pedido inteiro.
  */
+export function normalizeShareEmail(raw: string): string | null {
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed || trimmed.length > 254) return null;
+  if (trimmed.includes('..') || trimmed.startsWith('.') || trimmed.endsWith('.')) return null;
+  if (!EMAIL_RE.test(trimmed)) return null;
+  return trimmed;
+}
+
 export function resolveDocumentosShareRecipients(
   raw: readonly string[],
 ): { ok: true; emails: string[] } | { ok: false } {
-  if (raw.length === 0) return { ok: false };
+  if (raw.length === 0 || raw.length > DOCUMENTOS_SHARE_MAX_RECIPIENTS) return { ok: false };
   const emails: string[] = [];
   const seen = new Set<string>();
   for (const item of raw) {
@@ -67,7 +80,8 @@ export function resolveDocumentosShareRecipients(
     if (/^\d+$/.test(trimmed)) {
       email = DOCUMENTOS_SHARE_RECIPIENTS[Number.parseInt(trimmed, 10)]?.email;
     } else {
-      email = ALLOWED_BY_EMAIL.get(trimmed.toLowerCase());
+      const lower = trimmed.toLowerCase();
+      email = ALLOWED_BY_EMAIL.get(lower) ?? normalizeShareEmail(trimmed) ?? undefined;
     }
     if (!email) return { ok: false };
     if (seen.has(email)) continue;

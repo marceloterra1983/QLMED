@@ -14,17 +14,18 @@ import {
   DOCUMENTOS_UPLOAD_MAX_BYTES,
 } from '@/lib/documentos/constants';
 import {
-  resolveDocumentosShareRecipients,
-  shareDocumentByEmail,
-  ShareRecipientsNotAllowedError,
-} from '@/lib/documentos/share-email';
+  shareDocumentByWhatsApp,
+  ShareWhatsAppNumberError,
+  ShareWhatsAppUnavailableError,
+  WhatsAppSendError,
+} from '@/lib/documentos/share-whatsapp';
 import { toYmd } from '@/lib/documentos/validity';
 import { documentosIdSchema } from '@/lib/schemas/documentos';
 
-const log = createLogger('documentos/:id/compartilhar');
+const log = createLogger('documentos/:id/compartilhar-whatsapp');
 
-const shareBodySchema = z.object({
-  recipients: z.array(z.string().max(254)).min(1).max(10),
+const bodySchema = z.object({
+  phone: z.string().min(8).max(32),
   note: z.string().max(500).optional(),
 });
 
@@ -58,13 +59,8 @@ export async function POST(
     } catch {
       return NextResponse.json({ error: 'Dados invalidos' }, { status: 400 });
     }
-    const parsed = shareBodySchema.safeParse(json);
+    const parsed = bodySchema.safeParse(json);
     if (!parsed.success) return apiValidationError(parsed.error);
-
-    const resolved = resolveDocumentosShareRecipients(parsed.data.recipients);
-    if (!resolved.ok) {
-      return NextResponse.json({ error: 'Destinatário não permitido' }, { status: 400 });
-    }
 
     const row = await prisma.companyDocument.findFirst({
       where: { id: parsedId.data.id, companyId: access.companyId },
@@ -91,25 +87,17 @@ export async function POST(
       return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 });
     }
 
-    /**
-     * A rota irmã `[id]/arquivo` faz stream e nunca materializa; esta precisa do
-     * conteúdo em memória para o anexar. Sem teto isso é um risco de processo,
-     * não de pedido: o contentor corre com `mem_limit: 1g` e a materialização
-     * tem pico de ~3x, portanto algumas centenas de MB derrubam a aplicação
-     * inteira. E o alvo existe — os `BALANÇO <ano>.zip` são ingeridos como
-     * linhas com `oneDriveItemId`, e esta é a única rota que os materializa.
-     */
     if (content.size !== null && content.size > DOCUMENTOS_UPLOAD_MAX_BYTES) {
       await content.body.cancel().catch(() => {});
       return NextResponse.json(
-        { error: 'Arquivo grande demais para anexar ao e-mail' },
+        { error: 'Arquivo grande demais para enviar pelo WhatsApp' },
         { status: 413 },
       );
     }
 
     const pdf = await pdfFromStream(content.body);
-    const result = await shareDocumentByEmail({
-      recipients: resolved.emails,
+    const result = await shareDocumentByWhatsApp({
+      phone: parsed.data.phone,
       fileName: row.fileName,
       pdf,
       kindLabel: CERTIDAO_LABEL[row.kind],
@@ -117,13 +105,20 @@ export async function POST(
       note: parsed.data.note,
     });
 
-    return NextResponse.json({ sent: result.sent });
+    return NextResponse.json({ sent: result.jid });
   } catch (error) {
-    if (error instanceof ShareRecipientsNotAllowedError) {
+    if (error instanceof ShareWhatsAppNumberError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    if (error instanceof ShareWhatsAppUnavailableError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+    if (error instanceof WhatsAppSendError) {
+      log.error({ err: sanitizeError(error.message) }, 'Falha ao enviar WhatsApp');
+      return NextResponse.json({ error: 'Falha ao enviar WhatsApp' }, { status: 502 });
+    }
     const raw = error instanceof Error ? error.message : 'envio falhou';
-    log.error({ err: sanitizeError(raw) }, 'Falha ao compartilhar documento');
-    return NextResponse.json({ error: 'Falha ao enviar e-mail' }, { status: 502 });
+    log.error({ err: sanitizeError(raw) }, 'Falha ao compartilhar documento via WhatsApp');
+    return NextResponse.json({ error: 'Falha ao enviar WhatsApp' }, { status: 502 });
   }
 }

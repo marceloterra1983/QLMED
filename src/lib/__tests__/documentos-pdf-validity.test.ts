@@ -387,3 +387,48 @@ describe('CND Municipal: a emissão vem depois do município, sem rótulo', () =
     expect(matchValidityFromText('campo grande, 1 de novembro de 2024', HOJE).emitidoEm).toBe('2024-11-01');
   });
 });
+
+describe('SPEC-042 L15 — carta: rótulos e prazo relativo', () => {
+  const TODAY = '2026-09-04';
+
+  it('carta vigente até data absoluta', () => {
+    const result = matchValidityFromText(
+      'Emitida em 01/03/2026. Carta vigente até 31/12/2026.',
+      TODAY,
+    );
+    expect(result.validUntil).toBe('2026-12-31');
+    expect(result.emitidoEm).toBe('2026-03-01');
+    expect(result.matchedLabel).toBe('Vigente ate');
+  });
+
+  it('carta autorizada até', () => {
+    const result = matchValidityFromText('autorizada até 15/06/2027', TODAY);
+    expect(result.validUntil).toBe('2027-06-15');
+    expect(result.matchedLabel).toBe('Autorizada ate');
+  });
+
+  it('carta válida por 12 meses a contar da emissão', () => {
+    const result = matchValidityFromText(
+      'Emitida em 01/03/2026. Esta carta é válida por 12 (doze) meses a contar da emissão.',
+      TODAY,
+    );
+    expect(result.emitidoEm).toBe('2026-03-01');
+    expect(result.validUntil).toBe('2027-03-01');
+    expect(result.matchedLabel).toBe('Prazo');
+  });
+
+  it('carta com prazo indeterminado não inventa validade', () => {
+    const result = matchValidityFromText(
+      'Emitida em 01/03/2026. Validade indeterminada.',
+      TODAY,
+    );
+    expect(result.emitidoEm).toBe('2026-03-01');
+    expect(result.validUntil).toBeNull();
+  });
+
+  it('prazo relativo sem emissão não inventa validade', () => {
+    const result = matchValidityFromText('válida por 12 meses a contar da emissão', TODAY);
+    expect(result.validUntil).toBeNull();
+    expect(result.emitidoEm).toBeNull();
+  });
+});

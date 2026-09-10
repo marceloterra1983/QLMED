@@ -111,9 +111,16 @@ describe('resolveDocumentosShareRecipients', () => {
       ok: true,
       emails: ['marcelo@qlmed.com.br', 'faturamento@qlmed.com.br'],
     });
-    expect(resolveDocumentosShareRecipients(['outsider@evil.com'])).toEqual({ ok: false });
+    expect(resolveDocumentosShareRecipients(['nao-e-email'])).toEqual({ ok: false });
     expect(resolveDocumentosShareRecipients(['99'])).toEqual({ ok: false });
     expect(resolveDocumentosShareRecipients([])).toEqual({ ok: false });
+  });
+
+  it('aceita e-mail digitado fora da allowlist', () => {
+    expect(resolveDocumentosShareRecipients(['compras@hospital.com.br'])).toEqual({
+      ok: true,
+      emails: ['compras@hospital.com.br'],
+    });
   });
 });
 
@@ -170,15 +177,26 @@ describe('shareDocumentByEmail', () => {
     expect(mail.subject).not.toContain('script');
   });
 
-  it('recusa destinatário fora da lista sem chamar o transport', async () => {
+  it('recusa e-mail digitado inválido sem chamar o transport', async () => {
     const sendMail = vi.fn();
     await expect(
       shareDocumentByEmail(
-        { ...baseInput, recipients: ['atacante@evil.com'] },
+        { ...baseInput, recipients: ['nao-e-email'] },
         { transport: { sendMail } },
       ),
     ).rejects.toBeInstanceOf(ShareRecipientsNotAllowedError);
     expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('envia para e-mail digitado fora da allowlist', async () => {
+    const sendMail = vi.fn().mockResolvedValue({ messageId: 'x' });
+    const result = await shareDocumentByEmail(
+      { ...baseInput, recipients: ['compras@hospital.com.br'] },
+      { transport: { sendMail } },
+    );
+    expect(result.sent).toEqual(['compras@hospital.com.br']);
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(sendMail.mock.calls[0][0].to).toEqual(['compras@hospital.com.br']);
   });
 
   it('lança erro claro se SMTP_PASS não estiver configurado (sem transport injetado)', async () => {
@@ -239,14 +257,19 @@ describe('POST /api/documentos/[id]/compartilhar', () => {
     expect(mocks.sendMail).not.toHaveBeenCalled();
   });
 
-  it('anti-relay: e-mail arbitrário do corpo é recusado com 400', async () => {
-    const res = await shareRequest({ recipients: ['atacante@evil.com'] });
+  it('anti-relay: e-mail inválido do corpo é recusado com 400', async () => {
+    const res = await shareRequest({ recipients: ['nao-e-email'] });
     expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/não permitido/i);
-    expect(JSON.stringify(body)).not.toContain('atacante@evil.com');
     expect(mocks.sendMail).not.toHaveBeenCalled();
     expect(mocks.openOneDriveItemContent).not.toHaveBeenCalled();
+  });
+
+  it('e-mail digitado válido é aceite e entra no to', async () => {
+    const res = await shareRequest({ recipients: ['compras@hospital.com.br'] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ sent: ['compras@hospital.com.br'] });
+    expect(mocks.sendMail).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMail.mock.calls[0][0].to).toEqual(['compras@hospital.com.br']);
   });
 
   it('envia o PDF em anexo e devolve sent', async () => {

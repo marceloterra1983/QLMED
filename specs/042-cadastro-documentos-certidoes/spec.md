@@ -31,7 +31,10 @@ entrar, compacta as linhas da tabela e troca o alvo do clique da linha para um
 popup de gestão (resumo de datas, descrição, órgão emissor); o modal de
 atualização passa a abrir por um botão dentro desse popup. A L14 acrescenta
 uma varredura em lote para preencher `emitidoEm` que a ingestão não leu
-(ficheiros cuja data já vinha no nome).
+(ficheiros cuja data já vinha no nome). A L15 abre e-mail livre e WhatsApp
+no compartilhar, varre as caixas de José Roberto, Marcelo, Flavio e Daniele
+em busca de cartas de comercialização, e lê emissão/validade no PDF das cartas
+mesmo quando o texto descreve o prazo de formas diferentes.
 
 **Input**: Pedido do dono (2026-09-04): "criar uma página Documentos dentro de
 Cadastro no qual deve ter uma sessão de Certidões e colocar estas certidões na
@@ -213,10 +216,11 @@ falhar de forma visível, não chutar.
 - **FR-020**: A família `carta` é conjunto aberto: uma linha por ficheiro
   (fabricante extraído do nome), pasta
   `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Ordenação por dias
-  restantes, sem data no fim. Nome sem data → "Sem data" na validade e
-  **não alerta**. Validade entra só pelo lápis (`validUntilSource='manual'`).
-  Não se inventa data. A pasta `Vencidas` (criada se faltar sob a raiz da
-  família) serve para arquivo.
+  restantes, sem data no fim. A ingestão **lê o PDF** (FR-045) e grava
+  `validUntilSource='pdf'` quando encontra validade; data no nome só entra
+  se o PDF não declarar prazo. Sem data → "Sem data" e **não alerta**.
+  Lápis continua a gravar `manual`. Não se inventa data. A pasta `Vencidas`
+  (criada se faltar sob a raiz da família) serve para arquivo.
 - **FR-021**: Limiares de alerta são por família, não globais:
   certidão `[30, 15, 7, 3, 1, 0]` (inalterado); sanitária
   `[90, 60, 30, 15, 7, 0]` — o 60 vem da observação II da Licença Sanitária
@@ -308,8 +312,9 @@ falhar de forma visível, não chutar.
   kebab. O lápis sai da linha.
 
 - **FR-034**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
-  `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo, sem e-mail livre), observação opcional,
-  envio a `POST /api/documentos/{id}/compartilhar`. Zero destinatários desativa
+  `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo) **e** um campo para escrever e-mail
+  (FR-042), observação opcional, envio a
+  `POST /api/documentos/{id}/compartilhar`. Zero destinatários desativa
   o botão. Não é `mailto:`. Sucesso: toast com a quantidade; falha: mensagem da
   rota.
 
@@ -338,8 +343,8 @@ falhar de forma visível, não chutar.
   restantes** com o mesmo destaque `<= 7` da tabela; **O que é este
   documento** (`descricao` do tipo); **Quem emite / onde renovar** (`orgao` +
   `emissaoUrl` quando existir) — este bloco aparece **sempre**, inclusive nos
-  tipos que não vencem; acções Ver, Baixar, Compartilhar, Atualizar arquivo,
-  Editar validade.
+  tipos que não vencem; acções Ver, Baixar, Compartilhar, WhatsApp, Atualizar
+  arquivo, Editar validade.
 - **FR-040**: `emitidoEm DateTime? @db.Date` é extraído do PDF pela mesma
   máquina de validade: início da faixa `Validade: X a Y`; rótulos `emitida em`,
   `emitido em`, `data de emissão`, `emissão:`. Sem match → `null`. Guarda de
@@ -361,6 +366,36 @@ falhar de forma visível, não chutar.
   ocupado devolve resultado vazio com `ocupado: true`. A tela tem o botão
   **Preencher emissões** visível só quando falta emissão; cada clique corre
   um lote e mostra o resumo — não há laço automático nem timer.
+
+### Compartilhar e cartas por e-mail (L15)
+
+- **FR-042**: O diálogo de compartilhar aceita e-mail escrito à mão (um ou
+  mais, separados por vírgula), além das caixas da allowlist. A rota valida
+  formato (`local@domínio`), recusa inválido com 400, aceita no máximo 10
+  destinatários por pedido, e envia o PDF em anexo como já fazia. Continua a
+  exigir editor+ e a página Documentos — não é relay anónimo.
+- **FR-043**: Existe um botão **WhatsApp** próprio (menu da linha e popup de
+  gestão), distinto de "Compartilhar". Abre `DocumentoWhatsAppModal` com
+  telefone (Brasil) e observação opcional. Envio a
+  `POST /api/documentos/{id}/compartilhar-whatsapp` via `sendWhatsAppDocument`.
+  Número inválido → 400; Evolution desligada → 503 com mensagem clara; sem
+  fallback para o grupo fiscal. Legenda contém tipo e validade, nunca o PDF
+  em log.
+- **FR-044**: Editor+ dispara `POST /api/documentos/cartas-email` (e a
+  ingestão de produção, quando a porta é a real) varre as caixas
+  `joseroberto@qlmed.com.br`, `marcelo@qlmed.com.br`, `flavio@qlmed.com.br`
+  e `daniele@qlmed.com.br` em busca de anexos PDF de carta de comercialização
+  (assunto, nome do anexo ou texto com carta + comercialização/autorização/
+  distribuição). DANFE, NF-e, CT-e, boleto e ordem de compra são ignorados.
+  PDF novo é gravado na pasta OneDrive da família carta (nome saneado); ficheiro
+  já existente (mesmo nome, sem acento) é saltado. Falha de uma caixa não
+  aborta as outras.
+- **FR-045**: A leitura de PDF das cartas reconhece validade em formas
+  distintas: rótulos (`validade`, `válida até`, `vigente até`, `autorizada
+  até`, `com validade até`); faixa `de X a Y`; e prazo relativo (`válida
+  por N meses/anos/dias a contar da emissão`, `prazo de N meses`). Emissão
+  pelos rótulos já existentes. Prazo relativo só grava validade se houver
+  emissão. Prazo indeterminado deixa validade nula. Não se inventa data.
 
 ## Acceptance Criteria
 
@@ -429,9 +464,10 @@ falhar de forma visível, não chutar.
   `thresholdDue(60, [90], sanitaria) === 60`; os limiares da certidão não
   disparam em 90 dias. Controlo negativo: copiar os limiares da certidão
   para a sanitária faz o teste 90/60 falhar.
-- **AC-016** (FR-020): carta `Carta Comercialização TECHIMPORT.pdf` fica
-  sem `validUntil` e o tick não envia. Controlo negativo: gravar validade
-  inventada faz o teste "carta sem data não alerta" falhar.
+- **AC-016** (FR-020): carta `Carta Comercialização TECHIMPORT.pdf` sem
+  validade no PDF fica sem `validUntil` e o tick não envia. Controlo
+  negativo: gravar validade inventada faz o teste "carta sem data não alerta"
+  falhar. Validade lida do PDF grava `validUntilSource='pdf'` (AC-035).
 - **AC-017** (FR-022): a fixture dos nomes reais da pasta sanitária
   classifica AFE, pragas, veículo, licença, alvará de prefeitura, CRF e
   protocolo/publicação (outro); `PUBLICAÇÃO DIARIO OFICIAL AFE` é `outro`,
@@ -491,6 +527,17 @@ falhar de forma visível, não chutar.
   grande não é materializado; downloads não correm em paralelo. Controlo
   negativo: remover o teto, gravar `lastModifiedAt`, gravar `validUntil` ou
   trocar o laço por `Promise.all` faz o teste respectivo falhar.
+- **AC-032** (FR-042): e-mail `compras@hospital.com.br` é aceite e entra em
+  `to`; `nao-e-email` e lista vazia → 400 e `sendMail` não corre. Mais de 10
+  destinatários → 400.
+- **AC-033** (FR-043): `67999999999` normaliza para `5567999999999`;
+  `abc` → 400 e Evolution não é chamada. Botão "WhatsApp" existe no popup de
+  gestão e é distinto de "Compartilhar".
+- **AC-034** (FR-044): anexo `Carta Comercialização TECHIMPORT.pdf` é
+  importado; `DANFE 123.pdf` e carta cujo nome já está na pasta são saltados.
+- **AC-035** (FR-045): `válida por 12 meses a contar da emissão` +
+  `emitida em 01/03/2026` → validade `2027-03-01`; `vigente até 31/12/2026`
+  → essa data; prazo indeterminado → `validUntil` nulo.
 
 ## Non-functional
 
@@ -508,10 +555,10 @@ falhar de forma visível, não chutar.
   sentido: o que a contabilidade coloca no OneDrive aparece sozinho, com aviso.
 - Outras categorias ainda não modeladas (CRT CREA, falência, protestos):
   entram como nova entrada em `DOCUMENTOS_FAMILIES`, não nesta folha.
-- Parser de validade no conteúdo do PDF (entregue em P1 via ingestão
-  FR-030; L12 consome via `POST /api/documentos/analisar`).
-- E-mail livre no diálogo de compartilhar (a rota recusa fora da allowlist).
-- E-mail e push para estes avisos.
+- Parser de validade no conteúdo do PDF das certidões (entregue em P1 via
+  ingestão FR-030; L12 consome via `POST /api/documentos/analisar`). Cartas:
+  FR-045.
+- E-mail e push para os avisos automáticos de vencimento.
 
 ## Applicable ADRs
 

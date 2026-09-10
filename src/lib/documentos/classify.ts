@@ -95,6 +95,29 @@ export function cartaManufacturerKey(fileName: string): string {
   return fold(cartaLabelFromFileName(fileName));
 }
 
+const CARTA_NOISE =
+  /\b(danfe|nf-?e\b|nfe\b|ct-?e\b|boleto|ordem de compra|xml da nfe|danfe)\b/;
+
+/**
+ * Anexo/assunto de carta de comercialização (FR-044). O texto do PDF entra
+ * só como apoio: DANFE e NF-e nunca passam, mesmo que o assunto cite "carta".
+ */
+export function isCartaComercializacaoCandidate(
+  fileName: string,
+  subject = '',
+  textSnippet = '',
+): boolean {
+  const hay = fold(`${fileName} ${subject} ${textSnippet.slice(0, 4000)}`);
+  if (CARTA_NOISE.test(hay)) return false;
+  const hasCarta = /\bcarta\b/.test(hay);
+  const hasTema =
+    /comercializ/.test(hay) ||
+    /autoriza\w*.{0,40}(comercializ|distribui)/.test(hay) ||
+    /distribuidor autoriz/.test(hay) ||
+    /representa\w*.{0,20}comercial/.test(hay);
+  return hasCarta && hasTema;
+}
+
 function classifySocietario(fileName: string): CompanyDocumentKind {
   const file = fold(fileName);
   if (file.includes('constituicao') && file.includes('alteracao')) return 'contrato_social_consolidado';

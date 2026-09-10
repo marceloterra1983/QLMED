@@ -48,7 +48,11 @@ const DATE = String.raw`((?<!\d)(?:${DATE_NUM}|${DATE_EXT}))`;
  * O `\b` inicial impede casar dentro de palavra de sentido oposto:
  * `Certidao invalida ate 12/10/2026` casava `valida ate` e devolvia a data.
  */
-const LABEL = String.raw`\b(certidao\s+valida\s+ate|validade\s+ate|valid[ao]\s+ate|validade)`;
+/**
+ * Alternativas da mais longa para a mais curta. Cartas usam "vigente até",
+ * "autorizada até" e "com validade até" além dos rótulos de certidão.
+ */
+const LABEL = String.raw`\b(certidao\s+valida\s+ate|com\s+validade\s+ate|validade\s+ate|vigencia\s+ate|vigente\s+ate|autorizad[ao]\s+ate|valid[ao]\s+ate|validade)`;
 
 /** Faixa (X a Y) tem de vir antes do rótulo simples, senão devolve X. */
 const RANGE_SOURCE = `${LABEL}\\s*:?\\s*(?:de\\s+)?${DATE}\\s+a\\s+${DATE}`;
@@ -202,6 +206,56 @@ function addCivilYears(ymd: string, years: number): string {
   return `${year + years}-${pad2(month)}-${pad2(Math.min(day, lastDay))}`;
 }
 
+function addCivilMonths(ymd: string, months: number): string {
+  const [year, month, day] = ymd.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${utc.getUTCFullYear()}-${pad2(utc.getUTCMonth() + 1)}-${pad2(Math.min(day, lastDay))}`;
+}
+
+function addCivilDays(ymd: string, days: number): string {
+  const [year, month, day] = ymd.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day + days));
+  return `${utc.getUTCFullYear()}-${pad2(utc.getUTCMonth() + 1)}-${pad2(utc.getUTCDate())}`;
+}
+
+/**
+ * Prazo relativo das cartas: "válida por 12 (doze) meses a contar da emissão".
+ * Número + unidade têm de vir depois de um rótulo de validade/prazo — um
+ * "12" solto no protocolo não serve.
+ */
+const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|vigencia|prazo|autorizacao|carta)\b[\s\S]{0,96}?\b(?:por|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
+
+function applyDuration(startYmd: string, amount: number, unit: string): string | null {
+  if (amount < 1 || amount > 120) return null;
+  if (unit.startsWith('dia')) return addCivilDays(startYmd, amount);
+  if (unit.startsWith('mes')) return addCivilMonths(startYmd, amount);
+  if (unit.startsWith('ano')) return addCivilYears(startYmd, amount);
+  return null;
+}
+
+function matchDurationValidUntil(
+  normalized: string,
+  emitidoEm: string | null,
+  todayYmd: string,
+): { validUntil: string; matchedLabel: string } | null {
+  if (!emitidoEm) return null;
+  if (/\bprazo\s+indeterminado\b|\bvalidade\s+indeterminada\b|\bindeterminad[ao]\b/.test(normalized)
+    && !new RegExp(DURATION_SOURCE).test(normalized)) {
+    return null;
+  }
+  const re = new RegExp(DURATION_SOURCE, 'g');
+  for (const match of normalized.matchAll(re)) {
+    const amount = Number(match[1]);
+    const computed = applyDuration(emitidoEm, amount, match[2] ?? '');
+    if (!computed) continue;
+    if (!isPlausibleYmd(computed, todayYmd) && computed < emitidoEm) continue;
+    if (computed < emitidoEm) continue;
+    return { validUntil: computed, matchedLabel: 'Prazo' };
+  }
+  return null;
+}
+
 /** Validade olha para a frente: até 10 anos à frente, 5 para trás. */
 function isPlausibleYmd(ymd: string, todayYmd: string): boolean {
   return ymd <= addCivilYears(todayYmd, 10) && ymd >= addCivilYears(todayYmd, -5);
@@ -223,6 +277,9 @@ function isPlausibleEmissaoYmd(ymd: string, todayYmd: string): boolean {
 function canonicalLabel(raw: string): string {
   const folded = raw.replace(/\s+/g, ' ');
   if (folded.startsWith('certidao')) return 'Certidao valida ate';
+  if (folded.startsWith('com validade')) return 'Com validade ate';
+  if (folded.startsWith('vigencia') || folded.startsWith('vigente')) return 'Vigente ate';
+  if (folded.startsWith('autorizad')) return 'Autorizada ate';
   if (folded.startsWith('validade')) return 'Validade';
   if (folded.startsWith('valida')) return 'Valida ate';
   return 'Validade';
@@ -304,6 +361,15 @@ export function matchValidityFromText(text: string, todayYmd: string = todayInSa
     emitidoEm = null;
   }
 
+  if (validUntil == null) {
+    const duration = matchDurationValidUntil(normalized, emitidoEm, todayYmd);
+    if (duration && (!emitidoEm || duration.validUntil >= emitidoEm)) {
+      validUntil = duration.validUntil;
+      confidence = 'alta';
+      matchedLabel = duration.matchedLabel;
+    }
+  }
+
   return { validUntil, emitidoEm, confidence, matchedLabel, textChars };
 }
 
@@ -331,6 +397,14 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
     return parts.join(' ');
   } finally {
     await doc.destroy();
+  }
+}
+
+export async function extractPdfPlainText(data: Uint8Array | Buffer): Promise<string> {
+  try {
+    return await extractPdfText(new Uint8Array(data));
+  } catch {
+    return '';
   }
 }
 
