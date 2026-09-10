@@ -73,43 +73,108 @@ if [[ "$requested" != "$current_main" ]]; then
 fi
 
 echo "Dispatching QLMED Production Deploy for ${requested}..."
+dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # Token só neste processo — não altera hosts.yml / git credential do agente.
-GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh workflow run deploy-production.yml \
-  --ref main \
-  -f confirm_production=DEPLOY \
-  -f revision="$requested"
+dispatch_out="$(
+  GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh workflow run deploy-production.yml \
+    --ref main \
+    -f confirm_production=DEPLOY \
+    -f revision="$requested" 2>&1
+)" || {
+  echo "$dispatch_out" >&2
+  exit 1
+}
+echo "$dispatch_out"
+
+# Prefer run URL printed by gh (newer CLI); else poll for a LIVE run created
+# at/after dispatch — never attach to an older completed success.
+run_id=""
+run_url="$(printf '%s\n' "$dispatch_out" | grep -Eo 'https://github.com/[^ ]+/actions/runs/[0-9]+' | tail -n1 || true)"
+if [[ -n "$run_url" ]]; then
+  run_id="${run_url##*/}"
+fi
 
 echo "Waiting for workflow run to appear..."
-run_id=""
-run_url=""
-for _ in $(seq 1 30); do
-  mapfile -t run_fields < <(
-    GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run list \
-      --workflow=deploy-production.yml \
-      --branch main \
-      --event workflow_dispatch \
-      --limit 1 \
-      --json databaseId,url,createdAt \
-      --jq '.[0] | [.databaseId, .url] | .[]'
-  )
-  if [[ "${#run_fields[@]}" -eq 2 && -n "${run_fields[0]}" ]]; then
-    run_id="${run_fields[0]}"
-    run_url="${run_fields[1]}"
-    break
+for _ in $(seq 1 45); do
+  if [[ -z "$run_id" ]]; then
+    mapfile -t run_fields < <(
+      GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run list \
+        --workflow=deploy-production.yml \
+        --branch main \
+        --event workflow_dispatch \
+        --limit 10 \
+        --json databaseId,url,status,createdAt \
+      | jq -r --arg since "$dispatched_at" '
+          [.[]
+            | select(.createdAt >= $since)
+            | select(.status == "queued" or .status == "waiting"
+                     or .status == "in_progress" or .status == "requested"
+                     or .status == "pending")
+          ][0] | select(. != null) | .databaseId, .url
+        '
+    )
+    if [[ "${#run_fields[@]}" -eq 2 && -n "${run_fields[0]}" ]]; then
+      run_id="${run_fields[0]}"
+      run_url="${run_fields[1]}"
+    fi
+  fi
+  if [[ -n "$run_id" ]]; then
+    status="$(
+      GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run view "$run_id" \
+        --json status --jq .status
+    )"
+    if [[ "$status" == "waiting" ]]; then
+      cat >&2 <<EOF
+Deploy run is waiting for environment approval (production):
+  ${run_url}
+
+Approve in the GitHub UI (fine-grained PAT cannot review pending
+deployments — GitHub returns 403 Resource not accessible by personal
+access token). After approval this script continues watching.
+EOF
+    fi
+    if [[ "$status" != "completed" ]]; then
+      break
+    fi
   fi
   sleep 2
 done
 
 if [[ -z "$run_id" ]]; then
-  echo "Deploy dispatched, but could not resolve run id yet. Check Actions UI." >&2
-  exit 0
+  echo "Deploy dispatched, but could not resolve a live run id yet. Check Actions UI." >&2
+  exit 1
 fi
 
 echo "Watching: ${run_url}"
-GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run watch --exit-status "$run_id" || {
-  echo "Deploy failed. Logs: ${run_url}" >&2
-  exit 1
-}
+# Wait through environment approval + jobs (up to ~45m).
+for _ in $(seq 1 540); do
+  status="$(
+    GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run view "$run_id" \
+      --json status,conclusion --jq '[.status,.conclusion] | join("|")'
+  )"
+  run_status="${status%%|*}"
+  run_conclusion="${status#*|}"
+  if [[ "$run_status" == "completed" ]]; then
+    if [[ "$run_conclusion" == "success" ]]; then
+      break
+    fi
+    echo "Deploy failed (${run_conclusion}). Logs: ${run_url}" >&2
+    exit 1
+  fi
+  if [[ "$run_status" == "waiting" ]]; then
+    sleep 5
+    continue
+  fi
+  # queued / in_progress — hand off to gh run watch when jobs started
+  if [[ "$run_status" == "in_progress" || "$run_status" == "queued" ]]; then
+    GH_TOKEN="$QLMED_DEPLOY_GH_TOKEN" gh run watch --exit-status "$run_id" || {
+      echo "Deploy failed. Logs: ${run_url}" >&2
+      exit 1
+    }
+    break
+  fi
+  sleep 5
+done
 
 echo "Deploy succeeded: ${run_url}"
 echo "SHA: ${requested}"
