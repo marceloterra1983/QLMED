@@ -131,6 +131,7 @@ export async function uploadDocumentosPdf(input: {
       kind: input.kind,
       documentId: row.id,
       validUntilYmd: input.validUntil,
+      pdf: input.content,
     });
 
     return {

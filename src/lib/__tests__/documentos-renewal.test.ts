@@ -265,6 +265,8 @@ describe('SPEC-042 L7 — notifyRenewals (FR-011 / AC-008)', () => {
     expect(mails[0]?.to).toEqual([...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS]);
     expect(mails[0]?.subject).toContain('12/12/2026');
     expect(mails[0]?.text).toContain('renovada — válida até 12/12/2026');
+    expect(mails[0]?.text).toContain('Resumo dos documentos QLMED');
+    expect((mails[0] as { html?: string }).html).toContain('<th>Categoria</th>');
 
     const created = memory.docs.find((row) => row.oneDriveItemId === NEW.itemId);
     expect(created?.renewalNotifiedAt).toBeInstanceOf(Date);
