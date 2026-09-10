@@ -46,8 +46,11 @@ describe('SPEC-042 — as fontes de verdade do menu não podem divergir', () => 
     }
   });
 
-  it('Documentos aparece dentro do grupo Cadastros', () => {
-    const cadastros = buildNavItems(adminSession(), 0).find((group) => group.section === 'Cadastros');
-    expect(cadastros?.items.map((item) => item.href)).toContain('/cadastro/documentos');
+  it('Documentos aparece no topo do sidebar, acima de Cadastros', () => {
+    const groups = buildNavItems(adminSession(), 0);
+    expect(groups[0]?.section).toBeNull();
+    expect(groups[0]?.items.map((item) => item.href)).toEqual(['/cadastro/documentos']);
+    expect(groups[1]?.section).toBe('Cadastros');
+    expect(groups[1]?.items.map((item) => item.href)).not.toContain('/cadastro/documentos');
   });
 });

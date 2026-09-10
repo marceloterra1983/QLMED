@@ -72,8 +72,10 @@ falhar de forma visível, não chutar.
 
 ### Página e tabela
 
-- **FR-001**: Existe a página `/cadastro/documentos`, no grupo **Cadastros** da
-  navegação (`PAGE_GROUPS`, `PAGE_LABELS`), com a seção **Certidões**.
+- **FR-001**: Existe a página `/cadastro/documentos` (`PAGE_GROUPS`,
+  `PAGE_LABELS`), com a seção **Certidões**. No sidebar (`buildNavItems`) o
+  item **Documentos** fica no topo, acima do grupo **Cadastros** (sem seção
+  própria); em `PAGE_GROUPS` permanece sob Cadastros para o picker de ACL.
 - **FR-002**: A seção mostra uma tabela com **uma linha por tipo**, nesta ordem
   fixa: CND Receita Federal; CRF FGTS; CNDT; CND Estadual (MS); CND Estadual
   (MT); CND Municipal — mobiliário; CND Municipal — débitos gerais. Colunas:

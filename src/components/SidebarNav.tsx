@@ -80,12 +80,17 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
 
   const allNavItems: NavGroup[] = [
     {
+      section: null,
+      items: [
+        { label: 'Documentos', icon: 'verified', href: '/cadastro/documentos' },
+      ],
+    },
+    {
       section: 'Cadastros',
       items: [
         { label: 'Produtos', icon: 'inventory_2', href: '/cadastro/produtos' },
         { label: 'Clientes', icon: 'group', href: '/cadastro/clientes' },
         { label: 'Fornecedores', icon: 'storefront', href: '/cadastro/fornecedores' },
-        { label: 'Documentos', icon: 'verified', href: '/cadastro/documentos' },
       ],
     },
     {
