@@ -130,6 +130,53 @@ describe('listingToSummaryRows', () => {
       },
     ]);
   });
+
+  it('achata balanços agrupados por ano', () => {
+    const listing = {
+      certidoes: [],
+      sanitaria: [],
+      cartas: [],
+      societario: [],
+      basicos: [],
+      balancos: [
+        {
+          year: 2025,
+          documents: [
+            {
+              id: 'b1',
+              kind: 'balanco_anual',
+              category: 'balanco',
+              label: 'Balanço 2025',
+              fileName: 'BALANCO 2025.pdf',
+              validUntil: null,
+              emitidoEm: null,
+              daysRemaining: null,
+              status: { key: 'ok', label: 'Vigente' },
+              validUntilSource: null,
+              expira: false,
+              emissaoUrl: null,
+              emissaoAria: null,
+              webUrl: null,
+              automacao: null,
+            },
+          ],
+        },
+      ],
+      ingest: { lastSuccessAt: null, lastError: null, lastErrorAt: null },
+      shareRecipients: [],
+      whatsappRecipients: [],
+    } as unknown as DocumentosListing;
+
+    expect(listingToSummaryRows(listing)).toEqual([
+      {
+        categoryLabel: 'Balanços',
+        label: 'Balanço 2025',
+        fileName: 'BALANCO 2025.pdf',
+        validUntil: null,
+        statusLabel: 'Vigente',
+      },
+    ]);
+  });
 });
 
 describe('notifyDocumentUpdateByEmail', () => {

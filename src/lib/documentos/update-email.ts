@@ -42,7 +42,7 @@ function flattenListing(listing: DocumentosListing): DocumentosRow[] {
     ...listing.cartas,
     ...listing.societario,
     ...listing.basicos,
-    ...listing.balancos,
+    ...listing.balancos.flatMap((group) => group.documents),
   ];
 }
 
