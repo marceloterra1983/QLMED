@@ -139,6 +139,12 @@ describe('buildDocumentosListing (SPEC-042 FR-002/003/006, AC-001/005)', () => {
       'Flavio',
       'José Roberto',
     ]);
+    expect(listing.whatsappRecipients.map((row) => row.label)).toEqual([
+      'Marcelo',
+      'Daniele',
+      'Flavio',
+      'José Roberto',
+    ]);
 
     expect(listing.certidoes[2].status.label).toBe('Não encontrada');
     expect(listing.ingest.lastSuccessAt).toBe('2026-09-04T13:00:00.000Z');

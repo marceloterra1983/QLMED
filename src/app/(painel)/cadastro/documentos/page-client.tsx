@@ -493,6 +493,7 @@ export default function DocumentosPageClient() {
         onClose={() => setWhatsAppRow(null)}
         documentId={whatsAppRow?.id ?? ''}
         title={whatsAppRow?.label ?? 'Documento'}
+        recipients={data?.whatsappRecipients ?? []}
       />
 
       <CertidaoPdfModal

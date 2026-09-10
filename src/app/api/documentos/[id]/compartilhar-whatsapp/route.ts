@@ -14,6 +14,8 @@ import {
   DOCUMENTOS_UPLOAD_MAX_BYTES,
 } from '@/lib/documentos/constants';
 import {
+  DOCUMENTOS_WHATSAPP_MAX_RECIPIENTS,
+  resolveDocumentosWhatsAppPhones,
   shareDocumentByWhatsApp,
   ShareWhatsAppNumberError,
   ShareWhatsAppUnavailableError,
@@ -24,10 +26,16 @@ import { documentosIdSchema } from '@/lib/schemas/documentos';
 
 const log = createLogger('documentos/:id/compartilhar-whatsapp');
 
-const bodySchema = z.object({
-  phone: z.string().min(8).max(32),
-  note: z.string().max(500).optional(),
-});
+const bodySchema = z
+  .object({
+    phones: z.array(z.string().min(1).max(32)).min(1).max(DOCUMENTOS_WHATSAPP_MAX_RECIPIENTS).optional(),
+    /** Compat: um único telefone (UI antiga). */
+    phone: z.string().min(8).max(32).optional(),
+    note: z.string().max(500).optional(),
+  })
+  .refine((body) => (body.phones?.length ?? 0) > 0 || Boolean(body.phone), {
+    message: 'Informe ao menos um telefone',
+  });
 
 async function pdfFromStream(body: ReadableStream<Uint8Array>): Promise<Buffer> {
   return Buffer.from(await new Response(body).arrayBuffer());
@@ -61,6 +69,16 @@ export async function POST(
     }
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) return apiValidationError(parsed.error);
+
+    const rawPhones = parsed.data.phones?.length
+      ? parsed.data.phones
+      : parsed.data.phone
+        ? [parsed.data.phone]
+        : [];
+    const resolved = resolveDocumentosWhatsAppPhones(rawPhones);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: 'Número de WhatsApp inválido' }, { status: 400 });
+    }
 
     const row = await prisma.companyDocument.findFirst({
       where: { id: parsedId.data.id, companyId: access.companyId },
@@ -96,16 +114,20 @@ export async function POST(
     }
 
     const pdf = await pdfFromStream(content.body);
-    const result = await shareDocumentByWhatsApp({
-      phone: parsed.data.phone,
-      fileName: row.fileName,
-      pdf,
-      kindLabel: CERTIDAO_LABEL[row.kind],
-      validUntil: toYmd(row.validUntil),
-      note: parsed.data.note,
-    });
+    const sent: string[] = [];
+    for (const phone of resolved.phones) {
+      const result = await shareDocumentByWhatsApp({
+        phone,
+        fileName: row.fileName,
+        pdf,
+        kindLabel: CERTIDAO_LABEL[row.kind],
+        validUntil: toYmd(row.validUntil),
+        note: parsed.data.note,
+      });
+      sent.push(result.jid);
+    }
 
-    return NextResponse.json({ sent: result.jid });
+    return NextResponse.json({ sent });
   } catch (error) {
     if (error instanceof ShareWhatsAppNumberError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

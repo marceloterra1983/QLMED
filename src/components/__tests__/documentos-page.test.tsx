@@ -130,6 +130,12 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     balancos: [],
     ingest: { lastSuccessAt: '2026-09-04T14:30:00.000Z', lastError: null, lastErrorAt: null },
     shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
+    whatsappRecipients: [
+      { phone: '6791908000', label: 'Marcelo' },
+      { phone: '6792979419', label: 'Daniele' },
+      { phone: '6792979412', label: 'Flavio' },
+      { phone: '67981119221', label: 'José Roberto' },
+    ],
     ...overrides,
   };
 }
