@@ -20,6 +20,19 @@ export class GraphMailboxError extends Error {
   }
 }
 
+/** Cap de páginas atingido: a lista em `messages` é parcial e o caller deve processá-la e assinalar truncagem. */
+export class GraphMailboxTruncatedError extends GraphMailboxError {
+  readonly messages: GraphMailMessage[];
+  readonly pages: number;
+
+  constructor(messages: GraphMailMessage[], pages: number) {
+    super('mailbox_truncated', 0);
+    this.name = 'GraphMailboxTruncatedError';
+    this.messages = messages;
+    this.pages = pages;
+  }
+}
+
 export type GraphMailMessage = {
   graphMessageId: string;
   internetMessageId: string;
@@ -201,11 +214,11 @@ export async function listMailboxMessagesBySender(
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
   }
 
+  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   if (next) {
     log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
+    throw new GraphMailboxTruncatedError(messages, pages);
   }
-
-  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   return messages;
 }
 
@@ -216,17 +229,27 @@ export async function listMailboxMessagesBySenders(
 ): Promise<GraphMailMessage[]> {
   const uniqueSenders = [...new Set(senderEmails.map((email) => email.trim()).filter(Boolean))];
   const byInternetMessageId = new Map<string, GraphMailMessage>();
+  let truncated: GraphMailboxTruncatedError | null = null;
   for (const sender of uniqueSenders) {
-    const rows = await listMailboxMessagesBySender(mailbox, sender, options);
+    let rows: GraphMailMessage[];
+    try {
+      rows = await listMailboxMessagesBySender(mailbox, sender, options);
+    } catch (error) {
+      if (!(error instanceof GraphMailboxTruncatedError)) throw error;
+      truncated = error;
+      rows = error.messages;
+    }
     for (const row of rows) {
       if (!byInternetMessageId.has(row.internetMessageId)) {
         byInternetMessageId.set(row.internetMessageId, row);
       }
     }
   }
-  return [...byInternetMessageId.values()].sort(
+  const merged = [...byInternetMessageId.values()].sort(
     (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime(),
   );
+  if (truncated) throw new GraphMailboxTruncatedError(merged, truncated.pages);
+  return merged;
 }
 
 export async function listImpcgMailboxMessages(
@@ -363,11 +386,11 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
     next = typeof body['@odata.nextLink'] === 'string' ? body['@odata.nextLink'] : null;
   }
 
+  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   if (next) {
     log.warn({ mailbox, pages }, 'Graph: pagination truncada em maxPages');
+    throw new GraphMailboxTruncatedError(messages, pages);
   }
-
-  messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   return messages;
 }
 

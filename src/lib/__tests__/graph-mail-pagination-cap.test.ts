@@ -38,9 +38,15 @@ describe('graph-mail pagination cap', () => {
       }), { status: 200 });
     }) as unknown as typeof fetch;
 
-    const { listMailboxMessagesBySender } = await import('@/lib/graph-mail-client');
-    const rows = await listMailboxMessagesBySender('mb@x', 'from@x', { maxPages: 3 });
-    expect(rows).toHaveLength(3);
+    const { listMailboxMessagesBySender, GraphMailboxTruncatedError } = await import('@/lib/graph-mail-client');
+    const error = await listMailboxMessagesBySender('mb@x', 'from@x', { maxPages: 3 }).then(
+      () => null,
+      (err: unknown) => err,
+    );
+    expect(error).toBeInstanceOf(GraphMailboxTruncatedError);
+    const truncated = error as InstanceType<typeof GraphMailboxTruncatedError>;
+    expect(truncated.messages).toHaveLength(3);
+    expect(truncated.pages).toBe(3);
     expect(pages).toBe(3);
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ pages: 3 }),

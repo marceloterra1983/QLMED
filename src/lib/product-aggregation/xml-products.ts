@@ -7,17 +7,19 @@ import type { ProductBatch, ProductFromXml } from './units';
 function fillEqualShare<T extends { quantity: number | null }>(targets: T[], total: number): void {
   const n = targets.length;
   if (n === 0) return;
+  if (n === 1) {
+    targets[0].quantity = total;
+    return;
+  }
   let remaining = total;
   for (let i = 0; i < n; i++) {
-    if (n === 1) {
-      targets[i].quantity = total;
-    } else if (i === n - 1) {
+    if (i === n - 1) {
       targets[i].quantity = remaining > 0 ? remaining : 0;
-    } else {
-      const share = Math.floor(total / n);
-      targets[i].quantity = share;
-      remaining -= share;
+      return;
     }
+    const share = Number.isInteger(total) ? Math.floor(total / n) : total / n;
+    targets[i].quantity = share;
+    remaining -= share;
   }
 }
 

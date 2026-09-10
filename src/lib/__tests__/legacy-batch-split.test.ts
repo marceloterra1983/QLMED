@@ -32,6 +32,15 @@ describe('allocateLotQuantities', () => {
     expect(lots.map((l) => l.quantity)).toEqual([4, 3, 3]);
   });
 
+  it('qCom fracionário reparte em partes iguais (kg/L), não floor para 0', () => {
+    const lots = [
+      { quantity: null as number | null },
+      { quantity: null },
+    ];
+    allocateLotQuantities(lots, 1.5);
+    expect(lots.map((l) => l.quantity)).toEqual([0.75, 0.75]);
+  });
+
   it('misto com resto <= 0 zera os lotes sem quantidade', () => {
     const lots = [
       { quantity: 10 as number | null },

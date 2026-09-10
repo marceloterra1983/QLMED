@@ -20,7 +20,7 @@ Scope: corrigir os bugs confirmados no working tree (ANVISA, Graph, lotes, NCM, 
 - [x] G4: re-registo de entrada apaga ENTRADA_NFE da nota e usa chave estável
   CHECK: npx vitest run src/lib/__tests__/stock-entry-idempotency.test.ts
   EXPECT: Test Files  1 passed
-  EVIDENCE: Test Files  1 passed — deleteMany `{ companyId, invoiceId, kind: 'ENTRADA_NFE' }` em `$transaction`; key `entrada-item:inv-1:item1:lotL1:serial:row99`; backfill skip se já existe `entrada-item:`
+  EVIDENCE: Test Files  1 passed — replaceExisting apaga `entrada-item:` na mesma transação; chave canónica `entrada-item:${nfeEntryItem.id}` (ex. `entrada-item:99`); PATCH de lote usa a mesma chave
 
 - [x] G5: NCM cache nulo expira em 30s; hit válido em 10 min (não o dobro)
   CHECK: npx vitest run src/lib/__tests__/ncm-memory-ttl.test.ts

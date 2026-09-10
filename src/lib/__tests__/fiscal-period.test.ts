@@ -43,7 +43,7 @@ describe('getFiscalPeriodRange', () => {
     const d = new Date('2026-04-01T01:00:00.000Z');
     const { startDate, endDate } = getFiscalPeriodRangeFromDate(d, 'quarter');
     expect(iso(startDate)).toBe('2026-04-01T00:00:00.000Z');
-    expect(iso(endDate)).toBe('2026-06-30T23:59:59.000Z');
+    expect(iso(endDate)).toBe('2026-06-30T23:59:59.999Z');
   });
 
   it('trimestre não é o ano inteiro — o defeito que motivou a extração', () => {
