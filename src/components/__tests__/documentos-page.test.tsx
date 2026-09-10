@@ -512,21 +512,27 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
       ],
       balancos: [
         {
-          id: 'doc-bal-2026',
-          kind: 'balanco_anual',
-          category: 'balanco',
-          label: '2026',
-          fileName: 'BALANÇO 2026',
-          validUntil: null,
-          daysRemaining: null,
-          status: { key: 'nao_vence', label: 'não vence' },
-          validUntilSource: null,
-          expira: false,
-          emissaoUrl: null,
-          emissaoAria: null,
-          webUrl: 'https://onedrive.example/balanco-2026',
-          automacao: null,
-          emitidoEm: null,
+          year: 2026,
+          folderWebUrl: 'https://onedrive.example/balanco-2026',
+          documents: [
+            {
+              id: 'doc-bal-2026',
+              kind: 'balanco_anual',
+              category: 'balanco',
+              label: 'BP 2026',
+              fileName: 'BP 2026.pdf',
+              validUntil: null,
+              daysRemaining: null,
+              status: { key: 'nao_vence', label: 'não vence' },
+              validUntilSource: null,
+              expira: false,
+              emissaoUrl: null,
+              emissaoAria: null,
+              webUrl: null,
+              automacao: null,
+              emitidoEm: null,
+            },
+          ],
         },
       ],
     })));
@@ -538,15 +544,15 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
     expect(balancosToggle.getAttribute('aria-expanded')).toBe('false');
 
     fireEvent.click(balancosToggle);
-    const table = await screen.findByRole('table', { name: 'Balanços' });
-    expect(within(table).getByText('2026')).toBeTruthy();
-    expect(within(table).queryByRole('columnheader', { name: 'Válida até' })).toBeNull();
-    expect(within(table).queryByRole('columnheader', { name: 'Dias restantes' })).toBeNull();
-    expect(within(table).queryByText('não vence')).toBeNull();
-    expect(within(table).queryByRole('button', { name: 'Ver documento' })).toBeNull();
+    const yearToggle = await screen.findByRole('button', { name: /2026 \(/ });
+    expect(yearToggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(yearToggle);
+    const table = await screen.findByRole('table', { name: 'Balanços 2026' });
+    expect(within(table).getByText('BP 2026')).toBeTruthy();
+    expect(within(table).getByText('não vence')).toBeTruthy();
+    expect(within(table).getByRole('button', { name: 'Ver documento' })).toBeTruthy();
     expect(within(table).queryByRole('button', { name: /Editar validade/ })).toBeNull();
-    expect(within(table).queryByRole('button', { name: 'Mais opções' })).toBeNull();
-    const open = within(table).getByRole('link', { name: 'Abrir pasta no OneDrive' });
+    const open = screen.getByRole('link', { name: 'Abrir pasta 2026 no OneDrive' });
     expect(open.getAttribute('href')).toBe('https://onedrive.example/balanco-2026');
     expect(open.getAttribute('target')).toBe('_blank');
     expect(open.getAttribute('rel')).toBe('noopener noreferrer');
@@ -579,42 +585,41 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     expect(screen.getByRole('button', { name: 'Anexar PDF' })).toBeTruthy();
   });
 
-  it('balanço não abre modal de atualização e não tem kebab', async () => {
+  it('balanço não abre modal de atualização e abre gestão na linha', async () => {
     stubFetch(() => jsonResponse(listing({
       balancos: [
         {
-          id: 'doc-bal-2026',
-          kind: 'balanco_anual',
-          category: 'balanco',
-          label: '2026',
-          fileName: 'BALANÇO 2026',
-          validUntil: null,
-          daysRemaining: null,
-          status: { key: 'nao_vence', label: 'não vence' },
-          validUntilSource: null,
-          expira: false,
-          emissaoUrl: null,
-          emissaoAria: null,
-          webUrl: 'https://onedrive.example/balanco-2026',
-          automacao: null,
-          emitidoEm: null,
+          year: 2026,
+          folderWebUrl: 'https://onedrive.example/balanco-2026',
+          documents: [
+            {
+              id: 'doc-bal-2026',
+              kind: 'balanco_anual',
+              category: 'balanco',
+              label: 'BP 2026',
+              fileName: 'BP 2026.pdf',
+              validUntil: null,
+              daysRemaining: null,
+              status: { key: 'nao_vence', label: 'não vence' },
+              validUntilSource: null,
+              expira: false,
+              emissaoUrl: null,
+              emissaoAria: null,
+              webUrl: null,
+              automacao: null,
+              emitidoEm: null,
+            },
+          ],
         },
       ],
     })));
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<DocumentosPageClient />);
     fireEvent.click(await screen.findByRole('button', { name: /Balanços/ }));
-    const table = await screen.findByRole('table', { name: 'Balanços' });
-    expect(within(table).queryByRole('button', { name: 'Mais opções' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir pasta 2026 no OneDrive' }));
+    fireEvent.click(await screen.findByRole('button', { name: /2026 \(/ }));
+    const table = await screen.findByRole('table', { name: 'Balanços 2026' });
+    fireEvent.click(within(table).getByRole('button', { name: 'Abrir gestão de BP 2026' }));
+    expect(await screen.findByRole('dialog', { name: 'Gestão: BP 2026' })).toBeTruthy();
     expect(screen.queryByRole('dialog', { name: /Atualizar/ })).toBeNull();
-    expect(screen.queryByRole('dialog', { name: /Gestão/ })).toBeNull();
-    expect(openSpy).toHaveBeenCalledWith(
-      'https://onedrive.example/balanco-2026',
-      '_blank',
-      'noopener,noreferrer',
-    );
-    openSpy.mockRestore();
   });
 
   it('ícones do padrão: Ver documento, Imprimir, menu com Compartilhar', async () => {
@@ -725,27 +730,127 @@ describe('SPEC-042 L13 — cards recolhidos, tabela compacta, gestão', () => {
   });
 });
 
+
+describe('SPEC-042 — cartas vencidas e balanços por ano', () => {
+  it('cartas vencidas ficam no separador colapsável recolhido', async () => {
+    stubFetch(() => jsonResponse(listing({
+      cartas: [
+        {
+          id: 'carta-ok',
+          kind: 'carta_comercializacao',
+          category: 'carta',
+          label: 'TECHIMPORT',
+          fileName: 'Carta Comercialização TECHIMPORT.pdf',
+          validUntil: '2026-12-01',
+          emitidoEm: null,
+          daysRemaining: 80,
+          status: { key: 'ok', label: 'ok' },
+          validUntilSource: 'pdf',
+          expira: true,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: null,
+          automacao: 'manual',
+        },
+        {
+          id: 'carta-venc',
+          kind: 'carta_comercializacao',
+          category: 'carta',
+          label: 'VENCIDA SA',
+          fileName: 'Carta Comercialização VENCIDA SA.pdf',
+          validUntil: '2026-08-01',
+          emitidoEm: null,
+          daysRemaining: -40,
+          status: { key: 'vencida', label: 'vencida há 40 dias' },
+          validUntilSource: 'pdf',
+          expira: true,
+          emissaoUrl: null,
+          emissaoAria: null,
+          webUrl: null,
+          automacao: 'manual',
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+    fireEvent.click(await screen.findByRole('button', { name: /Cartas de comercialização/ }));
+    const table = await screen.findByRole('table', { name: 'Cartas de comercialização' });
+    expect(within(table).getByText('TECHIMPORT')).toBeTruthy();
+    expect(within(table).queryByText('VENCIDA SA')).toBeNull();
+    const expiredToggle = screen.getByRole('button', { name: /Cartas vencidas \(/ });
+    expect(expiredToggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(expiredToggle);
+    const expiredTable = await screen.findByRole('table', { name: 'Cartas de comercialização — vencidas' });
+    expect(within(expiredTable).getByText('VENCIDA SA')).toBeTruthy();
+  });
+
+  it('balanços por ano: ano colapsável mostra documento com Ver e não vence', async () => {
+    stubFetch(() => jsonResponse(listing({
+      balancos: [
+        {
+          year: 2025,
+          folderWebUrl: null,
+          documents: [
+            {
+              id: 'doc-bal-2025',
+              kind: 'balanco_anual',
+              category: 'balanco',
+              label: 'DRE 2025',
+              fileName: 'DRE 2025.pdf',
+              validUntil: null,
+              emitidoEm: null,
+              daysRemaining: null,
+              status: { key: 'nao_vence', label: 'não vence' },
+              validUntilSource: null,
+              expira: false,
+              emissaoUrl: null,
+              emissaoAria: null,
+              webUrl: null,
+              automacao: null,
+            },
+          ],
+        },
+      ],
+    })));
+    render(<DocumentosPageClient />);
+    fireEvent.click(await screen.findByRole('button', { name: /Balanços/ }));
+    const yearToggle = await screen.findByRole('button', { name: /2025 \(/ });
+    expect(yearToggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(yearToggle);
+    expect(yearToggle.getAttribute('aria-expanded')).toBe('true');
+    const table = await screen.findByRole('table', { name: 'Balanços 2025' });
+    expect(within(table).getByText('DRE 2025')).toBeTruthy();
+    expect(within(table).getByText('não vence')).toBeTruthy();
+    expect(within(table).getByRole('button', { name: 'Ver documento' })).toBeTruthy();
+  });
+});
+
 describe('SPEC-042 L14 — preencher emissões', () => {
   it('o botão só aparece quando há linha com emissão em falta', async () => {
     stubFetch(() => jsonResponse(listing({
       certidoes: listing().certidoes.map((item) => ({ ...item, emitidoEm: item.id ? '2026-01-10' : null })),
       balancos: [
         {
-          id: 'doc-bal-2026',
-          kind: 'balanco_anual',
-          category: 'balanco',
-          label: '2026',
-          fileName: 'BALANÇO 2026',
-          validUntil: null,
-          emitidoEm: null,
-          daysRemaining: null,
-          status: { key: 'nao_vence', label: 'não vence' },
-          validUntilSource: null,
-          expira: false,
-          emissaoUrl: null,
-          emissaoAria: null,
-          webUrl: 'https://onedrive.example/balanco-2026',
-          automacao: null,
+          year: 2026,
+          folderWebUrl: 'https://onedrive.example/balanco-2026',
+          documents: [
+            {
+              id: 'doc-bal-2026',
+              kind: 'balanco_anual',
+              category: 'balanco',
+              label: 'BP 2026',
+              fileName: 'BP 2026.pdf',
+              validUntil: null,
+              emitidoEm: null,
+              daysRemaining: null,
+              status: { key: 'nao_vence', label: 'não vence' },
+              validUntilSource: null,
+              expira: false,
+              emissaoUrl: null,
+              emissaoAria: null,
+              webUrl: null,
+              automacao: null,
+            },
+          ],
         },
       ],
     })));

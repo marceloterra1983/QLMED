@@ -72,8 +72,8 @@ export type DocumentosFolderPort = {
 };
 
 /**
- * Uma linha por ano: primeiro as SUBPASTAS `BALANÇO YYYY`; depois, ficheiros
- * soltos `BALANÇO YYYY.zip`/`.pdf` só para anos sem pasta. O resto é ruído.
+ * Seleciona pastas `BALANÇO YYYY` e ficheiros soltos no raiz quando o ano não
+ * tem pasta. A ingestão depois lista os PDFs dentro de cada pasta anual.
  */
 export function selectYearFolderItems(children: DocumentosFolderChild[]): DocumentosFolderChild[] {
   const byYear = new Map<number, DocumentosFolderChild>();
@@ -361,8 +361,58 @@ async function ingestCompany(
         }
         const children = await port.listChildren(family.root);
         const selected = selectYearFolderItems(children);
-        const folderName = lastPathSegment(family.root);
+        const rootFolderName = lastPathSegment(family.root);
         for (const item of selected) {
+          if (item.folder) {
+            /**
+             * Marcador da pasta (folderWebUrl na listagem) + PDFs dentro do ano.
+             * A linha operacional na UI é cada PDF (ações do contrato social).
+             */
+            scanned += 1;
+            seenIds.add(item.itemId);
+            await upsertItem(
+              {
+                companyId,
+                family,
+                kind: 'balanco_anual',
+                fileName: item.name,
+                itemId: item.itemId,
+                folderName: item.name,
+                fileSize: item.size,
+                lastModifiedAt: item.lastModifiedAt,
+                webUrl: item.webUrl,
+                validUntil: null,
+                validUntilSource: null,
+              },
+              byItemId.get(item.itemId),
+            );
+            upserted += 1;
+
+            const yearPath = `${family.root}/${item.name}`;
+            const files = await port.listPdfs(yearPath);
+            for (const file of files) {
+              scanned += 1;
+              seenIds.add(file.itemId);
+              await upsertItem(
+                {
+                  companyId,
+                  family,
+                  kind: 'balanco_anual',
+                  fileName: file.name,
+                  itemId: file.itemId,
+                  folderName: item.name,
+                  fileSize: file.size,
+                  lastModifiedAt: file.lastModifiedAt,
+                  webUrl: file.webUrl ?? null,
+                  validUntil: null,
+                  validUntilSource: null,
+                },
+                byItemId.get(file.itemId),
+              );
+              upserted += 1;
+            }
+            continue;
+          }
           scanned += 1;
           seenIds.add(item.itemId);
           await upsertItem(
@@ -372,7 +422,7 @@ async function ingestCompany(
               kind: 'balanco_anual',
               fileName: item.name,
               itemId: item.itemId,
-              folderName,
+              folderName: rootFolderName,
               fileSize: item.size,
               lastModifiedAt: item.lastModifiedAt,
               webUrl: item.webUrl,

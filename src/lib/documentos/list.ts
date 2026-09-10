@@ -30,6 +30,13 @@ export type DocumentosRow = {
   automacao: DocumentosAutomacao | null;
 };
 
+/** Grupo anual do card Balanços (FR-026). */
+export type DocumentosBalancoYear = {
+  year: number;
+  folderWebUrl: string | null;
+  documents: DocumentosRow[];
+};
+
 export type DocumentosShareRecipientOption = { email: string; label: string };
 export type DocumentosWhatsAppRecipientOption = { phone: string; label: string };
 
@@ -39,7 +46,7 @@ export type DocumentosListing = {
   cartas: DocumentosRow[];
   societario: DocumentosRow[];
   basicos: DocumentosRow[];
-  balancos: DocumentosRow[];
+  balancos: DocumentosBalancoYear[];
   ingest: { lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null };
   shareRecipients: DocumentosShareRecipientOption[];
   whatsappRecipients: DocumentosWhatsAppRecipientOption[];
@@ -50,6 +57,7 @@ export type DocumentosListSource = {
   kind: CompanyDocumentKind;
   category?: string | null;
   fileName: string;
+  folderName?: string | null;
   validUntil: Date | string | null;
   validUntilSource: string | null;
   emitidoEm?: Date | string | null;
@@ -102,8 +110,25 @@ export function rowsForFamily(listing: DocumentosListing, category: DocumentosCa
     case 'basicos':
       return listing.basicos;
     case 'balanco':
-      return listing.balancos;
+      return listing.balancos.flatMap((group) => group.documents);
   }
+}
+
+function balancoDocumentLabel(fileName: string): string {
+  return fileName.replace(/\.(pdf|zip)$/i, '').trim() || fileName;
+}
+
+function balancoYearOf(row: DocumentosListSource): number | null {
+  return (
+    balancoYearFromName(row.folderName ?? '') ??
+    balancoYearFromName(row.fileName) ??
+    null
+  );
+}
+
+/** Pasta anual gravada como linha (legado) — só âncora de `folderWebUrl`, não é documento. */
+function isBalancoFolderMarker(row: DocumentosListSource): boolean {
+  return balancoYearFromName(row.fileName) != null && !/\.(pdf|zip)$/i.test(row.fileName);
 }
 
 function toRow(row: DocumentosListSource, today: string, family: DocumentosFamily): DocumentosRow {
@@ -153,16 +178,15 @@ function missingRow(kind: CompanyDocumentKind, family: DocumentosFamily): Docume
   };
 }
 
-function toYearRow(row: DocumentosListSource, family: DocumentosFamily): DocumentosRow {
-  const year = balancoYearFromName(row.fileName);
+function toBalancoDocumentRow(row: DocumentosListSource, family: DocumentosFamily): DocumentosRow {
   return {
     id: row.id,
     kind: row.kind,
     category: family.category,
-    label: year != null ? String(year) : row.fileName,
+    label: balancoDocumentLabel(row.fileName),
     fileName: row.fileName,
     validUntil: null,
-    emitidoEm: null,
+    emitidoEm: toYmd(row.emitidoEm),
     daysRemaining: null,
     status: { key: 'nao_vence', label: 'não vence' },
     validUntilSource: null,
@@ -174,21 +198,44 @@ function toYearRow(row: DocumentosListSource, family: DocumentosFamily): Documen
   };
 }
 
-function buildYearFolderFamily(
+function buildBalancoYears(
   family: DocumentosFamily,
   rows: DocumentosListSource[],
-): DocumentosRow[] {
+): DocumentosBalancoYear[] {
   const kinds = new Set(family.kinds.map((kind) => kind.kind));
-  const listed = rows
-    .filter((row) => kinds.has(row.kind) && row.removedAt == null)
-    .map((row) => toYearRow(row, family));
-  listed.sort((a, b) => {
-    const yearA = Number.parseInt(a.label, 10);
-    const yearB = Number.parseInt(b.label, 10);
-    if (Number.isFinite(yearA) && Number.isFinite(yearB) && yearA !== yearB) return yearB - yearA;
-    return b.label.localeCompare(a.label, 'pt-BR');
-  });
-  return listed;
+  const ofFamily = rows.filter((row) => kinds.has(row.kind) && row.removedAt == null);
+  const folderWebUrlByYear = new Map<number, string | null>();
+  const documentsByYear = new Map<number, DocumentosRow[]>();
+
+  for (const row of ofFamily) {
+    const year = balancoYearOf(row);
+    if (year == null) continue;
+    if (isBalancoFolderMarker(row)) {
+      if (!folderWebUrlByYear.has(year)) folderWebUrlByYear.set(year, row.webUrl ?? null);
+      continue;
+    }
+    const list = documentsByYear.get(year) ?? [];
+    list.push(toBalancoDocumentRow(row, family));
+    documentsByYear.set(year, list);
+    if (!folderWebUrlByYear.has(year) && row.webUrl && !/\.(pdf|zip)$/i.test(row.fileName)) {
+      folderWebUrlByYear.set(year, row.webUrl);
+    }
+  }
+
+  const years = new Set<number>([...documentsByYear.keys(), ...folderWebUrlByYear.keys()]);
+  return [...years]
+    .sort((a, b) => b - a)
+    .map((year) => {
+      const documents = (documentsByYear.get(year) ?? []).sort((a, b) =>
+        a.label.localeCompare(b.label, 'pt-BR'),
+      );
+      return {
+        year,
+        folderWebUrl: folderWebUrlByYear.get(year) ?? null,
+        documents,
+      };
+    })
+    .filter((group) => group.documents.length > 0);
 }
 
 function buildClosedFamily(
@@ -247,23 +294,25 @@ export function buildDocumentosListing(
     else byCategory.set(category, [row]);
   }
 
-  const listingRows: Record<DocumentosCategory, DocumentosRow[]> = {
+  const listingRows: Record<Exclude<DocumentosCategory, 'balanco'>, DocumentosRow[]> = {
     certidao: [],
     sanitaria: [],
     carta: [],
     societario: [],
     basicos: [],
-    balanco: [],
   };
+  let balancos: DocumentosBalancoYear[] = [];
 
   for (const family of DOCUMENTOS_FAMILIES) {
     const familyRows = byCategory.get(family.category) ?? [];
-    listingRows[family.category] =
-      family.scan === 'yearFolders'
-        ? buildYearFolderFamily(family, familyRows)
-        : family.mode === 'open'
-          ? buildOpenFamily(family, familyRows, today)
-          : buildClosedFamily(family, familyRows, today);
+    if (family.scan === 'yearFolders') {
+      balancos = buildBalancoYears(family, familyRows);
+      continue;
+    }
+    listingRows[family.category as Exclude<DocumentosCategory, 'balanco'>] =
+      family.mode === 'open'
+        ? buildOpenFamily(family, familyRows, today)
+        : buildClosedFamily(family, familyRows, today);
   }
 
   return {
@@ -272,7 +321,7 @@ export function buildDocumentosListing(
     cartas: listingRows.carta,
     societario: listingRows.societario,
     basicos: listingRows.basicos,
-    balancos: listingRows.balanco,
+    balancos,
     ingest: {
       lastSuccessAt: toIso(ingest?.lastSuccessAt),
       /**
@@ -303,6 +352,7 @@ export async function loadDocumentosListing(
         kind: true,
         category: true,
         fileName: true,
+        folderName: true,
         validUntil: true,
         validUntilSource: true,
         emitidoEm: true,

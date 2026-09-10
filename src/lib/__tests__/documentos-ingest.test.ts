@@ -802,7 +802,7 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(cnpj?.daysRemaining).toBeNull();
   });
 
-  it('uma linha por ano: pastas batem; zip duplicado não; zip sem pasta sim; ruído não', async () => {
+  it('PDFs dentro de pastas de ano: pastas + ficheiros; zip duplicado não; zip sem pasta sim; ruído não', async () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
     const root = '1 - DOCUMENTOS/1 - QL MED/4 - BALANÇOS';
     const children: DocumentosFolderChild[] = [
@@ -817,27 +817,47 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
       { itemId: 'fat', name: 'Faturamento QL MED 12 julho 2024.pdf', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
       { itemId: 'xls', name: 'planilha.xls', size: 10, lastModifiedAt: NOW, webUrl: null, folder: false },
     ];
+    const pdfsByYear: Record<string, DocumentosFolderFile[]> = {
+      'BALANÇO 2024': [
+        { itemId: 'pdf-2024-a', name: 'DRE 2024.pdf', size: 10, lastModifiedAt: NOW, webUrl: 'https://od/2024/dre' },
+      ],
+      'BALANÇO 2025': [
+        { itemId: 'pdf-2025-a', name: 'Balanço patrimonial 2025.pdf', size: 10, lastModifiedAt: NOW, webUrl: null },
+      ],
+      'BALANÇO 2026': [
+        { itemId: 'pdf-2026-a', name: 'BP 2026.pdf', size: 10, lastModifiedAt: NOW, webUrl: 'https://od/2026/bp' },
+        { itemId: 'pdf-2026-b', name: 'DRE 2026.pdf', size: 10, lastModifiedAt: NOW, webUrl: null },
+      ],
+    };
     const port = fakePort([]);
     port.listChildren = async (folderPath) => {
       expect(folderPath).toBe(root);
       return children;
     };
+    port.listPdfs = async (folderPath) => {
+      const yearName = folderPath.split('/').filter(Boolean).pop() ?? '';
+      return pdfsByYear[yearName] ?? [];
+    };
 
     const result = await runDocumentosIngest(COMPANY, port, NOW);
-    const years = memory.docs.filter((row) => row.kind === 'balanco_anual');
+    const balancos = memory.docs.filter((row) => row.kind === 'balanco_anual');
 
-    expect(years).toHaveLength(4);
-    expect(result.upserted).toBe(4);
-    expect(years.map((row) => row.fileName).sort()).toEqual([
+    expect(result.upserted).toBe(8); // 3 pastas + 4 PDFs + zip 2013
+    expect(balancos).toHaveLength(8);
+    expect(balancos.map((row) => row.fileName).sort()).toEqual([
       'BALANÇO 2013.zip',
       'BALANÇO 2024',
       'BALANÇO 2025',
       'BALANÇO 2026',
-    ]);
-    expect(years.every((row) => row.validUntil == null)).toBe(true);
-    expect(years.every((row) => row.validUntilSource == null)).toBe(true);
-    expect(years.find((row) => row.fileName === 'BALANÇO 2026')?.oneDriveItemId).toBe('folder-2026');
-    expect(years.find((row) => row.fileName === 'BALANÇO 2026')?.webUrl).toBe('https://od/2026');
+      'BP 2026.pdf',
+      'Balanço patrimonial 2025.pdf',
+      'DRE 2024.pdf',
+      'DRE 2026.pdf',
+    ].sort());
+    expect(balancos.every((row) => row.validUntil == null)).toBe(true);
+    expect(balancos.find((row) => row.fileName === 'BALANÇO 2026')?.oneDriveItemId).toBe('folder-2026');
+    expect(balancos.find((row) => row.fileName === 'BALANÇO 2026')?.webUrl).toBe('https://od/2026');
+    expect(balancos.find((row) => row.fileName === 'DRE 2024.pdf')?.folderName).toBe('BALANÇO 2024');
     expect(memory.docs.some((row) => row.fileName.includes('ECF'))).toBe(false);
     expect(memory.docs.some((row) => row.oneDriveItemId === 'zip-2026')).toBe(false);
     expect(memory.docs.some((row) => row.oneDriveItemId === 'pdf-2013')).toBe(false);

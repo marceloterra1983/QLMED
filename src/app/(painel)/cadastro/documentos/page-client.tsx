@@ -25,7 +25,7 @@ import DocumentoDetalheModal from './components/DocumentoDetalheModal';
 import DocumentoShareModal from './components/DocumentoShareModal';
 import DocumentoWhatsAppModal from './components/DocumentoWhatsAppModal';
 import DocumentoUpdateModal from './components/DocumentoUpdateModal';
-import DocumentosFamilyTable from './components/DocumentosFamilyTable';
+import DocumentosFamilyTable, { DocumentosBalancoGroups } from './components/DocumentosFamilyTable';
 
 export { formatDaysRemaining, CERTIDAO_DIAS_DESTAQUE, isDaysDestaque } from './components/DocumentosFamilyTable';
 
@@ -49,7 +49,7 @@ function rowsForFamily(listing: DocumentosListing, category: DocumentosCategory)
     case 'basicos':
       return listing.basicos;
     case 'balanco':
-      return listing.balancos;
+      return listing.balancos.flatMap((group) => group.documents);
   }
 }
 
@@ -420,13 +420,17 @@ export default function DocumentosPageClient() {
                   </Button>
                 </div>
               ) : null}
-              <DocumentosFamilyTable
-                caption={family.label}
-                columnLabel={family.columnLabel}
-                rows={rowsForFamily(data, family.category)}
-                layout={family.scan === 'yearFolders' ? 'yearFolders' : 'validity'}
-                {...tableProps}
-              />
+              {family.category === 'balanco' ? (
+                <DocumentosBalancoGroups groups={data.balancos} {...tableProps} />
+              ) : (
+                <DocumentosFamilyTable
+                  caption={family.label}
+                  columnLabel={family.columnLabel}
+                  rows={rowsForFamily(data, family.category)}
+                  collapseExpired={family.category === 'carta'}
+                  {...tableProps}
+                />
+              )}
             </Section>
           ))}
 
