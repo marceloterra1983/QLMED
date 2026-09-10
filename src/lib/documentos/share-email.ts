@@ -37,6 +37,7 @@ export type MailTransport = {
     to: string | string[];
     subject: string;
     text: string;
+    html?: string;
     attachments?: Array<{
       filename: string;
       content: Buffer;
@@ -44,6 +45,79 @@ export type MailTransport = {
     }>;
   }) => Promise<{ messageId?: string }>;
 };
+
+/** Linha da tabela resumo enviada nos e-mails de atualização (FR-046). */
+export type DocumentosSummaryRow = {
+  categoryLabel: string;
+  label: string;
+  fileName: string | null;
+  validUntil: string | null;
+  statusLabel: string;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  certidao: 'Certidões',
+  sanitaria: 'Sanitária',
+  carta: 'Cartas',
+  societario: 'Societário',
+  basicos: 'Básicos',
+  balanco: 'Balanços',
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export function categoryLabelForSummary(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
+}
+
+/** Texto plano da tabela (clientes sem HTML). */
+export function buildDocumentosSummaryText(rows: readonly DocumentosSummaryRow[]): string {
+  if (rows.length === 0) return 'Nenhum documento vigente listado.';
+  const lines = ['Resumo dos documentos QLMED:', ''];
+  for (const row of rows) {
+    const validade = formatValidUntilPtBr(row.validUntil) ?? 'sem data';
+    const arquivo = row.fileName ?? '—';
+    lines.push(
+      `- [${row.categoryLabel}] ${row.label} | ${arquivo} | validade ${validade} | ${row.statusLabel}`,
+    );
+  }
+  return lines.join('\n');
+}
+
+/** Tabela HTML do resumo (corpo do e-mail de atualização). */
+export function buildDocumentosSummaryHtml(rows: readonly DocumentosSummaryRow[]): string {
+  if (rows.length === 0) {
+    return '<p>Nenhum documento vigente listado.</p>';
+  }
+  const body = rows
+    .map((row) => {
+      const validade = formatValidUntilPtBr(row.validUntil) ?? 'sem data';
+      const arquivo = row.fileName ?? '—';
+      return (
+        '<tr>' +
+        `<td>${escapeHtml(row.categoryLabel)}</td>` +
+        `<td>${escapeHtml(row.label)}</td>` +
+        `<td>${escapeHtml(arquivo)}</td>` +
+        `<td>${escapeHtml(validade)}</td>` +
+        `<td>${escapeHtml(row.statusLabel)}</td>` +
+        '</tr>'
+      );
+    })
+    .join('');
+  return (
+    '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">' +
+    '<thead><tr>' +
+    '<th>Categoria</th><th>Documento</th><th>Arquivo</th><th>Validade</th><th>Status</th>' +
+    '</tr></thead>' +
+    `<tbody>${body}</tbody></table>`
+  );
+}
 
 export class ShareRecipientsNotAllowedError extends Error {
   constructor() {
@@ -133,6 +207,10 @@ export async function shareDocumentByEmail(
     kindLabel: string;
     validUntil: string | null;
     note?: string;
+    /** Corpo HTML adicional (ex.: tabela resumo FR-046). */
+    htmlExtra?: string;
+    /** Texto adicional após a introdução (ex.: tabela em texto). */
+    textExtra?: string;
   },
   deps?: { transport?: MailTransport },
 ): Promise<ShareResult> {
@@ -156,12 +234,31 @@ export async function shareDocumentByEmail(
     textLines.push('', note);
   }
 
+  if (input.textExtra) {
+    textLines.push('', input.textExtra);
+  }
+
+  // HTML só com tabela resumo (FR-046). Compartilhar manual (FR-042) permanece
+  // texto puro — nota do usuário não vira HTML.
+  const html = input.htmlExtra
+    ? [
+        `<p>${escapeHtml(textLines[0] ?? '')}</p>`,
+        `<p>${escapeHtml(textLines[1] ?? '')}</p>`,
+        note ? `<p>${escapeHtml(note)}</p>` : '',
+        '<h3>Resumo dos documentos QLMED</h3>',
+        input.htmlExtra,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : undefined;
+
   const fromUser = process.env.SMTP_USER || 'adm@qlmed.com.br';
   const info = await transport.sendMail({
     from: `"QL MED" <${fromUser}>`,
     to: resolved.emails,
     subject,
     text: textLines.join('\n'),
+    html,
     attachments: [
       {
         filename: input.fileName,

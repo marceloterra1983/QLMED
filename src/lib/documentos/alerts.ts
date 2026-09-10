@@ -39,9 +39,13 @@ import {
 import { createDocumentosFolderPort } from './onedrive-port';
 import {
   DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS,
+  buildDocumentosSummaryHtml,
+  buildDocumentosSummaryText,
   shareDocumentByEmail,
   type MailTransport,
 } from './share-email';
+import { loadDocumentosListing } from './list';
+import { listingToSummaryRows } from './update-email';
 import {
   sanitizeError,
   type DocumentosFolderPort,
@@ -83,6 +87,8 @@ export type DocumentosAlertDeps = {
   target?: DocumentosWhatsAppTarget | null;
   prisma?: AlertPrisma;
   mailTransport?: MailTransport;
+  /** Quando true, só WhatsApp/carimbo — e-mail já foi enviado (FR-046 no upload). */
+  skipEmail?: boolean;
 };
 
 /**
@@ -401,28 +407,34 @@ export async function notifyRenewals(
 
     const caption = buildRenewalCaption(row, event.validUntil);
 
-    try {
-      await shareDocumentByEmail(
-        {
-          recipients: [...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS],
-          fileName: row.fileName,
-          pdf: content,
-          kindLabel: labelForKind(row.kind),
-          validUntil: event.validUntil,
-          note: caption,
-        },
-        { transport: deps?.mailTransport },
-      );
-      log.info({ documentId: row.id, kind: event.kind }, 'documentos_renewal_email_sent');
-    } catch (error) {
-      log.warn(
-        {
-          documentId: row.id,
-          kind: event.kind,
-          err: sanitizeError(error instanceof Error ? error.message : 'email'),
-        },
-        'documentos_renewal_email_failed',
-      );
+    if (!deps?.skipEmail) {
+      try {
+        const listing = await loadDocumentosListing(event.companyId);
+        const summaryRows = listingToSummaryRows(listing);
+        await shareDocumentByEmail(
+          {
+            recipients: [...DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS],
+            fileName: row.fileName,
+            pdf: content,
+            kindLabel: labelForKind(row.kind),
+            validUntil: event.validUntil,
+            note: caption,
+            htmlExtra: buildDocumentosSummaryHtml(summaryRows),
+            textExtra: buildDocumentosSummaryText(summaryRows),
+          },
+          { transport: deps?.mailTransport },
+        );
+        log.info({ documentId: row.id, kind: event.kind }, 'documentos_renewal_email_sent');
+      } catch (error) {
+        log.warn(
+          {
+            documentId: row.id,
+            kind: event.kind,
+            err: sanitizeError(error instanceof Error ? error.message : 'email'),
+          },
+          'documentos_renewal_email_failed',
+        );
+      }
     }
 
     if (!target) continue;

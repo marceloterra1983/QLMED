@@ -19,6 +19,7 @@ const memory = vi.hoisted(() => ({
 }));
 
 const notify = vi.hoisted(() => vi.fn(async () => undefined));
+const notifyUpdateEmail = vi.hoisted(() => vi.fn(async () => null));
 const createPort = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/prisma', () => ({
@@ -57,6 +58,11 @@ vi.mock('@/lib/documentos/alerts', async (importOriginal) => {
   };
 });
 
+vi.mock('@/lib/documentos/update-email', () => ({
+  notifyDocumentUpdateByEmail: notifyUpdateEmail,
+  listingToSummaryRows: vi.fn(() => []),
+}));
+
 vi.mock('@/lib/documentos/onedrive-port', () => ({
   createDocumentosFolderPort: createPort,
 }));
@@ -77,14 +83,15 @@ function seed(row: Partial<DocRow> & Pick<DocRow, 'id' | 'kind' | 'validUntil'>)
   });
 }
 
-describe('afterDocumentosUpload (FR-007 + FR-011 + FR-016)', () => {
+describe('afterDocumentosUpload (FR-007 + FR-011 + FR-016 + FR-046)', () => {
   beforeEach(() => {
     memory.docs.length = 0;
     notify.mockClear();
+    notifyUpdateEmail.mockClear();
     createPort.mockReset();
   });
 
-  it('upload com validade maior que o vigente anterior dispara notifyRenewals e arquiva', async () => {
+  it('upload com validade maior dispara e-mail FR-046, notifyRenewals (skipEmail) e arquiva', async () => {
     const { afterDocumentosUpload } = await import('@/lib/documentos/after-upload');
     seed({
       id: 'old',
@@ -113,15 +120,25 @@ describe('afterDocumentosUpload (FR-007 + FR-011 + FR-016)', () => {
     };
     createPort.mockResolvedValue(port);
 
+    const pdf = Buffer.from('%PDF-new');
     await afterDocumentosUpload({
       companyId: 'co1',
       kind: 'cnd_estadual_mt',
       documentId: 'new',
       validUntilYmd: '2026-11-08',
+      pdf,
       port,
       now: new Date('2026-09-10T15:00:00.000Z'),
     });
 
+    expect(notifyUpdateEmail).toHaveBeenCalledTimes(1);
+    expect(notifyUpdateEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'co1',
+        documentId: 'new',
+        pdf,
+      }),
+    );
     expect(notify).toHaveBeenCalledTimes(1);
     expect(notify).toHaveBeenCalledWith(
       [
@@ -133,12 +150,12 @@ describe('afterDocumentosUpload (FR-007 + FR-011 + FR-016)', () => {
           validUntil: '2026-11-08',
         },
       ],
-      undefined,
+      expect.objectContaining({ skipEmail: true }),
     );
     expect(archived).toEqual(['od-old']);
   });
 
-  it('primeira carga (sem vigente anterior) não notifica', async () => {
+  it('primeira carga envia e-mail FR-046 e não notifica renovação WhatsApp', async () => {
     const { afterDocumentosUpload } = await import('@/lib/documentos/after-upload');
     seed({
       id: 'new',
@@ -166,6 +183,7 @@ describe('afterDocumentosUpload (FR-007 + FR-011 + FR-016)', () => {
       now: new Date('2026-09-10T15:00:00.000Z'),
     });
 
+    expect(notifyUpdateEmail).toHaveBeenCalledTimes(1);
     expect(notify).not.toHaveBeenCalled();
   });
 });

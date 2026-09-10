@@ -151,13 +151,20 @@ falhar de forma visível, não chutar.
   Tipo **sem documento** gera uma linha de texto no mesmo aviso diário.
 - **FR-011**: Quando a ingestão **ou o upload manual (FR-007)** encontra um
   documento cujo `validUntil` supera o vigente anterior do mesmo tipo, envia
-  o PDF uma única vez (`renewalNotifiedAt`): (1) por e-mail para Marcelo,
-  Daniele, Flávio e José Roberto (`DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS`), com
-  o PDF em anexo; (2) por WhatsApp ao grupo de Documentos (quando o canal
-  FR-012 estiver ligado), com legenda "renovada — válida até dd/MM/yyyy".
-  Sem vigente anterior (primeira carga) não avisa: backfill não é evento.
-  Falha de e-mail ou de WhatsApp não impede a outra via; o upload/ingestão
-  já gravado não reverte.
+  o PDF uma única vez (`renewalNotifiedAt`): (1) por e-mail conforme FR-046
+  (anexo + tabela resumo); (2) por WhatsApp ao grupo de Documentos (quando o
+  canal FR-012 estiver ligado), com legenda "renovada — válida até dd/MM/yyyy".
+  Sem vigente anterior (primeira carga) o WhatsApp de renovação não dispara
+  (backfill não é evento); o e-mail de atualização do upload ainda segue
+  FR-046. Falha de e-mail ou de WhatsApp não impede a outra via; o
+  upload/ingestão já gravado não reverte.
+- **FR-046**: Sempre que um PDF novo é gravado por **upload manual (FR-007)**
+  — e também na renovação detectada pela ingestão (FR-011) — o sistema envia
+  e-mail de `adm@qlmed.com.br` (`SMTP_USER`) para Marcelo, Daniele, Flávio e
+  José Roberto (`DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS`) com: (a) o PDF
+  atualizado em anexo; (b) no corpo, uma **tabela resumo** de todos os
+  documentos vigentes da QLMED (categoria, documento, arquivo, validade,
+  status), em HTML e texto. Falha de SMTP não reverte o upload/ingestão.
 - **FR-012**: Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
   `DOCUMENTOS_WHATSAPP_GROUP_JID` (`@g.us`) e config Evolution presente.
   Faltando qualquer peça: silencioso, sem erro, sem fallback para o grupo
@@ -423,15 +430,16 @@ falhar de forma visível, não chutar.
 - **AC-007** (FR-012): sem `DOCUMENTOS_WHATSAPP_GROUP_JID` o resolvedor devolve
   `null` e nenhuma chamada à Evolution acontece; JID de telefone (não `@g.us`) é
   rejeitado.
-- **AC-008** (FR-011): ingestão que substitui vigente 12.10.26 por 12.12.26
-  envia uma renovação (e-mail para Marcelo/Daniele/Flávio/José Roberto +
-  WhatsApp se FR-012 ligado); reexecução não reenvia; primeira carga não
-  envia.
-- **AC-009** (FR-007): upload de 6 MiB → 413/400 com mensagem; upload válido
-  cria item no OneDrive (porta mockada) e linha com `validUntilSource='manual'`.
-  Upload que substitui vigente anterior com validade maior dispara
-  `notifyRenewals` e o arquivo FR-016 na mesma requisição (teste
-  `documentos-upload-renewal.test.ts`).
+- **AC-008** (FR-011 + FR-046): ingestão que substitui vigente 12.10.26 por
+  12.12.26 envia uma renovação (e-mail com anexo + tabela resumo para
+  Marcelo/Daniele/Flávio/José Roberto + WhatsApp se FR-012 ligado);
+  reexecução não reenvia; primeira carga não envia renovação WhatsApp.
+- **AC-009** (FR-007 + FR-046): upload de 6 MiB → 413/400 com mensagem;
+  upload válido cria item no OneDrive (porta mockada) e linha com
+  `validUntilSource='manual'`. Todo upload válido dispara e-mail FR-046
+  (anexo + tabela resumo). Upload que substitui vigente anterior com
+  validade maior dispara também `notifyRenewals` (WhatsApp) e o arquivo
+  FR-016 na mesma requisição (teste `documentos-upload-renewal.test.ts`).
 - **AC-010** (FR-013/014): `npm run db:migrate:verify` e `db:reconcile:verify`
   passam; nenhum `log.*` recebe `content`, `caption` ou token (teste de
   grep/spy como em `whatsapp-evolution-egress.test.ts`).
@@ -542,6 +550,12 @@ falhar de forma visível, não chutar.
 - **AC-035** (FR-045): `válida por 12 meses a contar da emissão` +
   `emitida em 01/03/2026` → validade `2027-03-01`; `vigente até 31/12/2026`
   → essa data; prazo indeterminado → `validUntil` nulo.
+
+- **AC-036** (FR-046): upload válido (mesmo sem renovação) envia e-mail de
+  `adm@qlmed.com.br` com o PDF em anexo e HTML contendo tabela com colunas
+  Categoria/Documento/Arquivo/Validade/Status cobrindo os documentos
+  vigentes; teste `documentos-update-email.test.ts` +
+  `documentos-upload-renewal.test.ts`.
 
 ## Non-functional
 
