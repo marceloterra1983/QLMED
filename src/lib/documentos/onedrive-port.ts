@@ -2,6 +2,7 @@ import { createLogger } from '@/lib/logger';
 import { resolveAccountOneDrive } from '@/lib/onedrive-connections';
 import {
   downloadOneDriveItemContent,
+  ensureOneDriveFolder,
   isPdfItem,
   listOneDriveChildren,
   moveOneDriveItem,
@@ -15,7 +16,7 @@ function sameFolderName(left: string, right: string): boolean {
   return left.normalize('NFC').trim() === right.normalize('NFC').trim();
 }
 
-/** Só resolve pastas já existentes — não cria nada no OneDrive de terceiros. */
+/** Resolve pastas de leitura já existentes. Arquivo (Vencidas) pode criar a pasta sob a raiz. */
 async function resolveExistingFolderId(
   accessToken: string,
   driveId: string,
@@ -49,26 +50,31 @@ export async function createDocumentosFolderPort(companyId: string): Promise<Doc
     return id;
   }
 
-  const vencidasIdByRoot = new Map<string, string | null>();
+  const vencidasIdByRoot = new Map<string, string>();
 
   async function resolveVencidasId(familyRoot: string): Promise<string> {
-    if (vencidasIdByRoot.has(familyRoot)) {
-      const cached = vencidasIdByRoot.get(familyRoot);
-      if (typeof cached === 'string') return cached;
-      throw new Error('pasta Vencidas não encontrada');
-    }
+    const cached = vencidasIdByRoot.get(familyRoot);
+    if (typeof cached === 'string') return cached;
+
+    // Raiz da família tem de existir; só criamos Vencidas sob ela (FR-016).
     const rootId = await resolveExistingFolderId(accessToken, driveId, familyRoot);
     const children = await listOneDriveChildren(accessToken, driveId, rootId);
     const match = children.find(
       (item) => item.folder && sameFolderName(item.name || '', CERTIDAO_ARCHIVE_FOLDER),
     );
-    if (!match) {
-      vencidasIdByRoot.set(familyRoot, null);
-      log.error({ folder: CERTIDAO_ARCHIVE_FOLDER, root: familyRoot }, 'documentos_archive_folder_missing');
-      throw new Error('pasta Vencidas não encontrada');
+    if (match) {
+      vencidasIdByRoot.set(familyRoot, match.id);
+      return match.id;
     }
-    vencidasIdByRoot.set(familyRoot, match.id);
-    return match.id;
+
+    const created = await ensureOneDriveFolder(
+      accessToken,
+      driveId,
+      `${familyRoot}/${CERTIDAO_ARCHIVE_FOLDER}`,
+    );
+    log.info({ folder: CERTIDAO_ARCHIVE_FOLDER, root: familyRoot }, 'documentos_archive_folder_created');
+    vencidasIdByRoot.set(familyRoot, created.id);
+    return created.id;
   }
 
   return {

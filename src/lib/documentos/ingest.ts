@@ -519,7 +519,7 @@ function hasLaterSubstitute(row: ArchiveCandidate, siblings: ArchiveCandidate[])
  * Move para Vencidas só o que já tem substituto. Falha da pasta aborta o
  * ciclo de arquivo (fail-closed) e não derruba a ingestão.
  */
-async function archiveExpiredDocuments(
+export async function archiveExpiredDocuments(
   companyId: string,
   port: DocumentosFolderPort,
   now: Date,
@@ -566,17 +566,22 @@ async function archiveExpiredDocuments(
   if (candidates.length === 0) return 0;
 
   let arquivados = 0;
-  try {
-    for (const { row, family } of candidates) {
+  for (const { row, family } of candidates) {
+    try {
       await port.moveToArchive(row.oneDriveItemId, family.root);
       arquivados += 1;
       log.info({ kind: row.kind, fileName: row.fileName }, 'documentos_archived');
+    } catch (error) {
+      log.warn(
+        {
+          err: sanitizeError(error instanceof Error ? error.message : 'archive'),
+          kind: row.kind,
+          fileName: row.fileName,
+          family: family.category,
+        },
+        'documentos_archive_failed',
+      );
     }
-  } catch (error) {
-    log.warn(
-      { err: sanitizeError(error instanceof Error ? error.message : 'archive') },
-      'documentos_archive_failed',
-    );
   }
   return arquivados;
 }

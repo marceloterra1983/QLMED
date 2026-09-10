@@ -180,19 +180,29 @@ const FEDERAL_VIGENTE: DocumentosFolderFile = {
 };
 
 function fakePort(
-  files: DocumentosFolderFile[],
-  opts: { archived?: string[]; archiveError?: Error } = {},
+  filesByFolder: Record<string, DocumentosFolderFile[]> | DocumentosFolderFile[],
+  opts: {
+    archived?: string[];
+    archiveError?: Error;
+    failRoots?: string[];
+  } = {},
 ): DocumentosFolderPort {
+  const byFolder: Record<string, DocumentosFolderFile[]> = Array.isArray(filesByFolder)
+    ? { Federais: filesByFolder }
+    : filesByFolder;
   return {
     async listPdfs(folderPath: string) {
       const key = folderPath.split('/').filter(Boolean).pop() ?? folderPath;
-      return key === 'Federais' ? files : [];
+      return byFolder[key] ?? [];
     },
     async downloadPdf() {
       return Buffer.from('%PDF-1.4 fixture-nao-logar');
     },
-    async moveToArchive(itemId: string) {
+    async moveToArchive(itemId: string, familyRoot: string) {
       if (opts.archiveError) throw opts.archiveError;
+      if (opts.failRoots?.some((needle) => familyRoot.includes(needle))) {
+        throw new Error('pasta Vencidas não encontrada');
+      }
       opts.archived?.push(itemId);
     },
     // Declarada mesmo vazia: a ingestão exige a capacidade em vez de a inferir.
@@ -294,7 +304,7 @@ describe('SPEC-042 L8 — arquivar certidão vencida na pasta Vencidas', () => {
     expect(memory.docs[0]?.removedAt).toBeNull();
   });
 
-  it('pasta Vencidas ausente: fail-closed, arquivados 0, ingestão não falha', async () => {
+  it('falha ao arquivar um item: esse item fica de fora, ingestão não falha', async () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
     const archived: string[] = [];
     const result = await runDocumentosIngest(
@@ -309,6 +319,44 @@ describe('SPEC-042 L8 — arquivar certidão vencida na pasta Vencidas', () => {
     expect(result.arquivados).toBe(0);
     expect(archived).toEqual([]);
     expect(result.upserted).toBe(2);
+    expect(logged.warn.some((args) => args.includes('documentos_archive_failed'))).toBe(true);
+  });
+
+  it('falha numa família não impede arquivar outra (isolamento FR-016)', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    const { familyByCategory } = await import('@/lib/documentos/constants');
+    const archived: string[] = [];
+    const alvaraExpired: DocumentosFolderFile = {
+      itemId: 'od-alvara-expired',
+      name: 'ALVARA DE FUNCIONAMENTO PREFEITURA 15.02.2026.pdf',
+      size: 900,
+      lastModifiedAt: new Date('2026-02-15T12:00:00.000Z'),
+    };
+    const alvaraVigente: DocumentosFolderFile = {
+      itemId: 'od-alvara-vigente',
+      name: 'ALVARA DE FUNCIONAMENTO PREFEITURA 15.02.2027.pdf',
+      size: 950,
+      lastModifiedAt: new Date('2026-09-01T12:00:00.000Z'),
+    };
+    const sanitariaRoot = familyByCategory('sanitaria').root;
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort(
+        {
+          Federais: [FEDERAL_EXPIRED, FEDERAL_VIGENTE],
+          '1 - AUTORIZAÇÃO RELACIONADO A SAUDE': [alvaraExpired, alvaraVigente],
+        },
+        {
+          archived,
+          failRoots: [sanitariaRoot],
+        },
+      ),
+      NOW,
+    );
+
+    expect(result.arquivados).toBe(1);
+    expect(archived).toEqual(['od-federal-expired']);
+    expect(archived).not.toContain('od-alvara-expired');
     expect(logged.warn.some((args) => args.includes('documentos_archive_failed'))).toBe(true);
   });
 

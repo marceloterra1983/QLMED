@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   ensureValidOneDriveAccessToken: vi.fn(),
   uploadOneDriveFile: vi.fn(),
   runDocumentosIngest: vi.fn(),
+  afterDocumentosUpload: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', async () => {
@@ -53,6 +54,11 @@ vi.mock('@/lib/onedrive-connections', () => ({
 
 vi.mock('@/lib/onedrive-client', () => ({
   uploadOneDriveFile: mocks.uploadOneDriveFile,
+}));
+
+
+vi.mock('@/lib/documentos/after-upload', () => ({
+  afterDocumentosUpload: mocks.afterDocumentosUpload,
 }));
 
 vi.mock('@/lib/documentos/ingest', async (importOriginal) => {
@@ -98,6 +104,7 @@ describe('POST /api/documentos/upload (SPEC-042 FR-007, AC-009)', () => {
     mocks.connectionFindFirst.mockResolvedValue({ id: 'conn-1', driveId: 'drive-1' });
     mocks.ensureValidOneDriveAccessToken.mockResolvedValue('token');
     mocks.uploadOneDriveFile.mockResolvedValue({ id: 'item-new', name: 'uploaded.pdf' });
+    mocks.afterDocumentosUpload.mockResolvedValue(undefined);
     mocks.documentCreate.mockResolvedValue({
       id: DOC_ID,
       kind: 'cnd_federal',
@@ -164,6 +171,14 @@ describe('POST /api/documentos/upload (SPEC-042 FR-007, AC-009)', () => {
           validUntilSource: 'manual',
           fileName: CERTIDAO_UPLOAD_NAME.cnd_federal('12.12.26'),
         }),
+      }),
+    );
+    expect(mocks.afterDocumentosUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'company-1',
+        kind: 'cnd_federal',
+        documentId: DOC_ID,
+        validUntilYmd: '2026-12-12',
       }),
     );
   });

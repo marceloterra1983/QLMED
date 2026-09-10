@@ -1,28 +1,28 @@
-# Gates: OC Unimed CG — GTPlan
+# Gates: fix upload → WhatsApp + e-mail + arquivo isolado + Vencidas
 
-Scope: ingerir confirmações `no-reply@gtplan.net` no card ORDEM DE COMPRA junto com o SOULMV.
+Scope: Após upload manual de certidão, notificar renovação no WhatsApp e e-mail (Marcelo/Daniele/Flávio/José Roberto) e arquivar a antiga; falha de Vencidas numa família não bloqueia as outras; criar pasta Vencidas se faltar.
 
-- [x] G1: parser GTPlan 186184 extrai OC, CNPJ faturar, prazo, item, qtd, unitário e total
-  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "186184" --reporter=dot
-  EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  17:46:33 | Duration  138ms (transform 39ms, setup 17ms, import 35ms, tests 4ms, environment 0ms)
+- [x] G1: Upload com substituto mais novo dispara notifyRenewals
+  CHECK: cd /home/marce/qlmed/.worktrees/fix-documentos-upload-renewal-archive && npm test -- --run src/lib/__tests__/documentos-upload-renewal.test.ts 2>&1 | tail -40
+  EXPECT: /passed/
+  EVIDENCE: Tests 2 passed (2)
 
-- [x] G2: ingestão persiste confirmação GTPlan e ignora assunto sem OC
-  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-ingest.test.ts --reporter=dot
-  EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  17:46:34 | Duration  506ms (transform 253ms, setup 17ms, import 23ms, tests 388ms, environment 0ms)
+- [x] G1b: Renovação envia e-mail aos 4 (Marcelo/Daniele/Flávio/José Roberto)
+  CHECK: cd /home/marce/qlmed/.worktrees/fix-documentos-upload-renewal-archive && npm test -- --run src/lib/__tests__/documentos-renewal.test.ts 2>&1 | tail -40
+  EXPECT: /passed/
+  EVIDENCE: Tests 4 passed (4)
 
-- [x] G3: listing usa SOULMV + `no-reply@gtplan.net`
-  CHECK: rg -n "UNIMED_CG_ORDEM_COMPRA_SENDERS|no-reply@gtplan.net" src/lib/unimed-cg/ingest.ts src/lib/unimed-cg/constants.ts
-  EXPECT: no-reply@gtplan.net
-  EVIDENCE: src/lib/unimed-cg/ingest.ts:32:  UNIMED_CG_ORDEM_COMPRA_SENDERS, | src/lib/unimed-cg/ingest.ts:389:  for (const sender of UNIMED_CG_ORDEM_COMPRA_SENDERS) {
+- [x] G2: Arquivo por família: falha numa pasta Vencidas não impede arquivar outra família
+  CHECK: cd /home/marce/qlmed/.worktrees/fix-documentos-upload-renewal-archive && npm test -- --run src/lib/__tests__/documentos-arquivar.test.ts 2>&1 | tail -50
+  EXPECT: /passed/
+  EVIDENCE: Tests 7 passed (7)
 
-- [x] G4: `npx tsc --noEmit`
-  CHECK: npx tsc --noEmit && echo TSC_OK
-  EXPECT: TSC_OK
-  EVIDENCE: TSC_OK
+- [x] G3: Spec 042 e docs:validate
+  CHECK: cd /home/marce/qlmed/.worktrees/fix-documentos-upload-renewal-archive && npm run docs:validate 2>&1 | tail -25
+  EXPECT: /OK|passed|valid|0 error|sucesso/i
+  EVIDENCE: Documentation validation passed (265 Markdown files, 88 IDs).
 
-- [x] G5: fixture SOULMV 188246 continua verde
-  CHECK: npx vitest run src/lib/__tests__/unimed-cg-ordem-compra-parse.test.ts -t "188246" --reporter=dot
-  EXPECT: Test Files  1 passed
-  EVIDENCE: Start at  17:46:37 | Duration  159ms (transform 53ms, setup 20ms, import 47ms, tests 4ms, environment 0ms)
+- [x] G4: tsc limpo
+  CHECK: cd /home/marce/qlmed/.worktrees/fix-documentos-upload-renewal-archive && npx tsc --noEmit 2>&1 | tail -20
+  EXPECT: /^$/
+  EVIDENCE: tsc --noEmit exit 0, no output

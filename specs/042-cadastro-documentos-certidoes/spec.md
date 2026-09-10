@@ -121,7 +121,11 @@ falhar de forma visível, não chutar.
   padronizado da tabela acima (`dd.MM.yy` da validade informada) e a linha é
   criada na mesma requisição com `validUntilSource = 'manual'`. Sem OneDrive
   conectado, o upload é recusado com mensagem clara — não existe segundo
-  depósito de arquivo.
+  depósito de arquivo. Se o upload substitui um vigente anterior do mesmo
+  tipo com `validUntil` inferior, dispara o mesmo aviso de renovação de
+  FR-011 e o ciclo de arquivo de FR-016 **na mesma requisição** (não espera
+  a ingestão horária). Falha de WhatsApp ou de arquivo não reverte o upload
+  já gravado; fica no log saneado.
 - **FR-008**: Editar validade (editor+) via `PATCH /api/documentos/{id}` grava
   `validUntilSource = 'manual'`; a ingestão não sobrescreve.
 
@@ -142,10 +146,15 @@ falhar de forma visível, não chutar.
   Idempotência por `(documento, limiar)` em `alertedThresholds Int[]`; o
   limiar entra no array **antes** do envio (sem duplicar em reinício).
   Tipo **sem documento** gera uma linha de texto no mesmo aviso diário.
-- **FR-011**: Quando a ingestão encontra um documento cujo `validUntil` supera
-  o vigente anterior do mesmo tipo, envia o PDF com legenda "renovada — válida
-  até dd/MM/yyyy" uma única vez (`renewalNotifiedAt`). Sem vigente anterior
-  (primeira carga) não avisa: backfill não é evento.
+- **FR-011**: Quando a ingestão **ou o upload manual (FR-007)** encontra um
+  documento cujo `validUntil` supera o vigente anterior do mesmo tipo, envia
+  o PDF uma única vez (`renewalNotifiedAt`): (1) por e-mail para Marcelo,
+  Daniele, Flávio e José Roberto (`DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS`), com
+  o PDF em anexo; (2) por WhatsApp ao grupo de Documentos (quando o canal
+  FR-012 estiver ligado), com legenda "renovada — válida até dd/MM/yyyy".
+  Sem vigente anterior (primeira carga) não avisa: backfill não é evento.
+  Falha de e-mail ou de WhatsApp não impede a outra via; o upload/ingestão
+  já gravado não reverte.
 - **FR-012**: Canal **desligado por padrão**. Exige `DOCUMENTOS_WHATSAPP_ENABLED=true`,
   `DOCUMENTOS_WHATSAPP_GROUP_JID` (`@g.us`) e config Evolution presente.
   Faltando qualquer peça: silencioso, sem erro, sem fallback para o grupo
@@ -167,16 +176,18 @@ falhar de forma visível, não chutar.
   migração.
 - **FR-016**: Certidão vencida (`validUntil` anterior à data civil de hoje em
   `America/Sao_Paulo`) que tenha substituto do mesmo `kind` (não removido, com
-  `validUntil` posterior) é **movida** para a pasta `Vencidas` já existente em
-  `2 - CERTIDÕES` no OneDrive. Sem substituto, permanece na pasta de origem.
-  Nada é apagado. Documento com `validUntil` nulo não é arquivado; documento
-  com `validUntilSource = 'manual'` sem substituto também não. O item movido
-  some da pasta de origem na varredura seguinte e recebe `removedAt` pelo
-  caminho já existente, deixando de ser vigente. Se a pasta `Vencidas` não
-  existir, o ciclo de arquivo é fail-closed (não arquiva nada; não cria a
-  pasta). Famílias fechadas (certidão, sanitária) arquivam por `kind`; a
-  família aberta (carta) arquiva por fabricante extraído do nome, na pasta
-  `Vencidas` já existente em `7 - CARTA COMERCIALIZAÇÃO`. Tipo com
+  `validUntil` posterior) é **movida** para a pasta `Vencidas` da raiz da
+  família no OneDrive (ex.: `2 - CERTIDÕES`, `1 - AUTORIZAÇÃO RELACIONADO A
+  SAUDE`, `7 - CARTA COMERCIALIZAÇÃO`). Sem substituto, permanece na pasta de
+  origem. Nada é apagado. Documento com `validUntil` nulo não é arquivado;
+  documento com `validUntilSource = 'manual'` sem substituto também não. O
+  item movido some da pasta de origem na varredura seguinte e recebe
+  `removedAt` pelo caminho já existente, deixando de ser vigente. Se a pasta
+  `Vencidas` não existir **sob a raiz da família** (raiz essa já existente),
+  o sistema **cria** `Vencidas` nessa raiz e arquiva. Falha ao arquivar um
+  item/família **não aborta** os demais — cada movimento é independente.
+  Famílias fechadas (certidão, sanitária) arquivam por `kind`; a família
+  aberta (carta) arquiva por fabricante extraído do nome. Tipo com
   `expira: false` (AFE) nunca é arquivado por vencimento.
 
 ### Famílias (L10)
@@ -204,7 +215,8 @@ falhar de forma visível, não chutar.
   `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Ordenação por dias
   restantes, sem data no fim. Nome sem data → "Sem data" na validade e
   **não alerta**. Validade entra só pelo lápis (`validUntilSource='manual'`).
-  Não se inventa data. A pasta `Vencidas` já existente serve para arquivo.
+  Não se inventa data. A pasta `Vencidas` (criada se faltar sob a raiz da
+  família) serve para arquivo.
 - **FR-021**: Limiares de alerta são por família, não globais:
   certidão `[30, 15, 7, 3, 1, 0]` (inalterado); sanitária
   `[90, 60, 30, 15, 7, 0]` — o 60 vem da observação II da Licença Sanitária
@@ -375,9 +387,14 @@ falhar de forma visível, não chutar.
   `null` e nenhuma chamada à Evolution acontece; JID de telefone (não `@g.us`) é
   rejeitado.
 - **AC-008** (FR-011): ingestão que substitui vigente 12.10.26 por 12.12.26
-  envia uma renovação; reexecução não reenvia; primeira carga não envia.
+  envia uma renovação (e-mail para Marcelo/Daniele/Flávio/José Roberto +
+  WhatsApp se FR-012 ligado); reexecução não reenvia; primeira carga não
+  envia.
 - **AC-009** (FR-007): upload de 6 MiB → 413/400 com mensagem; upload válido
   cria item no OneDrive (porta mockada) e linha com `validUntilSource='manual'`.
+  Upload que substitui vigente anterior com validade maior dispara
+  `notifyRenewals` e o arquivo FR-016 na mesma requisição (teste
+  `documentos-upload-renewal.test.ts`).
 - **AC-010** (FR-013/014): `npm run db:migrate:verify` e `db:reconcile:verify`
   passam; nenhum `log.*` recebe `content`, `caption` ou token (teste de
   grep/spy como em `whatsapp-evolution-egress.test.ts`).
@@ -398,8 +415,9 @@ falhar de forma visível, não chutar.
   (e) cada movimento é registado em log com `kind` e nome do ficheiro; a
   ingestão devolve a contagem em `arquivados`;
   (f) na varredura seguinte o item já não está na pasta de origem, recebe
-  `removedAt` e não é vigente. Pasta `Vencidas` ausente → `arquivados = 0`
-  e a ingestão não falha.
+  `removedAt` e não é vigente. Pasta `Vencidas` ausente sob a raiz da
+  família → o sistema cria `Vencidas` e arquiva. Falha num item/família não
+  impede arquivar os demais; a ingestão não falha.
 - **AC-013** (FR-018/023): a listagem devolve `certidoes` (7), `sanitaria`
   (6 tipos fechados) e `cartas` (N ficheiros). A página tem as `Section`
   com esses títulos; todos os cards nascem recolhidos.
