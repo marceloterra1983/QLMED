@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CARTA_MAIL_MAX_PAGES,
+  CARTA_MAIL_SEARCH,
   foldedFileKey,
   sanitizeCartaFileName,
   scanCartaMailboxes,
   type CartaMailPort,
 } from '@/lib/documentos/carta-mail';
 import { isCartaComercializacaoCandidate } from '@/lib/documentos/classify';
+
+describe('CARTA_MAIL_SEARCH / maxPages', () => {
+  it('inclui credenciamento e termo; maxPages cobre antigas', () => {
+    expect(CARTA_MAIL_SEARCH).toMatch(/credenciamento/);
+    expect(CARTA_MAIL_SEARCH).toMatch(/termo/);
+    expect(CARTA_MAIL_MAX_PAGES).toBeGreaterThanOrEqual(80);
+  });
+});
 
 describe('isCartaComercializacaoCandidate', () => {
   it('aceita carta de comercialização pelo nome/assunto', () => {

@@ -475,4 +475,33 @@ describe('SPEC-042 L15 — carta: rótulos e prazo relativo', () => {
       ),
     ).toMatchObject({ validUntil: '2022-12-31', emitidoEm: '2021-12-06' });
   });
+
+  it('MACOM OCR: Validade Um ano + Guarulhos', () => {
+    const texto =
+      'Guarulhos, 16 de Fevereiro de 2022.\n' +
+      'TERMO DE AUTORIZAÇÃO A MACOM INSTRUMENTAL\n' +
+      '*Validade: Um ano a partir desta data.';
+    const result = matchValidityFromText(texto, '2026-09-11');
+    expect(result.emitidoEm).toBe('2022-02-16');
+    expect(result.validUntil).toBe('2023-02-16');
+    expect(result.matchedLabel).toBe('Prazo');
+  });
+
+  it('GABMED OCR: emissão e validade absolutas vencidas', () => {
+    const result = matchValidityFromText(
+      'Campo Grande, 01 de janeiro de 2022. Validade até 30 de dezembro de 2022.',
+      '2026-09-11',
+    );
+    expect(result.emitidoEm).toBe('2022-01-01');
+    expect(result.validUntil).toBe('2022-12-30');
+  });
+
+  it('LIVA: emissão OCR 2 0 2 1 sem inventar validade', () => {
+    const result = matchValidityFromText(
+      'São Paulo, 17 de fevereiro de 2 0 2 1. Carta aclaratória à POLITEC.',
+      '2026-09-11',
+    );
+    expect(result.emitidoEm).toBe('2021-02-17');
+    expect(result.validUntil).toBeNull();
+  });
 });
