@@ -1,6 +1,11 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { cartaLabelFromFileName, classifyDocument } from '@/lib/documentos/classify';
+import {
+  cartaLabelFromFileName,
+  classifyDocument,
+  isWeakCartaLabel,
+  resolveCartaManufacturer,
+} from '@/lib/documentos/classify';
 import { extractValidUntil } from '@/lib/documentos/validity';
 
 type FixtureRow = {
@@ -253,6 +258,38 @@ describe('SPEC-042 L10 — classify sanitária / carta', () => {
       { date: '2026-02-26' },
     );
     expect(extractValidUntil('Carta OSTEOMED 27ago26.pdf')).toEqual({ date: '2026-08-27' });
+  });
+
+  it('fabricante: ASSINADA/CREDENCIAMENTO/Declaração/Cath-Care via nome ou PDF', () => {
+    expect(isWeakCartaLabel(cartaLabelFromFileName('Carta de Comercialização QL Med_27ago26_assinada.pdf'))).toBe(
+      true,
+    );
+    expect(
+      resolveCartaManufacturer(
+        'Carta de Comercialização QL Med_27ago26_assinada.pdf',
+        'A CARDIOVENT COMÉRCIO E SERVIÇOS LTDA declara que a empresa QL MED',
+      ),
+    ).toBe('CARDIOVENT');
+    expect(
+      resolveCartaManufacturer(
+        'CREDENCIAMENTO QLMED 110826.pdf',
+        'credenciamos a comercializar os produtos da marca Cardio Medical Industrial LTDA',
+      ),
+    ).toMatch(/CARDIO MEDICAL/i);
+    expect(
+      resolveCartaManufacturer(
+        'Declaração de comercialização.pdf',
+        'A GABMED PRODUTOS ESPECIFICOS LTDA declara que a empresa QL MED',
+      ),
+    ).toMatch(/^GABMED/);
+    expect(
+      resolveCartaManufacturer(
+        'Carta Distribuição 2026.pdf',
+        'AUTORIZAÇÃO DE DISTRIBUIÇÃO Cath - Care Industria Importação',
+      ),
+    ).toMatch(/CATH/i);
+    expect(cartaLabelFromFileName('Carta Comercialização TECHIMPORT.pdf')).toBe('TECHIMPORT');
+    expect(isWeakCartaLabel('TECHIMPORT')).toBe(false);
   });
 });
 

@@ -1,22 +1,22 @@
-# Gates: Cartas — filtrar NF-e e ler emissão/validade no PDF
+# Gates: Cartas — assinatura, validade e fabricante
 
-Scope: não importar/mostrar notas fiscais como carta; extrair emissão e
-validade dos PDFs reais (prazo em meses + data por extenso sem «de»).
+Scope: coluna Assinatura no card; validade/emissão lidas do PDF real
+(mesmo com OCR espaçado); fabricante correto (nome ou texto).
 
-- [x] G1: NF DOC / DANFE rejeitados por nome ou texto do PDF
-  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts -t "NF|DANFE|nota" 2>&1 | tail -15
+- [x] G1: OCR espaçado — CARDIOVENT 26/02/2026 + 6 meses
+  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "CARDIOVENT|OCR espaçado|me ses|202 6" 2>&1 | tail -20
   EXPECT: /passed/
-  EVIDENCE: {"level":30,"time":1789127794746,"pid":529397,"hostname":"server","module":"background-supervisor","service":"daily-issued-summary","msg":"Timer de background cancelado"} | {"level":30,"time":17891277
+  EVIDENCE: Start at  09:46:29 | Duration  150ms (transform 55ms, setup 16ms, import 53ms, tests 4ms, environment 0ms)
 
-- [x] G2: TECHIMPORT real — emissão 2022-04-01 e validade +12 meses
-  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "TECHIMPORT|periodo de 12|abril 2022" 2>&1 | tail -20
+- [x] G2: fabricante — ASSINADA/CREDENCIAMENTO/Declaração corrigidos
+  CHECK: npx vitest run src/lib/__tests__/documentos-classify.test.ts -t "fabricante|CARDIOVENT|GABMED|Cath|ASSINADA" 2>&1 | tail -25
   EXPECT: /passed/
-  EVIDENCE: Start at  08:56:35 | Duration  186ms (transform 75ms, setup 17ms, import 73ms, tests 3ms, environment 0ms)
+  EVIDENCE: Start at  09:46:29 | Duration  154ms (transform 47ms, setup 16ms, import 46ms, tests 5ms, environment 0ms)
 
-- [x] G3: ingestão OneDrive salta NF e não a mantém como carta
-  CHECK: npx vitest run src/lib/__tests__/documentos-ingest.test.ts -t "carta.*NF|salta nota fiscal" 2>&1 | tail -20
+- [x] G3: card cartas mostra Assinatura (emitidoEm)
+  CHECK: npx vitest run src/components/__tests__/documentos-family-table.test.tsx -t "Assinatura|carta" 2>&1 | tail -25
   EXPECT: /passed/
-  EVIDENCE: Start at  08:56:36 | Duration  275ms (transform 140ms, setup 15ms, import 80ms, tests 88ms, environment 0ms)
+  EVIDENCE: Start at  09:46:30 | Duration  625ms (transform 62ms, setup 16ms, import 156ms, tests 124ms, environment 243ms)
 
 - [x] G4: tsc limpo
   CHECK: npx tsc --noEmit --pretty false; echo TSC_OK

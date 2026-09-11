@@ -53,11 +53,12 @@ const DATE = String.raw`((?<!\d)(?:${DATE_NUM}|${DATE_EXT}))`;
  * Alternativas da mais longa para a mais curta. Cartas usam "vigente até",
  * "autorizada até" e "com validade até" além dos rótulos de certidão.
  */
-const LABEL = String.raw`\b(certidao\s+valida\s+ate|com\s+validade\s+ate|validade\s+ate|vigencia\s+ate|vigente\s+ate|autorizad[ao]\s+ate|valid[ao]\s+ate|validade)`;
+const LABEL = String.raw`\b(certidao\s+valida\s+ate|com\s+validade\s+ate|validade\s+desta\s+carta|validade\s+ate|vigencia\s+ate|vigente\s+ate|autorizad[ao]\s+ate|valid[ao]\s+ate(?:\s+o\s+dia)?|validade)`;
 
 /** Faixa (X a Y) tem de vir antes do rótulo simples, senão devolve X. */
 const RANGE_SOURCE = `${LABEL}\\s*:?\\s*(?:de\\s+)?${DATE}\\s+a\\s+${DATE}`;
-const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*${DATE}`;
+/** «válido até o dia 20/10/2026» — o «o dia» é opcional. */
+const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*(?:o\\s+dia\\s+)?${DATE}`;
 /**
  * Rótulos de emissão, do mais longo para o mais curto: `data de emissao`
  * antes de `emissao`, senão a palavra solta casa o sufixo e a data fica
@@ -76,13 +77,16 @@ const SIMPLE_SOURCE = `${LABEL}\\s*:?\\s*${DATE}`;
  * e por isso extraiu ZERO emissões de 54 documentos reais. Os testes passavam
  * porque as fixtures usavam os rótulos que eu tinha escolhido.
  */
-const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao|expedicao|expedida|expedido|emitida|emitido|emissao|campo\s+grande\s*\(ms\)|campo\s+grande)`;
+const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao|data|expedicao|expedida|expedido|emitida|emitido|emissao|campo\s+grande\s*\(ms\)|campo\s+grande)`;
 
 /**
  * Entre o rótulo e a data cabe hora e ligação ("as 16:15:51 do dia"), mas NÃO
  * texto livre: a mesma certidão traz "emitida gratuitamente com base na
  * portaria ... de 2/10/2014", e um preenchimento largo colheria 2014 como
  * emissão. O recheio é fechado de propósito.
+ *
+ * `data:` das cartas (OSTEOMED) usa só `:` — por isso `data` entra no rótulo
+ * e a ligação cobre o `:` sozinho.
  */
 const EMISSAO_LIGACAO = String.raw`(?:\s*[:,])?\s*(?:em\s+)?(?:as\s+)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:horas\s+)?(?:do\s+dia\s+)?`;
 
@@ -92,10 +96,10 @@ const EMISSAO_DATE = String.raw`((?<!\d)(?:\d{1,2}/\d{2}/(?:\d{4}|\d{2})(?!\d)|\
 const EMISSAO_SOURCE = `${EMISSAO_LABEL}${EMISSAO_LIGACAO}${EMISSAO_DATE}`;
 
 /**
- * Rodapé de carta: «Atenciosamente, Rio Claro – S.P., 01 de abril 2022».
- * Sem rótulo emitida/emissão — a cidade + data é a emissão.
+ * Rodapé / cabeçalho de carta: cidade + data.
+ * Formas vistas nos PDF reais (OCR já normalizado).
  */
-const EMISSAO_CIDADE_SOURCE = String.raw`(?:atenciosamente|cordialmente)[\s\S]{0,160}?(\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4})(?!\d)`;
+const EMISSAO_CIDADE_SOURCE = String.raw`(?:(?:atenciosamente|cordialmente)[\s\S]{0,160}?|(?:sao\s+paulo|rio\s+de\s+janeiro|rio\s+claro|piracicaba|campinas|limeira|cachoeirinha|sao\s+leopoldo)(?:\s*\([^)]{0,20}\)|\s*\/\s*[a-z]{2}|\s*[–\-]\s*[a-z. ]{1,12})?\s*,\s*)(\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4})(?!\d)`;
 
 type ValidityRule = {
   source: string;
@@ -167,14 +171,34 @@ async function loadPdfJs(): Promise<PdfJsModule> {
 }
 
 function foldPdfText(text: string): string {
-  return text
+  let s = text
     .normalize('NFC')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/\s*\/\s*/g, '/')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/\s*\/\s*/g, '/');
+
+  // OCR de cartas: dígitos e meses partidos («202 6», «me ses», «Ju lho»).
+  s = s.replace(/\b2\.0(\d{2})\b/g, '20$1');
+  s = s.replace(/\b(\d{3})\s+(\d)\b/g, '$1$2'); // 202 6 → 2026
+  s = s.replace(/\b(20)\s+(\d{2})\b/g, '$1$2'); // 20 22 → 2022
+  s = s.replace(/\b(20)\s*([1-3]\d)\b/g, '$1$2');
+  s = s.replace(/(\d{1,2}\/\d{2}\/\d{2})\s+(\d)\b/g, '$1$2');
+  s = s.replace(/\b(\d)\s+(\d)\s*\/\s*(\d)\s+(\d)\s*\/\s*(\d{4})\b/g, '$1$2/$3$4/$5');
+  s = s.replace(/\b(\d)\s+(\d)\s+de\s+/g, '$1$2 de ');
+  s = s.replace(/\bd\s+e\s+(\d{4})\b/g, 'de $1');
+  s = s.replace(/\bju\s*l\s*ho\b/g, 'julho');
+  s = s.replace(/\bjane\s*iro\b/g, 'janeiro');
+  s = s.replace(/\bfevere\s*iro\b/g, 'fevereiro');
+  s = s.replace(/\bagos\s*to\b/g, 'agosto');
+  s = s.replace(/\bsetem\s*bro\b/g, 'setembro');
+  s = s.replace(/\boutu\s*bro\b/g, 'outubro');
+  s = s.replace(/\bnovem\s*bro\b/g, 'novembro');
+  s = s.replace(/\bdezem\s*bro\b/g, 'dezembro');
+  s = s.replace(/\bme\s*ses\b/g, 'meses');
+  s = s.replace(/\bm\s+eses\b/g, 'meses');
+
+  return s.replace(/\s+/g, ' ').trim();
 }
 
 function pad2(value: number): string {
@@ -234,7 +258,7 @@ function addCivilDays(ymd: string, days: number): string {
  * Número + unidade têm de vir depois de um rótulo — um "12" solto no
  * protocolo não serve.
  */
-const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|valid[oa]s?|vigencia|prazo|autorizacao|carta|direitos?\s+de\s+distribui\w*)\b[\s\S]{0,120}?\b(?:por(?:\s+periodo)?(?:\s+de)?|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
+const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|valid[oa]s?|vigencia|prazo|autorizacao|carta|credencial|acordo|direitos?\s+de\s+distribui\w*)\b[\s\S]{0,120}?\b(?:por(?:\s+periodo)?(?:\s+de)?|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
 
 function applyDuration(startYmd: string, amount: number, unit: string): string | null {
   if (amount < 1 || amount > 120) return null;
@@ -288,10 +312,11 @@ function canonicalLabel(raw: string): string {
   const folded = raw.replace(/\s+/g, ' ');
   if (folded.startsWith('certidao')) return 'Certidao valida ate';
   if (folded.startsWith('com validade')) return 'Com validade ate';
+  if (folded.startsWith('validade desta')) return 'Validade';
   if (folded.startsWith('vigencia') || folded.startsWith('vigente')) return 'Vigente ate';
   if (folded.startsWith('autorizad')) return 'Autorizada ate';
   if (folded.startsWith('validade')) return 'Validade';
-  if (folded.startsWith('valida')) return 'Valida ate';
+  if (folded.startsWith('valida') || folded.startsWith('valido')) return 'Valida ate';
   return 'Validade';
 }
 

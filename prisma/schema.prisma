@@ -1547,6 +1547,8 @@ model CompanyDocument {
   validUntil        DateTime?           @db.Date
   validUntilSource  String?             // 'filename' | 'pdf' | 'manual' | null
   emitidoEm         DateTime?           @db.Date
+  /// Fabricante da carta (PDF ou nome). Null nas outras famílias.
+  manufacturer      String?
 
   removedAt         DateTime?
   alertedThresholds Int[]               @default([])
