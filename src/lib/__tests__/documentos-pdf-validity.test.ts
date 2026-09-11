@@ -496,9 +496,9 @@ describe('SPEC-042 L15 — carta: rótulos e prazo relativo', () => {
     expect(result.validUntil).toBe('2022-12-30');
   });
 
-  it('LIVA: emissão OCR 2 0 2 1 sem inventar validade', () => {
+  it('LIVA: emissão OCR 2 02 1 sem inventar validade', () => {
     const result = matchValidityFromText(
-      'São Paulo, 17 de fevereiro de 2 0 2 1. Carta aclaratória à POLITEC.',
+      'São Paulo, 17 de fevereiro de 2 02 1. Carta aclaratória à POLITEC.',
       '2026-09-11',
     );
     expect(result.emitidoEm).toBe('2021-02-17');
