@@ -206,6 +206,13 @@ export function cartaManufacturerKey(fileName: string): string {
 const CARTA_NOISE =
   /\b(danfe|nf-?e\b|nfe\b|ct-?e\b|boleto|ordem de compra|xml da nfe|nota fiscal|chave de acesso|documento auxiliar da nota)\b|\bnf\s+(doc|n[oº°.]|serie|eletronica)\b/;
 
+/**
+ * Outros PDFs que a varredura/pasta de cartas não deve aceitar — alvará,
+ * credenciamento de produto, certificado sanitário, etc.
+ */
+const CARTA_FOLDER_JUNK =
+  /\b(alvara|licenca sanitaria|certificado(?:\s+de)?\s+regularidade|credenciamento)\b/;
+
 /** NF-e / DANFE / boleto — nunca é carta, mesmo com assunto enganoso. */
 export function looksLikeNotaFiscalDocument(fileName: string, textSnippet = ''): boolean {
   const hay = fold(`${fileName} ${textSnippet.slice(0, 6000)}`);
@@ -215,25 +222,44 @@ export function looksLikeNotaFiscalDocument(fileName: string, textSnippet = ''):
   return false;
 }
 
+/** Alvará / credenciamento / certificado — fora da família carta. */
+export function looksLikeCartaFolderJunk(fileName: string, textSnippet = ''): boolean {
+  if (looksLikeNotaFiscalDocument(fileName, textSnippet)) return true;
+  const hay = fold(`${fileName} ${textSnippet.slice(0, 4000)}`);
+  return CARTA_FOLDER_JUNK.test(hay);
+}
+
+function attachmentHasCartaTema(hay: string): boolean {
+  if (/comercializ/.test(hay) && (/\bcarta\b/.test(hay) || /\bdeclaracao\b/.test(hay))) {
+    return true;
+  }
+  if (/\bcarta\b/.test(hay) && /distribui/.test(hay)) return true;
+  if (/autoriza\w*.{0,40}(comercializ|distribui)/.test(hay)) return true;
+  if (/distribuidor autoriz/.test(hay)) return true;
+  if (/representa\w*.{0,20}comercial/.test(hay)) return true;
+  if (/autoriza\w*.{0,80}distribuir/.test(hay)) return true;
+  return false;
+}
+
 /**
- * Anexo/assunto de carta de comercialização (FR-044). O texto do PDF entra
- * só como apoio: DANFE e NF-e nunca passam, mesmo que o assunto cite "carta".
+ * Anexo de carta de comercialização (FR-044). O **nome ou o texto do PDF**
+ * têm de carregar carta+tema. Assunto do e-mail sozinho não basta — senão
+ * alvará/credenciamento anexados a "carta de comercialização" entravam.
  */
 export function isCartaComercializacaoCandidate(
   fileName: string,
   subject = '',
   textSnippet = '',
 ): boolean {
-  if (looksLikeNotaFiscalDocument(fileName, textSnippet)) return false;
-  const hay = fold(`${fileName} ${subject} ${textSnippet.slice(0, 4000)}`);
-  const hasCarta = /\bcarta\b/.test(hay);
-  const hasTema =
-    /comercializ/.test(hay) ||
-    /autoriza\w*.{0,40}(comercializ|distribui)/.test(hay) ||
-    /distribuidor autoriz/.test(hay) ||
-    /representa\w*.{0,20}comercial/.test(hay) ||
-    /autoriza\w*.{0,80}distribuir/.test(hay);
-  return hasCarta && hasTema;
+  if (looksLikeCartaFolderJunk(fileName, textSnippet)) return false;
+  const attachmentHay = fold(`${fileName} ${textSnippet.slice(0, 4000)}`);
+  if (attachmentHasCartaTema(attachmentHay)) return true;
+  // Assunto só reforça quando o nome já parece carta genérica sem tema
+  // explícito — ainda exige indício no nome (não "anexo.pdf").
+  const nameHay = fold(fileName);
+  if (!/\bcarta\b/.test(nameHay) && !/\bdeclaracao\b/.test(nameHay)) return false;
+  const withSubject = fold(`${fileName} ${subject}`);
+  return attachmentHasCartaTema(withSubject);
 }
 
 function classifySocietario(fileName: string): CompanyDocumentKind {

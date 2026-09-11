@@ -1,11 +1,16 @@
-# Gates: OCR seletivo no e-mail de cartas
+# Gates: filtrar lixo em cartas + lápis de datas
 
-- [x] G1: carta-mail testes
-  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts 2>&1 | tail -20
+- [x] G1: filtro rejeita alvará/credenciamento com assunto de carta
+  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts src/lib/__tests__/documentos-classify.test.ts -t "carta|CARTA|alvara|credenciamento|assunto" 2>&1 | tail -30
   EXPECT: /passed/
-  EVIDENCE: Start at  10:32:57 | Duration  1.96s (transform 1.02s, setup 21ms, import 242ms, tests 1.59s, environment 0ms)
+  EVIDENCE: Start at  11:38:00 | Duration  2.15s (transform 1.14s, setup 45ms, import 364ms, tests 1.74s, environment 0ms)
 
-- [x] G2: tsc
+- [x] G2: lápis de validade na tabela
+  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx src/components/__tests__/documentos-family-table.test.tsx -t "Editar validade|lápis|Assinatura" 2>&1 | tail -35
+  EXPECT: /passed/
+  EVIDENCE: Start at  11:38:03 | Duration  1.90s (transform 484ms, setup 41ms, import 773ms, tests 1.25s, environment 698ms)
+
+- [x] G3: tsc
   CHECK: npx tsc --noEmit --pretty false; echo TSC_OK
   EXPECT: TSC_OK
   EVIDENCE: TSC_OK

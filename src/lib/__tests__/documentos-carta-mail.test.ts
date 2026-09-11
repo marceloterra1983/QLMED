@@ -10,21 +10,37 @@ import {
 import { isCartaComercializacaoCandidate } from '@/lib/documentos/classify';
 
 describe('CARTA_MAIL_SEARCH / maxPages', () => {
-  it('inclui credenciamento e termo; maxPages cobre antigas', () => {
-    expect(CARTA_MAIL_SEARCH).toMatch(/credenciamento/);
-    expect(CARTA_MAIL_SEARCH).toMatch(/termo/);
-    expect(CARTA_MAIL_MAX_PAGES).toBeGreaterThanOrEqual(80);
+  it('busca carta+tema sem credenciamento solto; maxPages limitado', () => {
+    expect(CARTA_MAIL_SEARCH).not.toMatch(/credenciamento/);
+    expect(CARTA_MAIL_SEARCH).toMatch(/comercializacao/);
+    expect(CARTA_MAIL_MAX_PAGES).toBe(40);
   });
 });
 
 describe('isCartaComercializacaoCandidate', () => {
-  it('aceita carta de comercialização pelo nome/assunto', () => {
+  it('aceita carta de comercialização pelo nome', () => {
     expect(
       isCartaComercializacaoCandidate('Carta Comercialização TECHIMPORT.pdf', 'Carta TECHIMPORT'),
     ).toBe(true);
     expect(
-      isCartaComercializacaoCandidate('anexo.pdf', 'Carta de autorização de comercialização'),
+      isCartaComercializacaoCandidate(
+        'anexo.pdf',
+        'Carta de autorização de comercialização',
+        'Carta de comercialização TECHIMPORT autoriza a QL MED',
+      ),
     ).toBe(true);
+  });
+
+  it('assunto sozinho não importa alvará/credenciamento', () => {
+    expect(
+      isCartaComercializacaoCandidate('ALVARÁ LICENÇA SANITÁRIA.pdf', 'Carta comercialização'),
+    ).toBe(false);
+    expect(
+      isCartaComercializacaoCandidate('Credenciamento 21-05-2025 CARBOMEDICS.pdf', 'Carta'),
+    ).toBe(false);
+    expect(
+      isCartaComercializacaoCandidate('anexo.pdf', 'Carta de autorização de comercialização'),
+    ).toBe(false);
   });
 
   it('ignora DANFE / NF-e / boleto', () => {
@@ -49,7 +65,7 @@ describe('isCartaComercializacaoCandidate', () => {
     ).toBe(false);
   });
 
-  it('nome/assunto de carta basta sem texto (OCR só depois)', () => {
+  it('nome de carta basta sem texto (OCR só depois)', () => {
     expect(
       isCartaComercializacaoCandidate('Carta Comercialização GABMED.pdf', 'FW: carta', ''),
     ).toBe(true);

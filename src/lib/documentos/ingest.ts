@@ -19,7 +19,7 @@ import {
   kindExpires,
   type DocumentosCategory,
 } from './constants';
-import { cartaManufacturerKey, classifyDocument, looksLikeNotaFiscalDocument, resolveCartaManufacturer } from './classify';
+import { cartaManufacturerKey, classifyDocument, isCartaComercializacaoCandidate, looksLikeCartaFolderJunk, looksLikeNotaFiscalDocument, resolveCartaManufacturer } from './classify';
 import {
   balancoYearFromFolderName,
   balancoYearFromLooseFile,
@@ -524,8 +524,13 @@ async function ingestCompany(
         for (const file of files) {
           scanned += 1;
 
-          // NF na pasta de cartas: fora de seenIds → removedAt limpa linha antiga.
-          if (family.category === 'carta' && looksLikeNotaFiscalDocument(file.name)) {
+          // NF / alvará / credenciamento na pasta de cartas: fora de seenIds
+          // → removedAt limpa linha antiga (FR-044).
+          if (
+            family.category === 'carta'
+            && (looksLikeCartaFolderJunk(file.name)
+              || !isCartaComercializacaoCandidate(file.name, '', ''))
+          ) {
             continue;
           }
 

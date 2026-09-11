@@ -11,9 +11,14 @@ export const documentosValidUntilSchema = z
 
 export const documentosIdSchema = idParamSchema;
 
-export const documentosPatchSchema = z.object({
-  validUntil: documentosValidUntilSchema,
-});
+export const documentosPatchSchema = z
+  .object({
+    validUntil: documentosValidUntilSchema.optional(),
+    emitidoEm: documentosValidUntilSchema.nullable().optional(),
+  })
+  .refine((value) => value.validUntil !== undefined || value.emitidoEm !== undefined, {
+    message: 'Informe validUntil e/ou emitidoEm',
+  });
 
 export const documentosUploadFieldsSchema = z.object({
   kind: documentosKindSchema,

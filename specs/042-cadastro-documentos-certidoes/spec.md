@@ -129,8 +129,10 @@ falhar de forma visível, não chutar.
   FR-011 e o ciclo de arquivo de FR-016 **na mesma requisição** (não espera
   a ingestão horária). Falha de WhatsApp ou de arquivo não reverte o upload
   já gravado; fica no log saneado.
-- **FR-008**: Editar validade (editor+) via `PATCH /api/documentos/{id}` grava
-  `validUntilSource = 'manual'`; a ingestão não sobrescreve.
+- **FR-008**: Editar validade ou assinatura (editor+) via
+  `PATCH /api/documentos/{id}` (`validUntil` e/ou `emitidoEm`). Validade
+  manual grava `validUntilSource = 'manual'`; a ingestão não sobrescreve
+  validade manual.
 
 ### Autorização e isolamento
 
@@ -325,11 +327,12 @@ falhar de forma visível, não chutar.
 
 - **FR-033**: Acções de linha via `RowActionsBase`: inline `receipt_long`
   "Ver documento" e `print` "Imprimir" (`hideOnMobile`); menu Compartilhar
-  (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`), Editar
-  validade (`edit`). Balanço (documento PDF): mesmas ações do societário
+  (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`). Editar
+  validade/assinatura é o **lápis pequeno** ao lado da data na célula (não no
+  menu). Balanço (documento PDF): mesmas ações do societário
   (Ver/Imprimir/Baixar/Compartilhar/WhatsApp), sem Atualizar arquivo e sem
-  Editar validade (`expira: false`). Cabeçalho do ano: `folder_open` opcional
-  quando há `folderWebUrl`. O lápis sai da linha.
+  lápis (`expira: false`). Cabeçalho do ano: `folder_open` opcional
+  quando há `folderWebUrl`.
 
 - **FR-034**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
   `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo) **e** um campo para escrever e-mail
@@ -408,15 +411,16 @@ falhar de forma visível, não chutar.
   `joseroberto@qlmed.com.br`, `marcelo@qlmed.com.br`, `flavio@qlmed.com.br`
   e `daniele@qlmed.com.br` em busca de anexos PDF de carta de comercialização
   (assunto, nome do anexo ou texto com carta + comercialização/autorização/
-  distribuição/representação/credenciamento/termo). Até 80 páginas Graph por
-  caixa para alcançar mensagens antigas. O texto do PDF é **sempre** lido
-  antes de aceitar o anexo (com OCR se a camada de texto for escassa).
-  DANFE, NF-e, CT-e, boleto, ordem de compra, «NF DOC…», «nota fiscal» e
-  «chave de acesso» são ignorados (mesmo com assunto enganoso). A ingestão
+  distribuição/representação). O **nome ou o texto do PDF** têm de carregar
+  carta+tema — assunto sozinho não basta. Alvará, licença sanitária,
+  certificado de regularidade, credenciamento e DANFE/NF-e são ignorados.
+  Até 40 páginas Graph por caixa. O texto do PDF é **sempre** lido antes de
+  aceitar o anexo (com OCR se a camada de texto for escassa). A ingestão
   OneDrive da pasta carta **salta** esses ficheiros (não entram em `seenIds`,
   logo `removedAt` limpa linhas já importadas por engano). PDF novo é gravado
-  na pasta OneDrive da família carta (nome saneado); ficheiro já existente
-  (mesmo nome, sem acento) é saltado. Falha de uma caixa não aborta as outras.
+  na pasta OneDrive da família carta (nome saneado; `(2)` / `assinada` colidem
+  com o original); ficheiro já existente (mesmo nome, sem acento) é saltado.
+  Falha de uma caixa não aborta as outras.
 - **FR-045**: A leitura de PDF das cartas reconhece validade em formas
   distintas: rótulos (`validade`, `válida até`, `válido até o dia`,
   `validade desta carta`, `vigente até`, `autorizada até`, `com validade

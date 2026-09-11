@@ -177,10 +177,12 @@ export type DocumentosFamilyTableProps = {
   rows: DocumentosRow[];
   canWrite: boolean;
   editingId: string | null;
+  /** `validUntil` (padrão) ou `emitidoEm` (coluna Assinatura). */
+  editingField?: 'validUntil' | 'emitidoEm';
   editDraft: string;
   saving: boolean;
   onEditDraft: (value: string) => void;
-  onStartEdit: (row: DocumentosRow) => void;
+  onStartEdit: (row: DocumentosRow, field?: 'validUntil' | 'emitidoEm') => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
@@ -205,6 +207,7 @@ function DocumentosTableBody({
   rows,
   canWrite,
   editingId,
+  editingField = 'validUntil',
   editDraft,
   saving,
   onEditDraft,
@@ -219,8 +222,8 @@ function DocumentosTableBody({
   showValidityColumns,
   showSignatureColumn,
 }: TableBodyProps) {
-  function isEditingRow(row: DocumentosRow): boolean {
-    return canWrite && row.id !== null && editingId === row.id;
+  function isEditingRow(row: DocumentosRow, field: 'validUntil' | 'emitidoEm' = 'validUntil'): boolean {
+    return canWrite && row.id !== null && editingId === row.id && editingField === field;
   }
 
   function canUpdateRow(row: DocumentosRow): boolean {
@@ -228,13 +231,87 @@ function DocumentosTableBody({
   }
 
   function rowActivateLabel(row: DocumentosRow): string | null {
-    if (isEditingRow(row)) return null;
+    if (editingId === row.id) return null;
     return `Abrir gestão de ${row.label}`;
   }
 
   function activateRow(row: DocumentosRow) {
-    if (isEditingRow(row)) return;
+    if (editingId === row.id) return;
     onOpenDetail(row);
+  }
+
+  function DatePencil({
+    row,
+    field,
+    label,
+  }: {
+    row: DocumentosRow;
+    field: 'validUntil' | 'emitidoEm';
+    label: string;
+  }) {
+    if (!canWrite || !row.id || row.expira === false) return null;
+    return (
+      <button
+        type="button"
+        className="ml-0.5 p-0.5 rounded text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
+        title={label}
+        aria-label={label}
+        onClick={(event) => {
+          event.stopPropagation();
+          onStartEdit(row, field);
+        }}
+      >
+        <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden="true">
+          edit
+        </span>
+      </button>
+    );
+  }
+
+  function DateEditor({
+    row,
+    field,
+    ariaLabel,
+    value,
+  }: {
+    row: DocumentosRow;
+    field: 'validUntil' | 'emitidoEm';
+    ariaLabel: string;
+    value: string | null;
+  }) {
+    if (isEditingRow(row, field)) {
+      return (
+        <span className="inline-flex items-center gap-1">
+          <input
+            type="date"
+            value={editDraft}
+            onChange={(event) => onEditDraft(event.target.value)}
+            aria-label={ariaLabel}
+            className={`${FIELD_CONTROL_CLS} max-w-40`}
+          />
+          <Button size="xs" onClick={() => onSaveEdit()} loading={saving} disabled={!editDraft}>
+            Salvar
+          </Button>
+          <Button size="xs" variant="ghost" onClick={onCancelEdit} disabled={saving}>
+            Cancelar
+          </Button>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        {row.id && row.expira === false && field === 'validUntil' ? (
+          <span className="text-slate-500 dark:text-slate-400">—</span>
+        ) : (
+          <ValidityText value={value} />
+        )}
+        <DatePencil
+          row={row}
+          field={field}
+          label={field === 'emitidoEm' ? 'Editar assinatura' : 'Editar validade'}
+        />
+      </span>
+    );
   }
 
   function rowActions(row: DocumentosRow) {
@@ -266,9 +343,6 @@ function DocumentosTableBody({
 
     if (canUpdateRow(row)) {
       menu.push({ label: 'Atualizar arquivo', icon: 'upload_file', onSelect: () => onUpdate(row) });
-    }
-    if (canWrite && row.id && row.expira !== false) {
-      menu.push({ label: 'Editar validade', icon: 'edit', onSelect: () => onStartEdit(row) });
     }
 
     const actions =
@@ -306,25 +380,9 @@ function DocumentosTableBody({
     ) : null;
 
     return (
-      /**
-       * `whitespace-nowrap` de propósito: com `flex-wrap` o link de emissão,
-       * por ser o último filho, era empurrado para uma segunda linha e sumia da
-       * vista em ecrãs estreitos. Ele é a ação mais usada da tabela — é por ele
-       * que se vai emitir a certidão nova.
-       */
       <div className="flex items-center justify-center gap-0 whitespace-nowrap">
         {emissao}
         {actions}
-        {isEditingRow(row) ? (
-          <>
-            <Button size="xs" onClick={() => onSaveEdit()} loading={saving} disabled={!editDraft}>
-              Salvar
-            </Button>
-            <Button size="xs" variant="ghost" onClick={onCancelEdit} disabled={saving}>
-              Cancelar
-            </Button>
-          </>
-        ) : null}
       </div>
     );
   }
@@ -376,8 +434,12 @@ function DocumentosTableBody({
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                 </td>
                 {showSignatureColumn ? (
-                  <td className={`${CELL} text-sm whitespace-nowrap`}>
-                    <ValidityText value={row.emitidoEm} />
+                  <td
+                    className={`${CELL} text-sm whitespace-nowrap`}
+                    onClick={stopRowEvent}
+                    onKeyDown={stopRowEvent}
+                  >
+                    <DateEditor row={row} field="emitidoEm" ariaLabel="Assinatura" value={row.emitidoEm} />
                   </td>
                 ) : null}
                 {showValidityColumns ? (
@@ -387,23 +449,12 @@ function DocumentosTableBody({
                       onClick={stopRowEvent}
                       onKeyDown={stopRowEvent}
                     >
-                      {isEditingRow(row) ? (
-                        <input
-                          type="date"
-                          value={editDraft}
-                          onChange={(event) => onEditDraft(event.target.value)}
-                          aria-label="Validade"
-                          className={`${FIELD_CONTROL_CLS} max-w-40`}
-                        />
-                      ) : (
-                        <span className="inline-flex items-center">
-                          {row.id && row.expira === false ? (
-                            <span className="text-slate-500 dark:text-slate-400">—</span>
-                          ) : (
-                            <ValidityText value={row.validUntil} />
-                          )}
-                        </span>
-                      )}
+                      <DateEditor
+                        row={row}
+                        field="validUntil"
+                        ariaLabel="Validade"
+                        value={row.validUntil}
+                      />
                     </td>
                     <td className={CELL}>
                       <DaysCell row={row} />

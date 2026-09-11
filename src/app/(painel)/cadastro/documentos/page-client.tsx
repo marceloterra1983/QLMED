@@ -78,6 +78,7 @@ export default function DocumentosPageClient() {
   const [uploadValidUntil, setUploadValidUntil] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<'validUntil' | 'emitidoEm'>('validUntil');
   const [editDraft, setEditDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState<{ id: string; title: string } | null>(null);
@@ -226,22 +227,27 @@ export default function DocumentosPageClient() {
     if (!editingId || !editDraft) return;
     setSaving(true);
     try {
+      const body =
+        editingField === 'emitidoEm'
+          ? { emitidoEm: editDraft }
+          : { validUntil: editDraft };
       const res = await fetch(`/api/documentos/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ validUntil: editDraft }),
+        body: JSON.stringify(body),
       });
       const payload: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(apiErrorMessage(payload, 'Não foi possível salvar a validade'));
+        toast.error(apiErrorMessage(payload, 'Não foi possível salvar a data'));
         return;
       }
-      toast.success('Validade atualizada');
+      toast.success(editingField === 'emitidoEm' ? 'Assinatura atualizada' : 'Validade atualizada');
       setEditingId(null);
+      setEditingField('validUntil');
       setEditDraft('');
       await load({ quiet: true });
     } catch {
-      toast.error('Erro de rede ao salvar a validade');
+      toast.error('Erro de rede ao salvar a data');
     } finally {
       setSaving(false);
     }
@@ -286,18 +292,21 @@ export default function DocumentosPageClient() {
   const tableProps = {
     canWrite,
     editingId,
+    editingField,
     editDraft,
     saving,
     onEditDraft: setEditDraft,
-    onStartEdit: (row: DocumentosRow) => {
+    onStartEdit: (row: DocumentosRow, field: 'validUntil' | 'emitidoEm' = 'validUntil') => {
       setEditingId(row.id);
-      setEditDraft(row.validUntil ?? '');
+      setEditingField(field);
+      setEditDraft((field === 'emitidoEm' ? row.emitidoEm : row.validUntil) ?? '');
     },
     onSaveEdit: () => {
       void saveEdit();
     },
     onCancelEdit: () => {
       setEditingId(null);
+      setEditingField('validUntil');
       setEditDraft('');
     },
     onView: (row: DocumentosRow) => {
@@ -471,6 +480,7 @@ export default function DocumentosPageClient() {
           if (!row.id) return;
           setDetailRow(null);
           setEditingId(row.id);
+          setEditingField('validUntil');
           setEditDraft(row.validUntil ?? '');
         }}
       />
