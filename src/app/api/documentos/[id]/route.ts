@@ -32,10 +32,25 @@ export async function PATCH(
     const parsed = documentosPatchSchema.safeParse(body);
     if (!parsed.success) return apiValidationError(parsed.error);
 
+    const existing = await prisma.companyDocument.findFirst({
+      where: { id: parsedId.data.id, companyId: access.companyId },
+      select: { id: true, category: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+    if (parsed.data.manufacturer !== undefined && existing.category !== 'carta') {
+      return NextResponse.json(
+        { error: 'Fabricante só pode ser editado em cartas de comercialização' },
+        { status: 400 },
+      );
+    }
+
     const data: {
       validUntil?: Date;
       validUntilSource?: string;
       emitidoEm?: Date | null;
+      manufacturer?: string | null;
     } = {};
     if (parsed.data.validUntil !== undefined) {
       data.validUntil = new Date(`${parsed.data.validUntil}T00:00:00.000Z`);
@@ -45,6 +60,9 @@ export async function PATCH(
       data.emitidoEm = parsed.data.emitidoEm
         ? new Date(`${parsed.data.emitidoEm}T00:00:00.000Z`)
         : null;
+    }
+    if (parsed.data.manufacturer !== undefined) {
+      data.manufacturer = parsed.data.manufacturer;
     }
 
     const updated = await prisma.companyDocument.updateMany({
@@ -60,10 +78,11 @@ export async function PATCH(
       id: parsedId.data.id,
       validUntil: parsed.data.validUntil ?? undefined,
       emitidoEm: parsed.data.emitidoEm ?? undefined,
+      manufacturer: parsed.data.manufacturer ?? undefined,
       validUntilSource: parsed.data.validUntil !== undefined ? 'manual' : undefined,
     });
   } catch (error) {
-    log.error({ err: error }, 'Falha ao atualizar datas do documento');
+    log.error({ err: error }, 'Falha ao atualizar documento');
     return apiError(error, 'documentos/:id');
   }
 }

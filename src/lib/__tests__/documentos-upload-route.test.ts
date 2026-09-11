@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   requireEditor: vi.fn(),
   requireDocumentosPage: vi.fn(),
   documentCreate: vi.fn(),
+  documentFindFirst: vi.fn(),
   documentUpdateMany: vi.fn(),
   connectionFindFirst: vi.fn(),
   ensureValidOneDriveAccessToken: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     companyDocument: {
       create: mocks.documentCreate,
+      findFirst: mocks.documentFindFirst,
       updateMany: mocks.documentUpdateMany,
     },
     oneDriveConnection: { findFirst: mocks.connectionFindFirst },
@@ -242,6 +244,7 @@ describe('PATCH /api/documentos/[id]', () => {
       userId: 'user-1',
       role: 'editor',
     });
+    mocks.documentFindFirst.mockResolvedValue({ id: DOC_ID, category: 'certidao' });
     mocks.documentUpdateMany.mockResolvedValue({ count: 1 });
   });
 
@@ -285,8 +288,38 @@ describe('PATCH /api/documentos/[id]', () => {
     );
   });
 
+  it('aceita manufacturer só em carta', async () => {
+    mocks.documentFindFirst.mockResolvedValue({ id: DOC_ID, category: 'carta' });
+    const res = await PATCH(
+      new Request('http://localhost/api/documentos/x', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manufacturer: '  NOVO FAB  ' }),
+      }),
+      { params: Promise.resolve({ id: DOC_ID }) },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ ok: true, manufacturer: 'NOVO FAB' }),
+    );
+    expect(mocks.documentUpdateMany.mock.calls[0][0].data).toEqual({ manufacturer: 'NOVO FAB' });
+  });
+
+  it('recusa manufacturer em certidão', async () => {
+    const res = await PATCH(
+      new Request('http://localhost/api/documentos/x', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manufacturer: 'X' }),
+      }),
+      { params: Promise.resolve({ id: DOC_ID }) },
+    );
+    expect(res.status).toBe(400);
+    expect(mocks.documentUpdateMany).not.toHaveBeenCalled();
+  });
+
   it('404 se o documento não é da empresa', async () => {
-    mocks.documentUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.documentFindFirst.mockResolvedValue(null);
     const res = await PATCH(
       new Request('http://localhost/api/documentos/x', {
         method: 'PATCH',

@@ -13,6 +13,7 @@ function cartaRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
     category: 'carta',
     label: 'CARDIOVENT',
     fileName: 'carta.pdf',
+    manufacturer: 'CARDIOVENT',
     validUntil: '2026-08-26',
     emitidoEm: '2026-02-26',
     daysRemaining: 10,
@@ -27,6 +28,14 @@ function cartaRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
   };
 }
 
+const tableHandlers = {
+  onView: noop,
+  onOpenDetail: noop,
+  onUpdate: noop,
+  onShare: noop,
+  onWhatsApp: noop,
+};
+
 describe('DocumentosFamilyTable — cartas', () => {
   it('mostra coluna Assinatura com emitidoEm', () => {
     render(
@@ -35,18 +44,7 @@ describe('DocumentosFamilyTable — cartas', () => {
         columnLabel="Fabricante"
         rows={[cartaRow()]}
         canWrite={false}
-        editingId={null}
-        editDraft=""
-        saving={false}
-        onEditDraft={noop}
-        onStartEdit={noop}
-        onSaveEdit={noop}
-        onCancelEdit={noop}
-        onView={noop}
-        onOpenDetail={noop}
-        onUpdate={noop}
-        onShare={noop}
-        onWhatsApp={noop}
+        {...tableHandlers}
         collapseExpired
         showSignatureColumn
       />,
@@ -58,30 +56,20 @@ describe('DocumentosFamilyTable — cartas', () => {
     expect(screen.getByText(/26\.02\.26|26\/02\/2026|26\.02\.2026/)).toBeTruthy();
   });
 
-  it('lápis pequeno edita validade e assinatura', () => {
+  it('tabela não tem lápis de edição (edita no popup)', () => {
     render(
       <DocumentosFamilyTable
         caption="Cartas"
         columnLabel="Fabricante"
         rows={[cartaRow()]}
         canWrite
-        editingId={null}
-        editDraft=""
-        saving={false}
-        onEditDraft={noop}
-        onStartEdit={noop}
-        onSaveEdit={noop}
-        onCancelEdit={noop}
-        onView={noop}
-        onOpenDetail={noop}
-        onUpdate={noop}
-        onShare={noop}
-        onWhatsApp={noop}
+        {...tableHandlers}
         collapseExpired
         showSignatureColumn
       />,
     );
-    expect(screen.getByRole('button', { name: 'Editar validade' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Editar assinatura' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Editar validade' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Editar assinatura' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Editar fabricante' })).toBeNull();
   });
 });

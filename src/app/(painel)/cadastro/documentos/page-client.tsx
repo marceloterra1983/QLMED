@@ -77,10 +77,6 @@ export default function DocumentosPageClient() {
   const [uploadKind, setUploadKind] = useState<CertidaoKind>(CERTIDAO_KINDS_ORDER[0]);
   const [uploadValidUntil, setUploadValidUntil] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'validUntil' | 'emitidoEm'>('validUntil');
-  const [editDraft, setEditDraft] = useState('');
-  const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState<{ id: string; title: string } | null>(null);
   const [detailRow, setDetailRow] = useState<DocumentosRow | null>(null);
   const [updateRow, setUpdateRow] = useState<DocumentosRow | null>(null);
@@ -89,7 +85,7 @@ export default function DocumentosPageClient() {
   const [scanningMail, setScanningMail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+  const load = useCallback(async (opts?: { quiet?: boolean }): Promise<DocumentosListing | null> => {
     if (!opts?.quiet) {
       setLoading(true);
       setLoadError(false);
@@ -99,12 +95,12 @@ export default function DocumentosPageClient() {
       if (!res.ok) throw new Error('load');
       const payload = (await res.json()) as DocumentosListing;
       setData(payload);
-      setEditingId(null);
-      setEditDraft('');
       setLoadError(false);
+      return payload;
     } catch {
       if (opts?.quiet) toast.error('Erro ao recarregar documentos');
       else setLoadError(true);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -113,10 +109,6 @@ export default function DocumentosPageClient() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (editingId === null) setEditDraft('');
-  }, [editingId]);
 
   function resetUpload() {
     setUploadKind(CERTIDAO_KINDS_ORDER[0]);
@@ -223,33 +215,52 @@ export default function DocumentosPageClient() {
     }
   }
 
-  async function saveEdit() {
-    if (!editingId || !editDraft) return;
-    setSaving(true);
+  async function patchDocumento(
+    row: DocumentosRow,
+    patch: { validUntil?: string; emitidoEm?: string | null; manufacturer?: string | null },
+  ): Promise<DocumentosRow | null> {
+    if (!row.id) return null;
     try {
-      const body =
-        editingField === 'emitidoEm'
-          ? { emitidoEm: editDraft }
-          : { validUntil: editDraft };
-      const res = await fetch(`/api/documentos/${editingId}`, {
+      const res = await fetch(`/api/documentos/${row.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(patch),
       });
       const payload: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(apiErrorMessage(payload, 'Não foi possível salvar a data'));
-        return;
+        toast.error(apiErrorMessage(payload, 'Não foi possível salvar'));
+        return null;
       }
-      toast.success(editingField === 'emitidoEm' ? 'Assinatura atualizada' : 'Validade atualizada');
-      setEditingId(null);
-      setEditingField('validUntil');
-      setEditDraft('');
-      await load({ quiet: true });
+      const toastLabel =
+        patch.manufacturer !== undefined
+          ? 'Fabricante atualizado'
+          : patch.emitidoEm !== undefined
+            ? 'Assinatura atualizada'
+            : 'Validade atualizada';
+      toast.success(toastLabel);
+      const listing = await load({ quiet: true });
+      const refreshed =
+        listing == null
+          ? null
+          : DOCUMENTOS_FAMILIES.map((family) => rowsForFamily(listing, family.category))
+              .flat()
+              .find((item) => item.id === row.id) ?? null;
+      const next = refreshed ?? {
+        ...row,
+        ...(patch.validUntil !== undefined ? { validUntil: patch.validUntil } : {}),
+        ...(patch.emitidoEm !== undefined ? { emitidoEm: patch.emitidoEm } : {}),
+        ...(patch.manufacturer !== undefined
+          ? {
+              manufacturer: patch.manufacturer,
+              label: patch.manufacturer?.trim() || row.label,
+            }
+          : {}),
+      };
+      setDetailRow((current) => (current?.id === row.id ? next : current));
+      return next;
     } catch {
-      toast.error('Erro de rede ao salvar a data');
-    } finally {
-      setSaving(false);
+      toast.error('Erro de rede ao salvar');
+      return null;
     }
   }
 
@@ -291,24 +302,6 @@ export default function DocumentosPageClient() {
 
   const tableProps = {
     canWrite,
-    editingId,
-    editingField,
-    editDraft,
-    saving,
-    onEditDraft: setEditDraft,
-    onStartEdit: (row: DocumentosRow, field: 'validUntil' | 'emitidoEm' = 'validUntil') => {
-      setEditingId(row.id);
-      setEditingField(field);
-      setEditDraft((field === 'emitidoEm' ? row.emitidoEm : row.validUntil) ?? '');
-    },
-    onSaveEdit: () => {
-      void saveEdit();
-    },
-    onCancelEdit: () => {
-      setEditingId(null);
-      setEditingField('validUntil');
-      setEditDraft('');
-    },
     onView: (row: DocumentosRow) => {
       if (!row.id) return;
       setViewer({ id: row.id, title: row.label });
@@ -317,7 +310,6 @@ export default function DocumentosPageClient() {
       setDetailRow(row);
     },
     onUpdate: (row: DocumentosRow) => {
-      setEditingId(null);
       setDetailRow(null);
       setUpdateRow(row);
     },
@@ -473,16 +465,9 @@ export default function DocumentosPageClient() {
         }}
         onUpdate={(row) => {
           setDetailRow(null);
-          setEditingId(null);
           setUpdateRow(row);
         }}
-        onStartEdit={(row) => {
-          if (!row.id) return;
-          setDetailRow(null);
-          setEditingId(row.id);
-          setEditingField('validUntil');
-          setEditDraft(row.validUntil ?? '');
-        }}
+        onPatch={patchDocumento}
       />
 
       <DocumentoUpdateModal

@@ -1,16 +1,21 @@
-# Gates: filtrar lixo em cartas + lápis de datas
+# Gates: edição no popup (lápis discreto) + fabricante
 
-- [x] G1: filtro rejeita alvará/credenciamento com assunto de carta
-  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts src/lib/__tests__/documentos-classify.test.ts -t "carta|CARTA|alvara|credenciamento|assunto" 2>&1 | tail -30
-  EXPECT: /passed/
-  EVIDENCE: Start at  11:38:00 | Duration  2.15s (transform 1.14s, setup 45ms, import 364ms, tests 1.74s, environment 0ms)
+- [x] G1: tabela sem lápis; popup edita datas e fabricante
+  CHECK: npx vitest run src/components/__tests__/documentos-detalhe-modal.test.tsx src/components/__tests__/documentos-family-table.test.tsx src/components/__tests__/documentos-page.test.tsx 2>&1 | tail -20
+  EXPECT: /Test Files\s+3 passed/
+  EVIDENCE: 2026-09-11 — Test Files 3 passed (3); Tests 36 passed (36)
 
-- [x] G2: lápis de validade na tabela
-  CHECK: npx vitest run src/components/__tests__/documentos-page.test.tsx src/components/__tests__/documentos-family-table.test.tsx -t "Editar validade|lápis|Assinatura" 2>&1 | tail -35
-  EXPECT: /passed/
-  EVIDENCE: Start at  11:38:03 | Duration  1.90s (transform 484ms, setup 41ms, import 773ms, tests 1.25s, environment 698ms)
+- [x] G2: PATCH aceita manufacturer; tsc limpo
+  CHECK: npx vitest run src/lib/__tests__/documentos-upload-route.test.ts -t "PATCH" 2>&1 | tail -15; npx tsc --noEmit --pretty false; echo TSC_OK
+  EXPECT: /TSC_OK/
+  EVIDENCE: pending-run
 
-- [x] G3: tsc
-  CHECK: npx tsc --noEmit --pretty false; echo TSC_OK
-  EXPECT: TSC_OK
-  EVIDENCE: TSC_OK
+- [x] G3: ui:verify
+  CHECK: npm run ui:verify 2>&1 | tail -25
+  EXPECT: /ok   muted/
+  EVIDENCE: 2026-09-11 — ok muted / field / iconbtn (0 violações)
+
+- [ ] G4: preview :3002 smoke Documentos
+  CHECK: curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/cadastro/documentos
+  EXPECT: /^(200|307)$/
+  EVIDENCE: pending

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DocumentoDetalheModal from '@/app/(painel)/cadastro/documentos/components/DocumentoDetalheModal';
 import { CERTIDAO_EMISSAO_URL, CERTIDAO_LABEL } from '@/lib/documentos/constants';
 import type { DocumentosRow } from '@/lib/documentos/list';
@@ -16,6 +16,7 @@ function certidaoRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
     category: 'certidao',
     label: CERTIDAO_LABEL.cnd_federal,
     fileName: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
+    manufacturer: null,
     validUntil: '2026-12-12',
     emitidoEm: '2026-09-13',
     daysRemaining: 99,
@@ -37,6 +38,7 @@ function afeRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
     category: 'sanitaria',
     label: 'AFE — Autorização de Funcionamento ANVISA',
     fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+    manufacturer: null,
     validUntil: null,
     emitidoEm: null,
     daysRemaining: null,
@@ -51,8 +53,40 @@ function afeRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
   };
 }
 
+function cartaRow(overrides: Partial<DocumentosRow> = {}): DocumentosRow {
+  return {
+    id: 'doc-carta',
+    kind: 'carta_comercializacao',
+    category: 'carta',
+    label: 'CARDIOVENT',
+    fileName: 'CARTA CARDIOVENT.pdf',
+    manufacturer: 'CARDIOVENT',
+    validUntil: '2026-08-26',
+    emitidoEm: '2026-02-26',
+    daysRemaining: 10,
+    status: { key: 'ok', label: 'ok' },
+    validUntilSource: 'pdf',
+    expira: true,
+    emissaoUrl: null,
+    emissaoAria: null,
+    webUrl: null,
+    automacao: null,
+    ...overrides,
+  };
+}
+
+const modalHandlers = {
+  onClose: vi.fn(),
+  onView: vi.fn(),
+  onShare: vi.fn(),
+  onWhatsApp: vi.fn(),
+  onUpdate: vi.fn(),
+  onPatch: vi.fn(async () => null),
+};
+
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
 describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
@@ -60,14 +94,9 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
     render(
       <DocumentoDetalheModal
         isOpen
-        onClose={vi.fn()}
         row={certidaoRow()}
         canWrite
-        onView={vi.fn()}
-        onShare={vi.fn()}
-        onWhatsApp={vi.fn()}
-        onUpdate={vi.fn()}
-        onStartEdit={vi.fn()}
+        {...modalHandlers}
       />,
     );
     const dialog = screen.getByRole('dialog', { name: 'Gestão: CND Receita Federal' });
@@ -91,14 +120,9 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
     render(
       <DocumentoDetalheModal
         isOpen
-        onClose={vi.fn()}
         row={row}
         canWrite
-        onView={vi.fn()}
-        onShare={vi.fn()}
-        onWhatsApp={vi.fn()}
-        onUpdate={vi.fn()}
-        onStartEdit={vi.fn()}
+        {...modalHandlers}
       />,
     );
     expect(screen.getByText('não informado')).toBeTruthy();
@@ -109,14 +133,9 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
     render(
       <DocumentoDetalheModal
         isOpen
-        onClose={vi.fn()}
         row={afeRow()}
         canWrite
-        onView={vi.fn()}
-        onShare={vi.fn()}
-        onWhatsApp={vi.fn()}
-        onUpdate={vi.fn()}
-        onStartEdit={vi.fn()}
+        {...modalHandlers}
       />,
     );
     expect(screen.getAllByText('não vence').length).toBeGreaterThan(0);
@@ -133,14 +152,9 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
     render(
       <DocumentoDetalheModal
         isOpen
-        onClose={vi.fn()}
         row={certidaoRow({ daysRemaining: 3, validUntil: '2026-09-08' })}
         canWrite
-        onView={vi.fn()}
-        onShare={vi.fn()}
-        onWhatsApp={vi.fn()}
-        onUpdate={vi.fn()}
-        onStartEdit={vi.fn()}
+        {...modalHandlers}
       />,
     );
     expect(screen.getByText('3 dias').getAttribute('data-destaque')).toBe('true');
@@ -160,7 +174,7 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         onShare={vi.fn()}
         onWhatsApp={vi.fn()}
         onUpdate={onUpdate}
-        onStartEdit={vi.fn()}
+        onPatch={vi.fn(async () => null)}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Atualizar arquivo' }));
@@ -183,12 +197,60 @@ describe('DocumentoDetalheModal (SPEC-042 L13)', () => {
         onShare={onShare}
         onWhatsApp={onWhatsApp}
         onUpdate={vi.fn()}
-        onStartEdit={vi.fn()}
+        onPatch={vi.fn(async () => null)}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'WhatsApp' }));
     expect(onWhatsApp).toHaveBeenCalledWith(row);
     expect(onShare).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Compartilhar' })).toBeTruthy();
+  });
+
+  it('lápis discreto no popup edita validade via onPatch', async () => {
+    const onPatch = vi.fn(async (_row, patch) => ({
+      ...certidaoRow(),
+      ...patch,
+    }));
+    render(
+      <DocumentoDetalheModal
+        isOpen
+        row={certidaoRow()}
+        canWrite
+        {...modalHandlers}
+        onPatch={onPatch}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar validade' }));
+    fireEvent.change(screen.getByLabelText('Validade'), { target: { value: '2027-01-15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => {
+      expect(onPatch).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'doc-federal' }),
+        { validUntil: '2027-01-15' },
+      );
+    });
+  });
+
+  it('carta: fabricante e assinatura editáveis no popup', async () => {
+    const onPatch = vi.fn(async (row, patch) => ({ ...row, ...patch }));
+    render(
+      <DocumentoDetalheModal
+        isOpen
+        row={cartaRow()}
+        canWrite
+        {...modalHandlers}
+        onPatch={onPatch}
+      />,
+    );
+    expect(screen.getByText('CARDIOVENT')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar fabricante' }));
+    fireEvent.change(screen.getByLabelText('Fabricante'), { target: { value: 'NOVO FAB' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => {
+      expect(onPatch).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'doc-carta' }),
+        { manufacturer: 'NOVO FAB' },
+      );
+    });
   });
 });

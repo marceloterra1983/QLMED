@@ -18,6 +18,8 @@ export type DocumentosRow = {
   category: DocumentosCategory;
   label: string;
   fileName: string | null;
+  /** Cartas: fabricante exibido/editável; demais categorias: null. */
+  manufacturer: string | null;
   validUntil: string | null;
   emitidoEm: string | null;
   daysRemaining: number | null;
@@ -152,6 +154,7 @@ function toRow(row: DocumentosListSource, today: string, family: DocumentosFamil
     category: family.category,
     label,
     fileName: row.fileName,
+    manufacturer: family.mode === 'open' ? (row.manufacturer ?? null) : null,
     validUntil: ymd,
     emitidoEm: toYmd(row.emitidoEm),
     daysRemaining: days,
@@ -173,6 +176,7 @@ function missingRow(kind: CompanyDocumentKind, family: DocumentosFamily): Docume
     category: family.category,
     label: config?.label ?? labelForKind(kind),
     fileName: null,
+    manufacturer: null,
     validUntil: null,
     emitidoEm: null,
     daysRemaining: null,
@@ -193,6 +197,7 @@ function toBalancoDocumentRow(row: DocumentosListSource, family: DocumentosFamil
     category: family.category,
     label: balancoDocumentLabel(row.fileName),
     fileName: row.fileName,
+    manufacturer: null,
     validUntil: null,
     emitidoEm: toYmd(row.emitidoEm),
     daysRemaining: null,
