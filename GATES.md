@@ -1,33 +1,24 @@
-# Gates: documentos update email + summary table
+# Gates: Cartas — filtrar NF-e e ler emissão/validade no PDF
 
-Scope: Em todo upload/atualização de PDF em Documentos, e-mail de
-`adm@qlmed.com.br` com o PDF em anexo e tabela resumo de todos os documentos
-QLMED; SMTP ligado em produção.
+Scope: não importar/mostrar notas fiscais como carta; extrair emissão e
+validade dos PDFs reais (prazo em meses + data por extenso sem «de»).
 
-- [x] G1: Spec 042 documenta FR-046 (e-mail em todo update + tabela resumo)
-  CHECK: rg -n "FR-046|tabela resumo" specs/042-cadastro-documentos-certidoes/spec.md
-  EXPECT: /FR-046/
-  EVIDENCE: pending-after-rebase
+- [x] G1: NF DOC / DANFE rejeitados por nome ou texto do PDF
+  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts -t "NF|DANFE|nota" 2>&1 | tail -15
+  EXPECT: /passed/
+  EVIDENCE: {"level":30,"time":1789127794746,"pid":529397,"hostname":"server","module":"background-supervisor","service":"daily-issued-summary","msg":"Timer de background cancelado"} | {"level":30,"time":17891277
 
-- [x] G2: Testes de e-mail update + tabela + upload + renovação passam
-  CHECK: ./node_modules/.bin/vitest run src/lib/__tests__/documentos-share-email.test.ts src/lib/__tests__/documentos-update-email.test.ts src/lib/__tests__/documentos-upload-renewal.test.ts src/lib/__tests__/documentos-renewal.test.ts --reporter=dot
-  EXPECT: /Test Files  4 passed/
-  EVIDENCE: pending-after-rebase
+- [x] G2: TECHIMPORT real — emissão 2022-04-01 e validade +12 meses
+  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "TECHIMPORT|periodo de 12|abril 2022" 2>&1 | tail -20
+  EXPECT: /passed/
+  EVIDENCE: Start at  08:56:35 | Duration  186ms (transform 75ms, setup 17ms, import 73ms, tests 3ms, environment 0ms)
 
-- [x] G3: Remetente padrão adm@qlmed.com.br e módulo update-email
-  CHECK: rg -n "adm@qlmed.com.br" src/lib/documentos/share-email.ts src/lib/documentos/update-email.ts
-  EXPECT: /adm@qlmed.com.br/
-  EVIDENCE: pending-after-rebase
+- [x] G3: ingestão OneDrive salta NF e não a mantém como carta
+  CHECK: npx vitest run src/lib/__tests__/documentos-ingest.test.ts -t "carta.*NF|salta nota fiscal" 2>&1 | tail -20
+  EXPECT: /passed/
+  EVIDENCE: Start at  08:56:36 | Duration  275ms (transform 140ms, setup 15ms, import 80ms, tests 88ms, environment 0ms)
 
-- [x] G4: tsc --noEmit limpo
-  CHECK: ./node_modules/.bin/tsc --noEmit --pretty false; echo TSC_OK
+- [x] G4: tsc limpo
+  CHECK: npx tsc --noEmit --pretty false; echo TSC_OK
   EXPECT: TSC_OK
-  EVIDENCE: pending-after-rebase
-
-- [x] G5: SMTP no container qlmed-app (só nomes)
-  CHECK: docker exec qlmed-app sh -c 'printenv | cut -d= -f1 | grep ^SMTP_ | sort | tr "\n" " "'
-  EXPECT: SMTP_HOST SMTP_PASS SMTP_PORT SMTP_USER
-  EVIDENCE: pending-after-rebase
-
-- [ ] G6: Smoke — e-mail CND-MT com tabela e anexo
-  EVIDENCE: pending
+  EVIDENCE: TSC_OK

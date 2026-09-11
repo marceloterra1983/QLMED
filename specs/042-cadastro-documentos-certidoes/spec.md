@@ -406,16 +406,22 @@ falhar de forma visível, não chutar.
   `joseroberto@qlmed.com.br`, `marcelo@qlmed.com.br`, `flavio@qlmed.com.br`
   e `daniele@qlmed.com.br` em busca de anexos PDF de carta de comercialização
   (assunto, nome do anexo ou texto com carta + comercialização/autorização/
-  distribuição). DANFE, NF-e, CT-e, boleto e ordem de compra são ignorados.
-  PDF novo é gravado na pasta OneDrive da família carta (nome saneado); ficheiro
-  já existente (mesmo nome, sem acento) é saltado. Falha de uma caixa não
-  aborta as outras.
+  distribuição). O texto do PDF é **sempre** lido antes de aceitar o anexo.
+  DANFE, NF-e, CT-e, boleto, ordem de compra, «NF DOC…», «nota fiscal» e
+  «chave de acesso» são ignorados (mesmo com assunto enganoso). A ingestão
+  OneDrive da pasta carta **salta** esses ficheiros (não entram em `seenIds`,
+  logo `removedAt` limpa linhas já importadas por engano). PDF novo é gravado
+  na pasta OneDrive da família carta (nome saneado); ficheiro já existente
+  (mesmo nome, sem acento) é saltado. Falha de uma caixa não aborta as outras.
 - **FR-045**: A leitura de PDF das cartas reconhece validade em formas
   distintas: rótulos (`validade`, `válida até`, `vigente até`, `autorizada
   até`, `com validade até`); faixa `de X a Y`; e prazo relativo (`válida
-  por N meses/anos/dias a contar da emissão`, `prazo de N meses`). Emissão
-  pelos rótulos já existentes. Prazo relativo só grava validade se houver
+  por N meses/anos/dias a contar da emissão`, `válidos por período de N
+  meses`, `prazo de N meses`). Emissão pelos rótulos já existentes **e** pela
+  data no rodapé após `Atenciosamente`/`Cordialmente` (ex.: `01 de abril
+  2022` sem o segundo «de»). Prazo relativo só grava validade se houver
   emissão. Prazo indeterminado deixa validade nula. Não se inventa data.
+  Nome do ficheiro também reconhece compacto `26fev26` / `27ago26`.
 
 ## Acceptance Criteria
 
@@ -558,8 +564,13 @@ falhar de forma visível, não chutar.
   rótulos pré-cadastrados e o campo "Outro número". Botão "WhatsApp" existe
   no popup de gestão e é distinto de "Compartilhar".
 - **AC-034** (FR-044): anexo `Carta Comercialização TECHIMPORT.pdf` é
-  importado; `DANFE 123.pdf` e carta cujo nome já está na pasta são saltados.
+  importado; `DANFE 123.pdf`, `NF DOC MED 81.472.pdf` e carta cujo nome já
+  está na pasta são saltados; texto DANFE com assunto de carta também é
+  rejeitado. Ingestão OneDrive salta NF e marca `removedAt` em linha antiga.
 - **AC-035** (FR-045): `válida por 12 meses a contar da emissão` +
+  emissão → validade; `válidos por período de 12 meses` + `01 de abril 2022`
+  (sem segundo «de») → emissão `2022-04-01` e validade `2023-04-01`;
+  compacto `26fev26` no nome → `2026-02-26`.
   `emitida em 01/03/2026` → validade `2027-03-01`; `vigente até 31/12/2026`
   → essa data; prazo indeterminado → `validUntil` nulo.
 

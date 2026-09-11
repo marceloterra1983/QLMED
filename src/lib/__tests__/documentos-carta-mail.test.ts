@@ -22,6 +22,22 @@ describe('isCartaComercializacaoCandidate', () => {
     expect(isCartaComercializacaoCandidate('NFe-123.pdf', 'nota')).toBe(false);
     expect(isCartaComercializacaoCandidate('boleto.pdf', 'boleto')).toBe(false);
   });
+
+  it('rejeita NF DOC / nota fiscal mesmo com assunto de carta', () => {
+    expect(
+      isCartaComercializacaoCandidate('NF DOC MED 81.472.pdf', 'Carta de comercialização'),
+    ).toBe(false);
+    expect(
+      isCartaComercializacaoCandidate(
+        'anexo.pdf',
+        'Carta comercialização',
+        'DANFE Documento Auxiliar da Nota Fiscal Eletronica chave de acesso 3522',
+      ),
+    ).toBe(false);
+    expect(
+      isCartaComercializacaoCandidate('pedido.pdf', 'Carta', 'nota fiscal de devolucao'),
+    ).toBe(false);
+  });
 });
 
 describe('scanCartaMailboxes', () => {
