@@ -184,6 +184,7 @@ function foldPdfText(text: string): string {
   s = s.replace(/\b(20)\s+(\d{2})\b/g, '$1$2'); // 20 22 → 2022
   s = s.replace(/\b(20)\s*([1-3]\d)\b/g, '$1$2');
   s = s.replace(/\b(\d)\s+(\d)\s+(\d)\s+(\d)\b/g, '$1$2$3$4'); // 2 0 2 1 → 2021
+  s = s.replace(/\b(\d)\s+(\d{2})\s+(\d)\b/g, '$1$2$3'); // 2 02 1 → 2021
   s = s.replace(/(\d{1,2}\/\d{2}\/\d{2})\s+(\d)\b/g, '$1$2');
   s = s.replace(/\b(\d)\s+(\d)\s*\/\s*(\d)\s+(\d)\s*\/\s*(\d{4})\b/g, '$1$2/$3$4/$5');
   s = s.replace(/\b(\d)\s+(\d)\s+de\s+/g, '$1$2 de ');
