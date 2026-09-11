@@ -218,7 +218,7 @@ async function resolveIngestValidity(opts: {
   try {
     const bytes = await opts.port.downloadPdf(opts.itemId);
     if (preferPdf) {
-      const text = await extractPdfPlainText(bytes);
+      const text = await extractPdfPlainText(bytes, { ocrFallback: true });
       if (looksLikeNotaFiscalDocument(opts.fileName, text)) {
         return { ...empty, rejectAsNotaFiscal: true, pdfText: text };
       }

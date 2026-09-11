@@ -408,7 +408,9 @@ falhar de forma visível, não chutar.
   `joseroberto@qlmed.com.br`, `marcelo@qlmed.com.br`, `flavio@qlmed.com.br`
   e `daniele@qlmed.com.br` em busca de anexos PDF de carta de comercialização
   (assunto, nome do anexo ou texto com carta + comercialização/autorização/
-  distribuição). O texto do PDF é **sempre** lido antes de aceitar o anexo.
+  distribuição/representação/credenciamento/termo). Até 80 páginas Graph por
+  caixa para alcançar mensagens antigas. O texto do PDF é **sempre** lido
+  antes de aceitar o anexo (com OCR se a camada de texto for escassa).
   DANFE, NF-e, CT-e, boleto, ordem de compra, «NF DOC…», «nota fiscal» e
   «chave de acesso» são ignorados (mesmo com assunto enganoso). A ingestão
   OneDrive da pasta carta **salta** esses ficheiros (não entram em `seenIds`,
@@ -419,14 +421,17 @@ falhar de forma visível, não chutar.
   distintas: rótulos (`validade`, `válida até`, `válido até o dia`,
   `validade desta carta`, `vigente até`, `autorizada até`, `com validade
   até`); faixa `de X a Y`; e prazo relativo (`válida por N meses`, `válidos
-  por período de N meses`, `validade de N meses`, `credencial … 1 ano`).
-  Texto OCR com dígitos/meses partidos (`202 6`, `me ses`, `Ju lho`) é
-  normalizado antes do match. Emissão pelos rótulos existentes, `Data:`,
-  rodapé após Atenciosamente e cabeçalho `Cidade, DD de mês de AAAA`.
+  por período de N meses`, `validade de N meses`, `Validade: Um ano`,
+  `credencial … 1 ano`). PDF escaneado (pouco texto via pdf.js) usa fallback
+  OCR (`pdftotext`/`tesseract`). Texto OCR com dígitos/meses partidos
+  (`202 6`, `2 0 2 1`, `me ses`, `Ju lho`, `feverairo`) é normalizado antes
+  do match. Emissão pelos rótulos existentes, `Data:`, rodapé após
+  Atenciosamente e cabeçalho `Cidade, DD de mês de AAAA` (inclui Guarulhos).
   Prazo relativo só grava validade se houver emissão/assinatura. Fabricante
   persistido em `manufacturer` (PDF ou nome). Prazo indeterminado deixa
   validade nula. Não se inventa data. Nome do ficheiro também reconhece
   compacto `26fev26` / `27ago26` como assinatura, não como validade.
+  Cartas antigas com validade no passado ficam vencidas (`daysRemaining < 0`).
 
 ## Acceptance Criteria
 

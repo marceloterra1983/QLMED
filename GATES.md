@@ -1,22 +1,22 @@
-# Gates: Cartas — assinatura, validade e fabricante
+# Gates: Cartas — OCR + e-mail antigo + vencidas
 
-Scope: coluna Assinatura no card; validade/emissão lidas do PDF real
-(mesmo com OCR espaçado); fabricante correto (nome ou texto).
+Scope: PDFs escaneados (GABMED/MACON/OSTEOMED) ganham datas via OCR;
+MACON «um ano»; varredura de e-mail mais ampla para cartas antigas.
 
-- [x] G1: OCR espaçado — CARDIOVENT 26/02/2026 + 6 meses
-  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "CARDIOVENT|OCR espaçado|me ses|202 6" 2>&1 | tail -20
+- [x] G1: OCR fallback preenche GABMED/OSTEOMED vencidas
+  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-validity.test.ts -t "OCR|Um ano|GABMED|MACOM|LIVA" 2>&1 | tail -25
   EXPECT: /passed/
-  EVIDENCE: Start at  09:46:29 | Duration  150ms (transform 55ms, setup 16ms, import 53ms, tests 4ms, environment 0ms)
+  EVIDENCE: Start at  10:18:11 | Duration  178ms (transform 65ms, setup 21ms, import 60ms, tests 6ms, environment 0ms)
 
-- [x] G2: fabricante — ASSINADA/CREDENCIAMENTO/Declaração corrigidos
-  CHECK: npx vitest run src/lib/__tests__/documentos-classify.test.ts -t "fabricante|CARDIOVENT|GABMED|Cath|ASSINADA" 2>&1 | tail -25
+- [x] G2: extractPdfPlainText com ocrFallback
+  CHECK: npx vitest run src/lib/__tests__/documentos-pdf-ocr-fallback.test.ts 2>&1 | tail -25
   EXPECT: /passed/
-  EVIDENCE: Start at  09:46:29 | Duration  154ms (transform 47ms, setup 16ms, import 46ms, tests 5ms, environment 0ms)
+  EVIDENCE: Start at  10:18:12 | Duration  170ms (transform 60ms, setup 25ms, import 51ms, tests 2ms, environment 0ms)
 
-- [x] G3: card cartas mostra Assinatura (emitidoEm)
-  CHECK: npx vitest run src/components/__tests__/documentos-family-table.test.tsx -t "Assinatura|carta" 2>&1 | tail -25
+- [x] G3: busca e-mail ampliada (credenciamento + maxPages)
+  CHECK: npx vitest run src/lib/__tests__/documentos-carta-mail.test.ts -t "CARTA_MAIL|credenciamento|maxPages" 2>&1 | tail -20
   EXPECT: /passed/
-  EVIDENCE: Start at  09:46:30 | Duration  625ms (transform 62ms, setup 16ms, import 156ms, tests 124ms, environment 243ms)
+  EVIDENCE: Start at  10:18:13 | Duration  383ms (transform 212ms, setup 19ms, import 271ms, tests 2ms, environment 0ms)
 
 - [x] G4: tsc limpo
   CHECK: npx tsc --noEmit --pretty false; echo TSC_OK

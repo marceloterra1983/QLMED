@@ -99,7 +99,7 @@ const EMISSAO_SOURCE = `${EMISSAO_LABEL}${EMISSAO_LIGACAO}${EMISSAO_DATE}`;
  * Rodapé / cabeçalho de carta: cidade + data.
  * Formas vistas nos PDF reais (OCR já normalizado).
  */
-const EMISSAO_CIDADE_SOURCE = String.raw`(?:(?:atenciosamente|cordialmente)[\s\S]{0,160}?|(?:sao\s+paulo|rio\s+de\s+janeiro|rio\s+claro|piracicaba|campinas|limeira|cachoeirinha|sao\s+leopoldo)(?:\s*\([^)]{0,20}\)|\s*\/\s*[a-z]{2}|\s*[–\-]\s*[a-z. ]{1,12})?\s*,\s*)(\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4})(?!\d)`;
+const EMISSAO_CIDADE_SOURCE = String.raw`(?:(?:atenciosamente|cordialmente)[\s\S]{0,160}?|(?:sao\s+paulo|rio\s+de\s+janeiro|rio\s+claro|piracicaba|campinas|limeira|cachoeirinha|sao\s+leopoldo|guarulhos)(?:\s*\([^)]{0,20}\)|\s*\/\s*[a-z]{2}|\s*[–\-]\s*[a-z. ]{1,12})?\s*,\s*)(\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4})(?!\d)`;
 
 type ValidityRule = {
   source: string;
@@ -178,11 +178,12 @@ function foldPdfText(text: string): string {
     .toLowerCase()
     .replace(/\s*\/\s*/g, '/');
 
-  // OCR de cartas: dígitos e meses partidos («202 6», «me ses», «Ju lho»).
+  // OCR de cartas: dígitos e meses partidos («202 6», «me ses», «Ju lho», «2 02 1»).
   s = s.replace(/\b2\.0(\d{2})\b/g, '20$1');
   s = s.replace(/\b(\d{3})\s+(\d)\b/g, '$1$2'); // 202 6 → 2026
   s = s.replace(/\b(20)\s+(\d{2})\b/g, '$1$2'); // 20 22 → 2022
   s = s.replace(/\b(20)\s*([1-3]\d)\b/g, '$1$2');
+  s = s.replace(/\b(\d)\s+(\d)\s+(\d)\s+(\d)\b/g, '$1$2$3$4'); // 2 0 2 1 → 2021
   s = s.replace(/(\d{1,2}\/\d{2}\/\d{2})\s+(\d)\b/g, '$1$2');
   s = s.replace(/\b(\d)\s+(\d)\s*\/\s*(\d)\s+(\d)\s*\/\s*(\d{4})\b/g, '$1$2/$3$4/$5');
   s = s.replace(/\b(\d)\s+(\d)\s+de\s+/g, '$1$2 de ');
@@ -190,6 +191,7 @@ function foldPdfText(text: string): string {
   s = s.replace(/\bju\s*l\s*ho\b/g, 'julho');
   s = s.replace(/\bjane\s*iro\b/g, 'janeiro');
   s = s.replace(/\bfevere\s*iro\b/g, 'fevereiro');
+  s = s.replace(/\bfeverairo\b/g, 'fevereiro'); // tipografia OCR (MACOM)
   s = s.replace(/\bagos\s*to\b/g, 'agosto');
   s = s.replace(/\bsetem\s*bro\b/g, 'setembro');
   s = s.replace(/\boutu\s*bro\b/g, 'outubro');
@@ -255,10 +257,35 @@ function addCivilDays(ymd: string, days: number): string {
  * Prazo relativo das cartas:
  * - "válida por 12 (doze) meses a contar da emissão"
  * - "são válidos por período de 12 (doze) meses, contados a partir da emissão"
- * Número + unidade têm de vir depois de um rótulo — um "12" solto no
+ * - "Validade: Um ano a partir desta data" (MACOM — OCR)
+ * Número/palavra + unidade depois de um rótulo — um "12" solto no
  * protocolo não serve.
  */
-const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|valid[oa]s?|vigencia|prazo|autorizacao|carta|credencial|acordo|direitos?\s+de\s+distribui\w*)\b[\s\S]{0,120}?\b(?:por(?:\s+periodo)?(?:\s+de)?|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
+const DURATION_AMOUNT = String.raw`(\d{1,3}|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)`;
+const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|valid[oa]s?|vigencia|prazo|autorizacao|carta|credencial|acordo|direitos?\s+de\s+distribui\w*)\b[\s\S]{0,120}?\b(?:(?:por(?:\s+periodo)?(?:\s+de)?|de|pelo prazo de|pelo periodo de)\s+|:\s*)?${DURATION_AMOUNT}(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
+
+const DURATION_AMOUNT_WORDS: Record<string, number> = {
+  um: 1,
+  uma: 1,
+  dois: 2,
+  duas: 2,
+  tres: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+  onze: 11,
+  doze: 12,
+};
+
+function parseDurationAmount(raw: string): number | null {
+  const asNumber = Number(raw);
+  if (Number.isFinite(asNumber)) return asNumber;
+  return DURATION_AMOUNT_WORDS[raw] ?? null;
+}
 
 function applyDuration(startYmd: string, amount: number, unit: string): string | null {
   if (amount < 1 || amount > 120) return null;
@@ -280,7 +307,8 @@ function matchDurationValidUntil(
   }
   const re = new RegExp(DURATION_SOURCE, 'g');
   for (const match of normalized.matchAll(re)) {
-    const amount = Number(match[1]);
+    const amount = parseDurationAmount(match[1] ?? '');
+    if (amount == null) continue;
     const computed = applyDuration(emitidoEm, amount, match[2] ?? '');
     if (!computed) continue;
     if (!isPlausibleYmd(computed, todayYmd) && computed < emitidoEm) continue;
@@ -290,9 +318,9 @@ function matchDurationValidUntil(
   return null;
 }
 
-/** Validade olha para a frente: até 10 anos à frente, 5 para trás. */
+/** Validade: 10 anos à frente, 15 para trás (cartas antigas/vencidas). */
 function isPlausibleYmd(ymd: string, todayYmd: string): boolean {
-  return ymd <= addCivilYears(todayYmd, 10) && ymd >= addCivilYears(todayYmd, -5);
+  return ymd <= addCivilYears(todayYmd, 10) && ymd >= addCivilYears(todayYmd, -15);
 }
 
 /**
@@ -440,21 +468,55 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
   }
 }
 
-export async function extractPdfPlainText(data: Uint8Array | Buffer): Promise<string> {
+/** Abaixo disto o PDF costuma ser só imagem — OCR (pdftotext/tesseract). */
+export const OCR_FALLBACK_MIN_CHARS = 40;
+
+export type ExtractPdfPlainTextOptions = {
+  /** Cartas escaneadas: se pdf.js devolver pouco texto, cai no motor OCR. */
+  ocrFallback?: boolean;
+};
+
+/**
+ * Prefere o texto pdf.js quando já há camada de texto; senão o OCR.
+ * Exportado para testes — a regra de negócio da carta escaneada.
+ */
+export function pickRicherPdfText(pdfJsText: string, ocrText: string): string {
+  if (countExtractedChars(pdfJsText) >= OCR_FALLBACK_MIN_CHARS) return pdfJsText;
+  return countExtractedChars(ocrText) > countExtractedChars(pdfJsText) ? ocrText : pdfJsText;
+}
+
+async function tryOcrPlainText(data: Uint8Array | Buffer): Promise<string> {
   try {
-    return await extractPdfText(new Uint8Array(data));
+    const { extractPdfText: extractWithOcr } = await import('@/lib/pdf/extract-text');
+    return await extractWithOcr(Buffer.from(data), { prefix: 'documentos-carta' });
   } catch {
     return '';
   }
 }
 
+export async function extractPdfPlainText(
+  data: Uint8Array | Buffer,
+  options: ExtractPdfPlainTextOptions = {},
+): Promise<string> {
+  let text = '';
+  try {
+    text = await extractPdfText(new Uint8Array(data));
+  } catch {
+    text = '';
+  }
+  if (!options.ocrFallback) return text;
+  if (countExtractedChars(text) >= OCR_FALLBACK_MIN_CHARS) return text;
+  const ocr = await tryOcrPlainText(data);
+  return pickRicherPdfText(text, ocr);
+}
+
 export async function readValidityFromPdf(
   data: Uint8Array | Buffer,
   todayYmd: string = todayInSaoPaulo(),
+  options: ExtractPdfPlainTextOptions = {},
 ): Promise<PdfValidityResult> {
   try {
-    const bytes = new Uint8Array(data);
-    const extracted = await extractPdfText(bytes);
+    const extracted = await extractPdfPlainText(data, options);
     const textChars = countExtractedChars(extracted);
     if (textChars === 0) {
       return { ...NONE, textChars: 0 };

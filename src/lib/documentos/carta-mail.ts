@@ -24,9 +24,12 @@ export const CARTA_MAILBOXES = [
   'daniele@qlmed.com.br',
 ] as const;
 
-/** KQL: carta + um dos temas. Graph $search não distingue acento. */
+/** KQL: carta + tema. Graph $search não distingue acento. Inclui credenciamento/termo. */
 export const CARTA_MAIL_SEARCH =
-  '"carta" AND (comercializacao OR autorizacao OR distribuicao OR representacao)';
+  '"carta" AND (comercializacao OR autorizacao OR distribuicao OR representacao OR credenciamento OR termo)';
+
+/** Páginas Graph por caixa — cartas antigas ficam atrás na timeline. */
+export const CARTA_MAIL_MAX_PAGES = 80;
 
 export type CartaMailScanResult = {
   scanned: number;
@@ -68,7 +71,8 @@ async function defaultPort(companyId: string): Promise<CartaMailPort> {
   const accessToken = await ensureValidOneDriveAccessToken(connection);
 
   return {
-    listMessages: (mailbox, search) => listMailboxMessagesBySearch(mailbox, search, { maxPages: 40 }),
+    listMessages: (mailbox, search) =>
+      listMailboxMessagesBySearch(mailbox, search, { maxPages: CARTA_MAIL_MAX_PAGES }),
     listPdfs: (mailbox, graphMessageId) => listGraphPdfAttachments(mailbox, graphMessageId),
     async listExistingNames() {
       const rows = await prisma.companyDocument.findMany({
@@ -150,7 +154,7 @@ export async function scanCartaMailboxes(
         // passava antes sem abrir o ficheiro (FR-044).
         let text = '';
         try {
-          text = await extractPdfPlainText(attachment.content);
+          text = await extractPdfPlainText(attachment.content, { ocrFallback: true });
         } catch {
           text = '';
         }
