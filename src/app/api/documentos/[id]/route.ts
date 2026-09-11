@@ -32,12 +32,24 @@ export async function PATCH(
     const parsed = documentosPatchSchema.safeParse(body);
     if (!parsed.success) return apiValidationError(parsed.error);
 
+    const data: {
+      validUntil?: Date;
+      validUntilSource?: string;
+      emitidoEm?: Date | null;
+    } = {};
+    if (parsed.data.validUntil !== undefined) {
+      data.validUntil = new Date(`${parsed.data.validUntil}T00:00:00.000Z`);
+      data.validUntilSource = 'manual';
+    }
+    if (parsed.data.emitidoEm !== undefined) {
+      data.emitidoEm = parsed.data.emitidoEm
+        ? new Date(`${parsed.data.emitidoEm}T00:00:00.000Z`)
+        : null;
+    }
+
     const updated = await prisma.companyDocument.updateMany({
       where: { id: parsedId.data.id, companyId: access.companyId },
-      data: {
-        validUntil: new Date(`${parsed.data.validUntil}T00:00:00.000Z`),
-        validUntilSource: 'manual',
-      },
+      data,
     });
     if (updated.count === 0) {
       return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
@@ -46,11 +58,12 @@ export async function PATCH(
     return NextResponse.json({
       ok: true,
       id: parsedId.data.id,
-      validUntil: parsed.data.validUntil,
-      validUntilSource: 'manual',
+      validUntil: parsed.data.validUntil ?? undefined,
+      emitidoEm: parsed.data.emitidoEm ?? undefined,
+      validUntilSource: parsed.data.validUntil !== undefined ? 'manual' : undefined,
     });
   } catch (error) {
-    log.error({ err: error }, 'Falha ao atualizar validade');
+    log.error({ err: error }, 'Falha ao atualizar datas do documento');
     return apiError(error, 'documentos/:id');
   }
 }

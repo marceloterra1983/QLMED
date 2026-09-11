@@ -11,7 +11,7 @@ import { uploadOneDriveFile } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import prisma from '@/lib/prisma';
 import { looksLikePdf } from '@/lib/pdf/ocr-limits';
-import { fold, isCartaComercializacaoCandidate, looksLikeNotaFiscalDocument } from './classify';
+import { fold, isCartaComercializacaoCandidate, looksLikeCartaFolderJunk, looksLikeNotaFiscalDocument } from './classify';
 import { DOCUMENTOS_ONEDRIVE_ACCOUNT, DOCUMENTOS_UPLOAD_MAX_BYTES, familyByCategory } from './constants';
 import { extractPdfPlainText } from './pdf-validity';
 
@@ -24,12 +24,12 @@ export const CARTA_MAILBOXES = [
   'daniele@qlmed.com.br',
 ] as const;
 
-/** KQL: carta + tema. Graph $search não distingue acento. Inclui credenciamento/termo. */
+/** KQL: carta + tema. Graph $search não distingue acento. */
 export const CARTA_MAIL_SEARCH =
-  '"carta" AND (comercializacao OR autorizacao OR distribuicao OR representacao OR credenciamento OR termo)';
+  '"carta" AND (comercializacao OR autorizacao OR distribuicao OR representacao)';
 
-/** Páginas Graph por caixa — cartas antigas ficam atrás na timeline. */
-export const CARTA_MAIL_MAX_PAGES = 80;
+/** Páginas Graph por caixa. */
+export const CARTA_MAIL_MAX_PAGES = 40;
 
 export type CartaMailScanResult = {
   scanned: number;
@@ -57,7 +57,11 @@ export function sanitizeCartaFileName(name: string): string {
 }
 
 export function foldedFileKey(name: string): string {
-  return fold(sanitizeCartaFileName(name)).replace(/\s+/g, ' ');
+  let key = fold(sanitizeCartaFileName(name));
+  // Evita «QL.pdf» / «QL (2).pdf» / «QL assinada.pdf» como linhas distintas.
+  key = key.replace(/\(\d+\)/g, ' ');
+  key = key.replace(/\bassinad[ao]s?\b/g, ' ');
+  return key.replace(/\s+/g, ' ').trim();
 }
 
 async function defaultPort(companyId: string): Promise<CartaMailPort> {
@@ -153,7 +157,7 @@ export async function scanCartaMailboxes(
         // Nome NF → fora sem abrir. OCR só quando nome/assunto já sugerem carta
         // (senão pdf.js basta para caçar tema no texto; OCR em todos os anexos
         // de 80 páginas Graph congela a ingestão).
-        if (looksLikeNotaFiscalDocument(attachment.name)) {
+        if (looksLikeNotaFiscalDocument(attachment.name) || looksLikeCartaFolderJunk(attachment.name)) {
           result.skipped += 1;
           continue;
         }

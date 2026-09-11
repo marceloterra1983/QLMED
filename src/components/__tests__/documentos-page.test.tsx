@@ -268,11 +268,9 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     const table = await certidoesTable();
 
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
-    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
     expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
 
     const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
-    fireEvent.click(within(gerais).getByRole('button', { name: 'Mais opções' }));
     expect(within(gerais).queryByRole('button', { name: 'Editar validade' })).toBeNull();
 
     const toggle = screen.getByRole('button', { name: /Certidões/ });
@@ -321,7 +319,6 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
 
     const table = screen.getByRole('table', { name: 'Certidões' });
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
-    fireEvent.click(within(federal).getByRole('button', { name: 'Mais opções' }));
     fireEvent.click(within(federal).getByRole('button', { name: 'Editar validade' }));
     const input = screen.getByLabelText('Validade') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '2027-01-15' } });
@@ -329,7 +326,6 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
 
     expect(screen.queryByLabelText('Validade')).toBeNull();
     const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
-    fireEvent.click(within(fgts).getByRole('button', { name: 'Mais opções' }));
     fireEvent.click(within(fgts).getByRole('button', { name: 'Editar validade' }));
     expect((screen.getByLabelText('Validade') as HTMLInputElement).value).toBe('2026-09-01');
   });
@@ -633,6 +629,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     expect(within(federal).getByRole('button', { name: 'Compartilhar' })).toBeTruthy();
     expect(within(federal).getByRole('button', { name: 'Baixar' })).toBeTruthy();
     expect(within(federal).getByRole('button', { name: 'Atualizar arquivo' })).toBeTruthy();
+    // Lápis ao lado da data (não no menu).
     expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
   });
 
@@ -721,7 +718,7 @@ describe('SPEC-042 L13 — cards recolhidos, tabela compacta, gestão', () => {
     // elemento mais alto. Reduzir só o `py` não muda o resultado — foi por isso
     // que a primeira compactação quase não se viu.
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
-    const botao = within(federal).getAllByRole('button')[0];
+    const botao = within(federal).getByRole('button', { name: 'Ver documento' });
     expect(botao.className).toMatch(/sm:p-1\b/);
     const glifo = botao.querySelector('.material-symbols-outlined')!;
     expect(glifo.className).toMatch(/sm:text-\[16px\]/);

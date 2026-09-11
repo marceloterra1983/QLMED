@@ -57,4 +57,31 @@ describe('DocumentosFamilyTable — cartas', () => {
     // formatDocumentDate → dd.MM.yy
     expect(screen.getByText(/26\.02\.26|26\/02\/2026|26\.02\.2026/)).toBeTruthy();
   });
+
+  it('lápis pequeno edita validade e assinatura', () => {
+    render(
+      <DocumentosFamilyTable
+        caption="Cartas"
+        columnLabel="Fabricante"
+        rows={[cartaRow()]}
+        canWrite
+        editingId={null}
+        editDraft=""
+        saving={false}
+        onEditDraft={noop}
+        onStartEdit={noop}
+        onSaveEdit={noop}
+        onCancelEdit={noop}
+        onView={noop}
+        onOpenDetail={noop}
+        onUpdate={noop}
+        onShare={noop}
+        onWhatsApp={noop}
+        collapseExpired
+        showSignatureColumn
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Editar validade' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Editar assinatura' })).toBeTruthy();
+  });
 });
