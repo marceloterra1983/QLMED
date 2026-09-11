@@ -127,11 +127,15 @@ const pdfValidity = vi.hoisted(() => {
   return {
     empty,
     readValidityFromPdf: vi.fn(async (): Promise<PdfValidityResult> => empty),
+    extractPdfPlainText: vi.fn(async (): Promise<string> => ''),
+    matchValidityFromText: vi.fn((): PdfValidityResult => empty),
   };
 });
 
 vi.mock('@/lib/documentos/pdf-validity', () => ({
   readValidityFromPdf: pdfValidity.readValidityFromPdf,
+  extractPdfPlainText: pdfValidity.extractPdfPlainText,
+  matchValidityFromText: pdfValidity.matchValidityFromText,
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -288,6 +292,8 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     resetMemory();
     lock.acquire.mockImplementation(async () => ({ release: async () => lock.release() }));
     pdfValidity.readValidityFromPdf.mockResolvedValue(pdfValidity.empty);
+    pdfValidity.extractPdfPlainText.mockResolvedValue('');
+    pdfValidity.matchValidityFromText.mockReturnValue(pdfValidity.empty);
   });
 
   it('24 itens da fixture → 24 linhas; segunda passada → 0 creates', async () => {
@@ -719,7 +725,8 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
 
   it('carta prefere validade do PDF ao nome do ficheiro', async () => {
     const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
-    pdfValidity.readValidityFromPdf.mockResolvedValue({
+    pdfValidity.extractPdfPlainText.mockResolvedValue('texto carta');
+    pdfValidity.matchValidityFromText.mockReturnValue({
       validUntil: '2027-03-01',
       emitidoEm: '2026-03-01',
       confidence: 'alta',
@@ -744,7 +751,61 @@ describe('SPEC-042 L4 — runDocumentosIngest', () => {
     expect(ymd(memory.docs[0]?.validUntil ?? null)).toBe('2027-03-01');
     expect(memory.docs[0]?.validUntilSource).toBe('pdf');
     expect(ymd(memory.docs[0]?.emitidoEm ?? null)).toBe('2026-03-01');
-    expect(pdfValidity.readValidityFromPdf).toHaveBeenCalled();
+    expect(pdfValidity.matchValidityFromText).toHaveBeenCalled();
+  });
+
+  it('ingest salta nota fiscal na pasta de cartas e marca removedAt na reexecução', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    memory.docs.push({
+      id: 'doc-nf',
+      companyId: COMPANY,
+      category: 'carta',
+      kind: 'carta_comercializacao',
+      fileName: 'NF DOC MED 81.472.pdf',
+      oneDriveItemId: 'od-nf-old',
+      oneDriveAccount: DOCUMENTOS_ONEDRIVE_ACCOUNT,
+      folderName: '7 - CARTA COMERCIALIZAÇÃO',
+      fileSize: 100,
+      lastModifiedAt: NOW,
+      validUntil: null,
+      validUntilSource: null,
+      emitidoEm: null,
+      removedAt: null,
+      renewalNotifiedAt: null,
+      alertedThresholds: [],
+    });
+
+    const result = await runDocumentosIngest(
+      COMPANY,
+      fakePort([
+        {
+          folder: '7 - CARTA COMERCIALIZAÇÃO',
+          file: {
+            itemId: 'od-nf-old',
+            name: 'NF DOC MED 81.472.pdf',
+            size: 100,
+            lastModifiedAt: NOW,
+          },
+        },
+        {
+          folder: '7 - CARTA COMERCIALIZAÇÃO',
+          file: {
+            itemId: 'od-carta-ok',
+            name: 'Carta Comercialização TECHIMPORT.pdf',
+            size: 200,
+            lastModifiedAt: NOW,
+          },
+        },
+      ]),
+      NOW,
+    );
+
+    expect(memory.docs.find((d) => d.id === 'doc-nf')?.removedAt).not.toBeNull();
+    expect(memory.docs.some((d) => d.oneDriveItemId === 'od-carta-ok' && d.removedAt == null)).toBe(
+      true,
+    );
+    expect(result.removed).toBeGreaterThanOrEqual(1);
+    expect(pdfValidity.matchValidityFromText).toHaveBeenCalled();
   });
 
   it('Cartão CNPJ grava a data do nome; vigente é 31.08.26; sem renovação', async () => {

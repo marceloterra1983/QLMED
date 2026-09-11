@@ -37,7 +37,8 @@ const MESES: Record<string, number> = {
  * lido como 29/09/2026.
  */
 const DATE_NUM = String.raw`\d{2}/\d{2}/(?:\d{4}|\d{2})(?!\d)`;
-const DATE_EXT = String.raw`\d{1,2}\s+de\s+[a-z]{3,9}\s+de\s+\d{4}(?!\d)`;
+/** «01 de abril de 2022» e a forma sem o 2.º «de»: «01 de abril 2022» (TECHIMPORT). */
+const DATE_EXT = String.raw`\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4}(?!\d)`;
 const DATE = String.raw`((?<!\d)(?:${DATE_NUM}|${DATE_EXT}))`;
 /**
  * Alternativas da mais longa para a mais curta: `validade ate` tem de vir
@@ -86,9 +87,15 @@ const EMISSAO_LABEL = String.raw`\b(informacao\s+obtida\s+em|data\s+de\s+emissao
 const EMISSAO_LIGACAO = String.raw`(?:\s*[:,])?\s*(?:em\s+)?(?:as\s+)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(?:horas\s+)?(?:do\s+dia\s+)?`;
 
 /** Emissão aceita dia de 1 dígito: a Receita imprime "2/10/2014". */
-const EMISSAO_DATE = String.raw`((?<!\d)(?:\d{1,2}/\d{2}/(?:\d{4}|\d{2})(?!\d)|\d{1,2}\s+de\s+[a-z]{3,9}\s+de\s+\d{4}(?!\d)))`;
+const EMISSAO_DATE = String.raw`((?<!\d)(?:\d{1,2}/\d{2}/(?:\d{4}|\d{2})(?!\d)|\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4}(?!\d)))`;
 
 const EMISSAO_SOURCE = `${EMISSAO_LABEL}${EMISSAO_LIGACAO}${EMISSAO_DATE}`;
+
+/**
+ * Rodapé de carta: «Atenciosamente, Rio Claro – S.P., 01 de abril 2022».
+ * Sem rótulo emitida/emissão — a cidade + data é a emissão.
+ */
+const EMISSAO_CIDADE_SOURCE = String.raw`(?:atenciosamente|cordialmente)[\s\S]{0,160}?(\d{1,2}\s+de\s+[a-z]{3,9}\s+(?:de\s+)?\d{4})(?!\d)`;
 
 type ValidityRule = {
   source: string;
@@ -175,7 +182,8 @@ function pad2(value: number): string {
 }
 
 function parseBrDate(token: string): { ymd: string; yearDigits: 2 | 4 } | null {
-  const extenso = /^(\d{1,2})\s+de\s+([a-z]{3,9})\s+de\s+(\d{4})$/.exec(token);
+  // «01 de abril de 2022» e «01 de abril 2022» (cartas sem o 2.º «de»).
+  const extenso = /^(\d{1,2})\s+de\s+([a-z]{3,9})\s+(?:de\s+)?(\d{4})$/.exec(token);
   if (extenso) {
     const mes = MESES[extenso[2]];
     if (!mes) return null;
@@ -220,11 +228,13 @@ function addCivilDays(ymd: string, days: number): string {
 }
 
 /**
- * Prazo relativo das cartas: "válida por 12 (doze) meses a contar da emissão".
- * Número + unidade têm de vir depois de um rótulo de validade/prazo — um
- * "12" solto no protocolo não serve.
+ * Prazo relativo das cartas:
+ * - "válida por 12 (doze) meses a contar da emissão"
+ * - "são válidos por período de 12 (doze) meses, contados a partir da emissão"
+ * Número + unidade têm de vir depois de um rótulo — um "12" solto no
+ * protocolo não serve.
  */
-const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|vigencia|prazo|autorizacao|carta)\b[\s\S]{0,96}?\b(?:por|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
+const DURATION_SOURCE = String.raw`\b(?:valida(?:de)?|valid[oa]s?|vigencia|prazo|autorizacao|carta|direitos?\s+de\s+distribui\w*)\b[\s\S]{0,120}?\b(?:por(?:\s+periodo)?(?:\s+de)?|de|pelo prazo de|pelo periodo de)\s+(\d{1,3})(?:\s*\([^)]{0,24}\))?\s+(dias?|meses?|anos?)\b`;
 
 function applyDuration(startYmd: string, amount: number, unit: string): string | null {
   if (amount < 1 || amount > 120) return null;
@@ -311,6 +321,11 @@ function matchEmitidoEm(normalized: string, todayYmd: string): string | null {
   const re = new RegExp(EMISSAO_SOURCE, 'g');
   for (const match of normalized.matchAll(re)) {
     const parsed = firstPlausibleEmissaoYmd(match[2] ?? '', todayYmd);
+    if (parsed) return parsed.ymd;
+  }
+  const city = new RegExp(EMISSAO_CIDADE_SOURCE, 'g').exec(normalized);
+  if (city?.[1]) {
+    const parsed = firstPlausibleEmissaoYmd(city[1], todayYmd);
     if (parsed) return parsed.ymd;
   }
   return null;

@@ -249,6 +249,10 @@ describe('SPEC-042 L10 — classify sanitária / carta', () => {
       cartaLabelFromFileName('Carta de  Comercialização QL Med_26fev26_Assin - CARDIOVENT.pdf'),
     ).toBe('CARDIOVENT');
     expect(extractValidUntil('Carta Comercialização TECHIMPORT.pdf')).toBeNull();
+    expect(extractValidUntil('Carta de Comercialização QL Med_26fev26_Assin - CARDIOVENT.pdf')).toEqual(
+      { date: '2026-02-26' },
+    );
+    expect(extractValidUntil('Carta OSTEOMED 27ago26.pdf')).toEqual({ date: '2026-08-27' });
   });
 });
 

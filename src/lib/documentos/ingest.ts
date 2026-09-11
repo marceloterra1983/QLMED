@@ -19,7 +19,7 @@ import {
   kindExpires,
   type DocumentosCategory,
 } from './constants';
-import { cartaManufacturerKey, classifyDocument } from './classify';
+import { cartaManufacturerKey, classifyDocument, looksLikeNotaFiscalDocument } from './classify';
 import {
   balancoYearFromFolderName,
   balancoYearFromLooseFile,
@@ -28,7 +28,7 @@ import {
   type DocumentosFamily,
 } from './families';
 import { daysRemaining, extractValidUntil, selectVigente, todayInSaoPaulo, toYmd } from './validity';
-import { readValidityFromPdf } from './pdf-validity';
+import { extractPdfPlainText, matchValidityFromText, readValidityFromPdf } from './pdf-validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import type { DocumentosAlertDeps } from './alerts';
 import { listOneDriveChildren, type OneDriveItem } from '@/lib/onedrive-client';
@@ -181,35 +181,90 @@ async function resolveIngestValidity(opts: {
   itemId: string;
   port: DocumentosFolderPort;
   now: Date;
-}): Promise<{ validUntil: Date | null; validUntilSource: string | null; emitidoEm: Date | null }> {
+}): Promise<{
+  validUntil: Date | null;
+  validUntilSource: string | null;
+  emitidoEm: Date | null;
+  /** Carta que é DANFE/NF-e: caller não deve upsert nem marcar seenIds. */
+  rejectAsNotaFiscal: boolean;
+}> {
+  const empty = {
+    validUntil: null as Date | null,
+    validUntilSource: null as string | null,
+    emitidoEm: null as Date | null,
+    rejectAsNotaFiscal: false,
+  };
   if (!kindStoresFilenameDate(opts.kind)) {
-    return { validUntil: null, validUntilSource: null, emitidoEm: null };
+    return empty;
   }
   const fromName = extractValidUntil(opts.fileName);
   const preferPdf = opts.kind === 'carta_comercializacao';
   if (fromName && !preferPdf) {
-    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
+    return {
+      validUntil: dateFromYmd(fromName.date),
+      validUntilSource: 'filename',
+      emitidoEm: null,
+      rejectAsNotaFiscal: false,
+    };
   }
   try {
-    const pdf = await readValidityFromPdf(
-      await opts.port.downloadPdf(opts.itemId),
-      todayInSaoPaulo(opts.now),
-    );
+    const bytes = await opts.port.downloadPdf(opts.itemId);
+    if (preferPdf) {
+      const text = await extractPdfPlainText(bytes);
+      if (looksLikeNotaFiscalDocument(opts.fileName, text)) {
+        return { ...empty, rejectAsNotaFiscal: true };
+      }
+      const pdf = matchValidityFromText(text, todayInSaoPaulo(opts.now));
+      const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
+      if (pdf.validUntil) {
+        return {
+          validUntil: dateFromYmd(pdf.validUntil),
+          validUntilSource: 'pdf',
+          emitidoEm,
+          rejectAsNotaFiscal: false,
+        };
+      }
+      if (fromName) {
+        return {
+          validUntil: dateFromYmd(fromName.date),
+          validUntilSource: 'filename',
+          emitidoEm,
+          rejectAsNotaFiscal: false,
+        };
+      }
+      return { ...empty, emitidoEm };
+    }
+    const pdf = await readValidityFromPdf(bytes, todayInSaoPaulo(opts.now));
     const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
     if (pdf.validUntil) {
-      return { validUntil: dateFromYmd(pdf.validUntil), validUntilSource: 'pdf', emitidoEm };
+      return {
+        validUntil: dateFromYmd(pdf.validUntil),
+        validUntilSource: 'pdf',
+        emitidoEm,
+        rejectAsNotaFiscal: false,
+      };
     }
     if (fromName) {
-      return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm };
+      return {
+        validUntil: dateFromYmd(fromName.date),
+        validUntilSource: 'filename',
+        emitidoEm,
+        rejectAsNotaFiscal: false,
+      };
     }
-    return { validUntil: null, validUntilSource: null, emitidoEm };
+    return { ...empty, emitidoEm };
   } catch {
     // PDF ilegível ou download falhou: linha fica Sem data (ou o nome, se houver).
   }
   if (fromName) {
-    return { validUntil: dateFromYmd(fromName.date), validUntilSource: 'filename', emitidoEm: null };
+    return {
+      validUntil: dateFromYmd(fromName.date),
+      validUntilSource: 'filename',
+      emitidoEm: null,
+      rejectAsNotaFiscal: false,
+    };
   }
-  return { validUntil: null, validUntilSource: null, emitidoEm: null };
+  return empty;
 }
 
 async function saveIngestError(companyId: string, now: Date, error: unknown): Promise<void> {
@@ -440,16 +495,25 @@ async function ingestCompany(
         const files = await port.listPdfs(target.path);
         for (const file of files) {
           scanned += 1;
-          seenIds.add(file.itemId);
+
+          // NF na pasta de cartas: fora de seenIds → removedAt limpa linha antiga.
+          if (family.category === 'carta' && looksLikeNotaFiscalDocument(file.name)) {
+            continue;
+          }
 
           const kind = classifyDocument(target.folderName, file.name, family.category);
-          const { validUntil, validUntilSource, emitidoEm } = await resolveIngestValidity({
-            kind,
-            fileName: file.name,
-            itemId: file.itemId,
-            port,
-            now,
-          });
+          const { validUntil, validUntilSource, emitidoEm, rejectAsNotaFiscal } =
+            await resolveIngestValidity({
+              kind,
+              fileName: file.name,
+              itemId: file.itemId,
+              port,
+              now,
+            });
+          if (rejectAsNotaFiscal) {
+            continue;
+          }
+          seenIds.add(file.itemId);
           const existing = byItemId.get(file.itemId);
 
           const previous = vigenteByKind.get(kind);

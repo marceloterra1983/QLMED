@@ -146,13 +146,13 @@ export async function scanCartaMailboxes(
           result.skipped += 1;
           continue;
         }
+        // Sempre ler o PDF: assunto «carta de comercialização» + anexo DANFE
+        // passava antes sem abrir o ficheiro (FR-044).
         let text = '';
-        if (!isCartaComercializacaoCandidate(attachment.name, message.subject, '')) {
-          try {
-            text = await extractPdfPlainText(attachment.content);
-          } catch {
-            text = '';
-          }
+        try {
+          text = await extractPdfPlainText(attachment.content);
+        } catch {
+          text = '';
         }
         if (!isCartaComercializacaoCandidate(attachment.name, message.subject, text)) {
           result.skipped += 1;

@@ -8,6 +8,14 @@ const MS_PER_DAY = 86_400_000;
 const DATE_IN_NAME =
   /(?<!\d)(\d{2})\.(\d{2})\.(\d{4}|\d{2})(?!\d)|(?<!\d)(\d{2})-(\d{2})-(\d{4})(?!\d)/g;
 
+/** Compacto de cartas: `26fev26`, `27ago2026`. */
+const MONTH_TOKEN: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+const DATE_COMPACT =
+  /(?<!\d)(\d{1,2})(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(\d{2}|\d{4})(?!\d)/gi;
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -17,21 +25,35 @@ function isValidCivilDate(year: number, month: number, day: number): boolean {
   return utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day;
 }
 
+type NameDateHit = { index: number; date: string };
+
 /**
- * Validade lida do nome: a ÚLTIMA data `dd.MM.yy` / `dd.MM.yyyy` / `dd-MM-yyyy`.
- * `yy` vira `20yy`. Data civil inválida ou sem match → null.
+ * Validade lida do nome: a ÚLTIMA data entre `dd.MM.yy` / `dd-MM-yyyy` e
+ * compacto `26fev26`. `yy` vira `20yy`. Data civil inválida ou sem match → null.
  */
 export function extractValidUntil(fileName: string): { date: string } | null {
   const normalized = fileName.normalize('NFC');
-  const matches = [...normalized.matchAll(DATE_IN_NAME)];
-  if (matches.length === 0) return null;
-  const last = matches[matches.length - 1];
-  const day = Number(last[1] ?? last[4]);
-  const month = Number(last[2] ?? last[5]);
-  const yearToken = last[3] ?? last[6] ?? '';
-  const year = yearToken.length === 2 ? 2000 + Number(yearToken) : Number(yearToken);
-  if (!isValidCivilDate(year, month, day)) return null;
-  return { date: `${year}-${pad2(month)}-${pad2(day)}` };
+  const hits: NameDateHit[] = [];
+  for (const match of normalized.matchAll(DATE_IN_NAME)) {
+    const day = Number(match[1] ?? match[4]);
+    const month = Number(match[2] ?? match[5]);
+    const yearToken = match[3] ?? match[6] ?? '';
+    const year = yearToken.length === 2 ? 2000 + Number(yearToken) : Number(yearToken);
+    if (!isValidCivilDate(year, month, day)) continue;
+    hits.push({ index: match.index ?? 0, date: `${year}-${pad2(month)}-${pad2(day)}` });
+  }
+  for (const match of normalized.matchAll(DATE_COMPACT)) {
+    const day = Number(match[1]);
+    const month = MONTH_TOKEN[(match[2] ?? '').toLowerCase()];
+    const yearToken = match[3] ?? '';
+    if (!month) continue;
+    const year = yearToken.length === 2 ? 2000 + Number(yearToken) : Number(yearToken);
+    if (!isValidCivilDate(year, month, day)) continue;
+    hits.push({ index: match.index ?? 0, date: `${year}-${pad2(month)}-${pad2(day)}` });
+  }
+  if (hits.length === 0) return null;
+  hits.sort((a, b) => a.index - b.index);
+  return { date: hits[hits.length - 1].date };
 }
 
 function utcMidnight(ymd: string): number {

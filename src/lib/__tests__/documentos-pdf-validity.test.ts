@@ -431,4 +431,15 @@ describe('SPEC-042 L15 — carta: rótulos e prazo relativo', () => {
     expect(result.validUntil).toBeNull();
     expect(result.emitidoEm).toBeNull();
   });
+
+  it('TECHIMPORT: válidos por período de 12 meses + data sem 2.º de', () => {
+    const texto =
+      'Os direitos de distribuição são válidos por período de 12 (doze) meses, ' +
+      'contados a partir da data de emissão do presente documento. ' +
+      'Atenciosamente, Rio Claro – S.P., 01 de abril 2022';
+    const result = matchValidityFromText(texto, TODAY);
+    expect(result.emitidoEm).toBe('2022-04-01');
+    expect(result.validUntil).toBe('2023-04-01');
+    expect(result.matchedLabel).toBe('Prazo');
+  });
 });

@@ -95,8 +95,22 @@ export function cartaManufacturerKey(fileName: string): string {
   return fold(cartaLabelFromFileName(fileName));
 }
 
+/**
+ * Ruído fiscal — nome ou texto. Inclui "NF DOC", DANFE, chave de acesso.
+ * Mensagens de "carta de autorização" com DANFE anexado caíam aqui antes
+ * só pelo assunto; o nome "NF DOC MED….pdf" não tinha "nfe" e passava.
+ */
 const CARTA_NOISE =
-  /\b(danfe|nf-?e\b|nfe\b|ct-?e\b|boleto|ordem de compra|xml da nfe|danfe)\b/;
+  /\b(danfe|nf-?e\b|nfe\b|ct-?e\b|boleto|ordem de compra|xml da nfe|nota fiscal|chave de acesso|documento auxiliar da nota)\b|\bnf\s+(doc|n[oº°.]|serie|eletronica)\b/;
+
+/** NF-e / DANFE / boleto — nunca é carta, mesmo com assunto enganoso. */
+export function looksLikeNotaFiscalDocument(fileName: string, textSnippet = ''): boolean {
+  const hay = fold(`${fileName} ${textSnippet.slice(0, 6000)}`);
+  if (CARTA_NOISE.test(hay)) return true;
+  // Nome tipo "NF DOC MED 81.472.pdf" / "NF-123.pdf"
+  if (/^\s*nf[\s._-]/i.test(fileName.replace(/^.*[/\\]/, ''))) return true;
+  return false;
+}
 
 /**
  * Anexo/assunto de carta de comercialização (FR-044). O texto do PDF entra
@@ -107,14 +121,15 @@ export function isCartaComercializacaoCandidate(
   subject = '',
   textSnippet = '',
 ): boolean {
+  if (looksLikeNotaFiscalDocument(fileName, textSnippet)) return false;
   const hay = fold(`${fileName} ${subject} ${textSnippet.slice(0, 4000)}`);
-  if (CARTA_NOISE.test(hay)) return false;
   const hasCarta = /\bcarta\b/.test(hay);
   const hasTema =
     /comercializ/.test(hay) ||
     /autoriza\w*.{0,40}(comercializ|distribui)/.test(hay) ||
     /distribuidor autoriz/.test(hay) ||
-    /representa\w*.{0,20}comercial/.test(hay);
+    /representa\w*.{0,20}comercial/.test(hay) ||
+    /autoriza\w*.{0,80}distribuir/.test(hay);
   return hasCarta && hasTema;
 }
 
