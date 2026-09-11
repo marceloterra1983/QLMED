@@ -428,6 +428,7 @@ export default function DocumentosPageClient() {
                   columnLabel={family.columnLabel}
                   rows={rowsForFamily(data, family.category)}
                   collapseExpired={family.category === 'carta'}
+                  showSignatureColumn={family.category === 'carta'}
                   {...tableProps}
                 />
               )}

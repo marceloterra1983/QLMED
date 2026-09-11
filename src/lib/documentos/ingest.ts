@@ -19,7 +19,7 @@ import {
   kindExpires,
   type DocumentosCategory,
 } from './constants';
-import { cartaManufacturerKey, classifyDocument, looksLikeNotaFiscalDocument } from './classify';
+import { cartaManufacturerKey, classifyDocument, looksLikeNotaFiscalDocument, resolveCartaManufacturer } from './classify';
 import {
   balancoYearFromFolderName,
   balancoYearFromLooseFile,
@@ -187,24 +187,32 @@ async function resolveIngestValidity(opts: {
   emitidoEm: Date | null;
   /** Carta que é DANFE/NF-e: caller não deve upsert nem marcar seenIds. */
   rejectAsNotaFiscal: boolean;
+  manufacturer: string | null;
+  pdfText: string;
 }> {
   const empty = {
     validUntil: null as Date | null,
     validUntilSource: null as string | null,
     emitidoEm: null as Date | null,
     rejectAsNotaFiscal: false,
+    manufacturer: null as string | null,
+    pdfText: '',
   };
   if (!kindStoresFilenameDate(opts.kind)) {
     return empty;
   }
   const fromName = extractValidUntil(opts.fileName);
   const preferPdf = opts.kind === 'carta_comercializacao';
+  // Em cartas a data no nome é assinatura/emissão, não validade.
+  const nameAsEmitido = preferPdf && fromName ? dateFromYmd(fromName.date) : null;
   if (fromName && !preferPdf) {
     return {
       validUntil: dateFromYmd(fromName.date),
       validUntilSource: 'filename',
       emitidoEm: null,
       rejectAsNotaFiscal: false,
+      manufacturer: null,
+      pdfText: '',
     };
   }
   try {
@@ -212,27 +220,31 @@ async function resolveIngestValidity(opts: {
     if (preferPdf) {
       const text = await extractPdfPlainText(bytes);
       if (looksLikeNotaFiscalDocument(opts.fileName, text)) {
-        return { ...empty, rejectAsNotaFiscal: true };
+        return { ...empty, rejectAsNotaFiscal: true, pdfText: text };
       }
       const pdf = matchValidityFromText(text, todayInSaoPaulo(opts.now));
-      const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
+      const emitidoEm = pdf.emitidoEm
+        ? dateFromYmd(pdf.emitidoEm)
+        : nameAsEmitido;
+      const manufacturer = resolveCartaManufacturer(opts.fileName, text);
       if (pdf.validUntil) {
         return {
           validUntil: dateFromYmd(pdf.validUntil),
           validUntilSource: 'pdf',
           emitidoEm,
           rejectAsNotaFiscal: false,
+          manufacturer,
+          pdfText: text,
         };
       }
-      if (fromName) {
-        return {
-          validUntil: dateFromYmd(fromName.date),
-          validUntilSource: 'filename',
-          emitidoEm,
-          rejectAsNotaFiscal: false,
-        };
-      }
-      return { ...empty, emitidoEm };
+      return {
+        validUntil: null,
+        validUntilSource: null,
+        emitidoEm,
+        rejectAsNotaFiscal: false,
+        manufacturer,
+        pdfText: text,
+      };
     }
     const pdf = await readValidityFromPdf(bytes, todayInSaoPaulo(opts.now));
     const emitidoEm = pdf.emitidoEm ? dateFromYmd(pdf.emitidoEm) : null;
@@ -242,6 +254,8 @@ async function resolveIngestValidity(opts: {
         validUntilSource: 'pdf',
         emitidoEm,
         rejectAsNotaFiscal: false,
+        manufacturer: null,
+        pdfText: '',
       };
     }
     if (fromName) {
@@ -250,11 +264,20 @@ async function resolveIngestValidity(opts: {
         validUntilSource: 'filename',
         emitidoEm,
         rejectAsNotaFiscal: false,
+        manufacturer: null,
+        pdfText: '',
       };
     }
     return { ...empty, emitidoEm };
   } catch {
     // PDF ilegível ou download falhou: linha fica Sem data (ou o nome, se houver).
+  }
+  if (preferPdf) {
+    return {
+      ...empty,
+      emitidoEm: nameAsEmitido,
+      manufacturer: resolveCartaManufacturer(opts.fileName, ''),
+    };
   }
   if (fromName) {
     return {
@@ -262,6 +285,8 @@ async function resolveIngestValidity(opts: {
       validUntilSource: 'filename',
       emitidoEm: null,
       rejectAsNotaFiscal: false,
+      manufacturer: null,
+      pdfText: '',
     };
   }
   return empty;
@@ -304,6 +329,7 @@ type UpsertInput = {
   validUntil: Date | null;
   validUntilSource: string | null;
   emitidoEm?: Date | null;
+  manufacturer?: string | null;
 };
 
 async function upsertItem(
@@ -326,6 +352,7 @@ async function upsertItem(
         validUntil: input.validUntil,
         validUntilSource: input.validUntilSource,
         emitidoEm: input.emitidoEm ?? null,
+        manufacturer: input.manufacturer ?? null,
         removedAt: null,
       },
       select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -360,6 +387,7 @@ async function upsertItem(
         : conteudoMudou(existing.lastModifiedAt, input.lastModifiedAt)
           ? { emitidoEm: null }
           : {}),
+      ...(input.manufacturer != null ? { manufacturer: input.manufacturer } : {}),
       ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
     },
     select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -502,7 +530,7 @@ async function ingestCompany(
           }
 
           const kind = classifyDocument(target.folderName, file.name, family.category);
-          const { validUntil, validUntilSource, emitidoEm, rejectAsNotaFiscal } =
+          const { validUntil, validUntilSource, emitidoEm, rejectAsNotaFiscal, manufacturer } =
             await resolveIngestValidity({
               kind,
               fileName: file.name,
@@ -533,6 +561,10 @@ async function ingestCompany(
               validUntil,
               validUntilSource,
               emitidoEm,
+              manufacturer:
+                family.category === 'carta'
+                  ? manufacturer ?? resolveCartaManufacturer(file.name, '')
+                  : null,
             },
             existing,
           );

@@ -221,15 +221,17 @@ falhar de forma visível, não chutar.
   a ingestão não a grava. Um contador falso neste documento (interdição da
   empresa) é pior do que não ter contador.
 - **FR-020**: A família `carta` é conjunto aberto: uma linha por ficheiro
-  (fabricante extraído do nome), pasta
-  `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Ordenação por dias
-  restantes, sem data no fim. Cartas com `daysRemaining < 0` ficam num
-  separador colapsável **Cartas vencidas** (recolhido por omissão); as
-  demais na tabela principal do card. A ingestão **lê o PDF** (FR-045) e
-  grava `validUntilSource='pdf'` quando encontra validade; data no nome só
-  entra se o PDF não declarar prazo. Sem data → "Sem data" e **não alerta**.
-  Lápis continua a gravar `manual`. Não se inventa data. A pasta `Vencidas`
-  (criada se faltar sob a raiz da família) serve para arquivo.
+  (fabricante do PDF quando o nome é genérico; senão do nome do ficheiro),
+  pasta `1 - DOCUMENTOS/1 - QL MED/7 - CARTA COMERCIALIZAÇÃO`. Colunas:
+  Fabricante, **Assinatura** (`emitidoEm`), Válida até, Dias restantes.
+  Ordenação por dias restantes, sem data no fim. Cartas com
+  `daysRemaining < 0` ficam num separador colapsável **Cartas vencidas**
+  (recolhido por omissão); as demais na tabela principal do card. A ingestão
+  **lê o PDF** (FR-045) e grava `validUntilSource='pdf'` quando encontra
+  validade; a data no nome da carta é assinatura (não validade). Sem data →
+  "Sem data" e **não alerta**. Lápis continua a gravar `manual`. Não se
+  inventa data. A pasta `Vencidas` (criada se faltar sob a raiz da família)
+  serve para arquivo.
 - **FR-021**: Limiares de alerta são por família, não globais:
   certidão `[30, 15, 7, 3, 1, 0]` (inalterado); sanitária
   `[90, 60, 30, 15, 7, 0]` — o 60 vem da observação II da Licença Sanitária
@@ -414,14 +416,17 @@ falhar de forma visível, não chutar.
   na pasta OneDrive da família carta (nome saneado); ficheiro já existente
   (mesmo nome, sem acento) é saltado. Falha de uma caixa não aborta as outras.
 - **FR-045**: A leitura de PDF das cartas reconhece validade em formas
-  distintas: rótulos (`validade`, `válida até`, `vigente até`, `autorizada
-  até`, `com validade até`); faixa `de X a Y`; e prazo relativo (`válida
-  por N meses/anos/dias a contar da emissão`, `válidos por período de N
-  meses`, `prazo de N meses`). Emissão pelos rótulos já existentes **e** pela
-  data no rodapé após `Atenciosamente`/`Cordialmente` (ex.: `01 de abril
-  2022` sem o segundo «de»). Prazo relativo só grava validade se houver
-  emissão. Prazo indeterminado deixa validade nula. Não se inventa data.
-  Nome do ficheiro também reconhece compacto `26fev26` / `27ago26`.
+  distintas: rótulos (`validade`, `válida até`, `válido até o dia`,
+  `validade desta carta`, `vigente até`, `autorizada até`, `com validade
+  até`); faixa `de X a Y`; e prazo relativo (`válida por N meses`, `válidos
+  por período de N meses`, `validade de N meses`, `credencial … 1 ano`).
+  Texto OCR com dígitos/meses partidos (`202 6`, `me ses`, `Ju lho`) é
+  normalizado antes do match. Emissão pelos rótulos existentes, `Data:`,
+  rodapé após Atenciosamente e cabeçalho `Cidade, DD de mês de AAAA`.
+  Prazo relativo só grava validade se houver emissão/assinatura. Fabricante
+  persistido em `manufacturer` (PDF ou nome). Prazo indeterminado deixa
+  validade nula. Não se inventa data. Nome do ficheiro também reconhece
+  compacto `26fev26` / `27ago26` como assinatura, não como validade.
 
 ## Acceptance Criteria
 

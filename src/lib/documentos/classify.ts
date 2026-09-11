@@ -61,14 +61,22 @@ function classifySanitaria(fileName: string): CompanyDocumentKind {
 }
 
 const CARTA_PREFIXES = [
-  /^carta\s+de\s+autorizacao\s+comercializacao\s+/i,
+  /^carta\s+de\s+autorizacao\s+(?:para\s+)?comercializacao\s+/i,
   /^carta\s+de\s+comercializacao\s+/i,
   /^carta\s+comercializacao\s+/i,
+  /^carta\s+de\s+distribuicao\s+/i,
+  /^carta\s+distribuicao\s+/i,
+  /^credenciamento\s+(?:para\s+)?(?:comercializacao\s+)?/i,
+  /^declaracao\s+de\s+comercializacao\s+/i,
+  /^declaracao\s+/i,
 ];
 
 /** dd.MM.yy / dd.MM.yyyy / dd-MM-yyyy / 26fev26 — só para limpar o rótulo. */
 const DATE_TOKEN =
-  /(?<!\d)(\d{2})[.\-](\d{2})[.\-](\d{4}|\d{2})(?!\d)|\b\d{1,2}[a-z]{3}\d{2,4}\b/gi;
+  /(?<!\d)(\d{2})[.\-](\d{2})[.\-](\d{4}|\d{2})(?!\d)|\b\d{1,2}[a-z]{3}\d{2,4}\b|\b\d{6}\b/gi;
+
+const WEAK_CARTA_LABEL =
+  /^(assinada?|carta|credenciamento|declaracao|encerramento|distribuicao|autorizacao|comercializacao|\d+)/;
 
 /**
  * Fabricante a partir do nome da carta. Não inventa data; só corta prefixo,
@@ -82,13 +90,108 @@ export function cartaLabelFromFileName(fileName: string): string {
   }
   cut = cut
     .replace(/\bql\s*med\b/g, ' ')
-    .replace(/\bassin\b/g, ' ')
+    .replace(/\bqlmed\b/g, ' ')
+    .replace(/\bassin(?:ada)?\b/g, ' ')
+    .replace(/\bnao\s+exclusiva\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\bql$/g, '')
     .trim();
+  // «Assin - CARDIOVENT» → preferir o token depois do último traço/hífen residual
+  const dashParts = cut.split(/\s+-\s+/).map((p) => p.trim()).filter(Boolean);
+  if (dashParts.length >= 2) {
+    const last = dashParts[dashParts.length - 1];
+    if (last && !WEAK_CARTA_LABEL.test(last)) cut = last;
+  }
   if (!cut) return base.trim() || fileName;
   return cut.toUpperCase();
+}
+
+/** Rótulo fraco demais para ser o fabricante (ASSINADA, CARTA DISTRIBUICAO…). */
+export function isWeakCartaLabel(label: string): boolean {
+  const f = fold(label).trim();
+  if (!f || f.length < 3) return true;
+  if (WEAK_CARTA_LABEL.test(f)) return true;
+  if (/\b(comercializacao|autorizacao|distribuicao|encerramento|declaracao)\b/.test(f)) return true;
+  return false;
+}
+
+/**
+ * Fabricante no texto do PDF: marca, cabeçalho ou «A CARDIOVENT … LTDA».
+ * Nunca devolve QL MED (é a própria empresa).
+ */
+export function cartaManufacturerFromPdf(text: string): string | null {
+  const hay = fold(text).slice(0, 9000);
+  if (!hay) return null;
+
+  const reject = (name: string): boolean => {
+    const f = fold(name);
+    return (
+      !f ||
+      f.length < 3 ||
+      f.includes('ql med') ||
+      f.includes('materiais hospital') ||
+      WEAK_CARTA_LABEL.test(f)
+    );
+  };
+
+  const clean = (raw: string): string | null => {
+    let n = raw
+      .replace(/\s+/g, ' ')
+      .replace(/\b(ltda|epp|s\.?a\.?|me)\b/gi, ' ')
+      .replace(/[.,;:]+$/g, '')
+      .trim();
+    if (reject(n)) return null;
+    // Fica com as 1–4 primeiras palavras significativas
+    const parts = n.split(/\s+/).filter(Boolean).slice(0, 4);
+    n = parts.join(' ');
+    if (reject(n)) return null;
+    return n.toUpperCase();
+  };
+
+  const marca = /\bmarca\s+([a-z0-9][a-z0-9 .&-]{1,40}?)(?:\s+(?:no|na|cuja|em|ltda|,)|\s*$)/.exec(hay);
+  if (marca?.[1]) {
+    const got = clean(marca[1]);
+    if (got) return got;
+  }
+
+  const aIssuer =
+    /\ba\s+([a-z][a-z0-9]+(?:\s+[a-z0-9]+){0,3})\s+(?:comercio|industria|equipamentos|medical|technology|importacao)\b/.exec(
+      hay,
+    );
+  if (aIssuer?.[1]) {
+    const got = clean(aIssuer[1]);
+    if (got) return got;
+  }
+
+  const letterhead = /^(?:www\.[^\s]+\s+(?:\([^)]*\)\s+)?)?([a-z][a-z0-9]+(?:\s+[a-z0-9]+){0,3})\b/.exec(
+    hay.replace(/^\W+/, ''),
+  );
+  if (letterhead?.[1] && !reject(letterhead[1])) {
+    const got = clean(letterhead[1]);
+    if (got && !/^(RUA|AV|AVENIDA|CEP|CNPJ|TEL|WWW)\b/.test(got)) return got;
+  }
+
+  // Cath-Care / letterhead mid-document
+  const midHead =
+    /\b((?:cath[\s-]*care|techimport|terumo|osteomed|gabmed|vicca|biomedical|livanova|politec|ossea|vicare|cardio\s+medical)[a-z0-9\s-]{0,20})\b/.exec(
+      hay,
+    );
+  if (midHead?.[1]) {
+    const got = clean(midHead[1].replace(/-/g, ' '));
+    if (got) return got;
+  }
+
+  return null;
+}
+
+/** Nome do fabricante: PDF quando o ficheiro é genérico; senão o nome. */
+export function resolveCartaManufacturer(fileName: string, pdfText = ''): string {
+  const fromName = cartaLabelFromFileName(fileName);
+  if (!isWeakCartaLabel(fromName)) return fromName;
+  const fromPdf = cartaManufacturerFromPdf(pdfText);
+  if (fromPdf) return fromPdf;
+  return fromName;
 }
 
 export function cartaManufacturerKey(fileName: string): string {

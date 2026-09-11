@@ -442,4 +442,37 @@ describe('SPEC-042 L15 — carta: rótulos e prazo relativo', () => {
     expect(result.validUntil).toBe('2023-04-01');
     expect(result.matchedLabel).toBe('Prazo');
   });
+
+  it('OCR espaçado CARDIOVENT: 6 meses a partir da assinatura', () => {
+    const texto =
+      'tem validade de 6 ( seis ) meses a partir da data de assinatura. ' +
+      'Rio de Janeiro (RJ), 2 6 de fevereiro d e 202 6';
+    const result = matchValidityFromText(texto, '2026-09-11');
+    expect(result.emitidoEm).toBe('2026-02-26');
+    expect(result.validUntil).toBe('2026-08-26');
+  });
+
+  it('OCR espaçado: validade de 12 me ses + Campinas', () => {
+    const texto =
+      'VALIDADE: Esta Carta terá validade de 12 (doze) me ses podendo ser renovada. ' +
+      'Campinas, 01 de Jane iro de 20 22';
+    const result = matchValidityFromText(texto, '2026-09-11');
+    expect(result.emitidoEm).toBe('2022-01-01');
+    expect(result.validUntil).toBe('2023-01-01');
+  });
+
+  it('válido até o dia + validade desta carta', () => {
+    expect(
+      matchValidityFromText(
+        'São Paulo, 01 de julho de 2026. O presente atestado é válido até o dia 20/10/2026.',
+        '2026-09-11',
+      ).validUntil,
+    ).toBe('2026-10-20');
+    expect(
+      matchValidityFromText(
+        'Validade desta carta: 31 de dezembro de 2022. Cachoeirinha, 06 de dezembro de 2021.',
+        '2026-09-11',
+      ),
+    ).toMatchObject({ validUntil: '2022-12-31', emitidoEm: '2021-12-06' });
+  });
 });

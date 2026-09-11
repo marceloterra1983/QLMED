@@ -1,6 +1,6 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { cartaLabelFromFileName, effectiveSocietarioKind } from './classify';
+import { cartaLabelFromFileName, effectiveSocietarioKind, isWeakCartaLabel } from './classify';
 import {
   DOCUMENTOS_FAMILIES,
   kindConfig,
@@ -61,6 +61,7 @@ export type DocumentosListSource = {
   validUntil: Date | string | null;
   validUntilSource: string | null;
   emitidoEm?: Date | string | null;
+  manufacturer?: string | null;
   removedAt: Date | string | null;
   webUrl?: string | null;
 };
@@ -136,8 +137,15 @@ function toRow(row: DocumentosListSource, today: string, family: DocumentosFamil
   const expira = config?.expira ?? true;
   const ymd = expira ? toYmd(row.validUntil) : null;
   const days = expira && ymd ? daysRemaining(today, ymd) : null;
+  const fromName = family.mode === 'open' ? cartaLabelFromFileName(row.fileName) : null;
   const label =
-    family.mode === 'open' ? cartaLabelFromFileName(row.fileName) : (config?.label ?? labelForKind(row.kind));
+    family.mode === 'open'
+      ? (row.manufacturer && !isWeakCartaLabel(row.manufacturer)
+          ? row.manufacturer
+          : fromName && !isWeakCartaLabel(fromName)
+            ? fromName
+            : (row.manufacturer ?? fromName ?? row.fileName))
+      : (config?.label ?? labelForKind(row.kind));
   return {
     id: row.id,
     kind: row.kind,
@@ -356,6 +364,7 @@ export async function loadDocumentosListing(
         validUntil: true,
         validUntilSource: true,
         emitidoEm: true,
+        manufacturer: true,
         removedAt: true,
         webUrl: true,
       },

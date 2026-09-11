@@ -190,10 +190,13 @@ export type DocumentosFamilyTableProps = {
   onWhatsApp: (row: DocumentosRow) => void;
   /** Cartas: esconde vencidas num separador colapsável (recolhido). */
   collapseExpired?: boolean;
+  /** Cartas: coluna Assinatura (= emitidoEm). */
+  showSignatureColumn?: boolean;
 };
 
-type TableBodyProps = Omit<DocumentosFamilyTableProps, 'collapseExpired'> & {
+type TableBodyProps = Omit<DocumentosFamilyTableProps, 'collapseExpired' | 'showSignatureColumn'> & {
   showValidityColumns: boolean;
+  showSignatureColumn: boolean;
 };
 
 function DocumentosTableBody({
@@ -214,6 +217,7 @@ function DocumentosTableBody({
   onShare,
   onWhatsApp,
   showValidityColumns,
+  showSignatureColumn,
 }: TableBodyProps) {
   function isEditingRow(row: DocumentosRow): boolean {
     return canWrite && row.id !== null && editingId === row.id;
@@ -332,6 +336,7 @@ function DocumentosTableBody({
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
             <th className={CELL}>{columnLabel}</th>
+            {showSignatureColumn ? <th className={CELL}>Assinatura</th> : null}
             {showValidityColumns ? (
               <>
                 <th className={CELL}>Válida até</th>
@@ -370,6 +375,11 @@ function DocumentosTableBody({
                 <td className={CELL}>
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                 </td>
+                {showSignatureColumn ? (
+                  <td className={`${CELL} text-sm whitespace-nowrap`}>
+                    <ValidityText value={row.emitidoEm} />
+                  </td>
+                ) : null}
                 {showValidityColumns ? (
                   <>
                     <td
@@ -421,6 +431,7 @@ export default function DocumentosFamilyTable({
   columnLabel,
   rows,
   collapseExpired = false,
+  showSignatureColumn = false,
   ...rest
 }: DocumentosFamilyTableProps) {
   const showValidityColumns = true;
@@ -432,6 +443,7 @@ export default function DocumentosFamilyTable({
         columnLabel={columnLabel}
         rows={rows}
         showValidityColumns={showValidityColumns}
+        showSignatureColumn={showSignatureColumn}
         {...rest}
       />
     );
@@ -445,6 +457,7 @@ export default function DocumentosFamilyTable({
         columnLabel={columnLabel}
         rows={active}
         showValidityColumns={showValidityColumns}
+        showSignatureColumn={showSignatureColumn}
         {...rest}
       />
       {expired.length > 0 ? (
@@ -454,6 +467,7 @@ export default function DocumentosFamilyTable({
             columnLabel={columnLabel}
             rows={expired}
             showValidityColumns={showValidityColumns}
+            showSignatureColumn={showSignatureColumn}
             {...rest}
           />
         </CollapsibleSeparator>
@@ -515,6 +529,7 @@ export function DocumentosBalancoGroups({ groups, ...tableProps }: DocumentosBal
             columnLabel="Documento"
             rows={group.documents}
             showValidityColumns
+            showSignatureColumn={false}
             {...tableProps}
           />
         </CollapsibleSeparator>

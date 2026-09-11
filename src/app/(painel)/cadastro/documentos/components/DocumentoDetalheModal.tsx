@@ -37,6 +37,10 @@ export function emitidoEmTexto(row: DocumentosRow): string {
   return row.emitidoEm ? formatDocumentDate(row.emitidoEm) : 'não informado';
 }
 
+function emitidoEmLabel(row: DocumentosRow): string {
+  return row.category === 'carta' ? 'Assinatura' : 'Emitido em';
+}
+
 function venceEmTexto(row: DocumentosRow): string {
   if (row.expira === false) return 'não vence';
   if (!row.validUntil) return 'Sem data';
@@ -89,7 +93,7 @@ export default function DocumentoDetalheModal({
       <dl className="flex flex-col gap-3">
         <Field label="Tipo">{row.label}</Field>
         <Field label="Arquivo">{row.fileName ?? 'sem arquivo'}</Field>
-        <Field label="Emitido em">{emitidoEmTexto(row)}</Field>
+        <Field label={emitidoEmLabel(row)}>{emitidoEmTexto(row)}</Field>
         <Field label="Vence em">{venceEmTexto(row)}</Field>
         <Field label="Dias restantes">
           <span
